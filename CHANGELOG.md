@@ -20,6 +20,6 @@ All notable changes to Kintai are documented here.
 - Internationalization: French, English, Japanese
 - Mobile-optimized interface with automatic device detection
 - Multi-driver persistence: SQLite, MySQL, JsonDB
-- Custom MVC framework (PHP 8.2+, no Laravel/Symfony)
+- Custom MVC framework (PHP 8.3+, no Laravel/Symfony)
 - REST API for all resources
 - Web installer (WordPress-style setup)

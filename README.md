@@ -1,6 +1,6 @@
 # 🕒 Kintai — Système de Gestion de Shifts Open-Source
 
-[![PHP Version](https://img.shields.io/badge/php-%3E%3D%208.2-8892bf.svg)](https://php.net)
+[![PHP Version](https://img.shields.io/badge/php-%3E%3D%208.3-8892bf.svg)](https://php.net)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 [![Tests](https://github.com/AudricSan/kintai/actions/workflows/tests.yml/badge.svg)](https://github.com/AudricSan/kintai/actions/workflows/tests.yml)
 [![Architecture](https://img.shields.io/badge/architecture-MVC%20%2F%20Custom%20Framework-orange.svg)]()

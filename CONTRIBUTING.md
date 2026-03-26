@@ -33,7 +33,7 @@ the use case and why it fits the project's scope.
 
 ## Code Conventions
 
-- PHP 8.2+ strict types (`declare(strict_types=1)`)
+- PHP 8.3+ strict types (`declare(strict_types=1)`)
 - Namespace root: `kintai\` → `src/`
 - Controllers: `final class`, constructor injection, signature `method(Request): Response`
 - HTTP exceptions: use the hierarchy in `src/Core/Exceptions/`
