@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
         libxml2-dev \
         libsqlite3-dev \
         libicu-dev \
+        libonig-dev \
         zip \
         unzip \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
