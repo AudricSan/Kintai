@@ -1,0 +1,7 @@
+{
+  "table": "stores",
+  "operation": "add_field",
+  "field": "min_shift_minutes",
+  "type": "integer",
+  "default": 120
+}

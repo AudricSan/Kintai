@@ -1,0 +1,36 @@
+{
+  "table": "shifts",
+  "auto_increment": true,
+  "primary_key": "id",
+  "fields": {
+    "id": "number",
+    "store_id": "number",
+    "user_id": "number",
+    "shift_date": "string",
+    "start_time": "string",
+    "end_time": "string",
+    "shift_type_id": "number|null",
+    "cross_midnight": "number",
+    "pause_minutes": "number",
+    "duration_minutes": "number",
+    "starts_at": "string",
+    "ends_at": "string",
+    "notes": "string|null",
+    "created_by": "number|null",
+    "created_at": "string",
+    "updated_at": "string|null",
+    "deleted_at": "string|null"
+  },
+  "indexes": [
+    { "name": "idx_shifts_store_date","columns": ["store_id","shift_date","deleted_at"],"unique": false },
+    { "name": "idx_shifts_user_date", "columns": ["user_id","shift_date","deleted_at"], "unique": false },
+    { "name": "idx_shifts_user_time", "columns": ["user_id","starts_at","ends_at","deleted_at"],"unique": false },
+    { "name": "idx_shifts_store_user","columns": ["store_id","user_id","shift_date"],  "unique": false }
+  ],
+  "relations": [
+    { "type": "belongs_to", "table": "stores",      "local_key": "store_id",      "foreign_key": "id" },
+    { "type": "belongs_to", "table": "users",        "local_key": "user_id",       "foreign_key": "id" },
+    { "type": "belongs_to", "table": "shift_types",  "local_key": "shift_type_id", "foreign_key": "id" },
+    { "type": "belongs_to", "table": "users",        "local_key": "created_by",    "foreign_key": "id" }
+  ]
+}

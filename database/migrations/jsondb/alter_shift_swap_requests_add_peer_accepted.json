@@ -1,0 +1,7 @@
+{
+  "table": "shift_swap_requests",
+  "operation": "add_field",
+  "field": "peer_accepted_at",
+  "type": "string|null",
+  "default": null
+}

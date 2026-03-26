@@ -1,0 +1,7 @@
+{
+  "table": "stores",
+  "operation": "add_field",
+  "field": "excel_import_settings",
+  "type": "object|null",
+  "default": null
+}

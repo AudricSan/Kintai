@@ -1,0 +1,7 @@
+{
+  "table": "stores",
+  "operation": "add_field",
+  "field": "low_staff_hour_end",
+  "type": "integer",
+  "default": -1
+}

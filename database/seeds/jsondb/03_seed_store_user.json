@@ -1,0 +1,13 @@
+{
+  "collection": "store_user",
+  "records": [
+    { "id": 1,  "store_id": 1, "user_id": 1, "role": "admin",   "staff_code": null, "hire_date": null, "contract_type": null, "is_manager": 1, "hourly_rates": null, "is_active": 1, "created_at": "__NOW__", "updated_at": "__NOW__" },
+    { "id": 2,  "store_id": 2, "user_id": 1, "role": "admin",   "staff_code": null, "hire_date": null, "contract_type": null, "is_manager": 1, "hourly_rates": null, "is_active": 1, "created_at": "__NOW__", "updated_at": "__NOW__" },
+    { "id": 3,  "store_id": 1, "user_id": 2, "role": "manager", "staff_code": null, "hire_date": null, "contract_type": null, "is_manager": 1, "hourly_rates": null, "is_active": 1, "created_at": "__NOW__", "updated_at": "__NOW__" },
+    { "id": 4,  "store_id": 1, "user_id": 3, "role": "staff",   "staff_code": "STF001", "hire_date": null, "contract_type": null, "is_manager": 0, "hourly_rates": null, "is_active": 1, "created_at": "__NOW__", "updated_at": "__NOW__" },
+    { "id": 5,  "store_id": 1, "user_id": 4, "role": "staff",   "staff_code": "STF002", "hire_date": null, "contract_type": null, "is_manager": 0, "hourly_rates": null, "is_active": 1, "created_at": "__NOW__", "updated_at": "__NOW__" },
+    { "id": 6,  "store_id": 1, "user_id": 5, "role": "staff",   "staff_code": "STF003", "hire_date": null, "contract_type": null, "is_manager": 0, "hourly_rates": null, "is_active": 1, "created_at": "__NOW__", "updated_at": "__NOW__" },
+    { "id": 7,  "store_id": 2, "user_id": 7, "role": "manager", "staff_code": null, "hire_date": null, "contract_type": null, "is_manager": 1, "hourly_rates": null, "is_active": 1, "created_at": "__NOW__", "updated_at": "__NOW__" },
+    { "id": 8,  "store_id": 2, "user_id": 6, "role": "staff",   "staff_code": "STF001", "hire_date": null, "contract_type": null, "is_manager": 0, "hourly_rates": null, "is_active": 1, "created_at": "__NOW__", "updated_at": "__NOW__" }
+  ]
+}

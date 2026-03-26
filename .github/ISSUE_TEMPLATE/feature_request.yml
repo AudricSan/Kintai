@@ -1,0 +1,39 @@
+name: Feature Request
+description: Proposer une nouvelle fonctionnalité
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Avant de soumettre, vérifiez que la fonctionnalité n'est pas déjà dans la [Roadmap](../../README.md#roadmap).
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problème ou besoin
+      description: Quel problème cette fonctionnalité résout-elle ? Quel est le cas d'usage ?
+      placeholder: "En tant que manager, je voudrais..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Solution proposée
+      description: Décrivez la fonctionnalité souhaitée.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives envisagées
+      description: Y a-t-il d'autres approches que vous avez considérées ?
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Périmètre
+      options:
+        - label: Cette fonctionnalité s'intègre dans la philosophie lightweight du projet (pas de dépendance framework lourde)
+          required: true

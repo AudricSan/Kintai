@@ -1,0 +1,52 @@
+# =========================
+# Dependencies
+# =========================
+/vendor/
+
+# =========================
+# Storage (runtime data)
+# =========================
+/storage/logs/*
+/storage/cache/*
+/storage/uploads/*
+/storage/app/*
+
+# Keep directories
+!storage/logs/.gitkeep
+!storage/cache/.gitkeep
+!storage/uploads/.gitkeep
+!storage/app/.gitkeep
+
+# =========================
+# Database / local data
+# =========================
+/storage/app/database.json
+/storage/app/database.sqlite
+/storage/app/migrations.json
+
+# Installer / local config
+/storage/installed.lock
+
+# =========================
+# Logs
+# =========================
+*.log
+
+# =========================
+# IDE / Editor
+# =========================
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# =========================
+# Test cache
+# =========================
+.phpunit.result.cache
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db

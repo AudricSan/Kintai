@@ -1,0 +1,23 @@
+{
+  "table": "remember_tokens",
+  "auto_increment": true,
+  "primary_key": "id",
+  "fields": {
+    "id": "number",
+    "user_id": "number",
+    "token_hash": "string",
+    "expires_at": "string",
+    "last_used_at": "string|null",
+    "ip_address": "string|null",
+    "user_agent": "string|null",
+    "created_at": "string"
+  },
+  "indexes": [
+    { "name": "uk_remember_token",   "columns": ["token_hash"], "unique": true  },
+    { "name": "idx_remember_user",   "columns": ["user_id"],    "unique": false },
+    { "name": "idx_remember_expires","columns": ["expires_at"], "unique": false }
+  ],
+  "relations": [
+    { "type": "belongs_to", "table": "users", "local_key": "user_id", "foreign_key": "id" }
+  ]
+}

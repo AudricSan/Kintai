@@ -1,0 +1,18 @@
+{
+  "table": "user_shift_type_rates",
+  "auto_increment": true,
+  "primary_key": "id",
+  "fields": {
+    "id":            "number",
+    "user_id":       "number",
+    "shift_type_id": "number",
+    "hourly_rate":   "number",
+    "created_at":    "string",
+    "updated_at":    "string|null"
+  },
+  "indexes": [
+    { "name": "uk_user_shift_type_rates",       "columns": ["user_id","shift_type_id"], "unique": true  },
+    { "name": "idx_user_shift_type_rates_user", "columns": ["user_id"],                 "unique": false }
+  ],
+  "relations": []
+}

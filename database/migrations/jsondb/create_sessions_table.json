@@ -1,0 +1,20 @@
+{
+  "table": "sessions",
+  "auto_increment": false,
+  "primary_key": "id",
+  "fields": {
+    "id": "string",
+    "user_id": "number|null",
+    "ip_address": "string|null",
+    "user_agent": "string|null",
+    "payload": "string",
+    "last_activity": "number"
+  },
+  "indexes": [
+    { "name": "idx_sessions_user",    "columns": ["user_id"],       "unique": false },
+    { "name": "idx_sessions_activity","columns": ["last_activity"], "unique": false }
+  ],
+  "relations": [
+    { "type": "belongs_to", "table": "users", "local_key": "user_id", "foreign_key": "id" }
+  ]
+}

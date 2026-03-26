@@ -1,0 +1,78 @@
+name: Bug Report
+description: Signaler un comportement inattendu ou une erreur
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Merci de remplir ce formulaire aussi précisément que possible.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Décrivez clairement le problème rencontré.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Étapes pour reproduire
+      description: Liste des étapes permettant de reproduire le bug.
+      placeholder: |
+        1. Aller sur '...'
+        2. Cliquer sur '...'
+        3. Observer l'erreur
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Comportement attendu
+      description: Ce qui aurait dû se passer.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Comportement observé
+      description: Ce qui s'est passé à la place.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Contenu de `storage/logs/` si disponible.
+      render: text
+
+  - type: input
+    id: php_version
+    attributes:
+      label: Version PHP
+      placeholder: ex. 8.2.10
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Système d'exploitation
+      placeholder: ex. Ubuntu 22.04, Windows 11, macOS 14
+    validations:
+      required: true
+
+  - type: dropdown
+    id: driver
+    attributes:
+      label: Driver de base de données
+      options:
+        - SQLite
+        - MySQL
+        - JSON
+    validations:
+      required: true

@@ -1,0 +1,31 @@
+{
+  "table": "stores",
+  "auto_increment": true,
+  "primary_key": "id",
+  "fields": {
+    "id": "number",
+    "name": "string",
+    "code": "string",
+    "type": "string",
+    "timezone": "string",
+    "currency": "string",
+    "locale": "string",
+    "address_street": "string|null",
+    "address_city": "string|null",
+    "address_postal": "string|null",
+    "address_country": "string|null",
+    "phone": "string|null",
+    "email": "string|null",
+    "break_settings": "object",
+    "opening_hours": "object",
+    "is_active": "number",
+    "created_at": "string",
+    "updated_at": "string|null",
+    "deleted_at": "string|null"
+  },
+  "indexes": [
+    { "name": "uk_stores_code",   "columns": ["code"],                  "unique": true  },
+    { "name": "idx_stores_active","columns": ["is_active","deleted_at"],"unique": false }
+  ],
+  "relations": []
+}
