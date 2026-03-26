@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: kintai
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    port: 80
+    envVars:
+      - key: ADMIN_FIRST_NAME
+        value: Admin
+      - key: ADMIN_LAST_NAME
+        value: Demo
+      - key: ADMIN_EMAIL
+        value: admin@demo.local
+      - key: ADMIN_PASSWORD
+        value: kintai-demo

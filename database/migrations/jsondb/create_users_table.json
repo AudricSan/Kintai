@@ -1,0 +1,29 @@
+{
+  "table": "users",
+  "auto_increment": true,
+  "primary_key": "id",
+  "fields": {
+    "id": "number",
+    "email": "string",
+    "password_hash": "string",
+    "first_name": "string",
+    "last_name": "string",
+    "display_name": "string",
+    "phone": "string|null",
+    "profile_image": "string|null",
+    "color": "string",
+    "is_admin": "number",
+    "is_active": "number",
+    "email_verified_at": "string|null",
+    "last_login_at": "string|null",
+    "created_at": "string",
+    "updated_at": "string|null",
+    "deleted_at": "string|null"
+  },
+  "indexes": [
+    { "name": "uk_users_email",   "columns": ["email"],                "unique": true  },
+    { "name": "idx_users_active", "columns": ["is_active","deleted_at"],"unique": false },
+    { "name": "idx_users_deleted","columns": ["deleted_at"],           "unique": false }
+  ],
+  "relations": []
+}

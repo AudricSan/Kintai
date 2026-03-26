@@ -1,0 +1,42 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_sqlite, pdo_mysql, mbstring, gd, intl
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Create release archive
+        run: |
+          zip -r kintai-${{ github.ref_name }}.zip . \
+            --exclude "*.git*" \
+            --exclude "tests/*" \
+            --exclude "*.phpunit*" \
+            --exclude ".github/*" \
+            --exclude ".editorconfig" \
+            --exclude "CLAUDE.md"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Kintai ${{ github.ref_name }}
+          body_path: CHANGELOG.md
+          files: kintai-${{ github.ref_name }}.zip
+          draft: false
+          prerelease: false

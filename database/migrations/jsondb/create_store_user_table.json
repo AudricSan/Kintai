@@ -1,0 +1,29 @@
+{
+  "table": "store_user",
+  "auto_increment": true,
+  "primary_key": "id",
+  "fields": {
+    "id": "number",
+    "store_id": "number",
+    "user_id": "number",
+    "role": "string",
+    "staff_code": "string|null",
+    "hire_date": "string|null",
+    "contract_type": "string|null",
+    "is_manager": "number",
+    "hourly_rates": "object|null",
+    "is_active": "number",
+    "created_at": "string",
+    "updated_at": "string|null"
+  },
+  "indexes": [
+    { "name": "uk_store_user",       "columns": ["store_id","user_id"],    "unique": true  },
+    { "name": "uk_store_staff_code", "columns": ["store_id","staff_code"], "unique": true  },
+    { "name": "idx_store_user_user", "columns": ["user_id"],               "unique": false },
+    { "name": "idx_store_user_role", "columns": ["store_id","role"],       "unique": false }
+  ],
+  "relations": [
+    { "type": "belongs_to", "table": "stores", "local_key": "store_id", "foreign_key": "id" },
+    { "type": "belongs_to", "table": "users",  "local_key": "user_id",  "foreign_key": "id" }
+  ]
+}

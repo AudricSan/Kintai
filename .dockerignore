@@ -1,0 +1,24 @@
+.git
+.gitignore
+.idea
+.vscode
+
+# Dépendances reconstruites dans le Dockerfile
+vendor/
+
+# Données locales / runtime
+storage/app/database.sqlite
+storage/app/database.json
+storage/app/migrations.json
+storage/logs/
+storage/installed.lock
+config/database.local.php
+
+# Tests (inutiles en prod)
+tests/
+phpunit.xml
+.phpunit.result.cache
+
+# Fichiers OS
+.DS_Store
+Thumbs.db

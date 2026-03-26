@@ -1,0 +1,30 @@
+{
+  "table": "timeoff_requests",
+  "auto_increment": true,
+  "primary_key": "id",
+  "fields": {
+    "id": "number",
+    "store_id": "number",
+    "user_id": "number",
+    "type": "string",
+    "start_date": "string",
+    "end_date": "string",
+    "reason": "string|null",
+    "status": "string",
+    "reviewed_by": "number|null",
+    "reviewed_at": "string|null",
+    "review_notes": "string|null",
+    "created_at": "string",
+    "updated_at": "string|null"
+  },
+  "indexes": [
+    { "name": "idx_timeoff_user_dates",   "columns": ["user_id","start_date","end_date","status"],"unique": false },
+    { "name": "idx_timeoff_store_status", "columns": ["store_id","status","start_date"],          "unique": false },
+    { "name": "idx_timeoff_store_dates",  "columns": ["store_id","start_date","end_date"],        "unique": false }
+  ],
+  "relations": [
+    { "type": "belongs_to", "table": "stores", "local_key": "store_id",    "foreign_key": "id" },
+    { "type": "belongs_to", "table": "users",  "local_key": "user_id",     "foreign_key": "id" },
+    { "type": "belongs_to", "table": "users",  "local_key": "reviewed_by", "foreign_key": "id" }
+  ]
+}

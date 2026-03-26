@@ -1,0 +1,7 @@
+{
+  "table": "stores",
+  "operation": "add_field",
+  "field": "min_staff_per_day",
+  "type": "integer",
+  "default": 0
+}

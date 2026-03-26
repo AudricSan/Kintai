@@ -1,0 +1,9 @@
+{
+  "collection": "shifts",
+  "alter": {
+    "add_fields": {
+      "estimated_salary": null,
+      "wage_breakdown":   null
+    }
+  }
+}

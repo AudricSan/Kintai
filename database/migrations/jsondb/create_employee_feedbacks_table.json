@@ -1,0 +1,15 @@
+{
+  "table": "employee_feedbacks",
+  "operation": "create",
+  "fields": {
+    "id":         "number",
+    "store_id":   "number",
+    "user_id":    "number|null",
+    "shift_id":   "number|null",
+    "category":   "string",
+    "rating":     "number|null",
+    "message":    "string",
+    "anonymous":  "number",
+    "created_at": "string"
+  }
+}

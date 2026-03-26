@@ -1,0 +1,32 @@
+{
+  "table": "shift_swap_requests",
+  "auto_increment": true,
+  "primary_key": "id",
+  "fields": {
+    "id": "number",
+    "store_id": "number",
+    "requester_id": "number",
+    "target_id": "number",
+    "requester_shift_id": "number",
+    "target_shift_id": "number|null",
+    "status": "string",
+    "reason": "string|null",
+    "reviewed_by": "number|null",
+    "reviewed_at": "string|null",
+    "created_at": "string",
+    "updated_at": "string|null"
+  },
+  "indexes": [
+    { "name": "idx_swap_store_status","columns": ["store_id","status"],      "unique": false },
+    { "name": "idx_swap_requester",   "columns": ["requester_id","status"],  "unique": false },
+    { "name": "idx_swap_target",      "columns": ["target_id","status"],     "unique": false }
+  ],
+  "relations": [
+    { "type": "belongs_to", "table": "stores", "local_key": "store_id",            "foreign_key": "id" },
+    { "type": "belongs_to", "table": "users",  "local_key": "requester_id",        "foreign_key": "id" },
+    { "type": "belongs_to", "table": "users",  "local_key": "target_id",           "foreign_key": "id" },
+    { "type": "belongs_to", "table": "shifts", "local_key": "requester_shift_id",  "foreign_key": "id" },
+    { "type": "belongs_to", "table": "shifts", "local_key": "target_shift_id",     "foreign_key": "id" },
+    { "type": "belongs_to", "table": "users",  "local_key": "reviewed_by",         "foreign_key": "id" }
+  ]
+}

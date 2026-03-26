@@ -1,0 +1,7 @@
+{
+    "table": "users",
+    "action": "add_column",
+    "column": "language",
+    "type": "string",
+    "default": "fr"
+}

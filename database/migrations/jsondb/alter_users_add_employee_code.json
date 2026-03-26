@@ -1,0 +1,7 @@
+{
+  "table": "users",
+  "operation": "add_field",
+  "field": "employee_code",
+  "type": "string|null",
+  "default": null
+}

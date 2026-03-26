@@ -1,0 +1,26 @@
+{
+  "table": "shift_types",
+  "auto_increment": true,
+  "primary_key": "id",
+  "fields": {
+    "id": "number",
+    "store_id": "number",
+    "name": "string",
+    "code": "string",
+    "start_time": "string",
+    "end_time": "string",
+    "hourly_rate": "number",
+    "color": "string",
+    "sort_order": "number",
+    "is_active": "number",
+    "created_at": "string",
+    "updated_at": "string|null"
+  },
+  "indexes": [
+    { "name": "uk_shift_type_store_code","columns": ["store_id","code"],             "unique": true  },
+    { "name": "idx_shift_type_active",   "columns": ["store_id","is_active","sort_order"],"unique": false }
+  ],
+  "relations": [
+    { "type": "belongs_to", "table": "stores", "local_key": "store_id", "foreign_key": "id" }
+  ]
+}

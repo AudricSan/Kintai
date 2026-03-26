@@ -1,0 +1,91 @@
+<?php
+/** @var array[] $my_shifts      shifts futurs de l'employé */
+/** @var array[] $colleagues     utilisateurs du même store */
+/** @var int     $target_id      collègue sélectionné (0 = aucun) */
+/** @var array[] $target_shifts  shifts futurs du collègue sélectionné */
+/** @var array   $types_map      id → shift_type */
+
+function swapLabel(array $shift, array $types_map): string {
+    $tid   = (int)($shift['shift_type_id'] ?? 0);
+    $type  = $types_map[$tid] ?? null;
+    $name  = $type['name'] ?? 'Shift';
+    $start = substr($shift['start_time'] ?? '', 0, 5);
+    $end   = substr($shift['end_time'] ?? '', 0, 5);
+    return htmlspecialchars($shift['shift_date'] ?? '') . ' — ' . htmlspecialchars($name) . ' ' . $start . '–' . $end;
+}
+?>
+
+<div class="page-header">
+    <h2 class="page-header__title"><?= __('request_swap') ?></h2>
+    <div class="page-header__actions">
+        <a href="<?= $BASE_URL ?>/employee/swaps" class="btn btn--ghost btn--sm">← <?= __('back') ?></a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body card-body--narrow">
+
+        <!-- Étape 1 : choisir un collègue (rechargement GET) -->
+        <div class="mb-md">
+            <label class="form-label"><?= __('step_1_choose_colleague') ?></label>
+            <form method="GET" action="<?= $BASE_URL ?>/employee/swaps/create" class="swap-form-row">
+                <select name="target_id" class="form-control" onchange="this.form.submit()">
+                    <option value="0">— <?= __('select') ?> —</option>
+                    <?php foreach ($colleagues as $c): ?>
+                        <option value="<?= (int)$c['id'] ?>" <?= (int)$c['id'] === $target_id ? 'selected' : '' ?>>
+                            <?= htmlspecialchars(trim(($c['first_name'] ?? '') . ' ' . ($c['last_name'] ?? '')) ?: ($c['email'] ?? '#' . $c['id'])) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <button type="submit" class="btn btn--ghost btn--sm">OK</button>
+            </form>
+        </div>
+
+        <?php if ($target_id > 0): ?>
+        <!-- Étape 2 : soumettre l'échange -->
+        <form method="POST" action="<?= $BASE_URL ?>/employee/swaps/create">
+            <input type="hidden" name="target_id" value="<?= $target_id ?>">
+
+            <div class="form-group">
+                <label class="form-label" for="my_shift"><?= __('step_2_my_shift') ?></label>
+                <?php if (empty($my_shifts)): ?>
+                    <p class="text-muted text-sm"><?= __('no_future_shift_available') ?></p>
+                <?php else: ?>
+                    <select id="my_shift" name="requester_shift_id" class="form-control" required>
+                        <option value="">— <?= __('select') ?> —</option>
+                        <?php foreach ($my_shifts as $s): ?>
+                            <option value="<?= (int)$s['id'] ?>"><?= swapLabel($s, $types_map) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                <?php endif; ?>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="target_shift"><?= __('step_3_his_shift') ?></label>
+                <?php if (empty($target_shifts)): ?>
+                    <p class="text-muted text-sm"><?= __('no_future_shift_colleague') ?></p>
+                <?php else: ?>
+                    <select id="target_shift" name="target_shift_id" class="form-control" required>
+                        <option value="">— <?= __('select') ?> —</option>
+                        <?php foreach ($target_shifts as $s): ?>
+                            <option value="<?= (int)$s['id'] ?>"><?= swapLabel($s, $types_map) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                <?php endif; ?>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="swap_reason"><?= __('reason') ?> (<?= __('optional') ?? 'optionnel' ?>)</label>
+                <input id="swap_reason" type="text" name="reason" class="form-control" placeholder="<?= __('swap_reason_placeholder') ?>">
+            </div>
+
+            <?php if (!empty($my_shifts) && !empty($target_shifts)): ?>
+                <button type="submit" class="btn btn--primary"><?= __('send') ?? 'Envoyer' ?></button>
+            <?php endif; ?>
+        </form>
+        <?php else: ?>
+            <p class="text-muted text-sm"><?= __('select_colleague_to_continue') ?></p>
+        <?php endif; ?>
+
+    </div>
+</div>

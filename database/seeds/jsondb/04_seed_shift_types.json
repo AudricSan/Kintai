@@ -1,0 +1,11 @@
+{
+  "collection": "shift_types",
+  "records": [
+    { "id": 1, "store_id": 1, "name": "Matin",      "code": "MORNING",   "start_time": "06:00", "end_time": "14:00", "hourly_rate": 0, "color": "#FBBF24", "sort_order": 1, "is_active": 1, "created_at": "__NOW__", "updated_at": "__NOW__" },
+    { "id": 2, "store_id": 1, "name": "Après-midi", "code": "AFTERNOON", "start_time": "14:00", "end_time": "22:00", "hourly_rate": 0, "color": "#34D399", "sort_order": 2, "is_active": 1, "created_at": "__NOW__", "updated_at": "__NOW__" },
+    { "id": 3, "store_id": 1, "name": "Nuit",       "code": "NIGHT",     "start_time": "22:00", "end_time": "06:00", "hourly_rate": 0, "color": "#818CF8", "sort_order": 3, "is_active": 1, "created_at": "__NOW__", "updated_at": "__NOW__" },
+    { "id": 4, "store_id": 2, "name": "Matin",      "code": "MORNING",   "start_time": "07:00", "end_time": "15:00", "hourly_rate": 0, "color": "#FBBF24", "sort_order": 1, "is_active": 1, "created_at": "__NOW__", "updated_at": "__NOW__" },
+    { "id": 5, "store_id": 2, "name": "Après-midi", "code": "AFTERNOON", "start_time": "15:00", "end_time": "23:00", "hourly_rate": 0, "color": "#34D399", "sort_order": 2, "is_active": 1, "created_at": "__NOW__", "updated_at": "__NOW__" },
+    { "id": 6, "store_id": 2, "name": "Nuit",       "code": "NIGHT",     "start_time": "23:00", "end_time": "07:00", "hourly_rate": 0, "color": "#818CF8", "sort_order": 3, "is_active": 1, "created_at": "__NOW__", "updated_at": "__NOW__" }
+  ]
+}

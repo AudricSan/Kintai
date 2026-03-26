@@ -1,0 +1,43 @@
+{
+  "collection": "stores",
+  "records": [
+    {
+      "id": 1,
+      "name": "Kintai HQ", "code": "KTHQ", "type": "retail",
+      "timezone": "Asia/Tokyo", "currency": "JPY", "locale": "ja",
+      "address_street": null, "address_city": null, "address_postal": null, "address_country": null,
+      "phone": null, "email": null,
+      "break_settings": { "min_shift_hours": 6, "break_minutes": 60 },
+      "opening_hours": {
+        "mon": { "open": "09:00", "close": "20:00" },
+        "tue": { "open": "09:00", "close": "20:00" },
+        "wed": { "open": "09:00", "close": "20:00" },
+        "thu": { "open": "09:00", "close": "20:00" },
+        "fri": { "open": "09:00", "close": "20:00" },
+        "sat": { "open": "10:00", "close": "19:00" },
+        "sun": { "open": "10:00", "close": "18:00" }
+      },
+      "is_active": 1,
+      "created_at": "__NOW__", "updated_at": "__NOW__", "deleted_at": null
+    },
+    {
+      "id": 2,
+      "name": "Kintai Paris", "code": "KTPARIS", "type": "retail",
+      "timezone": "Europe/Paris", "currency": "EUR", "locale": "fr",
+      "address_street": null, "address_city": null, "address_postal": null, "address_country": null,
+      "phone": null, "email": null,
+      "break_settings": { "min_shift_hours": 6, "break_minutes": 30 },
+      "opening_hours": {
+        "mon": { "open": "08:00", "close": "20:00" },
+        "tue": { "open": "08:00", "close": "20:00" },
+        "wed": { "open": "08:00", "close": "20:00" },
+        "thu": { "open": "08:00", "close": "20:00" },
+        "fri": { "open": "08:00", "close": "20:00" },
+        "sat": { "open": "09:00", "close": "18:00" },
+        "sun": null
+      },
+      "is_active": 1,
+      "created_at": "__NOW__", "updated_at": "__NOW__", "deleted_at": null
+    }
+  ]
+}

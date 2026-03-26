@@ -1,0 +1,2 @@
+ALTER TABLE "stores"
+ADD COLUMN "min_staff_per_day" INTEGER NOT NULL DEFAULT 0;

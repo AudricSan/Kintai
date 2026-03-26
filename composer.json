@@ -1,0 +1,32 @@
+{
+    "name": "kintai/kintai",
+    "description": "Lightweight open-source shift management system",
+    "type": "project",
+    "version": "1.0.0",
+    "license": "AGPL-3.0-only",
+    "require": {
+        "php": ">=8.3",
+        "mpdf/mpdf": "^8.3",
+        "phpoffice/phpspreadsheet": "^5.5"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "kintai\\": "src/"
+        },
+        "files": [
+            "src/helpers.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "kintai\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    }
+}
