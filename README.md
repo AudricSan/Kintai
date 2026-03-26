@@ -9,6 +9,19 @@ Kintai est une plateforme de gestion de planning d'entreprise ultra-légère, co
 
 ---
 
+## 🌍 Démo en ligne
+
+**URL :** [https://kintai-lv1b.onrender.com](https://kintai-lv1b.onrender.com)
+
+| Champ       | Valeur            |
+| :---------- | :---------------- |
+| **Email**   | admin@demo.local  |
+| **Mot de passe** | kintai-demo  |
+
+> **Note :** L'instance tourne sur le plan gratuit de Render. Un premier accès peut prendre **30 à 60 secondes** le temps que le conteneur démarre (cold start). Les données sont réinitialisées à chaque redémarrage.
+
+---
+
 ## 📖 Sommaire
 1.  [Fonctionnalités Clés](#-fonctionnalités-clés)
 2.  [Architecture Technique](#-architecture-technique)
