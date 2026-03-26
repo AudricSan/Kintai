@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y \
         libjpeg62-turbo-dev \
         libfreetype6-dev \
         libxml2-dev \
+        libsqlite3-dev \
         libicu-dev \
         zip \
         unzip \
