@@ -14,3 +14,5 @@ services:
         value: admin@demo.local
       - key: ADMIN_PASSWORD
         value: kintai-demo
+      - key: SEED_DEMO_DATA
+        value: "true"
