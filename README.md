@@ -13,12 +13,30 @@ Kintai est une plateforme de gestion de planning d'entreprise ultra-légère, co
 
 **URL :** [https://kintai-lv1b.onrender.com](https://kintai-lv1b.onrender.com)
 
-| Champ       | Valeur            |
-| :---------- | :---------------- |
-| **Email**   | admin@demo.local  |
-| **Mot de passe** | kintai-demo  |
-
 > **Note :** L'instance tourne sur le plan gratuit de Render. Un premier accès peut prendre **30 à 60 secondes** le temps que le conteneur démarre (cold start). Les données sont réinitialisées à chaque redémarrage.
+
+## 🔑 Comptes de Démonstration (Seeders)
+
+> Ces comptes sont créés automatiquement par les seeders lors de l'installation.
+
+### Administrateur
+
+| Champ            | Valeur                 |
+| :--------------- | :--------------------- |
+| **Email**        | `admin@kintai.local`   |
+| **Mot de passe** | `Admin1234!`           |
+| **Rôle**         | Super Administrateur   |
+
+### Employés
+
+| Nom               | Email                         | Mot de passe  |
+| :---------------- | :---------------------------- | :------------ |
+| Alice Martin      | `alice.martin@kintai.local`   | `Staff1234!`  |
+| Bob Dupont        | `bob.dupont@kintai.local`     | `Staff1234!`  |
+| Chloé Tanaka      | `chloe.tanaka@kintai.local`   | `Staff1234!`  |
+| Yuki Yamamoto     | `yuki.yamamoto@kintai.local`  | `Staff1234!`  |
+| David Leblanc     | `david.leblanc@kintai.local`  | `Staff1234!`  |
+| Emma Sato         | `emma.sato@kintai.local`      | `Staff1234!`  |
 
 ---
 

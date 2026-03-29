@@ -2,6 +2,18 @@
 
 All notable changes to Kintai are documented here.
 
+## [1.0.1] — 2026-03-29
+
+### Added
+- Demo seeder accounts not enabled by default (`SEED_DEMO_DATA=false`) — 1 admin + 6 staff users created on first boot
+- `render.yaml`: new `SEED_DEMO_DATA` environment variable to toggle demo seeding on/off
+- `DEMO_SETUP.md` documenting all demo credentials and seeder configuration
+- README: new "Comptes de Démonstration" section listing all seeder accounts with credentials
+
+### Fixed
+- Demo account password hashes corrected across all three drivers (SQLite, MySQL, JsonDB)
+- `render.yaml`: admin environment variables (`ADMIN_*`) restored alongside `SEED_DEMO_DATA`
+
 ## [1.0.0] — 2026-03-20
 
 ### Added

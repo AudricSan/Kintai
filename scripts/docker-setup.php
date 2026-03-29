@@ -9,6 +9,7 @@
  *   ADMIN_LAST_NAME   (défaut : Demo)
  *   ADMIN_EMAIL       (défaut : admin@demo.local)
  *   ADMIN_PASSWORD    (défaut : kintai-demo)
+ *   SEED_DEMO_DATA    (défaut : true) — exécute les seeders SQLite si true
  */
 
 declare(strict_types=1);
@@ -21,12 +22,13 @@ require BASE_PATH . '/src/Core/helpers.php';
 use kintai\Core\Application;
 use kintai\Core\Repositories\UserRepositoryInterface;
 
-// ─── Paramètres admin depuis l'environnement ───────────────────────────────
+// ─── Paramètres depuis l'environnement ────────────────────────────────────
 
 $adminFirstName = (string) (getenv('ADMIN_FIRST_NAME') ?: 'Admin');
 $adminLastName  = (string) (getenv('ADMIN_LAST_NAME')  ?: 'Demo');
 $adminEmail     = (string) (getenv('ADMIN_EMAIL')      ?: 'admin@demo.local');
 $adminPassword  = (string) (getenv('ADMIN_PASSWORD')   ?: 'kintai-demo');
+$seedDemoData   = filter_var(getenv('SEED_DEMO_DATA') ?: 'true', FILTER_VALIDATE_BOOLEAN);
 
 // ─── Étape 1 : Dossiers storage ───────────────────────────────────────────
 
@@ -72,9 +74,32 @@ foreach (array_merge($creates, $alters) as $file) {
     }
 }
 
+// ─── Étape 4 : Seeders (données de démo) ──────────────────────────────────
+
+if ($seedDemoData) {
+    echo '[Kintai] Chargement des données de démo...' . PHP_EOL;
+    $pdo2      = new PDO('sqlite:' . $dbPath, null, null, [
+        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES   => false,
+    ]);
+    $seedsDir  = BASE_PATH . '/database/seeds/sqlite';
+    $seedFiles = glob($seedsDir . '/*.sql') ?: [];
+    sort($seedFiles);
+    foreach ($seedFiles as $file) {
+        $sql = trim((string) file_get_contents($file));
+        if ($sql !== '') {
+            $pdo2->exec($sql);
+        }
+        echo '[Kintai] Seeder exécuté : ' . basename($file) . PHP_EOL;
+    }
+    unset($pdo2);
+    echo '[Kintai] Seeders terminés.' . PHP_EOL;
+}
+
 unset($pdo);
 
-// ─── Étape 4 : Création de l'utilisateur admin via le framework ───────────
+// ─── Étape 5 : Création de l'utilisateur admin via le framework ───────────
 
 $app      = new Application(BASE_PATH);
 $app->boot();
@@ -92,7 +117,7 @@ $userRepo->save([
     'updated_at'    => date('Y-m-d H:i:s'),
 ]);
 
-// ─── Étape 5 : Verrou d'installation ──────────────────────────────────────
+// ─── Étape 6 : Verrou d'installation ──────────────────────────────────────
 
 file_put_contents(BASE_PATH . '/storage/installed.lock', (string) time());
 

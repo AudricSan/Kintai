@@ -4,7 +4,7 @@
     {
       "id": 1,
       "email": "admin@kintai.local",
-      "password_hash": "$2y$12$2yFMQT9Xu33nLyeVuJ./t.2.jLa52LEl5UMSGJUwPBaCv2e4uAFma",
+      "password_hash": "$2a$12$yhu0EP9VT14Oy6BzPsHbIOZYIKeztq9PLn9YnMAzd.fdlaT1MURrC",
       "first_name": "Super", "last_name": "Admin", "display_name": "Super Admin",
       "phone": null, "profile_image": null, "color": "#6366F1",
       "is_admin": 1, "is_active": 1,
@@ -14,7 +14,7 @@
     {
       "id": 2,
       "email": "alice.martin@kintai.local",
-      "password_hash": "$2y$12$JAjpz2DGOpHVJCGZoLReku7RfF2RwBy4uTgvXcD5sBsIaj0HTMzi6",
+      "password_hash": "$2a$12$P8e2BqvyYYA.AB/EwMruVu6mx3SFjWJN2byqy4HVmGnyrRnh6FlLW",
       "first_name": "Alice", "last_name": "Martin", "display_name": "Alice Martin",
       "phone": null, "profile_image": null, "color": "#10B981",
       "is_admin": 0, "is_active": 1,
@@ -24,7 +24,7 @@
     {
       "id": 3,
       "email": "bob.dupont@kintai.local",
-      "password_hash": "$2y$12$JAjpz2DGOpHVJCGZoLReku7RfF2RwBy4uTgvXcD5sBsIaj0HTMzi6",
+      "password_hash": "$2a$12$P8e2BqvyYYA.AB/EwMruVu6mx3SFjWJN2byqy4HVmGnyrRnh6FlLW",
       "first_name": "Bob", "last_name": "Dupont", "display_name": "Bob Dupont",
       "phone": null, "profile_image": null, "color": "#F59E0B",
       "is_admin": 0, "is_active": 1,
@@ -34,7 +34,7 @@
     {
       "id": 4,
       "email": "chloe.tanaka@kintai.local",
-      "password_hash": "$2y$12$JAjpz2DGOpHVJCGZoLReku7RfF2RwBy4uTgvXcD5sBsIaj0HTMzi6",
+      "password_hash": "$2a$12$P8e2BqvyYYA.AB/EwMruVu6mx3SFjWJN2byqy4HVmGnyrRnh6FlLW",
       "first_name": "Chloé", "last_name": "Tanaka", "display_name": "Chloé Tanaka",
       "phone": null, "profile_image": null, "color": "#EC4899",
       "is_admin": 0, "is_active": 1,
@@ -44,7 +44,7 @@
     {
       "id": 5,
       "email": "yuki.yamamoto@kintai.local",
-      "password_hash": "$2y$12$JAjpz2DGOpHVJCGZoLReku7RfF2RwBy4uTgvXcD5sBsIaj0HTMzi6",
+      "password_hash": "$2a$12$P8e2BqvyYYA.AB/EwMruVu6mx3SFjWJN2byqy4HVmGnyrRnh6FlLW",
       "first_name": "Yuki", "last_name": "Yamamoto", "display_name": "Yuki Yamamoto",
       "phone": null, "profile_image": null, "color": "#8B5CF6",
       "is_admin": 0, "is_active": 1,
@@ -54,7 +54,7 @@
     {
       "id": 6,
       "email": "david.leblanc@kintai.local",
-      "password_hash": "$2y$12$JAjpz2DGOpHVJCGZoLReku7RfF2RwBy4uTgvXcD5sBsIaj0HTMzi6",
+      "password_hash": "$2a$12$P8e2BqvyYYA.AB/EwMruVu6mx3SFjWJN2byqy4HVmGnyrRnh6FlLW",
       "first_name": "David", "last_name": "Leblanc", "display_name": "David Leblanc",
       "phone": null, "profile_image": null, "color": "#0EA5E9",
       "is_admin": 0, "is_active": 1,
@@ -64,7 +64,7 @@
     {
       "id": 7,
       "email": "emma.sato@kintai.local",
-      "password_hash": "$2y$12$JAjpz2DGOpHVJCGZoLReku7RfF2RwBy4uTgvXcD5sBsIaj0HTMzi6",
+      "password_hash": "$2a$12$P8e2BqvyYYA.AB/EwMruVu6mx3SFjWJN2byqy4HVmGnyrRnh6FlLW",
       "first_name": "Emma", "last_name": "Sato", "display_name": "Emma Sato",
       "phone": null, "profile_image": null, "color": "#EF4444",
       "is_admin": 0, "is_active": 1,
