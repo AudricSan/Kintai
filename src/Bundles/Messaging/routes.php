@@ -50,13 +50,15 @@ $router->group('/employee', function ($r) {
 // Messaging — Routes API
 // =============================================================================
 
-$router->get('/api/v1/messages/threads',                              [ApiMessageController::class, 'listThreads'],     name: 'api.v1.messages.threads.index');
-$router->post('/api/v1/messages/threads',                             [ApiMessageController::class, 'createThread'],    name: 'api.v1.messages.threads.store');
-$router->get('/api/v1/messages/threads/{id}/messages',                [ApiMessageController::class, 'listMessages'],    name: 'api.v1.messages.list');
-$router->post('/api/v1/messages/threads/{id}/messages',               [ApiMessageController::class, 'addMessage'],      name: 'api.v1.messages.store');
-$router->get('/api/v1/messages/threads/{id}/participants',            [ApiMessageController::class, 'listParticipants'], name: 'api.v1.messages.participants.index');
-$router->post('/api/v1/messages/threads/{id}/participants',           [ApiMessageController::class, 'addParticipant'],   name: 'api.v1.messages.participants.store');
-$router->get('/api/v1/messages/threads/{id}/participants/{user_id}',  [ApiMessageController::class, 'getParticipant'],   name: 'api.v1.messages.participants.show');
-$router->get('/api/v1/messages/threads/{id}',                         [ApiMessageController::class, 'getThread'],        name: 'api.v1.messages.threads.show');
-$router->delete('/api/v1/messages/threads/{id}',                      [ApiMessageController::class, 'deleteThread'],     name: 'api.v1.messages.threads.destroy');
-$router->delete('/api/v1/messages/{id}',                              [ApiMessageController::class, 'deleteMessage'],    name: 'api.v1.messages.destroy');
+$router->group('/api/v1', function ($r) {
+    $r->get('/messages/threads',                              [ApiMessageController::class, 'listThreads'],     name: 'api.v1.messages.threads.index');
+    $r->post('/messages/threads',                             [ApiMessageController::class, 'createThread'],    name: 'api.v1.messages.threads.store');
+    $r->get('/messages/threads/{id}/messages',                [ApiMessageController::class, 'listMessages'],    name: 'api.v1.messages.list');
+    $r->post('/messages/threads/{id}/messages',               [ApiMessageController::class, 'addMessage'],      name: 'api.v1.messages.store');
+    $r->get('/messages/threads/{id}/participants',            [ApiMessageController::class, 'listParticipants'], name: 'api.v1.messages.participants.index');
+    $r->post('/messages/threads/{id}/participants',           [ApiMessageController::class, 'addParticipant'],   name: 'api.v1.messages.participants.store');
+    $r->get('/messages/threads/{id}/participants/{user_id}',  [ApiMessageController::class, 'getParticipant'],   name: 'api.v1.messages.participants.show');
+    $r->get('/messages/threads/{id}',                         [ApiMessageController::class, 'getThread'],        name: 'api.v1.messages.threads.show');
+    $r->delete('/messages/threads/{id}',                      [ApiMessageController::class, 'deleteThread'],     name: 'api.v1.messages.threads.destroy');
+    $r->delete('/messages/{id}',                              [ApiMessageController::class, 'deleteMessage'],    name: 'api.v1.messages.destroy');
+}, middleware: [ApiAuthMiddleware::class]);
