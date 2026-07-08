@@ -1,6 +1,6 @@
 # 🕒 Kintai
 
-🌐 [English](README.md) · [Français](README.fr.md) · **日本語**
+🌐 [English](../../README.md) · [Français](README.fr.md) · **日本語**
 
 **複数店舗を運営する企業向けの、オープンソースなシフト・勤怠・労務管理システム。**
 
@@ -33,7 +33,7 @@ Kintaiは、Excelの勤怠表と大企業向けERPの間を埋めるツールで
 - **データは自分たちのもの。** マルチテナントのブラックボックスではなく、導入ごとに専用インスタンス・専用データベースを持ちます。デモ環境から自社サーバーへの移行も、データベースのダンプと `git clone` だけで完了します。ベンダーロックインはありません。
 - **本物のマルチ店舗運用を想定。** 店舗ごとのタイムゾーン、通貨、休憩ルール、人員不足のしきい値、機能の個別有効化に対応 — 単一店舗向けツールを無理やり拡張したものではありません。
 - **日本市場に最適化、世界でも利用可能。** CJK対応のPDF出力、「姓 名」の氏名順、円・ユーロ・ドル表示、日本語・英語・フランス語の翻訳を標準搭載 — 日本の小売業の商習慣を前提に設計しつつ、他国でも利用可能です。
-- **余計なフレームワークのコストがない。** 約600ファイルからなる独自のPHP 8.3コア（Laravel、Symfonyなし）。ORMとしてEloquentのみを利用。月額5ユーロ程度のVPSでも、Dockerでも同様に動作します — 詳細は [docs/architecture.ja.md](docs/architecture.ja.md) をご覧ください。
+- **余計なフレームワークのコストがない。** 約600ファイルからなる独自のPHP 8.3コア（Laravel、Symfonyなし）。ORMとしてEloquentのみを利用。月額5ユーロ程度のVPSでも、Dockerでも同様に動作します — 詳細は [docs/i18n/architecture.ja.md](architecture.ja.md) をご覧ください。
 - **実際にテストされています。** コア、リポジトリ、コントローラーをカバーする589件のPHPUnitテストが、GitHub Actions上でプッシュのたびに実行されます。
 
 ---
@@ -54,7 +54,7 @@ Kintaiは、Excelの勤怠表と大企業向けERPの間を埋めるツールで
 
 **運用機能** — GitHub Releasesからのワンクリック自己更新（進捗バーとバックアップ／ロールバックの自動セーフティネット付き）、SQLite/MySQLのバックアップと復元、外部スケジューラー向けのトークン保護されたcronエンドポイント。
 
-詳細は [docs/architecture.ja.md](docs/architecture.ja.md) と [docs/database.ja.md](docs/database.ja.md) をご覧ください。
+詳細は [docs/i18n/architecture.ja.md](architecture.ja.md) と [docs/i18n/database.ja.md](database.ja.md) をご覧ください。
 
 ---
 
@@ -121,7 +121,7 @@ public/assets/           → モジュール化されたCSS/JS、ビルド不要
 database/migrations/php/ → 単一スキーマからSQLite・MySQL双方に対応するEloquentマイグレーション
 ```
 
-さらに詳しく：[docs/architecture.ja.md](docs/architecture.ja.md) · [docs/database.ja.md](docs/database.ja.md) · [docs/multi-tenancy.ja.md](docs/multi-tenancy.ja.md)
+さらに詳しく：[docs/i18n/architecture.ja.md](architecture.ja.md) · [docs/i18n/database.ja.md](database.ja.md) · [docs/i18n/multi-tenancy.ja.md](multi-tenancy.ja.md)
 
 ---
 

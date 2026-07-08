@@ -1,6 +1,6 @@
 # Stratégie base de données : Kintai
 
-🌐 [English](database.md) · **Français** · [日本語](database.ja.md)
+🌐 [English](../database.md) · **Français** · [日本語](database.ja.md)
 
 ## 📊 Vue d'ensemble
 Kintai utilise **Eloquent ORM** (`illuminate/database` ^11.0) comme unique couche d'accès aux données. Supporte SQLite (par défaut, zéro configuration) et MySQL/MariaDB (échelle production) — indépendant du driver, sélectionné via `config/database.php`.

@@ -1,6 +1,6 @@
 # Stratégie multi-tenancy : Kintai
 
-🌐 [English](multi-tenancy.md) · **Français** · [日本語](multi-tenancy.ja.md)
+🌐 [English](../multi-tenancy.md) · **Français** · [日本語](multi-tenancy.ja.md)
 
 ## 🛡 Principes
 Le multi-tenancy de Kintai repose sur le principe d'**isolation physique**. Nous privilégions la sécurité et la portabilité des données à la densité d'une infrastructure partagée.

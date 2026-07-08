@@ -24,9 +24,12 @@ $baseDocs = [
     'docs/database.md',
     'docs/multi-tenancy.md',
     'docs/releasing.md',
-    'docs/security.md',
+    'docs/security-overview.md',
     'docs/vision.md',
 ];
+
+// Toutes les traductions vivent dans docs/i18n/, quel que soit le dossier du document source.
+$translatedDir = 'docs/i18n/';
 
 $languages = [
     'fr' => 'Français',
@@ -61,11 +64,10 @@ foreach ($baseDocs as $baseDoc) {
 
     $baseTimestamp = lastCommitTimestamp($root, $baseDoc);
     $pathInfo = pathinfo($baseDoc);
-    $dir = $pathInfo['dirname'] === '.' ? '' : $pathInfo['dirname'] . '/';
     $filenameWithoutExt = $pathInfo['filename'];
 
     foreach ($languages as $code => $label) {
-        $translatedRelative = "{$dir}{$filenameWithoutExt}.{$code}.md";
+        $translatedRelative = "{$translatedDir}{$filenameWithoutExt}.{$code}.md";
         $translatedAbsolute = $root . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $translatedRelative);
 
         if (!is_file($translatedAbsolute)) {

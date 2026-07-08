@@ -1,6 +1,6 @@
 # Security Overview: Kintai
 
-🌐 **English** · [Français](security.fr.md) · [日本語](security.ja.md)
+🌐 **English** · [Français](i18n/security-overview.fr.md) · [日本語](i18n/security-overview.ja.md)
 
 ## 🏗 Security by Architecture
 - **Tenant Isolation:** The "One Instance per Owner" model prevents cross-tenant data leaks by design.
