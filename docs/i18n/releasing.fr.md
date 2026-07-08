@@ -1,6 +1,6 @@
 # Créer une release
 
-🌐 [English](releasing.md) · **Français** · [日本語](releasing.ja.md)
+🌐 [English](../releasing.md) · **Français** · [日本語](releasing.ja.md)
 
 Ce document décrit comment publier une nouvelle version de Kintai sur GitHub, de façon à ce que les instances déployées puissent la détecter et l'appliquer automatiquement depuis `/admin/backup` (voir `GithubUpdateService`).
 

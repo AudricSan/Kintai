@@ -1,6 +1,6 @@
 # アーキテクチャ：Kintai
 
-🌐 [English](architecture.md) · [Français](architecture.fr.md) · **日本語**
+🌐 [English](../architecture.md) · [Français](architecture.fr.md) · **日本語**
 
 ## 🏗 全体設計
 Kintaiはモジュール化されたMVC（Model-View-Controller）アーキテクチャを採用し、高い可搬性と分離性を実現しています。

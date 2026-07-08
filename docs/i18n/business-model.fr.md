@@ -1,6 +1,6 @@
 # Modèle économique : Kintai
 
-🌐 [English](business-model.md) · **Français** · [日本語](business-model.ja.md)
+🌐 [English](../business-model.md) · **Français** · [日本語](business-model.ja.md)
 
 ## 💰 Stratégie de monétisation : open core, service payant
 

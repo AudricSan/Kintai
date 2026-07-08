@@ -1,6 +1,6 @@
 # ビジネスモデル：Kintai
 
-🌐 [English](business-model.md) · [Français](business-model.fr.md) · **日本語**
+🌐 [English](../business-model.md) · [Français](business-model.fr.md) · **日本語**
 
 ## 💰 収益化戦略：オープンコア＋有料サービス
 

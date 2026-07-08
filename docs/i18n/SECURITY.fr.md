@@ -1,6 +1,6 @@
 # Politique de sécurité
 
-🌐 [English](SECURITY.md) · **Français** · [日本語](SECURITY.ja.md)
+🌐 [English](../../SECURITY.md) · **Français** · [日本語](SECURITY.ja.md)
 
 ## Versions supportées
 

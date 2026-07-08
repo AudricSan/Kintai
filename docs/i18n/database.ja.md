@@ -1,6 +1,6 @@
 # データベース戦略：Kintai
 
-🌐 [English](database.md) · [Français](database.fr.md) · **日本語**
+🌐 [English](../database.md) · [Français](database.fr.md) · **日本語**
 
 ## 📊 概要
 Kintaiは唯一のデータアクセス層として **Eloquent ORM**（`illuminate/database` ^11.0）を使用しています。SQLite（デフォルト、設定不要）とMySQL/MariaDB（本番規模）に対応 — `config/database.php` でドライバーを選択する、ドライバー非依存の設計です。
