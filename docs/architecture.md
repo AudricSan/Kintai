@@ -24,7 +24,7 @@ Kintai uses **Standalone Eloquent** (`illuminate/database`) as its sole ORM.
 - Legacy `PersistenceDriverInterface` and JsonDB have been removed.
 
 ## 🧩 Modular Bundles
-Features are split into **Core** (always on) and **Bundles** (`src/Bundles/*/`) — both are part of this AGPL-3.0 repository, nothing is gated behind a separate license. Any feature beyond the always-on core is expected to ship as a bundle: today that's Messaging and Daily Reports. The advanced HR reports (hiring, resignation, payroll) and store photos currently live in Core rather than as bundles — they are candidates for a future migration into their own bundles.
+Features are split into **Core** (always on) and **Bundles** (`src/Bundles/*/`) — both are part of this AGPL-3.0 repository, nothing is gated behind a separate license. Any feature beyond the always-on core is expected to ship as a bundle: today that's Messaging, Daily Reports, and Store Photos. Time off, shift swaps, open shifts (shift claims), and the advanced HR reports (hiring, resignation, payroll) currently live in Core rather than as bundles — they are candidates for a future migration into their own bundles.
 - **Feature Flags:** Bundles are toggled per-deployment via `config/bundles.php` / `config/license.php` (`enabled_features`) — a deployment concern, not a licensing one.
 - **Hook System:** The Core provides extension points for Bundles to inject UI elements, API routes, and logic.
 

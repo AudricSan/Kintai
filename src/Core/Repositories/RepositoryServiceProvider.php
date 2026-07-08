@@ -38,8 +38,7 @@ final class RepositoryServiceProvider extends ServiceProvider
         $this->container->singleton(ResignationReportRepositoryInterface::class, fn() => new DatabaseResignationReportRepository());
         $this->container->singleton(SalaryReportRepositoryInterface::class, fn() => new DatabaseSalaryReportRepository());
 
-        // Photos
-        $this->container->singleton(StorePhotoRepositoryInterface::class, fn() => new DatabaseStorePhotoRepository());
+        // Photos : voir src/Bundles/StorePhoto/StorePhotoBundle.php
 
         // Traductions (fichiers JSON, voir lang/languages.json et lang/{code}.json)
         $this->container->singleton(LanguageRepositoryInterface::class, fn() => new JsonLanguageRepository(BASE_PATH . '/lang'));

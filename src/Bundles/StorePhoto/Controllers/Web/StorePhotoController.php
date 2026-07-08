@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace kintai\UI\Controller\Web\Staff;
+namespace kintai\Bundles\StorePhoto\Controllers\Web;
 
 use kintai\UI\Controller\Web\HasAdminAccess;
 use kintai\Core\Exceptions\ForbiddenException;
@@ -43,7 +43,7 @@ final class StorePhotoController
             $submissionImages[$sid] = $this->photos->findImagesBySubmission($sid);
         }
 
-        return Response::html($this->view->render('staff.store-photos', [
+        return Response::html($this->view->render('store-photos::store-photos', [
             'title'             => __('photos'),
             'submissions'       => $submissions,
             'submissionImages'  => $submissionImages,
@@ -64,7 +64,7 @@ final class StorePhotoController
             $this->assertStoreAccess($request, $storeId);
         }
 
-        return Response::html($this->view->render('staff.store-photos-form', [
+        return Response::html($this->view->render('store-photos::store-photos-form', [
             'title'       => __('photo_new_submission'),
             'mode'        => 'create',
             'myStores'    => $myStores,
@@ -224,7 +224,7 @@ final class StorePhotoController
         $images = $this->photos->findImagesBySubmission($id);
         $store  = $this->stores->findById((int) $submission['store_id']);
 
-        return Response::html($this->view->render('staff.store-photos-detail', [
+        return Response::html($this->view->render('store-photos::store-photos-detail', [
             'title'      => __('photo_submission') . ' #' . $id,
             'submission' => $submission,
             'images'     => $images,
@@ -270,7 +270,7 @@ final class StorePhotoController
             throw new ForbiddenException();
         }
 
-        return Response::html($this->view->render('staff.store-photos-settings', [
+        return Response::html($this->view->render('store-photos::store-photos-settings', [
             'title'               => __('photo_settings'),
             'retentionDays'       => $this->appSettings->get('photo_retention_days', '14'),
             'cleanupDelay'        => $this->appSettings->get('photo_cleanup_delay', '7'),
