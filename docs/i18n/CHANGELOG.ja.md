@@ -1,6 +1,6 @@
 # Changelog（変更履歴）
 
-🌐 [English](CHANGELOG.md) · [Français](CHANGELOG.fr.md) · **日本語**
+🌐 [English](../../CHANGELOG.md) · [Français](CHANGELOG.fr.md) · **日本語**
 
 Kintaiの主要な変更履歴をここに記録しています。
 

@@ -1,6 +1,6 @@
 # セキュリティポリシー
 
-🌐 [English](SECURITY.md) · [Français](SECURITY.fr.md) · **日本語**
+🌐 [English](../../SECURITY.md) · [Français](SECURITY.fr.md) · **日本語**
 
 ## サポート対象バージョン
 

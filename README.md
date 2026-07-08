@@ -1,6 +1,6 @@
 # 🕒 Kintai
 
-🌐 **English** · [Français](README.fr.md) · [日本語](README.ja.md)
+🌐 **English** · [Français](docs/i18n/README.fr.md) · [日本語](docs/i18n/README.ja.md)
 
 **Open-source shift, attendance and workforce management for multi-store businesses.**
 

@@ -1,6 +1,6 @@
 # Kintaiへのコントリビュート
 
-🌐 [English](CONTRIBUTING.md) · [Français](CONTRIBUTING.fr.md) · **日本語**
+🌐 [English](../../CONTRIBUTING.md) · [Français](CONTRIBUTING.fr.md) · **日本語**
 
 ご興味を持っていただきありがとうございます！
 
@@ -21,7 +21,7 @@ Kintaiは **GNU Affero General Public License v3.0**（AGPL-3.0）の下で公�
 
 ### 機能提案
 
-**Feature Request** テンプレートを使ってissueを作成してください。ユースケースと、それがプロジェクトの方向性に合致する理由を説明してください — プロダクトの方向性については [docs/vision.ja.md](docs/vision.ja.md) を参照してください。
+**Feature Request** テンプレートを使ってissueを作成してください。ユースケースと、それがプロジェクトの方向性に合致する理由を説明してください — プロダクトの方向性については [docs/i18n/vision.ja.md](vision.ja.md) を参照してください。
 
 ### プルリクエストの提出
 
@@ -59,6 +59,6 @@ README、CHANGELOG、CONTRIBUTING、SECURITY、および `docs/` 配下のすべ
 
 ## まず見るべき場所
 
-- [docs/architecture.ja.md](docs/architecture.ja.md) — フレームワークの構成
-- [docs/database.ja.md](docs/database.ja.md) — モデル、リポジトリ、マイグレーション
+- [docs/i18n/architecture.ja.md](architecture.ja.md) — フレームワークの構成
+- [docs/i18n/database.ja.md](database.ja.md) — モデル、リポジトリ、マイグレーション
 - [CHANGELOG.ja.md](CHANGELOG.ja.md) — 最近の変更内容

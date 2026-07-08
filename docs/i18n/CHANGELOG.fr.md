@@ -1,6 +1,6 @@
 # Changelog
 
-🌐 [English](CHANGELOG.md) · **Français** · [日本語](CHANGELOG.ja.md)
+🌐 [English](../../CHANGELOG.md) · **Français** · [日本語](CHANGELOG.ja.md)
 
 Toutes les évolutions notables de Kintai sont documentées ici.
 

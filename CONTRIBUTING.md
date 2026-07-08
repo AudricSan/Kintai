@@ -1,6 +1,6 @@
 # Contributing to Kintai
 
-🌐 **English** · [Français](CONTRIBUTING.fr.md) · [日本語](CONTRIBUTING.ja.md)
+🌐 **English** · [Français](docs/i18n/CONTRIBUTING.fr.md) · [日本語](docs/i18n/CONTRIBUTING.ja.md)
 
 Thank you for your interest in contributing!
 

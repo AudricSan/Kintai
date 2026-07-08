@@ -1,6 +1,6 @@
 # Architecture : Kintai
 
-🌐 [English](architecture.md) · **Français** · [日本語](architecture.ja.md)
+🌐 [English](../architecture.md) · **Français** · [日本語](architecture.ja.md)
 
 ## 🏗 Conception générale
 Kintai suit une architecture MVC (Model-View-Controller) modulaire, conçue pour une portabilité et un isolement extrêmes.
