@@ -1,0 +1,716 @@
+/* ================================================
+   Kintai — Modales (génériques + spécifiques par domaine)
+   ================================================ */
+
+/* ── Modals ─────────────────────────────────────── */
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.open {
+    display: flex;
+}
+
+.modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: var(--overlay-bg);
+}
+
+.modal__dialog {
+    position: relative;
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, .18);
+    width: 100%;
+    max-width: 480px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    margin: var(--space-4);
+}
+
+.modal__dialog--wide {
+    max-width: 720px;
+}
+
+.modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.modal__title {
+    font-size: var(--text-base);
+    font-weight: 600;
+    margin: 0;
+}
+
+.modal__close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.1rem;
+    color: var(--color-text-muted);
+    padding: var(--space-1);
+    line-height: 1;
+    border-radius: var(--radius-sm);
+}
+
+.modal__close:hover {
+    color: var(--color-text);
+    background: var(--color-hover);
+}
+
+.modal__body {
+    padding: var(--space-4) var(--space-4);
+    overflow-y: auto;
+    flex: 1;
+}
+
+.modal__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    border-top: 1px solid var(--color-border);
+}
+
+/* ── SB Modal (sidebar detail) ──────────────────── */
+#sb-detail-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: var(--overlay-bg);
+    z-index: 2000;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+#sb-detail-overlay.open {
+    display: flex;
+}
+
+.sb-modal {
+    color: var(--color-text);
+    margin: auto;
+    background: var(--color-surface);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    width: 100%;
+    max-width: 640px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, .15);
+}
+
+.sb-modal-header {
+    padding: var(--space-3) var(--space-5);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.sb-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.3rem;
+    cursor: pointer;
+    color: var(--color-text-muted);
+    padding: 0;
+    line-height: 1;
+}
+
+.sb-modal-body {
+    overflow-y: auto;
+    flex: 1;
+}
+
+.sb-modal-footer {
+    padding: var(--space-3) var(--space-5);
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    justify-content: flex-end;
+}
+
+.sb-modal-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-xs-2);
+}
+
+.sb-modal-table thead {
+    position: sticky;
+    top: 0;
+    background: var(--color-surface);
+    z-index: 1;
+}
+
+.sb-modal-table thead tr {
+    border-bottom: 2px solid var(--color-border);
+}
+
+.sb-modal-table th {
+    padding: var(--space-2) var(--space-3);
+    text-align: left;
+    font-weight: 600;
+}
+
+.sb-modal-table th.th-right {
+    text-align: right;
+}
+
+.sb-modal-table td {
+    padding: var(--space-2) var(--space-3);
+}
+
+.sb-modal-table td.td-mono {
+    white-space: nowrap;
+    font-family: var(--font-mono);
+}
+
+.sb-modal-table td.td-nowrap {
+    white-space: nowrap;
+}
+
+.sb-modal-table td.td-right {
+    text-align: right;
+}
+
+.sb-modal-table td.td-muted {
+    color: var(--color-text-muted);
+}
+
+.sb-modal-table tbody tr {
+    border-bottom: 1px solid var(--color-border);
+}
+
+.sb-modal-table tbody tr:nth-child(even) {
+    background: var(--color-bg);
+}
+
+.sb-modal-table tfoot tr {
+    font-weight: 700;
+    background: var(--color-bg);
+    border-top: 2px solid var(--color-border);
+}
+
+.sb-pay-ok {
+    font-weight: 600;
+    color: var(--color-success);
+}
+
+.sb-pay-none {
+    font-weight: 400;
+    color: var(--color-text-muted);
+}
+
+/* ── SD Modal (shift detail) ────────────────────── */
+.sd-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: var(--overlay-bg);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.sd-overlay.open {
+    display: flex;
+}
+
+.sd-modal {
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xl);
+    min-width: 300px;
+    max-width: 440px;
+    width: 92%;
+    overflow: hidden;
+}
+
+.sd-modal-header {
+    padding: var(--space-4) var(--space-5) var(--space-3);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+
+.sd-modal-title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: 0.2rem;
+}
+
+.sd-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.sd-modal-name {
+    font-size: var(--text-base);
+}
+
+.sd-modal-sub {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+}
+
+.sd-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.3rem;
+    cursor: pointer;
+    color: var(--color-text-muted);
+    line-height: 1;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.sd-modal-body {
+    padding: 0.1rem var(--space-5) var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+}
+
+.sd-modal-field {
+    display: flex;
+    gap: var(--space-2);
+    align-items: baseline;
+}
+
+.sd-modal-label {
+    color: var(--color-text-muted);
+    min-width: 80px;
+}
+
+.sd-modal-hours {
+    font-weight: 600;
+    color: var(--color-primary);
+}
+
+.sd-rate-block {
+    display: none;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-xs);
+}
+
+.sd-pay-row {
+    display: none;
+    border-top: 1px solid var(--color-border);
+    padding-top: var(--space-1);
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.sd-pay {
+    color: var(--color-success);
+}
+
+.sd-no-rate {
+    display: none;
+    color: var(--color-text-muted);
+    font-style: italic;
+}
+
+.sd-notes-row {
+    display: none;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.sd-notes {
+    font-size: var(--text-xs);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: var(--space-2) var(--space-2);
+    white-space: pre-wrap;
+}
+
+.sd-modal-footer {
+    padding: var(--space-3) var(--space-5);
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+/* ── PS Modal (payslip period) ──────────────────── */
+.ps-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--overlay-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.ps-modal-overlay[hidden] {
+    display: none;
+}
+
+.ps-modal {
+    background: var(--color-bg);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-xl);
+    width: 460px;
+    max-width: 96vw;
+}
+
+.ps-modal__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+    font-weight: 600;
+    font-size: var(--text-base);
+}
+
+.ps-modal__close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    color: var(--color-text-muted);
+    padding: 0;
+    line-height: 1;
+}
+
+.ps-modal__body {
+    padding: var(--space-4) var(--space-4) var(--space-2);
+}
+
+.ps-modal__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    border-top: 1px solid var(--color-border);
+}
+
+.ps-modal__section-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-2);
+}
+
+.ps-modal__section-label+.ps-modal__section-label {
+    margin-top: var(--space-4);
+}
+
+.ps-month-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-1);
+}
+
+.ps-month-btn {
+    background: var(--color-bg-alt);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: var(--space-2) var(--space-1);
+    font-size: var(--text-xs-2);
+    cursor: pointer;
+    text-align: center;
+    transition: background var(--duration-fast), border-color var(--duration-fast);
+    white-space: nowrap;
+}
+
+.ps-month-btn:hover {
+    background: var(--color-primary-light);
+    border-color: var(--color-primary);
+}
+
+.ps-month-btn.active {
+    background: var(--color-primary);
+    color: var(--color-surface);
+    border-color: var(--color-primary);
+    font-weight: 600;
+}
+
+.ps-date-row {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--space-3);
+}
+
+.ps-date-label {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    font-size: var(--text-xs-2);
+    flex: 1;
+}
+
+.ps-date-sep {
+    font-size: 1.1rem;
+    color: var(--color-text-muted);
+    padding-bottom: var(--space-1);
+}
+
+.ps-date-input {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: 0.38rem var(--space-2);
+    font-size: 0.88rem;
+    width: 100%;
+}
+
+.ps-date-input:focus {
+    outline: 2px solid var(--color-primary);
+    border-color: transparent;
+}
+
+/* ── FB Modal (feedback) ────────────────────────── */
+.fb-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: var(--overlay-bg);
+    z-index: 3000;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+.fb-overlay.open {
+    display: flex;
+}
+
+.fb-modal {
+    margin: auto;
+    background: var(--color-surface);
+    color: var(--color-text);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    width: 100%;
+    max-width: 560px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, .18);
+}
+
+.fb-modal-header {
+    padding: var(--space-3) var(--space-5);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.fb-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 var(--space-1);
+}
+
+.fb-modal-body {
+    padding: var(--space-5);
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* ── DR V2 Modal (daily report) ─────────────────── */
+.dr-v2-year-totals {
+    font-size: var(--text-sm);
+}
+
+.dr-v2-month {
+    border-top: 1px solid var(--color-border);
+}
+
+.dr-v2-month-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-5);
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    font-size: var(--text-sm);
+    color: var(--color-text);
+    transition: background var(--duration-fast);
+}
+
+.dr-v2-month-toggle:hover {
+    background: var(--color-bg-alt);
+}
+
+.dr-v2-month-name {
+    font-weight: 600;
+    min-width: 100px;
+}
+
+.dr-v2-month-stats {
+    flex: 1;
+    font-size: var(--text-xs);
+}
+
+.dr-v2-month-arrow {
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+    margin-left: auto;
+}
+
+.dr-v2-month-body .table-wrap {
+    margin: 0;
+}
+
+.dr-v2-month-body .data-table thead th {
+    background: var(--color-bg);
+}
+
+.dr-v2-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--overlay-bg);
+    z-index: 2000;
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+.dr-v2-modal {
+    color: var(--color-text);
+    margin: auto;
+    background: var(--color-surface);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    width: 100%;
+    max-width: 860px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, .18);
+}
+
+.dr-v2-modal-header {
+    padding: var(--space-3) var(--space-5);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--color-border);
+    font-size: var(--text-base);
+}
+
+.dr-v2-modal-body {
+    overflow-y: auto;
+    flex: 1;
+}
+
+.dr-v2-modal-footer {
+    padding: var(--space-3) var(--space-5);
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* ── Activity Log Modal ─────────────────────────── */
+.al-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-6);
+}
+
+.al-meta-item {
+    min-width: 120px;
+}
+
+.al-meta-item--full {
+    min-width: 100%;
+    word-break: break-all;
+}
+
+.al-meta-item .text-dim {
+    display: block;
+    font-size: 0.75rem;
+    margin-bottom: 2px;
+}
+
+.al-diff-old {
+    background: color-mix(in srgb, var(--color-danger) 8%, transparent);
+    padding: 2px var(--space-2);
+    border-radius: 3px;
+    word-break: break-word;
+}
+
+.al-diff-new {
+    background: color-mix(in srgb, var(--color-success) 8%, transparent);
+    padding: 2px var(--space-2);
+    border-radius: 3px;
+    word-break: break-word;
+}
+
+.al-context {
+    font-size: 0.85rem;
+    line-height: 1.6;
+}
+
+.log-row {
+    cursor: pointer;
+}
+
+.log-row:hover {
+    background: var(--color-bg-hover, rgba(0, 0, 0, 0.02));
+}
+
+.log-row:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+}
+
+/* ── Quick-create Modal ─────────────────────────── */
+#qc-intro {
+    margin-bottom: var(--space-3);
+}
+
+#qc-employee-code {
+    text-transform: uppercase;
+}
+
+#qc-code-status {
+    font-size: 1rem;
+    min-width: 1.2rem;
+    text-align: center;
+}
+
+#qc-code-error {
+    color: var(--color-danger);
+}
+

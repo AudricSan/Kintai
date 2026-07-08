@@ -1,0 +1,187 @@
+/* ================================================
+   Kintai — Carrousel photo (visionneuse plein écran)
+   ================================================ */
+
+/* ── Carousel photo (visionneuse plein écran) ──────────────────── */
+.photo-carousel {
+    background: rgba(0, 0, 0, .9);
+    flex-direction: column;
+}
+
+.photo-carousel__stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 90vw;
+    max-height: 85vh;
+}
+
+.photo-carousel__img {
+    max-width: 90vw;
+    max-height: 78vh;
+    object-fit: contain;
+    border-radius: var(--radius);
+}
+
+.photo-carousel__caption {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    color: #fff;
+    margin-top: var(--space-3);
+    font-size: var(--text-sm);
+    text-align: center;
+}
+
+.photo-carousel__counter {
+    color: rgba(255, 255, 255, .6);
+}
+
+.photo-carousel__close {
+    position: absolute;
+    top: var(--space-4);
+    right: var(--space-4);
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 2rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: var(--space-2);
+}
+
+.photo-carousel__close:hover {
+    color: rgba(255, 255, 255, .7);
+}
+
+.photo-carousel__nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, .1);
+    border: none;
+    color: #fff;
+    font-size: 2.5rem;
+    line-height: 1;
+    width: 3rem;
+    height: 3rem;
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.photo-carousel__nav:hover {
+    background: rgba(255, 255, 255, .2);
+}
+
+.photo-carousel__nav--prev {
+    left: var(--space-4);
+}
+
+.photo-carousel__nav--next {
+    right: var(--space-4);
+}
+
+@media (max-width: 640px) {
+    .photo-carousel__nav {
+        width: 2.25rem;
+        height: 2.25rem;
+        font-size: 1.75rem;
+    }
+}
+
+.photo-dropzone {
+    border: 2px dashed var(--color-border);
+    border-radius: var(--radius);
+    padding: var(--space-6);
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    background: var(--color-surface);
+}
+
+.photo-dropzone:hover {
+    border-color: var(--color-primary);
+}
+
+.photo-dropzone input[type="file"] {
+    display: none;
+}
+
+.photo-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+}
+
+.photo-preview-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-1);
+    max-width: 90px;
+    position: relative;
+}
+
+.photo-preview-remove {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: none;
+    background: var(--color-danger);
+    color: #fff;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+}
+
+.photo-upload-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+}
+
+.photo-upload-row .text-sm {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.progress-bar {
+    width: 200px;
+    height: 8px;
+    background: var(--color-border-light);
+    border-radius: 4px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.progress-bar__fill {
+    height: 100%;
+    background: var(--color-primary);
+    transition: width 0.3s ease;
+}
+
+@media (max-width: 600px) {
+    .photo-upload-row {
+        flex-wrap: wrap;
+    }
+
+    .progress-bar {
+        width: 100%;
+    }
+}
+

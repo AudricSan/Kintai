@@ -1,0 +1,416 @@
+/* ================================================
+   Kintai — Formulaires (champs, groupes, toggles, feature cards)
+   ================================================ */
+
+/* ── Forms ──────────────────────────────────────── */
+.form-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+}
+
+.form-row--lg {
+    gap: var(--space-8);
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    margin-bottom: var(--space-2);
+}
+
+.form-label {
+    font-size: var(--text-xs-2);
+    font-weight: 500;
+    color: var(--color-text);
+}
+
+.form-label--required::after {
+    content: ' *';
+    color: var(--color-danger);
+}
+
+.form-control {
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    font-size: var(--text-sm);
+    font-family: var(--font-sans);
+    background: var(--color-surface);
+    color: var(--color-text);
+    transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
+    width: 100%;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent);
+}
+
+.form-control--readonly {
+    background: var(--color-bg);
+    cursor: default;
+    color: var(--color-text-muted);
+}
+
+select.form-control {
+    cursor: pointer;
+}
+
+.form-control-sm {
+    padding: 0.2rem var(--space-2);
+    font-size: var(--text-xs-2);
+}
+
+.form-actions {
+    display: flex;
+    gap: var(--space-3);
+    align-items: center;
+    padding-top: var(--space-2);
+}
+
+.form-hint {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    margin-top: var(--space-1);
+}
+
+.form-hint--label {
+    display: block;
+    margin-bottom: var(--space-1);
+}
+
+.form-error {
+    font-size: var(--text-xs);
+    color: var(--color-danger);
+    margin-top: var(--space-1);
+}
+
+.required {
+    color: var(--color-danger);
+}
+
+.input-code {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.form-inline {
+    display: inline;
+    margin: 0;
+}
+
+.form-inline-flex {
+    display: flex;
+    gap: var(--space-1);
+    align-items: center;
+}
+
+.form-filter {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.form-contents {
+    display: contents;
+}
+
+.form-flex {
+    display: flex;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    align-items: flex-end;
+}
+
+.form-flex--add {
+    display: flex;
+    gap: var(--space-2);
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.form-group--flex1 {
+    margin: 0;
+    flex: 1;
+    min-width: 180px;
+}
+
+.form-group--fixed {
+    margin: 0;
+    min-width: 130px;
+}
+
+.form-group--200 {
+    margin: 0;
+    flex: 0 0 200px;
+}
+
+.form-group--160 {
+    margin: 0;
+    flex: 0 0 160px;
+}
+
+.form-group--date {
+    max-width: 220px;
+}
+
+.input-group {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.input-color {
+    width: 56px;
+    height: 38px;
+    padding: 2px;
+    cursor: pointer;
+}
+
+.section-divider {
+    border-top: 1px solid var(--color-border);
+    padding-top: var(--space-4);
+    margin-top: var(--space-2);
+}
+
+.section-title {
+    margin: 0 0 var(--space-3);
+    font-size: var(--text-base);
+}
+
+.section-title--flex {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.section-title--flex h3 {
+    margin: 0;
+}
+
+.section-subtitle {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    margin: 0 0 var(--space-3);
+}
+
+.col-40 {
+    width: 40%;
+}
+
+.toggle-label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    cursor: pointer;
+}
+
+.check-group {
+    display: flex;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+}
+
+.check-label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    cursor: pointer;
+}
+
+.textarea--notes {
+    resize: vertical;
+    height: 250px;
+}
+
+.form-error-list {
+    margin: 0;
+    padding-left: 1.25rem;
+}
+
+/* ── Toggle Switch ──────────────────────────────── */
+.toggle-switch {
+    position: relative;
+    width: 2.75rem;
+    height: 1.5rem;
+    flex-shrink: 0;
+}
+
+.toggle-switch__track {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: var(--radius-full);
+    background: var(--color-border);
+    transition: background 0.22s;
+}
+
+.toggle-switch__thumb {
+    position: absolute;
+    top: 0.2rem;
+    left: 0.2rem;
+    width: 1.1rem;
+    height: 1.1rem;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .3);
+    transition: transform 0.22s cubic-bezier(.4, 0, .2, 1);
+}
+
+.toggle-switch__label {
+    font-size: var(--text-2xs);
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    transition: color 0.18s;
+}
+
+/* ── Feature Cards ──────────────────────────────── */
+.feature-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--space-4);
+    margin-top: var(--space-2);
+}
+
+.feature-card {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-4) var(--space-4);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
+    user-select: none;
+    background: var(--color-surface);
+    position: relative;
+}
+
+.feature-card:hover {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+.feature-card--on,
+.feature-card:has(.feature-card__input:checked) {
+    border-color: var(--color-primary);
+    background: var(--color-primary-lighter);
+}
+
+.feature-card__input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+.feature-card__icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.feature-card__body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.feature-card__title {
+    font-size: var(--text-xs-2);
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.feature-card__desc {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    line-height: 1.35;
+}
+
+.feature-card__toggle {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-1);
+    flex-shrink: 0;
+}
+
+.feature-card--on .toggle-switch__track,
+.feature-card:has(.feature-card__input:checked) .toggle-switch__track {
+    background: var(--color-primary);
+}
+
+.feature-card--on .toggle-switch__thumb,
+.feature-card:has(.feature-card__input:checked) .toggle-switch__thumb {
+    transform: translateX(1.25rem);
+}
+
+.feature-card--on .toggle-switch__label,
+.feature-card:has(.feature-card__input:checked) .toggle-switch__label {
+    color: var(--color-primary);
+}
+
+/* ── Form Toggle (compact, for availability) ───── */
+.form-toggle {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    width: 38px;
+    height: 22px;
+}
+
+.form-toggle__input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.form-toggle__track {
+    display: block;
+    width: 38px;
+    height: 22px;
+    border-radius: var(--radius-full);
+    background: var(--color-border);
+    transition: background var(--duration-fast);
+    position: relative;
+}
+
+.form-toggle__track::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    top: 3px;
+    left: 3px;
+    transition: left var(--duration-fast);
+    box-shadow: var(--shadow-xs);
+}
+
+.form-toggle__input:checked+.form-toggle__track {
+    background: var(--color-primary);
+}
+
+.form-toggle__input:checked+.form-toggle__track::after {
+    left: 19px;
+}
+

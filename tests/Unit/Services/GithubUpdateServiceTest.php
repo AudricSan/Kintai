@@ -1,0 +1,320 @@
+<?php
+
+declare(strict_types=1);
+
+namespace kintai\Tests\Unit\Services;
+
+use Illuminate\Database\Capsule\Manager as Capsule;
+use kintai\Core\Database\MigrationRunner;
+use kintai\Core\Services\BackupService;
+use kintai\Core\Services\GithubUpdateService;
+use kintai\Core\Services\UpdateService;
+use PHPUnit\Framework\TestCase;
+
+final class GithubUpdateServiceTest extends TestCase
+{
+    private string $tmpDir;
+    private UpdateService $updateService;
+    private BackupService $backup;
+    private MigrationRunner $migrator;
+
+    protected function setUp(): void
+    {
+        $this->tmpDir = sys_get_temp_dir() . '/kintai_ghupdate_test_' . bin2hex(random_bytes(4));
+        mkdir($this->tmpDir . '/storage/app', 0775, true);
+        mkdir($this->tmpDir . '/storage/backups', 0775, true);
+        mkdir($this->tmpDir . '/storage/uploads', 0775, true);
+        mkdir($this->tmpDir . '/vendor', 0775, true);
+        file_put_contents($this->tmpDir . '/vendor/should-stay.txt', 'do not touch');
+
+        putenv('KINTAI_STORAGE_PATH=' . $this->tmpDir . '/storage');
+
+        $capsule = new Capsule();
+        $capsule->addConnection(['driver' => 'sqlite', 'database' => ':memory:', 'prefix' => '']);
+        $capsule->setAsGlobal();
+        $capsule->bootEloquent();
+
+        mkdir($this->tmpDir . '/no-migrations', 0775, true);
+        $this->migrator = (new \ReflectionClass(MigrationRunner::class))->newInstanceWithoutConstructor();
+        $this->setPrivate($this->migrator, 'capsule', $capsule);
+        $this->setPrivate($this->migrator, 'migrationsPath', $this->tmpDir . '/no-migrations');
+
+        $this->updateService = new UpdateService();
+        $this->setPrivate($this->updateService, 'versionFile', $this->tmpDir . '/storage/app/version.json');
+
+        $this->backup = new BackupService($capsule);
+        $this->setPrivate($this->backup, 'backupDir', $this->tmpDir . '/storage/backups');
+    }
+
+    protected function tearDown(): void
+    {
+        $this->removeDir($this->tmpDir);
+        putenv('KINTAI_STORAGE_PATH');
+    }
+
+    private function setPrivate(object $obj, string $prop, mixed $value): void
+    {
+        $ref = new \ReflectionProperty($obj, $prop);
+        $ref->setAccessible(true);
+        $ref->setValue($obj, $value);
+    }
+
+    private function removeDir(string $dir): void
+    {
+        if (!is_dir($dir)) {
+            return;
+        }
+        $it = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($dir, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ($it as $f) {
+            $f->isDir() ? rmdir($f->getPathname()) : unlink($f->getPathname());
+        }
+        rmdir($dir);
+    }
+
+    /** Construit un zip GitHub-style : un seul dossier racine contenant $files. */
+    private function makeReleaseZip(string $destZip, array $files): void
+    {
+        $zip = new \ZipArchive();
+        $zip->open($destZip, \ZipArchive::CREATE);
+        $root = 'AudricSan-Kintai-abcdef1';
+        foreach ($files as $relative => $content) {
+            $zip->addFromString($root . '/' . $relative, $content);
+        }
+        $zip->close();
+    }
+
+    private function makeService(string $tag, array $files, ?string $currentVersion = '0.0.0'): GithubUpdateService
+    {
+        if ($currentVersion !== null) {
+            $this->updateService->setVersion($currentVersion);
+        }
+
+        $releaseFetcher = fn(string $repo, string $token): ?array => [
+            'tag_name'     => $tag,
+            'zipball_url'  => 'https://example.test/zipball/' . $tag,
+            'html_url'     => 'https://example.test/releases/' . $tag,
+            'body'         => 'notes for ' . $tag,
+            'published_at' => '2026-01-01T00:00:00Z',
+        ];
+
+        $zipDownloader = function (string $url, string $dest, string $token) use ($files): bool {
+            $this->makeReleaseZip($dest, $files);
+            return true;
+        };
+
+        return new GithubUpdateService(
+            $this->updateService,
+            $this->backup,
+            $this->migrator,
+            $this->tmpDir,
+            $releaseFetcher,
+            $zipDownloader,
+        );
+    }
+
+    public function testCheckLatestReleaseReturnsNullWhenNoReleaseFound(): void
+    {
+        $service = new GithubUpdateService(
+            $this->updateService,
+            $this->backup,
+            $this->migrator,
+            $this->tmpDir,
+            fn(string $repo, string $token): ?array => null,
+        );
+
+        $this->assertNull($service->checkLatestRelease());
+    }
+
+    public function testCheckLatestReleaseDetectsUpdateAvailable(): void
+    {
+        $service = $this->makeService('v1.2.0', ['README.md' => 'hello']);
+
+        $info = $service->checkLatestRelease();
+
+        $this->assertNotNull($info);
+        $this->assertTrue($info['has_update']);
+        $this->assertSame('1.2.0', $info['latest_version']);
+        $this->assertSame('0.0.0', $info['current_version']);
+    }
+
+    public function testCheckLatestReleaseNoUpdateWhenAlreadyCurrent(): void
+    {
+        $service = $this->makeService('v1.0.0', ['README.md' => 'hello'], currentVersion: '1.0.0');
+
+        $info = $service->checkLatestRelease();
+
+        $this->assertFalse($info['has_update']);
+    }
+
+    public function testApplyUpdateReturnsErrorWhenNoUpdateAvailable(): void
+    {
+        $service = $this->makeService('v1.0.0', ['README.md' => 'hello'], currentVersion: '1.0.0');
+
+        $result = $service->applyUpdate();
+
+        $this->assertFalse($result['ok']);
+        $this->assertSame('no_update_available', $result['error']);
+    }
+
+    public function testApplyUpdateReturnsErrorWhenDownloadFails(): void
+    {
+        $service = new GithubUpdateService(
+            $this->updateService,
+            $this->backup,
+            $this->migrator,
+            $this->tmpDir,
+            fn(string $repo, string $token): ?array => [
+                'tag_name'    => 'v1.0.0',
+                'zipball_url' => 'https://example.test/zipball/v1.0.0',
+            ],
+            fn(string $url, string $dest, string $token): bool => false,
+        );
+
+        $result = $service->applyUpdate();
+
+        $this->assertFalse($result['ok']);
+        $this->assertSame('download_failed', $result['error']);
+    }
+
+    public function testApplyUpdateCopiesNewFilesAndBumpsVersion(): void
+    {
+        $service = $this->makeService('v1.0.0', [
+            'README.md'    => 'v1 readme',
+            'src/Foo.php'  => '<?php // foo v1',
+        ]);
+
+        $result = $service->applyUpdate();
+
+        $this->assertTrue($result['ok']);
+        $this->assertSame('1.0.0', $result['version']);
+        $this->assertSame(2, $result['files_copied']);
+        $this->assertSame(0, $result['files_deleted']);
+        $this->assertSame('1.0.0', $this->updateService->getCurrentVersion());
+        $this->assertFileExists($this->tmpDir . '/README.md');
+        $this->assertFileExists($this->tmpDir . '/src/Foo.php');
+        $this->assertSame('<?php // foo v1', file_get_contents($this->tmpDir . '/src/Foo.php'));
+    }
+
+    public function testApplyUpdateDeletesFilesRemovedFromNewRelease(): void
+    {
+        $first = $this->makeService('v1.0.0', [
+            'README.md'   => 'v1 readme',
+            'src/Foo.php' => '<?php // foo v1',
+        ]);
+        $first->applyUpdate();
+        $this->assertFileExists($this->tmpDir . '/src/Foo.php');
+
+        // v2 supprime src/Foo.php (remplacé par src/Bar.php) et modifie README.md
+        $second = $this->makeService('v2.0.0', [
+            'README.md'   => 'v2 readme',
+            'src/Bar.php' => '<?php // bar v2',
+        ], currentVersion: null);
+
+        $result = $second->applyUpdate();
+
+        $this->assertTrue($result['ok']);
+        $this->assertSame(1, $result['files_deleted']);
+        $this->assertFileDoesNotExist($this->tmpDir . '/src/Foo.php');
+        $this->assertFileExists($this->tmpDir . '/src/Bar.php');
+        $this->assertSame('v2 readme', file_get_contents($this->tmpDir . '/README.md'));
+    }
+
+    public function testApplyUpdateNeverDeletesExcludedPaths(): void
+    {
+        // Simule un manifeste corrompu qui référencerait un fichier vendor/ —
+        // la liste d'exclusion doit protéger le fichier même dans ce cas.
+        file_put_contents(
+            $this->tmpDir . '/storage/app/update-files-manifest.json',
+            json_encode(['vendor/should-stay.txt', 'README.md'])
+        );
+
+        $service = $this->makeService('v1.0.0', ['README.md' => 'v1 readme']);
+        $result = $service->applyUpdate();
+
+        $this->assertTrue($result['ok']);
+        $this->assertFileExists($this->tmpDir . '/vendor/should-stay.txt');
+    }
+
+    public function testFirstRunNeverDeletesAnything(): void
+    {
+        // Sans manifeste préexistant, aucune suppression n'est possible même
+        // si la release ne contient qu'un sous-ensemble de fichiers.
+        file_put_contents($this->tmpDir . '/pre-existing.txt', 'kept');
+
+        $service = $this->makeService('v1.0.0', ['README.md' => 'v1 readme']);
+        $result = $service->applyUpdate();
+
+        $this->assertTrue($result['ok']);
+        $this->assertSame(0, $result['files_deleted']);
+        $this->assertFileExists($this->tmpDir . '/pre-existing.txt');
+    }
+
+    public function testApplyUpdateReportsIncreasingProgressUpTo100(): void
+    {
+        $service = $this->makeService('v1.0.0', [
+            'README.md'   => 'v1 readme',
+            'src/Foo.php' => '<?php // foo v1',
+        ]);
+
+        $percents = [];
+        $result = $service->applyUpdate(function (int $percent, string $label) use (&$percents): void {
+            $percents[] = $percent;
+        });
+
+        $this->assertTrue($result['ok']);
+        $this->assertNotEmpty($percents);
+        $this->assertSame(0, $percents[0]);
+        $this->assertSame(100, end($percents));
+
+        // La suite doit être croissante (non strictement, la synchronisation
+        // peut émettre plusieurs fois le même pourcentage arrondi).
+        $sorted = $percents;
+        sort($sorted);
+        $this->assertSame($sorted, $percents);
+    }
+
+    public function testApplyUpdateReportsFileSyncProgress(): void
+    {
+        // 3 fichiers dans la release : la synchronisation doit rapporter une
+        // progression granulaire dans la bande 55-75%, jusqu'à 75% (3/3).
+        $service = $this->makeService('v1.0.0', [
+            'README.md'   => 'v1 readme',
+            'src/Foo.php' => '<?php // foo v1',
+            'src/Bar.php' => '<?php // bar v1',
+        ]);
+
+        $percents = [];
+        $service->applyUpdate(function (int $percent, string $label) use (&$percents): void {
+            $percents[] = $percent;
+        });
+
+        $syncPercents = array_filter($percents, fn(int $p) => $p > 55 && $p <= 75);
+        $this->assertNotEmpty($syncPercents);
+        $this->assertContains(75, $percents);
+    }
+
+    public function testApplyUpdateRecordsDuration(): void
+    {
+        $service = $this->makeService('v1.0.0', ['README.md' => 'v1 readme']);
+
+        $this->assertNull($this->updateService->getLastUpdateDuration());
+
+        $result = $service->applyUpdate();
+
+        $this->assertTrue($result['ok']);
+        $this->assertNotNull($this->updateService->getLastUpdateDuration());
+        $this->assertGreaterThanOrEqual(0, $this->updateService->getLastUpdateDuration());
+    }
+
+    public function testApplyUpdateDoesNotRecordDurationOnFailure(): void
+    {
+        $service = $this->makeService('v1.0.0', ['README.md' => 'hello'], currentVersion: '1.0.0');
+
+        $service->applyUpdate();
+
+        $this->assertNull($this->updateService->getLastUpdateDuration());
+    }
+}

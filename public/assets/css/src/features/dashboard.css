@@ -1,0 +1,82 @@
+/* ================================================
+   Kintai — Tableau de bord
+   ================================================ */
+
+/* ── Dashboard ──────────────────────────────────── */
+.dash-tabs-nav {
+    overflow-x: auto;
+    padding: 0 var(--space-5);
+    scrollbar-width: none;
+}
+.dash-tabs-nav::-webkit-scrollbar { display: none; }
+
+.dash-tab-panel { display: none; }
+
+.dash-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+
+.dash-month-btn { padding: 0.15rem var(--space-2); }
+.dash-month-btn:disabled { opacity: .35; cursor: default; }
+
+.dash-month-label {
+    flex: 1;
+    text-align: center;
+    font-size: var(--text-base);
+    font-weight: 600;
+}
+
+.dash-detail-btn { font-size: 0.7rem; }
+
+.dash-stats-body {
+    display: flex;
+    gap: var(--space-6);
+    flex-wrap: wrap;
+    padding: var(--space-4) var(--space-5);
+    align-items: flex-start;
+}
+
+.dash-stat {
+    text-align: center;
+    min-width: 90px;
+}
+
+.dash-stat--wide { min-width: 110px; }
+
+.dash-stat__value {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--color-primary);
+}
+
+.dash-stat__value--neutral { color: var(--color-text); }
+.dash-stat__value--success { color: var(--color-success); }
+
+.dash-stat__value--muted {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+}
+
+.dash-stat__label {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    margin-top: 0.2rem;
+}
+
+.dash-stat-actions {
+    margin-left: auto;
+    align-self: center;
+}
+
+.dash-detail-wrap {
+    display: none;
+    border-top: 1px solid var(--color-border);
+}
+.dash-detail-wrap.open { display: block; }
+
+.dash-detail-table { font-size: var(--text-xs-2); }
+

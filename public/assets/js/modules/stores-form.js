@@ -1,0 +1,32 @@
+/**
+ * Store form : toggle déductions + cartes fonctionnalités interactives.
+ */
+(function () {
+    /* ── Toggle déductions ─────────────────────── */
+    var dedToggle = document.querySelector('[name="ded_enabled"]');
+    if (dedToggle) {
+        dedToggle.addEventListener('change', function () {
+            var fields = document.getElementById('ded-fields');
+            if (fields) fields.hidden = !this.checked;
+        });
+    }
+
+    /* ── Cartes de fonctionnalités ──────────────── */
+    var lang   = document.documentElement.lang || 'fr';
+    var onTxt  = lang === 'ja' ? '有効' : (lang === 'en' ? 'Active'   : 'Actif');
+    var offTxt = lang === 'ja' ? '無効' : (lang === 'en' ? 'Inactive' : 'Inactif');
+
+    function applyFeatureState(card, checked) {
+        card.classList.toggle('feature-card--on', checked);
+        var lbl = card.querySelector('.toggle-switch__label');
+        if (lbl) lbl.textContent = checked ? onTxt : offTxt;
+    }
+
+    document.querySelectorAll('.feature-card__input').forEach(function (cb) {
+        applyFeatureState(cb.closest('.feature-card'), cb.checked);
+
+        cb.addEventListener('change', function () {
+            applyFeatureState(this.closest('.feature-card'), this.checked);
+        });
+    });
+})();

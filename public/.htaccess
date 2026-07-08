@@ -1,0 +1,18 @@
+RewriteEngine On
+
+# Redirect to HTTPS (uncomment in production)
+# RewriteCond %{HTTPS} off
+# RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Servir les assets et PDFs directement, sans passer par PHP
+# (contourne le bug XAMPP/Windows où %{REQUEST_FILENAME} ne résout pas correctement)
+RewriteRule ^assets/ - [L]
+RewriteRule ^pdf/ - [L]
+
+# Les fichiers uploadés passent par le front controller (auth + contrôle d'accès)
+RewriteRule ^storage/ index.php [L,QSA]
+
+# Front controller : tout le reste va à index.php (sauf fichiers/dossiers existants)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [L,QSA]

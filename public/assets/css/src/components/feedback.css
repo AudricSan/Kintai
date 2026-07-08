@@ -1,0 +1,88 @@
+/* ================================================
+   Kintai — Feedback utilisateur
+   ================================================ */
+
+/* ── Feedback ───────────────────────────────────── */
+.fb-footer-btn {
+    background: none;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+    padding: var(--space-1) var(--space-3);
+    cursor: pointer;
+    transition: color var(--duration-fast), border-color var(--duration-fast);
+}
+
+.fb-footer-btn:hover {
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.fb-star-picker {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    margin-top: var(--space-1);
+}
+
+.fb-star-btn {
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    color: var(--color-border);
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    transition: color var(--duration-fast), transform var(--duration-fast);
+}
+
+.fb-star-btn:hover,
+.fb-star-btn--on {
+    color: var(--color-warning);
+}
+
+.fb-star-btn:hover {
+    transform: scale(1.15);
+}
+
+.fb-star-clear {
+    background: none;
+    border: none;
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    margin-left: var(--space-2);
+}
+
+.fb-anon-row .fb-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.fb-anon-row .form-hint {
+    display: block;
+    margin-top: 0.2rem;
+}
+
+.fb-stars {
+    white-space: nowrap;
+}
+
+.fb-star {
+    color: var(--color-border);
+}
+
+.fb-star--on {
+    color: var(--color-warning);
+}
+
+.fb-message-cell {
+    max-width: 340px;
+    word-break: break-word;
+    font-size: var(--text-sm);
+}
+

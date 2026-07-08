@@ -1,0 +1,75 @@
+/* ================================================
+   Kintai — Journal d'erreurs (page système)
+   ================================================ */
+
+/* ── Error Log ──────────────────────────────────── */
+.error-log__pre {
+    background: #1e1e2e;
+    color: #cdd6f4;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    padding: var(--space-4);
+    margin: 0;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    max-height: 70vh;
+}
+
+.photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: var(--space-4);
+}
+
+a.photo-card {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+.photo-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+    transition: all 0.2s ease;
+}
+
+.photo-card__meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-1);
+}
+
+.photo-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: var(--space-2);
+}
+
+.photo-detail-card:hover {
+    box-shadow: var(--shadow-md);
+    transition: box-shadow 0.2s ease;
+}
+
+.photo-detail-card__trigger {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+}
+
+.photo-detail-card__img {
+    width: 100%;
+    max-height: 400px;
+    object-fit: scale-down;
+    background: #e9ecef;
+    border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.photo-detail-card__body {
+    padding: var(--space-2) var(--space-3);
+}
+

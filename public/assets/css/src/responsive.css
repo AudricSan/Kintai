@@ -1,0 +1,592 @@
+/* ================================================
+   Kintai — Responsive: Unified breakpoints
+   Previously spread across 27 modules + mobile.css
+   ================================================ */
+
+/* Breakpoints ordonnés du plus large au plus étroit : une règle plus
+   étroite définie plus loin dans le fichier prend le dessus sur une règle
+   plus large pour les écrans qui remplissent les deux conditions. */
+
+/* ── Stat grid + Quick nav (1100px) ─────────────── */
+@media (max-width: 1100px) {
+    .stat-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .quick-nav {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* ── Calendar responsive (<900px) ───────────────── */
+@media (max-width: 900px) {
+    .cal-layout {
+        flex-direction: column;
+    }
+
+    .cal-sidebar {
+        flex: none;
+        width: 100%;
+        position: static;
+    }
+
+    .cal-grid td {
+        height: 80px;
+    }
+}
+
+/* ── Sidebar + Stat grid + Quick nav (768px) ────── */
+@media (max-width: 768px) {
+    /* Menu plein écran sur mobile (distinct du tiroir étroit desktop) :
+       plus de place pour des liens et sections plus grands et plus lisibles.
+       Passe au-dessus de la bottom-nav (z-index 100) une fois ouvert. */
+    .sidebar {
+        width: 100%;
+        max-width: 100%;
+        z-index: 150;
+        transform: translateX(-100%);
+    }
+
+    .sidebar.open {
+        transform: translateX(0);
+    }
+
+    .sidebar-header {
+        padding: var(--space-5) var(--space-6);
+    }
+
+    .sidebar-brand__name {
+        font-size: var(--text-2xl);
+    }
+
+    .sidebar-section {
+        padding-top: var(--space-6);
+        font-size: var(--text-xs);
+    }
+
+    .sidebar-link {
+        font-size: var(--text-lg);
+        padding: var(--space-4) var(--space-6);
+        min-height: 52px;
+        gap: var(--space-4);
+    }
+
+    .sidebar-link__icon svg {
+        width: 22px;
+        height: 22px;
+    }
+
+    .sidebar-nav-footer__link {
+        font-size: var(--text-base);
+        padding: var(--space-4) var(--space-6);
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+    }
+
+    .main-content {
+        margin-left: 0;
+    }
+
+    .sidebar-toggle {
+        display: block;
+    }
+
+    .sidebar-close {
+        display: block;
+        font-size: 1.75rem;
+    }
+
+    /* Fond assombri : n'est visible que pendant la transition d'ouverture,
+       le menu plein écran le recouvre entièrement une fois ouvert. */
+    .sidebar-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: var(--overlay-bg);
+        z-index: 99;
+        cursor: pointer;
+    }
+
+    .sidebar-backdrop.open {
+        display: block;
+    }
+
+    .bottom-nav {
+        display: flex;
+    }
+
+    .page-content {
+        padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px) + var(--space-4));
+    }
+
+    .app-footer {
+        margin-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .topbar-breadcrumb__section { display: none; }
+    .topbar-breadcrumb__sep     { display: none; }
+    .user-dropdown__label       { display: none; }
+    .user-dropdown__chevron     { display: none; }
+
+    /* Le panneau de notifications est ancré au bouton cloche, qui n'est pas
+       le bord droit réel de la topbar (l'avatar utilisateur est à sa droite) :
+       en largeur fixe (320px) il déborde hors écran sur mobile. On le détache
+       en position fixed, ancré aux marges de la topbar plutôt qu'au bouton. */
+    .notif-dropdown__panel {
+        position: fixed;
+        top: calc(var(--topbar-height) + 6px);
+        left: var(--space-4);
+        right: var(--space-4);
+        width: auto;
+    }
+
+    .stat-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .quick-nav {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .sstat-two {
+        grid-template-columns: 1fr;
+    }
+
+    .dash-two-col {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ── Mobile form compact (<640px) ───────────────── */
+@media (max-width: 640px) {
+    .timeoff-form {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-4);
+    }
+
+    .dash-stats-body {
+        flex-wrap: wrap;
+        gap: var(--space-3);
+    }
+
+    .dash-stat {
+        min-width: 45%;
+    }
+
+    .swap-form-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-2);
+    }
+
+    .swap-form-row .form-control {
+        width: 100%;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .form-grid,
+    .form-grid-2 {
+        grid-template-columns: 1fr !important;
+    }
+
+    .form-flex {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .form-flex .form-group {
+        width: 100%;
+        min-width: 0;
+        margin: 0;
+    }
+
+    .form-actions {
+        flex-direction: column;
+    }
+
+    .form-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .btn-group {
+        flex-wrap: wrap;
+        gap: var(--space-2);
+    }
+
+    .btn-group form {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .btn-group form .btn,
+    .btn-group > .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .btn-group .ml-auto {
+        margin-left: 0;
+        margin-top: var(--space-1);
+    }
+
+    /* Segmented control (ex. "Par magasin" / "Par jour") : pleine largeur
+       uniquement sur mobile, le style (piste + pilule) est universel,
+       voir .btn-group--switcher dans components.css. */
+    .btn-group--switcher {
+        width: 100%;
+    }
+
+    .page-header__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2);
+    }
+
+    .shifts-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .shifts-toolbar .btn-group:not(.btn-group--switcher) {
+        justify-content: center;
+    }
+
+    /* Le bouton flottant remonte au-dessus de la bottom-nav mobile */
+    .fab {
+        bottom: calc(64px + env(safe-area-inset-bottom, 0px) + var(--space-4));
+    }
+
+    .filter-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-3);
+    }
+
+    .filter-bar__select,
+    .filter-bar__nav {
+        min-width: 0;
+        max-width: 100%;
+        width: 100%;
+    }
+
+    /* Flèches aux bords réels de l'écran plutôt que collées au centre */
+    .filter-bar__nav {
+        justify-content: space-between;
+    }
+
+    /* Le libellé (ex. "Semaine du 05 Jul au 11 Jul 2026") peut être plus
+       large que l'espace restant entre les deux flèches : on tronque au
+       lieu de déborder. */
+    .filter-bar__period-label {
+        min-width: 0;
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .page-header {
+        flex-wrap: wrap;
+        gap: var(--space-2);
+    }
+
+    .page-header h2,
+    .page-header__title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+    }
+
+    .card-header {
+        flex-wrap: wrap;
+        gap: var(--space-2);
+    }
+
+    .form-group--200,
+    .form-group--160,
+    .form-group--flex1 {
+        min-width: 0;
+        flex: 1 1 100%;
+    }
+
+    .tab-bar {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .tab-bar::-webkit-scrollbar { display: none; }
+
+    .tab-bar__item {
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .cal-layout {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .timeline-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Déplacement des shifts désactivé sur mobile (JS) : on laisse le
+       scroll tactile natif fonctionner par-dessus les barres. */
+    .tl-bar {
+        touch-action: auto;
+    }
+
+    .week-grid {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .sb-stats { display: none; }
+
+    .page-header__title .badge {
+        display: inline-flex;
+        vertical-align: middle;
+        margin-left: var(--space-2);
+    }
+
+    .dr-show-grid {
+        grid-template-columns: 1fr !important;
+        gap: var(--space-4) !important;
+    }
+
+    .dr-kpi-table th,
+    .dr-meta-table th {
+        width: 55%;
+        font-weight: 600;
+        font-size: 0.875rem;
+        white-space: nowrap;
+    }
+
+    .dr-kpi-table td,
+    .dr-meta-table td {
+        font-size: 0.9375rem;
+    }
+}
+
+/* ── Touch-friendly controls (coarse pointer) ──── */
+@media (pointer: coarse) {
+    .form-control {
+        min-height: 46px;
+        font-size: 16px;
+    }
+
+    select.form-control { min-height: 46px; }
+
+    textarea.form-control {
+        min-height: 96px;
+        font-size: 16px;
+    }
+
+    .form-label {
+        font-size: 0.875rem;
+        font-weight: 600;
+        margin-bottom: var(--space-2);
+    }
+
+    .btn, button.btn {
+        min-height: 42px;
+        padding: var(--space-2) var(--space-5);
+        font-size: 0.9375rem;
+    }
+
+    .btn--sm {
+        min-height: 36px;
+        font-size: 0.875rem;
+        padding: var(--space-2) var(--space-4);
+    }
+}
+
+/* ── Table scroll hint (<640px) ─────────────────── */
+@media (max-width: 640px) {
+    .table-wrap::after {
+        display: none;
+    }
+}
+
+/* ── Stacked tables (data-mob-stack) ────────────── */
+@media (max-width: 640px) {
+    .data-table[data-mob-stack] {
+        display: block;
+        min-width: 0;
+    }
+
+    .data-table[data-mob-stack] thead {
+        display: none;
+    }
+
+    .data-table[data-mob-stack] tbody {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
+        padding: var(--space-3);
+    }
+
+    .data-table[data-mob-stack] tr {
+        display: block;
+        background: var(--color-bg);
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--color-border);
+        overflow: hidden;
+    }
+
+    .data-table[data-mob-stack] td {
+        display: flex;
+        align-items: baseline;
+        gap: var(--space-3);
+        padding: var(--space-2) var(--space-4);
+        border-bottom: 1px solid var(--color-border);
+        border-top: none;
+        border-left: none;
+        border-right: none;
+        font-size: 0.875rem;
+        white-space: normal;
+    }
+
+    .data-table[data-mob-stack] td:last-child {
+        border-bottom: none;
+    }
+
+    .data-table[data-mob-stack] td:empty {
+        display: none;
+    }
+
+    .data-table[data-mob-stack] td.td-center {
+        justify-content: center;
+        text-align: center;
+    }
+
+    .data-table[data-mob-stack] td::before {
+        content: attr(data-label);
+        min-width: 90px;
+        flex-shrink: 0;
+        font-size: 0.6875rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--color-text-muted);
+        padding-top: 2px;
+        line-height: 1.4;
+    }
+
+    .data-table[data-mob-stack] td:not([data-label])::before,
+    .data-table[data-mob-stack] td[data-label=""]::before {
+        display: none;
+    }
+
+    .data-table[data-mob-stack] td:not([data-label]),
+    .data-table[data-mob-stack] td[data-label=""] {
+        gap: 0;
+        justify-content: flex-start;
+    }
+
+    .data-table[data-mob-stack] tfoot {
+        display: block;
+        padding: var(--space-3) var(--space-4);
+        background: rgba(0,0,0,0.025);
+        border-top: 1px solid var(--color-border);
+    }
+
+    .data-table[data-mob-stack] tfoot tr {
+        background: none;
+        border: none;
+        border-radius: 0;
+    }
+
+    .data-table[data-mob-stack] tfoot td {
+        display: inline;
+        padding: 0 var(--space-2) 0 0;
+        border: none;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
+    .data-table[data-mob-stack] tfoot td::before {
+        display: none;
+    }
+
+    .table-wrap:has(.data-table[data-mob-stack]) {
+        overflow-x: visible;
+    }
+
+    .table-wrap:has(.data-table[data-mob-stack])::after {
+        display: none;
+    }
+}
+
+/* ── Print styles ───────────────────────────────── */
+@media print {
+    .sidebar, .topbar, .sstat-period-nav,
+    .erep-no-print, .erep-print-btn,
+    .page-header__actions, .alert,
+    .bottom-nav, .sidebar-toggle {
+        display: none !important;
+    }
+
+    .app-layout, .main-content,
+    .page-content {
+        display: block !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .page-header        { margin-bottom: .5rem; }
+    .page-header__title { font-size: 14pt; }
+    .page-count         { font-size: 10pt; color: #555; }
+
+    .sstat-section       { margin-bottom: 1rem; page-break-inside: avoid; }
+    .sstat-section-title { font-size: 11pt; font-weight: 700; border-bottom: 1px solid #ccc; margin-bottom: .4rem; }
+
+    .sstat-grid        { display: flex; flex-wrap: wrap; gap: .4rem; }
+    .sstat-card        { border: 1px solid #ccc; padding: .3rem .5rem; min-width: 90px; }
+    .sstat-card__value { font-size: 13pt; font-weight: 700; }
+    .sstat-card__label { font-size: 8pt; color: #555; }
+    .sstat-card__sub   { font-size: 7pt; color: #888; }
+
+    .data-table        { width: 100%; border-collapse: collapse; font-size: 8pt; }
+    .data-table th,
+    .data-table td     { border: 1px solid #bbb; padding: .2rem .35rem; }
+    .data-table thead  { background: #eee; }
+    .erep-total-row td { background: #f0f0f0; font-weight: 700; }
+    .table-responsive  { overflow: visible; }
+    .sstat-bar-chart   { display: none; }
+
+    a { color: inherit !important; text-decoration: none !important; }
+
+    .erep-print-footer {
+        display: block;
+        font-size: 7pt;
+        color: #aaa;
+        text-align: right;
+        margin-top: var(--space-4);
+        border-top: 1px solid #ddd;
+        padding-top: .3rem;
+    }
+
+    @page { size: A4 landscape; margin: 10mm; }
+
+    .tl-day-card { page-break-inside: avoid; margin-bottom: 6pt !important; }
+    .tl-scroll       { overflow: visible !important; }
+    .tl-scroll-inner { min-width: 0 !important; width: 100% !important; }
+
+    .tl-bar,
+    .tl-legend-bar,
+    .tl-diag-badge,
+    .tl-day-card--today .card-body {
+        print-color-adjust: exact !important;
+        -webkit-print-color-adjust: exact !important;
+    }
+}

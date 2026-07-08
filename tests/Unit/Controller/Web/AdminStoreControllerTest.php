@@ -1,0 +1,168 @@
+<?php
+
+declare(strict_types=1);
+
+namespace kintai\Tests\Unit\Controller\Web;
+
+use kintai\Core\Container;
+use kintai\Core\Repositories\LogRepositoryInterface;
+use kintai\Core\Repositories\StoreRepositoryInterface;
+use kintai\Core\Repositories\StoreUserRepositoryInterface;
+use kintai\Core\Repositories\UserRepositoryInterface;
+use kintai\Core\Request;
+use kintai\Core\Response;
+use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\Log;
+use kintai\Core\Services\StoreServiceInterface;
+use kintai\Core\Services\StoreStatsServiceInterface;
+use kintai\UI\Controller\Web\Staff\AdminStoreController;
+use kintai\UI\ViewRenderer;
+use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\TestCase;
+
+final class AdminStoreControllerTest extends TestCase
+{
+    private StoreRepositoryInterface&MockObject $stores;
+    private StoreUserRepositoryInterface&MockObject $storeUsers;
+    private UserRepositoryInterface&MockObject $users;
+    private StoreStatsServiceInterface&MockObject $storeStatsService;
+    private LogRepositoryInterface&MockObject $logRepo;
+    private AdminStoreController $controller;
+
+    protected function setUp(): void
+    {
+        $this->ensureViewFile('staff.stores');
+        $this->ensureViewFile('staff.stores-form');
+        $this->ensureViewFile('staff.employee-stats');
+        $this->ensureViewFile('staff.employee-payslip');
+        $this->ensureViewFile('layout.app');
+        $view = new ViewRenderer(sys_get_temp_dir());
+        $this->stores = $this->createMock(StoreRepositoryInterface::class);
+        $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
+        $this->users = $this->createMock(UserRepositoryInterface::class);
+        $this->storeStatsService = $this->createMock(StoreStatsServiceInterface::class);
+
+        // AuditLogger::log() délègue à Log::record() -> LogRepositoryInterface::record().
+        $this->logRepo = $this->createMock(LogRepositoryInterface::class);
+        $container = new Container();
+        $container->instance(LogRepositoryInterface::class, $this->logRepo);
+        Log::setContainer($container);
+
+        $this->controller = new AdminStoreController(
+            $view,
+            $this->users,
+            $this->stores,
+            $this->storeUsers,
+            new AuditLogger(),
+            $this->createMock(StoreServiceInterface::class),
+            $this->storeStatsService,
+        );
+    }
+
+    public function testStoresRendersList(): void
+    {
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+
+        $this->stores->method('findAll')->willReturn([]);
+
+        $response = $this->controller->stores($req);
+
+        $this->assertSame(200, $response->status());
+    }
+
+    public function testCreateStoreRendersForm(): void
+    {
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+
+        $response = $this->controller->createStore($req);
+
+        $this->assertSame(200, $response->status());
+    }
+
+    public function testEditStoreRendersForm(): void
+    {
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+        $req->setRouteParams(['id' => 1]);
+
+        $store = [
+            'id' => 1, 'name' => 'Test Store', 'currency' => 'JPY',
+            'week_start_day' => 1, 'timezone' => 'Asia/Tokyo',
+        ];
+        $this->stores->method('findById')->with(1)->willReturn($store);
+        $this->stores->method('getFeatures')->with(1)->willReturn(['shifts', 'timeclock']);
+        $this->stores->method('getImportSettings')->with(1)->willReturn([]);
+        $this->stores->method('getDeductionSettings')->with(1)->willReturn([]);
+        $this->storeUsers->method('findByStore')->with(1)->willReturn([]);
+        $this->users->method('findAll')->willReturn([]);
+
+        $response = $this->controller->editStore($req);
+
+        $this->assertSame(200, $response->status());
+    }
+
+    public function testEmployeeStatsLogsConsultation(): void
+    {
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '1', 'uid' => '5']);
+
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Store A', 'currency' => 'JPY']);
+        $this->users->method('findById')->with(5)->willReturn(['id' => 5, 'last_name' => 'Dupont', 'first_name' => 'Jean']);
+        $this->storeUsers->method('findMembership')->with(1, 5)->willReturn(['id' => 1, 'store_id' => 1, 'user_id' => 5]);
+        $this->storeStatsService->method('employeeStats')->willReturn([]);
+
+        $this->logRepo->expects($this->once())->method('record')->with(
+            $this->anything(), $this->anything(), $this->anything(),
+            'employee_stats.viewed', 'user', 5,
+            $this->anything(), $this->anything(), 1,
+            $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(),
+        );
+
+        $response = $this->controller->employeeStats($req);
+
+        $this->assertSame(200, $response->status());
+    }
+
+    public function testEmployeePayslipLogsConsultation(): void
+    {
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '1', 'uid' => '5']);
+
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Store A', 'currency' => 'JPY']);
+        $this->users->method('findById')->with(5)->willReturn(['id' => 5, 'last_name' => 'Dupont', 'first_name' => 'Jean']);
+        $this->storeUsers->method('findMembership')->with(1, 5)->willReturn(['id' => 1, 'store_id' => 1, 'user_id' => 5]);
+        $this->storeStatsService->method('buildPayslipData')->willReturn([]);
+
+        $this->logRepo->expects($this->once())->method('record')->with(
+            $this->anything(), $this->anything(), $this->anything(),
+            'payslip.viewed', 'user', 5,
+            $this->anything(), $this->anything(), 1,
+            $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(),
+        );
+
+        $response = $this->controller->employeePayslip($req);
+
+        $this->assertSame(200, $response->status());
+    }
+
+    protected function tearDown(): void
+    {
+        $_GET = [];
+        $_POST = [];
+        Log::reset();
+    }
+
+    private function ensureViewFile(string $view): void
+    {
+        $file = sys_get_temp_dir() . DIRECTORY_SEPARATOR . str_replace('.', DIRECTORY_SEPARATOR, $view) . '.php';
+        $dir = dirname($file);
+        if (!is_dir($dir)) {
+            mkdir($dir, 0777, true);
+        }
+        touch($file);
+    }
+}

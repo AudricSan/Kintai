@@ -1,0 +1,75 @@
+/* ================================================
+   Kintai — Onglets (tabs unifiés + tab bar messages)
+   ================================================ */
+
+/* ── Unified Tabs ───────────────────────────────── */
+.tabs,
+.dash-tabs-nav,
+.profile-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid var(--color-border);
+}
+
+.tab,
+.dash-tab-btn,
+.profile-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    cursor: pointer;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+    text-decoration: none;
+    transition: color var(--duration-fast), border-color var(--duration-fast);
+}
+
+.tab:hover,
+.dash-tab-btn:hover,
+.profile-tab:hover {
+    color: var(--color-text);
+    text-decoration: none;
+}
+
+.tab--active,
+.dash-tab-btn--active,
+.profile-tab--active {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+    font-weight: 600;
+}
+
+/* ── Tab Bar (messages) ─────────────────────────── */
+.tab-bar {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.tab-bar__item {
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-text-muted);
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color var(--duration-fast), border-color var(--duration-fast);
+}
+
+.tab-bar__item:hover {
+    color: var(--color-text);
+}
+
+.tab-bar__item--active {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+}
+
