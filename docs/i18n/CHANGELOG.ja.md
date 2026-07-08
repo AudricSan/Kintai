@@ -20,6 +20,7 @@ Kintaiの主要な変更履歴をここに記録しています。
 ### 修正
 - `storage/app/database.sqlite` が存在しない場合（例：以前のインストールが不完全だった、または削除された場合）に、インストーラーが「Database file at path [...] does not exist.」で失敗しなくなりました — フレームワーク起動前に、ファイルとそのディレクトリが自動的に作成されるようになりました。
 - `docs/releasing.md`（およびそのFR/JA翻訳）が、自己アップデートUIについて依然として `/admin/backup` を指していた問題を修正し、設定タブの分割に合わせて `/admin/update` を指すようにしました。
+- **セキュリティ：** MessagingバンドルとDailyReportバンドルの `/api/v1/*` ルートは、他のすべての `/api/v1/*` エンドポイントとは異なり `ApiAuthMiddleware` なしで登録されていました — コントローラーは認証済みの `auth_user` を前提としていたにもかかわらず、Bearerトークンなしでアクセス可能な状態でした。両バンドルの `routes.php` は、CoreのAPIと同じ保護されたグループ内でAPIルートをラップするようになりました。
 
 ## [0.0.3-beta] - 2026-07-08
 
