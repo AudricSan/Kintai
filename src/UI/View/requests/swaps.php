@@ -34,7 +34,7 @@ function swapShiftLabel(array $shifts_map, int $shiftId): string {
 <?php
 $pendingReceived = array_values(array_filter(
     $received,
-    fn($s) => ($s['status'] ?? '') === 'pending' && ($s['peer_accepted_at'] ?? null) === null
+    fn($s) => ($s['status'] ?? '') === 'pending' && ($s['accepted_at'] ?? null) === null
 ));
 ?>
 <?php if (!empty($pendingReceived)): ?>
@@ -65,14 +65,14 @@ $pendingReceived = array_values(array_filter(
     <?php else:
         echo Table::make()
             ->data($sent)
-            ->column(__('staff'), fn($s) => htmlspecialchars($users_map[(int)($s['target_id'] ?? 0)] ?? '—'))
+            ->column(__('staff'), fn($s) => htmlspecialchars($users_map[(int)($s['target_user_id'] ?? 0)] ?? '—'))
             ->column(__('my_shift'), fn($s) => '<span class="text-sm">' . swapShiftLabel($shifts_map, (int)($s['requester_shift_id'] ?? 0)) . '</span>')
             ->column(__('his_shift'), fn($s) => '<span class="text-sm">' . swapShiftLabel($shifts_map, (int)($s['target_shift_id'] ?? 0)) . '</span>')
             ->column(__('reason'), fn($s) => '<span class="text-sm-muted text-italic">' . htmlspecialchars($s['reason'] ?? '') . '</span>')
             ->column(__('status'), function($s) {
                 $status = $s['status'] ?? 'pending';
-                $isPeerPending    = $status === 'pending' && ($s['peer_accepted_at'] ?? null) === null;
-                $isManagerPending = $status === 'pending' && ($s['peer_accepted_at'] ?? null) !== null;
+                $isPeerPending    = $status === 'pending' && ($s['accepted_at'] ?? null) === null;
+                $isManagerPending = $status === 'pending' && ($s['accepted_at'] ?? null) !== null;
                 if ($isPeerPending)    return Badge::make(__('wait_peer'))->warning()->render();
                 if ($isManagerPending) return Badge::make(__('wait_manager'))->info()->render();
                 return Badge::make(match($status) {
@@ -86,7 +86,7 @@ $pendingReceived = array_values(array_filter(
             ->column(__('sent_on'), fn($s) => '<span class="text-sm-muted">' . htmlspecialchars(substr($s['created_at'] ?? '', 0, 10)) . '</span>')
             ->column('', function($s) use ($BASE_URL) {
                 $status = $s['status'] ?? 'pending';
-                $isPeerPending = $status === 'pending' && ($s['peer_accepted_at'] ?? null) === null;
+                $isPeerPending = $status === 'pending' && ($s['accepted_at'] ?? null) === null;
                 if (!$isPeerPending) return '';
                 return '<form method="POST" action="' . $BASE_URL . '/employee/swaps/' . (int)$s['id'] . '/cancel" class="form-inline" onsubmit="return confirm(\'' . __('confirm_cancel_request') . '\')">'
                     . csrf_field() . Button::make(__('cancel'))->ghost()->sm()->submit()->render() . '</form>';
@@ -106,8 +106,8 @@ $pendingReceived = array_values(array_filter(
         ->column(__('my_shift'), fn($s) => '<span class="text-sm">' . swapShiftLabel($shifts_map, (int)($s['target_shift_id'] ?? 0)) . '</span>')
         ->column(__('status'), function($s) {
             $status = $s['status'] ?? 'pending';
-            $isPeerPending    = $status === 'pending' && ($s['peer_accepted_at'] ?? null) === null;
-            $isManagerPending = $status === 'pending' && ($s['peer_accepted_at'] ?? null) !== null;
+            $isPeerPending    = $status === 'pending' && ($s['accepted_at'] ?? null) === null;
+            $isManagerPending = $status === 'pending' && ($s['accepted_at'] ?? null) !== null;
             if ($isPeerPending)    return Badge::make(__('pending'))->warning()->render();
             if ($isManagerPending) return Badge::make(__('wait_manager'))->info()->render();
             return Badge::make(match($status) {

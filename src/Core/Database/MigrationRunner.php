@@ -43,6 +43,25 @@ final class MigrationRunner
         return $count;
     }
 
+    /** @return string[] Noms des migrations pas encore exécutées, triés par nom de fichier. */
+    public function getPendingMigrations(): array
+    {
+        $this->ensureMigrationsTable();
+        $executed = $this->getExecutedMigrations();
+        $files = glob($this->migrationsPath . '/*.php');
+        sort($files);
+
+        $pending = [];
+        foreach ($files as $file) {
+            $name = basename($file, '.php');
+            if (!in_array($name, $executed)) {
+                $pending[] = $name;
+            }
+        }
+
+        return $pending;
+    }
+
     private function ensureMigrationsTable(): void
     {
         $schema = $this->capsule->getConnection()->getSchemaBuilder();

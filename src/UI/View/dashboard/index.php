@@ -370,7 +370,7 @@ $hasMultipleStores = count($shiftsByStore) > 1;
                             <tr>
                                 <td data-label="#"><?= (int) $swap['id'] ?></td>
                                 <td data-label="<?= htmlspecialchars(__('requester')) ?>"><a href="<?= $BASE_URL ?>/admin/users/<?= (int)($swap['requester_id'] ?? 0) ?>/edit"><?= htmlspecialchars($users_map[(int)($swap['requester_id'] ?? 0)] ?? ('User #' . (int)($swap['requester_id'] ?? 0))) ?></a></td>
-                                <td data-label="<?= htmlspecialchars(__('target')) ?>"><a href="<?= $BASE_URL ?>/admin/users/<?= (int)($swap['target_id'] ?? 0) ?>/edit"><?= htmlspecialchars($users_map[(int)($swap['target_id'] ?? 0)] ?? ('User #' . (int)($swap['target_id'] ?? 0))) ?></a></td>
+                                <td data-label="<?= htmlspecialchars(__('target')) ?>"><a href="<?= $BASE_URL ?>/admin/users/<?= (int)($swap['target_user_id'] ?? 0) ?>/edit"><?= htmlspecialchars($users_map[(int)($swap['target_user_id'] ?? 0)] ?? ('User #' . (int)($swap['target_user_id'] ?? 0))) ?></a></td>
                                 <td data-label="<?= htmlspecialchars(__('shifts')) ?>">#<?= (int) ($swap['requester_shift_id'] ?? 0) ?></td>
                             </tr>
                         <?php endforeach; ?>

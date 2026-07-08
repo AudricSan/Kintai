@@ -11,17 +11,24 @@ All notable changes to Kintai are documented here.
 - `docs/database.md` updated to reflect the actual `illuminate/database` version (^13.19, not ^11.0) and clarified that the `Language`/`Translation` repository interfaces are now bound to JSON-file-backed implementations, not Eloquent — their `Database*Repository` counterparts are unused dead code left over from before the i18n JSON migration.
 - Split the combined "Backups & Updates" settings tab into two separate tabs, **Backups** and **Updates**. The GitHub self-update UI (version, pending migrations, one-click update with progress) now lives on its own page at `/admin/update`, while `/admin/backup` only handles create/restore/delete. The underlying `POST /admin/backup/update(/stream)` and `/migrate` routes moved to `/admin/update/apply`, `/admin/update/stream`, and `/admin/update/migrate`.
 - `UpdateService::getCurrentVersion()` now reads the installed version straight from `config/app.php` (bumped on each release and synced by the self-update process) instead of tracking a separate `storage/app/version.json` `version` field. That file still records `installed_at`/`updated_at`/`duration_seconds`, but is no longer the source of truth for the app version.
-
 - `docs/vision.md` reworked: target audience is now framed by sector (retail, hospitality, and other shift-based multi-site verticals) instead of a Japan-first / global-SME split; updated the closing tagline.
 - `docs/business-model.md` reworked: the pricing bullet list is now a Community / Pro / Business / Enterprise table, with paid tiers clarified as controlling what's activated and supported by default on the managed SaaS — not gating what exists in the open-source codebase; direct-sales messaging no longer singles out Japan.
 - `docs/architecture.md`: dropped the `(Planned)` Webhooks line (no longer on the roadmap); noted that the HR reports (hiring/resignation/salary) and store photos currently live in Core rather than as bundles, flagged as candidates for a future bundle migration.
 - `docs/security-overview.md`: generalized "Japanese Labor Law" to "Local Labor Law" to match the new sector-based positioning.
 - `docs/i18n/database.fr.md` and `docs/i18n/database.ja.md` brought back in sync with the English source (Eloquent version, dead-code note for the `Language`/`Translation` repositories).
 
+### Added
+- Wired up the orphaned `backup` cron job: `CronRunner`, `AutoValidateJob`, and `BackupJob` were fully implemented but never registered or reachable from any route. `AppServiceProvider` now builds a `CronRunner` singleton with both jobs registered, and a new `GET /cron/run/{job}` route (token-scoped via the `cron_tokens` table, `Authorization: Bearer` or `?token=`) exposes them. `scripts/create-cron-token.php` issues the per-job tokens this endpoint needs.
+
 ### Fixed
 - The installer no longer fails with "Database file at path [...] does not exist." when `storage/app/database.sqlite` is missing (e.g. after an incomplete or deleted previous install) — the file and its directory are now created automatically before the framework boots.
 - `docs/releasing.md` (and its FR/JA translations) still pointed to `/admin/backup` for the self-update UI; fixed to `/admin/update`, matching the settings-tab split.
 - **Security:** the Messaging and DailyReport bundles' `/api/v1/*` routes were registered without `ApiAuthMiddleware`, unlike every other `/api/v1/*` endpoint — they were reachable without a Bearer token even though their controllers assumed an authenticated `auth_user`. Both bundles' `routes.php` now wrap their API routes in the same protected group as the core API.
+- **Critical:** shift swap requests were completely broken — creating, accepting, or refusing a swap wrote/read the columns `target_id`/`peer_accepted_at`, which don't exist in the `shift_swap_requests` table (real columns: `target_user_id`/`accepted_at`). Every attempt to create a swap threw a SQL error, and swap statistics silently under-counted the target side. Fixed in `EmployeeController`, `AdminSwapController`, the swap views, the dashboard, and `StoreStatsService`.
+- `DELETE /api/v1/notifications/{id}` marked the notification as read instead of deleting it. `NotificationRepositoryInterface` gained a `delete()` method and the endpoint now actually deletes.
+- `scripts/db-migrate.php --dry-run` was documented but never implemented — the script read no CLI arguments at all. It now lists pending migrations without applying them.
+- `scripts/docker-setup.php` hashed the admin password with a different bcrypt cost than `install.php`/`provision.php`; aligned to cost 12.
+- `.env.example` was missing several variables actually read via `env()` elsewhere (`DB_PREFIX`, `DB_CHARSET`, `DB_COLLATION`, `DB_DRIVER`, `SESSION_NAME`, `SESSION_LIFETIME`, `SESSION_SECURE`, `SESSION_HTTPONLY`, `SESSION_SAMESITE`, `APP_NAME`, `APP_VERSION`); added with their real defaults.
 
 ## [0.0.3-beta] - 2026-07-08
 

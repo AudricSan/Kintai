@@ -127,6 +127,65 @@ PHP);
         );
     }
 
+    /**
+     * Régression : scripts/db-migrate.php --dry-run était documenté mais jamais
+     * implémenté (le script ne lisait aucun argument CLI).
+     */
+    public function testGetPendingMigrationsListsUnexecutedMigrationsWithoutRunningThem(): void
+    {
+        $capsule = new Capsule();
+        $capsule->addConnection(['driver' => 'sqlite', 'database' => ':memory:']);
+        $capsule->setAsGlobal();
+        $capsule->bootEloquent();
+
+        $this->writeMigration('2026_01_01_000000_first', <<<'PHP'
+use kintai\Core\Database\Migration;
+
+return new class($this->capsule) extends Migration {
+    public function up(): void
+    {
+        $this->schema()->create('widgets', function ($table) {
+            $table->increments('id');
+        });
+    }
+
+    public function down(): void
+    {
+    }
+};
+PHP);
+        $this->writeMigration('2026_01_02_000000_second', <<<'PHP'
+use kintai\Core\Database\Migration;
+
+return new class($this->capsule) extends Migration {
+    public function up(): void
+    {
+        $this->schema()->create('gadgets', function ($table) {
+            $table->increments('id');
+        });
+    }
+
+    public function down(): void
+    {
+    }
+};
+PHP);
+
+        $runner = $this->makeRunner($capsule);
+
+        $this->assertSame(
+            ['2026_01_01_000000_first', '2026_01_02_000000_second'],
+            $runner->getPendingMigrations(),
+        );
+
+        // getPendingMigrations() ne doit pas exécuter les migrations.
+        $this->assertFalse($capsule->getConnection()->getSchemaBuilder()->hasTable('widgets'));
+
+        $runner->run();
+
+        $this->assertSame([], $runner->getPendingMigrations());
+    }
+
     public function testUnrelatedFailureStillThrows(): void
     {
         $capsule = new Capsule();
