@@ -24,7 +24,7 @@ Kintai utilise **Eloquent en mode standalone** (`illuminate/database`) comme uni
 - L'ancien `PersistenceDriverInterface` et JsonDB ont été supprimés.
 
 ## 🧩 Bundles modulaires
-Les fonctionnalités sont séparées en **Core** (toujours actif) et **Bundles** (`src/Bundles/*/`) — les deux font partie de ce dépôt AGPL-3.0, rien n'est verrouillé derrière une licence séparée. Toute fonctionnalité au-delà du cœur toujours actif est destinée à être livrée sous forme de bundle : aujourd'hui Messaging et Daily Reports. Les rapports RH avancés (embauche, démission, salaire) et les photos de magasin vivent aujourd'hui dans le Core plutôt qu'en bundles — ce sont des candidats à une future migration vers leurs propres bundles.
+Les fonctionnalités sont séparées en **Core** (toujours actif) et **Bundles** (`src/Bundles/*/`) — les deux font partie de ce dépôt AGPL-3.0, rien n'est verrouillé derrière une licence séparée. Toute fonctionnalité au-delà du cœur toujours actif est destinée à être livrée sous forme de bundle : aujourd'hui Messaging, Daily Reports et Store Photos. Les congés, échanges de shifts, bourse aux shifts (shift claims), et les rapports RH avancés (embauche, démission, salaire) vivent aujourd'hui dans le Core plutôt qu'en bundles — ce sont des candidats à une future migration vers leurs propres bundles.
 - **Feature flags :** les bundles sont activés par déploiement via `config/bundles.php` / `config/license.php` (`enabled_features`) — une question de déploiement, pas de licence.
 - **Système de hooks :** le Core fournit des points d'extension permettant aux bundles d'injecter des éléments UI, des routes API et de la logique.
 
