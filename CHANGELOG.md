@@ -9,6 +9,9 @@ All notable changes to Kintai are documented here.
 ### Changed
 - Moved all translated documents (`*.fr.md`, `*.ja.md`) into `docs/i18n/`, including the ones formerly living next to their English source in `docs/`. `docs/security.md` was renamed to `docs/security-overview.md` to avoid a case-insensitive filename clash with the root `SECURITY.md` translations. `scripts/check-translations.php` now always looks for translations under `docs/i18n/` regardless of the source document's folder.
 
+### Fixed
+- The installer no longer fails with "Database file at path [...] does not exist." when `storage/app/database.sqlite` is missing (e.g. after an incomplete or deleted previous install) — the file and its directory are now created automatically before the framework boots.
+
 ## [0.0.3-beta] - 2026-07-08
 
 ### Added
