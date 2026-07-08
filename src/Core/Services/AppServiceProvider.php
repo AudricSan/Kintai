@@ -6,7 +6,11 @@ namespace kintai\Core\Services;
 
 use kintai\Core\ServiceProvider;
 use kintai\Core\Container;
+use kintai\Core\Cron\AutoValidateJob;
+use kintai\Core\Cron\BackupJob;
+use kintai\Core\Cron\CronRunner;
 use kintai\Core\Database\MigrationRunner;
+use kintai\Core\Repositories\CronTokenRepositoryInterface;
 use kintai\Core\Mail\MailerService;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
@@ -105,5 +109,12 @@ final class AppServiceProvider extends ServiceProvider
         $this->container->singleton(TranslationManagementService::class, fn(Container $c) => new TranslationManagementService(
             $c->make(TranslationRepositoryInterface::class),
         ));
+
+        $this->container->singleton(CronRunner::class, function (Container $c) {
+            $runner = new CronRunner($c->make(CronTokenRepositoryInterface::class));
+            $runner->register($c->make(AutoValidateJob::class));
+            $runner->register($c->make(BackupJob::class));
+            return $runner;
+        });
     }
 }

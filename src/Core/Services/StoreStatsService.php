@@ -653,7 +653,7 @@ final class StoreStatsService implements StoreStatsServiceInterface
 
         $swapCount = 0;
         foreach ($this->swapRequests->findByStore($storeId) as $sw) {
-            if (((int) ($sw['requester_id'] ?? 0) === $userId || (int) ($sw['target_id'] ?? 0) === $userId)
+            if (((int) ($sw['requester_id'] ?? 0) === $userId || (int) ($sw['target_user_id'] ?? 0) === $userId)
                 && ($sw['created_at'] ?? '') >= $since
             ) {
                 $swapCount++;
@@ -772,7 +772,7 @@ final class StoreStatsService implements StoreStatsServiceInterface
         $swapsByUser = [];
         foreach ($allSwaps as $sw) {
             $req = (int) $sw['requester_id'];
-            $tgt = (int) $sw['target_id'];
+            $tgt = (int) $sw['target_user_id'];
             if (in_array($req, $memberIds, true)) {
                 $swapsByUser[$req] = ($swapsByUser[$req] ?? 0) + 1;
             }
