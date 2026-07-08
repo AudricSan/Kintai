@@ -20,6 +20,7 @@ Toutes les évolutions notables de Kintai sont documentées ici.
 ### Corrigé
 - L'installeur ne plante plus avec « Database file at path [...] does not exist. » quand `storage/app/database.sqlite` est absent (par exemple après une installation précédente incomplète ou supprimée) — le fichier et son dossier sont désormais créés automatiquement avant le démarrage du framework.
 - `docs/releasing.md` (et ses traductions FR/JA) pointait encore vers `/admin/backup` pour l'interface de mise à jour automatique ; corrigé vers `/admin/update`, conformément à la séparation des onglets de paramètres.
+- **Sécurité :** les routes `/api/v1/*` des bundles Messaging et DailyReport étaient enregistrées sans `ApiAuthMiddleware`, contrairement à tous les autres endpoints `/api/v1/*` — elles étaient accessibles sans token Bearer alors que leurs contrôleurs supposaient un `auth_user` authentifié. Le `routes.php` des deux bundles enveloppe désormais leurs routes API dans le même groupe protégé que l'API du Core.
 
 ## [0.0.3-beta] - 2026-07-08
 
