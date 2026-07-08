@@ -8,6 +8,7 @@ All notable changes to Kintai are documented here.
 
 ### Changed
 - Moved all translated documents (`*.fr.md`, `*.ja.md`) into `docs/i18n/`, including the ones formerly living next to their English source in `docs/`. `docs/security.md` was renamed to `docs/security-overview.md` to avoid a case-insensitive filename clash with the root `SECURITY.md` translations. `scripts/check-translations.php` now always looks for translations under `docs/i18n/` regardless of the source document's folder.
+- `docs/database.md` updated to reflect the actual `illuminate/database` version (^13.19, not ^11.0) and clarified that the `Language`/`Translation` repository interfaces are now bound to JSON-file-backed implementations, not Eloquent — their `Database*Repository` counterparts are unused dead code left over from before the i18n JSON migration.
 
 ## [0.0.3-beta] - 2026-07-08
 
