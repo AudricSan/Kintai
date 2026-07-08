@@ -11,9 +11,10 @@ Contrairement aux plateformes SaaS traditionnelles qui enferment les données da
 - **Liberté de sortie :** les clients peuvent passer de notre SaaS hébergé à leur propre infrastructure auto-hébergée en quelques minutes, sans aucune perte de données.
 - **Confidentialité par conception :** la sécurité n'est pas une réflexion après-coup ; l'isolation est intégrée au modèle de déploiement.
 
-## 📍 Marchés cibles
-1. **Principal : le Japon.** Répondre aux nuances culturelles et légales spécifiques du secteur retail japonais (support CJK, règles de paie locales).
-2. **Secondaire : les PME mondiales.** Les entreprises qui valorisent la confidentialité, la simplicité et une faible charge d'exploitation.
+## 📍 Secteurs cibles
+Kintai s'adresse aux PME qui gèrent des équipes en shifts sur plusieurs sites — sans priorité géographique affichée.
+1. **Cœur : retail et hôtellerie-restauration.** Boutiques, restaurants, cafés — les entreprises typiques de la « feuille Excel imprimée ».
+2. **En expansion : autres secteurs à shifts multi-sites.** Cliniques et établissements de santé, services de proximité, et toute PME qui coordonne du personnel horaire sur plusieurs sites.
 
 ## 🚀 Piliers stratégiques
 - **Cœur léger :** un cœur PHP natif et rapide, capable de tourner sur tout, d'un VPS bon marché à un conteneur géré.
@@ -21,4 +22,4 @@ Contrairement aux plateformes SaaS traditionnelles qui enferment les données da
 - **Croissance basée sur la confiance :** attirer les clients par la transparence open source, les retenir par la commodité et la fiabilité de notre orchestration SaaS gérée — jamais par du code auquel ils n'auraient pas accès autrement.
 
 ## 🌈 L'avenir
-Kintai aspire à devenir le « WordPress de la gestion des ressources humaines » — une plateforme standard que n'importe qui peut installer, mais que tout le monde préfère utiliser sur notre cloud géré et optimisé.
+Kintai aspire à devenir le standard ouvert de la gestion des équipes terrain — une plateforme que n'importe qui peut installer, mais que tout le monde préfère utiliser sur notre cloud géré et optimisé.
