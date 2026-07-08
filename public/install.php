@@ -145,6 +145,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 '<?php return ' . var_export($localCfg, true) . ';' . PHP_EOL
             );
 
+            // ── Step B bis: Créer le fichier SQLite s'il n'existe pas ─────
+            // (installation précédente incomplète/supprimée : Eloquent refuse
+            // de se connecter à un fichier SQLite absent, on le crée à la volée)
+
+            if ($dbDriver === 'sqlite') {
+                $sqlitePath = BASE_PATH . '/storage/app/database.sqlite';
+                $sqliteDir  = dirname($sqlitePath);
+                if (!is_dir($sqliteDir)) {
+                    mkdir($sqliteDir, 0755, true);
+                }
+                if (!file_exists($sqlitePath)) {
+                    touch($sqlitePath);
+                }
+            }
+
             // ── Step C: Boot framework, run migrations, seeds ────────────
 
             $app = new Application(BASE_PATH);
