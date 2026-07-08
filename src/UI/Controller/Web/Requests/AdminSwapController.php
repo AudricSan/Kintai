@@ -135,12 +135,12 @@ final class AdminSwapController
         $savedSwap = $this->swapRequests->save([
             'store_id'           => $storeId,
             'requester_id'       => $requesterId,
-            'target_id'          => $targetId,
+            'target_user_id'     => $targetId,
             'requester_shift_id' => $requesterShiftId,
             'target_shift_id'    => $targetShiftId,
             'reason'             => $reason,
             'status'             => 'accepted',
-            'peer_accepted_at'   => date('Y-m-d H:i:s'),
+            'accepted_at'        => date('Y-m-d H:i:s'),
         ]);
 
         $this->auditLogger->log($request, 'swap.created_by_admin', 'shift_swap_request', (int) ($savedSwap['id'] ?? 0), [
@@ -242,7 +242,7 @@ final class AdminSwapController
         $this->swapRequests->save(array_merge($swap, ['status' => 'accepted']));
         $this->auditLogger->logUpdate($request, 'swap.approved', 'shift_swap_request', (int) $swap['id'], $swap, array_merge($swap, ['status' => 'accepted']), [], (int) ($swap['store_id'] ?? 0) ?: null);
         $this->notifs->notifyMany(
-            array_filter([(int) ($swap['requester_id'] ?? 0), (int) ($swap['target_id'] ?? 0)]),
+            array_filter([(int) ($swap['requester_id'] ?? 0), (int) ($swap['target_user_id'] ?? 0)]),
             'swap_accepted',
             'Votre échange de shift a été accepté.',
             (int) $swap['id']
@@ -282,7 +282,7 @@ final class AdminSwapController
         $this->assertStoreAccess($request, (int) ($swap['store_id'] ?? 0));
 
         $requesterId = (int) ($swap['requester_id'] ?? 0);
-        $targetId    = (int) ($swap['target_id'] ?? 0);
+        $targetId    = (int) ($swap['target_user_id'] ?? 0);
 
         if (($swap['status'] ?? '') === 'accepted') {
             $reqShiftId = (int) ($swap['requester_shift_id'] ?? 0);

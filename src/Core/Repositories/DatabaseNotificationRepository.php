@@ -66,4 +66,10 @@ final class DatabaseNotificationRepository implements NotificationRepositoryInte
             ->whereNull('read_at')
             ->update(['read_at' => date('Y-m-d H:i:s')]);
     }
+
+    public function delete(int $id): int
+    {
+        $record = EloquentNotification::find($id);
+        return $record ? ($record->delete() ? 1 : 0) : 0;
+    }
 }

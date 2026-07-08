@@ -66,6 +66,7 @@ use kintai\UI\Controller\Api\V1\UserPrefsController as ApiUserPrefsController;
 
 // --- CRON ---
 $router->get('/cron/auto-validate', [CronController::class, 'autoValidate'], name: 'cron.auto_validate');
+$router->get('/cron/run/{job}', [CronController::class, 'run'], name: 'cron.run');
 
 // --- iCal ---
 $router->get('/ical/{token}/{store_id}/shifts.ics', [IcalController::class, 'feed'], name: 'ical.feed');
