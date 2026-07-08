@@ -32,6 +32,7 @@ final class BackupControllerTest extends TestCase
         mkdir($this->tmpDir . '/storage/app', 0775, true);
         mkdir($this->tmpDir . '/storage/backups', 0775, true);
         mkdir($this->tmpDir . '/storage/uploads', 0775, true);
+        mkdir($this->tmpDir . '/config', 0775, true);
 
         putenv('KINTAI_STORAGE_PATH=' . $this->tmpDir . '/storage');
 
@@ -45,7 +46,7 @@ final class BackupControllerTest extends TestCase
         $this->setPrivate($this->migrator, 'capsule', $capsule);
         $this->setPrivate($this->migrator, 'migrationsPath', $this->tmpDir . '/no-migrations');
 
-        $this->updateService = new UpdateService();
+        $this->updateService = new UpdateService($this->tmpDir);
         $this->setPrivate($this->updateService, 'versionFile', $this->tmpDir . '/storage/app/version.json');
 
         $this->backup = new BackupService($capsule);
@@ -84,6 +85,15 @@ final class BackupControllerTest extends TestCase
             $f->isDir() ? rmdir($f->getPathname()) : unlink($f->getPathname());
         }
         rmdir($dir);
+    }
+
+    /** La version courante est lue depuis config/app.php (voir UpdateService::getCurrentVersion). */
+    private function writeAppVersion(string $version): void
+    {
+        file_put_contents(
+            $this->tmpDir . '/config/app.php',
+            '<?php return [\'version\' => ' . var_export($version, true) . '];'
+        );
     }
 
     private function makeReleaseZip(string $destZip, array $files): void
@@ -153,7 +163,7 @@ final class BackupControllerTest extends TestCase
 
     public function testUpdateReturnsErrorWhenNoUpdateAvailable(): void
     {
-        $this->updateService->setVersion('1.0.0');
+        $this->writeAppVersion('1.0.0');
         $controller = $this->makeController(
             fn(string $repo, string $token): ?array => [
                 'tag_name'    => 'v1.0.0',
@@ -169,7 +179,7 @@ final class BackupControllerTest extends TestCase
 
     public function testUpdateAppliesReleaseAndRedirectsWithSummary(): void
     {
-        $this->updateService->setVersion('1.0.0');
+        $this->writeAppVersion('1.0.0');
         $controller = $this->makeController(
             fn(string $repo, string $token): ?array => [
                 'tag_name'    => 'v2.0.0',
@@ -179,7 +189,10 @@ final class BackupControllerTest extends TestCase
                 'published_at' => '2026-01-01T00:00:00Z',
             ],
             function (string $url, string $dest, string $token): bool {
-                $this->makeReleaseZip($dest, ['README.md' => 'v2']);
+                $this->makeReleaseZip($dest, [
+                    'README.md'    => 'v2',
+                    'config/app.php' => "<?php return ['version' => '2.0.0'];",
+                ]);
                 return true;
             },
         );
@@ -188,8 +201,26 @@ final class BackupControllerTest extends TestCase
 
         $this->assertSame(302, $response->status());
         $location = $this->locationOf($response);
-        $this->assertStringContainsString('success=updated_2.0.0_files-1_deleted-0', $location);
+        $this->assertStringStartsWith('/admin/update?success=updated_2.0.0_files-2_deleted-0', $location);
         $this->assertSame('2.0.0', $this->updateService->getCurrentVersion());
         $this->assertFileExists($this->tmpDir . '/README.md');
+    }
+
+    public function testMigrateRejectsNonOwner(): void
+    {
+        $controller = $this->makeController();
+
+        $this->expectException(ForbiddenException::class);
+        $controller->migrate($this->requestAs(false));
+    }
+
+    public function testMigrateRedirectsToUpdatePage(): void
+    {
+        $controller = $this->makeController();
+
+        $response = $controller->migrate($this->requestAs(true));
+
+        $this->assertSame(302, $response->status());
+        $this->assertStringStartsWith('/admin/update?success=migrated', $this->locationOf($response));
     }
 }
