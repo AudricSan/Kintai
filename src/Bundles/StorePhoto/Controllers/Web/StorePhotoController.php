@@ -63,6 +63,9 @@ final class StorePhotoController
         if ($managedIds !== null && $storeId > 0) {
             $this->assertStoreAccess($request, $storeId);
         }
+        if ($storeId > 0) {
+            $this->assertPhotosFeatureEnabled($storeId);
+        }
 
         return Response::html($this->view->render('store-photos::store-photos-form', [
             'title'       => __('photo_new_submission'),
@@ -83,6 +86,7 @@ final class StorePhotoController
                 : Response::redirect($this->base() . '/admin/photos/create');
         }
         $this->assertStoreAccess($request, $storeId);
+        $this->assertPhotosFeatureEnabled($storeId);
 
         $weekLabel = $request->post('week_label') ?: date('Y-m-d', strtotime('tuesday this week'));
         $notes     = $request->post('notes') ?? '';
@@ -120,6 +124,7 @@ final class StorePhotoController
             return Response::json(['error' => 'Submission not found'], 404);
         }
         $this->assertStoreAccess($request, (int) $submission['store_id']);
+        $this->assertPhotosFeatureEnabled((int) $submission['store_id']);
 
         $file = $request->file('photo');
         if ($file === null || !is_uploaded_file($file['tmp_name'])) {
@@ -162,6 +167,19 @@ final class StorePhotoController
         ]);
 
         return Response::json(['ok' => true, 'file' => $safe]);
+    }
+
+    /**
+     * Le toggle "photos" par store (/admin/stores/{id}/edit) est décoratif tant qu'il
+     * n'est pas vérifié ici — contrairement à EmployeeController/MessageController,
+     * ce contrôleur est admin-only donc il n'y a aucune autre surface qui l'applique.
+     */
+    private function assertPhotosFeatureEnabled(int $storeId): void
+    {
+        $features = $this->stores->getFeatures($storeId);
+        if ($features !== [] && !in_array('photos', $features, true)) {
+            throw new ForbiddenException("La fonctionnalité Photos n'est pas activée pour ce magasin.");
+        }
     }
 
     /**

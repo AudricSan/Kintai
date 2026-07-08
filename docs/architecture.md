@@ -25,7 +25,7 @@ Kintai uses **Standalone Eloquent** (`illuminate/database`) as its sole ORM.
 
 ## 🧩 Modular Bundles
 Features are split into **Core** (always on) and **Bundles** (`src/Bundles/*/`) — both are part of this AGPL-3.0 repository, nothing is gated behind a separate license. Any feature beyond the always-on core is expected to ship as a bundle: today that's Messaging, Daily Reports, and Store Photos. Time off, shift swaps, open shifts (shift claims), and the advanced HR reports (hiring, resignation, payroll) currently live in Core rather than as bundles — they are candidates for a future migration into their own bundles.
-- **Feature Flags:** Bundles are toggled per-deployment via `config/bundles.php` / `config/license.php` (`enabled_features`) — a deployment concern, not a licensing one.
+- **Feature Flags:** `config/bundles.php` lists every bundle class the codebase knows about; whether each one loads is decided by `FeatureManager`, fed by `LicenseServiceProvider` — a deployment concern, not a licensing one. Owners toggle bundles per-instance from `/admin/bundles` (stored in `app_settings.enabled_bundles`), which falls back to `config/license.php`'s `enabled_features` when unset. Within an enabled bundle, each store can further opt in/out via its own feature toggles (store edit page).
 - **Hook System:** The Core provides extension points for Bundles to inject UI elements, API routes, and logic.
 
 ## 🌐 Multi-Tenancy
