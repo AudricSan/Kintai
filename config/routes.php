@@ -320,15 +320,18 @@ $router->group('/admin', function ($r) {
     $r->get('/mail-test',  [MailTestController::class, 'show'], name: 'admin.mail_test');
     $r->post('/mail-test', [MailTestController::class, 'send'], name: 'admin.mail_test.send');
 
-    // Sauvegardes & mises à jour
+    // Sauvegardes
     $r->get('/backup',               [BackupController::class, 'index'],  name: 'admin.backup');
     $r->post('/backup/create',       [BackupController::class, 'create'], name: 'admin.backup.create');
     $r->post('/backup/restore',      [BackupController::class, 'restore'], name: 'admin.backup.restore');
     $r->post('/backup/delete',       [BackupController::class, 'delete'], name: 'admin.backup.delete');
-    $r->post('/backup/migrate',      [BackupController::class, 'migrate'], name: 'admin.backup.migrate');
     $r->post('/backup/delete-all',   [BackupController::class, 'deleteAll'], name: 'admin.backup.delete_all');
-    $r->post('/backup/update',       [BackupController::class, 'update'], name: 'admin.backup.update');
-    $r->post('/backup/update/stream', [BackupController::class, 'updateStream'], name: 'admin.backup.update.stream');
+
+    // Mises à jour
+    $r->get('/update',               [BackupController::class, 'updatePage'], name: 'admin.update');
+    $r->post('/update/apply',        [BackupController::class, 'update'], name: 'admin.update.apply');
+    $r->post('/update/stream',       [BackupController::class, 'updateStream'], name: 'admin.update.stream');
+    $r->post('/update/migrate',      [BackupController::class, 'migrate'], name: 'admin.update.migrate');
 
     // Photos
     $r->get('/photos',                      [StorePhotoController::class, 'index'],        name: 'admin.photos.index');

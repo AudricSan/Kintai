@@ -7,15 +7,27 @@ namespace kintai\Core\Services;
 final class UpdateService
 {
     private string $versionFile;
+    private string $basePath;
 
-    public function __construct()
+    public function __construct(?string $basePath = null)
     {
         $this->versionFile = storage_path('app/version.json');
+        $this->basePath = $basePath ?? BASE_PATH;
     }
 
+    /**
+     * La version installée est celle déclarée dans config/app.php (bumpée à
+     * chaque release, et synchronisée par GithubUpdateService::syncFiles()
+     * lors d'une mise à jour) — pas de fichier JSON supplémentaire à tenir à jour.
+     */
     public function getCurrentVersion(): string
     {
-        return $this->readVersion()['version'] ?? '0.0.0';
+        $configFile = $this->basePath . '/config/app.php';
+        if (!file_exists($configFile)) {
+            return '0.0.0';
+        }
+        $config = require $configFile;
+        return $config['version'] ?? '0.0.0';
     }
 
     public function getInstalledAt(): ?string
@@ -28,14 +40,6 @@ final class UpdateService
         return $this->readVersion()['updated_at'] ?? null;
     }
 
-    public function setVersion(string $version): void
-    {
-        $data = $this->readVersion();
-        $data['version'] = $version;
-        $data['updated_at'] = date('Y-m-d H:i:s');
-        $this->writeVersion($data);
-    }
-
     public function getLastUpdateDuration(): ?int
     {
         $seconds = $this->readVersion()['duration_seconds'] ?? null;
@@ -46,6 +50,7 @@ final class UpdateService
     {
         $data = $this->readVersion();
         $data['duration_seconds'] = $seconds;
+        $data['updated_at'] = date('Y-m-d H:i:s');
         $this->writeVersion($data);
     }
 

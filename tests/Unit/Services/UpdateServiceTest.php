@@ -16,9 +16,10 @@ final class UpdateServiceTest extends TestCase
     {
         $this->tmpDir = sys_get_temp_dir() . '/kintai_update_test_' . bin2hex(random_bytes(4));
         mkdir($this->tmpDir . '/storage/app', 0775, true);
+        mkdir($this->tmpDir . '/config', 0775, true);
         putenv('KINTAI_STORAGE_PATH=' . $this->tmpDir . '/storage');
 
-        $this->service = new UpdateService();
+        $this->service = new UpdateService($this->tmpDir);
         $ref = new \ReflectionProperty(UpdateService::class, 'versionFile');
         $ref->setAccessible(true);
         $ref->setValue($this->service, $this->tmpDir . '/storage/app/version.json');
@@ -35,33 +36,38 @@ final class UpdateServiceTest extends TestCase
         putenv('KINTAI_STORAGE_PATH');
     }
 
-    public function testDefaultVersionIs000(): void
+    private function writeAppVersion(string $version): void
+    {
+        file_put_contents(
+            $this->tmpDir . '/config/app.php',
+            '<?php return [\'version\' => ' . var_export($version, true) . '];'
+        );
+    }
+
+    public function testDefaultVersionIs000WhenNoConfigFile(): void
     {
         $this->assertSame('0.0.0', $this->service->getCurrentVersion());
+    }
+
+    public function testGetCurrentVersionReadsConfigAppPhp(): void
+    {
+        $this->writeAppVersion('1.2.3');
+
+        $this->assertSame('1.2.3', $this->service->getCurrentVersion());
+    }
+
+    public function testGetCurrentVersionReflectsConfigFileChanges(): void
+    {
+        $this->writeAppVersion('1.0.0');
+        $this->assertSame('1.0.0', $this->service->getCurrentVersion());
+
+        $this->writeAppVersion('2.0.0');
+        $this->assertSame('2.0.0', $this->service->getCurrentVersion());
     }
 
     public function testGetInstalledAtReturnsNullWhenNoVersionFile(): void
     {
         $this->assertNull($this->service->getInstalledAt());
-    }
-
-    public function testSetVersionPersists(): void
-    {
-        $this->service->setVersion('1.2.3');
-        $this->assertSame('1.2.3', $this->service->getCurrentVersion());
-    }
-
-    public function testSetVersionUpdatesUpdatedAt(): void
-    {
-        $this->service->setVersion('1.0.0');
-        $this->assertNotNull($this->service->getUpdatedAt());
-    }
-
-    public function testMultipleVersionUpdates(): void
-    {
-        $this->service->setVersion('1.0.0');
-        $this->service->setVersion('2.0.0');
-        $this->assertSame('2.0.0', $this->service->getCurrentVersion());
     }
 
     public function testGetLastUpdateDurationReturnsNullByDefault(): void
@@ -82,11 +88,9 @@ final class UpdateServiceTest extends TestCase
         $this->assertSame(7, $this->service->getLastUpdateDuration());
     }
 
-    public function testRecordUpdateDurationDoesNotEraseVersion(): void
+    public function testRecordUpdateDurationUpdatesUpdatedAt(): void
     {
-        $this->service->setVersion('1.2.3');
         $this->service->recordUpdateDuration(15);
-        $this->assertSame('1.2.3', $this->service->getCurrentVersion());
-        $this->assertSame(15, $this->service->getLastUpdateDuration());
+        $this->assertNotNull($this->service->getUpdatedAt());
     }
 }

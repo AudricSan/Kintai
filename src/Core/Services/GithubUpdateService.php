@@ -130,9 +130,6 @@ final class GithubUpdateService
             $progress(80, __('backup_update_step_migrate'));
             $migrationsApplied = $this->migrator->run();
 
-            $progress(85, __('backup_update_step_version'));
-            $this->updateService->setVersion($release['latest_version']);
-
             $composerStatus = 'skipped';
             $composerOutput = null;
             if ($lockChanged) {

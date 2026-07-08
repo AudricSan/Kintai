@@ -22,6 +22,7 @@
 /* ── Display ────────────────────────────────────── */
 .hidden    { display: none; }
 .is-hidden { display: none !important; }
+.d-inline  { display: inline; }
 
 .dash-two-col {
     display: grid;
