@@ -25,4 +25,4 @@
 
 ## ⚖ Conformité
 - **Préparation RGPD :** la portabilité des données, le droit à l'oubli et l'isolation physique simplifient la conformité RGPD pour le SaaS.
-- **Droit du travail japonais :** l'architecture permet un suivi strict des heures et des pauses conformément aux réglementations locales.
+- **Droit du travail local :** l'architecture permet un suivi strict des heures et des pauses conformément aux réglementations locales.

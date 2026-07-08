@@ -2,7 +2,7 @@
 
 🌐 [English](../releasing.md) · **Français** · [日本語](releasing.ja.md)
 
-Ce document décrit comment publier une nouvelle version de Kintai sur GitHub, de façon à ce que les instances déployées puissent la détecter et l'appliquer automatiquement depuis `/admin/backup` (voir `GithubUpdateService`).
+Ce document décrit comment publier une nouvelle version de Kintai sur GitHub, de façon à ce que les instances déployées puissent la détecter et l'appliquer automatiquement depuis `/admin/update` (voir `GithubUpdateService`).
 
 ## Principe
 
@@ -62,7 +62,7 @@ Le script (`scripts/release.ps1`) :
 
 ## Après la publication
 
-- Sur chaque instance, l'owner voit « Mise à jour disponible » sur `/admin/backup` et peut cliquer « Mettre à jour maintenant ».
+- Sur chaque instance, l'owner voit « Mise à jour disponible » sur `/admin/update` et peut cliquer « Mettre à jour maintenant ».
 - Avant d'appliquer quoi que ce soit, l'instance crée automatiquement un backup base de données + uploads et un snapshot du code dans `storage/backups/`.
 - Si `composer.lock` a changé, l'instance tente `composer install` automatiquement (best-effort) ; en cas d'échec ou d'indisponibilité, un avertissement invite à le lancer manuellement en SSH.
 

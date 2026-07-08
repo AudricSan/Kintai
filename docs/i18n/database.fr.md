@@ -3,7 +3,7 @@
 🌐 [English](../database.md) · **Français** · [日本語](database.ja.md)
 
 ## 📊 Vue d'ensemble
-Kintai utilise **Eloquent ORM** (`illuminate/database` ^11.0) comme unique couche d'accès aux données. Supporte SQLite (par défaut, zéro configuration) et MySQL/MariaDB (échelle production) — indépendant du driver, sélectionné via `config/database.php`.
+Kintai utilise **Eloquent ORM** (`illuminate/database` ^13.19) comme unique couche d'accès aux données. Supporte SQLite (par défaut, zéro configuration) et MySQL/MariaDB (échelle production) — indépendant du driver, sélectionné via `config/database.php`.
 
 ## 🛤 Eloquent ORM
 
@@ -19,12 +19,12 @@ Amorcé par `DatabaseServiceProvider` (`src/Core/Database/DatabaseServiceProvide
 - **Rapports journaliers & RH :** `DailyReport`, `HiringReport`, `ResignationReport`, `SalaryReport`, `Feedback`
 - **Communication :** `MessageThread`, `ThreadMessage`, `ThreadParticipant`, `Notification`
 - **Système & paramètres :** `ActivityEntry`, `AppSetting`, `ApiToken`, `CronToken`, `IcalToken`, `PasswordResetToken`, `ImportAlias`, `StoreFeature`, `StoreImportSetting`, `StorePhotoImage`, `StorePhotoSubmission`, `UserDashboardPref`, `UserNavPref`
-- **i18n :** `Language`, `Translation`
+- **i18n :** `Language`, `Translation` — modèles legacy, plus lus au runtime : les traductions sont servies depuis `lang/*.json` via `JsonLanguageRepository`/`JsonTranslationRepository`. Dette technique connue, suppression prévue.
 
 La liste complète et à jour reste la source de vérité : `ls src/Domain/Eloquent/`.
 
 ### Pattern Repository
-30 repositories dans `src/Core/Repositories/` encapsulent les modèles Eloquent. Contrôleurs et services ne doivent **jamais** utiliser les modèles Eloquent directement — uniquement via les interfaces de repository injectées, liées dans `RepositoryServiceProvider`.
+30 interfaces de repository dans `src/Core/Repositories/`, liées à leur implémentation dans `RepositoryServiceProvider`. Contrôleurs et services ne doivent **jamais** utiliser les modèles Eloquent directement — uniquement via les interfaces de repository injectées. Presque toutes les implémentations encapsulent des modèles Eloquent ; les interfaces `Language`/`Translation` font exception, liées à des repositories basés sur des fichiers JSON à la place (leurs équivalents `Database*Repository` existent encore sur disque mais sont du code mort inutilisé, antérieur à la migration JSON — nettoyage à prévoir).
 
 ## 🔄 Système de migration
 Basé sur PHP, unifié — un seul fichier de migration couvre SQLite et MySQL, pas de SQL brut ni de duplication par driver.

@@ -12,8 +12,15 @@ All notable changes to Kintai are documented here.
 - Split the combined "Backups & Updates" settings tab into two separate tabs, **Backups** and **Updates**. The GitHub self-update UI (version, pending migrations, one-click update with progress) now lives on its own page at `/admin/update`, while `/admin/backup` only handles create/restore/delete. The underlying `POST /admin/backup/update(/stream)` and `/migrate` routes moved to `/admin/update/apply`, `/admin/update/stream`, and `/admin/update/migrate`.
 - `UpdateService::getCurrentVersion()` now reads the installed version straight from `config/app.php` (bumped on each release and synced by the self-update process) instead of tracking a separate `storage/app/version.json` `version` field. That file still records `installed_at`/`updated_at`/`duration_seconds`, but is no longer the source of truth for the app version.
 
+- `docs/vision.md` reworked: target audience is now framed by sector (retail, hospitality, and other shift-based multi-site verticals) instead of a Japan-first / global-SME split; updated the closing tagline.
+- `docs/business-model.md` reworked: the pricing bullet list is now a Community / Pro / Business / Enterprise table, with paid tiers clarified as controlling what's activated and supported by default on the managed SaaS — not gating what exists in the open-source codebase; direct-sales messaging no longer singles out Japan.
+- `docs/architecture.md`: dropped the `(Planned)` Webhooks line (no longer on the roadmap); noted that the HR reports (hiring/resignation/salary) and store photos currently live in Core rather than as bundles, flagged as candidates for a future bundle migration.
+- `docs/security-overview.md`: generalized "Japanese Labor Law" to "Local Labor Law" to match the new sector-based positioning.
+- `docs/i18n/database.fr.md` and `docs/i18n/database.ja.md` brought back in sync with the English source (Eloquent version, dead-code note for the `Language`/`Translation` repositories).
+
 ### Fixed
 - The installer no longer fails with "Database file at path [...] does not exist." when `storage/app/database.sqlite` is missing (e.g. after an incomplete or deleted previous install) — the file and its directory are now created automatically before the framework boots.
+- `docs/releasing.md` (and its FR/JA translations) still pointed to `/admin/backup` for the self-update UI; fixed to `/admin/update`, matching the settings-tab split.
 
 ## [0.0.3-beta] - 2026-07-08
 
