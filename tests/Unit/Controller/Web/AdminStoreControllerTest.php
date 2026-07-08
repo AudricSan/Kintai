@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Controller\Web;
 
 use kintai\Core\Container;
+use kintai\Core\FeatureManager;
 use kintai\Core\Repositories\LogRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
@@ -56,6 +57,7 @@ final class AdminStoreControllerTest extends TestCase
             new AuditLogger(),
             $this->createMock(StoreServiceInterface::class),
             $this->storeStatsService,
+            new FeatureManager(['messaging', 'daily-report', 'store-photos']),
         );
     }
 
@@ -101,6 +103,70 @@ final class AdminStoreControllerTest extends TestCase
         $response = $this->controller->editStore($req);
 
         $this->assertSame(200, $response->status());
+    }
+
+    public function testEditStoreRendersFormWhenABundleIsDisabledInstanceWide(): void
+    {
+        $controller = new AdminStoreController(
+            new ViewRenderer(sys_get_temp_dir()),
+            $this->users,
+            $this->stores,
+            $this->storeUsers,
+            new AuditLogger(),
+            $this->createMock(StoreServiceInterface::class),
+            $this->storeStatsService,
+            new FeatureManager(['daily-report']), // messaging et store-photos désactivés
+        );
+
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+        $req->setRouteParams(['id' => 1]);
+
+        $store = ['id' => 1, 'name' => 'Test Store', 'currency' => 'JPY', 'week_start_day' => 1, 'timezone' => 'Asia/Tokyo'];
+        $this->stores->method('findById')->with(1)->willReturn($store);
+        $this->stores->method('getFeatures')->with(1)->willReturn(['shifts', 'timeclock', 'messages']);
+        $this->stores->method('getImportSettings')->with(1)->willReturn([]);
+        $this->stores->method('getDeductionSettings')->with(1)->willReturn([]);
+        $this->storeUsers->method('findByStore')->with(1)->willReturn([]);
+        $this->users->method('findAll')->willReturn([]);
+
+        $response = $controller->editStore($req);
+
+        $this->assertSame(200, $response->status());
+    }
+
+    public function testUpdateStorePersistsPhotosFeatureSlug(): void
+    {
+        $_POST = ['name' => 'Test Store', 'feature_photos' => '1'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '1']);
+
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Test Store']);
+
+        $captured = null;
+        $storeService = $this->createMock(StoreServiceInterface::class);
+        $storeService->method('updateStore')->willReturnCallback(function (int $id, array $data) use (&$captured) {
+            $captured = $data;
+            return ['id' => $id] + $data;
+        });
+
+        $controller = new AdminStoreController(
+            new ViewRenderer(sys_get_temp_dir()),
+            $this->users,
+            $this->stores,
+            $this->storeUsers,
+            new AuditLogger(),
+            $storeService,
+            $this->storeStatsService,
+            new FeatureManager(['messaging', 'daily-report', 'store-photos']),
+        );
+
+        $response = $controller->updateStore($req);
+
+        $this->assertSame(302, $response->status());
+        $this->assertNotNull($captured);
+        $this->assertSame(['photos'], $captured['_features']);
     }
 
     public function testEmployeeStatsLogsConsultation(): void

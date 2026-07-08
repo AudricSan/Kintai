@@ -25,7 +25,7 @@ Kintai utilise **Eloquent en mode standalone** (`illuminate/database`) comme uni
 
 ## 🧩 Bundles modulaires
 Les fonctionnalités sont séparées en **Core** (toujours actif) et **Bundles** (`src/Bundles/*/`) — les deux font partie de ce dépôt AGPL-3.0, rien n'est verrouillé derrière une licence séparée. Toute fonctionnalité au-delà du cœur toujours actif est destinée à être livrée sous forme de bundle : aujourd'hui Messaging, Daily Reports et Store Photos. Les congés, échanges de shifts, bourse aux shifts (shift claims), et les rapports RH avancés (embauche, démission, salaire) vivent aujourd'hui dans le Core plutôt qu'en bundles — ce sont des candidats à une future migration vers leurs propres bundles.
-- **Feature flags :** les bundles sont activés par déploiement via `config/bundles.php` / `config/license.php` (`enabled_features`) — une question de déploiement, pas de licence.
+- **Feature flags :** `config/bundles.php` liste les bundles connus du code ; leur chargement effectif est décidé par `FeatureManager`, alimenté par `LicenseServiceProvider` — une question de déploiement, pas de licence. Les Owners activent/désactivent chaque bundle au niveau de l'instance depuis `/admin/bundles` (stocké dans `app_settings.enabled_bundles`), avec repli sur `enabled_features` de `config/license.php` si rien n'est configuré. Au sein d'un bundle activé, chaque store peut ensuite l'activer ou non pour lui-même via ses propres réglages (fiche magasin).
 - **Système de hooks :** le Core fournit des points d'extension permettant aux bundles d'injecter des éléments UI, des routes API et de la logique.
 
 ## 🌐 Multi-tenancy

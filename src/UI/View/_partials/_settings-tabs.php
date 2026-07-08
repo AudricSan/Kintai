@@ -15,6 +15,7 @@ $_settingsTabs = [
     ['label' => __('backup'),    'url' => route_url('admin.backup'),        'match' => '/admin/backup'],
     ['label' => __('update'),    'url' => route_url('admin.update'),        'match' => '/admin/update'],
     ['label' => __('languages'), 'url' => route_url('admin.languages'),     'match' => '/admin/languages'],
+    ['label' => __('bundle_settings'), 'url' => route_url('admin.bundles'), 'match' => '/admin/bundles'],
 ];
 ?>
 <div class="tabs card--mb">
