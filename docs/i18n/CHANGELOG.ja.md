@@ -17,10 +17,18 @@ Kintaiの主要な変更履歴をここに記録しています。
 - `docs/security-overview.md`：新しい業種ベースの位置付けに合わせ、「日本の労働法」を「各国の労働法」に一般化しました。
 - `docs/i18n/database.fr.md` と `docs/i18n/database.ja.md` を英語版ソースと同期させました（Eloquentのバージョン、`Language`/`Translation` リポジトリのデッドコードに関する注記）。
 
+### 追加
+- 孤立していた `backup` cronジョブを接続しました：`CronRunner`、`AutoValidateJob`、`BackupJob` は完全に実装されていましたが、登録もされておらず、どのルートからも到達できませんでした。`AppServiceProvider` は、両方のジョブを登録した `CronRunner` シングルトンを構築するようになり、新しい `GET /cron/run/{job}` ルート（`cron_tokens` テーブルによるジョブごとのトークン保護、`Authorization: Bearer` または `?token=`）がこれらを公開します。`scripts/create-cron-token.php` が、このエンドポイントに必要なトークンを発行します。
+
 ### 修正
 - `storage/app/database.sqlite` が存在しない場合（例：以前のインストールが不完全だった、または削除された場合）に、インストーラーが「Database file at path [...] does not exist.」で失敗しなくなりました — フレームワーク起動前に、ファイルとそのディレクトリが自動的に作成されるようになりました。
 - `docs/releasing.md`（およびそのFR/JA翻訳）が、自己アップデートUIについて依然として `/admin/backup` を指していた問題を修正し、設定タブの分割に合わせて `/admin/update` を指すようにしました。
 - **セキュリティ：** MessagingバンドルとDailyReportバンドルの `/api/v1/*` ルートは、他のすべての `/api/v1/*` エンドポイントとは異なり `ApiAuthMiddleware` なしで登録されていました — コントローラーは認証済みの `auth_user` を前提としていたにもかかわらず、Bearerトークンなしでアクセス可能な状態でした。両バンドルの `routes.php` は、CoreのAPIと同じ保護されたグループ内でAPIルートをラップするようになりました。
+- **重大：** シフト交換機能が完全に壊れていました — 交換の作成・承諾・拒否が、`shift_swap_requests` テーブルに存在しないカラム `target_id`／`peer_accepted_at`（実際のカラムは `target_user_id`／`accepted_at`）を読み書きしていました。交換を作成しようとするたびにSQLエラーが発生し、交換の統計はターゲット側の件数を静かに過小評価していました。`EmployeeController`、`AdminSwapController`、交換関連のビュー、ダッシュボード、`StoreStatsService` で修正しました。
+- `DELETE /api/v1/notifications/{id}` が、通知を削除する代わりに既読にするだけでした。`NotificationRepositoryInterface` に `delete()` メソッドを追加し、このエンドポイントは実際に削除するようになりました。
+- `scripts/db-migrate.php --dry-run` は文書化されていましたが実装されていませんでした — スクリプトはCLI引数を一切読み取っていませんでした。現在は、適用せずに保留中のマイグレーションを一覧表示します。
+- `scripts/docker-setup.php` は、`install.php`／`provision.php` とは異なるbcryptコストで管理者パスワードをハッシュ化していました。コスト12に統一しました。
+- `.env.example` に、コードの他の箇所で `env()` 経由で実際に読み取られている複数の変数（`DB_PREFIX`、`DB_CHARSET`、`DB_COLLATION`、`DB_DRIVER`、`SESSION_NAME`、`SESSION_LIFETIME`、`SESSION_SECURE`、`SESSION_HTTPONLY`、`SESSION_SAMESITE`、`APP_NAME`、`APP_VERSION`）が記載されていませんでした。実際のデフォルト値とともに追加しました。
 
 ## [0.0.3-beta] - 2026-07-08
 

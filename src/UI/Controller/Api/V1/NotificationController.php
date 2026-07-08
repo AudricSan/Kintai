@@ -79,8 +79,7 @@ final class NotificationController
             throw new NotFoundException('Notification introuvable.');
         }
 
-        $authUser = $request->getAttribute('auth_user');
-        $this->notifications->markRead($id, (int) ($authUser['id'] ?? $item['user_id']));
+        $this->notifications->delete($id);
         return Response::empty();
     }
 }

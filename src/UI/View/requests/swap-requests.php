@@ -61,8 +61,8 @@ echo Flash::fromQuery('success', [
         . htmlspecialchars($users_map[(int)($s['requester_id'] ?? 0)] ?? ('ID ' . (int)($s['requester_id'] ?? 0))) . '</a>'
     )
     ->column(__('target'), fn($s) =>
-        '<a href="' . htmlspecialchars($BASE_URL . '/admin/users/' . (int)($s['target_id'] ?? 0) . '/edit') . '">'
-        . htmlspecialchars($users_map[(int)($s['target_id'] ?? 0)] ?? ('ID ' . (int)($s['target_id'] ?? 0))) . '</a>'
+        '<a href="' . htmlspecialchars($BASE_URL . '/admin/users/' . (int)($s['target_user_id'] ?? 0) . '/edit') . '">'
+        . htmlspecialchars($users_map[(int)($s['target_user_id'] ?? 0)] ?? ('ID ' . (int)($s['target_user_id'] ?? 0))) . '</a>'
     )
     ->column(__('requester_shift'), fn($s) => kintai_swap_shift_cell($shifts_map, (int) ($s['requester_shift_id'] ?? 0)))
     ->column(__('target_shift'), fn($s) => !empty($s['target_shift_id']) ? kintai_swap_shift_cell($shifts_map, (int) $s['target_shift_id']) : '<span class="text-sm-muted">—</span>')

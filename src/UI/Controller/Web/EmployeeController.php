@@ -95,7 +95,7 @@ final class EmployeeController
         $received     = $this->swapRequests->findByTarget($userId);
         $pendingSwaps = array_values(array_filter(
             $received,
-            fn($s) => ($s['status'] ?? '') === 'pending' && ($s['peer_accepted_at'] ?? null) === null
+            fn($s) => ($s['status'] ?? '') === 'pending' && ($s['accepted_at'] ?? null) === null
         ));
 
 
@@ -770,12 +770,12 @@ final class EmployeeController
         $savedSwap = $this->swapRequests->save([
             'store_id'           => (int) $myShift['store_id'],
             'requester_id'       => $userId,
-            'target_id'          => $targetId,
+            'target_user_id'     => $targetId,
             'requester_shift_id' => $myShiftId,
             'target_shift_id'    => $targetShiftId,
             'reason'             => $reason,
             'status'             => 'pending',
-            'peer_accepted_at'   => null,
+            'accepted_at'        => null,
         ]);
 
         $this->auditLogger->log($request, 'swap.created', 'shift_swap_request', (int) ($savedSwap['id'] ?? 0), [
@@ -790,15 +790,15 @@ final class EmployeeController
         $userId = (int) ($user['id'] ?? 0);
 
         $swap = $this->swapRequests->findById((int) $request->param('id'));
-        if ($swap === null || (int) $swap['target_id'] !== $userId) {
+        if ($swap === null || (int) $swap['target_user_id'] !== $userId) {
             throw new ForbiddenException('Demande introuvable.');
         }
-        if (($swap['status'] ?? '') !== 'pending' || ($swap['peer_accepted_at'] ?? null) !== null) {
+        if (($swap['status'] ?? '') !== 'pending' || ($swap['accepted_at'] ?? null) !== null) {
             return Response::redirect($this->base() . '/employee/swaps?error=invalid_state');
         }
 
         $newSwap = array_merge($swap, [
-            'peer_accepted_at' => date('Y-m-d H:i:s'),
+            'accepted_at' => date('Y-m-d H:i:s'),
         ]);
         $this->swapRequests->save($newSwap);
 
@@ -814,10 +814,10 @@ final class EmployeeController
         $userId = (int) ($user['id'] ?? 0);
 
         $swap = $this->swapRequests->findById((int) $request->param('id'));
-        if ($swap === null || (int) $swap['target_id'] !== $userId) {
+        if ($swap === null || (int) $swap['target_user_id'] !== $userId) {
             throw new ForbiddenException('Demande introuvable.');
         }
-        if (($swap['status'] ?? '') !== 'pending' || ($swap['peer_accepted_at'] ?? null) !== null) {
+        if (($swap['status'] ?? '') !== 'pending' || ($swap['accepted_at'] ?? null) !== null) {
             return Response::redirect($this->base() . '/employee/swaps?error=invalid_state');
         }
 

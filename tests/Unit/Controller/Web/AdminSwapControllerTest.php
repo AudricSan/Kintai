@@ -113,7 +113,8 @@ final class AdminSwapControllerTest extends TestCase
         $this->assertSame(2, $savedShifts[0]['user_id']);
         $this->assertSame(1, $savedShifts[1]['user_id']);
         $this->assertSame('accepted', $capturedSwap['status']);
-        $this->assertNotNull($capturedSwap['peer_accepted_at']);
+        $this->assertSame(2, $capturedSwap['target_user_id']);
+        $this->assertNotNull($capturedSwap['accepted_at']);
     }
 
     public function testStoreSwapForbiddenWhenShiftsBelongToDifferentStores(): void
@@ -213,7 +214,7 @@ final class AdminSwapControllerTest extends TestCase
         $req->setAttribute('managed_store_ids', null);
 
         $this->swapRequests->method('findAll')->willReturn([
-            ['id' => 1, 'store_id' => 5, 'requester_id' => 1, 'target_id' => 2, 'requester_shift_id' => 10, 'target_shift_id' => 20, 'status' => 'pending'],
+            ['id' => 1, 'store_id' => 5, 'requester_id' => 1, 'target_user_id' => 2, 'requester_shift_id' => 10, 'target_shift_id' => 20, 'status' => 'pending'],
         ]);
         $this->users->method('findAll')->willReturn([]);
         $this->shifts->expects($this->exactly(2))->method('findById')->willReturnMap([
@@ -234,7 +235,7 @@ final class AdminSwapControllerTest extends TestCase
 
         $swap = [
             'id' => 77, 'store_id' => 5, 'status' => 'accepted',
-            'requester_id' => 1, 'target_id' => 2,
+            'requester_id' => 1, 'target_user_id' => 2,
             'requester_shift_id' => 10, 'target_shift_id' => 20,
         ];
         $this->swapRequests->method('findById')->with(77)->willReturn($swap);
@@ -272,7 +273,7 @@ final class AdminSwapControllerTest extends TestCase
 
         $swap = [
             'id' => 5, 'store_id' => 5, 'status' => 'pending',
-            'requester_id' => 1, 'target_id' => 2,
+            'requester_id' => 1, 'target_user_id' => 2,
             'requester_shift_id' => 10, 'target_shift_id' => 20,
         ];
         $this->swapRequests->method('findById')->with(5)->willReturn($swap);

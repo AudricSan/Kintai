@@ -17,10 +17,18 @@ Toutes les évolutions notables de Kintai sont documentées ici.
 - `docs/security-overview.md` : généralisation de « droit du travail japonais » en « droit du travail local », cohérent avec le nouveau positionnement par secteur.
 - `docs/i18n/database.fr.md` et `docs/i18n/database.ja.md` remis en phase avec la source anglaise (version d'Eloquent, note sur le code mort des repositories `Language`/`Translation`).
 
+### Ajouté
+- Branchement du job cron `backup`, jusqu'ici orphelin : `CronRunner`, `AutoValidateJob` et `BackupJob` étaient entièrement codés mais jamais enregistrés ni accessibles par une route. `AppServiceProvider` construit désormais un singleton `CronRunner` avec les deux jobs enregistrés, et une nouvelle route `GET /cron/run/{job}` (protégée par un token par job via la table `cron_tokens`, `Authorization: Bearer` ou `?token=`) les expose. `scripts/create-cron-token.php` génère les tokens nécessaires à cet endpoint.
+
 ### Corrigé
 - L'installeur ne plante plus avec « Database file at path [...] does not exist. » quand `storage/app/database.sqlite` est absent (par exemple après une installation précédente incomplète ou supprimée) — le fichier et son dossier sont désormais créés automatiquement avant le démarrage du framework.
 - `docs/releasing.md` (et ses traductions FR/JA) pointait encore vers `/admin/backup` pour l'interface de mise à jour automatique ; corrigé vers `/admin/update`, conformément à la séparation des onglets de paramètres.
 - **Sécurité :** les routes `/api/v1/*` des bundles Messaging et DailyReport étaient enregistrées sans `ApiAuthMiddleware`, contrairement à tous les autres endpoints `/api/v1/*` — elles étaient accessibles sans token Bearer alors que leurs contrôleurs supposaient un `auth_user` authentifié. Le `routes.php` des deux bundles enveloppe désormais leurs routes API dans le même groupe protégé que l'API du Core.
+- **Critique :** les échanges de shifts étaient entièrement cassés — créer, accepter ou refuser un échange lisait/écrivait les colonnes `target_id`/`peer_accepted_at`, qui n'existent pas dans la table `shift_swap_requests` (vraies colonnes : `target_user_id`/`accepted_at`). Toute tentative de création d'échange déclenchait une erreur SQL, et les statistiques d'échange sous-comptaient silencieusement le côté cible. Corrigé dans `EmployeeController`, `AdminSwapController`, les vues d'échange, le tableau de bord et `StoreStatsService`.
+- `DELETE /api/v1/notifications/{id}` marquait la notification comme lue au lieu de la supprimer. `NotificationRepositoryInterface` a gagné une méthode `delete()` et l'endpoint supprime désormais réellement la notification.
+- `scripts/db-migrate.php --dry-run` était documenté mais jamais implémenté — le script ne lisait aucun argument CLI. Il liste désormais les migrations en attente sans les appliquer.
+- `scripts/docker-setup.php` hachait le mot de passe admin avec un coût bcrypt différent de `install.php`/`provision.php` ; aligné sur le coût 12.
+- `.env.example` omettait plusieurs variables réellement lues via `env()` ailleurs (`DB_PREFIX`, `DB_CHARSET`, `DB_COLLATION`, `DB_DRIVER`, `SESSION_NAME`, `SESSION_LIFETIME`, `SESSION_SECURE`, `SESSION_HTTPONLY`, `SESSION_SAMESITE`, `APP_NAME`, `APP_VERSION`) ; ajoutées avec leurs vraies valeurs par défaut.
 
 ## [0.0.3-beta] - 2026-07-08
 
