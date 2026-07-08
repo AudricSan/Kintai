@@ -98,7 +98,7 @@ $ico              = fn(string $k): string => '<span class="sidebar-link__icon">'
                     <li><a href="<?= route_url('admin.activity') ?>" class="sidebar-link<?= str_starts_with($path, '/admin/activity') ? ' active' : '' ?>"><?= $ico('history') ?><?= __('activity_log') ?></a></li>
                     <?php endif; ?>
                     <?php if ($isOwner): ?>
-                    <li><a href="<?= route_url('admin.owner_settings') ?>" class="sidebar-link<?= (str_starts_with($path, '/admin/owner-settings') || str_starts_with($path, '/admin/feedbacks') || str_starts_with($path, '/admin/backup') || str_starts_with($path, '/admin/languages')) ? ' active' : '' ?>"><?= $ico('gear') ?><?= __('settings') ?></a></li>
+                    <li><a href="<?= route_url('admin.owner_settings') ?>" class="sidebar-link<?= (str_starts_with($path, '/admin/owner-settings') || str_starts_with($path, '/admin/feedbacks') || str_starts_with($path, '/admin/backup') || str_starts_with($path, '/admin/update') || str_starts_with($path, '/admin/languages')) ? ' active' : '' ?>"><?= $ico('gear') ?><?= __('settings') ?></a></li>
                     <?php endif; ?>
                 <?php break; endswitch; endforeach; ?>
 

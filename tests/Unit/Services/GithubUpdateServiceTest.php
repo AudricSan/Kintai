@@ -25,6 +25,7 @@ final class GithubUpdateServiceTest extends TestCase
         mkdir($this->tmpDir . '/storage/backups', 0775, true);
         mkdir($this->tmpDir . '/storage/uploads', 0775, true);
         mkdir($this->tmpDir . '/vendor', 0775, true);
+        mkdir($this->tmpDir . '/config', 0775, true);
         file_put_contents($this->tmpDir . '/vendor/should-stay.txt', 'do not touch');
 
         putenv('KINTAI_STORAGE_PATH=' . $this->tmpDir . '/storage');
@@ -39,7 +40,7 @@ final class GithubUpdateServiceTest extends TestCase
         $this->setPrivate($this->migrator, 'capsule', $capsule);
         $this->setPrivate($this->migrator, 'migrationsPath', $this->tmpDir . '/no-migrations');
 
-        $this->updateService = new UpdateService();
+        $this->updateService = new UpdateService($this->tmpDir);
         $this->setPrivate($this->updateService, 'versionFile', $this->tmpDir . '/storage/app/version.json');
 
         $this->backup = new BackupService($capsule);
@@ -74,6 +75,15 @@ final class GithubUpdateServiceTest extends TestCase
         rmdir($dir);
     }
 
+    /** La version courante est lue depuis config/app.php (voir UpdateService::getCurrentVersion). */
+    private function writeAppVersion(string $version): void
+    {
+        file_put_contents(
+            $this->tmpDir . '/config/app.php',
+            '<?php return [\'version\' => ' . var_export($version, true) . '];'
+        );
+    }
+
     /** Construit un zip GitHub-style : un seul dossier racine contenant $files. */
     private function makeReleaseZip(string $destZip, array $files): void
     {
@@ -89,7 +99,7 @@ final class GithubUpdateServiceTest extends TestCase
     private function makeService(string $tag, array $files, ?string $currentVersion = '0.0.0'): GithubUpdateService
     {
         if ($currentVersion !== null) {
-            $this->updateService->setVersion($currentVersion);
+            $this->writeAppVersion($currentVersion);
         }
 
         $releaseFetcher = fn(string $repo, string $token): ?array => [
@@ -181,16 +191,20 @@ final class GithubUpdateServiceTest extends TestCase
 
     public function testApplyUpdateCopiesNewFilesAndBumpsVersion(): void
     {
+        // Comme en conditions réelles, la release embarque un config/app.php
+        // dont la version par défaut a été bumpée : c'est ce fichier, une fois
+        // synchronisé, qui fait foi pour UpdateService::getCurrentVersion().
         $service = $this->makeService('v1.0.0', [
             'README.md'    => 'v1 readme',
             'src/Foo.php'  => '<?php // foo v1',
+            'config/app.php' => "<?php return ['version' => '1.0.0'];",
         ]);
 
         $result = $service->applyUpdate();
 
         $this->assertTrue($result['ok']);
         $this->assertSame('1.0.0', $result['version']);
-        $this->assertSame(2, $result['files_copied']);
+        $this->assertSame(3, $result['files_copied']);
         $this->assertSame(0, $result['files_deleted']);
         $this->assertSame('1.0.0', $this->updateService->getCurrentVersion());
         $this->assertFileExists($this->tmpDir . '/README.md');
