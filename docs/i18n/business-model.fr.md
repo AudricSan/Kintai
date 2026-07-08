@@ -19,11 +19,14 @@ Kintai en tant que **SaaS géré** : le même code open source, exploité et mai
 - Contrats de support prioritaire pour les clients Enterprise auto-hébergés
 
 ### 3. Tarification SaaS par paliers
-La tarification porte sur la capacité d'hébergement et le niveau de support, pas sur l'accès aux fonctionnalités — chaque palier exécute le même code open source :
-- **Gratuit :** planning basique pour un seul magasin
-- **Pro :** limites plus élevées, abordable pour des équipes en croissance
-- **Business :** plusieurs magasins, support prioritaire
-- **Enterprise :** limites sur mesure, support dédié, orchestration personnalisée
+Chaque palier exécute le même code open source — les clients auto-hébergés peuvent activer n'importe quel bundle ou fonctionnalité gratuitement en modifiant `config/bundles.php`. Sur le SaaS géré, le palier détermine ce que nous activons et supportons par défaut pour ce client, pas ce qui existe dans le code :
+
+| Palier | Prix | Limites principales |
+| --- | --- | --- |
+| Community | Gratuit | Auto-hébergement, fonctionnalités de base |
+| Pro | XX €/mois | Fonctionnalités avancées, sauvegardes, support standard |
+| Business | XX €/mois | Multi-utilisateurs, SSO, API avancée, support prioritaire |
+| Enterprise | Sur devis | Déploiement dédié, SLA, support premium, fonctionnalités sur mesure |
 
 ## 🤝 Avantage concurrentiel
 - **Efficacité des coûts :** une stack PHP légère maintient des coûts d'hébergement — et des prix — bas.
@@ -32,5 +35,5 @@ La tarification porte sur la capacité d'hébergement et le niveau de support, p
 
 ## 📈 Stratégie de croissance
 - **Inbound :** visibilité open source sur GitHub, contenu technique et démo publique.
-- **Vente directe :** prospection ciblée des franchises et réseaux de magasins japonais souhaitant abandonner les tableurs.
+- **Vente directe :** prospection ciblée des réseaux multi-sites (retail, hôtellerie-restauration et autres secteurs à shifts) souhaitant abandonner les tableurs.
 - **Écosystème de partenaires :** des tiers peuvent proposer des services « d'implémentation Kintai » au-dessus du même socle open source.

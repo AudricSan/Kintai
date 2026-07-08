@@ -25,4 +25,4 @@
 
 ## ⚖ Compliance
 - **GDPR Readiness:** Data portability, right to be forgotten, and physical isolation simplify GDPR compliance for the SaaS.
-- **Japanese Labor Law:** Architecture allows for the strict tracking of hours and breaks as required by local regulations.
+- **Local Labor Law:** Architecture allows for the strict tracking of hours and breaks as required by local regulations.
