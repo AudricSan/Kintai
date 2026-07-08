@@ -4,6 +4,23 @@
 
 Toutes les évolutions notables de Kintai sont documentées ici.
 
+## [Unreleased]
+
+### Modifié
+- Déplacement de tous les documents traduits (`*.fr.md`, `*.ja.md`) vers `docs/i18n/`, y compris ceux qui vivaient auparavant à côté de leur source anglaise dans `docs/`. `docs/security.md` a été renommé en `docs/security-overview.md` pour éviter un conflit de nom de fichier insensible à la casse avec les traductions de `SECURITY.md` à la racine. `scripts/check-translations.php` cherche désormais toujours les traductions sous `docs/i18n/`, quel que soit le dossier du document source.
+- `docs/database.md` mis à jour pour refléter la vraie version d'`illuminate/database` (^13.19, et non ^11.0) et clarifie que les interfaces de repository `Language`/`Translation` sont désormais liées à des implémentations basées sur des fichiers JSON, et non Eloquent — leurs équivalents `Database*Repository` sont du code mort inutilisé datant d'avant la migration i18n vers JSON.
+- Séparation de l'onglet de paramètres combiné « Sauvegardes & Mises à jour » en deux onglets distincts, **Sauvegardes** et **Mises à jour**. L'interface de mise à jour automatique GitHub (version, migrations en attente, mise à jour en un clic avec suivi de progression) vit désormais sur sa propre page `/admin/update`, tandis que `/admin/backup` ne gère plus que la création/restauration/suppression. Les routes sous-jacentes `POST /admin/backup/update(/stream)` et `/migrate` ont été déplacées vers `/admin/update/apply`, `/admin/update/stream` et `/admin/update/migrate`.
+- `UpdateService::getCurrentVersion()` lit désormais la version installée directement depuis `config/app.php` (mise à jour à chaque release et synchronisée par le processus d'auto-mise à jour) plutôt que de suivre un champ `version` séparé dans `storage/app/version.json`. Ce fichier continue d'enregistrer `installed_at`/`updated_at`/`duration_seconds`, mais n'est plus la source de vérité pour la version de l'application.
+- `docs/vision.md` retravaillé : le marché cible est désormais présenté par secteur (retail, hôtellerie-restauration et autres verticales à shifts multi-sites) plutôt que par un découpage Japon-prioritaire / PME mondiales ; slogan final mis à jour.
+- `docs/business-model.md` retravaillé : la liste à puces des paliers de prix devient un tableau Community / Pro / Business / Enterprise, avec une clarification : les paliers payants déterminent ce qui est activé et supporté par défaut sur le SaaS géré — ils ne verrouillent pas ce qui existe dans le code open source ; la prospection commerciale ne cible plus spécifiquement le Japon.
+- `docs/architecture.md` : suppression de la ligne Webhooks « (prévu) » (plus sur la feuille de route) ; précision que les rapports RH (embauche/démission/salaire) et les photos de magasin vivent aujourd'hui dans le Core plutôt qu'en bundles, identifiés comme candidats à une future migration en bundles.
+- `docs/security-overview.md` : généralisation de « droit du travail japonais » en « droit du travail local », cohérent avec le nouveau positionnement par secteur.
+- `docs/i18n/database.fr.md` et `docs/i18n/database.ja.md` remis en phase avec la source anglaise (version d'Eloquent, note sur le code mort des repositories `Language`/`Translation`).
+
+### Corrigé
+- L'installeur ne plante plus avec « Database file at path [...] does not exist. » quand `storage/app/database.sqlite` est absent (par exemple après une installation précédente incomplète ou supprimée) — le fichier et son dossier sont désormais créés automatiquement avant le démarrage du framework.
+- `docs/releasing.md` (et ses traductions FR/JA) pointait encore vers `/admin/backup` pour l'interface de mise à jour automatique ; corrigé vers `/admin/update`, conformément à la séparation des onglets de paramètres.
+
 ## [0.0.3-beta] - 2026-07-08
 
 ### Ajouté

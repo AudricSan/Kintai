@@ -2,7 +2,7 @@
 
 🌐 **English** · [Français](i18n/releasing.fr.md) · [日本語](i18n/releasing.ja.md)
 
-This document describes how to publish a new Kintai version on GitHub so that deployed instances can detect and apply it automatically from `/admin/backup` (see `GithubUpdateService`).
+This document describes how to publish a new Kintai version on GitHub so that deployed instances can detect and apply it automatically from `/admin/update` (see `GithubUpdateService`).
 
 ## How it works
 
@@ -62,7 +62,7 @@ Consequences:
 
 ## After publishing
 
-- On each instance, the owner sees "Update available" on `/admin/backup` and can click "Update now".
+- On each instance, the owner sees "Update available" on `/admin/update` and can click "Update now".
 - Before applying anything, the instance automatically creates a database + uploads backup and a code snapshot in `storage/backups/`.
 - If `composer.lock` changed, the instance attempts `composer install` automatically (best-effort); on failure or unavailability, a warning prompts a manual run over SSH.
 

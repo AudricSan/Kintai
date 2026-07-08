@@ -3,7 +3,7 @@
 🌐 [English](../database.md) · [Français](database.fr.md) · **日本語**
 
 ## 📊 概要
-Kintaiは唯一のデータアクセス層として **Eloquent ORM**（`illuminate/database` ^11.0）を使用しています。SQLite（デフォルト、設定不要）とMySQL/MariaDB（本番規模）に対応 — `config/database.php` でドライバーを選択する、ドライバー非依存の設計です。
+Kintaiは唯一のデータアクセス層として **Eloquent ORM**（`illuminate/database` ^13.19）を使用しています。SQLite（デフォルト、設定不要）とMySQL/MariaDB（本番規模）に対応 — `config/database.php` でドライバーを選択する、ドライバー非依存の設計です。
 
 ## 🛤 Eloquent ORM
 
@@ -19,12 +19,12 @@ Kintaiは唯一のデータアクセス層として **Eloquent ORM**（`illumina
 - **日報・人事：** `DailyReport`、`HiringReport`、`ResignationReport`、`SalaryReport`、`Feedback`
 - **コミュニケーション：** `MessageThread`、`ThreadMessage`、`ThreadParticipant`、`Notification`
 - **システム・設定：** `ActivityEntry`、`AppSetting`、`ApiToken`、`CronToken`、`IcalToken`、`PasswordResetToken`、`ImportAlias`、`StoreFeature`、`StoreImportSetting`、`StorePhotoImage`、`StorePhotoSubmission`、`UserDashboardPref`、`UserNavPref`
-- **i18n：** `Language`、`Translation`
+- **i18n：** `Language`、`Translation` — レガシーモデル。ランタイムでは読み込まれず、翻訳は `JsonLanguageRepository`/`JsonTranslationRepository` 経由で `lang/*.json` から提供されます。既知の技術的負債であり、削除が予定されています。
 
 常に最新かつ正確な一覧は `ls src/Domain/Eloquent/` を実行して確認してください。
 
 ### リポジトリパターン
-`src/Core/Repositories/` にある30個のリポジトリがEloquentモデルをラップします。コントローラーやサービスがEloquentモデルを直接扱うことは**禁止**されており、必ず `RepositoryServiceProvider` にバインドされた注入済みのリポジトリインターフェース経由で行います。
+`src/Core/Repositories/` にある30個のリポジトリインターフェースが、`RepositoryServiceProvider` で実装にバインドされています。コントローラーやサービスがEloquentモデルを直接扱うことは**禁止**されており、必ず注入済みのリポジトリインターフェース経由で行います。ほとんどの実装はEloquentモデルをラップしますが、`Language`/`Translation` のインターフェースは例外で、代わりにJSONファイルベースのリポジトリにバインドされています（対応する `Database*Repository` はディスク上に残っていますが、JSON移行以前の未使用のデッドコードであり、今後のクリーンアップ対象です）。
 
 ## 🔄 マイグレーションシステム
 PHPベースで統一されており、1つのマイグレーションファイルでSQLiteとMySQLの両方をカバーします。生SQLやドライバー別の重複はありません。
