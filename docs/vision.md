@@ -1,6 +1,6 @@
 # Product Vision: Kintai
 
-🌐 **English** · [Français](vision.fr.md) · [日本語](vision.ja.md)
+🌐 **English** · [Français](i18n/vision.fr.md) · [日本語](i18n/vision.ja.md)
 
 ## 🎯 The Mission
 Kintai's mission is to liberate small to medium-sized retail and hospitality businesses from the friction of archaic shift management. We provide a bridge between the "printed Excel sheet" and high-end enterprise resource planning (ERP) systems, offering a solution that is as simple as it is powerful.

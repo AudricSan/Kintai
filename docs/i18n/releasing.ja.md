@@ -1,6 +1,6 @@
 # リリースの作成手順
 
-🌐 [English](releasing.md) · [Français](releasing.fr.md) · **日本語**
+🌐 [English](../releasing.md) · [Français](releasing.fr.md) · **日本語**
 
 このドキュメントは、デプロイ済みの各インスタンスが `/admin/backup`（`GithubUpdateService` を参照）から自動的に検知・適用できるように、Kintaiの新バージョンをGitHub上で公開する手順を説明します。
 

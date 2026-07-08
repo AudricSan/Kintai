@@ -1,6 +1,6 @@
 # マルチテナンシー戦略：Kintai
 
-🌐 [English](multi-tenancy.md) · [Français](multi-tenancy.fr.md) · **日本語**
+🌐 [English](../multi-tenancy.md) · [Français](multi-tenancy.fr.md) · **日本語**
 
 ## 🛡 基本原則
 Kintaiのマルチテナンシーは**物理的分離**の原則に基づいています。共有インフラの密度よりも、セキュリティとデータの可搬性を優先しています。

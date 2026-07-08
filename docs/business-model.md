@@ -1,6 +1,6 @@
 # Business Model: Kintai
 
-🌐 **English** · [Français](business-model.fr.md) · [日本語](business-model.ja.md)
+🌐 **English** · [Français](i18n/business-model.fr.md) · [日本語](i18n/business-model.ja.md)
 
 ## 💰 Monetization Strategy: Open Core, Paid Service
 

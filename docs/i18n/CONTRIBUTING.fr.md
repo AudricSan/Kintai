@@ -1,6 +1,6 @@
 # Contribuer à Kintai
 
-🌐 [English](CONTRIBUTING.md) · **Français** · [日本語](CONTRIBUTING.ja.md)
+🌐 [English](../../CONTRIBUTING.md) · **Français** · [日本語](CONTRIBUTING.ja.md)
 
 Merci de votre intérêt pour ce projet !
 
@@ -21,7 +21,7 @@ Ouvrez une issue avec le template **Bug Report**. Incluez :
 
 ### Proposer une fonctionnalité
 
-Ouvrez une issue avec le template **Feature Request**. Expliquez le cas d'usage et en quoi elle s'inscrit dans le périmètre du projet — voir [docs/vision.fr.md](docs/vision.fr.md) pour la direction produit.
+Ouvrez une issue avec le template **Feature Request**. Expliquez le cas d'usage et en quoi elle s'inscrit dans le périmètre du projet — voir [docs/i18n/vision.fr.md](vision.fr.md) pour la direction produit.
 
 ### Soumettre une Pull Request
 
@@ -59,6 +59,6 @@ Le README, le CHANGELOG, CONTRIBUTING, SECURITY et tout ce qui se trouve sous `d
 
 ## Par où commencer
 
-- [docs/architecture.fr.md](docs/architecture.fr.md) — comment le framework est construit
-- [docs/database.fr.md](docs/database.fr.md) — modèles, repositories, migrations
+- [docs/i18n/architecture.fr.md](architecture.fr.md) — comment le framework est construit
+- [docs/i18n/database.fr.md](database.fr.md) — modèles, repositories, migrations
 - [CHANGELOG.fr.md](CHANGELOG.fr.md) — ce qui a été fait récemment

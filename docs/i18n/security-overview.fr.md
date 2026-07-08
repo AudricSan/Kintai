@@ -1,6 +1,6 @@
 # Vue d'ensemble sécurité : Kintai
 
-🌐 [English](security.md) · **Français** · [日本語](security.ja.md)
+🌐 [English](../security-overview.md) · **Français** · [日本語](security-overview.ja.md)
 
 ## 🏗 Sécurité par l'architecture
 - **Isolation des tenants :** le modèle « une instance par propriétaire » empêche par conception les fuites de données inter-tenants.

@@ -1,6 +1,6 @@
 # 🕒 Kintai
 
-🌐 [English](README.md) · **Français** · [日本語](README.ja.md)
+🌐 [English](../../README.md) · **Français** · [日本語](README.ja.md)
 
 **Gestion open-source des plannings, du pointage et des ressources humaines pour les entreprises multi-magasins.**
 
@@ -33,7 +33,7 @@ Kintai est le pont entre le tableur Excel et l'ERP d'entreprise : planning, poin
 - **Vous restez propriétaire de vos données.** Pas de boîte noire multi-tenant : chaque déploiement est une instance dédiée avec sa propre base de données. Passer de la démo hébergée à votre propre serveur, c'est juste un dump de base et un `git clone` — aucun verrouillage propriétaire.
 - **Pensé pour le multi-magasin réel.** Fuseaux horaires, devises, règles de pause et seuils de sous-effectif par magasin, fonctionnalités activables individuellement — pas un outil mono-site étiré pour l'occasion.
 - **Prêt pour le Japon, utilisable partout.** Export PDF compatible CJK, ordre des noms `姓 名`, affichage JPY/EUR/USD, traductions FR/EN/JA incluses — pensé pour les usages du retail japonais mais utilisable ailleurs.
-- **Aucune taxe framework.** Un cœur PHP 8.3 sur mesure d'environ 600 fichiers (pas de Laravel, pas de Symfony), avec Eloquent comme seul emprunt. Tourne aussi bien sur un VPS à 5 € que sous Docker — voir [docs/architecture.fr.md](docs/architecture.fr.md).
+- **Aucune taxe framework.** Un cœur PHP 8.3 sur mesure d'environ 600 fichiers (pas de Laravel, pas de Symfony), avec Eloquent comme seul emprunt. Tourne aussi bien sur un VPS à 5 € que sous Docker — voir [docs/i18n/architecture.fr.md](architecture.fr.md).
 - **Réellement testé.** 589 tests PHPUnit couvrant le cœur, les repositories et les contrôleurs, exécutés à chaque push via GitHub Actions.
 
 ---
@@ -54,7 +54,7 @@ Kintai est le pont entre le tableur Excel et l'ERP d'entreprise : planning, poin
 
 **Exploitation** — Mise à jour en un clic depuis les Releases GitHub (avec barre de progression et filet de sécurité backup/rollback automatique), sauvegarde/restauration SQLite/MySQL, endpoints cron protégés par token pour les planificateurs externes.
 
-Détail complet dans [docs/architecture.fr.md](docs/architecture.fr.md) et [docs/database.fr.md](docs/database.fr.md).
+Détail complet dans [docs/i18n/architecture.fr.md](architecture.fr.md) et [docs/i18n/database.fr.md](database.fr.md).
 
 ---
 
@@ -121,7 +121,7 @@ public/assets/           → CSS/JS modulaire, aucun build
 database/migrations/php/ → migrations Eloquent, SQLite + MySQL depuis un seul schéma
 ```
 
-Pour aller plus loin : [docs/architecture.fr.md](docs/architecture.fr.md) · [docs/database.fr.md](docs/database.fr.md) · [docs/multi-tenancy.fr.md](docs/multi-tenancy.fr.md)
+Pour aller plus loin : [docs/i18n/architecture.fr.md](architecture.fr.md) · [docs/i18n/database.fr.md](database.fr.md) · [docs/i18n/multi-tenancy.fr.md](multi-tenancy.fr.md)
 
 ---
 

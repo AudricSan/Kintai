@@ -1,6 +1,6 @@
 # Cutting a release
 
-🌐 **English** · [Français](releasing.fr.md) · [日本語](releasing.ja.md)
+🌐 **English** · [Français](i18n/releasing.fr.md) · [日本語](i18n/releasing.ja.md)
 
 This document describes how to publish a new Kintai version on GitHub so that deployed instances can detect and apply it automatically from `/admin/backup` (see `GithubUpdateService`).
 

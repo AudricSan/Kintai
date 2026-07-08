@@ -1,6 +1,6 @@
 # セキュリティ概要：Kintai
 
-🌐 [English](security.md) · [Français](security.fr.md) · **日本語**
+🌐 [English](../security-overview.md) · [Français](security-overview.fr.md) · **日本語**
 
 ## 🏗 アーキテクチャによるセキュリティ
 - **テナント分離：** 「オーナーごとに1インスタンス」というモデルにより、テナント間のデータ漏洩を設計段階で防止します。

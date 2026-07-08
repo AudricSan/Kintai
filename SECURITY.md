@@ -1,6 +1,6 @@
 # Security Policy
 
-🌐 **English** · [Français](SECURITY.fr.md) · [日本語](SECURITY.ja.md)
+🌐 **English** · [Français](docs/i18n/SECURITY.fr.md) · [日本語](docs/i18n/SECURITY.ja.md)
 
 ## Supported Versions
 

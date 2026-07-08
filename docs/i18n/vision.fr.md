@@ -1,6 +1,6 @@
 # Vision produit : Kintai
 
-🌐 [English](vision.md) · **Français** · [日本語](vision.ja.md)
+🌐 [English](../vision.md) · **Français** · [日本語](vision.ja.md)
 
 ## 🎯 La mission
 La mission de Kintai est de libérer les entreprises de retail et d'hôtellerie-restauration de petite et moyenne taille des contraintes d'une gestion des shifts archaïque. Nous offrons un pont entre la « feuille Excel imprimée » et les systèmes ERP haut de gamme, avec une solution aussi simple que puissante.
