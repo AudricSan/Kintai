@@ -1,6 +1,6 @@
 <?php
 /**
- * Bandeau d'onglets partagé par les pages "Paramètres" (identité, feedbacks, sauvegarde, langues).
+ * Bandeau d'onglets partagé par les pages "Paramètres" (identité, feedbacks, sauvegarde, mises à jour, langues).
  * @var string|null $BASE_URL
  */
 
@@ -13,6 +13,7 @@ $_settingsTabs = [
     ['label' => __('settings'),  'url' => route_url('admin.owner_settings'), 'match' => '/admin/owner-settings'],
     ['label' => __('feedbacks'), 'url' => route_url('admin.feedbacks'),      'match' => '/admin/feedbacks'],
     ['label' => __('backup'),    'url' => route_url('admin.backup'),        'match' => '/admin/backup'],
+    ['label' => __('update'),    'url' => route_url('admin.update'),        'match' => '/admin/update'],
     ['label' => __('languages'), 'url' => route_url('admin.languages'),     'match' => '/admin/languages'],
 ];
 ?>

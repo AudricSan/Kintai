@@ -33,17 +33,29 @@ final class BackupController
         $flash = $request->query('success', '');
 
         return Response::html($this->view->render('system.backup', [
-            'title'                    => 'Sauvegardes & Mises à jour',
-            'backups'                  => $backups,
-            'currentVersion'           => $this->update->getCurrentVersion(),
-            'updateInfo'               => $this->githubUpdate->checkLatestRelease(),
-            'pendingMigs'              => $this->update->getPendingMigrations(),
-            'lastUpdateDurationSeconds' => $this->update->getLastUpdateDuration(),
-            'flash'                    => $flash,
+            'title'   => 'Sauvegardes',
+            'backups' => $backups,
+            'flash'   => $flash,
         ], 'layout.app'));
     }
 
-    /** POST /admin/backup/update — applique la dernière release GitHub disponible. */
+    public function updatePage(Request $request): Response
+    {
+        $this->requireOwner($request);
+
+        $flash = $request->query('success', '');
+
+        return Response::html($this->view->render('system.update', [
+            'title'                     => 'Mises à jour',
+            'currentVersion'            => $this->update->getCurrentVersion(),
+            'updateInfo'                => $this->githubUpdate->checkLatestRelease(),
+            'pendingMigs'               => $this->update->getPendingMigrations(),
+            'lastUpdateDurationSeconds' => $this->update->getLastUpdateDuration(),
+            'flash'                     => $flash,
+        ], 'layout.app'));
+    }
+
+    /** POST /admin/update/apply — applique la dernière release GitHub disponible. */
     public function update(Request $request): Response
     {
         $this->requireOwner($request);
@@ -51,11 +63,11 @@ final class BackupController
         try {
             $result = $this->githubUpdate->applyUpdate();
         } catch (\Throwable $e) {
-            return Response::redirect('/admin/backup?success=error_' . urlencode($e->getMessage()));
+            return Response::redirect('/admin/update?success=error_' . urlencode($e->getMessage()));
         }
 
         if (!$result['ok']) {
-            return Response::redirect('/admin/backup?success=error_' . urlencode((string) $result['error']));
+            return Response::redirect('/admin/update?success=error_' . urlencode((string) $result['error']));
         }
 
         $summary = sprintf(
@@ -67,11 +79,11 @@ final class BackupController
             $result['composer'],
         );
 
-        return Response::redirect('/admin/backup?success=' . urlencode($summary));
+        return Response::redirect('/admin/update?success=' . urlencode($summary));
     }
 
     /**
-     * POST /admin/backup/update/stream — applique la dernière release GitHub
+     * POST /admin/update/stream — applique la dernière release GitHub
      * disponible en streamant la progression (SSE). Même contrat que
      * MessageStreamController::stream() : ne retourne jamais réellement,
      * termine par exit(0).
@@ -169,10 +181,10 @@ final class BackupController
         try {
             $count = $this->migrator->run();
             $request->setAttribute('_log_extra', ['migrations_applied' => $count]);
-            return Response::redirect('/admin/backup?success=migrated');
+            return Response::redirect('/admin/update?success=migrated');
         } catch (\Throwable $e) {
             $request->setAttribute('_log_extra', ['migration_error' => $e->getMessage()]);
-            return Response::redirect('/admin/backup?success=error_' . urlencode($e->getMessage()));
+            return Response::redirect('/admin/update?success=error_' . urlencode($e->getMessage()));
         }
     }
 
