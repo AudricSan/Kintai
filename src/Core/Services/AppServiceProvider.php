@@ -104,6 +104,7 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(UpdateService::class),
             $c->make(BackupService::class),
             $c->make(MigrationRunner::class),
+            $c->make(AppSettingsService::class),
         ));
 
         $this->container->singleton(TranslationManagementService::class, fn(Container $c) => new TranslationManagementService(
