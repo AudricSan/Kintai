@@ -109,10 +109,7 @@ final class HomeController
         $saved = $this->dashboardPrefs->getEnabledWidgets((int) $user['id'], 'admin');
         $enabledWidgets = array_flip(array_values(
             $saved !== null
-                ? array_values(array_intersect(
-                    array_unique(array_merge($saved, self::ADMIN_WIDGETS)),
-                    self::ADMIN_WIDGETS
-                ))
+                ? array_intersect($saved, self::ADMIN_WIDGETS)
                 : self::ADMIN_WIDGETS
         ));
 
