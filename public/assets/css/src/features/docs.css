@@ -31,6 +31,25 @@
 .docs-card__btn { width: 100%; text-align: center; }
 .docs-card__unavailable { font-size: var(--text-xs-2); color: var(--color-text-muted); margin: 0; }
 
+/* ── Sélecteur de langue (docs/show) ──────────────── */
+.docs-wiki__lang-switch {
+    display: flex;
+    gap: .5rem;
+    margin-bottom: 1rem;
+}
+.docs-wiki__lang-link {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    padding: .3rem .6rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    font-size: var(--text-xs-2);
+    color: var(--color-text);
+    text-decoration: none;
+}
+.docs-wiki__lang-link:hover { background: var(--color-bg-subtle); }
+
 /* ── Consultation en ligne du wiki (docs/show) ────── */
 .docs-wiki {
     display: grid;
@@ -79,6 +98,10 @@
     background: var(--color-primary);
     color: #fff;
     font-weight: 600;
+}
+.docs-wiki__toc-link--unavailable {
+    color: var(--color-text-muted);
+    cursor: default;
 }
 
 .docs-wiki__content-card { min-width: 0; }

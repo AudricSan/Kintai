@@ -1,12 +1,16 @@
 <?php
-/** @var string      $lang         Langue courante ('fr'|'en'|'ja') */
-/** @var string      $page         Nom du fichier .md courant */
-/** @var array       $toc          [{file, title}] Table des matières de la langue */
-/** @var int|null    $currentIndex Index de $page dans $toc */
-/** @var string      $contentHtml  Contenu HTML déjà rendu (Parsedown) */
+/** @var string      $lang           Langue courante ('fr'|'en'|'ja') */
+/** @var string      $page           Slug de la page courante (sans extension) */
+/** @var array       $toc            [{label, items: [{slug, title, available}]}] */
+/** @var array       $flatItems      [{slug, title, available}] à plat, dans l'ordre du sommaire */
+/** @var int|null    $currentIndex   Index de $page dans $flatItems */
+/** @var string      $contentHtml    Contenu HTML déjà rendu (Parsedown) */
+/** @var array       $otherLanguages ['fr'|'en'|'ja' => bool] page courante disponible dans cette langue */
 
-$prev = ($currentIndex !== null && $currentIndex > 0) ? $toc[$currentIndex - 1] : null;
-$next = ($currentIndex !== null && $currentIndex < count($toc) - 1) ? $toc[$currentIndex + 1] : null;
+$prev = ($currentIndex !== null && $currentIndex > 0) ? $flatItems[$currentIndex - 1] : null;
+$next = ($currentIndex !== null && $currentIndex < count($flatItems) - 1) ? $flatItems[$currentIndex + 1] : null;
+
+$langFlags = ['fr' => '🇫🇷', 'en' => '🇬🇧', 'ja' => '🇯🇵'];
 ?>
 
 <div class="page-header">
@@ -16,19 +20,41 @@ $next = ($currentIndex !== null && $currentIndex < count($toc) - 1) ? $toc[$curr
     </p>
 </div>
 
+<?php if ($otherLanguages !== []): ?>
+<div class="docs-wiki__lang-switch">
+    <?php foreach ($otherLanguages as $l => $available): ?>
+        <?php if ($available): ?>
+            <a href="<?= route_url('docs.show', ['lang' => $l, 'page' => $page]) ?>" class="docs-wiki__lang-link">
+                <?= $langFlags[$l] ?? $l ?> <?= strtoupper($l) ?>
+            </a>
+        <?php endif; ?>
+    <?php endforeach; ?>
+</div>
+<?php endif; ?>
+
 <div class="docs-wiki">
     <nav class="docs-wiki__sidebar" aria-label="<?= htmlspecialchars(__('docs_toc_title')) ?>">
-        <h4 class="docs-wiki__toc-title"><?= __('docs_toc_title') ?></h4>
-        <ul class="docs-wiki__toc-list">
-            <?php foreach ($toc as $entry): ?>
-                <li>
-                    <a href="<?= route_url('docs.show', ['lang' => $lang, 'page' => $entry['file']]) ?>"
-                       class="docs-wiki__toc-link<?= $entry['file'] === $page ? ' docs-wiki__toc-link--active' : '' ?>">
-                        <?= htmlspecialchars($entry['title']) ?>
-                    </a>
-                </li>
-            <?php endforeach; ?>
-        </ul>
+        <?php foreach ($toc as $group): ?>
+            <?php if ($group['label'] !== null): ?>
+                <h4 class="docs-wiki__toc-title"><?= htmlspecialchars($group['label']) ?></h4>
+            <?php endif; ?>
+            <ul class="docs-wiki__toc-list">
+                <?php foreach ($group['items'] as $entry): ?>
+                    <li>
+                        <?php if ($entry['available']): ?>
+                            <a href="<?= route_url('docs.show', ['lang' => $lang, 'page' => $entry['slug']]) ?>"
+                               class="docs-wiki__toc-link<?= $entry['slug'] === $page ? ' docs-wiki__toc-link--active' : '' ?>">
+                                <?= htmlspecialchars($entry['title']) ?>
+                            </a>
+                        <?php else: ?>
+                            <span class="docs-wiki__toc-link docs-wiki__toc-link--unavailable">
+                                <?= htmlspecialchars($entry['title']) ?>
+                            </span>
+                        <?php endif; ?>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endforeach; ?>
     </nav>
 
     <div class="card docs-wiki__content-card">
@@ -38,7 +64,7 @@ $next = ($currentIndex !== null && $currentIndex < count($toc) - 1) ? $toc[$curr
 
         <div class="docs-wiki__pager">
             <?php if ($prev): ?>
-                <a href="<?= route_url('docs.show', ['lang' => $lang, 'page' => $prev['file']]) ?>" class="btn btn--ghost docs-wiki__pager-link docs-wiki__pager-link--prev">
+                <a href="<?= route_url('docs.show', ['lang' => $lang, 'page' => $prev['slug']]) ?>" class="btn btn--ghost docs-wiki__pager-link docs-wiki__pager-link--prev">
                     &larr; <?= htmlspecialchars($prev['title']) ?>
                 </a>
             <?php else: ?>
@@ -46,7 +72,7 @@ $next = ($currentIndex !== null && $currentIndex < count($toc) - 1) ? $toc[$curr
             <?php endif; ?>
 
             <?php if ($next): ?>
-                <a href="<?= route_url('docs.show', ['lang' => $lang, 'page' => $next['file']]) ?>" class="btn btn--ghost docs-wiki__pager-link docs-wiki__pager-link--next">
+                <a href="<?= route_url('docs.show', ['lang' => $lang, 'page' => $next['slug']]) ?>" class="btn btn--ghost docs-wiki__pager-link docs-wiki__pager-link--next">
                     <?= htmlspecialchars($next['title']) ?> &rarr;
                 </a>
             <?php endif; ?>
