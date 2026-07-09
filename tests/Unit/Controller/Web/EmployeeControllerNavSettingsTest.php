@@ -6,7 +6,6 @@ namespace kintai\Tests\Unit\Controller\Web;
 
 use kintai\Core\Repositories\AvailabilityRepositoryInterface;
 use kintai\Core\Repositories\IcalTokenRepositoryInterface;
-use kintai\Core\Repositories\ShiftClaimRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
@@ -51,7 +50,6 @@ final class EmployeeControllerNavSettingsTest extends TestCase
             $this->createMock(TimeclockRepositoryInterface::class),
             $this->createMock(AvailabilityRepositoryInterface::class),
             $this->createMock(UserDashboardPrefsRepositoryInterface::class),
-            $this->createMock(ShiftClaimRepositoryInterface::class),
             new NotificationService($this->createMock(NotificationRepositoryInterface::class)),
             $this->navPrefs,
         );

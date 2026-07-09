@@ -220,6 +220,8 @@
     "bundle_none_found": "src/Bundles/ にバンドルが見つかりません。",
     "bundle_settings": "バンドル",
     "bundle_settings_hint": "インスタンス全体で機能のオン・オフを切り替えます。ここで無効化すると、店舗側の設定で有効化されていてもルートやメニューごと完全に消えます。以下の一覧はサーバー上に存在するバンドルから自動検出されたものです — 新しいバンドルをここに表示するための追加登録は不要です。",
+    "bundle_shift_claim": "オープンシフト（シフト応募）",
+    "bundle_shift_claim_desc": "オープンシフトの公開、従業員による応募、管理者による承認。",
     "bundle_store_photos": "店舗写真",
     "bundle_store_photos_desc": "店舗状態の週次写真の提出と管理。",
     "bundle_third_party": "サードパーティ",
