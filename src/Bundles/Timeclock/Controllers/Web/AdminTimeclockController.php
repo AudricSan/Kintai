@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace kintai\UI\Controller\Web\Scheduling;
+namespace kintai\Bundles\Timeclock\Controllers\Web;
 
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\StoreRepositoryInterface;
@@ -44,7 +44,7 @@ final class AdminTimeclockController
 
         usort($entries, fn($a, $b) => strcmp($a['clock_in_time'] ?? '', $b['clock_in_time'] ?? ''));
 
-        return Response::html($this->view->render('scheduling.timeclocks', [
+        return Response::html($this->view->render('timeclock::timeclocks', [
             'title'       => __('timeclocks'),
             'entries'     => $entries,
             'users_map'   => $usersMap,
@@ -107,6 +107,4 @@ final class AdminTimeclockController
         $date = $request->query('date', date('Y-m-d'));
         return Response::redirect($this->base() . '/admin/timeclocks?date=' . urlencode($date) . '&success=deleted');
     }
-
-
 }

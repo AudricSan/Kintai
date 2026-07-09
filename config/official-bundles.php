@@ -23,4 +23,5 @@ return [
     'salary-report',
     'hiring-report',
     'feedback',
+    'timeclock',
 ];
