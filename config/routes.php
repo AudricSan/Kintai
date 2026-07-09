@@ -26,7 +26,6 @@ use kintai\UI\Controller\Web\Staff\AdminReportController;
 
 use kintai\UI\Controller\Web\Requests\AdminTimeoffController;
 use kintai\UI\Controller\Web\Requests\AdminSwapController;
-use kintai\UI\Controller\Web\Requests\FeedbackController;
 
 use kintai\UI\Controller\Web\System\ActivityController;
 use kintai\UI\Controller\Web\System\AdminController;
@@ -51,7 +50,6 @@ use kintai\UI\Controller\Api\V1\ShiftSwapRequestController as ApiShiftSwapReques
 use kintai\UI\Controller\Api\V1\TimeclockController as ApiTimeclockController;
 use kintai\UI\Controller\Api\V1\ShiftClaimController as ApiShiftClaimController;
 use kintai\UI\Controller\Api\V1\NotificationController as ApiNotificationController;
-use kintai\UI\Controller\Api\V1\FeedbackController as ApiFeedbackController;
 use kintai\UI\Controller\Api\V1\UserShiftRateController as ApiUserShiftRateController;
 use kintai\UI\Controller\Api\V1\ActivityController as ApiActivityController;
 use kintai\UI\Controller\Api\V1\IcalTokenController as ApiIcalTokenController;
@@ -143,9 +141,7 @@ $router->group('/employee', function ($r) {
     $r->get('/nav-settings',  [EmployeeController::class, 'navSettings'],     name: 'employee.nav_settings');
     $r->post('/nav-settings', [EmployeeController::class, 'saveNavSettings'], name: 'employee.nav_settings.save');
 
-    // Feedback
-    $r->post('/feedback',             [FeedbackController::class, 'submit'],     name: 'employee.feedback.submit');
-    $r->get('/feedback/past-shifts',  [FeedbackController::class, 'pastShifts'], name: 'employee.feedback.past_shifts');
+    // Feedback : voir src/Bundles/Feedback/routes.php
 
     // Échanges de shifts
     $r->get('/swaps',                 [EmployeeController::class, 'swaps'],       name: 'employee.swaps');
@@ -313,9 +309,7 @@ $router->group('/admin', function ($r) {
     // Journal d'activité (unifié)
     $r->get('/activity', [ActivityController::class, 'index'], name: 'admin.activity');
 
-    // Feedbacks
-    $r->get('/feedbacks',              [FeedbackController::class, 'index'],  name: 'admin.feedbacks');
-    $r->post('/feedbacks/{id}/delete', [FeedbackController::class, 'delete'], name: 'admin.feedbacks.delete');
+    // Feedbacks : voir src/Bundles/Feedback/routes.php
 
     // Diagnostic mail
     $r->get('/mail-test',  [MailTestController::class, 'show'], name: 'admin.mail_test');
@@ -464,12 +458,7 @@ $router->group('/api/v1', function ($r) {
     $r->post('/notifications/{id}/read',   [ApiNotificationController::class, 'markRead'],    name: 'api.v1.notifications.read');
     $r->delete('/notifications/{id}',      [ApiNotificationController::class, 'destroy'],     name: 'api.v1.notifications.destroy');
 
-    // Feedbacks
-    $r->get('/feedbacks',         [ApiFeedbackController::class, 'index'],   name: 'api.v1.feedbacks.index');
-    $r->post('/feedbacks',        [ApiFeedbackController::class, 'store'],   name: 'api.v1.feedbacks.store');
-    $r->get('/feedbacks/{id}',    [ApiFeedbackController::class, 'show'],    name: 'api.v1.feedbacks.show');
-    $r->put('/feedbacks/{id}',    [ApiFeedbackController::class, 'update'],  name: 'api.v1.feedbacks.update');
-    $r->delete('/feedbacks/{id}', [ApiFeedbackController::class, 'destroy'], name: 'api.v1.feedbacks.destroy');
+    // Feedbacks : voir src/Bundles/Feedback/routes.php
 
     // Journal d'activité
     $r->get('/activity', [ApiActivityController::class, 'index'], name: 'api.v1.activity.index');

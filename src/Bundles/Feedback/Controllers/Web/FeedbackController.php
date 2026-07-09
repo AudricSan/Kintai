@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace kintai\UI\Controller\Web\Requests;
+namespace kintai\Bundles\Feedback\Controllers\Web;
 
 use kintai\Core\Repositories\FeedbackRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
@@ -205,7 +205,7 @@ final class FeedbackController
             ));
         }
 
-        return Response::html($this->view->render('requests.feedbacks', [
+        return Response::html($this->view->render('feedback::feedbacks', [
             'title'             => __('feedbacks'),
             'feedbacks'         => $all,
             'users_map'         => $usersMap,
@@ -247,6 +247,4 @@ final class FeedbackController
 
         return Response::redirect($this->base() . '/admin/feedbacks?success=deleted');
     }
-
-
 }
