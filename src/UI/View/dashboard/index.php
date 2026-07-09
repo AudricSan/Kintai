@@ -19,7 +19,9 @@ function admin_widget_on(string $key, array $enabled): bool
 
 // Feature-gating : null = toutes features actives (owner/is_admin), array = liste des features autorisées
 $feat = static fn(?string $f): bool =>
-    $f === null || ($store_features ?? null) === null || in_array($f, (array) ($store_features ?? []), true);
+    feat_bundle($f) && (
+        $f === null || ($store_features ?? null) === null || in_array($f, (array) ($store_features ?? []), true)
+    );
 
 // Widgets désactivés si la feature associée est indisponible
 $_widgetFeatMap = [
@@ -320,7 +322,7 @@ $hasMultipleStores = count($shiftsByStore) > 1;
 <!-- Demandes en attente -->
 <div class="dash-two-col card--mt">
 
-    <?php if (admin_widget_on('pending_timeoff', $enabled_widgets)): ?>
+    <?php if (admin_widget_on('pending_timeoff', $enabled_widgets) && $feat('timeoff')): ?>
     <div class="card">
         <div class="card-header">
             <span><?= __('pending_timeoff') ?></span>
@@ -351,7 +353,7 @@ $hasMultipleStores = count($shiftsByStore) > 1;
     </div>
     <?php endif; ?>
 
-    <?php if (admin_widget_on('pending_swaps', $enabled_widgets)): ?>
+    <?php if (admin_widget_on('pending_swaps', $enabled_widgets) && $feat('swaps')): ?>
     <div class="card">
         <div class="card-header">
             <span><?= __('pending_swaps') ?></span>
@@ -384,7 +386,7 @@ $hasMultipleStores = count($shiftsByStore) > 1;
 </div>
 <?php endif; ?>
 
-<?php if (admin_widget_on('timeclocks_today', $enabled_widgets)): ?>
+<?php if (admin_widget_on('timeclocks_today', $enabled_widgets) && $feat('timeclock')): ?>
 <!-- Pointages actifs en ce moment -->
 <div class="card card--mt">
     <div class="card-header">

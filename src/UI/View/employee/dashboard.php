@@ -26,7 +26,9 @@ function widget_on(string $key, array $widgets): bool {
 }
 
 $feat = static fn(?string $f): bool =>
-    $f === null || ($store_features ?? null) === null || in_array($f, (array) ($store_features ?? []), true);
+    feat_bundle($f) && (
+        $f === null || ($store_features ?? null) === null || in_array($f, (array) ($store_features ?? []), true)
+    );
 
 $_empWidgetFeatMap = [
     'timeclock'       => 'timeclock',

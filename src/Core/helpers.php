@@ -57,6 +57,44 @@ if (!function_exists('storage_path')) {
     }
 }
 
+if (!function_exists('bundle_enabled')) {
+    /**
+     * Indique si un bundle est activé au niveau de l'instance (FeatureManager).
+     * "Fail open" (true) si le service n'est pas encore prêt, comme __() —
+     * l'accès réel reste de toute façon protégé par les routes elles-mêmes.
+     */
+    function bundle_enabled(string $slug): bool
+    {
+        try {
+            $container = \kintai\Core\Container::getInstance();
+            if ($container->has(\kintai\Core\FeatureManager::class)) {
+                return $container->make(\kintai\Core\FeatureManager::class)->isEnabled($slug);
+            }
+        } catch (\Throwable $e) {
+            // En cas d'erreur avant que le service soit prêt
+        }
+        return true;
+    }
+}
+
+if (!function_exists('feat_bundle')) {
+    /**
+     * Pour un slug de feature par-store (ex: 'timeoff', 'swaps'), indique si le
+     * bundle Core dont il dépend est activé au niveau de l'instance. Retourne
+     * true si le slug ne correspond à aucun bundle connu (fonctionnalité Core,
+     * toujours active) ou si $slug est null. À combiner avec le toggle par
+     * store (ex: $feat() dans les vues) qui ne couvre pas ce niveau.
+     */
+    function feat_bundle(?string $slug): bool
+    {
+        if ($slug === null) {
+            return true;
+        }
+        $bundle = \kintai\Core\FeatureManager::STORE_FEATURE_BUNDLE_MAP[$slug] ?? null;
+        return $bundle === null || bundle_enabled($bundle);
+    }
+}
+
 if (!function_exists('hash_token')) {
     function hash_token(string $raw): string
     {

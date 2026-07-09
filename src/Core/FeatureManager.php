@@ -6,6 +6,25 @@ namespace kintai\Core;
 
 final class FeatureManager
 {
+    /**
+     * Association slug de feature par-store (store_features, coché sur la fiche
+     * magasin) → slug du bundle Core dont il dépend. Un slug absent d'ici est
+     * une fonctionnalité Core, toujours disponible quel que soit l'état des
+     * bundles. Source de vérité unique : réutilisée par AdminStoreController
+     * (quelles cases proposer sur la fiche magasin) et par les vues (sidebar,
+     * bottom nav, dashboards) pour ne pas générer de lien vers une route dont
+     * le bundle est désactivé au niveau de l'instance.
+     */
+    public const STORE_FEATURE_BUNDLE_MAP = [
+        'messages'      => 'messaging',
+        'daily_reports' => 'daily-report',
+        'photos'        => 'store-photos',
+        'timeoff'       => 'timeoff',
+        'swaps'         => 'shift-swap',
+        'open_shifts'   => 'shift-claim',
+        'timeclock'     => 'timeclock',
+    ];
+
     private array $enabledFeatures = [];
 
     public function __construct(array $enabledFeatures = [])
