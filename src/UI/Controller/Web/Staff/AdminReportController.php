@@ -6,7 +6,6 @@ namespace kintai\UI\Controller\Web\Staff;
 
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
-use kintai\Core\Repositories\HiringReportRepositoryInterface;
 use kintai\Core\Repositories\DailyReportRepositoryInterface;
 use kintai\Core\Repositories\ResignationReportRepositoryInterface;
 use kintai\Core\Repositories\SalaryReportRepositoryInterface;
@@ -20,45 +19,29 @@ use kintai\Core\Services\AuditLogger;
 use kintai\UI\ViewRenderer;
 use kintai\UI\Controller\Web\HasAdminAccess;
 
+/**
+ * Rapports de démission et de salaire — restent dans le Core pour l'instant.
+ * Embauche, qui partageait auparavant ce même contrôleur (CRUD générique via
+ * un dispatch `repo(string $type)`), a été extraite en bundle séparé (voir
+ * src/Bundles/HiringReport/, qui réutilise la même logique via le trait
+ * HasStaffReportCrud) — mais uniquement côté UI : HiringReportRepositoryInterface
+ * reste un service Core, car AdminUserController en dépend directement pour
+ * générer automatiquement un rapport d'embauche à la création d'un employé.
+ * Ce contrôleur garde volontairement son dispatch interne à deux types tant
+ * que la démission ou le salaire n'ont pas, eux aussi, leur propre bundle —
+ * bascule prévue vers HasStaffReportCrud à ce moment-là.
+ */
 final class AdminReportController
 {
     use HasAdminAccess;
 
     /**
-     * Configuration commune des trois types de rapports (embauche, démission,
+     * Configuration commune des deux types de rapports restants (démission,
      * salaire) : entité d'audit, segment d'URL, préfixe de vue, message
      * d'introuvable et mapping des champs POST avec leur cast
      * ('str' → chaîne ou null, 'float'/'int' → numérique, 'null' → toujours null).
      */
     private const REPORT_TYPES = [
-        'hiring' => [
-            'entity'    => 'hiring_report',
-            'slug'      => 'hiring',
-            'view'      => 'staff.reports-hiring',
-            'not_found' => 'Rapport d\'embauche introuvable.',
-            'fields'    => [
-                'employee_number'     => 'str',
-                'employee_name'       => 'str',
-                'furigana'            => 'null',
-                'furigana_last_name'  => 'str',
-                'furigana_first_name' => 'str',
-                'gender'              => 'str',
-                'tax_classification'  => 'str',
-                'birth_date'          => 'str',
-                'hire_date'           => 'str',
-                'education'           => 'str',
-                'postal_code'         => 'str',
-                'address'             => 'str',
-                'phone'               => 'str',
-                'mobile_phone'        => 'str',
-                'email'               => 'str',
-                'guarantor_name'      => 'str',
-                'guarantor_phone'     => 'str',
-                'store_name'          => 'str',
-                'hired_by'            => 'str',
-                'notes'               => 'str',
-            ],
-        ],
         'resignation' => [
             'entity'    => 'resignation_report',
             'slug'      => 'resignation',
@@ -107,7 +90,6 @@ final class AdminReportController
         private readonly ViewRenderer $view,
         private readonly StoreRepositoryInterface $stores,
         private readonly UserRepositoryInterface $users,
-        private readonly HiringReportRepositoryInterface $hiringReports,
         private readonly ResignationReportRepositoryInterface $resignationReports,
         private readonly SalaryReportRepositoryInterface $salaryReports,
         private readonly StoreUserRepositoryInterface $storeUsers,
@@ -115,80 +97,6 @@ final class AdminReportController
         private readonly ShiftRepositoryInterface $shifts,
         private readonly AuditLogger $auditLogger,
     ) {}
-
-    // =========================================================================
-    // 採用報告書 (Hiring Report)
-    // =========================================================================
-
-    public function hiringReports(Request $request): Response
-    {
-        return $this->listReports('hiring', $request, '採用報告書');
-    }
-
-    public function createHiringReport(Request $request): Response
-    {
-        $storeId = (int) $request->param('id');
-        $store = $this->findStoreOrFail($storeId);
-        $this->assertStoreAccess($request, $storeId);
-
-        return Response::html($this->view->render('staff.reports-hiring-form', [
-            'title' => '新規採用報告書 — ' . ($store['name'] ?? ''),
-            'store' => $store,
-            'users' => $this->users->findAll(),
-            'mode'  => 'create',
-            'report' => [],
-        ], 'layout.app'));
-    }
-
-    public function storeHiringReport(Request $request): Response
-    {
-        $storeId = (int) $request->param('id');
-        $this->findStoreOrFail($storeId);
-        $this->assertStoreAccess($request, $storeId);
-
-        $userId = (int) $request->post('user_id', 0);
-
-        $data = array_merge([
-            'store_id' => $storeId,
-            'user_id'  => $userId > 0 ? $userId : null,
-        ], $this->postData($request, self::REPORT_TYPES['hiring']['fields']), [
-            'created_by' => $request->getAttribute('auth_user')['id'] ?? 0,
-        ]);
-
-        $saved = $this->hiringReports->save($data);
-
-        $this->auditLogger->log($request, 'hiring_report.created', 'hiring_report', (int) ($saved['id'] ?? 0), [
-            'store_id' => $storeId,
-            'employee_name' => $data['employee_name'],
-        ]);
-
-        return $this->redirectToList($storeId, 'hiring', 'created');
-    }
-
-    public function showHiringReport(Request $request): Response
-    {
-        return $this->showReport('hiring', $request);
-    }
-
-    public function editHiringReport(Request $request): Response
-    {
-        return $this->editReport('hiring', $request);
-    }
-
-    public function updateHiringReport(Request $request): Response
-    {
-        return $this->updateReport('hiring', $request);
-    }
-
-    public function deleteHiringReport(Request $request): Response
-    {
-        return $this->deleteReport('hiring', $request);
-    }
-
-    public function hiringReportPdf(Request $request): Response
-    {
-        return $this->reportPdf('hiring', $request);
-    }
 
     // =========================================================================
     // 退職報告書 (Resignation Report)
@@ -241,7 +149,7 @@ final class AdminReportController
             $preset['resignation_date'] = date('Y-m-d');
         }
 
-        $managers = $this->getManagersForResignationForm($storeId, $userId);
+        $managers = $this->getManagersForReportForm($storeId, $userId);
 
         return Response::html($this->view->render('staff.reports-resignation-form', [
             'title'   => __('new_resignation_report') . ' — ' . ($store['name'] ?? ''),
@@ -396,7 +304,7 @@ final class AdminReportController
             }
         }
 
-        $managers = $this->getManagersForResignationForm($storeId);
+        $managers = $this->getManagersForReportForm($storeId);
         $authName = trim(($authUser['last_name'] ?? '') . ' ' . ($authUser['first_name'] ?? '')) ?: ($authUser['display_name'] ?? '');
         $isManager = !empty(array_filter($managers, fn($m) => (int) $m['id'] === (int) ($authUser['id'] ?? 0)));
         if ($isManager && empty($preset['person_in_charge'])) {
@@ -471,10 +379,9 @@ final class AdminReportController
     // CRUD générique par type de rapport
     // =========================================================================
 
-    private function repo(string $type): HiringReportRepositoryInterface|ResignationReportRepositoryInterface|SalaryReportRepositoryInterface
+    private function repo(string $type): ResignationReportRepositoryInterface|SalaryReportRepositoryInterface
     {
         return match ($type) {
-            'hiring'      => $this->hiringReports,
             'resignation' => $this->resignationReports,
             'salary'      => $this->salaryReports,
         };
@@ -549,7 +456,6 @@ final class AdminReportController
     private function showTitle(string $type, array $report): string
     {
         return match ($type) {
-            'hiring'      => '採用報告書 — ' . ($report['employee_name'] ?? ''),
             'resignation' => __('resignation_report') . ' — ' . ($report['employee_name'] ?? ''),
             'salary'      => __('sr_title') . ' — ' . ($report['target_month'] ?? ''),
         };
@@ -560,7 +466,6 @@ final class AdminReportController
         [$report, $storeId] = $this->findReportOrFail($type, $request);
 
         $title = match ($type) {
-            'hiring'      => '編集 — 採用報告書',
             'resignation' => __('edit_resignation_report'),
             'salary'      => __('sr_edit'),
         };
@@ -575,14 +480,13 @@ final class AdminReportController
 
     /**
      * Données de formulaire propres à chaque type : liste des employés
-     * (hiring/resignation) et des responsables (resignation/salary).
+     * (résignation) et des responsables (résignation/salaire).
      */
     private function editExtras(string $type, int $storeId, array $report): array
     {
-        $managers = fn(): array => $this->getManagersForResignationForm($storeId, (int) ($report['user_id'] ?? 0));
+        $managers = fn(): array => $this->getManagersForReportForm($storeId, (int) ($report['user_id'] ?? 0));
 
         return match ($type) {
-            'hiring'      => ['users' => $this->users->findAll()],
             'resignation' => ['users' => $this->users->findAll(), 'managers' => $managers()],
             'salary'      => ['managers' => $managers()],
         };
@@ -826,7 +730,7 @@ final class AdminReportController
      * Retourne la liste des responsables (admin/manager) pour le store courant
      * ou pour tous les stores d'un employé donné.
      */
-    private function getManagersForResignationForm(int $storeId, int $userId = 0): array
+    private function getManagersForReportForm(int $storeId, int $userId = 0): array
     {
         $storeIds = [$storeId];
         if ($userId > 0) {

@@ -6,7 +6,6 @@ namespace kintai\Tests\Unit\Controller\Web;
 
 use kintai\Core\Container;
 use kintai\Core\Repositories\DailyReportRepositoryInterface;
-use kintai\Core\Repositories\HiringReportRepositoryInterface;
 use kintai\Core\Repositories\LogRepositoryInterface;
 use kintai\Core\Repositories\ResignationReportRepositoryInterface;
 use kintai\Core\Repositories\SalaryReportRepositoryInterface;
@@ -24,7 +23,6 @@ use PHPUnit\Framework\TestCase;
 
 final class AdminReportControllerTest extends TestCase
 {
-    private HiringReportRepositoryInterface&MockObject $hiringReports;
     private ResignationReportRepositoryInterface&MockObject $resignationReports;
     private SalaryReportRepositoryInterface&MockObject $salaryReports;
     private StoreRepositoryInterface&MockObject $stores;
@@ -33,13 +31,11 @@ final class AdminReportControllerTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->ensureViewFile('staff.reports-hiring-show');
         $this->ensureViewFile('staff.reports-resignation-show');
         $this->ensureViewFile('staff.reports-salary-show');
         $this->ensureViewFile('layout.app');
         $view = new ViewRenderer(sys_get_temp_dir());
 
-        $this->hiringReports = $this->createMock(HiringReportRepositoryInterface::class);
         $this->resignationReports = $this->createMock(ResignationReportRepositoryInterface::class);
         $this->salaryReports = $this->createMock(SalaryReportRepositoryInterface::class);
         $this->stores = $this->createMock(StoreRepositoryInterface::class);
@@ -55,7 +51,6 @@ final class AdminReportControllerTest extends TestCase
             $view,
             $this->stores,
             $this->createMock(UserRepositoryInterface::class),
-            $this->hiringReports,
             $this->resignationReports,
             $this->salaryReports,
             $this->createMock(StoreUserRepositoryInterface::class),
@@ -71,27 +66,6 @@ final class AdminReportControllerTest extends TestCase
         $_POST = [];
         $_SERVER = [];
         Log::reset();
-    }
-
-    public function testShowHiringReportLogsConsultation(): void
-    {
-        $req = new Request();
-        $req->setAttribute('managed_store_ids', null);
-        $req->setRouteParams(['id' => '1', 'rid' => '10']);
-
-        $this->hiringReports->method('findById')->with(10)->willReturn(['id' => 10, 'store_id' => 1, 'employee_name' => 'Alice']);
-        $this->stores->method('findById')->willReturn(['id' => 1, 'name' => 'Store A']);
-
-        $this->logRepo->expects($this->once())->method('record')->with(
-            $this->anything(), $this->anything(), $this->anything(),
-            'hiring_report.viewed', 'hiring_report', 10,
-            $this->anything(), $this->anything(), 1,
-            $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(),
-        );
-
-        $response = $this->controller->showHiringReport($req);
-
-        $this->assertSame(200, $response->status());
     }
 
     public function testShowResignationReportLogsConsultation(): void
@@ -136,32 +110,35 @@ final class AdminReportControllerTest extends TestCase
         $this->assertSame(200, $response->status());
     }
 
-    public function testUpdateHiringReportMergesPostFieldsAndRedirects(): void
+    public function testUpdateResignationReportMergesPostFieldsAndRedirects(): void
     {
         $_POST = [
-            'user_id'         => '5',
-            'employee_number' => 'E-42',
-            'employee_name'   => 'Alice Martin',
-            'notes'           => '',
+            'user_id'            => '5',
+            'employee_number'    => 'E-42',
+            'employee_name'      => 'Alice Martin',
+            'resignation_date'   => '2026-08-01',
+            'reason'             => '',
+            'resignation_notice' => '',
+            'notes'              => '',
+            'person_in_charge'   => '',
         ];
         $req = new Request();
         $req->setAttribute('managed_store_ids', null);
         $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
         $req->setRouteParams(['id' => '1', 'rid' => '10']);
 
-        $this->hiringReports->method('findById')->with(10)
+        $this->resignationReports->method('findById')->with(10)
             ->willReturn(['id' => 10, 'store_id' => 1, 'employee_name' => 'Ancien nom']);
 
-        $this->hiringReports->expects($this->once())->method('save')->with($this->callback(
+        $this->resignationReports->expects($this->once())->method('save')->with($this->callback(
             fn(array $data) =>
                 $data['id'] === 10
                 && $data['user_id'] === 5
                 && $data['employee_number'] === 'E-42'
                 && $data['employee_name'] === 'Alice Martin'
-                && $data['notes'] === null // champ vide → null
         ));
 
-        $response = $this->controller->updateHiringReport($req);
+        $response = $this->controller->updateResignationReport($req);
 
         $this->assertSame(302, $response->status());
     }
@@ -194,10 +171,10 @@ final class AdminReportControllerTest extends TestCase
         $req->setRouteParams(['id' => '1', 'rid' => '10']);
 
         // Le rapport existe mais appartient au store 2, pas au store 1 de l'URL
-        $this->hiringReports->method('findById')->with(10)->willReturn(['id' => 10, 'store_id' => 2]);
+        $this->resignationReports->method('findById')->with(10)->willReturn(['id' => 10, 'store_id' => 2]);
 
         $this->expectException(\kintai\Core\Exceptions\NotFoundException::class);
-        $this->controller->showHiringReport($req);
+        $this->controller->showResignationReport($req);
     }
 
     private function ensureViewFile(string $view): void
