@@ -1,0 +1,14 @@
+{
+    "bundle_resignation_report": "退職報告書",
+    "bundle_resignation_report_desc": "従業員ごとの退職報告書、アカウント再有効化機能付き。",
+    "confirm_delete_resignation_report": "この退職報告書を削除しますか？",
+    "confirm_reactivate": "この従業員を再活性化しますか？ログインが再び可能になります。",
+    "edit_resignation_report": "退職報告書を編集",
+    "new_resignation_report": "新規退職報告書",
+    "person_in_charge": "受付担当者",
+    "reactivate": "再活性化",
+    "resignation_date": "退職日",
+    "resignation_notice": "退職届",
+    "resignation_report_pdf_title": "退職報告書",
+    "resignation_reports": "退職報告書一覧"
+}

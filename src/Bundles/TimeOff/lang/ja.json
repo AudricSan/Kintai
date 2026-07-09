@@ -1,0 +1,15 @@
+{
+    "bundle_timeoff": "休暇申請",
+    "bundle_timeoff_desc": "従業員の休暇申請：提出・承認・追跡。",
+    "confirm_delete_timeoff": "この休暇を完全に削除しますか？",
+    "create_timeoff": "休暇を作成",
+    "error_not_pending": "この申請はキャンセルできません。",
+    "new_timeoff": "新規休暇",
+    "no_pending_timeoff": "保留中の申請はありません。",
+    "no_timeoff_found": "休暇申請はありません。",
+    "reason_placeholder": "例：結婚式、通院...",
+    "sent_at": "送信日時",
+    "timeoff_created_admin": "休暇を作成しカレンダーに追加しました。",
+    "timeoff_deleted": "休暇を削除しました。",
+    "timeoff_request_sent": "休暇申請を送信しました。"
+}

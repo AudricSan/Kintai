@@ -1,0 +1,14 @@
+{
+    "bundle_resignation_report": "Rapport de démission",
+    "bundle_resignation_report_desc": "Rapports de démission par employé, avec réactivation du compte.",
+    "confirm_delete_resignation_report": "Supprimer définitivement ce rapport de démission ?",
+    "confirm_reactivate": "Réactiver cet employé ? Il pourra à nouveau se connecter.",
+    "edit_resignation_report": "Modifier le rapport de démission",
+    "new_resignation_report": "Nouveau rapport de démission",
+    "person_in_charge": "Responsable",
+    "reactivate": "Réactiver",
+    "resignation_date": "Date de démission",
+    "resignation_notice": "Préavis de démission",
+    "resignation_report_pdf_title": "Rapport de démission (退職報告書)",
+    "resignation_reports": "Rapports de démission"
+}
