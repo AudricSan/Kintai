@@ -73,13 +73,13 @@ jobs:
           set -euo pipefail
 
           if [ "${{ steps.version.outputs.channel }}" = "release" ]; then
-            HEADER="## \[${{ steps.version.outputs.base_version }}\]"
+            HEADER="## [${{ steps.version.outputs.base_version }}]"
           else
-            HEADER="## \[Unreleased\]"
+            HEADER="## [Unreleased]"
           fi
 
           awk -v header="$HEADER" '
-            $0 ~ header && !found { found=1; next }
+            index($0, header) == 1 && !found { found=1; next }
             found && /^## \[/ { exit }
             found { print }
           ' CHANGELOG.md > release-notes.txt
