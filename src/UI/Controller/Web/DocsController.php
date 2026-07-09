@@ -8,7 +8,6 @@ use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\TranslationService;
 use kintai\Core\Services\WikiContentService;
-use kintai\Core\Services\WikiPdfGeneratorService;
 use kintai\UI\ViewRenderer;
 
 final class DocsController
@@ -21,28 +20,21 @@ final class DocsController
 
     public function index(Request $request): Response
     {
-        $locale = $this->translations->getLocale();
-        $pdfs   = [];
+        $locale    = $this->translations->getLocale();
+        $languages = [];
 
-        foreach (WikiPdfGeneratorService::supportedLangs() as $lang) {
-            $filename   = 'Kintai-Guide-' . strtoupper($lang) . '.pdf';
-            $path       = BASE_PATH . '/public/pdf/' . $filename;
-            $exists     = file_exists($path);
-            $firstPage  = $this->wikiContent->firstPage($lang);
+        foreach (WikiContentService::supportedLangs() as $lang) {
+            $firstPage = $this->wikiContent->firstPage($lang);
 
-            $pdfs[$lang] = [
-                'filename'   => $filename,
-                'available'  => $exists,
-                'size_kb'    => $exists ? (int) round(filesize($path) / 1024) : 0,
+            $languages[$lang] = [
                 'first_page' => $firstPage,
                 'browsable'  => $firstPage !== null && $this->wikiContent->pageExists($lang, $firstPage),
             ];
         }
 
         return Response::html($this->view->render('docs.index', [
-            'pdfs'         => $pdfs,
-            'locale'       => $locale,
-            'public_token' => WikiPdfController::computeToken(),
+            'languages' => $languages,
+            'locale'    => $locale,
         ], 'layout.app'));
     }
 
@@ -68,7 +60,6 @@ final class DocsController
             'toc'          => $toc,
             'currentIndex' => $currentIndex,
             'contentHtml'  => $contentHtml,
-            'public_token' => WikiPdfController::computeToken(),
         ], 'layout.app'));
     }
 }

@@ -28,47 +28,8 @@
 }
 
 .docs-card__desc { font-size: var(--text-xs-2); color: var(--color-text-muted); margin-bottom: .75rem; }
-.docs-card__meta { font-size: var(--text-xs); color: var(--color-text-muted); margin-bottom: .75rem; }
 .docs-card__btn { width: 100%; text-align: center; }
-.docs-card__unavailable { font-size: var(--text-xs-2); color: var(--color-danger); margin-bottom: .5rem; }
-
-.docs-card__cmd {
-    display: block;
-    font-size: var(--text-xs);
-    background: var(--color-bg-subtle);
-    padding: 4px 8px;
-    border-radius: var(--radius-sm);
-    word-break: break-all;
-}
-
-.docs-info h4 { margin-bottom: .4rem; font-weight: 600; }
-.docs-info p  { font-size: var(--text-xs-2); color: var(--color-text-muted); margin: 0 0 .75rem; }
-
-.docs-gen { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; margin-top: .25rem; }
-.docs-gen__btn { min-width: 200px; }
-.docs-gen__status { font-size: var(--text-xs-2); }
-.docs-gen__status--ok  { color: var(--color-success); font-weight: 500; }
-.docs-gen__status--err { color: var(--color-danger);  font-weight: 500; }
-
-.docs-api h4 { margin-bottom: .4rem; font-weight: 600; }
-.docs-api__desc { font-size: var(--text-xs-2); color: var(--color-text-muted); margin-bottom: 1rem; }
-.docs-api__table { width: 100%; border-collapse: collapse; font-size: var(--text-xs-2); margin-bottom: .75rem; }
-.docs-api__table th { background: var(--color-bg-subtle); padding: 6px 10px; text-align: left; border-bottom: 2px solid var(--color-border); }
-.docs-api__table td { padding: 6px 10px; border-bottom: 1px solid var(--color-border); vertical-align: middle; }
-
-.docs-api__url {
-    display: block;
-    font-size: var(--text-xs);
-    background: var(--color-bg-subtle);
-    padding: 4px 8px;
-    border-radius: var(--radius-sm);
-    word-break: break-all;
-    cursor: pointer;
-    transition: background var(--duration-fast);
-}
-.docs-api__url:hover { background: var(--color-info-light); }
-.docs-api__url.copied { background: var(--color-success-light); color: var(--color-success-dark); }
-.docs-api__hint { font-size: var(--text-xs); color: var(--color-text-muted); margin: 0; }
+.docs-card__unavailable { font-size: var(--text-xs-2); color: var(--color-text-muted); margin: 0; }
 
 /* ── Consultation en ligne du wiki (docs/show) ────── */
 .docs-wiki {
@@ -119,8 +80,6 @@
     color: #fff;
     font-weight: 600;
 }
-
-.docs-wiki__pdf-link { width: 100%; text-align: center; margin-top: .25rem; }
 
 .docs-wiki__content-card { min-width: 0; }
 

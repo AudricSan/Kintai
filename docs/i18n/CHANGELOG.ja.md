@@ -18,7 +18,7 @@ Kintaiの主要な変更履歴をここに記録しています。
 - `docs/i18n/database.fr.md` と `docs/i18n/database.ja.md` を英語版ソースと同期させました（Eloquentのバージョン、`Language`/`Translation` リポジトリのデッドコードに関する注記）。
 
 ### 追加
-- ドキュメントページ（`/docs`）で、既存のPDFダウンロードに加えて、GitHub wikiをアプリ内に直接表示できるようになりました：新しいルート `GET /docs/{lang}/{page}`（`DocsController::show()`）が、新しい `WikiContentService` を介して各wikiのMarkdownページをHTMLとして描画します。この際、`WikiPdfGeneratorService` にすでに定義されているガイドカタログ（公開メソッド `guides()`／`sectionTitle()` として抽出）を再利用し、両機能が同じ情報源を共有するようにしています。閲覧用ビューには、サイドバーの目次、前へ／次へのページ送り、現在の言語のPDFダウンロードリンクが追加されました。wikiページ間の内部Markdownリンクはアプリ内ルートに書き換えられ、外部リンクはそのまま維持されます。`/docs` の各言語カードには、対応するwikiページが実際にディスク上（`.wiki/`、gitでは無視され、GitHub wikiとは別に配置される）に存在する場合、既存のPDFダウンロード／生成機能に加えて「オンラインで見る」ボタンが表示されるようになりました。
+- ドキュメントページ（`/docs`）が、GitHub wikiをアプリ内に直接表示するようになりました：新しいルート `GET /docs/{lang}/{page}`（`DocsController::show()`）が、新しい `WikiContentService` を介して各wikiのMarkdownページをHTMLとして描画します。このサービスはローカルの `.wiki/` クローン（gitでは無視され、GitHub wikiとは別に配置される）を読み込みます。閲覧用ビューには、サイドバーの目次と前へ／次へのページ送りが追加されました。wikiページ間の内部Markdownリンクはアプリ内ルートに書き換えられ、外部リンクはそのまま維持されます。`/docs` の各言語カードは、そのページが実際にディスク上に存在する場合、対応する言語のガイドへ直接遷移します。これにより、従来のPDFベースのガイドシステム（`WikiPdfGeneratorService`、`WikiPdfController`、`scripts/pdf.php`、コミットされていた `public/pdf/*.pdf` ファイル、`/api/v1/pdf/generate` エンドポイント）は完全に削除されました。
 - 孤立していた `backup` cronジョブを接続しました：`CronRunner`、`AutoValidateJob`、`BackupJob` は完全に実装されていましたが、登録もされておらず、どのルートからも到達できませんでした。`AppServiceProvider` は、両方のジョブを登録した `CronRunner` シングルトンを構築するようになり、新しい `GET /cron/run/{job}` ルート（`cron_tokens` テーブルによるジョブごとのトークン保護、`Authorization: Bearer` または `?token=`）がこれらを公開します。`scripts/create-cron-token.php` が、このエンドポイントに必要なトークンを発行します。
 
 ### 修正
