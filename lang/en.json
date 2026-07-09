@@ -233,7 +233,7 @@
     "bundle_shift_swap": "Shift Swaps",
     "bundle_shift_swap_desc": "Shift swap requests between employees: propose, accept, apply as a manager.",
     "bundle_store_photos": "Store Photos",
-    "bundle_store_photos_desc": "Weekly store-condition photo submissions and tracking.",
+    "bundle_store_photos_desc": "Weekly sales-floor photo submissions and tracking.",
     "bundle_third_party": "Third-party",
     "bundle_third_party_warning": "This bundle is not developed or maintained by the Kintai project. Only install it if you trust its source.",
     "bundle_timeclock": "Timeclock",

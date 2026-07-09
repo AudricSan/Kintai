@@ -15,6 +15,16 @@ final class StorePhotoBundle extends Bundle
         return 'store-photos';
     }
 
+    public function getLabel(): string
+    {
+        return __('bundle_store_photos');
+    }
+
+    public function getDescription(): string
+    {
+        return __('bundle_store_photos_desc');
+    }
+
     public function register(): void
     {
         $this->registerServices();
