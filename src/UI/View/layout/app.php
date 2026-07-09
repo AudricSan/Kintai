@@ -81,7 +81,7 @@
     <script src="<?= $BASE_URL ?>/assets/js/modules/notifications.js"></script>
     <script>document.addEventListener('click',function(e){var t=e.target.closest('.tr--clickable[data-href]');if(t&&!e.target.closest('a,button,input,select,textarea,form')){location.href=t.getAttribute('data-href');}});</script>
 
-    <?php if (!$showAdminMenu): ?>
+    <?php if (!$showAdminMenu && ($feedback_enabled ?? true)): ?>
         <?php include __DIR__ . '/partials/feedback-modal.php'; ?>
     <?php endif; ?>
 <div id="cookie-consent" class="cookie-consent" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#222;color:#fff;padding:12px 24px;z-index:500;text-align:center;font-size:14px">

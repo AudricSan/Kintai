@@ -11,23 +11,35 @@ final class ConventionTest extends TestCase
     private const EXCEPTIONS = [
         'employee-payslip-pdf.php',   // mPDF requires embedded CSS
         'shifts-timeline-print.php',  // dynamic date in @page @bottom-center
+        'daily-report-pdf.php',       // mPDF requires embedded CSS
         'reports-hiring-pdf.php',     // mPDF requires embedded CSS
         'reports-resignation-pdf.php',// mPDF requires embedded CSS
         'reports-salary-pdf.php',     // mPDF requires embedded CSS
     ];
 
     private const DOMAIN_DIRS = [
-        'scheduling', 'staff', 'requests', 'analytics', 'system',
+        'scheduling', 'staff', 'analytics', 'system',
     ];
 
     public function testNoInlineCssInWebViews(): void
     {
-        $base = dirname(__DIR__, 2) . '/src/UI/View';
+        $root = dirname(__DIR__, 2);
+        $dirs = [];
+        foreach (self::DOMAIN_DIRS as $dir) {
+            $dirs[] = "$root/src/UI/View/$dir";
+        }
+        // Les vues déplacées dans des bundles restent soumises à la même convention.
+        foreach (glob("$root/src/Bundles/*/Views", GLOB_ONLYDIR) ?: [] as $bundleViewsDir) {
+            $dirs[] = $bundleViewsDir;
+        }
 
         $violations = [];
-        foreach (self::DOMAIN_DIRS as $dir) {
+        foreach ($dirs as $dir) {
+            if (!is_dir($dir)) {
+                continue;
+            }
             $files = new \RecursiveIteratorIterator(
-                new \RecursiveDirectoryIterator("$base/$dir", \RecursiveDirectoryIterator::SKIP_DOTS)
+                new \RecursiveDirectoryIterator($dir, \RecursiveDirectoryIterator::SKIP_DOTS)
             );
             foreach ($files as $file) {
                 if (in_array($file->getBasename(), self::EXCEPTIONS, true)) {

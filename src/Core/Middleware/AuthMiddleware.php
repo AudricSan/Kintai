@@ -7,6 +7,7 @@ namespace kintai\Core\Middleware;
 use Closure;
 use kintai\Core\Auth\AuthService;
 use kintai\Core\Container;
+use kintai\Core\FeatureManager;
 use kintai\Core\Repositories\LanguageRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
@@ -65,6 +66,12 @@ final class AuthMiddleware implements MiddlewareInterface
             }
         }
         $view->share('store_features', $storeFeatures);
+
+        // La modale de feedback (layout/partials/feedback-modal.php) est incluse
+        // directement par app.php pour tout utilisateur employé, indépendamment
+        // du store — son POST cible /employee/feedback, qui n'existe plus si le
+        // bundle "feedback" est désactivé au niveau instance.
+        $view->share('feedback_enabled', $this->container->make(FeatureManager::class)->isEnabled('feedback'));
 
         // Statistiques du mois (widget salaire estimé, barre latérale vue employé) —
         // partagées sur toutes les pages, pas seulement celles qui le calculaient explicitement.
