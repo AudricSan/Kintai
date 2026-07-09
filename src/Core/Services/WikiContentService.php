@@ -9,41 +9,35 @@ use kintai\Core\Exceptions\NotFoundException;
 /**
  * Rend en HTML les pages du wiki GitHub (clone local .wiki/, gitignoré) pour
  * une consultation directe dans l'application.
+ *
+ * Structure attendue (celle du wiki GitHub réel du projet) :
+ *   .wiki/Home.md, .wiki/Installation.md, ...   (anglais, à la racine)
+ *   .wiki/fr/Home.md, .wiki/ja/Home.md, ...      (traductions, en sous-dossier)
+ *   .wiki/_Sidebar.md                            (navigation, format wiki GitHub)
+ *
+ * Les liens internes entre pages du wiki utilisent la convention GitHub Wiki :
+ * chemins relatifs sans extension ".md" (ex: "Installation", "../Home",
+ * "../ja/Home" depuis une page sous fr/).
  */
 final class WikiContentService
 {
-    /**
-     * Catalogue des guides : fichiers .wiki/ et titres affichés, par langue.
-     */
-    private const GUIDES = [
-        'fr' => [
-            'Quick-Start.md'      => 'Démarrage rapide',
-            'Guide-Owner-FR.md'   => 'Guide Propriétaire',
-            'Guide-Manager-FR.md' => 'Guide Responsable',
-            'Guide-Staff-FR.md'   => 'Guide Personnel',
-            'FAQ.md'              => 'Questions fréquentes (FAQ)',
-            'Glossary.md'         => 'Glossaire',
-            'Site-Map.md'         => 'Plan du site',
-        ],
-        'en' => [
-            'Quick-Start-EN.md'    => 'Quick Start',
-            'Guide-Owner-EN.md'    => 'Owner Guide',
-            'Guide-Manager-EN.md'  => 'Manager Guide',
-            'Guide-Staff-EN.md'    => 'Staff Guide',
-            'FAQ-EN.md'            => 'Frequently Asked Questions (FAQ)',
-            'Glossary-EN.md'       => 'Glossary',
-            'Site-Map-EN.md'       => 'Site Map',
-        ],
-        'ja' => [
-            'Quick-Start-JA.md'    => 'クイックスタート',
-            'Guide-Owner-JA.md'    => 'オーナーガイド',
-            'Guide-Manager-JA.md'  => 'マネージャーガイド',
-            'Guide-Staff-JA.md'    => 'スタッフガイド',
-            'FAQ-JA.md'            => 'よくある質問 (FAQ)',
-            'Glossary-JA.md'       => '用語集',
-            'Site-Map-JA.md'       => 'サイトマップ',
-        ],
+    /** @var array<string, string> Langue => sous-dossier ('' pour l'anglais, à la racine) */
+    private const LANG_DIRS = [
+        'fr' => 'fr',
+        'en' => '',
+        'ja' => 'ja',
     ];
+
+    /** @var array<string, string> Libellé de groupe (tel qu'écrit dans _Sidebar.md) => clé de traduction */
+    private const GROUP_LABEL_KEYS = [
+        'Getting Started'        => 'docs_group_getting_started',
+        'Concepts & Architecture' => 'docs_group_concepts',
+        'User Guide'              => 'docs_group_user_guide',
+        'Reference'                => 'docs_group_reference',
+    ];
+
+    /** Groupe synthétique (avant tout titre de section dans _Sidebar.md, ex: Home) */
+    private const TOP_GROUP = '';
 
     private string $wikiPath;
 
@@ -58,7 +52,7 @@ final class WikiContentService
      */
     public static function supportedLangs(): array
     {
-        return array_keys(self::GUIDES);
+        return array_keys(self::LANG_DIRS);
     }
 
     public function isConfigured(): bool
@@ -67,40 +61,59 @@ final class WikiContentService
     }
 
     /**
-     * Table des matières (fichier + titre) pour une langue donnée.
+     * Table des matières groupée (telle que définie par _Sidebar.md), avec le
+     * titre et la disponibilité de chaque page dans la langue donnée.
      *
-     * @return array{file: string, title: string}[]
+     * @return array{label: string|null, items: array{slug: string, title: string, available: bool}[]}[]
      */
     public function tableOfContents(string $lang): array
     {
-        $guide = self::GUIDES[$lang] ?? null;
-
-        if ($guide === null) {
-            return [];
-        }
-
         $toc = [];
-        foreach ($guide as $file => $title) {
-            $toc[] = ['file' => $file, 'title' => $title];
+
+        foreach ($this->parseSidebar() as $groupName => $slugs) {
+            $items = [];
+            foreach ($slugs as $slug) {
+                $items[] = [
+                    'slug'      => $slug,
+                    'title'     => $this->pageTitle($lang, $slug),
+                    'available' => $this->pageExists($lang, $slug),
+                ];
+            }
+
+            $labelKey = self::GROUP_LABEL_KEYS[$groupName] ?? null;
+
+            $toc[] = [
+                'label' => $groupName === self::TOP_GROUP
+                    ? null
+                    : ($labelKey !== null ? __($labelKey) : $groupName),
+                'items' => $items,
+            ];
         }
 
         return $toc;
     }
 
-    public function firstPage(string $lang): ?string
+    /**
+     * Première page à afficher (page d'accueil du wiki).
+     */
+    public function firstPage(): ?string
     {
-        $files = array_keys(self::GUIDES[$lang] ?? []);
+        foreach ($this->parseSidebar() as $slugs) {
+            if ($slugs !== []) {
+                return $slugs[0];
+            }
+        }
 
-        return $files[0] ?? null;
+        return null;
     }
 
-    public function pageExists(string $lang, string $file): bool
+    public function pageExists(string $lang, string $slug): bool
     {
-        if (!isset(self::GUIDES[$lang][$file])) {
+        if (!$this->isValidSlug($slug) || !isset(self::LANG_DIRS[$lang])) {
             return false;
         }
 
-        return file_exists($this->wikiPath . '/' . $file);
+        return file_exists($this->resolvePath($lang, $slug));
     }
 
     /**
@@ -108,59 +121,194 @@ final class WikiContentService
      *
      * @throws NotFoundException si la langue/page est inconnue ou le fichier absent
      */
-    public function render(string $lang, string $file): string
+    public function render(string $lang, string $slug): string
     {
-        if (!$this->pageExists($lang, $file)) {
-            throw new NotFoundException("Page de documentation introuvable : {$file}");
+        if (!$this->pageExists($lang, $slug)) {
+            throw new NotFoundException("Page de documentation introuvable : {$slug}");
         }
 
-        $raw = file_get_contents($this->wikiPath . '/' . $file);
+        $raw = file_get_contents($this->resolvePath($lang, $slug));
 
         if ($raw === false) {
-            throw new NotFoundException("Impossible de lire la page : {$file}");
+            throw new NotFoundException("Impossible de lire la page : {$slug}");
         }
 
-        $markdown  = $this->linkifyInternalPages($raw, $lang);
+        $markdown  = $this->linkifyInternalPages($this->stripLanguageSwitchLine($raw), $lang);
         $parsedown = new \Parsedown();
         $parsedown->setSafeMode(false);
 
         return $parsedown->text($markdown);
     }
 
+    // -------------------------------------------------------------------------
+    // Résolution de chemin / slug
+    // -------------------------------------------------------------------------
+
+    private function resolvePath(string $lang, string $slug): string
+    {
+        $dir = self::LANG_DIRS[$lang];
+
+        return $this->wikiPath . ($dir !== '' ? '/' . $dir : '') . '/' . $slug . '.md';
+    }
+
     /**
-     * Réécrit les liens Markdown internes (vers un autre fichier du même guide)
-     * en liens vers les routes /docs/{lang}/{page} de l'application. Les liens
-     * externes (http/https/mailto) sont laissés tels quels ; les liens internes
-     * non reconnus sont dégradés en texte simple.
+     * Slugs de pages wiki : lettres/chiffres/tirets/underscores, jamais de
+     * chemin ("/", "..") ni de page méta ("_Sidebar", "_Footer").
+     */
+    private function isValidSlug(string $slug): bool
+    {
+        return $slug !== '' && $slug[0] !== '_' && preg_match('/^[A-Za-z0-9_-]+$/', $slug) === 1;
+    }
+
+    // -------------------------------------------------------------------------
+    // _Sidebar.md → structure groupée de slugs
+    // -------------------------------------------------------------------------
+
+    /**
+     * @return array<string, string[]> Nom de groupe ("" pour le sommet) => slugs
+     */
+    private function parseSidebar(): array
+    {
+        $path = $this->wikiPath . '/_Sidebar.md';
+
+        if (!file_exists($path)) {
+            return [];
+        }
+
+        $raw = (string) file_get_contents($path);
+        $groups  = [];
+        $current = self::TOP_GROUP;
+
+        foreach (explode("\n", $raw) as $line) {
+            $line = trim($line);
+
+            if ($line === '' || str_contains($line, '🌐')) {
+                continue;
+            }
+
+            // En-tête de groupe : **Texte** (et non un lien **[Texte](Cible)**)
+            if (preg_match('/^\*\*([^\[*][^*]*)\*\*$/', $line, $m)) {
+                $current = trim($m[1]);
+                $groups[$current] ??= [];
+                continue;
+            }
+
+            if (preg_match('/\[([^\]]+)\]\(([^)]+)\)/', $line, $m)) {
+                $slug = trim($m[2]);
+                if ($this->isValidSlug($slug)) {
+                    $groups[$current] ??= [];
+                    $groups[$current][] = $slug;
+                }
+            }
+        }
+
+        return $groups;
+    }
+
+    // -------------------------------------------------------------------------
+    // Rendu du contenu d'une page
+    // -------------------------------------------------------------------------
+
+    /**
+     * Supprime la ligne de sélection de langue générée par le wiki
+     * (ex: "🌐 **English** · [Français](fr/Home) · [日本語](ja/Home)") :
+     * l'application affiche son propre sélecteur de langue.
+     */
+    private function stripLanguageSwitchLine(string $md): string
+    {
+        $lines = array_filter(
+            explode("\n", $md),
+            static fn (string $line): bool => !str_contains($line, '🌐')
+        );
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Réécrit les liens Markdown internes du wiki (chemins relatifs façon
+     * GitHub Wiki, ex: "Installation", "../Home", "../ja/Home") en liens vers
+     * les routes /docs/{lang}/{page} de l'application. Les liens externes
+     * (http/https/mailto) et les ancres ("#...") sont laissés tels quels ; les
+     * liens internes qui ne résolvent vers aucune page connue sont dégradés en
+     * texte simple.
      */
     private function linkifyInternalPages(string $md, string $lang): string
     {
-        $files = array_keys(self::GUIDES[$lang] ?? []);
-
         return preg_replace_callback(
             '/\[([^\]]+)\]\(([^)]+)\)/',
-            static function (array $m) use ($files, $lang): string {
+            function (array $m) use ($lang): string {
                 [$full, $label, $target] = $m;
 
-                if (preg_match('/^https?:|^mailto:/', $target)) {
+                if (preg_match('/^https?:|^mailto:|^#/', $target)) {
                     return $full;
                 }
 
-                $targetBase = basename(parse_url($target, PHP_URL_PATH) ?: $target);
-                if (!str_ends_with(strtolower($targetBase), '.md')) {
-                    $targetBase .= '.md';
-                }
+                [$resolvedLang, $resolvedSlug] = $this->resolveWikiLink($lang, $target);
 
-                foreach ($files as $file) {
-                    if (strcasecmp($file, $targetBase) === 0) {
-                        $url = route_url('docs.show', ['lang' => $lang, 'page' => $file]);
-                        return '[' . $label . '](' . $url . ')';
-                    }
+                if ($resolvedLang !== null && $this->pageExists($resolvedLang, $resolvedSlug)) {
+                    $url = route_url('docs.show', ['lang' => $resolvedLang, 'page' => $resolvedSlug]);
+                    return '[' . $label . '](' . $url . ')';
                 }
 
                 return $label;
             },
             $md
         );
+    }
+
+    /**
+     * Résout un lien relatif façon GitHub Wiki (depuis la page courante) vers
+     * une paire [langue, slug]. Retourne [null, null] si non résoluble.
+     *
+     * @return array{0: string|null, 1: string|null}
+     */
+    private function resolveWikiLink(string $currentLang, string $target): array
+    {
+        $target = strtok($target, '#');
+        $currentDir = self::LANG_DIRS[$currentLang] ?? '';
+        $segments = $currentDir !== '' ? [$currentDir] : [];
+
+        foreach (explode('/', trim((string) $target, '/')) as $part) {
+            if ($part === '' || $part === '.') {
+                continue;
+            }
+            if ($part === '..') {
+                array_pop($segments);
+                continue;
+            }
+            $segments[] = $part;
+        }
+
+        if (count($segments) === 1 && $this->isValidSlug($segments[0])) {
+            return ['en', $segments[0]];
+        }
+
+        if (count($segments) === 2 && in_array($segments[0], ['fr', 'ja'], true) && $this->isValidSlug($segments[1])) {
+            return [$segments[0], $segments[1]];
+        }
+
+        return [null, null];
+    }
+
+    /**
+     * Titre affiché d'une page : premier titre H1 de son contenu (dans la
+     * langue donnée, ou à défaut la version anglaise), sinon le slug humanisé.
+     */
+    private function pageTitle(string $lang, string $slug): string
+    {
+        $path = $this->resolvePath($lang, $slug);
+
+        if (!file_exists($path)) {
+            $path = $this->resolvePath('en', $slug);
+        }
+
+        if (file_exists($path)) {
+            $raw = (string) file_get_contents($path);
+            if (preg_match('/^#\s+(.+)$/m', $raw, $m)) {
+                return trim($m[1]);
+            }
+        }
+
+        return str_replace(['-', '_'], ' ', $slug);
     }
 }

@@ -9,12 +9,18 @@ use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Router;
 use kintai\Core\Services\WikiContentService;
 use kintai\UI\Controller\Web\DocsController;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 if (!defined('BASE_PATH')) {
     define('BASE_PATH', dirname(__DIR__, 3));
 }
 
+/**
+ * Fixture calquée sur la vraie structure du wiki GitHub du projet :
+ * pages anglaises à la racine, traductions sous fr/ et ja/, navigation
+ * définie par _Sidebar.md, liens internes en chemins relatifs sans ".md".
+ */
 final class WikiContentServiceTest extends TestCase
 {
     private string $tmpWiki;
@@ -23,9 +29,9 @@ final class WikiContentServiceTest extends TestCase
     {
         $this->tmpWiki = sys_get_temp_dir() . '/kintai_wiki_test_' . uniqid();
         mkdir($this->tmpWiki, 0755, true);
+        mkdir($this->tmpWiki . '/fr', 0755, true);
+        mkdir($this->tmpWiki . '/ja', 0755, true);
 
-        // route_url('docs.show', ...) est utilisé pour réécrire les liens internes :
-        // on enregistre un Router minimal portant cette seule route.
         $router = new Router();
         $router->get('/docs/{lang}/{page}', [DocsController::class, 'show'], name: 'docs.show');
         Container::getInstance()->instance(Router::class, $router);
@@ -51,9 +57,49 @@ final class WikiContentServiceTest extends TestCase
         rmdir($dir);
     }
 
-    private function writeWikiFile(string $name, string $content): void
+    private function writeWikiFile(string $relativePath, string $content): void
     {
-        file_put_contents($this->tmpWiki . '/' . $name, $content);
+        file_put_contents($this->tmpWiki . '/' . $relativePath, $content);
+    }
+
+    private function seedFixture(): void
+    {
+        $this->writeWikiFile('_Sidebar.md', <<<MD
+        **[Home](Home)**
+
+        🌐 [English](Home) · [Français](fr/Home) · [日本語](ja/Home)
+
+        **Getting Started**
+        - [Installation](Installation)
+        MD);
+
+        $this->writeWikiFile('Home.md', <<<MD
+        # Kintai Wiki
+
+        🌐 **English** · [Français](fr/Home) · [日本語](ja/Home)
+
+        See [Installation](Installation), an [external link](https://example.com),
+        an [anchor](#section), and a [broken link](Nonexistent-Page).
+        MD);
+
+        $this->writeWikiFile('Installation.md', "# Installation\n\nContent.");
+
+        $this->writeWikiFile('fr/Home.md', <<<MD
+        # Wiki Kintai
+
+        🌐 [English](../Home) · **Français** · [日本語](../ja/Home)
+
+        Voir [Installation](Installation), [English](../Home) ou [日本語](../ja/Home).
+        MD);
+
+        $this->writeWikiFile('fr/Installation.md', "# Installation FR\n\nContenu.");
+
+        // Volontairement absent : ja/Installation.md (teste le fallback de titre + indisponibilité)
+        $this->writeWikiFile('ja/Home.md', <<<MD
+        # Kintaiウィキ
+
+        🌐 [English](../Home) · [Français](../fr/Home) · **日本語**
+        MD);
     }
 
     private function service(): WikiContentService
@@ -62,7 +108,7 @@ final class WikiContentServiceTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
-    // isConfigured()
+    // isConfigured() / supportedLangs()
     // -------------------------------------------------------------------------
 
     public function testIsConfiguredTrueWhenDirExists(): void
@@ -76,118 +122,209 @@ final class WikiContentServiceTest extends TestCase
         $this->assertFalse($service->isConfigured());
     }
 
-    // -------------------------------------------------------------------------
-    // tableOfContents()
-    // -------------------------------------------------------------------------
-
-    public function testTableOfContentsReturnsSevenEntriesForFr(): void
+    public function testSupportedLangsContainsFrEnJa(): void
     {
-        $this->assertCount(7, $this->service()->tableOfContents('fr'));
-    }
-
-    public function testTableOfContentsFirstEntryIsQuickStart(): void
-    {
-        $toc = $this->service()->tableOfContents('fr');
-
-        $this->assertSame('Quick-Start.md', $toc[0]['file']);
-        $this->assertSame('Démarrage rapide', $toc[0]['title']);
-    }
-
-    public function testTableOfContentsUnknownLangReturnsEmptyArray(): void
-    {
-        $this->assertSame([], $this->service()->tableOfContents('xx'));
+        $langs = WikiContentService::supportedLangs();
+        $this->assertContains('fr', $langs);
+        $this->assertContains('en', $langs);
+        $this->assertContains('ja', $langs);
     }
 
     // -------------------------------------------------------------------------
     // firstPage()
     // -------------------------------------------------------------------------
 
-    public function testFirstPageReturnsQuickStartForFr(): void
+    public function testFirstPageReturnsHomeFromTopOfSidebar(): void
     {
-        $this->assertSame('Quick-Start.md', $this->service()->firstPage('fr'));
+        $this->seedFixture();
+        $this->assertSame('Home', $this->service()->firstPage());
     }
 
-    public function testFirstPageReturnsNullForUnknownLang(): void
+    public function testFirstPageReturnsNullWithoutSidebar(): void
     {
-        $this->assertNull($this->service()->firstPage('xx'));
+        $this->assertNull($this->service()->firstPage());
+    }
+
+    // -------------------------------------------------------------------------
+    // tableOfContents()
+    // -------------------------------------------------------------------------
+
+    public function testTableOfContentsHasTopGroupAndNamedGroup(): void
+    {
+        $this->seedFixture();
+        $toc = $this->service()->tableOfContents('en');
+
+        $this->assertCount(2, $toc);
+        $this->assertNull($toc[0]['label']);
+        // Sans TranslationService lié au container, __() retombe sur la clé brute.
+        $this->assertSame('docs_group_getting_started', $toc[1]['label']);
+    }
+
+    public function testTableOfContentsTopGroupContainsHome(): void
+    {
+        $this->seedFixture();
+        $toc = $this->service()->tableOfContents('en');
+
+        $this->assertSame('Home', $toc[0]['items'][0]['slug']);
+        $this->assertSame('Kintai Wiki', $toc[0]['items'][0]['title']);
+        $this->assertTrue($toc[0]['items'][0]['available']);
+    }
+
+    public function testTableOfContentsUsesFrenchTitleForFrenchLang(): void
+    {
+        $this->seedFixture();
+        $toc = $this->service()->tableOfContents('fr');
+
+        $this->assertSame('Wiki Kintai', $toc[0]['items'][0]['title']);
+    }
+
+    public function testTableOfContentsFallsBackToEnglishTitleWhenTranslationMissing(): void
+    {
+        $this->seedFixture();
+        $toc = $this->service()->tableOfContents('ja');
+
+        // ja/Installation.md n'existe pas : titre replié sur la version anglaise.
+        $this->assertSame('Installation', $toc[1]['items'][0]['title']);
+        $this->assertFalse($toc[1]['items'][0]['available']);
+    }
+
+    public function testTableOfContentsEmptyWithoutSidebar(): void
+    {
+        $this->assertSame([], $this->service()->tableOfContents('en'));
     }
 
     // -------------------------------------------------------------------------
     // pageExists()
     // -------------------------------------------------------------------------
 
-    public function testPageExistsFalseWhenFileNotOnDisk(): void
+    public function testPageExistsTrueForKnownPage(): void
     {
-        $this->assertFalse($this->service()->pageExists('fr', 'Quick-Start.md'));
+        $this->seedFixture();
+        $this->assertTrue($this->service()->pageExists('en', 'Home'));
+        $this->assertTrue($this->service()->pageExists('fr', 'Installation'));
     }
 
-    public function testPageExistsTrueWhenKnownFileIsPresent(): void
+    public function testPageExistsFalseForMissingTranslation(): void
     {
-        $this->writeWikiFile('Quick-Start.md', '# Démarrage');
-
-        $this->assertTrue($this->service()->pageExists('fr', 'Quick-Start.md'));
+        $this->seedFixture();
+        $this->assertFalse($this->service()->pageExists('ja', 'Installation'));
     }
 
-    public function testPageExistsFalseForFileNotInCatalog(): void
+    public function testPageExistsFalseForUnknownLang(): void
     {
-        $this->writeWikiFile('Random-Page.md', '# Random');
+        $this->seedFixture();
+        $this->assertFalse($this->service()->pageExists('de', 'Home'));
+    }
 
-        $this->assertFalse($this->service()->pageExists('fr', 'Random-Page.md'));
+    #[DataProvider('invalidSlugProvider')]
+    public function testPageExistsFalseForInvalidOrTraversalSlug(string $slug): void
+    {
+        $this->seedFixture();
+        $this->assertFalse($this->service()->pageExists('en', $slug));
+    }
+
+    public static function invalidSlugProvider(): array
+    {
+        return [
+            'parent traversal'   => ['../../../etc/passwd'],
+            'nested path'        => ['fr/Home'],
+            'meta sidebar page'  => ['_Sidebar'],
+            'empty slug'         => [''],
+        ];
     }
 
     // -------------------------------------------------------------------------
     // render()
     // -------------------------------------------------------------------------
 
-    public function testRenderThrowsNotFoundForUnknownLang(): void
+    public function testRenderThrowsNotFoundForUnknownPage(): void
     {
+        $this->seedFixture();
         $this->expectException(NotFoundException::class);
-        $this->service()->render('xx', 'Quick-Start.md');
+        $this->service()->render('en', 'Does-Not-Exist');
     }
 
-    public function testRenderThrowsNotFoundWhenFileMissingOnDisk(): void
+    public function testRenderThrowsNotFoundForPathTraversalAttempt(): void
     {
+        $this->seedFixture();
         $this->expectException(NotFoundException::class);
-        $this->service()->render('fr', 'Quick-Start.md');
+        $this->service()->render('en', '../../../../etc/passwd');
     }
 
     public function testRenderConvertsMarkdownToHtml(): void
     {
-        $this->writeWikiFile('Quick-Start.md', "# Bienvenue\n\nCeci est un test.");
+        $this->seedFixture();
+        $html = $this->service()->render('en', 'Installation');
 
-        $html = $this->service()->render('fr', 'Quick-Start.md');
-
-        $this->assertStringContainsString('<h1>Bienvenue</h1>', $html);
-        $this->assertStringContainsString('<p>Ceci est un test.</p>', $html);
+        $this->assertStringContainsString('<h1>Installation</h1>', $html);
+        $this->assertStringContainsString('<p>Content.</p>', $html);
     }
 
-    public function testRenderKeepsExternalLinksUnchanged(): void
+    public function testRenderStripsLanguageSwitchLine(): void
     {
-        $this->writeWikiFile('Quick-Start.md', '[Site officiel](https://kintai.example.com)');
+        $this->seedFixture();
+        $html = $this->service()->render('en', 'Home');
 
-        $html = $this->service()->render('fr', 'Quick-Start.md');
-
-        $this->assertStringContainsString('href="https://kintai.example.com"', $html);
+        $this->assertStringNotContainsString('🌐', $html);
     }
 
-    public function testRenderRewritesInternalLinkToAppRoute(): void
+    public function testRenderRewritesSameLanguageInternalLink(): void
     {
-        $this->writeWikiFile('Quick-Start.md', '[Guide propriétaire](Guide-Owner-FR.md)');
+        $this->seedFixture();
+        $html = $this->service()->render('en', 'Home');
 
-        $html = $this->service()->render('fr', 'Quick-Start.md');
-
-        // base_url() dépend de SCRIPT_NAME (variable en CLI) : on ne vérifie que le suffixe stable.
-        $this->assertStringContainsString('docs/fr/Guide-Owner-FR.md"', $html);
-        $this->assertStringContainsString('>Guide propriétaire<', $html);
+        $this->assertStringContainsString('docs/en/Installation"', $html);
     }
 
-    public function testRenderDegradesUnrecognizedInternalLinkToPlainText(): void
+    public function testRenderKeepsExternalLinkUnchanged(): void
     {
-        $this->writeWikiFile('Quick-Start.md', 'Voir [Page inconnue](Page-Inconnue.md) pour plus de détails.');
+        $this->seedFixture();
+        $html = $this->service()->render('en', 'Home');
 
-        $html = $this->service()->render('fr', 'Quick-Start.md');
+        $this->assertStringContainsString('href="https://example.com"', $html);
+    }
 
-        $this->assertStringNotContainsString('<a', $html);
-        $this->assertStringContainsString('Page inconnue', $html);
+    public function testRenderKeepsAnchorLinkUnchanged(): void
+    {
+        $this->seedFixture();
+        $html = $this->service()->render('en', 'Home');
+
+        $this->assertStringContainsString('href="#section"', $html);
+    }
+
+    public function testRenderDegradesBrokenInternalLinkToPlainText(): void
+    {
+        $this->seedFixture();
+        $html = $this->service()->render('en', 'Home');
+
+        $this->assertStringContainsString('broken link', $html);
+        $this->assertStringNotContainsString('Nonexistent-Page', $html);
+    }
+
+    public function testRenderResolvesParentDirectoryLinkToEnglish(): void
+    {
+        $this->seedFixture();
+        // Depuis fr/Home.md : [English](../Home) doit pointer vers /docs/en/Home
+        $html = $this->service()->render('fr', 'Home');
+
+        $this->assertStringContainsString('docs/en/Home"', $html);
+    }
+
+    public function testRenderResolvesCrossLanguageSiblingLink(): void
+    {
+        $this->seedFixture();
+        // Depuis fr/Home.md : [日本語](../ja/Home) doit pointer vers /docs/ja/Home
+        $html = $this->service()->render('fr', 'Home');
+
+        $this->assertStringContainsString('docs/ja/Home"', $html);
+    }
+
+    public function testRenderSameLanguageLinkFromSubdirectory(): void
+    {
+        $this->seedFixture();
+        // Depuis fr/Home.md : [Installation](Installation) doit pointer vers /docs/fr/Installation
+        $html = $this->service()->render('fr', 'Home');
+
+        $this->assertStringContainsString('docs/fr/Installation"', $html);
     }
 }

@@ -21,11 +21,10 @@ final class DocsController
     public function index(Request $request): Response
     {
         $locale    = $this->translations->getLocale();
+        $firstPage = $this->wikiContent->firstPage();
         $languages = [];
 
         foreach (WikiContentService::supportedLangs() as $lang) {
-            $firstPage = $this->wikiContent->firstPage($lang);
-
             $languages[$lang] = [
                 'first_page' => $firstPage,
                 'browsable'  => $firstPage !== null && $this->wikiContent->pageExists($lang, $firstPage),
@@ -46,20 +45,37 @@ final class DocsController
         $toc         = $this->wikiContent->tableOfContents($lang);
         $contentHtml = $this->wikiContent->render($lang, $page);
 
+        $flatItems = [];
+        foreach ($toc as $group) {
+            foreach ($group['items'] as $item) {
+                $flatItems[] = $item;
+            }
+        }
+
         $currentIndex = null;
-        foreach ($toc as $i => $entry) {
-            if ($entry['file'] === $page) {
+        foreach ($flatItems as $i => $item) {
+            if ($item['slug'] === $page) {
                 $currentIndex = $i;
                 break;
             }
         }
 
+        $otherLanguages = [];
+        foreach (WikiContentService::supportedLangs() as $l) {
+            if ($l === $lang) {
+                continue;
+            }
+            $otherLanguages[$l] = $this->wikiContent->pageExists($l, $page);
+        }
+
         return Response::html($this->view->render('docs.show', [
-            'lang'         => $lang,
-            'page'         => $page,
-            'toc'          => $toc,
-            'currentIndex' => $currentIndex,
-            'contentHtml'  => $contentHtml,
+            'lang'           => $lang,
+            'page'           => $page,
+            'toc'            => $toc,
+            'flatItems'      => $flatItems,
+            'currentIndex'   => $currentIndex,
+            'contentHtml'    => $contentHtml,
+            'otherLanguages' => $otherLanguages,
         ], 'layout.app'));
     }
 }
