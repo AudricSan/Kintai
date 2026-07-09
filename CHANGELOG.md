@@ -6,6 +6,12 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Added
+- Update channel selector on `/admin/update` (Alpha / Beta / Release), stored as the `update_channel` app setting (`AppSettingsService::updateChannel()`). `GithubUpdateService::checkLatestRelease()` now lists all GitHub Releases (`GET /repos/{repo}/releases`) instead of only the latest stable one, and picks the highest version compatible with the configured channel: `release` only considers stable tags, `beta` also considers `-beta` tags, and `alpha` considers everything (alpha/beta/stable) — laying the groundwork for the `alpha`/`beta` release branches and their automated GitHub Actions publishing.
+
+### Changed
+- Release publishing is now automated: `.github/workflows/release.yml` tags and publishes a GitHub Release whenever a version bump is merged into the `alpha`, `beta`, or `main` branch — `alpha`/`beta` get an auto-incremented prerelease suffix (`vX.Y.Z-{channel}.N`), `main` publishes the plain stable tag (skipped if it already exists). The base version bump in `composer.json`/`config/app.php`/`CHANGELOG.md` is still done by hand as before; only the tag/`gh release create` step is now automatic. `alpha`, `beta`, and `main` are protected branches (PR + passing CI required). See `docs/releasing.md` for the updated flow.
+
 ## [0.5.0] - 2026-07-09
 
 ### Added

@@ -6,12 +6,15 @@ use kintai\UI\Components\Card;
 /**
  * @var string      $currentVersion
  * @var array|null  $updateInfo
+ * @var string      $updateChannel
  * @var array       $pendingMigs
  * @var int|null    $lastUpdateDurationSeconds
  * @var string      $BASE_URL
  */
 
 $action = route_url('admin.update');
+$channelAction = route_url('admin.update.channel');
+$channels = ['release' => __('update_channel_release'), 'beta' => __('update_channel_beta'), 'alpha' => __('update_channel_alpha')];
 ?>
 <?php $flashVal = $flash ?? ''; if ($flashVal !== ''): ?>
     <div class="alert alert--info mb-sm"><?= htmlspecialchars(urldecode($flashVal)) ?></div>
@@ -25,6 +28,18 @@ $action = route_url('admin.update');
 <?php
 ob_start();
 ?>
+<p class="mb-sm">
+    <?= __('update_channel_label') ?>
+    <span class="btn-group">
+        <?php foreach ($channels as $value => $label): ?>
+            <form method="POST" action="<?= htmlspecialchars($channelAction) ?>" class="d-inline">
+                <?= csrf_field() ?>
+                <input type="hidden" name="channel" value="<?= htmlspecialchars($value) ?>">
+                <?= Button::make($label)->sm()->{$value === $updateChannel ? 'primary' : 'outline'}()->submit()->disabled($value === $updateChannel)->render() ?>
+            </form>
+        <?php endforeach; ?>
+    </span>
+</p>
 <p>
     <?= __('backup_current_version') ?> <strong><?= htmlspecialchars($currentVersion) ?></strong>
     <?php if ($pendingMigs !== []): ?>
