@@ -21,6 +21,10 @@ final class RepositoryServiceProvider extends ServiceProvider
         $this->container->singleton(UserShiftTypeRateRepositoryInterface::class, fn() => new DatabaseUserShiftTypeRateRepository());
         $this->container->singleton(FeedbackRepositoryInterface::class, fn() => new DatabaseFeedbackRepository());
         $this->container->singleton(IcalTokenRepositoryInterface::class, fn() => new DatabaseIcalTokenRepository());
+        // TimeclockRepositoryInterface reste ici (bundle "timeclock" = UI seulement) :
+        // HomeController et EmployeeController::dashboard() en dépendent pour leurs
+        // widgets "pointage en cours", qui doivent continuer de fonctionner même si
+        // ce bundle est désactivé. Voir src/Bundles/Timeclock/TimeclockBundle.php.
         $this->container->singleton(TimeclockRepositoryInterface::class, fn() => new DatabaseTimeclockRepository());
         $this->container->singleton(UserDashboardPrefsRepositoryInterface::class, fn() => new DatabaseUserDashboardPrefsRepository());
         $this->container->singleton(UserNavPrefsRepositoryInterface::class, fn() => new DatabaseUserNavPrefsRepository());
