@@ -26,6 +26,22 @@ abstract class Bundle
     abstract public function register(): void;
 
     /**
+     * Human-readable label shown in /admin/bundles. Override to translate.
+     */
+    public function getLabel(): string
+    {
+        return ucwords(str_replace(['-', '_'], ' ', $this->getName()));
+    }
+
+    /**
+     * Human-readable description shown in /admin/bundles. Override to translate.
+     */
+    public function getDescription(): string
+    {
+        return '';
+    }
+
+    /**
      * Boot the bundle after all are registered.
      */
     public function boot(): void

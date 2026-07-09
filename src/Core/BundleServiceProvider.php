@@ -10,22 +10,12 @@ final class BundleServiceProvider extends ServiceProvider
     {
         $bundleManager = $this->container->make(BundleManager::class);
         $featureManager = $this->container->make(FeatureManager::class);
-        $availableBundles = $this->loadBundlesConfig();
+        $discovery = new BundleDiscoveryService();
 
-        foreach ($availableBundles as $featureKey => $bundleClass) {
-            if ($featureManager->isEnabled($featureKey)) {
-                $bundleManager->registerBundle($bundleClass);
+        foreach ($discovery->discover() as $slug => $meta) {
+            if ($featureManager->isEnabled($slug)) {
+                $bundleManager->registerBundle($meta['class']);
             }
         }
-    }
-
-    private function loadBundlesConfig(): array
-    {
-        $path = BASE_PATH . '/config/bundles.php';
-        if (file_exists($path)) {
-            return require $path;
-        }
-
-        return [];
     }
 }

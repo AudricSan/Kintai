@@ -312,12 +312,17 @@ $dedResidentTax = $ded['resident_tax_monthly'] ?? 0;
                 'open_shifts'   => ['label' => __('feature_open_shifts'),    'desc' => __('feature_open_shifts_desc'),    'icon' => '📋'],
                 'messages'      => ['label' => __('feature_messages'),       'desc' => __('feature_messages_desc'),       'icon' => '💬'],
                 'daily_reports' => ['label' => __('feature_daily_reports'),  'desc' => __('feature_daily_reports_desc'),  'icon' => '📊'],
+                'photos'        => ['label' => __('feature_photos'),        'desc' => __('feature_photos_desc'),        'icon' => '📷'],
             ];
             $enabledFeatures ??= null;
             $isEnabled = fn(string $slug): bool => $enabledFeatures === null || in_array($slug, $enabledFeatures, true);
+            // Un slug lié à un bundle désactivé au niveau instance (/admin/bundles) n'est pas proposé ici.
+            $availableFeatureSlugs ??= [];
+            $isAvailable = fn(string $slug): bool => $availableFeatureSlugs[$slug] ?? true;
             ?>
             <div class="feature-cards">
                 <?php foreach ($allFeatureSlugs as $slug => $info): ?>
+                    <?php if (!$isAvailable($slug)) continue; ?>
                     <?php $on = $isEnabled($slug); ?>
                     <label class="feature-card">
                         <input type="checkbox" name="feature_<?= $slug ?>" value="1"

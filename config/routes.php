@@ -31,6 +31,7 @@ use kintai\UI\Controller\Web\Requests\FeedbackController;
 use kintai\UI\Controller\Web\System\ActivityController;
 use kintai\UI\Controller\Web\System\AdminController;
 use kintai\UI\Controller\Web\System\BackupController;
+use kintai\UI\Controller\Web\System\BundleSettingsController;
 use kintai\UI\Controller\Web\System\LanguageController;
 use kintai\UI\Controller\Web\System\MailTestController;
 use kintai\UI\Controller\Web\System\OwnerSettingsController;
@@ -344,6 +345,10 @@ $router->group('/admin', function ($r) {
     $r->get('/languages/{code}/edit',           [LanguageController::class, 'edit'],         name: 'admin.languages.edit');
     $r->post('/languages/{code}/edit/save',     [LanguageController::class, 'saveKey'],      name: 'admin.languages.edit.save');
     $r->post('/languages/{code}/edit/delete',   [LanguageController::class, 'deleteKey'],    name: 'admin.languages.edit.delete');
+
+    // Bundles (Owner uniquement)
+    $r->get('/bundles',  [BundleSettingsController::class, 'show'], name: 'admin.bundles');
+    $r->post('/bundles', [BundleSettingsController::class, 'save'], name: 'admin.bundles.save');
 
 }, middleware: [AuthMiddleware::class, AdminMiddleware::class]);
 

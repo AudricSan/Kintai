@@ -8,6 +8,7 @@ use kintai\UI\Controller\Web\HasAdminAccess;
 
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
+use kintai\Core\FeatureManager;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
@@ -24,6 +25,13 @@ final class AdminStoreController
 
     private const ROLES = ['admin' => 'Administrateur', 'manager' => 'Manager', 'staff' => 'Employé'];
 
+    /** Association slug de feature par-store → bundle dont il dépend (absent = fonctionnalité Core, toujours proposée). */
+    private const FEATURE_BUNDLE_MAP = [
+        'messages'      => 'messaging',
+        'daily_reports' => 'daily-report',
+        'photos'        => 'store-photos',
+    ];
+
     public function __construct(
         private readonly ViewRenderer $view,
         private readonly UserRepositoryInterface $users,
@@ -32,7 +40,22 @@ final class AdminStoreController
         private readonly AuditLogger $auditLogger,
         private readonly StoreServiceInterface $storeService,
         private readonly StoreStatsServiceInterface $storeStatsService,
+        private readonly FeatureManager $features,
     ) {}
+
+    /**
+     * Pour chaque slug de feature par-store, indique s'il est proposable :
+     * true pour les fonctionnalités Core, et pour les fonctionnalités de bundle
+     * dont le bundle est activé au niveau de l'instance (/admin/bundles).
+     */
+    private function availableFeatureSlugs(): array
+    {
+        $map = [];
+        foreach (self::FEATURE_BUNDLE_MAP as $slug => $bundleKey) {
+            $map[$slug] = $this->features->isEnabled($bundleKey);
+        }
+        return $map;
+    }
 
     public function stores(Request $request): Response
     {
@@ -53,9 +76,10 @@ final class AdminStoreController
         }
 
         return Response::html($this->view->render('staff.stores-form', [
-            'title' => 'Nouveau store',
-            'mode'  => 'create',
-            'store' => [],
+            'title'                 => 'Nouveau store',
+            'mode'                  => 'create',
+            'store'                 => [],
+            'availableFeatureSlugs' => $this->availableFeatureSlugs(),
         ], 'layout.app'));
     }
 
@@ -120,6 +144,7 @@ final class AdminStoreController
             // Aucune ligne en base = jamais configuré → toutes les fonctionnalités actives par défaut (null)
             'enabledFeatures'   => ($_ef = $this->stores->getFeatures($storeId)) !== [] ? $_ef : null,
             'importSettings'    => $this->stores->getImportSettings($storeId),
+            'availableFeatureSlugs' => $this->availableFeatureSlugs(),
         ], 'layout.app'));
     }
 
@@ -132,7 +157,7 @@ final class AdminStoreController
         $storeId = (int) $store['id'];
         $this->assertStoreAccess($request, $storeId);
 
-        $allFeatureSlugs = ['shifts', 'timeclock', 'timeoff', 'swaps', 'open_shifts', 'messages', 'daily_reports'];
+        $allFeatureSlugs = ['shifts', 'timeclock', 'timeoff', 'swaps', 'open_shifts', 'messages', 'daily_reports', 'photos'];
         $enabledFeatures = [];
         foreach ($allFeatureSlugs as $slug) {
             if ($request->post('feature_' . $slug)) {
