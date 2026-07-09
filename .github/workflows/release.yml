@@ -85,7 +85,8 @@ jobs:
           ' CHANGELOG.md > release-notes.txt
 
           if [ ! -s release-notes.txt ]; then
-            echo "(pas d'entrée CHANGELOG trouvée pour cette version)" > release-notes.txt
+            echo "::error::Aucune entrée CHANGELOG.md trouvée pour '${HEADER}' — ajoutez les notes de version avant de publier une release sur ce canal."
+            exit 1
           fi
 
       - name: Create tag and GitHub release
