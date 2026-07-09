@@ -7,10 +7,7 @@ namespace kintai\UI\Controller\Web\Staff;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\HiringReportRepositoryInterface;
-use kintai\Core\Repositories\DailyReportRepositoryInterface;
 use kintai\Core\Repositories\ResignationReportRepositoryInterface;
-use kintai\Core\Repositories\SalaryReportRepositoryInterface;
-use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
@@ -20,13 +17,23 @@ use kintai\Core\Services\AuditLogger;
 use kintai\UI\ViewRenderer;
 use kintai\UI\Controller\Web\HasAdminAccess;
 
+/**
+ * Rapports d'embauche et de démission — restent dans le Core pour l'instant.
+ * Salaire, qui partageait auparavant ce même contrôleur (CRUD générique via
+ * un dispatch `repo(string $type)`), a été extrait en bundle séparé (voir
+ * src/Bundles/SalaryReport/, qui réutilise la même logique via le trait
+ * HasStaffReportCrud). Ce contrôleur garde volontairement son dispatch
+ * interne à deux types tant que la démission n'a pas, elle aussi, son propre
+ * bundle — bascule prévue vers HasStaffReportCrud à ce moment-là, hiring
+ * seul sera alors géré de la même façon.
+ */
 final class AdminReportController
 {
     use HasAdminAccess;
 
     /**
-     * Configuration commune des trois types de rapports (embauche, démission,
-     * salaire) : entité d'audit, segment d'URL, préfixe de vue, message
+     * Configuration commune des deux types de rapports restants (embauche,
+     * démission) : entité d'audit, segment d'URL, préfixe de vue, message
      * d'introuvable et mapping des champs POST avec leur cast
      * ('str' → chaîne ou null, 'float'/'int' → numérique, 'null' → toujours null).
      */
@@ -74,33 +81,6 @@ final class AdminReportController
                 'person_in_charge'   => 'str',
             ],
         ],
-        'salary' => [
-            'entity'    => 'salary_report',
-            'slug'      => 'salary',
-            'view'      => 'staff.reports-salary',
-            'not_found' => 'Rapport de salaire introuvable.',
-            'fields'    => [
-                'store_name'            => 'str',
-                'person_in_charge'      => 'str',
-                'total_payment'         => 'float',
-                'total_deductions'      => 'float',
-                'income_tax_base'       => 'float',
-                'withholding_tax'       => 'float',
-                'residence_tax'         => 'float',
-                'other_deductions'      => 'float',
-                'net_payment'           => 'float',
-                'active_employees'      => 'int',
-                'hand_delivered_salary' => 'float',
-                'staff_man_hours'       => 'float',
-                'staff_total_payment'   => 'float',
-                'staff_avg_hourly_wage' => 'float',
-                'employee_work_hours'   => 'str',
-                'new_hires'             => 'int',
-                'resigned_staff'        => 'int',
-                'hire_registrations'    => 'str',
-                'remarks'               => 'str',
-            ],
-        ],
     ];
 
     public function __construct(
@@ -109,10 +89,7 @@ final class AdminReportController
         private readonly UserRepositoryInterface $users,
         private readonly HiringReportRepositoryInterface $hiringReports,
         private readonly ResignationReportRepositoryInterface $resignationReports,
-        private readonly SalaryReportRepositoryInterface $salaryReports,
         private readonly StoreUserRepositoryInterface $storeUsers,
-        private readonly DailyReportRepositoryInterface $dailyReports,
-        private readonly ShiftRepositoryInterface $shifts,
         private readonly AuditLogger $auditLogger,
     ) {}
 
@@ -241,7 +218,7 @@ final class AdminReportController
             $preset['resignation_date'] = date('Y-m-d');
         }
 
-        $managers = $this->getManagersForResignationForm($storeId, $userId);
+        $managers = $this->getManagersForReportForm($storeId, $userId);
 
         return Response::html($this->view->render('staff.reports-resignation-form', [
             'title'   => __('new_resignation_report') . ' — ' . ($store['name'] ?? ''),
@@ -336,147 +313,14 @@ final class AdminReportController
     }
 
     // =========================================================================
-    // 給与報告書 (Salary Report)
-    // =========================================================================
-
-    public function allSalaryReports(Request $request): Response
-    {
-        [$allStores, $queryStoreIds, $filterStoreId] = $this->storesAndFilter($request);
-
-        $filters = [];
-        if ($filterStoreId > 0) {
-            $filters['store_id'] = $filterStoreId;
-        }
-        $filterYear = $request->query('year', '');
-        if ($filterYear !== '') {
-            $filters['year'] = $filterYear;
-        }
-        $filterMonth = $request->query('month', '');
-        if ($filterMonth !== '') {
-            $filters['month'] = $filterMonth;
-        }
-        $filterPerson = trim($request->query('person', ''));
-        if ($filterPerson !== '') {
-            $filters['person_in_charge'] = $filterPerson;
-        }
-
-        $reports = $this->salaryReports->findAll($queryStoreIds, $filters);
-
-        return Response::html($this->view->render('staff.reports-salary', [
-            'title'       => __('sr_title'),
-            'stores'      => $allStores,
-            'filter_store_id' => $filterStoreId,
-            'filter_year' => $filterYear,
-            'filter_month' => $filterMonth,
-            'filter_person' => $filterPerson,
-            'reports'     => $reports,
-        ], 'layout.app'));
-    }
-
-    public function salaryReports(Request $request): Response
-    {
-        return $this->listReports('salary', $request, __('sr_title'));
-    }
-
-    public function createSalaryReport(Request $request): Response
-    {
-        $storeId = (int) $request->param('id');
-        $store = $this->findStoreOrFail($storeId);
-        $this->assertStoreAccess($request, $storeId);
-
-        $authUser = $request->getAttribute('auth_user');
-        $targetMonth = date('Y-m');
-        $preset = $this->calculateSalaryPreset($storeId, $targetMonth, $authUser);
-
-        $userId = (int) ($request->query('user_id') ?? 0);
-        if ($userId > 0) {
-            $user = $this->users->findById($userId);
-            if ($user !== null) {
-                $preset['employee_name'] = $user['display_name'] ?? '';
-            }
-        }
-
-        $managers = $this->getManagersForResignationForm($storeId);
-        $authName = trim(($authUser['last_name'] ?? '') . ' ' . ($authUser['first_name'] ?? '')) ?: ($authUser['display_name'] ?? '');
-        $isManager = !empty(array_filter($managers, fn($m) => (int) $m['id'] === (int) ($authUser['id'] ?? 0)));
-        if ($isManager && empty($preset['person_in_charge'])) {
-            $preset['person_in_charge'] = $authName;
-        }
-
-        return Response::html($this->view->render('staff.reports-salary-form', [
-            'title'   => __('sr_new') . ' — ' . ($store['name'] ?? ''),
-            'store'   => $store,
-            'mode'    => 'create',
-            'report'  => $preset,
-            'managers' => $managers,
-        ], 'layout.app'));
-    }
-
-    public function storeSalaryReport(Request $request): Response
-    {
-        $storeId = (int) $request->param('id');
-        $this->findStoreOrFail($storeId);
-        $this->assertStoreAccess($request, $storeId);
-
-        $targetMonth = $request->post('target_month', '');
-
-        $existing = $this->salaryReports->findByStoreAndMonth($storeId, $targetMonth);
-        if ($existing !== null) {
-            return Response::redirect($this->base() . '/admin/stores/' . $storeId . '/reports/salary/' . $existing['id'] . '/edit?error=already_exists');
-        }
-
-        $data = array_merge([
-            'store_id'     => $storeId,
-            'target_month' => $targetMonth,
-        ], $this->postData($request, self::REPORT_TYPES['salary']['fields']), [
-            'created_by' => $request->getAttribute('auth_user')['id'] ?? 0,
-        ]);
-
-        $saved = $this->salaryReports->save($data);
-
-        $this->auditLogger->log($request, 'salary_report.created', 'salary_report', (int) ($saved['id'] ?? 0), [
-            'store_id'     => $storeId,
-            'target_month' => $targetMonth,
-        ]);
-
-        return $this->redirectToList($storeId, 'salary', 'created');
-    }
-
-    public function showSalaryReport(Request $request): Response
-    {
-        return $this->showReport('salary', $request);
-    }
-
-    public function editSalaryReport(Request $request): Response
-    {
-        return $this->editReport('salary', $request);
-    }
-
-    public function updateSalaryReport(Request $request): Response
-    {
-        return $this->updateReport('salary', $request);
-    }
-
-    public function deleteSalaryReport(Request $request): Response
-    {
-        return $this->deleteReport('salary', $request);
-    }
-
-    public function salaryReportPdf(Request $request): Response
-    {
-        return $this->reportPdf('salary', $request);
-    }
-
-    // =========================================================================
     // CRUD générique par type de rapport
     // =========================================================================
 
-    private function repo(string $type): HiringReportRepositoryInterface|ResignationReportRepositoryInterface|SalaryReportRepositoryInterface
+    private function repo(string $type): HiringReportRepositoryInterface|ResignationReportRepositoryInterface
     {
         return match ($type) {
             'hiring'      => $this->hiringReports,
             'resignation' => $this->resignationReports,
-            'salary'      => $this->salaryReports,
         };
     }
 
@@ -551,7 +395,6 @@ final class AdminReportController
         return match ($type) {
             'hiring'      => '採用報告書 — ' . ($report['employee_name'] ?? ''),
             'resignation' => __('resignation_report') . ' — ' . ($report['employee_name'] ?? ''),
-            'salary'      => __('sr_title') . ' — ' . ($report['target_month'] ?? ''),
         };
     }
 
@@ -562,7 +405,6 @@ final class AdminReportController
         $title = match ($type) {
             'hiring'      => '編集 — 採用報告書',
             'resignation' => __('edit_resignation_report'),
-            'salary'      => __('sr_edit'),
         };
 
         return Response::html($this->view->render(self::REPORT_TYPES[$type]['view'] . '-form', array_merge([
@@ -575,16 +417,15 @@ final class AdminReportController
 
     /**
      * Données de formulaire propres à chaque type : liste des employés
-     * (hiring/resignation) et des responsables (resignation/salary).
+     * (hiring/resignation) et des responsables (resignation).
      */
     private function editExtras(string $type, int $storeId, array $report): array
     {
-        $managers = fn(): array => $this->getManagersForResignationForm($storeId, (int) ($report['user_id'] ?? 0));
+        $managers = fn(): array => $this->getManagersForReportForm($storeId, (int) ($report['user_id'] ?? 0));
 
         return match ($type) {
             'hiring'      => ['users' => $this->users->findAll()],
             'resignation' => ['users' => $this->users->findAll(), 'managers' => $managers()],
-            'salary'      => ['managers' => $managers()],
         };
     }
 
@@ -594,10 +435,8 @@ final class AdminReportController
         $cfg = self::REPORT_TYPES[$type];
 
         $changes = $this->postData($request, $cfg['fields']);
-        if ($type !== 'salary') {
-            $userId = (int) $request->post('user_id', 0);
-            $changes = ['user_id' => $userId > 0 ? $userId : null] + $changes;
-        }
+        $userId = (int) $request->post('user_id', 0);
+        $changes = ['user_id' => $userId > 0 ? $userId : null] + $changes;
         $data = array_merge($report, $changes);
 
         $this->repo($type)->save($data);
@@ -756,77 +595,10 @@ final class AdminReportController
     }
 
     /**
-     * Calcule les valeurs pré-remplies pour un rapport de salaire à partir
-     * des rapports journaliers et des shifts existants.
-     */
-    private function calculateSalaryPreset(int $storeId, string $targetMonth, array $authUser): array
-    {
-        $preset = [
-            'target_month'      => $targetMonth,
-            'person_in_charge'  => $authUser['display_name'] ?? '',
-        ];
-
-        $from = $targetMonth . '-01';
-        $to = date('Y-m-t', strtotime($from));
-
-        // Total des ventes depuis les rapports journaliers validés/soumis
-        $dailyReports = $this->dailyReports->findByStoreAndDateRange($storeId, $from, $to);
-        $totalPayment = 0;
-        foreach ($dailyReports as $r) {
-            if (in_array($r['status'] ?? '', ['validated', 'submitted'], true)) {
-                $totalPayment += (float) ($r['sales_total'] ?? 0);
-            }
-        }
-
-        // Heures et salaires depuis les shifts
-        $allShifts = $this->shifts->findByStore($storeId);
-        $monthShifts = array_filter($allShifts, fn($s) =>
-            ($s['shift_date'] ?? '') >= $from && ($s['shift_date'] ?? '') <= $to
-        );
-
-        $totalMinutes = 0;
-        $totalShiftSalary = 0;
-        $employeeMinutes = [];
-        foreach ($monthShifts as $s) {
-            $minutes = (int) ($s['duration_minutes'] ?? 0);
-            $totalMinutes += $minutes;
-            $totalShiftSalary += (float) ($s['estimated_salary'] ?? 0);
-            $uid = (int) ($s['user_id'] ?? 0);
-            if ($uid > 0) {
-                $employeeMinutes[$uid] = ($employeeMinutes[$uid] ?? 0) + $minutes;
-            }
-        }
-
-        $staffManHours = $totalMinutes > 0 ? round($totalMinutes / 60, 2) : 0;
-        $activeEmployees = count($employeeMinutes);
-        $avgHourlyWage = $staffManHours > 0 ? round($totalShiftSalary / $staffManHours, 2) : 0;
-
-        // Texte récapitulatif des heures par employé
-        $lines = [];
-        ksort($employeeMinutes);
-        foreach ($employeeMinutes as $uid => $minutes) {
-            $user = $this->users->findById($uid);
-            if ($user !== null) {
-                $name = trim(($user['last_name'] ?? '') . ' ' . ($user['first_name'] ?? '')) ?: ($user['display_name'] ?? '#' . $uid);
-                $lines[] = $name . ': ' . round($minutes / 60, 1) . 'h';
-            }
-        }
-
-        $preset['total_payment'] = round($totalPayment, 2);
-        $preset['staff_man_hours'] = $staffManHours;
-        $preset['staff_total_payment'] = round($totalShiftSalary, 2);
-        $preset['staff_avg_hourly_wage'] = $avgHourlyWage;
-        $preset['active_employees'] = $activeEmployees;
-        $preset['employee_work_hours'] = implode("\n", $lines);
-
-        return $preset;
-    }
-
-    /**
      * Retourne la liste des responsables (admin/manager) pour le store courant
      * ou pour tous les stores d'un employé donné.
      */
-    private function getManagersForResignationForm(int $storeId, int $userId = 0): array
+    private function getManagersForReportForm(int $storeId, int $userId = 0): array
     {
         $storeIds = [$storeId];
         if ($userId > 0) {
