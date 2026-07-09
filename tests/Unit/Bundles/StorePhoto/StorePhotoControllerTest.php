@@ -64,13 +64,39 @@ final class StorePhotoControllerTest extends TestCase
         ]);
         $this->photos->method('findImagesBySubmission')->willReturn([]);
 
+        $_GET['store_id'] = '1';
         $req = new Request();
         $req->setAttribute('managed_store_ids', null);
-        $_GET['store_id'] = '1';
 
         $response = $this->controller->index($req);
 
         $this->assertSame(200, $response->status());
+    }
+
+    public function testStoreForbiddenWhenPhotosDisabledForStore(): void
+    {
+        $_POST = ['store_id' => '1'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+
+        // Une ligne existe en base mais 'photos' n'y figure pas => désactivé pour ce store.
+        $this->stores->method('getFeatures')->with(1)->willReturn(['shifts', 'timeclock']);
+
+        $this->expectException(ForbiddenException::class);
+        $this->controller->store($req);
+    }
+
+    public function testCreateForbiddenWhenPhotosDisabledForRequestedStore(): void
+    {
+        $_GET['store_id'] = '1';
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+
+        $this->stores->method('findAll')->willReturn([]);
+        $this->stores->method('getFeatures')->with(1)->willReturn(['shifts']);
+
+        $this->expectException(ForbiddenException::class);
+        $this->controller->create($req);
     }
 
     public function testStoreWithoutStoreIdRedirectsToCreate(): void
