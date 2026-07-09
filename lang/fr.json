@@ -218,6 +218,8 @@
     "bundle_messaging": "Messagerie",
     "bundle_messaging_desc": "Messagerie interne entre membres des magasins.",
     "bundle_none_found": "Aucun bundle détecté dans src/Bundles/.",
+    "bundle_resignation_report": "Rapport de démission",
+    "bundle_resignation_report_desc": "Rapports de démission par employé, avec réactivation du compte.",
     "bundle_settings": "Bundles",
     "bundle_settings_hint": "Active ou désactive une fonctionnalité pour toute l'instance. Une fois désactivée ici, elle disparaît complètement (routes, menus) même si un magasin l'avait activée dans ses propres réglages. La liste ci-dessous est détectée automatiquement à partir des bundles présents sur le serveur — aucune installation supplémentaire n'est nécessaire pour qu'un nouveau bundle apparaisse ici.",
     "bundle_store_photos": "Photos de magasin",
