@@ -48,8 +48,10 @@ final class RepositoryServiceProvider extends ServiceProvider
         // Photos : voir src/Bundles/StorePhoto/StorePhotoBundle.php
         // Feedback : voir src/Bundles/Feedback/FeedbackBundle.php
 
-        // Traductions (fichiers JSON, voir lang/languages.json et lang/{code}.json)
+        // Traductions (fichiers JSON, voir lang/languages.json et lang/{code}.json). Chaque
+        // bundle peut définir ses propres src/Bundles/<Name>/lang/{code}.json, fusionnés
+        // par-dessus ceux du Core (fallback Core si le bundle ne redéfinit pas une clé).
         $this->container->singleton(LanguageRepositoryInterface::class, fn() => new JsonLanguageRepository(BASE_PATH . '/lang'));
-        $this->container->singleton(TranslationRepositoryInterface::class, fn() => new JsonTranslationRepository(BASE_PATH . '/lang'));
+        $this->container->singleton(TranslationRepositoryInterface::class, fn() => new JsonTranslationRepository(BASE_PATH . '/lang', BASE_PATH . '/src/Bundles'));
     }
 }
