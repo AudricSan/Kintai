@@ -215,6 +215,8 @@
     "bulk_max_warning": "一度に選択できるシフトは :n 件までです。",
     "bundle_daily_report": "日報",
     "bundle_daily_report_desc": "下書き→提出→承認のワークフローを持つ日次活動レポート。",
+    "bundle_hiring_report": "採用報告書",
+    "bundle_hiring_report_desc": "店舗ごとの採用報告書の閲覧・編集。このバンドルを無効にしても、従業員作成時の自動生成は継続されます。",
     "bundle_messaging": "メッセージング",
     "bundle_messaging_desc": "店舗メンバー間の内部メッセージング。",
     "bundle_none_found": "src/Bundles/ にバンドルが見つかりません。",

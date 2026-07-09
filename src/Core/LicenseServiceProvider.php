@@ -40,6 +40,6 @@ final class LicenseServiceProvider extends ServiceProvider
         }
 
         // Default to all core features enabled for self-hosted version if no license file.
-        return ['daily-report', 'messaging', 'store-photos', 'timeoff', 'shift-swap', 'shift-claim', 'resignation-report', 'salary-report'];
+        return ['daily-report', 'messaging', 'store-photos', 'timeoff', 'shift-swap', 'shift-claim', 'resignation-report', 'salary-report', 'hiring-report'];
     }
 }
