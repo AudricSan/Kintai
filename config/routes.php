@@ -216,16 +216,7 @@ $router->group('/admin', function ($r) {
     $r->get('/stores/{id}/reports/hiring/{rid}/pdf',                [AdminReportController::class, 'hiringReportPdf'],        name: 'admin.stores.hiring_reports.pdf');
 
     // Démission : voir src/Bundles/ResignationReport/routes.php
-    $r->get('/reports/salary',                                      [AdminReportController::class, 'allSalaryReports'],            name: 'admin.reports.salary');
-
-    $r->get('/stores/{id}/reports/salary',                          [AdminReportController::class, 'salaryReports'],          name: 'admin.stores.salary_reports');
-    $r->get('/stores/{id}/reports/salary/create',                   [AdminReportController::class, 'createSalaryReport'],     name: 'admin.stores.salary_reports.create');
-    $r->post('/stores/{id}/reports/salary/create',                  [AdminReportController::class, 'storeSalaryReport'],      name: 'admin.stores.salary_reports.store');
-    $r->get('/stores/{id}/reports/salary/{rid}',                    [AdminReportController::class, 'showSalaryReport'],       name: 'admin.stores.salary_reports.show');
-    $r->get('/stores/{id}/reports/salary/{rid}/edit',               [AdminReportController::class, 'editSalaryReport'],       name: 'admin.stores.salary_reports.edit');
-    $r->post('/stores/{id}/reports/salary/{rid}/edit',              [AdminReportController::class, 'updateSalaryReport'],     name: 'admin.stores.salary_reports.update');
-    $r->post('/stores/{id}/reports/salary/{rid}/delete',            [AdminReportController::class, 'deleteSalaryReport'],     name: 'admin.stores.salary_reports.delete');
-    $r->get('/stores/{id}/reports/salary/{rid}/pdf',                [AdminReportController::class, 'salaryReportPdf'],        name: 'admin.stores.salary_reports.pdf');
+    // Salaire : voir src/Bundles/SalaryReport/routes.php
 
     // Shift types
     $r->get('/shift-types',               [AdminShiftTypeController::class, 'shiftTypes'],         name: 'admin.shift_types');
