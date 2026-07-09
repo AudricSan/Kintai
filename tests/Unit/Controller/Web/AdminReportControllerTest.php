@@ -8,7 +8,6 @@ use kintai\Core\Container;
 use kintai\Core\Repositories\DailyReportRepositoryInterface;
 use kintai\Core\Repositories\HiringReportRepositoryInterface;
 use kintai\Core\Repositories\LogRepositoryInterface;
-use kintai\Core\Repositories\ResignationReportRepositoryInterface;
 use kintai\Core\Repositories\SalaryReportRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
@@ -25,7 +24,6 @@ use PHPUnit\Framework\TestCase;
 final class AdminReportControllerTest extends TestCase
 {
     private HiringReportRepositoryInterface&MockObject $hiringReports;
-    private ResignationReportRepositoryInterface&MockObject $resignationReports;
     private SalaryReportRepositoryInterface&MockObject $salaryReports;
     private StoreRepositoryInterface&MockObject $stores;
     private LogRepositoryInterface&MockObject $logRepo;
@@ -34,13 +32,11 @@ final class AdminReportControllerTest extends TestCase
     protected function setUp(): void
     {
         $this->ensureViewFile('staff.reports-hiring-show');
-        $this->ensureViewFile('staff.reports-resignation-show');
         $this->ensureViewFile('staff.reports-salary-show');
         $this->ensureViewFile('layout.app');
         $view = new ViewRenderer(sys_get_temp_dir());
 
         $this->hiringReports = $this->createMock(HiringReportRepositoryInterface::class);
-        $this->resignationReports = $this->createMock(ResignationReportRepositoryInterface::class);
         $this->salaryReports = $this->createMock(SalaryReportRepositoryInterface::class);
         $this->stores = $this->createMock(StoreRepositoryInterface::class);
 
@@ -56,7 +52,6 @@ final class AdminReportControllerTest extends TestCase
             $this->stores,
             $this->createMock(UserRepositoryInterface::class),
             $this->hiringReports,
-            $this->resignationReports,
             $this->salaryReports,
             $this->createMock(StoreUserRepositoryInterface::class),
             $this->createMock(DailyReportRepositoryInterface::class),
@@ -90,27 +85,6 @@ final class AdminReportControllerTest extends TestCase
         );
 
         $response = $this->controller->showHiringReport($req);
-
-        $this->assertSame(200, $response->status());
-    }
-
-    public function testShowResignationReportLogsConsultation(): void
-    {
-        $req = new Request();
-        $req->setAttribute('managed_store_ids', null);
-        $req->setRouteParams(['id' => '1', 'rid' => '20']);
-
-        $this->resignationReports->method('findById')->with(20)->willReturn(['id' => 20, 'store_id' => 1, 'employee_name' => 'Bob']);
-        $this->stores->method('findById')->willReturn(['id' => 1, 'name' => 'Store A']);
-
-        $this->logRepo->expects($this->once())->method('record')->with(
-            $this->anything(), $this->anything(), $this->anything(),
-            'resignation_report.viewed', 'resignation_report', 20,
-            $this->anything(), $this->anything(), 1,
-            $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(),
-        );
-
-        $response = $this->controller->showResignationReport($req);
 
         $this->assertSame(200, $response->status());
     }

@@ -19,4 +19,5 @@ return [
     'timeoff',
     'shift-swap',
     'shift-claim',
+    'resignation-report',
 ];

@@ -8,7 +8,6 @@ use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\HiringReportRepositoryInterface;
 use kintai\Core\Repositories\DailyReportRepositoryInterface;
-use kintai\Core\Repositories\ResignationReportRepositoryInterface;
 use kintai\Core\Repositories\SalaryReportRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
@@ -20,12 +19,22 @@ use kintai\Core\Services\AuditLogger;
 use kintai\UI\ViewRenderer;
 use kintai\UI\Controller\Web\HasAdminAccess;
 
+/**
+ * Rapports d'embauche et de salaire — restent dans le Core pour l'instant.
+ * Démission, qui partageait auparavant ce même contrôleur (CRUD générique via
+ * un dispatch `repo(string $type)`), a été extraite en bundle séparé (voir
+ * src/Bundles/ResignationReport/, qui réutilise la même logique via le
+ * nouveau trait HasStaffReportCrud). Ce contrôleur garde volontairement son
+ * dispatch interne à deux types tant que le salaire n'a pas, lui aussi, son
+ * propre bundle — bascule prévue vers HasStaffReportCrud à ce moment-là,
+ * comme pour hiring seul seront alors gérés de la même façon.
+ */
 final class AdminReportController
 {
     use HasAdminAccess;
 
     /**
-     * Configuration commune des trois types de rapports (embauche, démission,
+     * Configuration commune des deux types de rapports restants (embauche,
      * salaire) : entité d'audit, segment d'URL, préfixe de vue, message
      * d'introuvable et mapping des champs POST avec leur cast
      * ('str' → chaîne ou null, 'float'/'int' → numérique, 'null' → toujours null).
@@ -57,21 +66,6 @@ final class AdminReportController
                 'store_name'          => 'str',
                 'hired_by'            => 'str',
                 'notes'               => 'str',
-            ],
-        ],
-        'resignation' => [
-            'entity'    => 'resignation_report',
-            'slug'      => 'resignation',
-            'view'      => 'staff.reports-resignation',
-            'not_found' => 'Rapport de démission introuvable.',
-            'fields'    => [
-                'employee_number'    => 'str',
-                'employee_name'      => 'str',
-                'resignation_date'   => 'str',
-                'reason'             => 'str',
-                'resignation_notice' => 'str',
-                'notes'              => 'str',
-                'person_in_charge'   => 'str',
             ],
         ],
         'salary' => [
@@ -108,7 +102,6 @@ final class AdminReportController
         private readonly StoreRepositoryInterface $stores,
         private readonly UserRepositoryInterface $users,
         private readonly HiringReportRepositoryInterface $hiringReports,
-        private readonly ResignationReportRepositoryInterface $resignationReports,
         private readonly SalaryReportRepositoryInterface $salaryReports,
         private readonly StoreUserRepositoryInterface $storeUsers,
         private readonly DailyReportRepositoryInterface $dailyReports,
@@ -191,151 +184,6 @@ final class AdminReportController
     }
 
     // =========================================================================
-    // 退職報告書 (Resignation Report)
-    // =========================================================================
-
-    public function allResignationReports(Request $request): Response
-    {
-        [$allStores, $queryStoreIds, $filterStoreId] = $this->storesAndFilter($request);
-
-        $reports = $this->resignationReports->findAll($queryStoreIds);
-
-        return Response::html($this->view->render('staff.reports-resignation', [
-            'title'   => __('resignation_reports'),
-            'stores'  => $allStores,
-            'filter_store_id' => $filterStoreId,
-            'reports' => $reports,
-        ], 'layout.app'));
-    }
-
-    public function resignationReports(Request $request): Response
-    {
-        return $this->listReports('resignation', $request, __('resignation_reports'));
-    }
-
-    public function createResignationReport(Request $request): Response
-    {
-        $storeId = (int) $request->param('id');
-        $store = $this->findStoreOrFail($storeId);
-        $this->assertStoreAccess($request, $storeId);
-
-        $users = $this->users->findAll();
-        $authUser = $request->getAttribute('auth_user');
-
-        // Pré-remplir avec les données d'un employé si user_id est fourni
-        $preset = [];
-        $userId = (int) ($request->query('user_id') ?? 0);
-        if ($userId > 0) {
-            $user = $this->users->findById($userId);
-            if ($user !== null) {
-                $nameParts = array_filter([$user['last_name'] ?? '', $user['first_name'] ?? '']);
-                $preset = [
-                    'user_id'          => $userId,
-                    'employee_number'  => $user['employee_code'] ?? '',
-                    'employee_name'    => implode(' ', $nameParts),
-                    'resignation_date' => date('Y-m-d'),
-                    'person_in_charge' => $authUser['display_name'] ?? '',
-                ];
-            }
-        } else {
-            $preset['resignation_date'] = date('Y-m-d');
-        }
-
-        $managers = $this->getManagersForResignationForm($storeId, $userId);
-
-        return Response::html($this->view->render('staff.reports-resignation-form', [
-            'title'   => __('new_resignation_report') . ' — ' . ($store['name'] ?? ''),
-            'store'   => $store,
-            'users'   => $users,
-            'mode'    => 'create',
-            'report'  => $preset,
-            'managers' => $managers,
-        ], 'layout.app'));
-    }
-
-    public function storeResignationReport(Request $request): Response
-    {
-        $storeId = (int) $request->param('id');
-        $this->findStoreOrFail($storeId);
-        $this->assertStoreAccess($request, $storeId);
-
-        $userId = (int) $request->post('user_id', 0);
-
-        $data = array_merge([
-            'store_id' => $storeId,
-            'user_id'  => $userId > 0 ? $userId : null,
-        ], $this->postData($request, self::REPORT_TYPES['resignation']['fields']), [
-            'created_by' => $request->getAttribute('auth_user')['id'] ?? 0,
-        ]);
-
-        $saved = $this->resignationReports->save($data);
-
-        // Désactiver l'employé
-        if ($userId > 0) {
-            $user = $this->users->findById($userId);
-            if ($user !== null) {
-                $user['is_active'] = 0;
-                $this->users->save($user);
-            }
-        }
-
-        $this->auditLogger->log($request, 'resignation_report.created', 'resignation_report', (int) ($saved['id'] ?? 0), [
-            'store_id' => $storeId,
-            'employee_name' => $data['employee_name'],
-        ]);
-
-        return $this->redirectToList($storeId, 'resignation', 'created');
-    }
-
-    public function showResignationReport(Request $request): Response
-    {
-        return $this->showReport('resignation', $request);
-    }
-
-    public function editResignationReport(Request $request): Response
-    {
-        return $this->editReport('resignation', $request);
-    }
-
-    public function updateResignationReport(Request $request): Response
-    {
-        return $this->updateReport('resignation', $request);
-    }
-
-    public function deleteResignationReport(Request $request): Response
-    {
-        return $this->deleteReport('resignation', $request);
-    }
-
-    public function resignationReportPdf(Request $request): Response
-    {
-        return $this->reportPdf('resignation', $request);
-    }
-
-    public function reactivateUser(Request $request): Response
-    {
-        $storeId = (int) $request->param('id');
-        $this->findStoreOrFail($storeId);
-        [$report, , $reportId] = $this->findReportOrFail('resignation', $request);
-
-        $userId = (int) ($report['user_id'] ?? 0);
-        if ($userId > 0) {
-            $user = $this->users->findById($userId);
-            if ($user !== null) {
-                $user['is_active'] = 1;
-                $this->users->save($user);
-            }
-        }
-
-        $this->auditLogger->log($request, 'resignation_report.reactivated', 'resignation_report', $reportId, [
-            'store_id' => $storeId,
-            'user_id'  => $userId,
-        ]);
-
-        return $this->redirectToList($storeId, 'resignation', 'reactivated');
-    }
-
-    // =========================================================================
     // 給与報告書 (Salary Report)
     // =========================================================================
 
@@ -396,7 +244,7 @@ final class AdminReportController
             }
         }
 
-        $managers = $this->getManagersForResignationForm($storeId);
+        $managers = $this->getManagersForReportForm($storeId);
         $authName = trim(($authUser['last_name'] ?? '') . ' ' . ($authUser['first_name'] ?? '')) ?: ($authUser['display_name'] ?? '');
         $isManager = !empty(array_filter($managers, fn($m) => (int) $m['id'] === (int) ($authUser['id'] ?? 0)));
         if ($isManager && empty($preset['person_in_charge'])) {
@@ -471,12 +319,11 @@ final class AdminReportController
     // CRUD générique par type de rapport
     // =========================================================================
 
-    private function repo(string $type): HiringReportRepositoryInterface|ResignationReportRepositoryInterface|SalaryReportRepositoryInterface
+    private function repo(string $type): HiringReportRepositoryInterface|SalaryReportRepositoryInterface
     {
         return match ($type) {
-            'hiring'      => $this->hiringReports,
-            'resignation' => $this->resignationReports,
-            'salary'      => $this->salaryReports,
+            'hiring' => $this->hiringReports,
+            'salary' => $this->salaryReports,
         };
     }
 
@@ -549,9 +396,8 @@ final class AdminReportController
     private function showTitle(string $type, array $report): string
     {
         return match ($type) {
-            'hiring'      => '採用報告書 — ' . ($report['employee_name'] ?? ''),
-            'resignation' => __('resignation_report') . ' — ' . ($report['employee_name'] ?? ''),
-            'salary'      => __('sr_title') . ' — ' . ($report['target_month'] ?? ''),
+            'hiring' => '採用報告書 — ' . ($report['employee_name'] ?? ''),
+            'salary' => __('sr_title') . ' — ' . ($report['target_month'] ?? ''),
         };
     }
 
@@ -560,9 +406,8 @@ final class AdminReportController
         [$report, $storeId] = $this->findReportOrFail($type, $request);
 
         $title = match ($type) {
-            'hiring'      => '編集 — 採用報告書',
-            'resignation' => __('edit_resignation_report'),
-            'salary'      => __('sr_edit'),
+            'hiring' => '編集 — 採用報告書',
+            'salary' => __('sr_edit'),
         };
 
         return Response::html($this->view->render(self::REPORT_TYPES[$type]['view'] . '-form', array_merge([
@@ -575,16 +420,13 @@ final class AdminReportController
 
     /**
      * Données de formulaire propres à chaque type : liste des employés
-     * (hiring/resignation) et des responsables (resignation/salary).
+     * (hiring) et des responsables (salary).
      */
     private function editExtras(string $type, int $storeId, array $report): array
     {
-        $managers = fn(): array => $this->getManagersForResignationForm($storeId, (int) ($report['user_id'] ?? 0));
-
         return match ($type) {
-            'hiring'      => ['users' => $this->users->findAll()],
-            'resignation' => ['users' => $this->users->findAll(), 'managers' => $managers()],
-            'salary'      => ['managers' => $managers()],
+            'hiring' => ['users' => $this->users->findAll()],
+            'salary' => ['managers' => $this->getManagersForReportForm($storeId, (int) ($report['user_id'] ?? 0))],
         };
     }
 
@@ -826,7 +668,7 @@ final class AdminReportController
      * Retourne la liste des responsables (admin/manager) pour le store courant
      * ou pour tous les stores d'un employé donné.
      */
-    private function getManagersForResignationForm(int $storeId, int $userId = 0): array
+    private function getManagersForReportForm(int $storeId, int $userId = 0): array
     {
         $storeIds = [$storeId];
         if ($userId > 0) {

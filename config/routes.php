@@ -215,17 +215,8 @@ $router->group('/admin', function ($r) {
     $r->post('/stores/{id}/reports/hiring/{rid}/delete',            [AdminReportController::class, 'deleteHiringReport'],     name: 'admin.stores.hiring_reports.delete');
     $r->get('/stores/{id}/reports/hiring/{rid}/pdf',                [AdminReportController::class, 'hiringReportPdf'],        name: 'admin.stores.hiring_reports.pdf');
 
-    $r->get('/reports/resignation',                                 [AdminReportController::class, 'allResignationReports'],       name: 'admin.reports.resignation');
+    // Démission : voir src/Bundles/ResignationReport/routes.php
     $r->get('/reports/salary',                                      [AdminReportController::class, 'allSalaryReports'],            name: 'admin.reports.salary');
-    $r->get('/stores/{id}/reports/resignation',                     [AdminReportController::class, 'resignationReports'],          name: 'admin.stores.resignation_reports');
-    $r->get('/stores/{id}/reports/resignation/create',              [AdminReportController::class, 'createResignationReport'],     name: 'admin.stores.resignation_reports.create');
-    $r->post('/stores/{id}/reports/resignation/create',             [AdminReportController::class, 'storeResignationReport'],      name: 'admin.stores.resignation_reports.store');
-    $r->get('/stores/{id}/reports/resignation/{rid}',               [AdminReportController::class, 'showResignationReport'],       name: 'admin.stores.resignation_reports.show');
-    $r->get('/stores/{id}/reports/resignation/{rid}/edit',          [AdminReportController::class, 'editResignationReport'],       name: 'admin.stores.resignation_reports.edit');
-    $r->post('/stores/{id}/reports/resignation/{rid}/edit',         [AdminReportController::class, 'updateResignationReport'],     name: 'admin.stores.resignation_reports.update');
-    $r->post('/stores/{id}/reports/resignation/{rid}/delete',       [AdminReportController::class, 'deleteResignationReport'],     name: 'admin.stores.resignation_reports.delete');
-    $r->get('/stores/{id}/reports/resignation/{rid}/pdf',           [AdminReportController::class, 'resignationReportPdf'],        name: 'admin.stores.resignation_reports.pdf');
-    $r->post('/stores/{id}/reports/resignation/{rid}/reactivate',   [AdminReportController::class, 'reactivateUser'],              name: 'admin.stores.resignation_reports.reactivate');
 
     $r->get('/stores/{id}/reports/salary',                          [AdminReportController::class, 'salaryReports'],          name: 'admin.stores.salary_reports');
     $r->get('/stores/{id}/reports/salary/create',                   [AdminReportController::class, 'createSalaryReport'],     name: 'admin.stores.salary_reports.create');
