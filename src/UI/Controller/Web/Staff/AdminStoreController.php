@@ -32,6 +32,7 @@ final class AdminStoreController
         'photos'        => 'store-photos',
         'timeoff'       => 'timeoff',
         'swaps'         => 'shift-swap',
+        'open_shifts'   => 'shift-claim',
     ];
 
     public function __construct(

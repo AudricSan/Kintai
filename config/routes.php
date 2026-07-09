@@ -45,7 +45,6 @@ use kintai\UI\Controller\Api\V1\ShiftTypeController as ApiShiftTypeController;
 use kintai\UI\Controller\Api\V1\ShiftController as ApiShiftController;
 use kintai\UI\Controller\Api\V1\AvailabilityController as ApiAvailabilityController;
 use kintai\UI\Controller\Api\V1\TimeclockController as ApiTimeclockController;
-use kintai\UI\Controller\Api\V1\ShiftClaimController as ApiShiftClaimController;
 use kintai\UI\Controller\Api\V1\NotificationController as ApiNotificationController;
 use kintai\UI\Controller\Api\V1\FeedbackController as ApiFeedbackController;
 use kintai\UI\Controller\Api\V1\UserShiftRateController as ApiUserShiftRateController;
@@ -142,10 +141,7 @@ $router->group('/employee', function ($r) {
 
     // Échanges de shifts : voir src/Bundles/ShiftSwap/routes.php
 
-    // Bourse aux shifts
-    $r->get('/open-shifts',                      [EmployeeController::class, 'openShifts'],       name: 'employee.open_shifts');
-    $r->post('/open-shifts/{id}/claim',          [EmployeeController::class, 'claimShift'],       name: 'employee.open_shifts.claim');
-    $r->post('/open-shifts/{id}/withdraw',       [EmployeeController::class, 'withdrawShiftClaim'], name: 'employee.open_shifts.withdraw');
+    // Bourse aux shifts : voir src/Bundles/ShiftClaim/routes.php
 
     // Messagerie : voir src/Bundles/Messaging/routes.php (employee.messages*)
 
@@ -268,13 +264,7 @@ $router->group('/admin', function ($r) {
     $r->post('/shifts/{id}/delete', [AdminShiftController::class, 'deleteShift'],          name: 'admin.shifts.delete');
     $r->post('/shifts/{id}/move',   [AdminShiftController::class, 'moveShift'],            name: 'admin.shifts.move');
 
-    // Bourse aux shifts
-    $r->get('/open-shifts',              [AdminShiftController::class, 'openShifts'],         name: 'admin.open_shifts');
-    $r->get('/open-shifts/publish',      [AdminShiftController::class, 'selectShiftToPublish'], name: 'admin.open_shifts.select');
-    $r->post('/shifts/{id}/publish',     [AdminShiftController::class, 'publishShift'],       name: 'admin.shifts.publish');
-    $r->post('/shifts/{id}/unpublish',   [AdminShiftController::class, 'unpublishShift'],     name: 'admin.shifts.unpublish');
-    $r->post('/open-shifts/{id}/approve',[AdminShiftController::class, 'approveShiftClaim'],  name: 'admin.open_shifts.approve');
-    $r->post('/open-shifts/{id}/reject', [AdminShiftController::class, 'rejectShiftClaim'],   name: 'admin.open_shifts.reject');
+    // Bourse aux shifts : voir src/Bundles/ShiftClaim/routes.php
 
     // Demandes de congé : voir src/Bundles/TimeOff/routes.php
 
@@ -415,12 +405,7 @@ $router->group('/api/v1', function ($r) {
     $r->put('/timeclocks/{id}',        [ApiTimeclockController::class, 'update'],   name: 'api.v1.timeclock.update');
     $r->delete('/timeclocks/{id}',     [ApiTimeclockController::class, 'destroy'],  name: 'api.v1.timeclock.destroy');
 
-    // Bourse aux shifts
-    $r->get('/shift-claims',         [ApiShiftClaimController::class, 'index'],   name: 'api.v1.shift_claims.index');
-    $r->post('/shift-claims',        [ApiShiftClaimController::class, 'store'],   name: 'api.v1.shift_claims.store');
-    $r->get('/shift-claims/{id}',    [ApiShiftClaimController::class, 'show'],    name: 'api.v1.shift_claims.show');
-    $r->put('/shift-claims/{id}',    [ApiShiftClaimController::class, 'update'],  name: 'api.v1.shift_claims.update');
-    $r->delete('/shift-claims/{id}', [ApiShiftClaimController::class, 'destroy'], name: 'api.v1.shift_claims.destroy');
+    // Bourse aux shifts : voir src/Bundles/ShiftClaim/routes.php
 
     // Notifications
     $r->post('/notifications/read-all',    [ApiNotificationController::class, 'markAllRead'], name: 'api.v1.notifications.read_all');

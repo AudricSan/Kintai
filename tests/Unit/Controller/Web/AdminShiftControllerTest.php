@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Controller\Web;
 
 use kintai\Core\Repositories\ImportAliasRepositoryInterface;
-use kintai\Core\Repositories\ShiftClaimRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
@@ -53,7 +52,6 @@ final class AdminShiftControllerTest extends TestCase
             $this->createMock(StoreUserRepositoryInterface::class),
             $this->createMock(UserShiftTypeRateRepositoryInterface::class),
             $auditLogger,
-            $this->createMock(ShiftClaimRepositoryInterface::class),
             $this->createMock(NotificationService::class),
             $this->createMock(ImportAliasRepositoryInterface::class),
             $this->shiftService,
@@ -219,31 +217,6 @@ final class AdminShiftControllerTest extends TestCase
     // -------------------------------------------------------------------------
     // selectShiftToPublish
     // -------------------------------------------------------------------------
-
-    public function testSelectShiftToPublishListsOnlyUpcomingUnpublishedAssignedShifts(): void
-    {
-        $this->ensureViewFile('scheduling.open-shifts-select');
-        $today = date('Y-m-d');
-        $past  = date('Y-m-d', strtotime('-1 day'));
-        $future = date('Y-m-d', strtotime('+1 day'));
-
-        $this->shifts->method('findAll')->willReturn([
-            ['id' => 1, 'shift_date' => $future, 'is_open' => 0, 'user_id' => 5, 'store_id' => 1],
-            ['id' => 2, 'shift_date' => $past,   'is_open' => 0, 'user_id' => 5, 'store_id' => 1], // passé
-            ['id' => 3, 'shift_date' => $future, 'is_open' => 1, 'user_id' => 5, 'store_id' => 1], // déjà publié
-            ['id' => 4, 'shift_date' => $future, 'is_open' => 0, 'user_id' => null, 'store_id' => 1], // non assigné
-        ]);
-
-        $this->shiftService->method('getUsersMap')->willReturn([5 => 'Alice']);
-        $this->stores->method('findAll')->willReturn([]);
-
-        $req = new Request();
-        $req->setAttribute('managed_store_ids', null);
-
-        $response = $this->controller->selectShiftToPublish($req);
-
-        $this->assertSame(200, $response->status());
-    }
 
     protected function tearDown(): void
     {
