@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace kintai\UI\Controller\Api\V1;
+namespace kintai\Bundles\Feedback\Controllers\Api;
 
 use kintai\Core\Api\Paginator;
 use kintai\Core\Exceptions\NotFoundException;

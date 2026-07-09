@@ -215,6 +215,8 @@
     "bulk_max_warning": "Selection limited to :n shifts at a time.",
     "bundle_daily_report": "Daily Reports",
     "bundle_daily_report_desc": "Daily activity reports with a draft → submitted → validated workflow.",
+    "bundle_feedback": "Feedback",
+    "bundle_feedback_desc": "Employee feedback (bugs, suggestions) — submission modal, admin list and deletion.",
     "bundle_messaging": "Messaging",
     "bundle_messaging_desc": "Internal messaging between store members.",
     "bundle_none_found": "No bundle detected in src/Bundles/.",
