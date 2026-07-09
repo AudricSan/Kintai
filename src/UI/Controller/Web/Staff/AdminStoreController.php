@@ -31,6 +31,7 @@ final class AdminStoreController
         'daily_reports' => 'daily-report',
         'photos'        => 'store-photos',
         'timeoff'       => 'timeoff',
+        'swaps'         => 'shift-swap',
     ];
 
     public function __construct(
