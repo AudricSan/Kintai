@@ -4,7 +4,7 @@
 
 ## Versions supportées
 
-Kintai est actuellement en bêta (`0.0.x-beta`) — il n'existe pas encore de branche de support à long terme.
+Kintai est actuellement en pré-`1.0.0` — il n'existe pas encore de branche de support à long terme.
 Seul le dernier commit sur `main` reçoit des correctifs de sécurité.
 
 | Version | Supportée |
