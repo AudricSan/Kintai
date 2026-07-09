@@ -11,10 +11,10 @@ use kintai\Core\Response;
 /**
  * CRUD générique pour les rapports RH par store (embauche, démission, salaire) :
  * ces trois types partageaient auparavant un seul AdminReportController avec un
- * dispatch `repo(string $type)`. Depuis leur extraction en bundles séparés
- * (démission, salaire), chaque contrôleur ne gère plus qu'un seul type et
- * fournit sa propre config/repository via les méthodes abstraites ci-dessous ;
- * ce trait porte la logique jusqu'ici commune aux trois.
+ * dispatch `repo(string $type)`. Depuis leur extraction en bundles séparés,
+ * chaque contrôleur ne gère plus qu'un seul type et fournit sa propre
+ * config/repository via les méthodes abstraites ci-dessous ; ce trait porte
+ * la logique jusqu'ici commune aux trois.
  *
  * Nécessite sur la classe utilisatrice : $this->view (ViewRenderer),
  * $this->stores (StoreRepositoryInterface), $this->auditLogger (AuditLogger),
