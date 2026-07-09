@@ -18,4 +18,5 @@ return [
     'store-photos',
     'timeoff',
     'shift-swap',
+    'shift-claim',
 ];

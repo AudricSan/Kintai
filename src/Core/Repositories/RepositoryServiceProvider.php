@@ -24,7 +24,7 @@ final class RepositoryServiceProvider extends ServiceProvider
         $this->container->singleton(TimeclockRepositoryInterface::class, fn() => new DatabaseTimeclockRepository());
         $this->container->singleton(UserDashboardPrefsRepositoryInterface::class, fn() => new DatabaseUserDashboardPrefsRepository());
         $this->container->singleton(UserNavPrefsRepositoryInterface::class, fn() => new DatabaseUserNavPrefsRepository());
-        $this->container->singleton(ShiftClaimRepositoryInterface::class, fn() => new DatabaseShiftClaimRepository());
+        // ShiftClaim : voir src/Bundles/ShiftClaim/ShiftClaimBundle.php
         $this->container->singleton(NotificationRepositoryInterface::class, fn() => new DatabaseNotificationRepository());
         $this->container->singleton(ApiTokenRepositoryInterface::class, fn() => new DatabaseApiTokenRepository());
         $this->container->singleton(ImportAliasRepositoryInterface::class, fn() => new DatabaseImportAliasRepository());
