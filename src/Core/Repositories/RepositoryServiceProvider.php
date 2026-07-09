@@ -35,7 +35,7 @@ final class RepositoryServiceProvider extends ServiceProvider
 
         // Rapports
         $this->container->singleton(HiringReportRepositoryInterface::class, fn() => new DatabaseHiringReportRepository());
-        $this->container->singleton(ResignationReportRepositoryInterface::class, fn() => new DatabaseResignationReportRepository());
+        // Démission : voir src/Bundles/ResignationReport/ResignationReportBundle.php
         $this->container->singleton(SalaryReportRepositoryInterface::class, fn() => new DatabaseSalaryReportRepository());
 
         // Photos : voir src/Bundles/StorePhoto/StorePhotoBundle.php
