@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Added
+- Update channel selector on `/admin/update` (Alpha / Beta / Release), stored as the `update_channel` app setting (`AppSettingsService::updateChannel()`). `GithubUpdateService::checkLatestRelease()` now lists all GitHub Releases (`GET /repos/{repo}/releases`) instead of only the latest stable one, and picks the highest version compatible with the configured channel: `release` only considers stable tags, `beta` also considers `-beta` tags, and `alpha` considers everything (alpha/beta/stable) — laying the groundwork for the `alpha`/`beta` release branches and their automated GitHub Actions publishing.
+
 ## [0.5.0] - 2026-07-09
 
 ### Added

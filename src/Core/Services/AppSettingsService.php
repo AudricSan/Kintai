@@ -61,4 +61,13 @@ final class AppSettingsService
     {
         return $this->get('backup_auto_enabled', '1') === '1';
     }
+
+    // ── Mises à jour ───────────────────────────────────────────────────────────
+
+    /** Canal de mise à jour suivi : release (défaut), beta, ou alpha. */
+    public function updateChannel(): string
+    {
+        $channel = $this->get('update_channel', 'release');
+        return in_array($channel, ['alpha', 'beta', 'release'], true) ? $channel : 'release';
+    }
 }
