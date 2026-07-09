@@ -54,6 +54,7 @@ final class BackupControllerTest extends TestCase
 
         $settingsRepo = $this->createStub(AppSettingsRepositoryInterface::class);
         $settingsRepo->method('get')->willReturn(null);
+        $settingsRepo->method('all')->willReturn([]);
         $this->settings = new AppSettingsService($settingsRepo);
 
         $this->view = new ViewRenderer(sys_get_temp_dir());
@@ -113,6 +114,7 @@ final class BackupControllerTest extends TestCase
             $this->updateService,
             $this->backup,
             $this->migrator,
+            $this->settings,
             $this->tmpDir,
             $releaseFetcher,
             $zipDownloader,
@@ -165,10 +167,10 @@ final class BackupControllerTest extends TestCase
     {
         $this->writeAppVersion('1.0.0');
         $controller = $this->makeController(
-            fn(string $repo, string $token): ?array => [
+            fn(string $repo, string $token): ?array => [[
                 'tag_name'    => 'v1.0.0',
                 'zipball_url' => 'https://example.test/zipball/v1.0.0',
-            ],
+            ]],
         );
 
         $response = $controller->update($this->requestAs(true));
@@ -181,13 +183,13 @@ final class BackupControllerTest extends TestCase
     {
         $this->writeAppVersion('1.0.0');
         $controller = $this->makeController(
-            fn(string $repo, string $token): ?array => [
+            fn(string $repo, string $token): ?array => [[
                 'tag_name'    => 'v2.0.0',
                 'zipball_url' => 'https://example.test/zipball/v2.0.0',
                 'html_url'    => 'https://example.test/releases/v2.0.0',
                 'body'        => 'notes',
                 'published_at' => '2026-01-01T00:00:00Z',
-            ],
+            ]],
             function (string $url, string $dest, string $token): bool {
                 $this->makeReleaseZip($dest, [
                     'README.md'    => 'v2',
@@ -222,5 +224,38 @@ final class BackupControllerTest extends TestCase
 
         $this->assertSame(302, $response->status());
         $this->assertStringStartsWith('/admin/update?success=migrated', $this->locationOf($response));
+    }
+
+    public function testSaveChannelRejectsNonOwner(): void
+    {
+        $controller = $this->makeController();
+
+        $this->expectException(ForbiddenException::class);
+        $controller->saveChannel($this->requestAs(false));
+    }
+
+    public function testSaveChannelPersistsValidChannel(): void
+    {
+        $controller = $this->makeController();
+
+        $_POST = ['channel' => 'alpha'];
+        $response = $controller->saveChannel($this->requestAs(true));
+        $_POST = [];
+
+        $this->assertSame(302, $response->status());
+        $this->assertStringContainsString('success=channel_alpha', $this->locationOf($response));
+        $this->assertSame('alpha', $this->settings->updateChannel());
+    }
+
+    public function testSaveChannelFallsBackToReleaseForInvalidValue(): void
+    {
+        $controller = $this->makeController();
+
+        $_POST = ['channel' => 'nightly'];
+        $response = $controller->saveChannel($this->requestAs(true));
+        $_POST = [];
+
+        $this->assertStringContainsString('success=channel_release', $this->locationOf($response));
+        $this->assertSame('release', $this->settings->updateChannel());
     }
 }
