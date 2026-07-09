@@ -224,6 +224,8 @@
     "bundle_store_photos_desc": "店舗状態の週次写真の提出と管理。",
     "bundle_third_party": "サードパーティ",
     "bundle_third_party_warning": "このバンドルはKintaiプロジェクトによって開発・保守されていません。信頼できる提供元の場合のみインストールしてください。",
+    "bundle_timeoff": "休暇申請",
+    "bundle_timeoff_desc": "従業員の休暇申請：提出・承認・追跡。",
     "calendar": "カレンダー",
     "calendar_view": "カレンダー表示",
     "cancel": "キャンセル",
