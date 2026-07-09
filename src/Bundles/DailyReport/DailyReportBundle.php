@@ -27,6 +27,16 @@ final class DailyReportBundle extends Bundle
         return 'daily-report';
     }
 
+    public function getLabel(): string
+    {
+        return __('bundle_daily_report');
+    }
+
+    public function getDescription(): string
+    {
+        return __('bundle_daily_report_desc');
+    }
+
     public function register(): void
     {
         $this->registerServices();

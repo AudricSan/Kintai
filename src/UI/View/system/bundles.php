@@ -2,7 +2,7 @@
 use kintai\UI\Components\Button;
 use kintai\UI\Components\Flash;
 
-/** @var array $bundles Liste de ['key' => string, 'label' => string, 'desc' => string, 'enabled' => bool] */
+/** @var array $bundles Liste de ['key' => string, 'label' => string, 'desc' => string, 'enabled' => bool, 'official' => bool] */
 /** @var bool  $success */
 
 echo Flash::fromQuery('success', ['default' => __('save_success')])->render();
@@ -25,13 +25,24 @@ echo Flash::fromQuery('success', ['default' => __('save_success')])->render();
     <div class="card">
         <div class="card-body form-stack">
             <div class="feature-cards">
+                <?php if (empty($bundles)): ?>
+                    <p class="form-hint"><?= __('bundle_none_found') ?></p>
+                <?php endif; ?>
                 <?php foreach ($bundles as $b): ?>
                     <label class="feature-card">
                         <input type="checkbox" name="bundle_<?= htmlspecialchars($b['key']) ?>" value="1"
                                <?= $b['enabled'] ? 'checked' : '' ?> class="feature-card__input">
                         <div class="feature-card__body">
-                            <span class="feature-card__title"><?= htmlspecialchars($b['label']) ?></span>
+                            <span class="feature-card__title">
+                                <?= htmlspecialchars($b['label']) ?>
+                                <?php if (!$b['official']): ?>
+                                    <span class="badge badge--warning badge--sm"><?= __('bundle_third_party') ?></span>
+                                <?php endif; ?>
+                            </span>
                             <span class="feature-card__desc"><?= htmlspecialchars($b['desc']) ?></span>
+                            <?php if (!$b['official']): ?>
+                                <span class="form-hint"><?= __('bundle_third_party_warning') ?></span>
+                            <?php endif; ?>
                         </div>
                         <div class="feature-card__toggle">
                             <span class="toggle-switch">

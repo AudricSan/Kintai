@@ -16,6 +16,16 @@ final class MessagingBundle extends Bundle
         return 'messaging';
     }
 
+    public function getLabel(): string
+    {
+        return __('bundle_messaging');
+    }
+
+    public function getDescription(): string
+    {
+        return __('bundle_messaging_desc');
+    }
+
     public function register(): void
     {
         $this->registerServices();
