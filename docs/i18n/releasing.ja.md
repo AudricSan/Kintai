@@ -6,59 +6,45 @@
 
 ## 仕組み
 
-自動アップデート機能（`GithubUpdateService::checkLatestRelease()`）は `GET /repos/{GITHUB_UPDATE_REPO}/releases/latest` を呼び出し、GitHubがそのリリースのタグ向けに自動生成するソースアーカイブ（`zipball_url`）をダウンロードします。**手動でビルドやアップロードを行う必要は一切ありません** — `main` 上に `vX.Y.Z` というタグ付きのGitHub Releaseが存在すれば十分です。
+自動アップデート機能（`GithubUpdateService::checkLatestRelease()`）は `GET /repos/{GITHUB_UPDATE_REPO}/releases`（最新の1件だけでなく全リリースの一覧）を呼び出し、GitHubが選択されたリリースのタグ向けに自動生成するソースアーカイブ（`zipball_url`）をダウンロードします。**手動でビルドやアップロードを行う必要は一切ありません** — `vX.Y.Z` というタグ付きのGitHub Releaseが存在すれば十分です。
+
+各インスタンスは、オーナーが `/admin/update` で選択する3つの**アップデートチャンネル**のいずれかに従います：
+- **Release** — 安定版タグのみ（`vX.Y.Z`、GitHub上でprereleaseとしてマークされていないもの）。`main` からビルドされます。
+- **Beta** — 安定版タグと `-beta` タグ。`beta` ブランチからビルドされます。
+- **Alpha** — `-alpha` を含むすべてのタグ。`alpha` ブランチからビルドされます。
+
+そのチャンネルで見えるリリースの中から、インスタンスは最も新しいバージョンを選択します（semverに準拠した比較なので、`1.0.0-beta.3` は `1.0.0` より前とみなされます）。`alpha`、`beta`、`main` は保護されたブランチです（PR + CIグリーンが必須、直接pushは不可） — `.github/workflows/release.yml` を参照してください。
 
 留意点：
-- カウントされるのは **GitHub Release** のみです（単なるタグや `main` へのコミットは対象外）。Releaseが存在しない限り、`checkLatestRelease()` は `null` を返します。
-- タグは必ず `main` から作成してください — 本番インスタンスが追随するのはこのブランチです。
-- バージョン番号は [semver](https://semver.org/)（`メジャー.マイナー.パッチ`）に従い、設定ファイル内では `v` プレフィックスを付けません（`v` プレフィックスはGitタグにのみ存在し、`GithubUpdateService` がバージョン比較の前に自動で取り除きます）。ベータ期間中は `0.0.x-beta` の形式を使用します。
+- カウントされるのは **GitHub Release** のみです（単なるタグやコミットは対象外）。インスタンスのチャンネルに合致するReleaseが存在しない限り、`checkLatestRelease()` は `null` を返します。
+- バージョン番号は [semver](https://semver.org/)（`メジャー.マイナー.パッチ[-alpha|beta.N]`）に従い、設定ファイル内では `v` プレフィックスを付けません（`v` プレフィックスはGitタグにのみ存在し、`GithubUpdateService` がバージョン比較の前に自動で取り除きます）。
 
-## 前提条件
+## 新バージョンの公開（推奨フロー）
 
-- [GitHub CLI](https://cli.github.com/)（`gh`）がインストール・認証済み（`gh auth login`）であること。
-- `main` ブランチ上で、`origin/main` と同期しており、作業ツリーがクリーンであること（`git status` が空）。
-- `CHANGELOG.md` の `## [Unreleased]` セクションに、公開予定の内容がすべて反映されていること — この内容がそのままリリースノートになります。
+ベースのバージョン番号（`composer.json`/`config/app.php`/`CHANGELOG.md` 内の `X.Y.Z`）は、これまでどおり**手動で**更新します。変わったのは *Gitタグと GitHub Release を誰が作成するか* という点です — `alpha`、`beta`、`main` のいずれかにバージョン更新がpushされると、`.github/workflows/release.yml` が自動的にそれを行うようになりました。タグ付けや `gh release create` を自分で実行する必要はもうありません。
 
-## 自動化された手順（推奨）
+1. 通常の作業ブランチ上でバージョンを更新します（下記の「手動での手順」を参照。または `scripts/release.ps1 -DryRun` を実行してCHANGELOGのノートをプレビューできます — このスクリプトの自動タグ付け/push/`gh release create` の各ステップは今回のActionに置き換えられ、保護されたブランチに対しては単純に失敗するため、`-DryRun` なしでは実行しないでください）。
+2. 公開したいチャンネルのブランチ（`alpha`、`beta`、`main`）を対象にPRを作成し、CIがグリーンになったらマージします（ブランチ保護により必須）。
+3. マージによって発生したpushで `.github/workflows/release.yml` が実行され、以下を行います：
+   - `composer.json` からベースバージョンを読み取る
+   - `alpha`/`beta` では `vX.Y.Z-{チャンネル}.N`（`N` は該当する最後のタグから自動インクリメント）のタグを付け、GitHub Releaseをprereleaseとしてマークする
+   - `main` では `vX.Y.Z` を通常の（prereleaseではない）Releaseとしてタグ付けする — このタグがすでに存在する場合（前回の安定版リリース以降バージョン更新がなかった場合）は、ログメッセージを出して何もしない
+   - `CHANGELOG.md` からリリースノートを抽出する（`main` の場合は日付付きの `## [X.Y.Z]` セクション、`alpha`/`beta` の場合は `## [Unreleased]` セクション）
 
-```powershell
-# プレビューのみ。何も変更・公開しない
-.\scripts\release.ps1 -Version 0.1.0-beta -DryRun
+あるチャンネルから次のチャンネルへバージョンを昇格させる場合（alpha → beta → release）は、他のブランチ昇格と同様に、対応するブランチをPR経由で次のブランチへマージしてください（例：`alpha` を `beta` へ、続いて `beta` を `main` へ）。
 
-# 実際に公開する
-.\scripts\release.ps1 -Version 0.1.0-beta
-```
+## 手動での手順（バージョン更新）
 
-`scripts/release.ps1` は以下を行います：
-
-1. 前提条件を確認する（`gh` のインストール・認証、`main` ブランチにいること、作業ツリーがクリーンであること、`origin/main` に対して遅れていないこと、タグがまだ存在しないこと）。
-2. `CHANGELOG.md` 内の `## [Unreleased]` を `## [0.1.0-beta] - YYYY-MM-DD` に変換し、その上に空の `## [Unreleased]` セクションを再度追加する。
-3. `composer.json` のバージョン番号と、`config/app.php` のデフォルト `APP_VERSION` を更新する。
-4. このバージョン更新をコミットし（`chore(release): v0.1.0-beta`）、注釈付きタグ `v0.1.0-beta` を作成、ブランチとタグをプッシュする。
-5. `## [Unreleased]` にあった内容をノートとして、GitHub Release を作成する（`gh release create`）。
-
-## 手動での手順（スクリプトが使えない場合）
-
-1. `main` ブランチに移動し、最新の状態にする：
-   ```bash
-   git checkout main
-   git pull
-   ```
-2. `CHANGELOG.md` 内の `## [Unreleased]` を `## [0.1.0-beta] - 2026-07-08` に変更し、その直上に新しい空の `## [Unreleased]` セクションを追加する。
-3. `composer.json`（`"version": "0.1.0-beta"`）と `config/app.php`（`env('APP_VERSION', '0.1.0-beta')`）のバージョンを更新する。
-4. コミットしてプッシュする：
+1. 作業ブランチ上で、`CHANGELOG.md` 内の `## [Unreleased]` を `## [0.1.0-beta] - 2026-07-08` に変更し、その直上に新しい空の `## [Unreleased]` セクションを追加する。
+2. `composer.json`（`"version": "0.1.0-beta"`）と `config/app.php`（`env('APP_VERSION', '0.1.0-beta')`）のバージョンを更新する。
+3. コミットしてブランチをpushし、`alpha`、`beta`、`main` のいずれか適切なブランチへPRを作成する：
    ```bash
    git add CHANGELOG.md composer.json config/app.php
    git commit -m "chore(release): v0.1.0-beta"
-   git push
+   git push -u origin <あなたのブランチ>
+   gh pr create --base beta
    ```
-5. タグとリリースを作成する：
-   ```bash
-   git tag -a v0.1.0-beta -m "Kintai v0.1.0-beta"
-   git push origin v0.1.0-beta
-   gh release create v0.1.0-beta --title "Kintai v0.1.0-beta" --notes-file notes.txt
-   ```
-   ここで `notes.txt` には、変更履歴に追加したばかりのバージョンセクションの内容を記載します。
+4. マージされると、`.github/workflows/release.yml` が自動的にタグとGitHub Releaseを作成します — 手動で行うことはもう残っていません。
 
 ## 公開後
 
@@ -69,5 +55,5 @@
 ## 問題が発生した場合
 
 - **誤って公開した／壊れたリリース：** `gh release delete vX.Y.Z` を実行後、ローカルで `git push --delete origin vX.Y.Z` と `git tag -d vX.Y.Z` を実行してください。すでにアップデートを適用したインスタンスは自動的にはロールバックされません — アップデート直前に `storage/backups/` に作成されたDB＋アップロードのバックアップとコードスナップショットから復元してください。
-- **`gh` が未認証：** `gh auth login` を実行後、再試行してください。
-- **リポジトリがいつか非公開になった場合：** 各インスタンスで `GITHUB_UPDATE_TOKEN`（`.env.example` を参照）を設定してください。`gh release create` はローカルの `gh` 認証で既に動作するため、スクリプト側の変更は不要です。
+- **Actionがリリースの公開に失敗する：** Actionsタブで `Release` ワークフローの実行結果を確認してください。最も多い原因は、`composer.json` のバージョンがまだ `CHANGELOG.md` のどの `## [...]` セクションにも対応していないケースです（この場合、リリースノートの抽出ステップは代替テキストにフォールバックするだけで、ビルド自体は失敗しません）。必要であれば `gh release create` で手動にタグ付け・公開することも可能です。
+- **リポジトリがいつか非公開になった場合：** 各インスタンスで `GITHUB_UPDATE_TOKEN`（`.env.example` を参照）を設定し、`GithubUpdateService` がAPIへの問い合わせを継続できるようにしてください。`Release` ワークフロー自体は組み込みの `GITHUB_TOKEN` で既にリポジトリへのアクセス権を持っているため、そちら側の変更は不要です。
