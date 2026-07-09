@@ -1,0 +1,153 @@
+<?php
+
+declare(strict_types=1);
+
+namespace kintai\Bundles\HiringReport\Controllers\Web;
+
+use kintai\Core\Repositories\HiringReportRepositoryInterface;
+use kintai\Core\Repositories\StoreRepositoryInterface;
+use kintai\Core\Repositories\UserRepositoryInterface;
+use kintai\Core\Request;
+use kintai\Core\Response;
+use kintai\Core\Services\AuditLogger;
+use kintai\UI\Controller\Web\HasAdminAccess;
+use kintai\UI\Controller\Web\Staff\HasStaffReportCrud;
+use kintai\UI\ViewRenderer;
+
+final class AdminHiringReportController
+{
+    use HasAdminAccess;
+    use HasStaffReportCrud;
+
+    private const REPORT_TYPE = [
+        'entity'    => 'hiring_report',
+        'slug'      => 'hiring',
+        'view'      => 'hiring-report::reports-hiring',
+        'not_found' => 'Rapport d\'embauche introuvable.',
+        'fields'    => [
+            'employee_number'     => 'str',
+            'employee_name'       => 'str',
+            'furigana'            => 'null',
+            'furigana_last_name'  => 'str',
+            'furigana_first_name' => 'str',
+            'gender'              => 'str',
+            'tax_classification'  => 'str',
+            'birth_date'          => 'str',
+            'hire_date'           => 'str',
+            'education'           => 'str',
+            'postal_code'         => 'str',
+            'address'             => 'str',
+            'phone'               => 'str',
+            'mobile_phone'        => 'str',
+            'email'               => 'str',
+            'guarantor_name'      => 'str',
+            'guarantor_phone'     => 'str',
+            'store_name'          => 'str',
+            'hired_by'            => 'str',
+            'notes'               => 'str',
+        ],
+    ];
+
+    public function __construct(
+        private readonly ViewRenderer $view,
+        private readonly StoreRepositoryInterface $stores,
+        private readonly UserRepositoryInterface $users,
+        private readonly HiringReportRepositoryInterface $hiringReports,
+        private readonly AuditLogger $auditLogger,
+    ) {}
+
+    public function hiringReports(Request $request): Response
+    {
+        return $this->listReports($request, '採用報告書');
+    }
+
+    public function createHiringReport(Request $request): Response
+    {
+        $storeId = (int) $request->param('id');
+        $store = $this->findStoreOrFail($storeId);
+        $this->assertStoreAccess($request, $storeId);
+
+        return Response::html($this->view->render('hiring-report::reports-hiring-form', [
+            'title' => '新規採用報告書 — ' . ($store['name'] ?? ''),
+            'store' => $store,
+            'users' => $this->users->findAll(),
+            'mode'  => 'create',
+            'report' => [],
+        ], 'layout.app'));
+    }
+
+    public function storeHiringReport(Request $request): Response
+    {
+        $storeId = (int) $request->param('id');
+        $this->findStoreOrFail($storeId);
+        $this->assertStoreAccess($request, $storeId);
+
+        $userId = (int) $request->post('user_id', 0);
+
+        $data = array_merge([
+            'store_id' => $storeId,
+            'user_id'  => $userId > 0 ? $userId : null,
+        ], $this->postData($request, self::REPORT_TYPE['fields']), [
+            'created_by' => $request->getAttribute('auth_user')['id'] ?? 0,
+        ]);
+
+        $saved = $this->hiringReports->save($data);
+
+        $this->auditLogger->log($request, 'hiring_report.created', 'hiring_report', (int) ($saved['id'] ?? 0), [
+            'store_id' => $storeId,
+            'employee_name' => $data['employee_name'],
+        ]);
+
+        return $this->redirectToList($storeId, 'hiring', 'created');
+    }
+
+    public function showHiringReport(Request $request): Response
+    {
+        return $this->showReport($request);
+    }
+
+    public function editHiringReport(Request $request): Response
+    {
+        return $this->editReport($request);
+    }
+
+    public function updateHiringReport(Request $request): Response
+    {
+        return $this->updateReport($request);
+    }
+
+    public function deleteHiringReport(Request $request): Response
+    {
+        return $this->deleteReport($request);
+    }
+
+    public function hiringReportPdf(Request $request): Response
+    {
+        return $this->reportPdf($request);
+    }
+
+    protected function reportRepo(): object
+    {
+        return $this->hiringReports;
+    }
+
+    protected function reportConfig(): array
+    {
+        return self::REPORT_TYPE;
+    }
+
+    protected function reportShowTitle(array $report): string
+    {
+        return '採用報告書 — ' . ($report['employee_name'] ?? '');
+    }
+
+    protected function reportEditTitle(): string
+    {
+        return '編集 — 採用報告書';
+    }
+
+    protected function reportEditExtras(int $storeId, array $report): array
+    {
+        return ['users' => $this->users->findAll()];
+    }
+}

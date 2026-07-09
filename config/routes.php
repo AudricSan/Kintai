@@ -222,15 +222,7 @@ $router->group('/admin', function ($r) {
     $r->get('/stores/{id}/employee-report/{uid}/payslip',        [AdminStoreController::class, 'employeePayslip'],   name: 'admin.stores.employee_payslip');
     $r->get('/stores/{id}/employee-report/{uid}/payslip/pdf',    [AdminStoreController::class, 'employeePayslipPdf'], name: 'admin.stores.employee_payslip_pdf');
 
-    // Rapports métier (採用・退職・給与)
-    $r->get('/stores/{id}/reports/hiring',                          [AdminReportController::class, 'hiringReports'],          name: 'admin.stores.hiring_reports');
-    $r->get('/stores/{id}/reports/hiring/create',                   [AdminReportController::class, 'createHiringReport'],     name: 'admin.stores.hiring_reports.create');
-    $r->post('/stores/{id}/reports/hiring/create',                  [AdminReportController::class, 'storeHiringReport'],      name: 'admin.stores.hiring_reports.store');
-    $r->get('/stores/{id}/reports/hiring/{rid}',                    [AdminReportController::class, 'showHiringReport'],       name: 'admin.stores.hiring_reports.show');
-    $r->get('/stores/{id}/reports/hiring/{rid}/edit',               [AdminReportController::class, 'editHiringReport'],       name: 'admin.stores.hiring_reports.edit');
-    $r->post('/stores/{id}/reports/hiring/{rid}/edit',              [AdminReportController::class, 'updateHiringReport'],     name: 'admin.stores.hiring_reports.update');
-    $r->post('/stores/{id}/reports/hiring/{rid}/delete',            [AdminReportController::class, 'deleteHiringReport'],     name: 'admin.stores.hiring_reports.delete');
-    $r->get('/stores/{id}/reports/hiring/{rid}/pdf',                [AdminReportController::class, 'hiringReportPdf'],        name: 'admin.stores.hiring_reports.pdf');
+    // Rapports d'embauche : voir src/Bundles/HiringReport/routes.php
 
     $r->get('/reports/resignation',                                 [AdminReportController::class, 'allResignationReports'],       name: 'admin.reports.resignation');
     $r->get('/reports/salary',                                      [AdminReportController::class, 'allSalaryReports'],            name: 'admin.reports.salary');

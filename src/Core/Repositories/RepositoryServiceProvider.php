@@ -34,6 +34,10 @@ final class RepositoryServiceProvider extends ServiceProvider
         $this->container->singleton(LogRepositoryInterface::class, fn() => new DatabaseLogRepository());
 
         // Rapports
+        // HiringReportRepositoryInterface reste ici (contrairement à Resignation/Salary,
+        // pas dans le bundle) : AdminUserController en dépend directement pour générer
+        // automatiquement un rapport d'embauche à la création d'un employé. Voir
+        // src/Bundles/HiringReport/HiringReportBundle.php.
         $this->container->singleton(HiringReportRepositoryInterface::class, fn() => new DatabaseHiringReportRepository());
         $this->container->singleton(ResignationReportRepositoryInterface::class, fn() => new DatabaseResignationReportRepository());
         $this->container->singleton(SalaryReportRepositoryInterface::class, fn() => new DatabaseSalaryReportRepository());

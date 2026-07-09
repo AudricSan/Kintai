@@ -215,6 +215,8 @@
     "bulk_max_warning": "Selection limited to :n shifts at a time.",
     "bundle_daily_report": "Daily Reports",
     "bundle_daily_report_desc": "Daily activity reports with a draft → submitted → validated workflow.",
+    "bundle_hiring_report": "Hiring Report",
+    "bundle_hiring_report_desc": "Browse and edit per-store hiring reports. Still auto-generated on employee creation even when this bundle is disabled.",
     "bundle_messaging": "Messaging",
     "bundle_messaging_desc": "Internal messaging between store members.",
     "bundle_none_found": "No bundle detected in src/Bundles/.",
