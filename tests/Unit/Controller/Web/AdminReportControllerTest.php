@@ -5,13 +5,9 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Controller\Web;
 
 use kintai\Core\Container;
-use kintai\Core\Repositories\DailyReportRepositoryInterface;
 use kintai\Core\Repositories\HiringReportRepositoryInterface;
 use kintai\Core\Repositories\LogRepositoryInterface;
-use kintai\Core\Repositories\SalaryReportRepositoryInterface;
-use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
-use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Services\AuditLogger;
@@ -24,7 +20,6 @@ use PHPUnit\Framework\TestCase;
 final class AdminReportControllerTest extends TestCase
 {
     private HiringReportRepositoryInterface&MockObject $hiringReports;
-    private SalaryReportRepositoryInterface&MockObject $salaryReports;
     private StoreRepositoryInterface&MockObject $stores;
     private LogRepositoryInterface&MockObject $logRepo;
     private AdminReportController $controller;
@@ -32,12 +27,10 @@ final class AdminReportControllerTest extends TestCase
     protected function setUp(): void
     {
         $this->ensureViewFile('staff.reports-hiring-show');
-        $this->ensureViewFile('staff.reports-salary-show');
         $this->ensureViewFile('layout.app');
         $view = new ViewRenderer(sys_get_temp_dir());
 
         $this->hiringReports = $this->createMock(HiringReportRepositoryInterface::class);
-        $this->salaryReports = $this->createMock(SalaryReportRepositoryInterface::class);
         $this->stores = $this->createMock(StoreRepositoryInterface::class);
 
         // AuditLogger::log() délègue à Log::record() -> LogRepositoryInterface::record() ;
@@ -52,10 +45,6 @@ final class AdminReportControllerTest extends TestCase
             $this->stores,
             $this->createMock(UserRepositoryInterface::class),
             $this->hiringReports,
-            $this->salaryReports,
-            $this->createMock(StoreUserRepositoryInterface::class),
-            $this->createMock(DailyReportRepositoryInterface::class),
-            $this->createMock(ShiftRepositoryInterface::class),
             new AuditLogger(),
         );
     }
@@ -85,27 +74,6 @@ final class AdminReportControllerTest extends TestCase
         );
 
         $response = $this->controller->showHiringReport($req);
-
-        $this->assertSame(200, $response->status());
-    }
-
-    public function testShowSalaryReportLogsConsultation(): void
-    {
-        $req = new Request();
-        $req->setAttribute('managed_store_ids', null);
-        $req->setRouteParams(['id' => '1', 'rid' => '30']);
-
-        $this->salaryReports->method('findById')->with(30)->willReturn(['id' => 30, 'store_id' => 1, 'target_month' => '2026-08']);
-        $this->stores->method('findById')->willReturn(['id' => 1, 'name' => 'Store A']);
-
-        $this->logRepo->expects($this->once())->method('record')->with(
-            $this->anything(), $this->anything(), $this->anything(),
-            'salary_report.viewed', 'salary_report', 30,
-            $this->anything(), $this->anything(), 1,
-            $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(),
-        );
-
-        $response = $this->controller->showSalaryReport($req);
 
         $this->assertSame(200, $response->status());
     }
@@ -140,23 +108,23 @@ final class AdminReportControllerTest extends TestCase
         $this->assertSame(302, $response->status());
     }
 
-    public function testDeleteSalaryReportDeletesAndLogs(): void
+    public function testDeleteHiringReportDeletesAndLogs(): void
     {
         $req = new Request();
         $req->setAttribute('managed_store_ids', null);
-        $req->setRouteParams(['id' => '1', 'rid' => '30']);
+        $req->setRouteParams(['id' => '1', 'rid' => '10']);
 
-        $this->salaryReports->method('findById')->with(30)->willReturn(['id' => 30, 'store_id' => 1]);
-        $this->salaryReports->expects($this->once())->method('delete')->with(30);
+        $this->hiringReports->method('findById')->with(10)->willReturn(['id' => 10, 'store_id' => 1]);
+        $this->hiringReports->expects($this->once())->method('delete')->with(10);
 
         $this->logRepo->expects($this->once())->method('record')->with(
             $this->anything(), $this->anything(), $this->anything(),
-            'salary_report.deleted', 'salary_report', 30,
+            'hiring_report.deleted', 'hiring_report', 10,
             $this->anything(), $this->anything(), $this->anything(),
             $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(),
         );
 
-        $response = $this->controller->deleteSalaryReport($req);
+        $response = $this->controller->deleteHiringReport($req);
 
         $this->assertSame(302, $response->status());
     }

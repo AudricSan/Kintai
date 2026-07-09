@@ -20,4 +20,5 @@ return [
     'shift-swap',
     'shift-claim',
     'resignation-report',
+    'salary-report',
 ];
