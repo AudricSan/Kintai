@@ -49,10 +49,26 @@ final class BackupController
             'title'                     => 'Mises à jour',
             'currentVersion'            => $this->update->getCurrentVersion(),
             'updateInfo'                => $this->githubUpdate->checkLatestRelease(),
+            'updateChannel'             => $this->settings->updateChannel(),
             'pendingMigs'               => $this->update->getPendingMigrations(),
             'lastUpdateDurationSeconds' => $this->update->getLastUpdateDuration(),
             'flash'                     => $flash,
         ], 'layout.app'));
+    }
+
+    /** POST /admin/update/channel — change le canal de mise à jour suivi (release/beta/alpha). */
+    public function saveChannel(Request $request): Response
+    {
+        $this->requireOwner($request);
+
+        $channel = (string) $request->post('channel', 'release');
+        if (!in_array($channel, ['alpha', 'beta', 'release'], true)) {
+            $channel = 'release';
+        }
+
+        $this->settings->setMany(['update_channel' => $channel]);
+
+        return Response::redirect('/admin/update?success=channel_' . $channel);
     }
 
     /** POST /admin/update/apply — applique la dernière release GitHub disponible. */

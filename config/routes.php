@@ -256,6 +256,7 @@ $router->group('/admin', function ($r) {
     $r->post('/update/apply',        [BackupController::class, 'update'], name: 'admin.update.apply');
     $r->post('/update/stream',       [BackupController::class, 'updateStream'], name: 'admin.update.stream');
     $r->post('/update/migrate',      [BackupController::class, 'migrate'], name: 'admin.update.migrate');
+    $r->post('/update/channel',      [BackupController::class, 'saveChannel'], name: 'admin.update.channel');
 
     // Photos : voir src/Bundles/StorePhoto/routes.php
 
