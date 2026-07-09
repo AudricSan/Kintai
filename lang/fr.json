@@ -233,7 +233,7 @@
     "bundle_shift_swap": "Échanges de shifts",
     "bundle_shift_swap_desc": "Demandes d'échange de shifts entre employés : proposition, acceptation, application par un manager.",
     "bundle_store_photos": "Photos de magasin",
-    "bundle_store_photos_desc": "Envoi et suivi de photos hebdomadaires de l'état du magasin.",
+    "bundle_store_photos_desc": "Envoi et suivi de photos hebdomadaires de l'espace de vente.",
     "bundle_third_party": "Tiers",
     "bundle_third_party_warning": "Ce bundle n'est pas développé ni maintenu par le projet Kintai. Installez-le uniquement si vous faites confiance à sa source.",
     "bundle_timeclock": "Pointage",
