@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace kintai\Tests\Unit\Controller\Web;
+namespace kintai\Tests\Unit\Bundles\ShiftSwap;
 
+use kintai\Bundles\ShiftSwap\Controllers\Web\AdminSwapController;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
@@ -12,7 +13,6 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\NotificationService;
-use kintai\UI\Controller\Web\Requests\AdminSwapController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -27,10 +27,13 @@ final class AdminSwapControllerTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->ensureViewFile('requests.swap-form');
-        $this->ensureViewFile('requests.swap-requests');
-        $this->ensureViewFile('layout.app');
+        $viewDir = sys_get_temp_dir() . '/kintai-shift-swap-views';
+        $this->ensureViewFile($viewDir, 'swap-form');
+        $this->ensureViewFile($viewDir, 'swap-requests');
+        $this->ensureViewFile(sys_get_temp_dir(), 'layout.app');
+
         $view = new ViewRenderer(sys_get_temp_dir());
+        $view->addNamespace('shift-swap', $viewDir);
 
         $this->swapRequests = $this->createMock(ShiftSwapRequestRepositoryInterface::class);
         $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
@@ -287,12 +290,12 @@ final class AdminSwapControllerTest extends TestCase
         $this->assertSame(302, $response->status());
     }
 
-    private function ensureViewFile(string $view): void
+    private function ensureViewFile(string $dir, string $view): void
     {
-        $file = sys_get_temp_dir() . DIRECTORY_SEPARATOR . str_replace('.', DIRECTORY_SEPARATOR, $view) . '.php';
-        $dir = dirname($file);
-        if (!is_dir($dir)) {
-            mkdir($dir, 0777, true);
+        $file = $dir . DIRECTORY_SEPARATOR . str_replace('.', DIRECTORY_SEPARATOR, $view) . '.php';
+        $parent = dirname($file);
+        if (!is_dir($parent)) {
+            mkdir($parent, 0777, true);
         }
         touch($file);
     }

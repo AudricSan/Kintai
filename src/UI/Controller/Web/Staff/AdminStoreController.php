@@ -30,6 +30,7 @@ final class AdminStoreController
         'messages'      => 'messaging',
         'daily_reports' => 'daily-report',
         'photos'        => 'store-photos',
+        'swaps'         => 'shift-swap',
     ];
 
     public function __construct(
