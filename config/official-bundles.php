@@ -1,0 +1,18 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Slugs des bundles officiellement développés et maintenus par le projet
+ * Kintai (voir Bundle::getName() de chaque classe pour la correspondance).
+ *
+ * Tout bundle découvert par BundleDiscoveryService dans src/Bundles/ dont le
+ * slug n'apparaît PAS ici est un bundle tiers, installé manuellement — l'écran
+ * /admin/bundles affiche alors un avertissement "non maintenu par le projet
+ * principal". Ce fichier ne fait confiance à aucune auto-déclaration du
+ * bundle lui-même : seule cette liste versionnée avec le core fait foi.
+ */
+return [
+    'daily-report',
+    'messaging',
+];
