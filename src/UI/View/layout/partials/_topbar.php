@@ -17,9 +17,15 @@
         'daily-reports'       => __('statistics'),
         'store-profitability' => __('statistics'),
         'activity'            => __('system'),
-        'feedbacks'           => __('system'),
         'nav-settings'        => __('system'),
-        'owner-settings'      => __('system'),
+        // Pages du bandeau d'onglets Paramètres (_partials/_settings-tabs.php) :
+        // même section pour toutes, cohérent avec l'onglet actif.
+        'owner-settings'      => __('settings'),
+        'feedbacks'           => __('settings'),
+        'backup'              => __('settings'),
+        'update'              => __('settings'),
+        'languages'           => __('settings'),
+        'bundles'             => __('settings'),
     ];
     $bcSectionEmployee = [
         'shifts'        => __('planning'),
