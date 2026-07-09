@@ -12,6 +12,9 @@ All notable changes to Kintai are documented here.
 ### Changed
 - Release publishing is now automated: `.github/workflows/release.yml` tags and publishes a GitHub Release whenever a version bump is merged into the `alpha`, `beta`, or `main` branch — `alpha`/`beta` get an auto-incremented prerelease suffix (`vX.Y.Z-{channel}.N`), `main` publishes the plain stable tag (skipped if it already exists). The base version bump in `composer.json`/`config/app.php`/`CHANGELOG.md` is still done by hand as before; only the tag/`gh release create` step is now automatic. `alpha`, `beta`, and `main` are protected branches (PR + passing CI required). See `docs/releasing.md` for the updated flow.
 
+### Fixed
+- The Daily Report list tables (`/admin/stores/{id}/daily-reports` and its "all reports" view) had the Sales/Labor Cost column headers hardcoded in Japanese (`売上`, `人件費`) instead of going through the translation system. Fixed to use the existing `dr_sales`/`dr_labor` keys, already used everywhere else in these same views (row cells, PDF, email) — no new translation keys needed.
+
 ## [0.5.0] - 2026-07-09
 
 ### Added
