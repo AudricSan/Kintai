@@ -7,7 +7,6 @@
 
 $prev = ($currentIndex !== null && $currentIndex > 0) ? $toc[$currentIndex - 1] : null;
 $next = ($currentIndex !== null && $currentIndex < count($toc) - 1) ? $toc[$currentIndex + 1] : null;
-$pdfFilename = 'Kintai-Guide-' . strtoupper($lang) . '.pdf';
 ?>
 
 <div class="page-header">
@@ -30,10 +29,6 @@ $pdfFilename = 'Kintai-Guide-' . strtoupper($lang) . '.pdf';
                 </li>
             <?php endforeach; ?>
         </ul>
-        <a href="<?= $BASE_URL ?>/pdf/<?= htmlspecialchars($pdfFilename) ?>"
-           class="btn btn--ghost docs-wiki__pdf-link" download="<?= htmlspecialchars($pdfFilename) ?>">
-            ↓ <?= __('docs_download') ?>
-        </a>
     </nav>
 
     <div class="card docs-wiki__content-card">

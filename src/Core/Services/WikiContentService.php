@@ -7,18 +7,58 @@ namespace kintai\Core\Services;
 use kintai\Core\Exceptions\NotFoundException;
 
 /**
- * Rend en HTML les pages du wiki GitHub (clone local .wiki/) pour une
- * consultation directe dans l'application, en s'appuyant sur le catalogue
- * de guides défini par WikiPdfGeneratorService.
+ * Rend en HTML les pages du wiki GitHub (clone local .wiki/, gitignoré) pour
+ * une consultation directe dans l'application.
  */
 final class WikiContentService
 {
+    /**
+     * Catalogue des guides : fichiers .wiki/ et titres affichés, par langue.
+     */
+    private const GUIDES = [
+        'fr' => [
+            'Quick-Start.md'      => 'Démarrage rapide',
+            'Guide-Owner-FR.md'   => 'Guide Propriétaire',
+            'Guide-Manager-FR.md' => 'Guide Responsable',
+            'Guide-Staff-FR.md'   => 'Guide Personnel',
+            'FAQ.md'              => 'Questions fréquentes (FAQ)',
+            'Glossary.md'         => 'Glossaire',
+            'Site-Map.md'         => 'Plan du site',
+        ],
+        'en' => [
+            'Quick-Start-EN.md'    => 'Quick Start',
+            'Guide-Owner-EN.md'    => 'Owner Guide',
+            'Guide-Manager-EN.md'  => 'Manager Guide',
+            'Guide-Staff-EN.md'    => 'Staff Guide',
+            'FAQ-EN.md'            => 'Frequently Asked Questions (FAQ)',
+            'Glossary-EN.md'       => 'Glossary',
+            'Site-Map-EN.md'       => 'Site Map',
+        ],
+        'ja' => [
+            'Quick-Start-JA.md'    => 'クイックスタート',
+            'Guide-Owner-JA.md'    => 'オーナーガイド',
+            'Guide-Manager-JA.md'  => 'マネージャーガイド',
+            'Guide-Staff-JA.md'    => 'スタッフガイド',
+            'FAQ-JA.md'            => 'よくある質問 (FAQ)',
+            'Glossary-JA.md'       => '用語集',
+            'Site-Map-JA.md'       => 'サイトマップ',
+        ],
+    ];
+
     private string $wikiPath;
 
     public function __construct(string $wikiPath = '')
     {
         $basePath = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 3);
         $this->wikiPath = $wikiPath !== '' ? $wikiPath : $basePath . '/.wiki';
+    }
+
+    /**
+     * @return string[]
+     */
+    public static function supportedLangs(): array
+    {
+        return array_keys(self::GUIDES);
     }
 
     public function isConfigured(): bool
@@ -33,31 +73,30 @@ final class WikiContentService
      */
     public function tableOfContents(string $lang): array
     {
-        $guide = WikiPdfGeneratorService::guides()[$lang] ?? null;
+        $guide = self::GUIDES[$lang] ?? null;
 
         if ($guide === null) {
             return [];
         }
 
-        return array_map(
-            static fn (string $file): array => [
-                'file'  => $file,
-                'title' => WikiPdfGeneratorService::sectionTitle($lang, $file),
-            ],
-            $guide['files']
-        );
+        $toc = [];
+        foreach ($guide as $file => $title) {
+            $toc[] = ['file' => $file, 'title' => $title];
+        }
+
+        return $toc;
     }
 
     public function firstPage(string $lang): ?string
     {
-        return WikiPdfGeneratorService::guides()[$lang]['files'][0] ?? null;
+        $files = array_keys(self::GUIDES[$lang] ?? []);
+
+        return $files[0] ?? null;
     }
 
     public function pageExists(string $lang, string $file): bool
     {
-        $guide = WikiPdfGeneratorService::guides()[$lang] ?? null;
-
-        if ($guide === null || !in_array($file, $guide['files'], true)) {
+        if (!isset(self::GUIDES[$lang][$file])) {
             return false;
         }
 
@@ -96,7 +135,7 @@ final class WikiContentService
      */
     private function linkifyInternalPages(string $md, string $lang): string
     {
-        $files = WikiPdfGeneratorService::guides()[$lang]['files'] ?? [];
+        $files = array_keys(self::GUIDES[$lang] ?? []);
 
         return preg_replace_callback(
             '/\[([^\]]+)\]\(([^)]+)\)/',
