@@ -1,5 +1,5 @@
 <?php
-/** @var array  $languages ['fr'|'en'|'ja' => ['first_page', 'browsable']] */
+/** @var array  $languages ['fr'|'en'|'ja' => ['first_page', 'browsable', 'github_wiki_url']] */
 /** @var string $locale    Locale courante de l'utilisateur */
 
 $guides = [
@@ -37,6 +37,12 @@ $guides = [
             <?php else: ?>
                 <p class="docs-card__unavailable"><?= __('docs_not_available') ?></p>
             <?php endif; ?>
+
+            <a href="<?= htmlspecialchars($entry['github_wiki_url']) ?>"
+               class="btn btn--ghost docs-card__btn"
+               target="_blank" rel="noopener noreferrer">
+                <?= __('docs_view_on_github') ?> ↗
+            </a>
         </div>
     </div>
     <?php endforeach; ?>

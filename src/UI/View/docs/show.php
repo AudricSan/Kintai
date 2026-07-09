@@ -1,11 +1,12 @@
 <?php
 /** @var string      $lang           Langue courante ('fr'|'en'|'ja') */
 /** @var string      $page           Slug de la page courante (sans extension) */
-/** @var array       $toc            [{label, items: [{slug, title, available}]}] */
-/** @var array       $flatItems      [{slug, title, available}] à plat, dans l'ordre du sommaire */
+/** @var array       $toc            [{label, items: [{slug, title, available, github_url}]}] */
+/** @var array       $flatItems      [{slug, title, available, github_url}] à plat, dans l'ordre du sommaire */
 /** @var int|null    $currentIndex   Index de $page dans $flatItems */
 /** @var string      $contentHtml    Contenu HTML déjà rendu (Parsedown) */
 /** @var array       $otherLanguages ['fr'|'en'|'ja' => bool] page courante disponible dans cette langue */
+/** @var string      $githubWikiUrl  URL de la page courante sur le wiki GitHub */
 
 $prev = ($currentIndex !== null && $currentIndex > 0) ? $flatItems[$currentIndex - 1] : null;
 $next = ($currentIndex !== null && $currentIndex < count($flatItems) - 1) ? $flatItems[$currentIndex + 1] : null;
@@ -17,6 +18,10 @@ $langFlags = ['fr' => '🇫🇷', 'en' => '🇬🇧', 'ja' => '🇯🇵'];
     <h2 class="page-header__title"><?= __('docs_title') ?></h2>
     <p class="page-header__subtitle">
         <a href="<?= route_url('docs.index') ?>">&larr; <?= __('docs_back_to_list') ?></a>
+        ·
+        <a href="<?= htmlspecialchars($githubWikiUrl) ?>" target="_blank" rel="noopener noreferrer">
+            <?= __('docs_view_on_github') ?> ↗
+        </a>
     </p>
 </div>
 
@@ -47,9 +52,12 @@ $langFlags = ['fr' => '🇫🇷', 'en' => '🇬🇧', 'ja' => '🇯🇵'];
                                 <?= htmlspecialchars($entry['title']) ?>
                             </a>
                         <?php else: ?>
-                            <span class="docs-wiki__toc-link docs-wiki__toc-link--unavailable">
-                                <?= htmlspecialchars($entry['title']) ?>
-                            </span>
+                            <a href="<?= htmlspecialchars($entry['github_url']) ?>"
+                               class="docs-wiki__toc-link docs-wiki__toc-link--unavailable"
+                               target="_blank" rel="noopener noreferrer"
+                               title="<?= htmlspecialchars(__('docs_view_on_github')) ?>">
+                                <?= htmlspecialchars($entry['title']) ?> ↗
+                            </a>
                         <?php endif; ?>
                     </li>
                 <?php endforeach; ?>

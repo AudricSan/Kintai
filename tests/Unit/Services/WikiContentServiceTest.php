@@ -193,6 +193,73 @@ final class WikiContentServiceTest extends TestCase
         $this->assertSame([], $this->service()->tableOfContents('en'));
     }
 
+    public function testTableOfContentsItemsIncludeGithubUrl(): void
+    {
+        $this->seedFixture();
+        $toc = $this->service()->tableOfContents('fr');
+
+        $this->assertSame(
+            'https://github.com/AudricSan/Kintai/wiki/fr/Home',
+            $toc[0]['items'][0]['github_url']
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // githubWikiUrl() — accès en ligne indépendant de la disponibilité locale
+    // -------------------------------------------------------------------------
+
+    public function testGithubWikiUrlForEnglishHasNoLangPrefix(): void
+    {
+        $this->assertSame(
+            'https://github.com/AudricSan/Kintai/wiki/Home',
+            $this->service()->githubWikiUrl('en', 'Home')
+        );
+    }
+
+    public function testGithubWikiUrlForFrenchHasLangPrefix(): void
+    {
+        $this->assertSame(
+            'https://github.com/AudricSan/Kintai/wiki/fr/Installation',
+            $this->service()->githubWikiUrl('fr', 'Installation')
+        );
+    }
+
+    public function testGithubWikiUrlForJapaneseHasLangPrefix(): void
+    {
+        $this->assertSame(
+            'https://github.com/AudricSan/Kintai/wiki/ja/Installation',
+            $this->service()->githubWikiUrl('ja', 'Installation')
+        );
+    }
+
+    public function testGithubWikiUrlDefaultsToHomeWithoutSlug(): void
+    {
+        $this->assertSame(
+            'https://github.com/AudricSan/Kintai/wiki/Home',
+            $this->service()->githubWikiUrl('en')
+        );
+    }
+
+    public function testGithubWikiUrlDefaultsToHomeForInvalidSlug(): void
+    {
+        $this->assertSame(
+            'https://github.com/AudricSan/Kintai/wiki/fr/Home',
+            $this->service()->githubWikiUrl('fr', '../../../etc/passwd')
+        );
+    }
+
+    public function testGithubWikiUrlAvailableWithoutLocalWikiClone(): void
+    {
+        // Ne requiert aucun .wiki/ sur le disque : contrairement à render()/pageExists(),
+        // cette méthode ne fait aucun accès au système de fichiers.
+        $service = new WikiContentService($this->tmpWiki . '/never-cloned');
+
+        $this->assertSame(
+            'https://github.com/AudricSan/Kintai/wiki/Home',
+            $service->githubWikiUrl('en')
+        );
+    }
+
     // -------------------------------------------------------------------------
     // pageExists()
     // -------------------------------------------------------------------------

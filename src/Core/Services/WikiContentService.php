@@ -61,10 +61,28 @@ final class WikiContentService
     }
 
     /**
+     * URL de la page équivalente sur le wiki GitHub en ligne, consultable même
+     * quand `.wiki/` n'est pas cloné localement (dépôt configuré via la même
+     * variable d'environnement que la vérification de mises à jour, puisque
+     * c'est le même dépôt canonique).
+     */
+    public function githubWikiUrl(string $lang, ?string $slug = null): string
+    {
+        $repo = env('GITHUB_UPDATE_REPO', 'AudricSan/Kintai');
+        $dir  = self::LANG_DIRS[$lang] ?? '';
+        $slug = ($slug !== null && $this->isValidSlug($slug)) ? $slug : 'Home';
+        $path = $dir !== '' ? $dir . '/' . $slug : $slug;
+
+        return 'https://github.com/' . $repo . '/wiki/' . $path;
+    }
+
+    /**
      * Table des matières groupée (telle que définie par _Sidebar.md), avec le
-     * titre et la disponibilité de chaque page dans la langue donnée.
+     * titre, la disponibilité locale et le lien GitHub de chaque page dans la
+     * langue donnée (ce dernier permet d'y accéder même si la page n'est pas
+     * disponible localement).
      *
-     * @return array{label: string|null, items: array{slug: string, title: string, available: bool}[]}[]
+     * @return array{label: string|null, items: array{slug: string, title: string, available: bool, github_url: string}[]}[]
      */
     public function tableOfContents(string $lang): array
     {
@@ -74,9 +92,10 @@ final class WikiContentService
             $items = [];
             foreach ($slugs as $slug) {
                 $items[] = [
-                    'slug'      => $slug,
-                    'title'     => $this->pageTitle($lang, $slug),
-                    'available' => $this->pageExists($lang, $slug),
+                    'slug'       => $slug,
+                    'title'      => $this->pageTitle($lang, $slug),
+                    'available'  => $this->pageExists($lang, $slug),
+                    'github_url' => $this->githubWikiUrl($lang, $slug),
                 ];
             }
 
