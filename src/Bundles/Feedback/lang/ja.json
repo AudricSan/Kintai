@@ -1,0 +1,9 @@
+{
+    "all_categories": "すべてのカテゴリ",
+    "bundle_feedback": "フィードバック",
+    "bundle_feedback_desc": "従業員からのフィードバック（不具合、提案）——送信モーダル、管理者側の一覧・削除。",
+    "feedback_anonymous_author": "匿名",
+    "feedback_delete_confirm": "このフィードバックを完全に削除しますか？",
+    "feedback_deleted": "フィードバックを削除しました。",
+    "no_feedback": "フィードバックはまだありません。"
+}

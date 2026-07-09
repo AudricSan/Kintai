@@ -1,0 +1,14 @@
+{
+    "bundle_resignation_report": "Resignation Report",
+    "bundle_resignation_report_desc": "Per-employee resignation reports, with account reactivation.",
+    "confirm_delete_resignation_report": "Permanently delete this resignation report?",
+    "confirm_reactivate": "Reactivate this employee? This will allow them to log in again.",
+    "edit_resignation_report": "Edit Resignation Report",
+    "new_resignation_report": "New Resignation Report",
+    "person_in_charge": "Person in Charge",
+    "reactivate": "Reactivate",
+    "resignation_date": "Resignation Date",
+    "resignation_notice": "Resignation Notice",
+    "resignation_report_pdf_title": "Resignation Report (退職報告書)",
+    "resignation_reports": "Resignation Reports"
+}

@@ -1,0 +1,9 @@
+{
+    "all_categories": "All categories",
+    "bundle_feedback": "Feedback",
+    "bundle_feedback_desc": "Employee feedback (bugs, suggestions) — submission modal, admin list and deletion.",
+    "feedback_anonymous_author": "Anonymous",
+    "feedback_delete_confirm": "Permanently delete this feedback?",
+    "feedback_deleted": "Feedback deleted.",
+    "no_feedback": "No feedback received."
+}
