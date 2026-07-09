@@ -101,7 +101,7 @@
 }
 .docs-wiki__toc-link--unavailable {
     color: var(--color-text-muted);
-    cursor: default;
+    font-style: italic;
 }
 
 .docs-wiki__content-card { min-width: 0; }

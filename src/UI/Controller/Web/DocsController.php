@@ -26,8 +26,9 @@ final class DocsController
 
         foreach (WikiContentService::supportedLangs() as $lang) {
             $languages[$lang] = [
-                'first_page' => $firstPage,
-                'browsable'  => $firstPage !== null && $this->wikiContent->pageExists($lang, $firstPage),
+                'first_page'      => $firstPage,
+                'browsable'       => $firstPage !== null && $this->wikiContent->pageExists($lang, $firstPage),
+                'github_wiki_url' => $this->wikiContent->githubWikiUrl($lang, $firstPage),
             ];
         }
 
@@ -69,13 +70,14 @@ final class DocsController
         }
 
         return Response::html($this->view->render('docs.show', [
-            'lang'           => $lang,
-            'page'           => $page,
-            'toc'            => $toc,
-            'flatItems'      => $flatItems,
-            'currentIndex'   => $currentIndex,
-            'contentHtml'    => $contentHtml,
-            'otherLanguages' => $otherLanguages,
+            'lang'            => $lang,
+            'page'            => $page,
+            'toc'             => $toc,
+            'flatItems'       => $flatItems,
+            'currentIndex'    => $currentIndex,
+            'contentHtml'     => $contentHtml,
+            'otherLanguages'  => $otherLanguages,
+            'githubWikiUrl'   => $this->wikiContent->githubWikiUrl($lang, $page),
         ], 'layout.app'));
     }
 }
