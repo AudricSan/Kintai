@@ -224,6 +224,8 @@
     "bundle_store_photos_desc": "Envoi et suivi de photos hebdomadaires de l'état du magasin.",
     "bundle_third_party": "Tiers",
     "bundle_third_party_warning": "Ce bundle n'est pas développé ni maintenu par le projet Kintai. Installez-le uniquement si vous faites confiance à sa source.",
+    "bundle_timeclock": "Pointage",
+    "bundle_timeclock_desc": "Pointer/dépointer côté employé, historique et gestion admin des entrées de pointage.",
     "calendar": "Calendrier",
     "calendar_view": "Vue calendrier",
     "cancel": "Annuler",
