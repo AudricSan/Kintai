@@ -1,0 +1,9 @@
+{
+    "all_categories": "Toutes les catégories",
+    "bundle_feedback": "Feedback",
+    "bundle_feedback_desc": "Remontées des employés (bugs, suggestions) — modale de soumission, liste et suppression côté admin.",
+    "feedback_anonymous_author": "Anonyme",
+    "feedback_delete_confirm": "Supprimer ce feedback définitivement ?",
+    "feedback_deleted": "Feedback supprimé.",
+    "no_feedback": "Aucun feedback reçu."
+}

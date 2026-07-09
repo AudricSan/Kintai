@@ -1,0 +1,15 @@
+{
+    "bundle_timeoff": "Congés",
+    "bundle_timeoff_desc": "Demandes d'absence des employés : soumission, approbation, suivi.",
+    "confirm_delete_timeoff": "Supprimer définitivement ce congé ?",
+    "create_timeoff": "Créer un congé",
+    "error_not_pending": "Cette demande ne peut plus être annulée.",
+    "new_timeoff": "Nouveau congé",
+    "no_pending_timeoff": "Aucune demande en attente.",
+    "no_timeoff_found": "Aucun congé.",
+    "reason_placeholder": "Ex: mariage, médecin…",
+    "sent_at": "Envoyé le",
+    "timeoff_created_admin": "Le congé a été créé et ajouté au calendrier.",
+    "timeoff_deleted": "Le congé a été supprimé.",
+    "timeoff_request_sent": "Demande de congé envoyée."
+}
