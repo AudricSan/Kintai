@@ -33,6 +33,7 @@ final class AdminStoreController
         'timeoff'       => 'timeoff',
         'swaps'         => 'shift-swap',
         'open_shifts'   => 'shift-claim',
+        'timeclock'     => 'timeclock',
     ];
 
     public function __construct(

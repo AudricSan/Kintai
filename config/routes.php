@@ -18,7 +18,6 @@ use kintai\UI\Controller\Web\WikiPdfController;
 use kintai\UI\Controller\Web\Scheduling\AdminShiftController;
 use kintai\UI\Controller\Web\Scheduling\AdminShiftImportController;
 use kintai\UI\Controller\Web\Scheduling\AdminShiftTypeController;
-use kintai\UI\Controller\Web\Scheduling\AdminTimeclockController;
 
 use kintai\UI\Controller\Web\Staff\AdminStoreController;
 use kintai\UI\Controller\Web\Staff\AdminUserController;
@@ -41,7 +40,6 @@ use kintai\UI\Controller\Api\V1\StoreUserController as ApiStoreUserController;
 use kintai\UI\Controller\Api\V1\ShiftTypeController as ApiShiftTypeController;
 use kintai\UI\Controller\Api\V1\ShiftController as ApiShiftController;
 use kintai\UI\Controller\Api\V1\AvailabilityController as ApiAvailabilityController;
-use kintai\UI\Controller\Api\V1\TimeclockController as ApiTimeclockController;
 use kintai\UI\Controller\Api\V1\NotificationController as ApiNotificationController;
 use kintai\UI\Controller\Api\V1\UserShiftRateController as ApiUserShiftRateController;
 use kintai\UI\Controller\Api\V1\ActivityController as ApiActivityController;
@@ -116,10 +114,7 @@ $router->group('/employee', function ($r) {
     $r->get('/shifts/day',      [EmployeeController::class, 'shiftDay'],       name: 'employee.shifts.day');
     $r->get('/shifts/week',     [EmployeeController::class, 'shiftsWeek'],     name: 'employee.shifts.week');
 
-    // Pointage
-    $r->get('/timeclock',              [EmployeeController::class, 'timeclock'], name: 'employee.timeclock');
-    $r->post('/timeclock/clock-in',    [EmployeeController::class, 'clockIn'],   name: 'employee.timeclock.clock_in');
-    $r->post('/timeclock/clock-out',   [EmployeeController::class, 'clockOut'],  name: 'employee.timeclock.clock_out');
+    // Pointage : voir src/Bundles/Timeclock/routes.php
 
     // Congés : voir src/Bundles/TimeOff/routes.php
 
@@ -238,10 +233,7 @@ $router->group('/admin', function ($r) {
 
     // Échanges de shifts : voir src/Bundles/ShiftSwap/routes.php
 
-    // Pointage
-    $r->get('/timeclocks',                [AdminTimeclockController::class, 'timeclocks'],        name: 'admin.timeclocks');
-    $r->post('/timeclocks/{id}/edit',     [AdminTimeclockController::class, 'timeclocksEdit'],    name: 'admin.timeclocks.edit');
-    $r->post('/timeclocks/{id}/delete',   [AdminTimeclockController::class, 'timeclocksDelete'],  name: 'admin.timeclocks.delete');
+    // Pointage : voir src/Bundles/Timeclock/routes.php
 
     // Journal d'activité (unifié)
     $r->get('/activity', [ActivityController::class, 'index'], name: 'admin.activity');
@@ -363,13 +355,7 @@ $router->group('/api/v1', function ($r) {
 
     // Échanges de shifts : voir src/Bundles/ShiftSwap/routes.php
 
-    // Pointage
-    $r->post('/timeclocks/clock-in',   [ApiTimeclockController::class, 'clockIn'],  name: 'api.v1.timeclock.clock_in');
-    $r->post('/timeclocks/clock-out',  [ApiTimeclockController::class, 'clockOut'], name: 'api.v1.timeclock.clock_out');
-    $r->get('/timeclocks',             [ApiTimeclockController::class, 'index'],    name: 'api.v1.timeclock.index');
-    $r->get('/timeclocks/{id}',        [ApiTimeclockController::class, 'show'],     name: 'api.v1.timeclock.show');
-    $r->put('/timeclocks/{id}',        [ApiTimeclockController::class, 'update'],   name: 'api.v1.timeclock.update');
-    $r->delete('/timeclocks/{id}',     [ApiTimeclockController::class, 'destroy'],  name: 'api.v1.timeclock.destroy');
+    // Pointage : voir src/Bundles/Timeclock/routes.php
 
     // Bourse aux shifts : voir src/Bundles/ShiftClaim/routes.php
 

@@ -236,6 +236,8 @@
     "bundle_store_photos_desc": "Weekly store-condition photo submissions and tracking.",
     "bundle_third_party": "Third-party",
     "bundle_third_party_warning": "This bundle is not developed or maintained by the Kintai project. Only install it if you trust its source.",
+    "bundle_timeclock": "Timeclock",
+    "bundle_timeclock_desc": "Employee clock-in/out, history, and admin management of timeclock entries.",
     "bundle_timeoff": "Time Off",
     "bundle_timeoff_desc": "Employee leave requests: submission, approval, tracking.",
     "calendar": "Calendar",

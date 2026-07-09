@@ -236,6 +236,8 @@
     "bundle_store_photos_desc": "店舗状態の週次写真の提出と管理。",
     "bundle_third_party": "サードパーティ",
     "bundle_third_party_warning": "このバンドルはKintaiプロジェクトによって開発・保守されていません。信頼できる提供元の場合のみインストールしてください。",
+    "bundle_timeclock": "打刻",
+    "bundle_timeclock_desc": "従業員の出退勤打刻、履歴、管理者による打刻記録の管理。",
     "bundle_timeoff": "休暇申請",
     "bundle_timeoff_desc": "従業員の休暇申請：提出・承認・追跡。",
     "calendar": "カレンダー",

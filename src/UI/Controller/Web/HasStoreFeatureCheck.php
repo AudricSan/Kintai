@@ -8,13 +8,23 @@ use kintai\Core\Request;
 use kintai\Core\Response;
 
 /**
- * Garde d'accès employé pour les fonctionnalités activables par store
- * (Congés, Échanges, Bourse aux shifts, Messagerie...). Nécessite
- * $this->storeUsers (StoreUserRepositoryInterface), $this->stores
- * (StoreRepositoryInterface) et le trait HasBaseUrl.
+ * Vérifie qu'une fonctionnalité est activée pour le store de l'employé courant
+ * (store_features). Extrait de l'ancien EmployeeController::assertFeature(),
+ * partagé par les contrôleurs employé des bundles TimeOff/ShiftSwap/ShiftClaim/
+ * Timeclock qui remplacent progressivement ses méthodes.
+ *
+ * Nécessite sur la classe utilisatrice : $this->storeUsers
+ * (StoreUserRepositoryInterface), $this->stores (StoreRepositoryInterface),
+ * et le trait HasBaseUrl (base()).
  */
 trait HasStoreFeatureCheck
 {
+    /**
+     * Si la fonctionnalité est désactivée pour le store de l'employé, retourne
+     * une redirection vers le dashboard (l'employé n'a de toute façon jamais dû
+     * arriver ici via la nav, qui masque déjà l'onglet correspondant). Retourne
+     * null si l'accès est autorisé.
+     */
     protected function assertFeature(Request $request, string $feature): ?Response
     {
         $user        = $request->getAttribute('auth_user');
