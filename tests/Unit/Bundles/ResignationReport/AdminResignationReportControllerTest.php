@@ -1,0 +1,214 @@
+<?php
+
+declare(strict_types=1);
+
+namespace kintai\Tests\Unit\Bundles\ResignationReport;
+
+use kintai\Bundles\ResignationReport\Controllers\Web\AdminResignationReportController;
+use kintai\Core\Container;
+use kintai\Core\Exceptions\NotFoundException;
+use kintai\Core\Repositories\LogRepositoryInterface;
+use kintai\Core\Repositories\ResignationReportRepositoryInterface;
+use kintai\Core\Repositories\StoreRepositoryInterface;
+use kintai\Core\Repositories\StoreUserRepositoryInterface;
+use kintai\Core\Repositories\UserRepositoryInterface;
+use kintai\Core\Request;
+use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\Log;
+use kintai\UI\ViewRenderer;
+use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\TestCase;
+
+final class AdminResignationReportControllerTest extends TestCase
+{
+    private ResignationReportRepositoryInterface&MockObject $resignationReports;
+    private StoreRepositoryInterface&MockObject $stores;
+    private UserRepositoryInterface&MockObject $users;
+    private StoreUserRepositoryInterface&MockObject $storeUsers;
+    private LogRepositoryInterface&MockObject $logRepo;
+    private AdminResignationReportController $controller;
+
+    protected function setUp(): void
+    {
+        $viewDir = sys_get_temp_dir() . '/kintai-resignation-report-views';
+        $this->ensureViewFile($viewDir, 'reports-resignation-show');
+        $this->ensureViewFile($viewDir, 'reports-resignation-form');
+        $this->ensureViewFile(sys_get_temp_dir(), 'layout.app');
+
+        $view = new ViewRenderer(sys_get_temp_dir());
+        $view->addNamespace('resignation-report', $viewDir);
+
+        $this->resignationReports = $this->createMock(ResignationReportRepositoryInterface::class);
+        $this->stores = $this->createMock(StoreRepositoryInterface::class);
+        $this->users = $this->createMock(UserRepositoryInterface::class);
+        $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
+
+        $this->logRepo = $this->createMock(LogRepositoryInterface::class);
+        $container = new Container();
+        $container->instance(LogRepositoryInterface::class, $this->logRepo);
+        Log::setContainer($container);
+
+        $this->controller = new AdminResignationReportController(
+            $view,
+            $this->stores,
+            $this->users,
+            $this->resignationReports,
+            $this->storeUsers,
+            new AuditLogger(),
+        );
+    }
+
+    protected function tearDown(): void
+    {
+        $_GET = [];
+        $_POST = [];
+        $_SERVER = [];
+        Log::reset();
+    }
+
+    public function testShowResignationReportLogsConsultation(): void
+    {
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '1', 'rid' => '20']);
+
+        $this->resignationReports->method('findById')->with(20)->willReturn(['id' => 20, 'store_id' => 1, 'employee_name' => 'Bob']);
+        $this->stores->method('findById')->willReturn(['id' => 1, 'name' => 'Store A']);
+
+        $this->logRepo->expects($this->once())->method('record')->with(
+            $this->anything(), $this->anything(), $this->anything(),
+            'resignation_report.viewed', 'resignation_report', 20,
+            $this->anything(), $this->anything(), 1,
+            $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(),
+        );
+
+        $response = $this->controller->showResignationReport($req);
+
+        $this->assertSame(200, $response->status());
+    }
+
+    public function testShowResignationReportOfAnotherStoreThrowsNotFound(): void
+    {
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '1', 'rid' => '20']);
+
+        // Le rapport existe mais appartient au store 2, pas au store 1 de l'URL
+        $this->resignationReports->method('findById')->with(20)->willReturn(['id' => 20, 'store_id' => 2]);
+
+        $this->expectException(NotFoundException::class);
+        $this->controller->showResignationReport($req);
+    }
+
+    public function testStoreResignationReportDeactivatesTheEmployee(): void
+    {
+        $_POST = [
+            'employee_number'    => 'E-1',
+            'employee_name'      => 'Alice Martin',
+            'resignation_date'   => '2026-08-01',
+            'reason'             => 'Départ volontaire',
+            'resignation_notice' => '',
+            'notes'              => '',
+            'person_in_charge'   => 'Manager X',
+            'user_id'            => '5',
+        ];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setAttribute('auth_user', ['id' => 1]);
+        $req->setRouteParams(['id' => '1']);
+
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1]);
+        $this->resignationReports->method('save')->willReturnCallback(fn(array $d) => $d + ['id' => 99]);
+        $this->users->method('findById')->with(5)->willReturn(['id' => 5, 'is_active' => 1]);
+
+        $captured = null;
+        $this->users->expects($this->once())->method('save')->willReturnCallback(function (array $u) use (&$captured) {
+            $captured = $u;
+            return $u;
+        });
+
+        $response = $this->controller->storeResignationReport($req);
+
+        $this->assertSame(302, $response->status());
+        $this->assertNotNull($captured);
+        $this->assertSame(0, $captured['is_active']);
+    }
+
+    public function testUpdateResignationReportMergesPostFieldsAndRedirects(): void
+    {
+        $_POST = [
+            'user_id'            => '5',
+            'employee_number'    => 'E-42',
+            'employee_name'      => 'Alice Martin',
+            'resignation_date'   => '2026-08-01',
+            'reason'             => '',
+            'resignation_notice' => '',
+            'notes'              => '',
+            'person_in_charge'   => '',
+        ];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+        $req->setRouteParams(['id' => '1', 'rid' => '10']);
+
+        $this->resignationReports->method('findById')->with(10)
+            ->willReturn(['id' => 10, 'store_id' => 1, 'employee_name' => 'Ancien nom']);
+
+        $this->resignationReports->expects($this->once())->method('save')->with($this->callback(
+            fn(array $data) =>
+                $data['id'] === 10
+                && $data['user_id'] === 5
+                && $data['employee_name'] === 'Alice Martin'
+        ));
+
+        $response = $this->controller->updateResignationReport($req);
+
+        $this->assertSame(302, $response->status());
+    }
+
+    public function testDeleteResignationReportDeletesAndLogs(): void
+    {
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '1', 'rid' => '10']);
+
+        $this->resignationReports->method('findById')->with(10)->willReturn(['id' => 10, 'store_id' => 1]);
+        $this->resignationReports->expects($this->once())->method('delete')->with(10);
+
+        $response = $this->controller->deleteResignationReport($req);
+
+        $this->assertSame(302, $response->status());
+    }
+
+    public function testReactivateUserReactivatesTheAssociatedAccount(): void
+    {
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '1', 'rid' => '10']);
+
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1]);
+        $this->resignationReports->method('findById')->with(10)->willReturn(['id' => 10, 'store_id' => 1, 'user_id' => 5]);
+        $this->users->method('findById')->with(5)->willReturn(['id' => 5, 'is_active' => 0]);
+
+        $captured = null;
+        $this->users->expects($this->once())->method('save')->willReturnCallback(function (array $u) use (&$captured) {
+            $captured = $u;
+            return $u;
+        });
+
+        $response = $this->controller->reactivateUser($req);
+
+        $this->assertSame(302, $response->status());
+        $this->assertSame(1, $captured['is_active']);
+    }
+
+    private function ensureViewFile(string $dir, string $view): void
+    {
+        $file = $dir . DIRECTORY_SEPARATOR . str_replace('.', DIRECTORY_SEPARATOR, $view) . '.php';
+        $parent = dirname($file);
+        if (!is_dir($parent)) {
+            mkdir($parent, 0777, true);
+        }
+        touch($file);
+    }
+}

@@ -218,6 +218,8 @@
     "bundle_messaging": "Messaging",
     "bundle_messaging_desc": "Internal messaging between store members.",
     "bundle_none_found": "No bundle detected in src/Bundles/.",
+    "bundle_resignation_report": "Resignation Report",
+    "bundle_resignation_report_desc": "Per-employee resignation reports, with account reactivation.",
     "bundle_settings": "Bundles",
     "bundle_settings_hint": "Turns a feature on or off for the whole instance. Once disabled here, it disappears entirely (routes, menus) even if a store had enabled it in its own settings. The list below is auto-detected from the bundles present on the server — no extra registration step is needed for a new bundle to show up here.",
     "bundle_store_photos": "Store Photos",

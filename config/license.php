@@ -7,5 +7,6 @@ return [
         'daily-report',
         'messaging',
         'store-photos',
+        'resignation-report',
     ],
 ];
