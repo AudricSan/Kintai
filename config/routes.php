@@ -101,6 +101,7 @@ $router->group('/notifications', function ($r) {
 
 // --- Documentation ---
 $router->get('/docs', [DocsController::class, 'index'], middleware: [AuthMiddleware::class], name: 'docs.index');
+$router->get('/docs/{lang}/{page}', [DocsController::class, 'show'], middleware: [AuthMiddleware::class], name: 'docs.show');
 
 $router->group('/employee', function ($r) {
 

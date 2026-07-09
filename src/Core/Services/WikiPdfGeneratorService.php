@@ -87,6 +87,27 @@ final class WikiPdfGeneratorService
     }
 
     /**
+     * Retourne le catalogue des guides (fichiers .wiki/, titres, métadonnées),
+     * réutilisé par WikiContentService pour la consultation en ligne.
+     *
+     * @return array<string, array{title: string, subtitle: string, version: string, lang_tag: string, files: string[], output: string}>
+     */
+    public static function guides(): array
+    {
+        return self::GUIDES;
+    }
+
+    /**
+     * Titre affiché pour une page (.md) donnée, dans la langue donnée.
+     */
+    public static function sectionTitle(string $lang, string $file): string
+    {
+        $meta = self::labels()[$lang] ?? self::labels()['en'];
+
+        return $meta['sections'][$file] ?? basename($file, '.md');
+    }
+
+    /**
      * Génère les PDFs pour toutes les langues.
      *
      * @return array<string, array{ok: bool, filename: string, size_kb: int, error: string}>
@@ -297,11 +318,12 @@ final class WikiPdfGeneratorService
         HTML;
     }
 
-    private function buildToc(array $guide): string
+    /**
+     * @return array<string, array{title: string, sections: array<string, string>}>
+     */
+    private static function labels(): array
     {
-        $lang = $guide['lang_tag'];
-
-        $labels = [
+        return [
             'fr' => ['title' => 'Table des matières', 'sections' => [
                 'Quick-Start.md'      => 'Démarrage rapide',
                 'Guide-Owner-FR.md'   => 'Guide Propriétaire',
@@ -330,8 +352,13 @@ final class WikiPdfGeneratorService
                 'Site-Map-JA.md'       => 'サイトマップ',
             ]],
         ];
+    }
 
-        $meta  = $labels[$lang] ?? $labels['en'];
+    private function buildToc(array $guide): string
+    {
+        $lang = $guide['lang_tag'];
+
+        $meta  = self::labels()[$lang] ?? self::labels()['en'];
         $items = '';
         $i     = 1;
 

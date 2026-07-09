@@ -1,5 +1,5 @@
 <?php
-/** @var array  $pdfs         ['fr'|'en'|'ja' => ['filename', 'available', 'size_kb']] */
+/** @var array  $pdfs         ['fr'|'en'|'ja' => ['filename', 'available', 'size_kb', 'first_page', 'browsable']] */
 /** @var string $locale       Locale courante de l'utilisateur */
 /** @var string $public_token Token dérivé de installed.lock */
 
@@ -32,16 +32,25 @@ $guides = [
             <?php endif; ?>
             <p class="docs-card__desc"><?= htmlspecialchars($guide['desc']) ?></p>
 
+            <?php $browsable = !empty($pdf['browsable']); ?>
+
+            <?php if ($browsable): ?>
+                <a href="<?= route_url('docs.show', ['lang' => $lang, 'page' => $pdf['first_page']]) ?>"
+                   class="btn btn--primary docs-card__btn">
+                    <?= __('docs_browse_online') ?>
+                </a>
+            <?php endif; ?>
+
             <?php if ($available): ?>
                 <div class="docs-card__meta">
                     <?= __('docs_guide_user') ?> — <?= $sizeKb ?> Ko
                 </div>
                 <a href="<?= $BASE_URL ?>/pdf/<?= htmlspecialchars($filename) ?>"
-                   class="btn btn--primary docs-card__btn"
+                   class="btn btn--ghost docs-card__btn"
                    download="<?= htmlspecialchars($filename) ?>">
                     ↓ <?= __('docs_download') ?>
                 </a>
-            <?php else: ?>
+            <?php elseif (!$browsable): ?>
                 <p class="docs-card__unavailable"><?= __('docs_not_generated') ?></p>
                 <code class="docs-card__cmd">php scripts/pdf.php --lang=<?= $lang ?></code>
             <?php endif; ?>
