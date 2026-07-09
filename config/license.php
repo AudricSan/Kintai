@@ -13,5 +13,6 @@ return [
         'resignation-report',
         'salary-report',
         'hiring-report',
+        'feedback',
     ],
 ];

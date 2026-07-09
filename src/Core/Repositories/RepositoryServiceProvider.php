@@ -19,7 +19,6 @@ final class RepositoryServiceProvider extends ServiceProvider
         $this->container->singleton(TimeoffRequestRepositoryInterface::class, fn() => new DatabaseTimeoffRequestRepository());
         $this->container->singleton(ShiftSwapRequestRepositoryInterface::class, fn() => new DatabaseShiftSwapRequestRepository());
         $this->container->singleton(UserShiftTypeRateRepositoryInterface::class, fn() => new DatabaseUserShiftTypeRateRepository());
-        $this->container->singleton(FeedbackRepositoryInterface::class, fn() => new DatabaseFeedbackRepository());
         $this->container->singleton(IcalTokenRepositoryInterface::class, fn() => new DatabaseIcalTokenRepository());
         $this->container->singleton(TimeclockRepositoryInterface::class, fn() => new DatabaseTimeclockRepository());
         $this->container->singleton(UserDashboardPrefsRepositoryInterface::class, fn() => new DatabaseUserDashboardPrefsRepository());
@@ -43,6 +42,7 @@ final class RepositoryServiceProvider extends ServiceProvider
         // Salaire : voir src/Bundles/SalaryReport/SalaryReportBundle.php
 
         // Photos : voir src/Bundles/StorePhoto/StorePhotoBundle.php
+        // Feedback : voir src/Bundles/Feedback/FeedbackBundle.php
 
         // Traductions (fichiers JSON, voir lang/languages.json et lang/{code}.json)
         $this->container->singleton(LanguageRepositoryInterface::class, fn() => new JsonLanguageRepository(BASE_PATH . '/lang'));

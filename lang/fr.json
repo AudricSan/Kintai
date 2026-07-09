@@ -215,6 +215,8 @@
     "bulk_max_warning": "Sélection limitée à :n shifts à la fois.",
     "bundle_daily_report": "Rapports journaliers",
     "bundle_daily_report_desc": "Rapports d'activité quotidienne, workflow brouillon → soumis → validé.",
+    "bundle_feedback": "Feedback",
+    "bundle_feedback_desc": "Remontées des employés (bugs, suggestions) — modale de soumission, liste et suppression côté admin.",
     "bundle_hiring_report": "Rapport d'embauche",
     "bundle_hiring_report_desc": "Consultation et édition des rapports d'embauche par magasin. Générés automatiquement à la création d'un employé, même si ce bundle est désactivé.",
     "bundle_messaging": "Messagerie",
