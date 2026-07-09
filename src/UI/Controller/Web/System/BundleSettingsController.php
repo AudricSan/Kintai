@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\UI\Controller\Web\System;
 
+use kintai\Core\BundleDiscoveryService;
 use kintai\Core\FeatureManager;
 use kintai\Core\LicenseServiceProvider;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
@@ -17,21 +18,12 @@ final class BundleSettingsController
 {
     use HasBaseUrl;
 
-    /**
-     * Bundles connus, avec leurs clés de traduction (libellé + description).
-     * Tenu à jour manuellement au fil des extractions de fonctionnalités du Core vers un bundle.
-     */
-    private const KNOWN_BUNDLES = [
-        'daily-report' => ['label' => 'bundle_daily_report', 'desc' => 'bundle_daily_report_desc'],
-        'messaging'    => ['label' => 'bundle_messaging',     'desc' => 'bundle_messaging_desc'],
-        'store-photos' => ['label' => 'bundle_store_photos',  'desc' => 'bundle_store_photos_desc'],
-    ];
-
     public function __construct(
         private readonly ViewRenderer $view,
         private readonly AppSettingsRepositoryInterface $appSettings,
         private readonly FeatureManager $features,
         private readonly AuditLogger $auditLogger,
+        private readonly BundleDiscoveryService $discovery,
     ) {}
 
     /** GET /admin/bundles */
@@ -39,13 +31,15 @@ final class BundleSettingsController
     {
         $this->requireOwner($request);
 
+        $official = $this->officialBundleSlugs();
         $bundles = [];
-        foreach (self::KNOWN_BUNDLES as $key => $meta) {
+        foreach ($this->discovery->discover() as $key => $meta) {
             $bundles[] = [
-                'key'     => $key,
-                'label'   => __($meta['label']),
-                'desc'    => __($meta['desc']),
-                'enabled' => $this->features->isEnabled($key),
+                'key'      => $key,
+                'label'    => $meta['label'],
+                'desc'     => $meta['description'],
+                'enabled'  => $this->features->isEnabled($key),
+                'official' => in_array($key, $official, true),
             ];
         }
 
@@ -61,15 +55,15 @@ final class BundleSettingsController
     {
         $this->requireOwner($request);
 
-        $oldEnabled = array_keys(array_filter(
-            array_combine(array_keys(self::KNOWN_BUNDLES), array_map(
-                fn(string $key) => $this->features->isEnabled($key),
-                array_keys(self::KNOWN_BUNDLES),
-            )),
+        $discoveredSlugs = array_keys($this->discovery->discover());
+
+        $oldEnabled = array_values(array_filter(
+            $discoveredSlugs,
+            fn(string $key) => $this->features->isEnabled($key),
         ));
 
         $enabled = [];
-        foreach (array_keys(self::KNOWN_BUNDLES) as $key) {
+        foreach ($discoveredSlugs as $key) {
             if ($request->post('bundle_' . $key)) {
                 $enabled[] = $key;
             }
@@ -87,6 +81,12 @@ final class BundleSettingsController
         ], []);
 
         return Response::redirect($this->base() . '/admin/bundles?success=1');
+    }
+
+    private function officialBundleSlugs(): array
+    {
+        $path = BASE_PATH . '/config/official-bundles.php';
+        return file_exists($path) ? (require $path) : [];
     }
 
     private function requireOwner(Request $request): void

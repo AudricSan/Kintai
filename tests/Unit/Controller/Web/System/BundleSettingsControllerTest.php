@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Controller\Web\System;
 
+use kintai\Core\BundleDiscoveryService;
 use kintai\Core\FeatureManager;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Request;
@@ -12,6 +13,10 @@ use kintai\UI\Controller\Web\System\BundleSettingsController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+
+if (!defined('BASE_PATH')) {
+    define('BASE_PATH', dirname(__DIR__, 5));
+}
 
 final class BundleSettingsControllerTest extends TestCase
 {
@@ -30,6 +35,10 @@ final class BundleSettingsControllerTest extends TestCase
         $_POST = [];
     }
 
+    /**
+     * Utilise le vrai BundleDiscoveryService (scan de src/Bundles réel) : sur cette
+     * branche, seuls daily-report et messaging sont réellement présents sur le disque.
+     */
     private function makeController(FeatureManager $features): BundleSettingsController
     {
         return new BundleSettingsController(
@@ -37,6 +46,7 @@ final class BundleSettingsControllerTest extends TestCase
             $this->appSettings,
             $features,
             new AuditLogger(),
+            new BundleDiscoveryService(),
         );
     }
 
@@ -56,7 +66,7 @@ final class BundleSettingsControllerTest extends TestCase
     {
         $controller = $this->makeController(new FeatureManager(['messaging']));
 
-        $_POST = ['bundle_daily-report' => '1', 'bundle_store-photos' => '1'];
+        $_POST = ['bundle_daily-report' => '1', 'bundle_messaging' => '1'];
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
 
@@ -72,7 +82,20 @@ final class BundleSettingsControllerTest extends TestCase
 
         $this->assertSame(302, $response->status());
         $this->assertNotNull($captured);
-        $this->assertSame(['daily-report', 'store-photos'], $captured);
+        sort($captured);
+        $this->assertSame(['daily-report', 'messaging'], $captured);
+    }
+
+    public function testOfficialBundlesRegistryListsBundlesShippedWithTheRepo(): void
+    {
+        // config/official-bundles.php est la seule source de vérité pour la distinction
+        // officiel/tiers affichée sur /admin/bundles : elle ne fait confiance à aucune
+        // auto-déclaration d'un bundle tiers.
+        $official = require BASE_PATH . '/config/official-bundles.php';
+
+        $this->assertContains('daily-report', $official);
+        $this->assertContains('messaging', $official);
+        $this->assertNotContains('some-random-third-party-bundle', $official);
     }
 
     public function testSaveWithNoCheckedBundleDisablesAll(): void
