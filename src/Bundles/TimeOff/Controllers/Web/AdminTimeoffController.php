@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace kintai\UI\Controller\Web\Requests;
+namespace kintai\Bundles\TimeOff\Controllers\Web;
 
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
@@ -60,7 +60,7 @@ final class AdminTimeoffController
             };
         });
 
-        return Response::html($this->view->render('requests.timeoff', [
+        return Response::html($this->view->render('timeoff::timeoff', [
             'title'      => 'Congés',
             'requests'   => $requests,
             'users_map'  => $usersMap,
@@ -86,7 +86,7 @@ final class AdminTimeoffController
             strtolower(trim(($b['last_name'] ?? '') . ' ' . ($b['first_name'] ?? '')))
         ));
 
-        return Response::html($this->view->render('requests.timeoff-form', [
+        return Response::html($this->view->render('timeoff::timeoff-form', [
             'title' => __('create_timeoff'),
             'users' => $users,
             'today' => date('Y-m-d'),

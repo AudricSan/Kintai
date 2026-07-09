@@ -24,7 +24,6 @@ use kintai\UI\Controller\Web\Staff\AdminStoreController;
 use kintai\UI\Controller\Web\Staff\AdminUserController;
 use kintai\UI\Controller\Web\Staff\AdminReportController;
 
-use kintai\UI\Controller\Web\Requests\AdminTimeoffController;
 use kintai\UI\Controller\Web\Requests\AdminSwapController;
 use kintai\UI\Controller\Web\Requests\FeedbackController;
 
@@ -46,7 +45,6 @@ use kintai\UI\Controller\Api\V1\StoreUserController as ApiStoreUserController;
 use kintai\UI\Controller\Api\V1\ShiftTypeController as ApiShiftTypeController;
 use kintai\UI\Controller\Api\V1\ShiftController as ApiShiftController;
 use kintai\UI\Controller\Api\V1\AvailabilityController as ApiAvailabilityController;
-use kintai\UI\Controller\Api\V1\TimeoffRequestController as ApiTimeoffRequestController;
 use kintai\UI\Controller\Api\V1\ShiftSwapRequestController as ApiShiftSwapRequestController;
 use kintai\UI\Controller\Api\V1\TimeclockController as ApiTimeclockController;
 use kintai\UI\Controller\Api\V1\ShiftClaimController as ApiShiftClaimController;
@@ -130,10 +128,7 @@ $router->group('/employee', function ($r) {
     $r->post('/timeclock/clock-in',    [EmployeeController::class, 'clockIn'],   name: 'employee.timeclock.clock_in');
     $r->post('/timeclock/clock-out',   [EmployeeController::class, 'clockOut'],  name: 'employee.timeclock.clock_out');
 
-    // Congés
-    $r->get('/timeoff',              [EmployeeController::class, 'timeoff'],      name: 'employee.timeoff');
-    $r->post('/timeoff',             [EmployeeController::class, 'storeTimeoff'], name: 'employee.timeoff.store');
-    $r->post('/timeoff/{id}/cancel', [EmployeeController::class, 'cancelTimeoff'], name: 'employee.timeoff.cancel');
+    // Congés : voir src/Bundles/TimeOff/routes.php
 
     // Profil : géré par /profile (AuthController, page unique admin/manager/employé)
     $r->get('/profile',                    [EmployeeController::class, 'profile'],               name: 'employee.profile');
@@ -289,13 +284,7 @@ $router->group('/admin', function ($r) {
     $r->post('/open-shifts/{id}/approve',[AdminShiftController::class, 'approveShiftClaim'],  name: 'admin.open_shifts.approve');
     $r->post('/open-shifts/{id}/reject', [AdminShiftController::class, 'rejectShiftClaim'],   name: 'admin.open_shifts.reject');
 
-    // Demandes de congé
-    $r->get('/timeoff',              [AdminTimeoffController::class, 'timeoff'],          name: 'admin.timeoff');
-    $r->get('/timeoff/create',       [AdminTimeoffController::class, 'createTimeoff'],          name: 'admin.timeoff.create');
-    $r->post('/timeoff/create',      [AdminTimeoffController::class, 'storeTimeoffForEmployee'], name: 'admin.timeoff.store');
-    $r->post('/timeoff/{id}/approve',[AdminTimeoffController::class, 'approveTimeoff'],   name: 'admin.timeoff.approve');
-    $r->post('/timeoff/{id}/refuse', [AdminTimeoffController::class, 'refuseTimeoff'],    name: 'admin.timeoff.refuse');
-    $r->post('/timeoff/{id}/delete', [AdminTimeoffController::class, 'deleteTimeoff'],    name: 'admin.timeoff.delete');
+    // Demandes de congé : voir src/Bundles/TimeOff/routes.php
 
     // Échanges de shifts
     $r->get('/swap-requests',              [AdminSwapController::class, 'swapRequests'],    name: 'admin.swap_requests');
@@ -428,12 +417,7 @@ $router->group('/api/v1', function ($r) {
     $r->put('/availabilities/{id}',    [ApiAvailabilityController::class, 'update'],  name: 'api.v1.availabilities.update');
     $r->delete('/availabilities/{id}', [ApiAvailabilityController::class, 'destroy'], name: 'api.v1.availabilities.destroy');
 
-    // Demandes de congé
-    $r->get('/timeoff-requests',         [ApiTimeoffRequestController::class, 'index'],   name: 'api.v1.timeoff.index');
-    $r->post('/timeoff-requests',        [ApiTimeoffRequestController::class, 'store'],   name: 'api.v1.timeoff.store');
-    $r->get('/timeoff-requests/{id}',    [ApiTimeoffRequestController::class, 'show'],    name: 'api.v1.timeoff.show');
-    $r->put('/timeoff-requests/{id}',    [ApiTimeoffRequestController::class, 'update'],  name: 'api.v1.timeoff.update');
-    $r->delete('/timeoff-requests/{id}', [ApiTimeoffRequestController::class, 'destroy'], name: 'api.v1.timeoff.destroy');
+    // Demandes de congé : voir src/Bundles/TimeOff/routes.php
 
     // Échanges de shifts
     $r->get('/shift-swap-requests',         [ApiShiftSwapRequestController::class, 'index'],   name: 'api.v1.swap.index');

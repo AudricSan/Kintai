@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace kintai\Tests\Unit\Controller\Web;
+namespace kintai\Tests\Unit\Bundles\TimeOff;
 
+use kintai\Bundles\TimeOff\Controllers\Web\AdminTimeoffController;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
@@ -12,7 +13,6 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\NotificationService;
-use kintai\UI\Controller\Web\Requests\AdminTimeoffController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -27,9 +27,12 @@ final class AdminTimeoffControllerTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->ensureViewFile('requests.timeoff-form');
-        $this->ensureViewFile('layout.app');
+        $viewDir = sys_get_temp_dir() . '/kintai-timeoff-views';
+        $this->ensureViewFile($viewDir, 'timeoff-form');
+        $this->ensureViewFile(sys_get_temp_dir(), 'layout.app');
+
         $view = new ViewRenderer(sys_get_temp_dir());
+        $view->addNamespace('timeoff', $viewDir);
 
         $this->timeoffRequests = $this->createMock(TimeoffRequestRepositoryInterface::class);
         $this->users = $this->createMock(UserRepositoryInterface::class);
@@ -139,12 +142,12 @@ final class AdminTimeoffControllerTest extends TestCase
         $this->assertSame(302, $response->status());
     }
 
-    private function ensureViewFile(string $view): void
+    private function ensureViewFile(string $dir, string $view): void
     {
-        $file = sys_get_temp_dir() . DIRECTORY_SEPARATOR . str_replace('.', DIRECTORY_SEPARATOR, $view) . '.php';
-        $dir = dirname($file);
-        if (!is_dir($dir)) {
-            mkdir($dir, 0777, true);
+        $file = $dir . DIRECTORY_SEPARATOR . str_replace('.', DIRECTORY_SEPARATOR, $view) . '.php';
+        $parent = dirname($file);
+        if (!is_dir($parent)) {
+            mkdir($parent, 0777, true);
         }
         touch($file);
     }
