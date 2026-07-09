@@ -33,7 +33,7 @@ echo Flash::fromQuery('success', ['deleted' => __('feedback_deleted')])->render(
     <h2 class="page-header__title"><?= __('feedbacks') ?> <span class="page-count">(<?= (int) $total ?>)</span></h2>
 </div>
 
-<?php include __DIR__ . '/../_partials/_settings-tabs.php'; ?>
+<?php include BASE_PATH . '/src/UI/View/_partials/_settings-tabs.php'; ?>
 
 <?php
 $catOptions = ['' => __('all_categories'), 'shift' => __('feedback_cat_shift'), 'schedule' => __('feedback_cat_schedule'), 'app' => __('feedback_cat_app'), 'other' => __('feedback_cat_other')];
