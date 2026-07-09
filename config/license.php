@@ -8,5 +8,6 @@ return [
         'messaging',
         'store-photos',
         'timeoff',
+        'shift-swap',
     ],
 ];

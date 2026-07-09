@@ -24,7 +24,6 @@ use kintai\UI\Controller\Web\Staff\AdminStoreController;
 use kintai\UI\Controller\Web\Staff\AdminUserController;
 use kintai\UI\Controller\Web\Staff\AdminReportController;
 
-use kintai\UI\Controller\Web\Requests\AdminSwapController;
 use kintai\UI\Controller\Web\Requests\FeedbackController;
 
 use kintai\UI\Controller\Web\System\ActivityController;
@@ -45,7 +44,6 @@ use kintai\UI\Controller\Api\V1\StoreUserController as ApiStoreUserController;
 use kintai\UI\Controller\Api\V1\ShiftTypeController as ApiShiftTypeController;
 use kintai\UI\Controller\Api\V1\ShiftController as ApiShiftController;
 use kintai\UI\Controller\Api\V1\AvailabilityController as ApiAvailabilityController;
-use kintai\UI\Controller\Api\V1\ShiftSwapRequestController as ApiShiftSwapRequestController;
 use kintai\UI\Controller\Api\V1\TimeclockController as ApiTimeclockController;
 use kintai\UI\Controller\Api\V1\ShiftClaimController as ApiShiftClaimController;
 use kintai\UI\Controller\Api\V1\NotificationController as ApiNotificationController;
@@ -142,13 +140,7 @@ $router->group('/employee', function ($r) {
     $r->post('/feedback',             [FeedbackController::class, 'submit'],     name: 'employee.feedback.submit');
     $r->get('/feedback/past-shifts',  [FeedbackController::class, 'pastShifts'], name: 'employee.feedback.past_shifts');
 
-    // Échanges de shifts
-    $r->get('/swaps',                 [EmployeeController::class, 'swaps'],       name: 'employee.swaps');
-    $r->get('/swaps/create',          [EmployeeController::class, 'createSwap'],  name: 'employee.swaps.create');
-    $r->post('/swaps/create',         [EmployeeController::class, 'storeSwap'],   name: 'employee.swaps.store');
-    $r->post('/swaps/{id}/accept',    [EmployeeController::class, 'acceptSwap'],  name: 'employee.swaps.accept');
-    $r->post('/swaps/{id}/refuse',    [EmployeeController::class, 'refuseSwap'],  name: 'employee.swaps.refuse');
-    $r->post('/swaps/{id}/cancel',    [EmployeeController::class, 'cancelSwap'],  name: 'employee.swaps.cancel');
+    // Échanges de shifts : voir src/Bundles/ShiftSwap/routes.php
 
     // Bourse aux shifts
     $r->get('/open-shifts',                      [EmployeeController::class, 'openShifts'],       name: 'employee.open_shifts');
@@ -286,13 +278,7 @@ $router->group('/admin', function ($r) {
 
     // Demandes de congé : voir src/Bundles/TimeOff/routes.php
 
-    // Échanges de shifts
-    $r->get('/swap-requests',              [AdminSwapController::class, 'swapRequests'],    name: 'admin.swap_requests');
-    $r->get('/swap-requests/create',       [AdminSwapController::class, 'createSwap'],      name: 'admin.swap_requests.create');
-    $r->post('/swap-requests/create',      [AdminSwapController::class, 'storeSwap'],       name: 'admin.swap_requests.store');
-    $r->post('/swap-requests/{id}/approve',[AdminSwapController::class, 'approveSwap'],    name: 'admin.swap.approve');
-    $r->post('/swap-requests/{id}/refuse', [AdminSwapController::class, 'refuseSwap'],     name: 'admin.swap.refuse');
-    $r->post('/swap-requests/{id}/delete', [AdminSwapController::class, 'deleteSwap'],     name: 'admin.swap.delete');
+    // Échanges de shifts : voir src/Bundles/ShiftSwap/routes.php
 
     // Pointage
     $r->get('/timeclocks',                [AdminTimeclockController::class, 'timeclocks'],        name: 'admin.timeclocks');
@@ -419,12 +405,7 @@ $router->group('/api/v1', function ($r) {
 
     // Demandes de congé : voir src/Bundles/TimeOff/routes.php
 
-    // Échanges de shifts
-    $r->get('/shift-swap-requests',         [ApiShiftSwapRequestController::class, 'index'],   name: 'api.v1.swap.index');
-    $r->post('/shift-swap-requests',        [ApiShiftSwapRequestController::class, 'store'],   name: 'api.v1.swap.store');
-    $r->get('/shift-swap-requests/{id}',    [ApiShiftSwapRequestController::class, 'show'],    name: 'api.v1.swap.show');
-    $r->put('/shift-swap-requests/{id}',    [ApiShiftSwapRequestController::class, 'update'],  name: 'api.v1.swap.update');
-    $r->delete('/shift-swap-requests/{id}', [ApiShiftSwapRequestController::class, 'destroy'], name: 'api.v1.swap.destroy');
+    // Échanges de shifts : voir src/Bundles/ShiftSwap/routes.php
 
     // Pointage
     $r->post('/timeclocks/clock-in',   [ApiTimeclockController::class, 'clockIn'],  name: 'api.v1.timeclock.clock_in');

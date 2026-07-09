@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace kintai\UI\Controller\Web\Requests;
+namespace kintai\Bundles\ShiftSwap\Controllers\Web;
 
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
@@ -78,7 +78,7 @@ final class AdminSwapController
             ));
         }
 
-        return Response::html($this->view->render('requests.swap-form', [
+        return Response::html($this->view->render('shift-swap::swap-form', [
             'title'            => __('create_swap'),
             'employees'        => $employees,
             'requester_id'     => $requesterId,
@@ -210,7 +210,7 @@ final class AdminSwapController
             if ($s !== null) $shiftsMap[$sid] = $s;
         }
 
-        return Response::html($this->view->render('requests.swap-requests', [
+        return Response::html($this->view->render('shift-swap::swap-requests', [
             'title'      => 'Échanges de shifts',
             'swaps'      => $swaps,
             'users_map'  => $usersMap,
