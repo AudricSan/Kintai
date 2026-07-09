@@ -11,12 +11,14 @@ $_settingsPath = '/' . trim($_settingsPath, '/') ?: '/';
 
 $_settingsTabs = [
     ['label' => __('settings'),  'url' => route_url('admin.owner_settings'), 'match' => '/admin/owner-settings'],
-    ['label' => __('feedbacks'), 'url' => route_url('admin.feedbacks'),      'match' => '/admin/feedbacks'],
-    ['label' => __('backup'),    'url' => route_url('admin.backup'),        'match' => '/admin/backup'],
-    ['label' => __('update'),    'url' => route_url('admin.update'),        'match' => '/admin/update'],
-    ['label' => __('languages'), 'url' => route_url('admin.languages'),     'match' => '/admin/languages'],
-    ['label' => __('bundle_settings'), 'url' => route_url('admin.bundles'), 'match' => '/admin/bundles'],
 ];
+if (bundle_enabled('feedback')) {
+    $_settingsTabs[] = ['label' => __('feedbacks'), 'url' => route_url('admin.feedbacks'), 'match' => '/admin/feedbacks'];
+}
+$_settingsTabs[] = ['label' => __('backup'),    'url' => route_url('admin.backup'),        'match' => '/admin/backup'];
+$_settingsTabs[] = ['label' => __('update'),    'url' => route_url('admin.update'),        'match' => '/admin/update'];
+$_settingsTabs[] = ['label' => __('languages'), 'url' => route_url('admin.languages'),     'match' => '/admin/languages'];
+$_settingsTabs[] = ['label' => __('bundle_settings'), 'url' => route_url('admin.bundles'), 'match' => '/admin/bundles'];
 ?>
 <div class="tabs card--mb">
     <?php foreach ($_settingsTabs as $_t): ?>

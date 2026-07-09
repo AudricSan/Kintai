@@ -31,9 +31,11 @@
         $showAdminMenu  = $isManager && $viewMode === 'admin';
 
         $feat = fn(string $f): bool =>
-            $isOwner
-            || !isset($store_features) || $store_features === null
-            || in_array($f, (array) $store_features, true);
+            feat_bundle($f) && (
+                $isOwner
+                || !isset($store_features) || $store_features === null
+                || in_array($f, (array) $store_features, true)
+            );
 
         $svgIcon = static function(string $name): string {
             $icons = [

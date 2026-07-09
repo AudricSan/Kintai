@@ -81,7 +81,7 @@ $periodLabel = $period_mode === 'week'
         <div class="page-header__actions">
             <a href="<?= route_url('employee.shifts.week') ?>" class="btn btn--ghost btn--sm">☰ <?= __('table_view') ?></a>
             <a href="<?= route_url('employee.shifts.calendar') ?>" class="btn btn--ghost btn--sm">📅 <?= __('calendar_view') ?></a>
-            <?php if ($show_request_swap ?? false): ?>
+            <?php if (($show_request_swap ?? false) && feat_bundle('shift-swap')): ?>
                 <?= Button::make('⇄ ' . __('request_swap'))->primary()->sm()->link(route_url('employee.swaps.create'))->render() ?>
             <?php endif; ?>
         </div>

@@ -21,23 +21,26 @@ if ($showAdminMenu) {
     elseif ($path === '/employee' || $path === '/') $_bnActive = 'home';
 }
 
+// href en closures : évite d'appeler route_url() sur une route dont le bundle
+// est désactivé avant le filtrage par $feat() ci-dessous (route_url() lève une
+// exception si la route n'est pas enregistrée).
 $_bnAdminPool = [
-        'shifts'        => ['icon' => 'calendar', 'label' => __('shifts'),        'href' => route_url('admin.shifts.timeline'), 'feat' => 'shifts'],
-        'team'          => ['icon' => 'users',     'label' => __('team'),          'href' => route_url('admin.users'),           'feat' => null],
-        'requests'      => ['icon' => 'clipboard', 'label' => __('requests'),      'href' => route_url('admin.timeoff'),         'feat' => 'timeoff'],
-        'messages'      => ['icon' => 'message',   'label' => __('messages'),      'href' => route_url('admin.messages'),        'feat' => 'messages'],
-        'swaps'         => ['icon' => 'arrows',    'label' => __('swaps'),         'href' => route_url('admin.swap_requests'),   'feat' => 'swaps'],
-        'timeclocks'    => ['icon' => 'clock',     'label' => __('timeclocks'),    'href' => route_url('admin.timeclocks'),      'feat' => 'timeclock'],
-        'daily_reports' => ['icon' => 'chart',     'label' => __('daily_reports'), 'href' => route_url('admin.daily_reports.all'),  'feat' => 'daily_reports'],
+        'shifts'        => ['icon' => 'calendar', 'label' => __('shifts'),        'href' => fn() => route_url('admin.shifts.timeline'), 'feat' => 'shifts'],
+        'team'          => ['icon' => 'users',     'label' => __('team'),          'href' => fn() => route_url('admin.users'),           'feat' => null],
+        'requests'      => ['icon' => 'clipboard', 'label' => __('requests'),      'href' => fn() => route_url('admin.timeoff'),         'feat' => 'timeoff'],
+        'messages'      => ['icon' => 'message',   'label' => __('messages'),      'href' => fn() => route_url('admin.messages'),        'feat' => 'messages'],
+        'swaps'         => ['icon' => 'arrows',    'label' => __('swaps'),         'href' => fn() => route_url('admin.swap_requests'),   'feat' => 'swaps'],
+        'timeclocks'    => ['icon' => 'clock',     'label' => __('timeclocks'),    'href' => fn() => route_url('admin.timeclocks'),      'feat' => 'timeclock'],
+        'daily_reports' => ['icon' => 'chart',     'label' => __('daily_reports'), 'href' => fn() => route_url('admin.daily_reports.all'),  'feat' => 'daily_reports'],
 ];
 $_bnEmployeePool = [
-    'my_planning' => ['icon' => 'calendar', 'label' => __('my_planning'),  'href' => route_url('employee.shifts.day'),  'feat' => 'shifts'],
-    'timeclock'   => ['icon' => 'clock',    'label' => __('timeclock'),    'href' => route_url('employee.timeclock'),   'feat' => 'timeclock'],
-    'my_timeoff'  => ['icon' => 'leaf',     'label' => __('my_timeoff'),   'href' => route_url('employee.timeoff'),     'feat' => 'timeoff'],
-    'messages'    => ['icon' => 'message',  'label' => __('messages'),     'href' => route_url('employee.messages'),    'feat' => 'messages'],
-    'swaps'       => ['icon' => 'arrows',   'label' => __('swaps'),        'href' => route_url('employee.swaps'),       'feat' => 'swaps'],
-    'open_shifts' => ['icon' => 'plus',     'label' => __('open_shifts'),  'href' => route_url('employee.open_shifts'), 'feat' => 'open_shifts'],
-    'my_profile'  => ['icon' => 'person',   'label' => __('my_profile'),   'href' => route_url('profile'),              'feat' => null],
+    'my_planning' => ['icon' => 'calendar', 'label' => __('my_planning'),  'href' => fn() => route_url('employee.shifts.day'),  'feat' => 'shifts'],
+    'timeclock'   => ['icon' => 'clock',    'label' => __('timeclock'),    'href' => fn() => route_url('employee.timeclock'),   'feat' => 'timeclock'],
+    'my_timeoff'  => ['icon' => 'leaf',     'label' => __('my_timeoff'),   'href' => fn() => route_url('employee.timeoff'),     'feat' => 'timeoff'],
+    'messages'    => ['icon' => 'message',  'label' => __('messages'),     'href' => fn() => route_url('employee.messages'),    'feat' => 'messages'],
+    'swaps'       => ['icon' => 'arrows',   'label' => __('swaps'),        'href' => fn() => route_url('employee.swaps'),       'feat' => 'swaps'],
+    'open_shifts' => ['icon' => 'plus',     'label' => __('open_shifts'),  'href' => fn() => route_url('employee.open_shifts'), 'feat' => 'open_shifts'],
+    'my_profile'  => ['icon' => 'person',   'label' => __('my_profile'),   'href' => fn() => route_url('profile'),              'feat' => null],
 ];
 
 if ($showAdminMenu) {
@@ -77,7 +80,7 @@ if (count($_bnRendered) < 2) {
         <span class="nav-tab__label"><?= __('home') ?></span>
     </a>
     <?php foreach ($_bnRendered as $_bnKey => $_bnItem): ?>
-    <a href="<?= htmlspecialchars($_bnItem['href']) ?>" class="nav-tab<?= $_bnActive === $_bnKey ? ' nav-tab--active' : '' ?>">
+    <a href="<?= htmlspecialchars($_bnItem['href']()) ?>" class="nav-tab<?= $_bnActive === $_bnKey ? ' nav-tab--active' : '' ?>">
         <span class="nav-tab__icon"><?= $svgIcon($_bnItem['icon']) ?></span>
         <span class="nav-tab__label"><?= htmlspecialchars($_bnItem['label']) ?></span>
     </a>

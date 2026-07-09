@@ -25,17 +25,6 @@ final class AdminStoreController
 
     private const ROLES = ['admin' => 'Administrateur', 'manager' => 'Manager', 'staff' => 'Employé'];
 
-    /** Association slug de feature par-store → bundle dont il dépend (absent = fonctionnalité Core, toujours proposée). */
-    private const FEATURE_BUNDLE_MAP = [
-        'messages'      => 'messaging',
-        'daily_reports' => 'daily-report',
-        'photos'        => 'store-photos',
-        'timeoff'       => 'timeoff',
-        'swaps'         => 'shift-swap',
-        'open_shifts'   => 'shift-claim',
-        'timeclock'     => 'timeclock',
-    ];
-
     public function __construct(
         private readonly ViewRenderer $view,
         private readonly UserRepositoryInterface $users,
@@ -55,7 +44,7 @@ final class AdminStoreController
     private function availableFeatureSlugs(): array
     {
         $map = [];
-        foreach (self::FEATURE_BUNDLE_MAP as $slug => $bundleKey) {
+        foreach (FeatureManager::STORE_FEATURE_BUNDLE_MAP as $slug => $bundleKey) {
             $map[$slug] = $this->features->isEnabled($bundleKey);
         }
         return $map;
