@@ -23,7 +23,6 @@ use kintai\UI\Controller\Web\Scheduling\AdminTimeclockController;
 use kintai\UI\Controller\Web\Staff\AdminStoreController;
 use kintai\UI\Controller\Web\Staff\AdminUserController;
 use kintai\UI\Controller\Web\Staff\AdminReportController;
-use kintai\UI\Controller\Web\Staff\StorePhotoController;
 
 use kintai\UI\Controller\Web\Requests\AdminTimeoffController;
 use kintai\UI\Controller\Web\Requests\AdminSwapController;
@@ -334,15 +333,7 @@ $router->group('/admin', function ($r) {
     $r->post('/update/stream',       [BackupController::class, 'updateStream'], name: 'admin.update.stream');
     $r->post('/update/migrate',      [BackupController::class, 'migrate'], name: 'admin.update.migrate');
 
-    // Photos
-    $r->get('/photos',                      [StorePhotoController::class, 'index'],        name: 'admin.photos.index');
-    $r->get('/photos/settings',             [StorePhotoController::class, 'settings'],     name: 'admin.photos.settings');
-    $r->post('/photos/settings',            [StorePhotoController::class, 'saveSettings'], name: 'admin.photos.settings.save');
-    $r->get('/photos/create',               [StorePhotoController::class, 'create'],       name: 'admin.photos.create');
-    $r->post('/photos/create',              [StorePhotoController::class, 'store'],        name: 'admin.photos.store');
-    $r->post('/photos/{id}/upload',          [StorePhotoController::class, 'uploadFile'],    name: 'admin.photos.upload_file');
-    $r->get('/photos/{store_id}/{id}',      [StorePhotoController::class, 'show'],          name: 'admin.photos.show');
-    $r->post('/photos/{store_id}/{id}/delete', [StorePhotoController::class, 'delete'],     name: 'admin.photos.delete');
+    // Photos : voir src/Bundles/StorePhoto/routes.php
 
     // Langues & traductions (Owner uniquement)
     $r->get('/languages',                       [LanguageController::class, 'index'],        name: 'admin.languages');

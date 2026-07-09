@@ -6,5 +6,6 @@ return [
     'enabled_features' => [
         'daily-report',
         'messaging',
+        'store-photos',
     ],
 ];
