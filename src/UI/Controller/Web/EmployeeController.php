@@ -26,11 +26,13 @@ use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\NotificationService;
 use kintai\UI\Controller\Web\HasBaseUrl;
+use kintai\UI\Controller\Web\HasStoreFeatureCheck;
 use kintai\UI\ViewRenderer;
 
 final class EmployeeController
 {
     use HasBaseUrl;
+    use HasStoreFeatureCheck;
     public const EMPLOYEE_WIDGETS = [
         'timeclock',
         'shifts_today',
@@ -658,197 +660,6 @@ final class EmployeeController
     }
 
     // -------------------------------------------------------------------------
-    // Échanges de shifts
-    // -------------------------------------------------------------------------
-
-    public function swaps(Request $request): Response
-    {
-        if (($resp = $this->assertFeature($request, 'swaps')) !== null) {
-            return $resp;
-        }
-        $user   = $request->getAttribute('auth_user');
-        $userId = (int) ($user['id'] ?? 0);
-
-        $sent     = $this->swapRequests->findByRequester($userId);
-        $received = $this->swapRequests->findByTarget($userId);
-
-        usort($sent,     fn($a, $b) => strcmp($b['created_at'] ?? '', $a['created_at'] ?? ''));
-        usort($received, fn($a, $b) => strcmp($b['created_at'] ?? '', $a['created_at'] ?? ''));
-
-
-        return Response::html($this->view->render('requests.swaps', [
-            'title'      => 'Échanges de shifts',
-            'sent'       => $sent,
-            'received'   => $received,
-            'users_map'  => $this->buildUsersMap(),
-            'shifts_map' => $this->buildShiftsMap(),
-        ], 'layout.app'));
-    }
-
-    public function createSwap(Request $request): Response
-    {
-        $user   = $request->getAttribute('auth_user');
-        $userId = (int) ($user['id'] ?? 0);
-        $today  = date('Y-m-d');
-
-        $myShifts = array_values(array_filter(
-            $this->shifts->findByUser($userId),
-            fn($s) => ($s['shift_date'] ?? '') >= $today
-        ));
-        usort($myShifts, fn($a, $b) => strcmp($a['shift_date'] ?? '', $b['shift_date'] ?? ''));
-
-        // Collègues du même store (hors moi)
-        $memberships = $this->storeUsers->findByUser($userId);
-        $myStoreIds  = array_unique(array_map(fn($m) => (int) $m['store_id'], $memberships));
-
-        $colleagues = [];
-        foreach ($myStoreIds as $sid) {
-            foreach ($this->storeUsers->findByStore($sid) as $m) {
-                $mid = (int) $m['user_id'];
-                if ($mid !== $userId) {
-                    $u = $this->users->findById($mid);
-                    if ($u) {
-                        $colleagues[$mid] = $u;
-                    }
-                }
-            }
-        }
-
-        $targetId     = (int) ($request->query('target_id') ?? 0);
-        $targetShifts = [];
-        if ($targetId > 0 && isset($colleagues[$targetId])) {
-            $targetShifts = array_values(array_filter(
-                $this->shifts->findByUser($targetId),
-                fn($s) => ($s['shift_date'] ?? '') >= $today
-            ));
-            usort($targetShifts, fn($a, $b) => strcmp($a['shift_date'] ?? '', $b['shift_date'] ?? ''));
-        }
-
-        $typesMap = [];
-        foreach ($this->shiftTypes->findAll() as $t) {
-            $typesMap[(int) $t['id']] = $t;
-        }
-
-
-        return Response::html($this->view->render('requests.swaps-form', [
-            'title'         => 'Demander un échange',
-            'my_shifts'     => $myShifts,
-            'colleagues'    => array_values($colleagues),
-            'target_id'     => $targetId,
-            'target_shifts' => $targetShifts,
-            'types_map'     => $typesMap,
-        ], 'layout.app'));
-    }
-
-    public function storeSwap(Request $request): Response
-    {
-        if (($resp = $this->assertFeature($request, 'swaps')) !== null) {
-            return $resp;
-        }
-        $user   = $request->getAttribute('auth_user');
-        $userId = (int) ($user['id'] ?? 0);
-
-        $myShiftId     = (int) $request->post('requester_shift_id', 0);
-        $targetId      = (int) $request->post('target_id', 0);
-        $targetShiftId = (int) $request->post('target_shift_id', 0);
-        $reason        = $request->post('reason', '') ?: null;
-
-        $myShift = $this->shifts->findById($myShiftId);
-        if ($myShift === null || (int) $myShift['user_id'] !== $userId) {
-            throw new ForbiddenException('Shift introuvable.');
-        }
-
-        $targetShift = $this->shifts->findById($targetShiftId);
-        if ($targetShift === null || (int) $targetShift['user_id'] !== $targetId) {
-            throw new ForbiddenException('Shift cible introuvable.');
-        }
-
-        if ((int) $myShift['store_id'] !== (int) $targetShift['store_id']) {
-            throw new ForbiddenException('Les shifts doivent appartenir au même store.');
-        }
-
-        $savedSwap = $this->swapRequests->save([
-            'store_id'           => (int) $myShift['store_id'],
-            'requester_id'       => $userId,
-            'target_user_id'     => $targetId,
-            'requester_shift_id' => $myShiftId,
-            'target_shift_id'    => $targetShiftId,
-            'reason'             => $reason,
-            'status'             => 'pending',
-            'accepted_at'        => null,
-        ]);
-
-        $this->auditLogger->log($request, 'swap.created', 'shift_swap_request', (int) ($savedSwap['id'] ?? 0), [
-            'target_id' => $targetId,
-        ], (int) $myShift['store_id']);
-        return Response::redirect($this->base() . '/employee/swaps?success=created');
-    }
-
-    public function acceptSwap(Request $request): Response
-    {
-        $user   = $request->getAttribute('auth_user');
-        $userId = (int) ($user['id'] ?? 0);
-
-        $swap = $this->swapRequests->findById((int) $request->param('id'));
-        if ($swap === null || (int) $swap['target_user_id'] !== $userId) {
-            throw new ForbiddenException('Demande introuvable.');
-        }
-        if (($swap['status'] ?? '') !== 'pending' || ($swap['accepted_at'] ?? null) !== null) {
-            return Response::redirect($this->base() . '/employee/swaps?error=invalid_state');
-        }
-
-        $newSwap = array_merge($swap, [
-            'accepted_at' => date('Y-m-d H:i:s'),
-        ]);
-        $this->swapRequests->save($newSwap);
-
-        $this->auditLogger->logUpdate($request, 'swap.peer_accepted', 'shift_swap_request', (int) $swap['id'], $swap, $newSwap, [
-            'requester_id' => $swap['requester_id'] ?? null,
-        ], (int) ($swap['store_id'] ?? 0) ?: null);
-        return Response::redirect($this->base() . '/employee/swaps?success=accepted');
-    }
-
-    public function refuseSwap(Request $request): Response
-    {
-        $user   = $request->getAttribute('auth_user');
-        $userId = (int) ($user['id'] ?? 0);
-
-        $swap = $this->swapRequests->findById((int) $request->param('id'));
-        if ($swap === null || (int) $swap['target_user_id'] !== $userId) {
-            throw new ForbiddenException('Demande introuvable.');
-        }
-        if (($swap['status'] ?? '') !== 'pending' || ($swap['accepted_at'] ?? null) !== null) {
-            return Response::redirect($this->base() . '/employee/swaps?error=invalid_state');
-        }
-
-        $refusedSwap = array_merge($swap, ['status' => 'refused']);
-        $this->swapRequests->save($refusedSwap);
-        $this->auditLogger->logUpdate($request, 'swap.peer_refused', 'shift_swap_request', (int) $swap['id'], $swap, $refusedSwap, [
-            'requester_id' => $swap['requester_id'] ?? null,
-        ], (int) ($swap['store_id'] ?? 0) ?: null);
-        return Response::redirect($this->base() . '/employee/swaps?success=refused');
-    }
-
-    public function cancelSwap(Request $request): Response
-    {
-        $user   = $request->getAttribute('auth_user');
-        $userId = (int) ($user['id'] ?? 0);
-
-        $swap = $this->swapRequests->findById((int) $request->param('id'));
-        if ($swap === null || (int) $swap['requester_id'] !== $userId) {
-            throw new ForbiddenException('Demande introuvable.');
-        }
-        if (($swap['status'] ?? '') !== 'pending') {
-            return Response::redirect($this->base() . '/employee/swaps?error=invalid_state');
-        }
-
-        $cancelledSwap = array_merge($swap, ['status' => 'cancelled']);
-        $this->swapRequests->save($cancelledSwap);
-        $this->auditLogger->logUpdate($request, 'swap.cancelled', 'shift_swap_request', (int) $swap['id'], $swap, $cancelledSwap, []);
-        return Response::redirect($this->base() . '/employee/swaps?success=cancelled');
-    }
-
-    // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
 
@@ -1054,43 +865,6 @@ final class EmployeeController
         return Response::redirect($this->base() . '/employee/open-shifts?success=withdrawn');
     }
 
-    /**
-     * Vérifie que la feature est activée pour le store de l'employé. Si elle est désactivée,
-     * on ne bloque pas sur une page d'erreur : on renvoie une redirection vers le tableau de
-     * bord (l'employé n'a de toute façon jamais dû arriver ici via la nav, qui masque déjà
-     * l'onglet correspondant). Retourne null si l'accès est autorisé.
-     */
-    private function assertFeature(Request $request, string $feature): ?Response
-    {
-        $user        = $request->getAttribute('auth_user');
-        $memberships = $this->storeUsers->findByUser((int) ($user['id'] ?? 0));
-        if (empty($memberships)) {
-            return null;
-        }
-        $features = $this->stores->getFeatures((int) $memberships[0]['store_id']);
-        if ($features === [] || in_array($feature, $features, true)) {
-            return null;
-        }
-        return Response::redirect($this->base() . '/employee?error=feature_disabled');
-    }
-
-    private function buildUsersMap(): array
-    {
-        $map = [];
-        foreach ($this->users->findAll() as $u) {
-            $map[(int) $u['id']] = $u['display_name'] ?? $u['email'] ?? ('#' . $u['id']);
-        }
-        return $map;
-    }
-
-    private function buildShiftsMap(): array
-    {
-        $map = [];
-        foreach ($this->shifts->findAll() as $s) {
-            $map[(int) $s['id']] = $s;
-        }
-        return $map;
-    }
 
     // -------------------------------------------------------------------------
     // Paramètres du menu de navigation (employé)

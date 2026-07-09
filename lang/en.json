@@ -220,6 +220,8 @@
     "bundle_none_found": "No bundle detected in src/Bundles/.",
     "bundle_settings": "Bundles",
     "bundle_settings_hint": "Turns a feature on or off for the whole instance. Once disabled here, it disappears entirely (routes, menus) even if a store had enabled it in its own settings. The list below is auto-detected from the bundles present on the server — no extra registration step is needed for a new bundle to show up here.",
+    "bundle_shift_swap": "Shift Swaps",
+    "bundle_shift_swap_desc": "Shift swap requests between employees: propose, accept, apply as a manager.",
     "bundle_store_photos": "Store Photos",
     "bundle_store_photos_desc": "Weekly store-condition photo submissions and tracking.",
     "bundle_third_party": "Third-party",
