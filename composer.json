@@ -2,7 +2,7 @@
     "name": "kintai/kintai",
     "description": "Lightweight open-source shift management system",
     "type": "project",
-    "version": "0.5.0",
+    "version": "0.6.0",
     "license": "AGPL-3.0-only",
     "require": {
         "php": ">=8.3",
