@@ -31,6 +31,15 @@
 .docs-card__btn { width: 100%; text-align: center; }
 .docs-card__unavailable { font-size: var(--text-xs-2); color: var(--color-text-muted); margin: 0; }
 
+/* ── Synchronisation du wiki (owner, docs/index) ──── */
+.docs-sync h4 { margin-bottom: .4rem; font-weight: 600; }
+.docs-sync p  { font-size: var(--text-xs-2); color: var(--color-text-muted); margin: 0 0 .75rem; }
+.docs-sync__row { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+.docs-sync__btn { min-width: 200px; }
+.docs-sync__status { font-size: var(--text-xs-2); }
+.docs-sync__status--ok  { color: var(--color-success); font-weight: 500; }
+.docs-sync__status--err { color: var(--color-danger);  font-weight: 500; }
+
 /* ── Sélecteur de langue (docs/show) ──────────────── */
 .docs-wiki__lang-switch {
     display: flex;
