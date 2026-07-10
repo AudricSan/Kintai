@@ -6,6 +6,8 @@ Toutes les évolutions notables de Kintai sont documentées ici.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-07-10
+
 ### Modifié
 - Suppression de la grille de sélection de langue sur `/docs` : maintenant que le wiki peut être consulté directement dans l'application, choisir une carte de langue ajoutait une étape sans valeur ajoutée. `GET /docs` va désormais directement à la page d'accueil du wiki dans la langue courante de l'utilisateur (`DocsController::index()` redirige vers `docs.show` dès que cette page existe dans `.wiki/`) au lieu d'afficher un bouton « consulter en ligne » par langue. Si la langue courante n'est pas mise en cache localement, `/docs` affiche un message l'indiquant, avec un lien « Voir sur GitHub » (fonctionne même sans aucun clone `.wiki/`) et, pour les propriétaires, un bouton « Cloner le wiki » directement là pour le récupérer sur place. La page de lecture du wiki (`docs/show.php`) a elle aussi gagné son propre bouton « Mettre à jour le wiki » réservé au propriétaire dans son en-tête, afin que rafraîchir le contenu ne nécessite plus de repasser par une page hub — cela fonctionne désormais depuis n'importe quelle page en cours de lecture.
 - Déplacement de tous les documents traduits (`*.fr.md`, `*.ja.md`) vers `docs/i18n/`, y compris ceux qui vivaient auparavant à côté de leur source anglaise dans `docs/`. `docs/security.md` a été renommé en `docs/security-overview.md` pour éviter un conflit de nom de fichier insensible à la casse avec les traductions de `SECURITY.md` à la racine. `scripts/check-translations.php` cherche désormais toujours les traductions sous `docs/i18n/`, quel que soit le dossier du document source.
