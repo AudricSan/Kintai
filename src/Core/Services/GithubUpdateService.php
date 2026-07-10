@@ -31,13 +31,14 @@ final class GithubUpdateService
     private string $token;
 
     /**
-     * @param \Closure|null $releaseFetcher fn(string $repo, string $token): ?array — surchargeable pour les tests
+     * @param \Closure|null $releaseFetcher fn(string $repo, string $token): ?array — liste de releases GitHub (surchargeable pour les tests)
      * @param \Closure|null $zipDownloader  fn(string $url, string $dest, string $token): bool — surchargeable pour les tests
      */
     public function __construct(
         private readonly UpdateService $updateService,
         private readonly BackupService $backup,
         private readonly MigrationRunner $migrator,
+        private readonly AppSettingsService $settings,
         ?string $basePath = null,
         private readonly ?\Closure $releaseFetcher = null,
         private readonly ?\Closure $zipDownloader = null,
@@ -50,9 +51,10 @@ final class GithubUpdateService
     }
 
     /**
-     * Interroge la dernière Release GitHub taguée. Retourne null si le repo
-     * n'est pas configuré, si la requête échoue, ou si aucune release
-     * n'existe encore (404 sur /releases/latest).
+     * Interroge les Releases GitHub taguées et retient la plus récente
+     * compatible avec le canal de mise à jour configuré (release/beta/alpha).
+     * Retourne null si le repo n'est pas configuré, si la requête échoue, ou
+     * si aucune release compatible n'existe.
      */
     public function checkLatestRelease(): ?array
     {
@@ -60,7 +62,12 @@ final class GithubUpdateService
             return null;
         }
 
-        $release = $this->fetchLatestReleaseData();
+        $releases = $this->fetchReleaseListData();
+        if ($releases === null) {
+            return null;
+        }
+
+        $release = $this->selectReleaseForChannel($releases, $this->settings->updateChannel());
         if ($release === null || !isset($release['tag_name'], $release['zipball_url'])) {
             return null;
         }
@@ -78,6 +85,41 @@ final class GithubUpdateService
             'zipball_url'     => $release['zipball_url'],
             'tag_name'        => $release['tag_name'],
         ];
+    }
+
+    /**
+     * Parmi les releases GitHub disponibles, retient celles compatibles avec
+     * le canal demandé puis la plus récente au sens de version_compare() :
+     * - release : uniquement les tags stables (ni "-alpha"/"-beta", ni prerelease GitHub) ;
+     * - beta    : les tags stables et "-beta" (exclut "-alpha") ;
+     * - alpha   : tous les tags, canal le plus permissif.
+     */
+    private function selectReleaseForChannel(array $releases, string $channel): ?array
+    {
+        $candidates = array_values(array_filter($releases, function (array $release) use ($channel): bool {
+            $tag = ltrim((string) ($release['tag_name'] ?? ''), 'v');
+            $isAlpha = str_contains($tag, '-alpha');
+            $isBeta = str_contains($tag, '-beta');
+            $isPrerelease = (bool) ($release['prerelease'] ?? false);
+
+            return match ($channel) {
+                'alpha' => true,
+                'beta'  => !$isAlpha,
+                default => !$isAlpha && !$isBeta && !$isPrerelease,
+            };
+        }));
+
+        if ($candidates === []) {
+            return null;
+        }
+
+        usort($candidates, function (array $a, array $b): int {
+            $va = ltrim((string) ($a['tag_name'] ?? ''), 'v');
+            $vb = ltrim((string) ($b['tag_name'] ?? ''), 'v');
+            return version_compare($vb, $va);
+        });
+
+        return $candidates[0];
     }
 
     /**
@@ -339,13 +381,14 @@ final class GithubUpdateService
         rmdir($dir);
     }
 
-    private function fetchLatestReleaseData(): ?array
+    /** @return array|null Liste des releases GitHub (voir GET /repos/{repo}/releases), ou null si la requête échoue. */
+    private function fetchReleaseListData(): ?array
     {
         if ($this->releaseFetcher !== null) {
             return ($this->releaseFetcher)($this->repo, $this->token);
         }
 
-        $url = "https://api.github.com/repos/{$this->repo}/releases/latest";
+        $url = "https://api.github.com/repos/{$this->repo}/releases?per_page=30";
         $headers = [
             'User-Agent: Kintai-UpdateCheck/1.0',
             'Accept: application/vnd.github+json',
