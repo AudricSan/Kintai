@@ -55,6 +55,16 @@ final class WikiContentService
         return array_keys(self::LANG_DIRS);
     }
 
+    /**
+     * Sous-dossier `.wiki/` d'une langue ('' pour l'anglais, à la racine), ou
+     * null si la langue n'est pas supportée. Partagé avec WikiSyncService pour
+     * que les deux services s'accordent sur la même disposition de fichiers.
+     */
+    public static function langSubdir(string $lang): ?string
+    {
+        return self::LANG_DIRS[$lang] ?? null;
+    }
+
     public function isConfigured(): bool
     {
         return is_dir($this->wikiPath);
@@ -70,7 +80,7 @@ final class WikiContentService
     {
         $repo = env('GITHUB_UPDATE_REPO', 'AudricSan/Kintai');
         $dir  = self::LANG_DIRS[$lang] ?? '';
-        $slug = ($slug !== null && $this->isValidSlug($slug)) ? $slug : 'Home';
+        $slug = ($slug !== null && self::isValidSlug($slug)) ? $slug : 'Home';
         $path = $dir !== '' ? $dir . '/' . $slug : $slug;
 
         return 'https://github.com/' . $repo . '/wiki/' . $path;
@@ -128,7 +138,7 @@ final class WikiContentService
 
     public function pageExists(string $lang, string $slug): bool
     {
-        if (!$this->isValidSlug($slug) || !isset(self::LANG_DIRS[$lang])) {
+        if (!self::isValidSlug($slug) || !isset(self::LANG_DIRS[$lang])) {
             return false;
         }
 
@@ -172,9 +182,11 @@ final class WikiContentService
 
     /**
      * Slugs de pages wiki : lettres/chiffres/tirets/underscores, jamais de
-     * chemin ("/", "..") ni de page méta ("_Sidebar", "_Footer").
+     * chemin ("/", "..") ni de page méta ("_Sidebar", "_Footer"). Partagé avec
+     * WikiSyncService pour valider les slugs trouvés dans le _Sidebar.md
+     * distant avant de les utiliser comme noms de fichiers locaux.
      */
-    private function isValidSlug(string $slug): bool
+    public static function isValidSlug(string $slug): bool
     {
         return $slug !== '' && $slug[0] !== '_' && preg_match('/^[A-Za-z0-9_-]+$/', $slug) === 1;
     }
@@ -194,7 +206,19 @@ final class WikiContentService
             return [];
         }
 
-        $raw = (string) file_get_contents($path);
+        return self::parseSidebarMarkdown((string) file_get_contents($path));
+    }
+
+    /**
+     * Analyse le contenu Markdown d'un `_Sidebar.md` (format wiki GitHub) en
+     * groupes de slugs. Statique et pure (aucun accès disque) : partagée avec
+     * WikiSyncService, qui l'applique au contenu récupéré à distance plutôt
+     * qu'au fichier local, pour connaître la liste des pages à synchroniser.
+     *
+     * @return array<string, string[]> Nom de groupe ("" pour le sommet) => slugs
+     */
+    public static function parseSidebarMarkdown(string $raw): array
+    {
         $groups  = [];
         $current = self::TOP_GROUP;
 
@@ -214,7 +238,7 @@ final class WikiContentService
 
             if (preg_match('/\[([^\]]+)\]\(([^)]+)\)/', $line, $m)) {
                 $slug = trim($m[2]);
-                if ($this->isValidSlug($slug)) {
+                if (self::isValidSlug($slug)) {
                     $groups[$current] ??= [];
                     $groups[$current][] = $slug;
                 }
@@ -298,11 +322,11 @@ final class WikiContentService
             $segments[] = $part;
         }
 
-        if (count($segments) === 1 && $this->isValidSlug($segments[0])) {
+        if (count($segments) === 1 && self::isValidSlug($segments[0])) {
             return ['en', $segments[0]];
         }
 
-        if (count($segments) === 2 && in_array($segments[0], ['fr', 'ja'], true) && $this->isValidSlug($segments[1])) {
+        if (count($segments) === 2 && in_array($segments[0], ['fr', 'ja'], true) && self::isValidSlug($segments[1])) {
             return [$segments[0], $segments[1]];
         }
 

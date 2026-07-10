@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace kintai\UI\Controller\Web;
 
+use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\TranslationService;
 use kintai\Core\Services\WikiContentService;
+use kintai\Core\Services\WikiSyncService;
 use kintai\UI\ViewRenderer;
 
 final class DocsController
@@ -16,6 +18,7 @@ final class DocsController
         private readonly ViewRenderer $view,
         private readonly TranslationService $translations,
         private readonly WikiContentService $wikiContent,
+        private readonly WikiSyncService $wikiSync,
     ) {}
 
     public function index(Request $request): Response
@@ -32,9 +35,13 @@ final class DocsController
             ];
         }
 
+        $user = $request->getAttribute('auth_user');
+
         return Response::html($this->view->render('docs.index', [
-            'languages' => $languages,
-            'locale'    => $locale,
+            'languages'      => $languages,
+            'locale'         => $locale,
+            'wikiConfigured' => $this->wikiContent->isConfigured(),
+            'isOwner'        => !empty($user['is_admin']),
         ], 'layout.app'));
     }
 
@@ -70,14 +77,35 @@ final class DocsController
         }
 
         return Response::html($this->view->render('docs.show', [
-            'lang'            => $lang,
-            'page'            => $page,
-            'toc'             => $toc,
-            'flatItems'       => $flatItems,
-            'currentIndex'    => $currentIndex,
-            'contentHtml'     => $contentHtml,
-            'otherLanguages'  => $otherLanguages,
-            'githubWikiUrl'   => $this->wikiContent->githubWikiUrl($lang, $page),
+            'lang'           => $lang,
+            'page'           => $page,
+            'toc'            => $toc,
+            'flatItems'      => $flatItems,
+            'currentIndex'   => $currentIndex,
+            'contentHtml'    => $contentHtml,
+            'otherLanguages' => $otherLanguages,
+            'githubWikiUrl'  => $this->wikiContent->githubWikiUrl($lang, $page),
         ], 'layout.app'));
+    }
+
+    /**
+     * POST /docs/sync — clone (si absent) ou met à jour (si déjà présent) le
+     * wiki local `.wiki/` depuis le wiki GitHub. Réservé au propriétaire.
+     */
+    public function sync(Request $request): Response
+    {
+        $this->requireOwner($request);
+
+        $result = $this->wikiSync->sync();
+
+        return Response::json($result, $result['ok'] ? 200 : 500);
+    }
+
+    private function requireOwner(Request $request): void
+    {
+        $user = $request->getAttribute('auth_user');
+        if (empty($user['is_admin'])) {
+            throw new ForbiddenException('Réservé au propriétaire.');
+        }
     }
 }
