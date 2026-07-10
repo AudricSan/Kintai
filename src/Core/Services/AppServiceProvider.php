@@ -104,7 +104,13 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(UpdateService::class),
             $c->make(BackupService::class),
             $c->make(MigrationRunner::class),
+            $c->make(AppSettingsService::class),
         ));
+
+        // Binding explicite requis : le constructeur a un paramètre ?\Closure
+        // (non "builtin" pour Container::resolveParameter), donc la résolution
+        // par réflexion échouerait sinon en essayant d'instancier \Closure.
+        $this->container->singleton(WikiSyncService::class, fn() => new WikiSyncService());
 
         $this->container->singleton(TranslationManagementService::class, fn(Container $c) => new TranslationManagementService(
             $c->make(TranslationRepositoryInterface::class),
