@@ -21,27 +21,28 @@ final class DocsController
         private readonly WikiSyncService $wikiSync,
     ) {}
 
+    /**
+     * GET /docs — point d'entrée unique, sans sélecteur de langue : redirige
+     * directement vers la page d'accueil du wiki dans la langue courante de
+     * l'utilisateur si elle est disponible localement, sinon affiche un
+     * message expliquant qu'aucune version locale n'existe pour cette langue
+     * (avec un lien vers GitHub, et un bouton de clonage pour le propriétaire).
+     */
     public function index(Request $request): Response
     {
         $locale    = $this->translations->getLocale();
         $firstPage = $this->wikiContent->firstPage();
-        $languages = [];
 
-        foreach (WikiContentService::supportedLangs() as $lang) {
-            $languages[$lang] = [
-                'first_page'      => $firstPage,
-                'browsable'       => $firstPage !== null && $this->wikiContent->pageExists($lang, $firstPage),
-                'github_wiki_url' => $this->wikiContent->githubWikiUrl($lang, $firstPage),
-            ];
+        if ($firstPage !== null && $this->wikiContent->pageExists($locale, $firstPage)) {
+            return Response::redirect(route_url('docs.show', ['lang' => $locale, 'page' => $firstPage]));
         }
 
         $user = $request->getAttribute('auth_user');
 
-        return Response::html($this->view->render('docs.index', [
-            'languages'      => $languages,
-            'locale'         => $locale,
-            'wikiConfigured' => $this->wikiContent->isConfigured(),
-            'isOwner'        => !empty($user['is_admin']),
+        return Response::html($this->view->render('docs.unavailable', [
+            'locale'        => $locale,
+            'githubWikiUrl' => $this->wikiContent->githubWikiUrl($locale),
+            'isOwner'       => !empty($user['is_admin']),
         ], 'layout.app'));
     }
 
@@ -76,6 +77,8 @@ final class DocsController
             $otherLanguages[$l] = $this->wikiContent->pageExists($l, $page);
         }
 
+        $user = $request->getAttribute('auth_user');
+
         return Response::html($this->view->render('docs.show', [
             'lang'           => $lang,
             'page'           => $page,
@@ -85,6 +88,7 @@ final class DocsController
             'contentHtml'    => $contentHtml,
             'otherLanguages' => $otherLanguages,
             'githubWikiUrl'  => $this->wikiContent->githubWikiUrl($lang, $page),
+            'isOwner'        => !empty($user['is_admin']),
         ], 'layout.app'));
     }
 
