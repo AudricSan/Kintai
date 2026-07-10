@@ -3,6 +3,15 @@
    ================================================ */
 
 /* ── Docs ────────────────────────────────────────── */
+.docs-legend {
+    display: flex;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+    font-size: var(--text-xs-2);
+    color: var(--color-text-muted);
+    margin: 0 0 1.25rem;
+}
+
 .docs-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -28,8 +37,18 @@
 }
 
 .docs-card__desc { font-size: var(--text-xs-2); color: var(--color-text-muted); margin-bottom: .75rem; }
+.docs-card__status { margin-bottom: .85rem; }
 .docs-card__btn { width: 100%; text-align: center; }
 .docs-card__unavailable { font-size: var(--text-xs-2); color: var(--color-text-muted); margin: 0; }
+
+.docs-card__action { margin-bottom: .85rem; }
+.docs-card__action:last-child { margin-bottom: 0; }
+.docs-card__caption {
+    font-size: var(--text-2xs);
+    color: var(--color-text-muted);
+    text-align: center;
+    margin: .3rem 0 0;
+}
 
 /* ── Synchronisation du wiki (owner, docs/index) ──── */
 .docs-sync h4 { margin-bottom: .4rem; font-weight: 600; }

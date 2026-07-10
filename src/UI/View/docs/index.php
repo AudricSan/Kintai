@@ -16,6 +16,11 @@ $guides = [
     <p class="page-header__subtitle"><?= __('docs_subtitle') ?></p>
 </div>
 
+<p class="docs-legend">
+    <span class="docs-legend__item">📖 <?= __('docs_legend_local') ?></span>
+    <span class="docs-legend__item">🔗 <?= __('docs_legend_github') ?></span>
+</p>
+
 <div class="docs-grid">
     <?php foreach ($guides as $lang => $guide):
         $entry      = $languages[$lang] ?? [];
@@ -31,20 +36,30 @@ $guides = [
             <?php endif; ?>
             <p class="docs-card__desc"><?= htmlspecialchars($guide['desc']) ?></p>
 
-            <?php if ($browsable): ?>
-                <a href="<?= route_url('docs.show', ['lang' => $lang, 'page' => $entry['first_page']]) ?>"
-                   class="btn btn--primary docs-card__btn">
-                    <?= __('docs_browse_online') ?>
-                </a>
-            <?php else: ?>
-                <p class="docs-card__unavailable"><?= __('docs_not_available') ?></p>
-            <?php endif; ?>
+            <span class="badge badge--xs <?= $browsable ? 'badge--success' : 'badge--muted' ?> docs-card__status">
+                <?= __($browsable ? 'docs_status_cached' : 'docs_status_not_cached') ?>
+            </span>
 
-            <a href="<?= htmlspecialchars($entry['github_wiki_url']) ?>"
-               class="btn btn--ghost docs-card__btn"
-               target="_blank" rel="noopener noreferrer">
-                <?= __('docs_view_on_github') ?> ↗
-            </a>
+            <div class="docs-card__action">
+                <?php if ($browsable): ?>
+                    <a href="<?= route_url('docs.show', ['lang' => $lang, 'page' => $entry['first_page']]) ?>"
+                       class="btn btn--primary docs-card__btn">
+                        📖 <?= __('docs_browse_online') ?>
+                    </a>
+                <?php else: ?>
+                    <p class="docs-card__unavailable"><?= __('docs_not_available') ?></p>
+                <?php endif; ?>
+                <p class="docs-card__caption"><?= __('docs_local_caption') ?></p>
+            </div>
+
+            <div class="docs-card__action">
+                <a href="<?= htmlspecialchars($entry['github_wiki_url']) ?>"
+                   class="btn btn--outline docs-card__btn"
+                   target="_blank" rel="noopener noreferrer">
+                    🔗 <?= __('docs_view_on_github') ?> ↗
+                </a>
+                <p class="docs-card__caption"><?= __('docs_github_caption') ?></p>
+            </div>
         </div>
     </div>
     <?php endforeach; ?>
