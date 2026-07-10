@@ -416,7 +416,19 @@ final class GithubUpdateService
         }
 
         $data = json_decode($response, true);
-        return is_array($data) ? $data : null;
+        return self::isValidReleaseList($data) ? $data : null;
+    }
+
+    /**
+     * GitHub renvoie un objet d'erreur (ex: {"message": "API rate limit exceeded..."})
+     * pour les réponses en erreur (rate limit, auth, 404...) au lieu de la liste des
+     * releases attendue. json_decode(..., true) le transforme en tableau associatif,
+     * donc is_array() seul ne suffit pas à l'écarter : on exige une liste (tableau
+     * indexé séquentiellement), ce que sera toujours une vraie réponse de releases.
+     */
+    private static function isValidReleaseList(mixed $data): bool
+    {
+        return is_array($data) && array_is_list($data);
     }
 
     private function downloadZip(string $url, string $destination): bool
