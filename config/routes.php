@@ -13,7 +13,6 @@ use kintai\UI\Controller\Web\DocsController;
 use kintai\UI\Controller\Web\PrivacyController;
 use kintai\UI\Controller\Web\PwaController;
 use kintai\UI\Controller\Web\StorageFileController;
-use kintai\UI\Controller\Web\WikiPdfController;
 
 use kintai\UI\Controller\Web\Scheduling\AdminShiftController;
 use kintai\UI\Controller\Web\Scheduling\AdminShiftImportController;
@@ -101,6 +100,8 @@ $router->group('/notifications', function ($r) {
 
 // --- Documentation ---
 $router->get('/docs', [DocsController::class, 'index'], middleware: [AuthMiddleware::class], name: 'docs.index');
+$router->post('/docs/sync', [DocsController::class, 'sync'], middleware: [AuthMiddleware::class], name: 'docs.sync');
+$router->get('/docs/{lang}/{page}', [DocsController::class, 'show'], middleware: [AuthMiddleware::class], name: 'docs.show');
 
 $router->group('/employee', function ($r) {
 
@@ -283,7 +284,6 @@ $router->group('/admin', function ($r) {
 // --- Routes publiques ---
 $router->get('/api/v1/ping',       [ApiAuthController::class, 'ping'],  name: 'api.v1.ping');
 $router->post('/api/v1/auth/login', [ApiAuthController::class, 'login'], name: 'api.v1.auth.login');
-$router->get('/api/v1/pdf/generate', [WikiPdfController::class, 'generate'], name: 'api.v1.pdf.generate');
 
 // --- Routes protégées par token Bearer ---
 $router->group('/api/v1', function ($r) {
