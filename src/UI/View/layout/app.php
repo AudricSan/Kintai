@@ -86,13 +86,6 @@
     <?php if (!$showAdminMenu && ($feedback_enabled ?? true)): ?>
         <?php include __DIR__ . '/partials/feedback-modal.php'; ?>
     <?php endif; ?>
-<div id="cookie-consent" class="cookie-consent" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#222;color:#fff;padding:12px 24px;z-index:500;text-align:center;font-size:14px">
-    Kintai utilise des cookies de session pour son fonctionnement. En continuant, vous acceptez leur utilisation.
-    <button onclick="localStorage.setItem('kintai-cookies','1');document.getElementById('cookie-consent').style.display='none'"
-            style="margin-left:12px;padding:4px 16px;background:#4a9;color:#fff;border:none;border-radius:4px;cursor:pointer">Accepter</button>
-    <a href="<?= route_url('privacy') ?>" style="margin-left:12px;color:#8cf">En savoir plus</a>
-</div>
-<script>(function(){if(localStorage.getItem('kintai-cookies')!=='1'){document.getElementById('cookie-consent').style.display='block';}}());</script>
 </body>
 
 </html>
