@@ -105,6 +105,9 @@ $ico              = fn(string $k): string => '<span class="sidebar-link__icon">'
         <?php elseif ($showAdminMenu): ?>
             <?php
             $navHide = fn(string $k): bool => in_array($k, (array)($user_nav_hidden ?? []), true);
+            // Permissions fines RBAC (partagé par PermissionMiddleware) — absent
+            // sur les pages hors /admin : tout est visible par défaut.
+            $can = $user_can ?? fn(string $k): bool => true;
             $_defSec = ['planning', 'hr', 'requests', 'statistics'];
             $_rawOrd = (array)($user_nav_section_order ?? []);
             $_secOrd = array_values(array_unique(array_merge(
@@ -118,15 +121,16 @@ $ico              = fn(string $k): string => '<span class="sidebar-link__icon">'
 
             <?php foreach ($_secOrd as $_sec): switch ($_sec):
                 case 'planning': ?>
-                    <?php if (($feat('shifts') && !$navHide('shifts')) || ($feat('shifts') && !$navHide('calendar')) || ($feat('shifts') && !$navHide('shift_types')) || ($feat('timeclock') && !$navHide('timeclocks'))): ?>
+                    <?php $_canShifts = $feat('shifts') && $can('shifts.view'); ?>
+                    <?php if (($_canShifts && !$navHide('shifts')) || ($_canShifts && !$navHide('calendar')) || ($_canShifts && !$navHide('shift_types')) || ($feat('timeclock') && !$navHide('timeclocks'))): ?>
                     <li class="sidebar-section"><?= __('planning') ?></li>
-                    <?php if ($feat('shifts') && !$navHide('shifts')): ?>
+                    <?php if ($_canShifts && !$navHide('shifts')): ?>
                     <li><a href="<?= route_url('admin.shifts.timeline') ?>" class="sidebar-link<?= $onShifts ? ' active' : '' ?>"><?= $ico('calendar') ?><?= __('shifts') ?></a></li>
                     <?php endif; ?>
-                    <?php if ($feat('shifts') && !$navHide('calendar')): ?>
+                    <?php if ($_canShifts && !$navHide('calendar')): ?>
                     <li><a href="<?= route_url('admin.shifts.calendar') ?>" class="sidebar-link<?= $onCalendar ? ' active' : '' ?>"><?= $ico('calendar') ?><?= __('calendar') ?></a></li>
                     <?php endif; ?>
-                    <?php if ($feat('shifts') && !$navHide('shift_types')): ?>
+                    <?php if ($_canShifts && !$navHide('shift_types')): ?>
                     <li><a href="<?= route_url('admin.shift_types') ?>" class="sidebar-link<?= str_starts_with($path, '/admin/shift-types') ? ' active' : '' ?>"><?= $ico('tag') ?><?= __('shift_types') ?></a></li>
                     <?php endif; ?>
                     <?php if ($feat('timeclock') && !$navHide('timeclocks')): ?>
@@ -134,12 +138,12 @@ $ico              = fn(string $k): string => '<span class="sidebar-link__icon">'
                     <?php endif; ?>
                     <?php endif; ?>
                 <?php break; case 'hr': ?>
-                    <?php if (!$navHide('users') || !$navHide('stores')): ?>
+                    <?php if (($can('employees.view') && !$navHide('users')) || ($can('stores.view') && !$navHide('stores'))): ?>
                     <li class="sidebar-section"><?= __('hr') ?></li>
-                    <?php if (!$navHide('users')): ?>
+                    <?php if ($can('employees.view') && !$navHide('users')): ?>
                     <li><a href="<?= route_url('admin.users') ?>" class="sidebar-link<?= str_starts_with($path, '/admin/users') ? ' active' : '' ?>"><?= $ico('users') ?><?= __('staff') ?></a></li>
                     <?php endif; ?>
-                    <?php if (!$navHide('stores')): ?>
+                    <?php if ($can('stores.view') && !$navHide('stores')): ?>
                     <li><a href="<?= route_url('admin.stores') ?>" class="sidebar-link<?= str_starts_with($path, '/admin/stores') ? ' active' : '' ?>"><?= $ico('store') ?><?= __('stores') ?></a></li>
                     <?php endif; ?>
                     <?php endif; ?>
@@ -167,9 +171,9 @@ $ico              = fn(string $k): string => '<span class="sidebar-link__icon">'
                     <?php endif; ?>
                     <?php endif; ?>
                 <?php break; case 'statistics': ?>
-                    <?php if (!$navHide('employee_report') || ($feat('daily_reports') && !$navHide('daily_reports')) || (bundle_enabled('resignation-report') && !$navHide('resignation_report')) || (bundle_enabled('salary-report') && !$navHide('salary_report')) || ($feat('photos') && !$navHide('photos'))): ?>
+                    <?php if (($can('payroll.view') && !$navHide('employee_report')) || ($feat('daily_reports') && !$navHide('daily_reports')) || (bundle_enabled('resignation-report') && !$navHide('resignation_report')) || (bundle_enabled('salary-report') && !$navHide('salary_report')) || ($feat('photos') && !$navHide('photos'))): ?>
                     <li class="sidebar-section"><?= __('reports') ?></li>
-                    <?php if (!$navHide('employee_report')): ?>
+                    <?php if ($can('payroll.view') && !$navHide('employee_report')): ?>
                     <li><a href="<?= $reportHref ?>" class="sidebar-link<?= str_contains($path, '/employee-report') ? ' active' : '' ?>"><?= $ico('chart') ?><?= __('employee_report') ?></a></li>
                     <?php endif; ?>
                     <?php if ($feat('daily_reports') && !$navHide('daily_reports')): ?>
