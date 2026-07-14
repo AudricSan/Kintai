@@ -222,10 +222,10 @@ unset($months, $days);
                         <tr>
                             <th><?= __('date') ?></th>
                             <th><?= __('dr_author') ?></th>
-                            <th class="text-right">売上 (<?= $currency ?>)</th>
-                            <th class="text-right">客数</th>
-                            <th class="text-right">人件費 (<?= $currency ?>)</th>
-                            <th class="text-right">廃棄 (<?= $currency ?>)</th>
+                            <th class="text-right"><?= __('dr_sales') ?> (<?= $currency ?>)</th>
+                            <th class="text-right"><?= __('dr_customers') ?></th>
+                            <th class="text-right"><?= __('dr_labor') ?> (<?= $currency ?>)</th>
+                            <th class="text-right"><?= __('dr_waste') ?> (<?= $currency ?>)</th>
                             <th><?= __('status') ?></th>
                             <th><?= __('actions') ?></th>
                         </tr>
