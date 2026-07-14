@@ -23,6 +23,7 @@ use kintai\UI\Controller\Web\Staff\AdminUserController;
 
 use kintai\UI\Controller\Web\System\ActivityController;
 use kintai\UI\Controller\Web\System\AdminController;
+use kintai\UI\Controller\Web\System\AdminRoleController;
 use kintai\UI\Controller\Web\System\BackupController;
 use kintai\UI\Controller\Web\System\BundleSettingsController;
 use kintai\UI\Controller\Web\System\LanguageController;
@@ -274,6 +275,14 @@ $router->group('/admin', function ($r) {
     // Bundles (Owner uniquement)
     $r->get('/bundles',  [BundleSettingsController::class, 'show'], name: 'admin.bundles');
     $r->post('/bundles', [BundleSettingsController::class, 'save'], name: 'admin.bundles.save');
+
+    // Rôles & permissions (Owner uniquement) — voir task/mermission.md
+    $r->get('/roles',              [AdminRoleController::class, 'roles'],      name: 'admin.roles');
+    $r->get('/roles/create',       [AdminRoleController::class, 'createRole'], name: 'admin.roles.create');
+    $r->post('/roles/create',      [AdminRoleController::class, 'storeRole'],  name: 'admin.roles.store');
+    $r->get('/roles/{id}/edit',    [AdminRoleController::class, 'editRole'],   name: 'admin.roles.edit');
+    $r->post('/roles/{id}/edit',   [AdminRoleController::class, 'updateRole'], name: 'admin.roles.update');
+    $r->post('/roles/{id}/delete', [AdminRoleController::class, 'deleteRole'], name: 'admin.roles.delete');
 
 }, middleware: [AuthMiddleware::class, AdminMiddleware::class]);
 

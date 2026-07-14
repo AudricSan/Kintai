@@ -21,6 +21,11 @@ final class DatabaseRoleAssignmentRepository implements RoleAssignmentRepository
         return EloquentRoleAssignment::where('user_id', $userId)->get()->toArray();
     }
 
+    public function findByRole(int $roleId): array
+    {
+        return EloquentRoleAssignment::where('role_id', $roleId)->get()->toArray();
+    }
+
     public function findByScope(string $scopeType, ?int $scopeId): array
     {
         return EloquentRoleAssignment::where('scope_type', $scopeType)

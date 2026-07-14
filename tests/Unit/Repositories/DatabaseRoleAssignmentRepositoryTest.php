@@ -81,6 +81,15 @@ final class DatabaseRoleAssignmentRepositoryTest extends TestCase
         $this->assertSame(1, (int) $result[0]['user_id']);
     }
 
+    public function testFindByRoleReturnsAllAssignmentsForThatRole(): void
+    {
+        EloquentRoleAssignment::create(['user_id' => 1, 'role_id' => 2, 'scope_type' => 'store', 'scope_id' => 1]);
+        EloquentRoleAssignment::create(['user_id' => 2, 'role_id' => 2, 'scope_type' => 'store', 'scope_id' => 2]);
+        EloquentRoleAssignment::create(['user_id' => 3, 'role_id' => 3, 'scope_type' => 'store', 'scope_id' => 1]);
+
+        $this->assertCount(2, $this->repo->findByRole(2));
+    }
+
     // -------------------------------------------------------------------------
     // assign()
     // -------------------------------------------------------------------------
