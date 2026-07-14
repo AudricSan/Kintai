@@ -22,6 +22,8 @@ final class AuthServiceProvider extends ServiceProvider
                 $c->make(UserRepositoryInterface::class),
                 $c->make(StoreUserRepositoryInterface::class),
                 $c->make(StoreRepositoryInterface::class),
+                $c->make(RoleRepositoryInterface::class),
+                $c->make(RoleAssignmentRepositoryInterface::class),
             )
         );
 
