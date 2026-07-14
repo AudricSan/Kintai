@@ -33,6 +33,7 @@ use kintai\Core\Middleware\AuthMiddleware;
 use kintai\Core\Middleware\AdminMiddleware;
 use kintai\Core\Middleware\PermissionMiddleware;
 use kintai\Core\Middleware\ApiAuthMiddleware;
+use kintai\Core\Middleware\ApiPermissionMiddleware;
 use kintai\Core\Middleware\RateLimiterMiddleware;
 use kintai\UI\Controller\Api\V1\AuthController as ApiAuthController;
 use kintai\UI\Controller\Api\V1\UserController as ApiUserController;
@@ -382,4 +383,4 @@ $router->group('/api/v1', function ($r) {
     // Journal d'activité
     $r->get('/activity', [ApiActivityController::class, 'index'], name: 'api.v1.activity.index');
 
-}, middleware: [ApiAuthMiddleware::class]);
+}, middleware: [ApiAuthMiddleware::class, ApiPermissionMiddleware::class]);
