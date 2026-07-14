@@ -7,6 +7,8 @@ namespace kintai\Tests\Unit\Controller\Web;
 use kintai\Core\Container;
 use kintai\Core\FeatureManager;
 use kintai\Core\Repositories\LogRepositoryInterface;
+use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
+use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
@@ -14,6 +16,7 @@ use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\Log;
+use kintai\Core\Services\RoleAssignmentSyncService;
 use kintai\Core\Services\StoreServiceInterface;
 use kintai\Core\Services\StoreStatsServiceInterface;
 use kintai\UI\Controller\Web\Staff\AdminStoreController;
@@ -28,6 +31,8 @@ final class AdminStoreControllerTest extends TestCase
     private UserRepositoryInterface&MockObject $users;
     private StoreStatsServiceInterface&MockObject $storeStatsService;
     private LogRepositoryInterface&MockObject $logRepo;
+    private RoleRepositoryInterface&MockObject $roles;
+    private RoleAssignmentRepositoryInterface&MockObject $roleAssignments;
     private AdminStoreController $controller;
 
     protected function setUp(): void
@@ -42,6 +47,8 @@ final class AdminStoreControllerTest extends TestCase
         $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
         $this->users = $this->createMock(UserRepositoryInterface::class);
         $this->storeStatsService = $this->createMock(StoreStatsServiceInterface::class);
+        $this->roles = $this->createMock(RoleRepositoryInterface::class);
+        $this->roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
 
         // AuditLogger::log() délègue à Log::record() -> LogRepositoryInterface::record().
         $this->logRepo = $this->createMock(LogRepositoryInterface::class);
@@ -58,6 +65,7 @@ final class AdminStoreControllerTest extends TestCase
             $this->createMock(StoreServiceInterface::class),
             $this->storeStatsService,
             new FeatureManager(['messaging', 'daily-report', 'store-photos']),
+            new RoleAssignmentSyncService($this->roles, $this->roleAssignments),
         );
     }
 
@@ -116,6 +124,7 @@ final class AdminStoreControllerTest extends TestCase
             $this->createMock(StoreServiceInterface::class),
             $this->storeStatsService,
             new FeatureManager(['daily-report']), // messaging et store-photos désactivés
+            new RoleAssignmentSyncService($this->roles, $this->roleAssignments),
         );
 
         $req = new Request();
@@ -160,6 +169,7 @@ final class AdminStoreControllerTest extends TestCase
             $storeService,
             $this->storeStatsService,
             new FeatureManager(['messaging', 'daily-report', 'store-photos']),
+            new RoleAssignmentSyncService($this->roles, $this->roleAssignments),
         );
 
         $response = $controller->updateStore($req);
