@@ -708,29 +708,18 @@ final class DailyReportController
 
         $this->assertStoreAccess($request, $storeId);
 
-        // Seuls les admins globaux et les admin/manager du store peuvent modifier les paramètres
-        if (empty($authUser['is_admin']) && !in_array($membership['role'] ?? '', ['admin', 'manager'], true)) {
+        if (!$this->permissions->canManageSettings($authUser, $store)) {
             throw new ForbiddenException('Accès refusé.');
         }
 
         $settings = $this->permissions->getSettings($store);
 
-        $memberships  = $this->storeUsers->findByStore($storeId);
-        $storeMembers = [];
-        foreach ($memberships as $m) {
-            $u = $this->users->findById((int) $m['user_id']);
-            if ($u !== null) {
-                $storeMembers[] = ['membership' => $m, 'user' => $u];
-            }
-        }
-
         $html = $this->view->render('daily-report::daily-report-settings', [
-            'store'        => $store,
-            'settings'     => $settings,
-            'storeMembers' => $storeMembers,
-            'authUser'     => $authUser,
-            'membership'   => $membership,
-            'errors'       => [],
+            'store'      => $store,
+            'settings'   => $settings,
+            'authUser'   => $authUser,
+            'membership' => $membership,
+            'errors'     => [],
         ], 'layout.app');
 
         return Response::html($html);
@@ -745,14 +734,11 @@ final class DailyReportController
 
         $this->assertStoreAccess($request, $storeId);
 
-        if (empty($authUser['is_admin']) && !in_array($membership['role'] ?? '', ['admin', 'manager'], true)) {
+        if (!$this->permissions->canManageSettings($authUser, $store)) {
             throw new ForbiddenException('Accès refusé.');
         }
 
         $data = $request->allPost();
-
-        $rawIds = $data['can_create_user_ids'] ?? [];
-        $createUserIds = array_values(array_unique(array_map('intval', is_array($rawIds) ? $rawIds : [])));
 
         $rawTime = trim($data['auto_validate_time'] ?? '');
         $autoValidateTime = preg_match('/^\d{2}:\d{2}$/', $rawTime) ? $rawTime : null;
@@ -775,9 +761,6 @@ final class DailyReportController
 
         $settings = [
             'enabled'               => !empty($data['enabled']),
-            'can_create_user_ids'   => $createUserIds,
-            'can_submit_roles'      => $this->parseRoles($data['can_submit_roles'] ?? []),
-            'can_validate_roles'    => $this->parseRoles($data['can_validate_roles'] ?? []),
             'mail_recipients'       => $this->parseRecipients($data['mail_recipients'] ?? ''),
             'auto_send_on_validate' => !empty($data['auto_send_on_validate']),
             'auto_validate_time'    => $autoValidateTime,
@@ -891,14 +874,6 @@ final class DailyReportController
         }
 
         return $errors;
-    }
-
-    /** @return string[] */
-    private function parseRoles(array|string $raw): array
-    {
-        $allowed = ['staff', 'manager', 'admin'];
-        $input   = is_array($raw) ? $raw : [$raw];
-        return array_values(array_intersect($input, $allowed));
     }
 
     /** @return string[] */
