@@ -211,6 +211,11 @@ $taxOptions = ['kou' => '甲', 'otsu' => '乙'];
     <div class="section-divider">
         <h4 class="section-title"><?= __('assign_to_store') ?></h4>
         <div class="form-row">
+            <?php if (!empty($all_stores)): ?>
+            <!-- Sélecteur de store affiché uniquement quand le formulaire propose un choix -->
+            <!-- (ex. modale de création rapide depuis l'import : le store est déjà fixé -->
+            <!-- via un champ caché du formulaire parent, sinon le nom "store_id" entrerait -->
+            <!-- en collision avec ce select et écraserait la valeur transmise) -->
             <div class="form-group">
                 <label class="form-label"><?= __('store') ?></label>
                 <select name="store_id" class="form-control">
@@ -220,6 +225,7 @@ $taxOptions = ['kou' => '甲', 'otsu' => '乙'];
                     <?php endforeach; ?>
                 </select>
             </div>
+            <?php endif; ?>
             <div class="form-group">
                 <label class="form-label"><?= __('store_role') ?></label>
                 <select name="store_role" class="form-control">
