@@ -41,6 +41,8 @@ final class AdminRoleController
         'export'   => 'perm_action_export',
         'validate' => 'perm_action_validate',
         'generate' => 'perm_action_generate',
+        'approve'  => 'perm_action_approve',
+        'publish'  => 'perm_action_publish',
     ];
 
     public function __construct(
@@ -80,7 +82,7 @@ final class AdminRoleController
             'title'                 => __('new_role'),
             'mode'                  => 'create',
             'role'                  => [],
-            'permission_categories' => PermissionCatalog::CATEGORIES,
+            'permission_categories' => $this->visiblePermissionCategories(),
             'action_label_keys'     => self::ACTION_LABEL_KEYS,
             'granted_permissions'   => [],
             'holders'               => [],
@@ -126,7 +128,7 @@ final class AdminRoleController
             'title'                 => 'Modifier ' . htmlspecialchars($role['name'] ?? ''),
             'mode'                  => 'edit',
             'role'                  => $role,
-            'permission_categories' => PermissionCatalog::CATEGORIES,
+            'permission_categories' => $this->visiblePermissionCategories(),
             'action_label_keys'     => self::ACTION_LABEL_KEYS,
             'granted_permissions'   => $this->roles->getPermissions((int) $role['id']),
             'holders'               => $this->roleHolders((int) $role['id']),
@@ -155,7 +157,14 @@ final class AdminRoleController
         ]);
 
         $oldPermissions = $this->roles->getPermissions((int) $role['id']);
-        $newPermissions = $this->postedPermissions($request);
+        // Les catégories des bundles désactivés sont masquées du formulaire :
+        // leurs clés déjà accordées sont préservées telles quelles, pour
+        // réapparaître si le bundle est réactivé.
+        $hiddenKeys = array_values(array_filter(
+            $oldPermissions,
+            fn(string $key): bool => !$this->isCategoryVisible(explode('.', $key)[0])
+        ));
+        $newPermissions = array_values(array_unique(array_merge($this->postedPermissions($request), $hiddenKeys)));
         $this->roles->savePermissions((int) $role['id'], $newPermissions);
 
         $this->auditLogger->logUpdate(
@@ -203,12 +212,34 @@ final class AdminRoleController
     private function postedPermissions(Request $request): array
     {
         $granted = [];
-        foreach (PermissionCatalog::all() as $key) {
-            if ($request->post('perm_' . str_replace('.', '_', $key))) {
-                $granted[] = $key;
+        foreach ($this->visiblePermissionCategories() as $category => $actions) {
+            foreach ($actions as $action) {
+                $key = $category . '.' . $action;
+                if ($request->post('perm_' . str_replace('.', '_', $key))) {
+                    $granted[] = $key;
+                }
             }
         }
         return $granted;
+    }
+
+    /**
+     * Catégories du catalogue dont le bundle porteur est activé (les
+     * catégories Core, sans bundle associé, sont toujours visibles).
+     */
+    private function visiblePermissionCategories(): array
+    {
+        return array_filter(
+            PermissionCatalog::CATEGORIES,
+            fn(string $category): bool => $this->isCategoryVisible($category),
+            ARRAY_FILTER_USE_KEY
+        );
+    }
+
+    private function isCategoryVisible(string $category): bool
+    {
+        $bundle = PermissionCatalog::CATEGORY_BUNDLES[$category] ?? null;
+        return $bundle === null || bundle_enabled($bundle);
     }
 
     private function roleHolders(int $roleId): array

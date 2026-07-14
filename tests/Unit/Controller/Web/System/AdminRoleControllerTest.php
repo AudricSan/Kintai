@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Controller\Web\System;
 
+use kintai\Core\Container;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
+use kintai\Core\FeatureManager;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
@@ -50,6 +52,10 @@ final class AdminRoleControllerTest extends TestCase
     {
         $_GET = [];
         $_POST = [];
+        // Réinitialise le singleton Container pour ne pas propager le
+        // FeatureManager injecté par les tests de bundles désactivés.
+        $instance = new \ReflectionProperty(Container::class, 'instance');
+        $instance->setValue(null, null);
     }
 
     private function ownerRequest(): Request
@@ -214,6 +220,60 @@ final class AdminRoleControllerTest extends TestCase
 
         $this->assertSame(302, $response->status());
         $this->assertSame(['shifts.view'], $capturedPermissions);
+    }
+
+    public function testUpdateRolePreservesPermissionsOfDisabledBundles(): void
+    {
+        // Aucun bundle activé → les catégories portées par un bundle (timeoff,
+        // swaps…) sont masquées du formulaire : leurs cases ne sont ni
+        // affichées ni prises en compte, mais les clés déjà accordées
+        // survivent à la sauvegarde.
+        Container::getInstance()->instance(FeatureManager::class, new FeatureManager([]));
+
+        $this->roles->method('findById')->willReturn(['id' => 2, 'name' => 'Manager', 'is_system' => 0]);
+        $this->roles->method('getPermissions')->willReturn(['timeoff.view', 'timeoff.approve', 'employees.view']);
+        $this->roles->method('save')->willReturnCallback(fn(array $d) => $d);
+
+        $capturedPermissions = null;
+        $this->roles->expects($this->once())->method('savePermissions')
+            ->willReturnCallback(function (int $roleId, array $perms) use (&$capturedPermissions) {
+                $capturedPermissions = $perms;
+            });
+
+        $_POST = ['name' => 'Manager', 'perm_shifts_view' => '1', 'perm_swaps_view' => '1'];
+        $req = $this->ownerRequest();
+        $req->setRouteParams(['id' => 2]);
+
+        $this->controller->updateRole($req);
+
+        sort($capturedPermissions);
+        // employees.view (catégorie Core, décochée) disparaît ; swaps.view
+        // (catégorie masquée, cochée par manipulation du POST) est ignorée ;
+        // les clés timeoff.* déjà en base sont préservées.
+        $this->assertSame(['shifts.view', 'timeoff.approve', 'timeoff.view'], $capturedPermissions);
+    }
+
+    public function testUpdateRoleAcceptsBundleCategoryWhenBundleEnabled(): void
+    {
+        Container::getInstance()->instance(FeatureManager::class, new FeatureManager(['timeoff']));
+
+        $this->roles->method('findById')->willReturn(['id' => 2, 'name' => 'Manager', 'is_system' => 0]);
+        $this->roles->method('getPermissions')->willReturn([]);
+        $this->roles->method('save')->willReturnCallback(fn(array $d) => $d);
+
+        $capturedPermissions = null;
+        $this->roles->expects($this->once())->method('savePermissions')
+            ->willReturnCallback(function (int $roleId, array $perms) use (&$capturedPermissions) {
+                $capturedPermissions = $perms;
+            });
+
+        $_POST = ['name' => 'Manager', 'perm_timeoff_view' => '1'];
+        $req = $this->ownerRequest();
+        $req->setRouteParams(['id' => 2]);
+
+        $this->controller->updateRole($req);
+
+        $this->assertSame(['timeoff.view'], $capturedPermissions);
     }
 
     // -------------------------------------------------------------------------
