@@ -30,12 +30,14 @@ final class ApiPermissionMiddlewareTest extends TestCase
 
     protected function tearDown(): void
     {
-        $_GET = [];
+        $_GET  = [];
+        $_POST = [];
     }
 
-    private function makeRequest(?string $routeName, int $authUserId, array $routeParams = [], array $query = []): Request
+    private function makeRequest(?string $routeName, int $authUserId, array $routeParams = [], array $query = [], array $post = []): Request
     {
-        $_GET = $query;
+        $_GET  = $query;
+        $_POST = $post;
         $request = new Request();
         $request->setAttribute('route_name', $routeName);
         $request->setAttribute('auth_user', ['id' => $authUserId]);
@@ -133,6 +135,39 @@ final class ApiPermissionMiddlewareTest extends TestCase
         $request  = $this->makeRequest('api.v1.users.show', 10, ['id' => '11']);
         $response = $this->middleware->handle($request, $this->next());
 
+        $this->assertSame(403, $response->status());
+    }
+
+    public function testSelfRuleReadsUserIdFromRequestBody(): void
+    {
+        $this->assignments->method('findByUser')->willReturn([]);
+
+        // clock-in pour soi-même (user_id du corps) → autorisé sans permission
+        $request = $this->makeRequest('api.v1.timeclock.clock_in', 10, post: ['user_id' => '10']);
+
+        $this->assertSame(200, $this->middleware->handle($request, $this->next())->status());
+    }
+
+    public function testSelfRuleRejectsBodyTargetingAnotherUser(): void
+    {
+        $this->assignments->method('findByUser')->willReturn([]);
+
+        // clock-in pour un autre employé sans timeclock.update → 403
+        $request  = $this->makeRequest('api.v1.timeclock.clock_in', 10, post: ['user_id' => '11']);
+        $response = $this->middleware->handle($request, $this->next());
+
+        $this->assertSame(403, $response->status());
+    }
+
+    public function testBundleRouteRequiresItsPermission(): void
+    {
+        $this->grantStoreRole(10, 2, 1, ['timeoff.view', 'timeoff.approve']);
+
+        $ok = $this->makeRequest('api.v1.timeoff.index', 10);
+        $this->assertSame(200, $this->middleware->handle($ok, $this->next())->status());
+
+        $ko       = $this->makeRequest('api.v1.timeoff.destroy', 10, ['id' => '5']);
+        $response = $this->middleware->handle($ko, $this->next());
         $this->assertSame(403, $response->status());
     }
 
