@@ -31,6 +31,7 @@ use kintai\UI\Controller\Web\System\MailTestController;
 use kintai\UI\Controller\Web\System\OwnerSettingsController;
 use kintai\Core\Middleware\AuthMiddleware;
 use kintai\Core\Middleware\AdminMiddleware;
+use kintai\Core\Middleware\PermissionMiddleware;
 use kintai\Core\Middleware\ApiAuthMiddleware;
 use kintai\Core\Middleware\RateLimiterMiddleware;
 use kintai\UI\Controller\Api\V1\AuthController as ApiAuthController;
@@ -144,7 +145,7 @@ $router->post('/switch-device', [AuthController::class, 'switchDevice'], middlew
 $router->get('/lang/{locale}', [AuthController::class, 'switchLanguage'], name: 'lang.switch');
 
 // --- Accueil / Dashboard ---
-$router->get('/', [HomeController::class, 'index'], middleware: [AuthMiddleware::class, AdminMiddleware::class], name: 'home');
+$router->get('/', [HomeController::class, 'index'], middleware: [AuthMiddleware::class, AdminMiddleware::class, PermissionMiddleware::class], name: 'home');
 $router->post('/admin/dashboard/widgets', [HomeController::class, 'saveDashboardWidgets'], middleware: [AuthMiddleware::class, AdminMiddleware::class], name: 'admin.dashboard.widgets');
 
 // =============================================================================
@@ -284,7 +285,7 @@ $router->group('/admin', function ($r) {
     $r->post('/roles/{id}/edit',   [AdminRoleController::class, 'updateRole'], name: 'admin.roles.update');
     $r->post('/roles/{id}/delete', [AdminRoleController::class, 'deleteRole'], name: 'admin.roles.delete');
 
-}, middleware: [AuthMiddleware::class, AdminMiddleware::class]);
+}, middleware: [AuthMiddleware::class, AdminMiddleware::class, PermissionMiddleware::class]);
 
 // =============================================================================
 // API v1
