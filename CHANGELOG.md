@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Added
+- Foundations for a dynamic RBAC (role-based access control) system: new `roles`, `role_permissions`, and `role_assignments` tables, seeded at migration time with three default roles (Owner/Manager/Employé) replacing the hardcoded `users.is_admin` flag and `store_user.role` string in the long run. A user can hold several role assignments, each scoped either globally (`scope_type='global'`, e.g. Owner) or to a specific store (`scope_type='store'`), which natively supports assigning the same role across multiple stores (e.g. an "Area Manager"). New `PermissionCatalog` (`src/Core/Auth/PermissionCatalog.php`) defines the available permission keys grouped by category (employees/shifts/stores/payroll/documents/settings), and a new `PermissionService::can()`/`scopedStoreIds()` (`src/Core/Auth/PermissionService.php`) resolves them against a user's role assignments, short-circuiting to `true` for system roles (Owner) regardless of the `role_permissions` table. This is purely additive: nothing in the application reads from these new tables yet — `AuthService`/`HasAdminAccess` still drive authorization from `is_admin`/`store_user.role` as before. First phase of a broader RBAC migration (see `task/mermission.md`); no user-visible behavior change.
+
 ## [0.6.0] - 2026-07-10
 
 ### Added
