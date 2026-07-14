@@ -207,6 +207,11 @@ final class AdminUserController
 
     public function storeUser(Request $request): Response
     {
+        $email = trim($request->post('email', ''));
+        if ($email !== '' && $this->users->findByEmail($email) !== null) {
+            return Response::redirect($this->base() . '/admin/users/create?error=email_taken');
+        }
+
         $password = $request->post('password', '');
         $empCode  = strtoupper(trim($request->post('employee_code', ''))) ?: null;
         if ($password === '') {
@@ -327,6 +332,11 @@ final class AdminUserController
                 $email = $base . $attempt . '@kintai.local';
                 if ($attempt > 99) break;
             }
+        } elseif ($this->users->findByEmail($email) !== null) {
+            // Email fourni explicitement (pas auto-généré) : évite un crash SQL
+            // (contrainte unique) si l'employé existe déjà sous un autre nom Excel
+            // non reconnu par le matching de l'import.
+            return Response::json(['success' => false, 'error' => 'email_taken'], 409);
         }
 
         // Vérifier unicité du code employé si fourni
@@ -481,12 +491,20 @@ final class AdminUserController
             throw new NotFoundException('Utilisateur introuvable.');
         }
 
+        $email = trim($request->post('email', $user['email'] ?? ''));
+        if ($email !== ($user['email'] ?? '')) {
+            $existing = $this->users->findByEmail($email);
+            if ($existing !== null && (int) $existing['id'] !== (int) $user['id']) {
+                return Response::redirect($this->base() . '/admin/users/' . $user['id'] . '/edit?error=email_taken');
+            }
+        }
+
         $empCode = strtoupper(trim($request->post('employee_code', ''))) ?: null;
         $data = array_merge($user, [
             'display_name'       => $request->post('display_name', $user['display_name'] ?? ''),
             'first_name'         => $request->post('first_name', $user['first_name'] ?? ''),
             'last_name'          => $request->post('last_name', $user['last_name'] ?? ''),
-            'email'              => $request->post('email', $user['email'] ?? ''),
+            'email'              => $email,
             'phone'              => $request->post('phone', '') ?: null,
             'mobile_phone'       => $request->post('mobile_phone', '') ?: null,
             'furigana'            => null,

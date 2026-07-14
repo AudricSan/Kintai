@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Fixed
+- Creating an employee with an email address that already belongs to another account (standard "new user" form, quick-create from the shift-import preview, or editing an existing user's email) crashed with an uncaught SQL unique-constraint exception instead of a clear error — most visible when an import's name-matching didn't recognize an employee who already existed under a different Excel name, so the same real email got submitted twice via quick-create. `AdminUserController::storeUser()`/`updateUser()`/`quickCreateUser()` now check email uniqueness upfront (same pattern already used for `employee_code`) and return a clear `email_taken` error instead of crashing.
+
 ## [0.7.0] - 2026-07-14
 
 ### Added
