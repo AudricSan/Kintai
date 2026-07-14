@@ -15,6 +15,7 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\RoleAssignmentSyncService;
 use kintai\Core\Services\StoreServiceInterface;
 use kintai\Core\Services\StoreStatsServiceInterface;
 use kintai\UI\ViewRenderer;
@@ -34,6 +35,7 @@ final class AdminStoreController
         private readonly StoreServiceInterface $storeService,
         private readonly StoreStatsServiceInterface $storeStatsService,
         private readonly FeatureManager $features,
+        private readonly RoleAssignmentSyncService $roleSync,
     ) {}
 
     /**
@@ -240,7 +242,10 @@ final class AdminStoreController
         $role   = $request->post('role', 'staff');
 
         if ($userId > 0) {
-            $this->storeService->addMember($storeId, $userId, $role);
+            $membership = $this->storeService->addMember($storeId, $userId, $role);
+            if ($membership !== null) {
+                $this->roleSync->syncStoreRole($userId, $storeId, $role);
+            }
             $this->auditLogger->log($request, 'store.member_added', 'store_user', null, [
                 'store_id' => $storeId,
                 'user_id'  => $userId,
@@ -268,6 +273,7 @@ final class AdminStoreController
         $oldRole = $membership['role'];
 
         $this->storeService->updateMemberRole($mid, $storeId, $role);
+        $this->roleSync->syncStoreRole((int) $membership['user_id'], $storeId, $role);
         $this->auditLogger->logUpdate($request, 'store.member_role_updated', 'store_user', $mid, ['role' => $oldRole], ['role' => $role], [
             'store_id' => $storeId,
             'user_id' => $membership['user_id'] ?? null,
@@ -288,6 +294,7 @@ final class AdminStoreController
         $this->assertStoreAccess($request, $storeId);
 
         $this->storeService->removeMember($mid, $storeId);
+        $this->roleSync->revokeStoreRole((int) $membership['user_id'], $storeId);
         $this->auditLogger->log($request, 'store.member_removed', 'store_user', $mid, [
             'store_id' => $storeId,
             'user_id' => $membership['user_id'] ?? null,

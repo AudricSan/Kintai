@@ -16,6 +16,7 @@ use kintai\Core\Repositories\HiringReportRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\RoleAssignmentSyncService;
 use kintai\UI\ViewRenderer;
 use kintai\UI\Controller\Web\HasAdminAccess;
 
@@ -32,6 +33,7 @@ final class AdminUserController
         private readonly UserShiftTypeRateRepositoryInterface $userRates,
         private readonly HiringReportRepositoryInterface $hiringReports,
         private readonly AuditLogger $auditLogger,
+        private readonly RoleAssignmentSyncService $roleSync,
     ) {}
 
     // -------------------------------------------------------------------------
@@ -237,6 +239,7 @@ final class AdminUserController
             'is_admin'           => $request->post('is_admin') === '1' ? 1 : 0,
             'is_active'          => 1,
         ]);
+        $this->roleSync->syncOwnerRole((int) ($saved['id'] ?? 0), $request->post('is_admin') === '1');
 
         // Affecter au magasin si sélectionné
         $storeId = (int) $request->post('store_id', 0);
@@ -250,6 +253,7 @@ final class AdminUserController
                 'user_id'  => (int) $saved['id'],
                 'role'     => $role,
             ]);
+            $this->roleSync->syncStoreRole((int) $saved['id'], $storeId, $role);
 
             // Générer automatiquement le rapport d'embauche
             $this->hiringReports->save([
@@ -362,6 +366,7 @@ final class AdminUserController
         if (empty($saved['id'])) {
             return Response::json(['success' => false, 'error' => 'Création échouée.'], 500);
         }
+        $this->roleSync->syncOwnerRole((int) $saved['id'], (bool) $isAdmin);
 
         if ($storeId > 0) {
             $this->assertStoreAccess($request, $storeId);
@@ -372,6 +377,7 @@ final class AdminUserController
                 'user_id'  => (int) $saved['id'],
                 'role'     => $storeRole,
             ]);
+            $this->roleSync->syncStoreRole((int) $saved['id'], $storeId, $storeRole);
 
             // Générer automatiquement le rapport d'embauche
             $this->hiringReports->save([
@@ -507,6 +513,7 @@ final class AdminUserController
         }
 
         $this->users->save($data);
+        $this->roleSync->syncOwnerRole((int) $user['id'], $request->post('is_admin') === '1');
         $this->auditLogger->logUpdate($request, 'user.updated', 'user', (int) $user['id'], $user, $data, [], null, null);
         return Response::redirect($this->base() . '/admin/users?success=updated');
     }
