@@ -78,70 +78,171 @@ final class RoleAssignmentSyncServiceTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
-    // syncStoreRole()
+    // syncStoreRoleById()
     // -------------------------------------------------------------------------
 
-    public function testSyncStoreRoleAssignsManagerForAdminLegacyRole(): void
+    public function testSyncStoreRoleByIdAssignsWhenMissing(): void
     {
-        $this->roles->method('findBySlug')->with('manager')->willReturn(['id' => 2]);
+        $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'name' => 'Manager', 'is_system' => 0]);
+        $this->roles->method('getPermissions')->with(2)->willReturn(['employees.view']);
         $this->assignments->method('findByUser')->with(10)->willReturn([]);
         $this->assignments->expects($this->once())->method('assign')->with(10, 2, 'store', 1);
 
-        $this->service->syncStoreRole(10, 1, 'admin');
+        $role = $this->service->syncStoreRoleById(10, 1, 2);
+        $this->assertSame('Manager', $role['name']);
+        $this->assertTrue($role['is_managing']);
     }
 
-    public function testSyncStoreRoleAssignsManagerForManagerLegacyRole(): void
+    public function testSyncStoreRoleByIdReplacesExistingDifferentRoleOnSameStore(): void
     {
-        $this->roles->method('findBySlug')->with('manager')->willReturn(['id' => 2]);
-        $this->assignments->method('findByUser')->willReturn([]);
-        $this->assignments->expects($this->once())->method('assign')->with(10, 2, 'store', 1);
-
-        $this->service->syncStoreRole(10, 1, 'manager');
-    }
-
-    public function testSyncStoreRoleAssignsEmployeeForStaffLegacyRole(): void
-    {
-        $this->roles->method('findBySlug')->with('employee')->willReturn(['id' => 3]);
-        $this->assignments->method('findByUser')->willReturn([]);
-        $this->assignments->expects($this->once())->method('assign')->with(10, 3, 'store', 1);
-
-        $this->service->syncStoreRole(10, 1, 'staff');
-    }
-
-    public function testSyncStoreRoleReplacesExistingDifferentRoleOnSameStore(): void
-    {
-        $this->roles->method('findBySlug')->with('manager')->willReturn(['id' => 2]);
+        $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'name' => 'Manager', 'is_system' => 0]);
+        $this->roles->method('getPermissions')->willReturn([]);
         $this->assignments->method('findByUser')->willReturn([
             ['id' => 9, 'user_id' => 10, 'role_id' => 3, 'scope_type' => 'store', 'scope_id' => 1],
         ]);
         $this->assignments->expects($this->once())->method('revoke')->with(9);
         $this->assignments->expects($this->once())->method('assign')->with(10, 2, 'store', 1);
 
-        $this->service->syncStoreRole(10, 1, 'manager');
+        $this->service->syncStoreRoleById(10, 1, 2);
     }
 
-    public function testSyncStoreRoleDoesNothingWhenAlreadyCorrect(): void
+    public function testSyncStoreRoleByIdDoesNothingWhenAlreadyCorrect(): void
     {
-        $this->roles->method('findBySlug')->with('manager')->willReturn(['id' => 2]);
+        $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'name' => 'Manager', 'is_system' => 0]);
+        $this->roles->method('getPermissions')->willReturn([]);
         $this->assignments->method('findByUser')->willReturn([
             ['id' => 9, 'user_id' => 10, 'role_id' => 2, 'scope_type' => 'store', 'scope_id' => 1],
         ]);
         $this->assignments->expects($this->never())->method('revoke');
         $this->assignments->expects($this->never())->method('assign');
 
-        $this->service->syncStoreRole(10, 1, 'manager');
+        $this->service->syncStoreRoleById(10, 1, 2);
     }
 
-    public function testSyncStoreRoleIgnoresAssignmentsOnOtherStores(): void
+    public function testSyncStoreRoleByIdRejectsSystemRole(): void
     {
-        $this->roles->method('findBySlug')->with('manager')->willReturn(['id' => 2]);
-        $this->assignments->method('findByUser')->willReturn([
-            ['id' => 9, 'user_id' => 10, 'role_id' => 3, 'scope_type' => 'store', 'scope_id' => 2],
-        ]);
-        $this->assignments->expects($this->never())->method('revoke');
-        $this->assignments->expects($this->once())->method('assign')->with(10, 2, 'store', 1);
+        $this->roles->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Owner', 'is_system' => 1]);
+        $this->assignments->expects($this->never())->method('assign');
 
-        $this->service->syncStoreRole(10, 1, 'manager');
+        $this->assertNull($this->service->syncStoreRoleById(10, 1, 1));
+    }
+
+    public function testSyncStoreRoleByIdRejectsUnknownRole(): void
+    {
+        $this->roles->method('findById')->willReturn(null);
+        $this->assignments->expects($this->never())->method('assign');
+
+        $this->assertNull($this->service->syncStoreRoleById(10, 1, 99));
+    }
+
+    // -------------------------------------------------------------------------
+    // assignableStoreRoles() / defaultStoreRole() / legacyRoleFor()
+    // -------------------------------------------------------------------------
+
+    public function testAssignableStoreRolesExcludesSystemRolesAndFlagsManaging(): void
+    {
+        $this->roles->method('findAll')->willReturn([
+            ['id' => 1, 'name' => 'Owner', 'is_system' => 1],
+            ['id' => 2, 'name' => 'Manager', 'is_system' => 0],
+            ['id' => 3, 'name' => 'Employé', 'is_system' => 0],
+        ]);
+        $this->roles->method('getPermissions')->willReturnMap([
+            [2, ['employees.view', 'shifts.create']],
+            [3, []],
+        ]);
+
+        $roles = $this->service->assignableStoreRoles();
+
+        $this->assertCount(2, $roles);
+        $this->assertSame([2, 3], array_map(fn($r) => $r['id'], $roles));
+        $this->assertTrue($roles[0]['is_managing']);
+        $this->assertFalse($roles[1]['is_managing']);
+    }
+
+    public function testDefaultStoreRolePrefersRoleWithoutPermissions(): void
+    {
+        $this->roles->method('findAll')->willReturn([
+            ['id' => 2, 'name' => 'Manager', 'is_system' => 0],
+            ['id' => 3, 'name' => 'Employé', 'is_system' => 0],
+        ]);
+        $this->roles->method('getPermissions')->willReturnMap([
+            [2, ['employees.view']],
+            [3, []],
+        ]);
+
+        $this->assertSame(3, $this->service->defaultStoreRole()['id']);
+    }
+
+    public function testDefaultStoreRoleFallsBackToFirstAssignable(): void
+    {
+        $this->roles->method('findAll')->willReturn([
+            ['id' => 2, 'name' => 'Manager', 'is_system' => 0],
+        ]);
+        $this->roles->method('getPermissions')->willReturn(['employees.view']);
+
+        $this->assertSame(2, $this->service->defaultStoreRole()['id']);
+    }
+
+    public function testDefaultStoreRoleIsNullWithoutDynamicRoles(): void
+    {
+        $this->roles->method('findAll')->willReturn([
+            ['id' => 1, 'name' => 'Owner', 'is_system' => 1],
+        ]);
+
+        $this->assertNull($this->service->defaultStoreRole());
+    }
+
+    public function testLegacyRoleForMapsByGrantedPermissions(): void
+    {
+        $this->roles->method('getPermissions')->willReturnMap([
+            [2, ['employees.view']],
+            [3, []],
+        ]);
+
+        $this->assertSame('manager', $this->service->legacyRoleFor(2));
+        $this->assertSame('staff', $this->service->legacyRoleFor(3));
+    }
+
+    // -------------------------------------------------------------------------
+    // storeRoleMapForStore() / storeRoleMapForUser()
+    // -------------------------------------------------------------------------
+
+    public function testStoreRoleMapForStoreIndexesByUser(): void
+    {
+        $this->assignments->method('findByScope')->with('store', 1)->willReturn([
+            ['id' => 9, 'user_id' => 10, 'role_id' => 2, 'scope_type' => 'store', 'scope_id' => 1],
+            ['id' => 11, 'user_id' => 12, 'role_id' => 3, 'scope_type' => 'store', 'scope_id' => 1],
+        ]);
+        $this->roles->method('findById')->willReturnMap([
+            [2, ['id' => 2, 'name' => 'Manager', 'is_system' => 0]],
+            [3, ['id' => 3, 'name' => 'Employé', 'is_system' => 0]],
+        ]);
+        $this->roles->method('getPermissions')->willReturnMap([
+            [2, ['employees.view']],
+            [3, []],
+        ]);
+
+        $map = $this->service->storeRoleMapForStore(1);
+
+        $this->assertSame(['role_id' => 2, 'name' => 'Manager', 'is_managing' => true], $map[10]);
+        $this->assertSame(['role_id' => 3, 'name' => 'Employé', 'is_managing' => false], $map[12]);
+    }
+
+    public function testStoreRoleMapForUserIndexesByStoreAndIgnoresGlobalScope(): void
+    {
+        $this->assignments->method('findByUser')->with(10)->willReturn([
+            ['id' => 5, 'user_id' => 10, 'role_id' => 1, 'scope_type' => 'global', 'scope_id' => null],
+            ['id' => 9, 'user_id' => 10, 'role_id' => 2, 'scope_type' => 'store', 'scope_id' => 4],
+        ]);
+        $this->roles->method('findById')->willReturnMap([
+            [2, ['id' => 2, 'name' => 'Manager', 'is_system' => 0]],
+        ]);
+        $this->roles->method('getPermissions')->willReturn(['employees.view']);
+
+        $map = $this->service->storeRoleMapForUser(10);
+
+        $this->assertArrayNotHasKey(0, $map);
+        $this->assertSame(['role_id' => 2, 'name' => 'Manager', 'is_managing' => true], $map[4]);
     }
 
     // -------------------------------------------------------------------------

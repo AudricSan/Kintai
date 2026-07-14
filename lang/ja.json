@@ -778,6 +778,7 @@
     "role_employee": "従業員",
     "role_holders": "この役割を持つユーザー",
     "role_in_use": "この役割は現在少なくとも1人のユーザーに割り当てられています。先に解除してください。",
+    "role_invalid": "無効な役割です。",
     "role_invalid_name": "役割名を入力してください。",
     "role_manager": "マネージャー",
     "role_owner": "オーナー",

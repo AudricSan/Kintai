@@ -198,10 +198,12 @@ final class AdminUserController
     public function createUser(Request $request): Response
     {
         return Response::html($this->view->render('staff.users-form', [
-            'title'      => 'Nouvel utilisateur',
-            'mode'       => 'create',
-            'user'       => [],
-            'all_stores' => $this->availableStores($this->managedIds($request)),
+            'title'                 => 'Nouvel utilisateur',
+            'mode'                  => 'create',
+            'user'                  => [],
+            'all_stores'            => $this->availableStores($this->managedIds($request)),
+            'assignable_roles'      => $this->roleSync->assignableStoreRoles(),
+            'default_store_role_id' => (int) ($this->roleSync->defaultStoreRole()['id'] ?? 0),
         ], 'layout.app'));
     }
 
@@ -250,15 +252,16 @@ final class AdminUserController
         $storeId = (int) $request->post('store_id', 0);
         if ($storeId > 0 && !empty($saved['id'])) {
             $this->assertStoreAccess($request, $storeId);
-            $validRoles = ['staff', 'manager', 'admin'];
-            $role = $request->post('store_role', 'staff');
-            if (!in_array($role, $validRoles, true)) $role = 'staff';
+            $role = $this->roleSync->findAssignableRole((int) $request->post('store_role_id', 0))
+                ?? $this->roleSync->defaultStoreRole();
             $membership = $this->storeUsers->save([
                 'store_id' => $storeId,
                 'user_id'  => (int) $saved['id'],
-                'role'     => $role,
+                'role'     => $role !== null ? $this->roleSync->legacyRoleFor((int) $role['id']) : 'staff',
             ]);
-            $this->roleSync->syncStoreRole((int) $saved['id'], $storeId, $role);
+            if ($role !== null) {
+                $this->roleSync->syncStoreRoleById((int) $saved['id'], $storeId, (int) $role['id']);
+            }
 
             // Générer automatiquement le rapport d'embauche
             $this->hiringReports->save([
@@ -309,7 +312,7 @@ final class AdminUserController
         $color       = $request->post('color', '#3B82F6');
         $isAdmin     = $request->post('is_admin') === '1' ? 1 : 0;
         $storeId     = (int) $request->post('store_id', 0);
-        $storeRole   = $request->post('store_role', 'staff');
+        $storeRoleId = (int) $request->post('store_role_id', 0);
 
         if ($firstName === '' && $displayName === '') {
             return Response::json(['success' => false, 'error' => 'Prénom ou nom d\'affichage requis.'], 422);
@@ -380,14 +383,15 @@ final class AdminUserController
 
         if ($storeId > 0) {
             $this->assertStoreAccess($request, $storeId);
-            $validRoles = ['staff', 'manager', 'admin'];
-            if (!in_array($storeRole, $validRoles, true)) $storeRole = 'staff';
+            $role = $this->roleSync->findAssignableRole($storeRoleId) ?? $this->roleSync->defaultStoreRole();
             $this->storeUsers->save([
                 'store_id' => $storeId,
                 'user_id'  => (int) $saved['id'],
-                'role'     => $storeRole,
+                'role'     => $role !== null ? $this->roleSync->legacyRoleFor((int) $role['id']) : 'staff',
             ]);
-            $this->roleSync->syncStoreRole((int) $saved['id'], $storeId, $storeRole);
+            if ($role !== null) {
+                $this->roleSync->syncStoreRoleById((int) $saved['id'], $storeId, (int) $role['id']);
+            }
 
             // Générer automatiquement le rapport d'embauche
             $this->hiringReports->save([
@@ -452,12 +456,15 @@ final class AdminUserController
         }
 
         // Appartenance aux stores (enrichie avec nom du store, rôle, cotisations)
+        $roleMap = $this->roleSync->storeRoleMapForUser($userId);
         $userMemberships = [];
         foreach ($memberships as $m) {
             $sid = (int) $m['store_id'];
             $mid = (int) ($m['id'] ?? 0);
             $userMemberships[] = array_merge($m, [
                 'store_name'         => $storesMap[$sid] ?? '#' . $sid,
+                'role_name'          => $roleMap[$sid]['name'] ?? ($m['role'] ?? '—'),
+                'role_is_managing'   => !empty($roleMap[$sid]['is_managing']),
                 'store_ded_settings' => $this->stores->getDeductionSettings($sid),
                 'ded_overrides'      => ['subject_to_deductions' => $mid > 0 ? $this->storeUsers->getSubjectToDeductions($mid) : false],
             ]);
@@ -481,6 +488,8 @@ final class AdminUserController
             'user_memberships' => $userMemberships,
             'available_stores' => $availableStores,
             'all_stores'       => $this->availableStores($this->managedIds($request)),
+            'assignable_roles'      => $this->roleSync->assignableStoreRoles(),
+            'default_store_role_id' => (int) ($this->roleSync->defaultStoreRole()['id'] ?? 0),
         ], 'layout.app'));
     }
 
