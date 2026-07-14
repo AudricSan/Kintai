@@ -343,6 +343,7 @@
     "education": "最終学歴",
     "email": "メール",
     "email_address": "メールアドレス",
+    "email_taken": "このメールアドレスは既に別のアカウントで使用されています。",
     "employee": "従業員",
     "employee_code": "従業員コード",
     "employee_code_hint": "任意、クイックログインに使用",
