@@ -17,10 +17,10 @@ declare(strict_types=1);
  * n'importe où suffit.
  *
  * Routes absentes de cette map : simple authentification par token (routes
- * auth.* — opérations du porteur du token — et notifications.*, désormais
- * strictement limitées à l'utilisateur du token par le contrôleur).
- * Les endpoints des bundles (timeoff, swaps, timeclock, shift claims,
- * messages, feedbacks, daily reports) seront mappés avec leurs bundles.
+ * auth.* — opérations du porteur du token — et notifications.* et messages.*,
+ * strictement limitées à l'utilisateur du token par leur contrôleur).
+ * Les endpoints du bundle DailyReport seront mappés lors de la refonte de
+ * DailyReportPermissionService (permissions par store).
  */
 
 return [
@@ -85,4 +85,42 @@ return [
 
     // --- Journal d'activité --------------------------------------------------------------
     'api.v1.activity.index' => 'stores.view',
+
+    // --- Congés (bundle TimeOff) --------------------------------------------------
+    'api.v1.timeoff.index'   => ['perm' => 'timeoff.view',   'self' => 'user_id'],
+    'api.v1.timeoff.show'    => 'timeoff.view',
+    'api.v1.timeoff.store'   => ['perm' => 'timeoff.create', 'self' => 'user_id'],
+    'api.v1.timeoff.update'  => 'timeoff.update',
+    'api.v1.timeoff.destroy' => 'timeoff.delete',
+
+    // --- Échanges de shifts (bundle ShiftSwap) --------------------------------------
+    'api.v1.swap.index'   => 'swaps.view',
+    'api.v1.swap.show'    => 'swaps.view',
+    'api.v1.swap.store'   => 'swaps.create',
+    'api.v1.swap.update'  => 'swaps.update',
+    'api.v1.swap.destroy' => 'swaps.delete',
+
+    // --- Pointage (bundle Timeclock) — clock-in/out : un porteur de token pointe
+    // pour lui-même (user_id du corps), pointer pour autrui exige timeclock.update.
+    'api.v1.timeclock.clock_in'  => ['perm' => 'timeclock.update', 'self' => 'user_id'],
+    'api.v1.timeclock.clock_out' => ['perm' => 'timeclock.update', 'self' => 'user_id'],
+    'api.v1.timeclock.index'     => ['perm' => 'timeclock.view',   'self' => 'user_id'],
+    'api.v1.timeclock.show'      => 'timeclock.view',
+    'api.v1.timeclock.update'    => 'timeclock.update',
+    'api.v1.timeclock.destroy'   => 'timeclock.delete',
+
+    // --- Bourse aux shifts (bundle ShiftClaim) — revendiquer pour soi-même est
+    // libre, gérer les revendications des autres exige open_shifts.approve.
+    'api.v1.shift_claims.index'   => ['perm' => 'open_shifts.view',    'self' => 'user_id'],
+    'api.v1.shift_claims.show'    => 'open_shifts.view',
+    'api.v1.shift_claims.store'   => ['perm' => 'open_shifts.approve', 'self' => 'user_id'],
+    'api.v1.shift_claims.update'  => 'open_shifts.approve',
+    'api.v1.shift_claims.destroy' => 'open_shifts.approve',
+
+    // --- Feedbacks (bundle Feedback) — soumettre son propre feedback est libre.
+    'api.v1.feedbacks.index'   => 'feedbacks.view',
+    'api.v1.feedbacks.show'    => 'feedbacks.view',
+    'api.v1.feedbacks.store'   => ['perm' => 'feedbacks.update', 'self' => 'user_id'],
+    'api.v1.feedbacks.update'  => 'feedbacks.update',
+    'api.v1.feedbacks.destroy' => 'feedbacks.delete',
 ];
