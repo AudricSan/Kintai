@@ -277,16 +277,20 @@ final class AdminUserControllerTest extends TestCase
     public function testQuickCreateUserAssignsStoreMembership(): void
     {
         $req = $this->makePostRequest([
-            'display_name' => 'John',
-            'first_name'   => 'John',
-            'email'        => 'john@example.com',
-            'password'     => 'pass',
-            'store_id'     => '3',
-            'store_role'   => 'manager',
+            'display_name'  => 'John',
+            'first_name'    => 'John',
+            'email'         => 'john@example.com',
+            'password'      => 'pass',
+            'store_id'      => '3',
+            'store_role_id' => '2',
         ]);
         $req->setAttribute('managed_store_ids', null);
 
         $this->users->method('save')->willReturn(['id' => 10, 'display_name' => 'John']);
+        // Rôle dynamique id=2 accordant des permissions → colonne legacy 'manager'
+        $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'name' => 'Manager', 'is_system' => 0]);
+        $this->roles->method('getPermissions')->with(2)->willReturn(['employees.view']);
+        $this->roleAssignments->method('findByUser')->willReturn([]);
 
         $capturedStoreUser = null;
         $this->storeUsers->method('save')->willReturnCallback(function (array $d) use (&$capturedStoreUser) {
@@ -310,24 +314,59 @@ final class AdminUserControllerTest extends TestCase
     public function testQuickCreateUserSyncsRoleAssignmentForStoreMembership(): void
     {
         $req = $this->makePostRequest([
+            'display_name'  => 'John',
+            'first_name'    => 'John',
+            'email'         => 'john@example.com',
+            'password'      => 'pass',
+            'store_id'      => '3',
+            'store_role_id' => '2',
+        ]);
+        $req->setAttribute('managed_store_ids', null);
+
+        $this->users->method('save')->willReturn(['id' => 10, 'display_name' => 'John']);
+        $this->roles->method('findBySlug')->with('owner')->willReturn(null);
+        $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'name' => 'Manager', 'is_system' => 0]);
+        $this->roles->method('getPermissions')->with(2)->willReturn(['employees.view']);
+        $this->roleAssignments->method('findByUser')->willReturn([]);
+        $this->roleAssignments->expects($this->once())->method('assign')->with(10, 2, 'store', 3);
+
+        $this->controller->quickCreateUser($req);
+    }
+
+    /** Id de rôle absent/invalide → repli sur le rôle par défaut (premier rôle sans permission). */
+    public function testQuickCreateUserFallsBackToDefaultRoleWhenRoleIdMissing(): void
+    {
+        $req = $this->makePostRequest([
             'display_name' => 'John',
             'first_name'   => 'John',
             'email'        => 'john@example.com',
             'password'     => 'pass',
             'store_id'     => '3',
-            'store_role'   => 'manager',
         ]);
         $req->setAttribute('managed_store_ids', null);
 
         $this->users->method('save')->willReturn(['id' => 10, 'display_name' => 'John']);
-        $this->roles->method('findBySlug')->willReturnMap([
-            ['owner', null],
-            ['manager', ['id' => 2]],
+        $this->roles->method('findAll')->willReturn([
+            ['id' => 2, 'name' => 'Manager', 'is_system' => 0],
+            ['id' => 3, 'name' => 'Employé', 'is_system' => 0],
+        ]);
+        $this->roles->method('findById')->with(3)->willReturn(['id' => 3, 'name' => 'Employé', 'is_system' => 0]);
+        $this->roles->method('getPermissions')->willReturnMap([
+            [2, ['employees.view']],
+            [3, []],
         ]);
         $this->roleAssignments->method('findByUser')->willReturn([]);
-        $this->roleAssignments->expects($this->once())->method('assign')->with(10, 2, 'store', 3);
+        $this->roleAssignments->expects($this->once())->method('assign')->with(10, 3, 'store', 3);
+
+        $capturedStoreUser = null;
+        $this->storeUsers->method('save')->willReturnCallback(function (array $d) use (&$capturedStoreUser) {
+            $capturedStoreUser = $d;
+            return $d;
+        });
 
         $this->controller->quickCreateUser($req);
+
+        $this->assertSame('staff', $capturedStoreUser['role']);
     }
 
     public function testQuickCreateUserSyncsOwnerRoleWhenIsAdminChecked(): void

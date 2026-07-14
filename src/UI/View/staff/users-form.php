@@ -14,13 +14,14 @@ use kintai\UI\Components\Flash;
  * @var array  $user_rates
  * @var array  $stores_map
  */
-$user_shift_types ??= [];
-$user_rates       ??= [];
-$stores_map       ??= [];
-$user_memberships ??= [];
-$available_stores ??= [];
-$all_stores       ??= [];
-$roles = ['staff' => __('staff'), 'manager' => 'Manager', 'admin' => __('admin')];
+$user_shift_types      ??= [];
+$user_rates            ??= [];
+$stores_map            ??= [];
+$user_memberships      ??= [];
+$available_stores      ??= [];
+$all_stores            ??= [];
+$assignable_roles      ??= [];
+$default_store_role_id ??= 0;
 $action = $mode === 'edit'
     ? $BASE_URL . '/admin/users/' . (int) $user['id'] . '/edit'
     : route_url('admin.users.create');
@@ -67,7 +68,7 @@ echo Card::make()->body(ob_get_clean())->render();
                     <?php foreach ($user_memberships as $m): ?>
                         <tr>
                             <td data-label="<?= htmlspecialchars(__('store')) ?>"><?= htmlspecialchars($m['store_name'] ?? '') ?></td>
-                            <td data-label="<?= htmlspecialchars(__('role')) ?>"><?= Badge::make(htmlspecialchars($roles[$m['role'] ?? ''] ?? ($m['role'] ?? '—')))->render() ?></td>
+                            <td data-label="<?= htmlspecialchars(__('role')) ?>"><?= Badge::make(htmlspecialchars($m['role_name'] ?? ($m['role'] ?? '—')))->variant(!empty($m['role_is_managing']) ? 'warning' : 'active')->render() ?></td>
                             <td>
                                 <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= (int)$m['store_id'] ?>/members/<?= (int)$m['id'] ?>/delete" class="form-inline" onsubmit="return confirm('<?= __('confirm_remove_member') ?>')">
                                     <?= csrf_field() ?>
@@ -98,9 +99,9 @@ echo Card::make()->body(ob_get_clean())->render();
             </div>
             <div class="form-group form-group--160">
                 <label class="form-label"><?= __('role') ?></label>
-                <select name="role" class="form-control">
-                    <?php foreach ($roles as $val => $label): ?>
-                        <option value="<?= $val ?>" <?= $val === 'staff' ? 'selected' : '' ?>><?= $label ?></option>
+                <select name="role_id" class="form-control">
+                    <?php foreach ($assignable_roles as $r): ?>
+                        <option value="<?= (int) $r['id'] ?>" <?= (int) $r['id'] === (int) $default_store_role_id ? 'selected' : '' ?>><?= htmlspecialchars($r['name'] ?? '') ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
