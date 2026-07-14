@@ -27,12 +27,6 @@ $activeFilters = array_filter([
     'store_id' => $filter_store_id ?: null,
 ], fn($v) => $v !== null);
 
-$userRoles = [
-    'admin' => __('admin'),
-    'manager' => 'Manager',
-    'staff' => __('staff'),
-];
-
 echo Flash::fromQuery('success', [
     'created' => __('operation_success'),
     'updated' => __('user_updated'),

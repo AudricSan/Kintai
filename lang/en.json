@@ -778,6 +778,7 @@
     "role_employee": "Employee",
     "role_holders": "Users with this role",
     "role_in_use": "This role is still assigned to at least one user — remove it first.",
+    "role_invalid": "Invalid or unknown role.",
     "role_invalid_name": "Role name is required.",
     "role_manager": "Manager",
     "role_owner": "Owner",

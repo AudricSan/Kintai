@@ -780,6 +780,7 @@
     "role_employee": "Employé",
     "role_holders": "Utilisateurs ayant ce rôle",
     "role_in_use": "Ce rôle est encore attribué à au moins un utilisateur — retire-le d'abord.",
+    "role_invalid": "Rôle invalide ou introuvable.",
     "role_invalid_name": "Le nom du rôle est requis.",
     "role_manager": "Manager",
     "role_owner": "Propriétaire",
