@@ -31,6 +31,9 @@ echo Flash::fromQuery('success', [
     'rate_deleted'   => __('user_rate_deleted'),
     'password_reset' => __('password_reset_success'),
 ])->render();
+echo Flash::fromQuery('error', [
+    'email_taken' => __('email_taken'),
+])->render();
 ?>
 <div class="page-header">
     <h2 class="page-header__title"><?= $mode === 'edit' ? __('edit_user') : __('new_user') ?></h2>

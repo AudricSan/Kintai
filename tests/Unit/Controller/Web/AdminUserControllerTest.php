@@ -226,6 +226,32 @@ final class AdminUserControllerTest extends TestCase
         $this->assertSame('employee_code_taken', $data['error']);
     }
 
+    /**
+     * Régression : un email fourni explicitement (pas auto-généré) qui existe
+     * déjà en base faisait planter la création avec une exception SQL non
+     * gérée (contrainte unique) au lieu d'un message clair — typiquement
+     * quand l'import de shifts ne reconnaît pas un employé déjà existant.
+     */
+    public function testQuickCreateUserReturns409OnEmailConflict(): void
+    {
+        $req = $this->makePostRequest([
+            'display_name' => 'John',
+            'first_name'   => 'John',
+            'email'        => 'existing@example.com',
+            'password'     => 'pass',
+        ]);
+
+        $this->users->method('findByEmail')->with('existing@example.com')->willReturn(['id' => 99]);
+        $this->users->expects($this->never())->method('save');
+
+        $response = $this->controller->quickCreateUser($req);
+
+        $this->assertSame(409, $response->status());
+        $data = json_decode($response->body(), true);
+        $this->assertFalse($data['success']);
+        $this->assertSame('email_taken', $data['error']);
+    }
+
     public function testQuickCreateUserGeneratesTempPasswordWhenEmpty(): void
     {
         $req = $this->makePostRequest([
@@ -320,6 +346,53 @@ final class AdminUserControllerTest extends TestCase
         $this->roleAssignments->expects($this->once())->method('assign')->with(11, 1, 'global', null);
 
         $this->controller->quickCreateUser($req);
+    }
+
+    // -------------------------------------------------------------------------
+    // storeUser / updateUser — conflit d'email
+    // -------------------------------------------------------------------------
+
+    public function testStoreUserRedirectsWithErrorOnEmailConflict(): void
+    {
+        $req = $this->makePostRequest([
+            'display_name' => 'John',
+            'email'        => 'existing@example.com',
+        ]);
+
+        $this->users->method('findByEmail')->with('existing@example.com')->willReturn(['id' => 99]);
+        $this->users->expects($this->never())->method('save');
+
+        $response = $this->controller->storeUser($req);
+
+        $this->assertSame(302, $response->status());
+    }
+
+    public function testUpdateUserRedirectsWithErrorWhenEmailTakenByAnotherUser(): void
+    {
+        $this->users->method('findById')->with(5)->willReturn(['id' => 5, 'email' => 'me@example.com']);
+        $this->users->method('findByEmail')->with('taken@example.com')->willReturn(['id' => 99]);
+        $this->users->expects($this->never())->method('save');
+
+        $req = $this->makePostRequest(['email' => 'taken@example.com']);
+        $req->setRouteParams(['id' => 5]);
+
+        $response = $this->controller->updateUser($req);
+
+        $this->assertSame(302, $response->status());
+    }
+
+    public function testUpdateUserAllowsKeepingOwnEmailUnchanged(): void
+    {
+        $this->users->method('findById')->with(5)->willReturn(['id' => 5, 'email' => 'me@example.com']);
+        $this->users->expects($this->never())->method('findByEmail');
+        $this->users->expects($this->once())->method('save')->willReturn(['id' => 5]);
+
+        $req = $this->makePostRequest(['email' => 'me@example.com']);
+        $req->setRouteParams(['id' => 5]);
+
+        $response = $this->controller->updateUser($req);
+
+        $this->assertSame(302, $response->status());
     }
 
     // -------------------------------------------------------------------------

@@ -343,6 +343,7 @@
     "education": "Formation",
     "email": "Email",
     "email_address": "Adresse email",
+    "email_taken": "Cette adresse email est déjà utilisée par un autre compte.",
     "employee": "Employé",
     "employee_code": "Code employé",
     "employee_code_hint": "optionnel, utilisé pour la connexion rapide",
