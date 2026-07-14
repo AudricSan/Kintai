@@ -32,4 +32,28 @@ final class AppSettingsServiceTest extends TestCase
     {
         $this->assertSame('release', $this->makeService(['update_channel' => 'nightly'])->updateChannel());
     }
+
+    public function testMaintenanceModeDisabledByDefault(): void
+    {
+        $this->assertFalse($this->makeService()->maintenanceModeEnabled());
+    }
+
+    public function testMaintenanceModeReadsStoredValue(): void
+    {
+        $this->assertTrue($this->makeService(['maintenance_mode_enabled' => '1'])->maintenanceModeEnabled());
+        $this->assertFalse($this->makeService(['maintenance_mode_enabled' => '0'])->maintenanceModeEnabled());
+    }
+
+    public function testMaintenanceMessageDefaultsToEmpty(): void
+    {
+        $this->assertSame('', $this->makeService()->maintenanceMessage());
+    }
+
+    public function testMaintenanceMessageReadsStoredValue(): void
+    {
+        $this->assertSame(
+            'Maintenance en cours.',
+            $this->makeService(['maintenance_message' => 'Maintenance en cours.'])->maintenanceMessage(),
+        );
+    }
 }
