@@ -1,0 +1,91 @@
+<?php
+
+declare(strict_types=1);
+
+namespace kintai\Core\Middleware;
+
+use Closure;
+use kintai\Core\Auth\PermissionService;
+use kintai\Core\Request;
+use kintai\Core\Response;
+
+/**
+ * Autorisation RBAC de l'API v1. Doit être placé après ApiAuthMiddleware
+ * (auth_user déjà attaché à partir du token Bearer).
+ *
+ * La règle par route est déclarée dans config/api-permissions.php (voir le
+ * format documenté dans ce fichier). Contrairement à l'utilisateur de session
+ * web, l'auth_user attaché ici est la ligne brute de la table users : le flag
+ * legacy is_admin n'est PAS consulté — un Owner passe parce que son
+ * affectation au rôle système accorde toutes les clés via PermissionService.
+ */
+final class ApiPermissionMiddleware implements MiddlewareInterface
+{
+    /** @var array<string, string|array{perm: string, self?: string}>|null */
+    private static ?array $routeRules = null;
+
+    public function __construct(private readonly PermissionService $permissions) {}
+
+    public function handle(Request $request, Closure $next): Response
+    {
+        $rule = $this->rule((string) ($request->getAttribute('route_name') ?? ''));
+        if ($rule === null) {
+            return $next($request);
+        }
+
+        $user   = $request->getAttribute('auth_user') ?? [];
+        $userId = (int) ($user['id'] ?? 0);
+
+        $permissionKey = is_array($rule) ? (string) $rule['perm'] : $rule;
+        $selfParam     = is_array($rule) ? ($rule['self'] ?? null) : null;
+
+        // Ressource propre : l'id d'utilisateur ciblé (paramètre de route ou
+        // query) est celui du porteur du token → pas de permission exigée.
+        if ($selfParam !== null && $this->targetedUserId($request, $selfParam) === $userId) {
+            return $next($request);
+        }
+
+        if ($this->permissions->can($user, $permissionKey, $this->targetedStoreId($request))) {
+            return $next($request);
+        }
+
+        return Response::json([
+            'error' => 'Permission insuffisante : ' . $permissionKey . ' requise.',
+            'code'  => 'FORBIDDEN',
+        ], 403);
+    }
+
+    /** Id utilisateur ciblé par la requête via le paramètre nommé (route puis query). */
+    private function targetedUserId(Request $request, string $param): ?int
+    {
+        $value = $request->param($param) ?? $request->query($param);
+        return $value !== null && $value !== '' ? (int) $value : null;
+    }
+
+    /**
+     * Store ciblé par la requête : paramètre de route store_id, sinon query,
+     * sinon corps de requête. Null = aucune portée précise (une affectation
+     * accordant la clé n'importe où suffit alors).
+     */
+    private function targetedStoreId(Request $request): ?int
+    {
+        $value = $request->param('store_id')
+            ?? $request->query('store_id')
+            ?? $request->post('store_id')
+            ?? $request->json('store_id');
+        $storeId = $value !== null && $value !== '' ? (int) $value : 0;
+        return $storeId > 0 ? $storeId : null;
+    }
+
+    private function rule(string $routeName): string|array|null
+    {
+        if ($routeName === '') {
+            return null;
+        }
+        if (self::$routeRules === null) {
+            $file = dirname(__DIR__, 3) . '/config/api-permissions.php';
+            self::$routeRules = is_file($file) ? (require $file) : [];
+        }
+        return self::$routeRules[$routeName] ?? null;
+    }
+}

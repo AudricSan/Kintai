@@ -15,6 +15,7 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\RoleAssignmentSyncService;
 use kintai\UI\ViewRenderer;
 use kintai\Core\Services\ExcelShiftImport\ExcelShiftImportService;
 use kintai\Core\Services\ShiftWageCalculator;
@@ -32,6 +33,7 @@ final class AdminShiftImportController
         private readonly StoreUserRepositoryInterface $storeUsers,
         private readonly AuditLogger $auditLogger,
         private readonly ImportAliasRepositoryInterface $importAliases,
+        private readonly RoleAssignmentSyncService $roleSync,
     ) {}
 
     public function importShifts(Request $request): Response
@@ -163,6 +165,9 @@ final class AdminShiftImportController
             'store_id'     => $storeId,
             'all_users'    => $allUsers,
             'import_month' => $importMonth,
+            // Modale de création rapide : sélecteur de rôle dynamique (table roles)
+            'assignable_roles'      => $this->roleSync->assignableStoreRoles(),
+            'default_store_role_id' => (int) ($this->roleSync->defaultStoreRole()['id'] ?? 0),
         ], 'layout.app'));
     }
 

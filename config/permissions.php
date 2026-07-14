@@ -1,0 +1,82 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Permission requise par route (nom de route → clé de PermissionCatalog).
+ *
+ * Consommé par PermissionMiddleware : pour un non-Owner, la route n'est
+ * accessible que si l'un de ses rôles accorde la clé, et la liste des stores
+ * visibles (managed_store_ids) est resserrée aux stores où cette clé précise
+ * est accordée. Une route absente de cette map reste soumise au seul filtre
+ * grossier d'AdminMiddleware (être gestionnaire d'au moins un store).
+ *
+ * Les pages réservées à l'Owner (owner-settings, langues, bundles, rôles,
+ * backup, update, mail-test) ne figurent pas ici : elles restent protégées
+ * par leur requireOwner() explicite.
+ */
+
+return [
+
+    // --- Employés -----------------------------------------------------------
+    'admin.users'                     => 'employees.view',
+    'admin.users.create'              => 'employees.create',
+    'admin.users.store'               => 'employees.create',
+    'admin.users.quick_create'        => 'employees.create',
+    'admin.users.check_employee_code' => 'employees.view',
+    'admin.users.edit'                => 'employees.view',
+    'admin.users.update'              => 'employees.update',
+    'admin.users.delete'              => 'employees.delete',
+    'admin.users.reset_password'      => 'employees.update',
+    'admin.users.rates.set'           => 'employees.update',
+    'admin.users.rates.delete'        => 'employees.update',
+
+    // --- Stores ---------------------------------------------------------------
+    'admin.stores'                    => 'stores.view',
+    'admin.stores.create'             => 'stores.create',
+    'admin.stores.store'              => 'stores.create',
+    'admin.stores.edit'               => 'stores.view',
+    'admin.stores.update'             => 'stores.update',
+    'admin.stores.delete'             => 'stores.delete',
+    'admin.stores.members.add'        => 'employees.update',
+    'admin.stores.members.role'       => 'employees.update',
+    'admin.stores.members.delete'     => 'employees.update',
+    'admin.stores.members.deductions'      => 'payroll.view',
+    'admin.stores.members.deductions.save' => 'payroll.generate',
+
+    // --- Statistiques & paie ---------------------------------------------------
+    'admin.stores.stats'              => 'payroll.view',
+    'admin.stores.stats_export'       => 'payroll.export',
+    'admin.stores.profitability'      => 'payroll.view',
+    'admin.stores.employee_report'    => 'payroll.view',
+    'admin.stores.employee_stats'     => 'payroll.view',
+    'admin.stores.employee_payslip'   => 'payroll.generate',
+    'admin.stores.employee_payslip_pdf' => 'payroll.generate',
+
+    // --- Types de shifts ---------------------------------------------------------
+    'admin.shift_types'               => 'shifts.view',
+    'admin.shift_types.create'        => 'shifts.update',
+    'admin.shift_types.store'         => 'shifts.update',
+    'admin.shift_types.edit'          => 'shifts.update',
+    'admin.shift_types.update'        => 'shifts.update',
+    'admin.shift_types.delete'        => 'shifts.update',
+
+    // --- Shifts -------------------------------------------------------------------
+    'admin.shifts'                    => 'shifts.view',
+    'admin.shifts.calendar'           => 'shifts.view',
+    'admin.shifts.timeline'           => 'shifts.view',
+    'admin.shifts.timeline.print'     => 'shifts.view',
+    'admin.shifts.conflicts'          => 'shifts.view',
+    'admin.shifts.resolve_newer'      => 'shifts.update',
+    'admin.shifts.import'             => 'shifts.import',
+    'admin.shifts.import.process'     => 'shifts.import',
+    'admin.shifts.import.confirm'     => 'shifts.import',
+    'admin.shifts.create'             => 'shifts.create',
+    'admin.shifts.store'              => 'shifts.create',
+    'admin.shifts.quick'              => 'shifts.create',
+    'admin.shifts.bulk_delete'        => 'shifts.delete',
+    'admin.shifts.edit'               => 'shifts.view',
+    'admin.shifts.update'             => 'shifts.update',
+    'admin.shifts.delete'             => 'shifts.delete',
+    'admin.shifts.move'               => 'shifts.update',
+];

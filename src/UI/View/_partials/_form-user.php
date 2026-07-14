@@ -1,9 +1,12 @@
 <?php
-/** @var string $mode       'create'|'edit' */
-/** @var array  $user       Données de l'utilisateur */
-/** @var array  $all_stores Liste des magasins */
+/** @var string $mode                  'create'|'edit' */
+/** @var array  $user                  Données de l'utilisateur */
+/** @var array  $all_stores            Liste des magasins */
+/** @var array  $assignable_roles      Rôles dynamiques assignables par store (table roles) */
+/** @var int    $default_store_role_id Rôle pré-sélectionné par défaut */
 $mode ??= 'create';
-$roles = ['staff' => __('staff'), 'manager' => 'Manager', 'admin' => __('admin')];
+$assignable_roles      ??= [];
+$default_store_role_id ??= 0;
 $genderOptions = ['male' => __('male'), 'female' => __('female')];
 $taxOptions = ['kou' => '甲', 'otsu' => '乙'];
 ?>
@@ -226,14 +229,16 @@ $taxOptions = ['kou' => '甲', 'otsu' => '乙'];
                 </select>
             </div>
             <?php endif; ?>
+            <?php if (!empty($assignable_roles)): ?>
             <div class="form-group">
                 <label class="form-label"><?= __('store_role') ?></label>
-                <select name="store_role" class="form-control">
-                    <?php foreach ($roles as $val => $label): ?>
-                        <option value="<?= $val ?>" <?= $val === 'staff' ? 'selected' : '' ?>><?= $label ?></option>
+                <select name="store_role_id" class="form-control">
+                    <?php foreach ($assignable_roles as $r): ?>
+                        <option value="<?= (int) $r['id'] ?>" <?= (int) $r['id'] === (int) $default_store_role_id ? 'selected' : '' ?>><?= htmlspecialchars($r['name'] ?? '') ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
+            <?php endif; ?>
         </div>
     </div>
     <?php endif; ?>

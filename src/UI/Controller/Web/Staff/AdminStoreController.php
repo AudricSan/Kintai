@@ -24,8 +24,6 @@ final class AdminStoreController
 {
     use HasAdminAccess;
 
-    private const ROLES = ['admin' => 'Administrateur', 'manager' => 'Manager', 'staff' => 'Employé'];
-
     public function __construct(
         private readonly ViewRenderer $view,
         private readonly UserRepositoryInterface $users,
@@ -113,11 +111,16 @@ final class AdminStoreController
         $this->assertStoreAccess($request, (int) $store['id']);
 
         $storeId = (int) $store['id'];
-        $members = array_map(function ($m) {
+        $roleMap = $this->roleSync->storeRoleMapForStore($storeId);
+        $members = array_map(function ($m) use ($roleMap) {
             $name = trim(($m['last_name'] ?? '') . ' ' . ($m['first_name'] ?? ''));
+            $assigned = $roleMap[(int) $m['membership']['user_id']] ?? null;
             return array_merge($m['membership'], [
-                'user_name'  => $name ?: ($m['email'] ?? '—'),
-                'user_email' => $m['email'] ?? '',
+                'user_name'        => $name ?: ($m['email'] ?? '—'),
+                'user_email'       => $m['email'] ?? '',
+                'role_id'          => $assigned['role_id'] ?? null,
+                'role_name'        => $assigned['name'] ?? ($m['membership']['role'] ?? '—'),
+                'role_is_managing' => !empty($assigned['is_managing']),
             ]);
         }, $this->storeService->getStoreMembers($storeId));
 
@@ -134,7 +137,8 @@ final class AdminStoreController
             'store'             => $store,
             'members'           => $members,
             'available'         => $available,
-            'roles'             => self::ROLES,
+            'assignable_roles'  => $this->roleSync->assignableStoreRoles(),
+            'default_role_id'   => (int) ($this->roleSync->defaultStoreRole()['id'] ?? 0),
             'deductionSettings' => $this->storeService->getDeductionSettings($storeId),
             // Aucune ligne en base = jamais configuré → toutes les fonctionnalités actives par défaut (null)
             'enabledFeatures'   => ($_ef = $this->stores->getFeatures($storeId)) !== [] ? $_ef : null,
@@ -239,17 +243,22 @@ final class AdminStoreController
         $this->assertStoreAccess($request, $storeId);
 
         $userId = (int) $request->post('user_id', 0);
-        $role   = $request->post('role', 'staff');
+        // Rôle dynamique (roles en base) — repli sur le rôle par défaut si
+        // l'id posté est absent/invalide, pour rester tolérant aux anciens formulaires.
+        $role = $this->roleSync->findAssignableRole((int) $request->post('role_id', 0))
+            ?? $this->roleSync->defaultStoreRole();
 
-        if ($userId > 0) {
-            $membership = $this->storeService->addMember($storeId, $userId, $role);
+        if ($userId > 0 && $role !== null) {
+            $roleId = (int) $role['id'];
+            $membership = $this->storeService->addMember($storeId, $userId, $this->roleSync->legacyRoleFor($roleId));
             if ($membership !== null) {
-                $this->roleSync->syncStoreRole($userId, $storeId, $role);
+                $this->roleSync->syncStoreRoleById($userId, $storeId, $roleId);
             }
             $this->auditLogger->log($request, 'store.member_added', 'store_user', null, [
                 'store_id' => $storeId,
                 'user_id'  => $userId,
-                'role'     => $role,
+                'role_id'  => $roleId,
+                'role'     => $role['name'] ?? null,
             ], $storeId);
         }
 
@@ -269,12 +278,17 @@ final class AdminStoreController
         }
         $this->assertStoreAccess($request, $storeId);
 
-        $role = $request->post('role', 'staff');
-        $oldRole = $membership['role'];
+        $role = $this->roleSync->findAssignableRole((int) $request->post('role_id', 0));
+        if ($role === null) {
+            return Response::redirect($this->base() . '/admin/stores/' . $storeId . '/edit?error=invalid_role');
+        }
+        $roleId  = (int) $role['id'];
+        $userId  = (int) $membership['user_id'];
+        $oldRole = ($this->roleSync->storeRoleMapForStore($storeId)[$userId]['name'] ?? null) ?? $membership['role'];
 
-        $this->storeService->updateMemberRole($mid, $storeId, $role);
-        $this->roleSync->syncStoreRole((int) $membership['user_id'], $storeId, $role);
-        $this->auditLogger->logUpdate($request, 'store.member_role_updated', 'store_user', $mid, ['role' => $oldRole], ['role' => $role], [
+        $this->storeService->updateMemberRole($mid, $storeId, $this->roleSync->legacyRoleFor($roleId));
+        $this->roleSync->syncStoreRoleById($userId, $storeId, $roleId);
+        $this->auditLogger->logUpdate($request, 'store.member_role_updated', 'store_user', $mid, ['role' => $oldRole], ['role' => $role['name'] ?? null, 'role_id' => $roleId], [
             'store_id' => $storeId,
             'user_id' => $membership['user_id'] ?? null,
         ], $storeId);
