@@ -11,6 +11,9 @@ interface RoleAssignmentRepositoryInterface
     /** @return array Toutes les affectations (rôle + portée) d'un utilisateur. */
     public function findByUser(int $userId): array;
 
+    /** @return array Toutes les affectations d'un rôle donné, tous utilisateurs/portées confondus. */
+    public function findByRole(int $roleId): array;
+
     /**
      * Toutes les affectations pour une portée donnée.
      * @param string $scopeType 'global' ou 'store'
