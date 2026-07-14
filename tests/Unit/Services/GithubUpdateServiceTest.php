@@ -11,6 +11,7 @@ use kintai\Core\Services\AppSettingsService;
 use kintai\Core\Services\BackupService;
 use kintai\Core\Services\GithubUpdateService;
 use kintai\Core\Services\UpdateService;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class GithubUpdateServiceTest extends TestCase
@@ -403,5 +404,28 @@ final class GithubUpdateServiceTest extends TestCase
         $service->applyUpdate();
 
         $this->assertNull($this->updateService->getLastUpdateDuration());
+    }
+
+    #[DataProvider('releaseListValidationProvider')]
+    public function testIsValidReleaseListRejectsGithubErrorObjects(mixed $data, bool $expected): void
+    {
+        $ref = new \ReflectionMethod(GithubUpdateService::class, 'isValidReleaseList');
+        $ref->setAccessible(true);
+
+        $this->assertSame($expected, $ref->invoke(null, $data));
+    }
+
+    public static function releaseListValidationProvider(): array
+    {
+        return [
+            'valid release list' => [[['tag_name' => 'v1.0.0']], true],
+            'empty list'         => [[], true],
+            // Forme réelle d'une réponse GitHub rate-limitée : un objet JSON
+            // (donc un tableau associatif après json_decode), pas une liste.
+            'rate limit error object' => [['message' => 'API rate limit exceeded for x.x.x.x.', 'documentation_url' => 'https://docs.github.com/rest'], false],
+            'not found error object'  => [['message' => 'Not Found'], false],
+            'null response'           => [null, false],
+            'scalar response'         => ['API rate limit exceeded', false],
+        ];
     }
 }
