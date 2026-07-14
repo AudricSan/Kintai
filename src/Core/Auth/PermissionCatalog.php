@@ -15,12 +15,32 @@ namespace kintai\Core\Auth;
 final class PermissionCatalog
 {
     public const CATEGORIES = [
-        'employees' => ['view', 'create', 'update', 'delete'],
-        'shifts'    => ['view', 'create', 'update', 'delete', 'import', 'export', 'validate'],
-        'stores'    => ['view', 'create', 'update', 'delete'],
-        'payroll'   => ['view', 'generate', 'export'],
-        'documents' => ['view', 'create', 'update', 'delete'],
-        'settings'  => ['update'],
+        'employees'   => ['view', 'create', 'update', 'delete'],
+        'shifts'      => ['view', 'create', 'update', 'delete', 'import', 'export', 'validate'],
+        'stores'      => ['view', 'create', 'update', 'delete'],
+        'payroll'     => ['view', 'generate', 'export'],
+        'documents'   => ['view', 'create', 'update', 'delete'],
+        'settings'    => ['update'],
+        'timeoff'     => ['view', 'create', 'update', 'approve', 'delete'],
+        'swaps'       => ['view', 'create', 'update', 'approve', 'delete'],
+        'timeclock'   => ['view', 'update', 'delete'],
+        'open_shifts' => ['view', 'publish', 'approve'],
+        'feedbacks'   => ['view', 'update', 'delete'],
+    ];
+
+    /**
+     * Catégories de permissions portées par un bundle optionnel (catégorie →
+     * slug du bundle). Une catégorie absente d'ici est du Core, toujours
+     * proposée. L'UI des rôles masque les catégories dont le bundle est
+     * désactivé (leurs routes n'existent alors pas) ; les clés restent
+     * valides en base et réapparaissent si le bundle est réactivé.
+     */
+    public const CATEGORY_BUNDLES = [
+        'timeoff'     => 'timeoff',
+        'swaps'       => 'shift-swap',
+        'timeclock'   => 'timeclock',
+        'open_shifts' => 'shift-claim',
+        'feedbacks'   => 'feedback',
     ];
 
     /**
@@ -35,6 +55,11 @@ final class PermissionCatalog
         'stores.view', 'stores.update',
         'payroll.view', 'payroll.generate', 'payroll.export',
         'documents.view', 'documents.create', 'documents.update', 'documents.delete',
+        'timeoff.view', 'timeoff.create', 'timeoff.update', 'timeoff.approve', 'timeoff.delete',
+        'swaps.view', 'swaps.create', 'swaps.update', 'swaps.approve', 'swaps.delete',
+        'timeclock.view', 'timeclock.update', 'timeclock.delete',
+        'open_shifts.view', 'open_shifts.publish', 'open_shifts.approve',
+        'feedbacks.view', 'feedbacks.update', 'feedbacks.delete',
     ];
 
     /** @return string[] Toutes les clés de permission ("categorie.action"), aplaties. */

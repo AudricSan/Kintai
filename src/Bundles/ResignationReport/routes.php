@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use kintai\Core\Middleware\AuthMiddleware;
 use kintai\Core\Middleware\AdminMiddleware;
+use kintai\Core\Middleware\PermissionMiddleware;
 use kintai\Bundles\ResignationReport\Controllers\Web\AdminResignationReportController;
 
 /** @var kintai\Core\Router $router */
@@ -25,4 +26,4 @@ $router->group('/admin', function ($r) {
     $r->post('/stores/{id}/reports/resignation/{rid}/delete',      [AdminResignationReportController::class, 'deleteResignationReport'], name: 'admin.stores.resignation_reports.delete');
     $r->get('/stores/{id}/reports/resignation/{rid}/pdf',          [AdminResignationReportController::class, 'resignationReportPdf'],    name: 'admin.stores.resignation_reports.pdf');
     $r->post('/stores/{id}/reports/resignation/{rid}/reactivate',  [AdminResignationReportController::class, 'reactivateUser'],          name: 'admin.stores.resignation_reports.reactivate');
-}, middleware: [AuthMiddleware::class, AdminMiddleware::class]);
+}, middleware: [AuthMiddleware::class, AdminMiddleware::class, PermissionMiddleware::class]);

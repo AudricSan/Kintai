@@ -79,4 +79,80 @@ return [
     'admin.shifts.update'             => 'shifts.update',
     'admin.shifts.delete'             => 'shifts.delete',
     'admin.shifts.move'               => 'shifts.update',
+
+    // --- Congés (bundle TimeOff) ----------------------------------------------
+    'admin.timeoff'                   => 'timeoff.view',
+    'admin.timeoff.create'            => 'timeoff.create',
+    'admin.timeoff.store'             => 'timeoff.create',
+    'admin.timeoff.approve'           => 'timeoff.approve',
+    'admin.timeoff.refuse'            => 'timeoff.approve',
+    'admin.timeoff.delete'            => 'timeoff.delete',
+
+    // --- Échanges de shifts (bundle ShiftSwap) --------------------------------
+    'admin.swap_requests'             => 'swaps.view',
+    'admin.swap_requests.create'      => 'swaps.create',
+    'admin.swap_requests.store'       => 'swaps.create',
+    'admin.swap.approve'              => 'swaps.approve',
+    'admin.swap.refuse'               => 'swaps.approve',
+    'admin.swap.delete'               => 'swaps.delete',
+
+    // --- Pointage (bundle Timeclock) -------------------------------------------
+    'admin.timeclocks'                => 'timeclock.view',
+    'admin.timeclocks.edit'           => 'timeclock.update',
+    'admin.timeclocks.delete'         => 'timeclock.delete',
+
+    // --- Bourse aux shifts (bundle ShiftClaim) ---------------------------------
+    'admin.open_shifts'               => 'open_shifts.view',
+    'admin.open_shifts.select'        => 'open_shifts.publish',
+    'admin.shifts.publish'            => 'open_shifts.publish',
+    'admin.shifts.unpublish'          => 'open_shifts.publish',
+    'admin.open_shifts.approve'       => 'open_shifts.approve',
+    'admin.open_shifts.reject'        => 'open_shifts.approve',
+
+    // --- Feedbacks (bundle Feedback) --------------------------------------------
+    'admin.feedbacks'                 => 'feedbacks.view',
+    'admin.feedbacks.delete'          => 'feedbacks.delete',
+
+    // --- Rapports d'embauche (bundle HiringReport) → documents.* ----------------
+    'admin.stores.hiring_reports'          => 'documents.view',
+    'admin.stores.hiring_reports.create'   => 'documents.create',
+    'admin.stores.hiring_reports.store'    => 'documents.create',
+    'admin.stores.hiring_reports.show'     => 'documents.view',
+    'admin.stores.hiring_reports.edit'     => 'documents.view',
+    'admin.stores.hiring_reports.update'   => 'documents.update',
+    'admin.stores.hiring_reports.delete'   => 'documents.delete',
+    'admin.stores.hiring_reports.pdf'      => 'documents.view',
+
+    // --- Rapports de démission (bundle ResignationReport) → documents.* ---------
+    'admin.reports.resignation'                  => 'documents.view',
+    'admin.stores.resignation_reports'           => 'documents.view',
+    'admin.stores.resignation_reports.create'    => 'documents.create',
+    'admin.stores.resignation_reports.store'     => 'documents.create',
+    'admin.stores.resignation_reports.show'      => 'documents.view',
+    'admin.stores.resignation_reports.edit'      => 'documents.view',
+    'admin.stores.resignation_reports.update'    => 'documents.update',
+    'admin.stores.resignation_reports.delete'    => 'documents.delete',
+    'admin.stores.resignation_reports.pdf'       => 'documents.view',
+    'admin.stores.resignation_reports.reactivate' => 'employees.update',
+
+    // --- Rapports de salaire (bundle SalaryReport) → payroll.* -------------------
+    'admin.reports.salary'                 => 'payroll.view',
+    'admin.stores.salary_reports'          => 'payroll.view',
+    'admin.stores.salary_reports.create'   => 'payroll.generate',
+    'admin.stores.salary_reports.store'    => 'payroll.generate',
+    'admin.stores.salary_reports.show'     => 'payroll.view',
+    'admin.stores.salary_reports.edit'     => 'payroll.view',
+    'admin.stores.salary_reports.update'   => 'payroll.generate',
+    'admin.stores.salary_reports.delete'   => 'payroll.generate',
+    'admin.stores.salary_reports.pdf'      => 'payroll.export',
+
+    // --- Photos de magasin (bundle StorePhoto) → documents.* ---------------------
+    'admin.photos.index'              => 'documents.view',
+    'admin.photos.show'               => 'documents.view',
+    'admin.photos.create'             => 'documents.create',
+    'admin.photos.store'              => 'documents.create',
+    'admin.photos.upload_file'        => 'documents.create',
+    'admin.photos.delete'             => 'documents.delete',
+    'admin.photos.settings'           => 'documents.update',
+    'admin.photos.settings.save'      => 'documents.update',
 ];
