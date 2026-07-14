@@ -7,6 +7,8 @@ namespace kintai\Tests\Unit\Controller\Web;
 use kintai\Core\Container;
 use kintai\Core\Repositories\DailyReportRepositoryInterface;
 use kintai\Core\Repositories\LogRepositoryInterface;
+use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
+use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
@@ -20,6 +22,7 @@ use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\Log;
+use kintai\Core\Services\RoleAssignmentSyncService;
 use kintai\UI\Controller\Web\Staff\AdminUserController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -32,6 +35,8 @@ final class AdminUserControllerTest extends TestCase
     private StoreRepositoryInterface&MockObject $stores;
     private StoreUserRepositoryInterface&MockObject $storeUsers;
     private LogRepositoryInterface&MockObject $logRepo;
+    private RoleRepositoryInterface&MockObject $roles;
+    private RoleAssignmentRepositoryInterface&MockObject $roleAssignments;
     protected function setUp(): void
     {
         $this->ensureViewFile('staff.users');
@@ -41,6 +46,8 @@ final class AdminUserControllerTest extends TestCase
         $this->users = $this->createMock(UserRepositoryInterface::class);
         $this->stores = $this->createMock(StoreRepositoryInterface::class);
         $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
+        $this->roles = $this->createMock(RoleRepositoryInterface::class);
+        $this->roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
 
         // AuditLogger::log() délègue à Log::record() -> LogRepositoryInterface::record().
         $this->logRepo = $this->createMock(LogRepositoryInterface::class);
@@ -58,6 +65,7 @@ final class AdminUserControllerTest extends TestCase
             $this->createMock(UserShiftTypeRateRepositoryInterface::class),
             $this->createMock(HiringReportRepositoryInterface::class),
             new AuditLogger(),
+            new RoleAssignmentSyncService($this->roles, $this->roleAssignments),
         );
     }
 
@@ -266,6 +274,52 @@ final class AdminUserControllerTest extends TestCase
         $this->assertSame(3, $capturedStoreUser['store_id']);
         $this->assertSame(10, $capturedStoreUser['user_id']);
         $this->assertSame('manager', $capturedStoreUser['role']);
+    }
+
+    /**
+     * AuthService::managedStoreIds() lit désormais role_assignments : sans
+     * cette synchronisation, un manager créé via l'import de shifts ne serait
+     * jamais reconnu comme gestionnaire de son store.
+     */
+    public function testQuickCreateUserSyncsRoleAssignmentForStoreMembership(): void
+    {
+        $req = $this->makePostRequest([
+            'display_name' => 'John',
+            'first_name'   => 'John',
+            'email'        => 'john@example.com',
+            'password'     => 'pass',
+            'store_id'     => '3',
+            'store_role'   => 'manager',
+        ]);
+        $req->setAttribute('managed_store_ids', null);
+
+        $this->users->method('save')->willReturn(['id' => 10, 'display_name' => 'John']);
+        $this->roles->method('findBySlug')->willReturnMap([
+            ['owner', null],
+            ['manager', ['id' => 2]],
+        ]);
+        $this->roleAssignments->method('findByUser')->willReturn([]);
+        $this->roleAssignments->expects($this->once())->method('assign')->with(10, 2, 'store', 3);
+
+        $this->controller->quickCreateUser($req);
+    }
+
+    public function testQuickCreateUserSyncsOwnerRoleWhenIsAdminChecked(): void
+    {
+        $req = $this->makePostRequest([
+            'display_name' => 'Jane',
+            'first_name'   => 'Jane',
+            'email'        => 'jane@example.com',
+            'password'     => 'pass',
+            'is_admin'     => '1',
+        ]);
+
+        $this->users->method('save')->willReturn(['id' => 11, 'display_name' => 'Jane']);
+        $this->roles->method('findBySlug')->with('owner')->willReturn(['id' => 1]);
+        $this->roleAssignments->method('findByUser')->willReturn([]);
+        $this->roleAssignments->expects($this->once())->method('assign')->with(11, 1, 'global', null);
+
+        $this->controller->quickCreateUser($req);
     }
 
     // -------------------------------------------------------------------------
