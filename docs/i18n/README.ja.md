@@ -4,7 +4,7 @@
 
 **複数店舗を運営する企業向けの、オープンソースなシフト・勤怠・労務管理システム。**
 
-[![Version](https://img.shields.io/badge/version-0.0.3--beta-purple.svg)](CHANGELOG.ja.md)
+[![Version](https://img.shields.io/badge/version-0.6.0-purple.svg)](CHANGELOG.ja.md)
 [![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 [![PHP Version](https://img.shields.io/badge/php-%3E%3D%208.3-8892bf.svg)](https://php.net)
 [![Tests](https://github.com/AudricSan/Kintai/actions/workflows/tests.yml/badge.svg)](https://github.com/AudricSan/Kintai/actions/workflows/tests.yml)
@@ -12,7 +12,7 @@
 
 Kintaiは、Excelの勤怠表と大企業向けERPの間を埋めるツールです。複数店舗を展開する小売・飲食業向けに、シフト管理、勤怠打刻、休暇申請、シフト交換、日報、給与概算までを一括で提供します。自社インフラ上で、自社データを保持したまま運用できます。
 
-> **ステータス：ベータ版（`0.0.3-beta`）。** Kintaiは実用段階にあり、下記のデモ環境でも日常的に稼働していますが、安定版 `1.0.0` に至るまでAPIやデータスキーマが変更される可能性があります。詳細は [CHANGELOG.ja.md](CHANGELOG.ja.md) をご覧ください。
+> **ステータス：ベータ版（`0.6.0`）。** Kintaiは実用段階にあり、下記のデモ環境でも日常的に稼働していますが、安定版 `1.0.0` に至るまでAPIやデータスキーマが変更される可能性があります。詳細は [CHANGELOG.ja.md](CHANGELOG.ja.md) をご覧ください。
 
 ---
 
