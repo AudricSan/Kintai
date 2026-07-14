@@ -55,10 +55,17 @@ final class ApiPermissionMiddleware implements MiddlewareInterface
         ], 403);
     }
 
-    /** Id utilisateur ciblé par la requête via le paramètre nommé (route puis query). */
+    /**
+     * Id utilisateur ciblé par la requête via le paramètre nommé (route, puis
+     * query, puis corps de requête — les endpoints d'action comme clock-in
+     * portent leur user_id dans le corps JSON).
+     */
     private function targetedUserId(Request $request, string $param): ?int
     {
-        $value = $request->param($param) ?? $request->query($param);
+        $value = $request->param($param)
+            ?? $request->query($param)
+            ?? $request->post($param)
+            ?? $request->json($param);
         return $value !== null && $value !== '' ? (int) $value : null;
     }
 
