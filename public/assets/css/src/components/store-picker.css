@@ -50,3 +50,25 @@
 .store-picker__item:hover {
     background: var(--color-surface-alt);
 }
+
+/* Variante statique (dans une modale plutôt qu'un <details> ancré) */
+.store-picker__panel--static {
+    position: static;
+    max-height: 50vh;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+}
+
+/* Choix Magasin / Employé (1re étape de la modale de création) */
+.sr-choice-row {
+    display: flex;
+    gap: var(--space-3);
+}
+
+.sr-choice-btn {
+    flex: 1;
+    padding: var(--space-4);
+    font-size: var(--text-sm);
+    line-height: 1.6;
+}
