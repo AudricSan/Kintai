@@ -20,6 +20,8 @@ return [
 
     // --- Employés -----------------------------------------------------------
     'admin.users'                     => 'employees.view',
+    'admin.users.export_pdf'          => 'employees.view',
+    'admin.users.export_json'         => 'employees.view',
     'admin.users.create'              => 'employees.create',
     'admin.users.store'               => 'employees.create',
     'admin.users.quick_create'        => 'employees.create',
@@ -125,6 +127,8 @@ return [
 
     // --- Rapports de démission (bundle ResignationReport) → documents.* ---------
     'admin.reports.resignation'                  => 'documents.view',
+    'admin.reports.resignation.export_json'      => 'documents.view',
+    'admin.reports.resignation.export_pdf'       => 'documents.view',
     'admin.stores.resignation_reports'           => 'documents.view',
     'admin.stores.resignation_reports.create'    => 'documents.create',
     'admin.stores.resignation_reports.store'     => 'documents.create',
@@ -137,6 +141,8 @@ return [
 
     // --- Rapports de salaire (bundle SalaryReport) → payroll.* -------------------
     'admin.reports.salary'                 => 'payroll.view',
+    'admin.reports.salary.export_json'     => 'payroll.view',
+    'admin.reports.salary.export_pdf'      => 'payroll.view',
     'admin.stores.salary_reports'          => 'payroll.view',
     'admin.stores.salary_reports.create'   => 'payroll.generate',
     'admin.stores.salary_reports.store'    => 'payroll.generate',

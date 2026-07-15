@@ -33,10 +33,15 @@ echo Flash::fromQuery('success', [
     'deleted' => __('operation_success'),
 ])->render();
 ?>
+<?php
+$exportQuery = $filter_store_id !== 0 ? '?store_id=' . $filter_store_id : '';
+?>
 <div class="page-header">
     <h2 class="page-header__title"><?= __('users') ?> <span class="page-count">(<?= count($users) ?>)</span></h2>
     <div class="page-header__actions">
         <?= Button::make('+ ' . __('new_user'))->primary()->link(route_url('admin.users.create'))->render() ?>
+        <?= Button::make('PDF')->ghost()->sm()->link(route_url('admin.users.export_pdf') . $exportQuery)->render() ?>
+        <?= Button::make('JSON')->ghost()->sm()->link(route_url('admin.users.export_json') . $exportQuery)->render() ?>
     </div>
 </div>
 

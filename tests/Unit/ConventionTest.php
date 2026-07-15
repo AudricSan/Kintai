@@ -15,6 +15,9 @@ final class ConventionTest extends TestCase
         'reports-hiring-pdf.php',     // mPDF requires embedded CSS
         'reports-resignation-pdf.php',// mPDF requires embedded CSS
         'reports-salary-pdf.php',     // mPDF requires embedded CSS
+        'users-export-pdf.php',       // mPDF requires embedded CSS
+        'reports-resignation-export-pdf.php', // mPDF requires embedded CSS
+        'reports-salary-export-pdf.php',      // mPDF requires embedded CSS
     ];
 
     private const DOMAIN_DIRS = [
