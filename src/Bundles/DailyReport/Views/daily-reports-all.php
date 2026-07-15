@@ -88,13 +88,13 @@ unset($months, $days);
 </div>
 
 <!-- ===== FILTRE V1 (complet) ===== -->
-<div id="dr-filter-v1" class="card mb-sm">
-    <div class="card-body">
-        <form method="GET" action="" class="form-flex">
-            <?= csrf_field() ?>
-            <div class="form-group">
-                <label class="form-label"><?= __('store') ?></label>
-                <select name="store_id" class="form-control form-control--sm" onchange="this.form.submit()">
+<div id="dr-filter-v1" class="card card--filters mb-sm">
+    <form method="GET" action="" class="filter-bar">
+        <?= csrf_field() ?>
+        <div class="shifts-filters__row">
+            <div class="shifts-filters__group">
+                <label class="shifts-filters__label" for="dr-store"><?= __('store') ?></label>
+                <select id="dr-store" name="store_id" class="form-control form-control--sm" onchange="this.form.submit()">
                     <option value="0"><?= __('dr_filter_all_stores') ?></option>
                     <?php foreach ($stores as $s): ?>
                         <option value="<?= (int)$s['id'] ?>" <?= $filterStoreId === (int)$s['id'] ? 'selected' : '' ?>>
@@ -103,9 +103,9 @@ unset($months, $days);
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="form-group">
-                <label class="form-label"><?= __('status') ?></label>
-                <select name="status" class="form-control form-control--sm" onchange="this.form.submit()">
+            <div class="shifts-filters__group">
+                <label class="shifts-filters__label" for="dr-status"><?= __('status') ?></label>
+                <select id="dr-status" name="status" class="form-control form-control--sm" onchange="this.form.submit()">
                     <option value=""><?= __('all') ?></option>
                     <?php foreach (['draft', 'submitted', 'validated'] as $s): ?>
                         <option value="<?= $s ?>" <?= $filterStatus === $s ? 'selected' : '' ?>>
@@ -114,50 +114,50 @@ unset($months, $days);
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="form-group">
-                <label class="form-label"><?= __('dr_filter_year') ?></label>
-                <select name="year" class="form-control form-control--sm" onchange="this.form.submit()">
+            <div class="shifts-filters__group">
+                <label class="shifts-filters__label" for="dr-year"><?= __('dr_filter_year') ?></label>
+                <select id="dr-year" name="year" class="form-control form-control--sm" onchange="this.form.submit()">
                     <option value="0"><?= __('all') ?></option>
                     <?php foreach ($years as $y): ?>
                         <option value="<?= $y ?>" <?= $filterYear === $y ? 'selected' : '' ?>><?= $y ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="form-group">
-                <label class="form-label"><?= __('dr_filter_month') ?></label>
-                <select name="month" class="form-control form-control--sm" onchange="this.form.submit()">
+            <div class="shifts-filters__group">
+                <label class="shifts-filters__label" for="dr-month"><?= __('dr_filter_month') ?></label>
+                <select id="dr-month" name="month" class="form-control form-control--sm" onchange="this.form.submit()">
                     <option value="0"><?= __('all') ?></option>
                     <?php foreach ($monthNames as $num => $name): ?>
                         <option value="<?= $num ?>" <?= $filterMonth === $num ? 'selected' : '' ?>><?= $name ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="form-group">
+            <div class="shifts-filters__actions">
                 <a href="?" class="btn btn--ghost btn--sm"><?= __('reset') ?></a>
             </div>
-        </form>
-    </div>
+        </div>
+    </form>
 </div>
 
 <!-- ===== FILTRE V2 (année seulement) ===== -->
-<div id="dr-filter-v2" class="card mb-sm">
-    <div class="card-body">
-        <form method="GET" action="" class="form-flex">
-            <?= csrf_field() ?>
-            <div class="form-group">
-                <label class="form-label"><?= __('dr_filter_year') ?></label>
-                <select name="year" class="form-control form-control--sm" onchange="this.form.submit()">
+<div id="dr-filter-v2" class="card card--filters mb-sm">
+    <form method="GET" action="" class="filter-bar">
+        <?= csrf_field() ?>
+        <div class="shifts-filters__row">
+            <div class="shifts-filters__group">
+                <label class="shifts-filters__label" for="dr-year-v2"><?= __('dr_filter_year') ?></label>
+                <select id="dr-year-v2" name="year" class="form-control form-control--sm" onchange="this.form.submit()">
                     <option value="0"><?= __('all') ?></option>
                     <?php foreach ($years as $y): ?>
                         <option value="<?= $y ?>" <?= $filterYear === $y ? 'selected' : '' ?>><?= $y ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="form-group">
+            <div class="shifts-filters__actions">
                 <a href="?" class="btn btn--ghost btn--sm"><?= __('reset') ?></a>
             </div>
-        </form>
-    </div>
+        </div>
+    </form>
 </div>
 
 <!-- =========================================================

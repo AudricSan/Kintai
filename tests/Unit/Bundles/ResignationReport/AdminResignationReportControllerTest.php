@@ -31,6 +31,7 @@ final class AdminResignationReportControllerTest extends TestCase
     protected function setUp(): void
     {
         $viewDir = sys_get_temp_dir() . '/kintai-resignation-report-views';
+        $this->ensureViewFile($viewDir, 'reports-resignation');
         $this->ensureViewFile($viewDir, 'reports-resignation-show');
         $this->ensureViewFile($viewDir, 'reports-resignation-form');
         $this->ensureViewFile($viewDir, 'reports-resignation-export-pdf');
@@ -103,6 +104,98 @@ final class AdminResignationReportControllerTest extends TestCase
 
         $this->assertSame(200, $response->status());
         $this->assertStringStartsWith('%PDF', $response->body());
+    }
+
+    public function testAllResignationReportsPassesYearMonthPersonFiltersToRepository(): void
+    {
+        $_GET = ['year' => '2026', 'month' => '07', 'person' => 'Dupont', 'store_id' => '1'];
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+
+        $this->stores->method('findAll')->willReturn([['id' => 1, 'name' => 'Store A']]);
+        $this->resignationReports->expects($this->once())->method('findAll')->with(
+            [1],
+            ['store_id' => 1, 'year' => '2026', 'month' => '07', 'person_in_charge' => 'Dupont']
+        )->willReturn([]);
+
+        $response = $this->controller->allResignationReports($req);
+
+        $this->assertSame(200, $response->status());
+    }
+
+    public function testAllResignationReportsWithoutFiltersPassesEmptyFilters(): void
+    {
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+
+        $this->stores->method('findAll')->willReturn([['id' => 1, 'name' => 'Store A']]);
+        $this->resignationReports->expects($this->once())->method('findAll')->with([], [])->willReturn([]);
+
+        $response = $this->controller->allResignationReports($req);
+
+        $this->assertSame(200, $response->status());
+    }
+
+    public function testCreateResignationReportOnlyListsMembersOfTheStore(): void
+    {
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '1']);
+
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Store A']);
+        $this->storeUsers->expects($this->atLeastOnce())->method('findByStore')->with(1)->willReturn([
+            ['user_id' => 10, 'store_id' => 1],
+            ['user_id' => 20, 'store_id' => 1],
+        ]);
+        $this->users->method('findById')->willReturnMap([
+            [10, ['id' => 10, 'first_name' => 'Jean', 'last_name' => 'Dupont', 'employee_code' => 'EMP010']],
+            [20, ['id' => 20, 'first_name' => 'Paul', 'last_name' => 'Martin', 'employee_code' => 'EMP020']],
+        ]);
+
+        $response = $this->controller->createResignationReport($req);
+
+        $this->assertSame(200, $response->status());
+    }
+
+    public function testGetManagersForReportFormIncludesOwnerEvenWithoutStoreMembership(): void
+    {
+        // L'Owner n'a pas forcément de ligne store_user (voir install.php) mais doit
+        // rester sélectionnable comme responsable sur n'importe quel store.
+        $this->storeUsers->method('findByStore')->with(1)->willReturn([
+            ['user_id' => 10, 'store_id' => 1, 'role' => 'manager'],
+        ]);
+        $this->users->method('findAll')->willReturn([
+            ['id' => 99, 'first_name' => 'Owner', 'last_name' => 'Test', 'is_admin' => 1],
+            ['id' => 10, 'first_name' => 'Jean', 'last_name' => 'Dupont', 'is_admin' => 0],
+        ]);
+        $this->users->method('findById')->willReturnMap([
+            [10, ['id' => 10, 'first_name' => 'Jean', 'last_name' => 'Dupont', 'employee_code' => 'EMP010']],
+        ]);
+
+        $method = new \ReflectionMethod($this->controller, 'getManagersForReportForm');
+        $method->setAccessible(true);
+        $managers = $method->invoke($this->controller, 1);
+
+        $ids = array_column($managers, 'id');
+        $this->assertContains(99, $ids, 'Owner (is_admin) doit apparaître même sans adhésion au store');
+        $this->assertContains(10, $ids, 'manager du store doit toujours apparaître');
+    }
+
+    public function testCreateResignationReportKeepsPresetUserEvenIfNotAStoreMember(): void
+    {
+        $_GET = ['user_id' => '99'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setAttribute('auth_user', ['id' => 1, 'display_name' => 'Owner']);
+        $req->setRouteParams(['id' => '1']);
+
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Store A']);
+        $this->storeUsers->method('findByStore')->with(1)->willReturn([]);
+        $this->users->method('findById')->with(99)->willReturn(['id' => 99, 'first_name' => 'Ex', 'last_name' => 'Employee', 'employee_code' => 'EMP099']);
+
+        $response = $this->controller->createResignationReport($req);
+
+        $this->assertSame(200, $response->status());
     }
 
     public function testShowResignationReportLogsConsultation(): void

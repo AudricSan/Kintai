@@ -154,6 +154,22 @@ final class AdminUserController
             ));
         }
 
+        // Recherche texte (nom, code employé, email)
+        $search = trim((string) ($request->query('search') ?? ''));
+        if ($search !== '') {
+            $needle = mb_strtolower($search);
+            $users = array_values(array_filter(
+                $users,
+                function ($u) use ($needle) {
+                    $haystack = mb_strtolower(trim(
+                        ($u['last_name'] ?? '') . ' ' . ($u['first_name'] ?? '') . ' '
+                        . ($u['display_name'] ?? '') . ' ' . ($u['employee_code'] ?? '') . ' ' . ($u['email'] ?? '')
+                    ));
+                    return str_contains($haystack, $needle);
+                }
+            ));
+        }
+
         // Tri
         $sort = $request->query('sort') ?? 'name_asc';
         usort($users, function ($a, $b) use ($sort, $userStats) {
@@ -193,6 +209,7 @@ final class AdminUserController
             'user_store_ids'   => $userStoreIds,
             'user_store_map'   => $userStoreMap,
             'filter_store_id'  => $filterStoreId,
+            'filter_search'    => $search,
         ], 'layout.app'));
     }
 

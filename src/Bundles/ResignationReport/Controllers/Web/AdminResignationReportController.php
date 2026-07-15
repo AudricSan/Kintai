@@ -49,13 +49,34 @@ final class AdminResignationReportController
     {
         [$allStores, $queryStoreIds, $filterStoreId] = $this->storesAndFilter($request);
 
-        $reports = $this->resignationReports->findAll($queryStoreIds);
+        $filterYear = $request->query('year', '');
+        $filterMonth = $request->query('month', '');
+        $filterPerson = trim($request->query('person', ''));
+
+        $filters = [];
+        if ($filterStoreId > 0) {
+            $filters['store_id'] = $filterStoreId;
+        }
+        if ($filterYear !== '') {
+            $filters['year'] = $filterYear;
+        }
+        if ($filterMonth !== '') {
+            $filters['month'] = $filterMonth;
+        }
+        if ($filterPerson !== '') {
+            $filters['person_in_charge'] = $filterPerson;
+        }
+
+        $reports = $this->resignationReports->findAll($queryStoreIds, $filters);
 
         return Response::html($this->view->render('resignation-report::reports-resignation', [
-            'title'   => __('resignation_reports'),
-            'stores'  => $allStores,
+            'title'          => __('resignation_reports'),
+            'stores'         => $allStores,
             'filter_store_id' => $filterStoreId,
-            'reports' => $reports,
+            'filter_year'    => $filterYear,
+            'filter_month'   => $filterMonth,
+            'filter_person'  => $filterPerson,
+            'reports'        => $reports,
         ], 'layout.app'));
     }
 
@@ -68,10 +89,28 @@ final class AdminResignationReportController
     // Export de la liste "tous les magasins" (item 5)
     // -------------------------------------------------------------------------
 
+    private function exportFilters(Request $request): array
+    {
+        $filters = [];
+        $filterYear = $request->query('year', '');
+        if ($filterYear !== '') {
+            $filters['year'] = $filterYear;
+        }
+        $filterMonth = $request->query('month', '');
+        if ($filterMonth !== '') {
+            $filters['month'] = $filterMonth;
+        }
+        $filterPerson = trim($request->query('person', ''));
+        if ($filterPerson !== '') {
+            $filters['person_in_charge'] = $filterPerson;
+        }
+        return $filters;
+    }
+
     public function exportResignationReportsJson(Request $request): Response
     {
         [, $queryStoreIds] = $this->storesAndFilter($request);
-        $reports = $this->resignationReports->findAll($queryStoreIds);
+        $reports = $this->resignationReports->findAll($queryStoreIds, $this->exportFilters($request));
 
         $this->auditLogger->log($request, 'export.resignation_reports_json', 'resignation_report', 0, [
             'count' => count($reports),
@@ -83,7 +122,7 @@ final class AdminResignationReportController
     public function exportResignationReportsPdf(Request $request): Response
     {
         [$allStores, $queryStoreIds] = $this->storesAndFilter($request);
-        $reports = $this->resignationReports->findAll($queryStoreIds);
+        $reports = $this->resignationReports->findAll($queryStoreIds, $this->exportFilters($request));
         $storeNames = array_column($allStores, 'name', 'id');
 
         $html = $this->view->render('resignation-report::reports-resignation-export-pdf', [
@@ -105,12 +144,12 @@ final class AdminResignationReportController
         $store = $this->findStoreOrFail($storeId);
         $this->assertStoreAccess($request, $storeId);
 
-        $users = $this->users->findAll();
         $authUser = $request->getAttribute('auth_user');
 
         // Pré-remplir avec les données d'un employé si user_id est fourni
         $preset = [];
         $userId = (int) ($request->query('user_id') ?? 0);
+        $users = $this->storeMembersForReportForm($storeId, $userId);
         if ($userId > 0) {
             $user = $this->users->findById($userId);
             if ($user !== null) {
@@ -243,9 +282,10 @@ final class AdminResignationReportController
 
     protected function reportEditExtras(int $storeId, array $report): array
     {
+        $userId = (int) ($report['user_id'] ?? 0);
         return [
-            'users'    => $this->users->findAll(),
-            'managers' => $this->getManagersForReportForm($storeId, (int) ($report['user_id'] ?? 0)),
+            'users'    => $this->storeMembersForReportForm($storeId, $userId),
+            'managers' => $this->getManagersForReportForm($storeId, $userId),
         ];
     }
 }
