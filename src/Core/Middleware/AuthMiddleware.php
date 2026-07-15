@@ -6,6 +6,7 @@ namespace kintai\Core\Middleware;
 
 use Closure;
 use kintai\Core\Auth\AuthService;
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Container;
 use kintai\Core\FeatureManager;
 use kintai\Core\Repositories\LanguageRepositoryInterface;
@@ -48,6 +49,16 @@ final class AuthMiddleware implements MiddlewareInterface
         $view->share('auth_user', $user);
         $view->share('view_mode', $_SESSION['view_mode'] ?? 'admin');
         $view->share('auth_is_manager', $auth->isManager());
+
+        // Permissions fines RBAC : l'utilisateur détient-il cette clé quelque
+        // part ? Partagé ici (et non par PermissionMiddleware) pour que la
+        // navigation (sidebar, bottom-nav) soit identique sur TOUTES les pages
+        // authentifiées, y compris celles sans contrôle de permission fine
+        // (dashboard employé, messages, rapports journaliers, profil, docs…).
+        $permissions = $this->container->make(PermissionService::class);
+        $isOwner = !empty($user['is_admin']);
+        $view->share('user_can', fn(string $permissionKey): bool
+            => $isOwner || $permissions->can($user, $permissionKey, null));
 
         // Langue courante
         $view->share('locale', $this->container->make(TranslationService::class)->getLocale());
