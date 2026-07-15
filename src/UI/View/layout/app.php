@@ -83,7 +83,7 @@
     <script src="<?= $BASE_URL ?>/assets/js/modules/notifications.js"></script>
     <script>document.addEventListener('click',function(e){var t=e.target.closest('.tr--clickable[data-href]');if(t&&!e.target.closest('a,button,input,select,textarea,form')){location.href=t.getAttribute('data-href');}});</script>
 
-    <?php if (!$showAdminMenu && ($feedback_enabled ?? true)): ?>
+    <?php if ($feedback_enabled ?? true): ?>
         <?php include __DIR__ . '/partials/feedback-modal.php'; ?>
     <?php endif; ?>
 </body>
