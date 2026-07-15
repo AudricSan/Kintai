@@ -695,6 +695,7 @@
     "payslip_sig_employer": "雇用主の署名",
     "payslip_summary": "支給・控除一覧",
     "payslip_title": "給与支払明細書",
+    "pdf_generated_by": "作成者",
     "peak_abbr": "ピーク",
     "pending": "保留中",
     "pending_requests": "保留中の申請",
