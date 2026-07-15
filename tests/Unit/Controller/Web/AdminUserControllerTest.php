@@ -553,6 +553,88 @@ final class AdminUserControllerTest extends TestCase
         $this->controller->checkEmployeeCode($req);
     }
 
+    public function testCheckEmployeeCodeAvailableWhenTakenByExcludedUser(): void
+    {
+        // Édition : le code déjà pris par l'utilisateur en cours d'édition lui-même n'est pas un conflit.
+        $req = $this->makeQueryRequest(['code' => 'EMP001', 'exclude_id' => '1']);
+        $this->users->method('findByEmployeeCode')->with('EMP001')->willReturn(['id' => 1]);
+
+        $response = $this->controller->checkEmployeeCode($req);
+
+        $data = json_decode($response->body(), true);
+        $this->assertTrue($data['available']);
+    }
+
+    public function testCheckEmployeeCodeUnavailableWhenTakenByAnotherUser(): void
+    {
+        $req = $this->makeQueryRequest(['code' => 'EMP001', 'exclude_id' => '2']);
+        $this->users->method('findByEmployeeCode')->with('EMP001')->willReturn(['id' => 1]);
+
+        $response = $this->controller->checkEmployeeCode($req);
+
+        $data = json_decode($response->body(), true);
+        $this->assertFalse($data['available']);
+    }
+
+    // -------------------------------------------------------------------------
+    // checkEmail
+    // -------------------------------------------------------------------------
+
+    public function testCheckEmailReturnsTrueWhenAvailable(): void
+    {
+        $req = $this->makeQueryRequest(['email' => 'new@test.com']);
+        $this->users->method('findByEmail')->with('new@test.com')->willReturn(null);
+
+        $response = $this->controller->checkEmail($req);
+
+        $data = json_decode($response->body(), true);
+        $this->assertTrue($data['available']);
+    }
+
+    public function testCheckEmailReturnsFalseWhenTaken(): void
+    {
+        $req = $this->makeQueryRequest(['email' => 'taken@test.com']);
+        $this->users->method('findByEmail')->with('taken@test.com')->willReturn(['id' => 1]);
+
+        $response = $this->controller->checkEmail($req);
+
+        $data = json_decode($response->body(), true);
+        $this->assertFalse($data['available']);
+    }
+
+    public function testCheckEmailReturnsTrueForEmptyValue(): void
+    {
+        $req = $this->makeQueryRequest(['email' => '']);
+        $this->users->expects($this->never())->method('findByEmail');
+
+        $response = $this->controller->checkEmail($req);
+
+        $data = json_decode($response->body(), true);
+        $this->assertTrue($data['available']);
+    }
+
+    public function testCheckEmailAvailableWhenTakenByExcludedUser(): void
+    {
+        $req = $this->makeQueryRequest(['email' => 'own@test.com', 'exclude_id' => '5']);
+        $this->users->method('findByEmail')->with('own@test.com')->willReturn(['id' => 5]);
+
+        $response = $this->controller->checkEmail($req);
+
+        $data = json_decode($response->body(), true);
+        $this->assertTrue($data['available']);
+    }
+
+    public function testCheckEmailUnavailableWhenTakenByAnotherUser(): void
+    {
+        $req = $this->makeQueryRequest(['email' => 'other@test.com', 'exclude_id' => '5']);
+        $this->users->method('findByEmail')->with('other@test.com')->willReturn(['id' => 9]);
+
+        $response = $this->controller->checkEmail($req);
+
+        $data = json_decode($response->body(), true);
+        $this->assertFalse($data['available']);
+    }
+
     protected function tearDown(): void
     {
         $_GET = [];

@@ -61,6 +61,14 @@
     color: var(--color-text-muted);
 }
 
+.form-control.is-invalid {
+    border-color: var(--color-danger);
+}
+
+.form-control.is-invalid:focus {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger) 15%, transparent);
+}
+
 select.form-control {
     cursor: pointer;
 }
