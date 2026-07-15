@@ -7,6 +7,7 @@ namespace kintai\UI\Controller\Web\Staff;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\Services\PdfCjkFontResolver;
 
 /**
  * CRUD générique pour les rapports RH par store (embauche, démission, salaire) :
@@ -214,7 +215,7 @@ trait HasStaffReportCrud
             mkdir($tmpDir, 0755, true);
         }
 
-        $config = [
+        $config = PdfCjkFontResolver::applyTo([
             'mode'          => 'utf-8',
             'format'        => 'A4',
             'margin_left'   => 15,
@@ -222,60 +223,13 @@ trait HasStaffReportCrud
             'margin_top'    => 16,
             'margin_bottom' => 16,
             'tempDir'       => $tmpDir,
-        ];
-
-        // Polices CJK (japonais, chinois) pour compatibilité multilingue
-        $fontConfig = $this->findCjkFont();
-        if ($fontConfig !== null) {
-            $config['fontDir']  = $fontConfig['dir'];
-            $config['fontdata'] = $fontConfig['data'];
-            $config['default_font'] = $fontConfig['default'];
-        }
+        ]);
 
         $mpdf = new \Mpdf\Mpdf($config);
         $mpdf->SetTitle($filename);
         $mpdf->WriteHTML($html);
 
         return Response::pdf($mpdf->Output('', \Mpdf\Output\Destination::STRING_RETURN), $filename);
-    }
-
-    private function findCjkFont(): ?array
-    {
-        $customDir  = storage_path('fonts');
-        $customFile = $customDir . '/NotoSansJP-Regular.ttf';
-        if (file_exists($customFile)) {
-            return [
-                'dir'     => [$customDir],
-                'data'    => ['notosansjp' => ['R' => 'NotoSansJP-Regular.ttf']],
-                'default' => 'notosansjp',
-            ];
-        }
-
-        $sysRoot  = rtrim((string) (getenv('SystemRoot') ?: 'C:/Windows'), '/\\');
-        $winFonts = $sysRoot . '/Fonts';
-
-        $candidates = [
-            'YuGothR.ttc'  => ['fontName' => 'yugothic', 'ttcId' => 1],
-            'meiryo.ttc'   => ['fontName' => 'meiryo',   'ttcId' => 1],
-            'msgothic.ttc' => ['fontName' => 'msgothic', 'ttcId' => 1],
-        ];
-
-        foreach ($candidates as $file => $meta) {
-            if (file_exists($winFonts . '/' . $file)) {
-                return [
-                    'dir'     => [$winFonts],
-                    'data'    => [
-                        $meta['fontName'] => [
-                            'R'         => $file,
-                            'TTCfontID' => ['R' => $meta['ttcId']],
-                        ],
-                    ],
-                    'default' => $meta['fontName'],
-                ];
-            }
-        }
-
-        return null;
     }
 
     /**
