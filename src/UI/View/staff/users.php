@@ -14,10 +14,12 @@ use kintai\UI\Components\Table;
 /** @var string $store_currency */
 /** @var string $sort */
 /** @var int    $filter_store_id */
+/** @var string $filter_search */
 
 $store_currency   ??= 'JPY';
 $sort             ??= 'name_asc';
 $filter_store_id  ??= 0;
+$filter_search    ??= '';
 $available_stores ??= [];
 $store_names      ??= [];
 $user_store_ids   ??= [];
@@ -45,10 +47,10 @@ $exportQuery = $filter_store_id !== 0 ? '?store_id=' . $filter_store_id : '';
     </div>
 </div>
 
-<?php if (count($available_stores) > 1 || $filter_store_id !== 0): ?>
 <div class="card card--filters mb-sm">
     <form method="GET" action="" class="filter-bar">
         <div class="shifts-filters__row">
+            <?php if (count($available_stores) > 1 || $filter_store_id !== 0): ?>
             <div class="shifts-filters__group">
                 <label class="shifts-filters__label" for="uf-store"><?= __('store') ?></label>
                 <select id="uf-store" name="store_id" class="form-control form-control--sm" onchange="this.form.submit()">
@@ -59,11 +61,21 @@ $exportQuery = $filter_store_id !== 0 ? '?store_id=' . $filter_store_id : '';
                     <option value="-1" <?= $filter_store_id === -1 ? 'selected' : '' ?>><?= __('without_store') ?></option>
                 </select>
             </div>
+            <?php endif; ?>
+            <div class="shifts-filters__group">
+                <label class="shifts-filters__label" for="uf-search"><?= __('search') ?></label>
+                <input type="text" id="uf-search" name="search" class="form-control form-control--sm" value="<?= htmlspecialchars($filter_search) ?>" placeholder="<?= __('search_user_placeholder') ?>">
+            </div>
+            <div class="shifts-filters__actions">
+                <?= Button::make(__('filter'))->ghost()->sm()->submit()->render() ?>
+                <?php if ($filter_search !== '' || $filter_store_id !== 0): ?>
+                    <a href="?sort=<?= htmlspecialchars($sort) ?>" class="btn btn--ghost btn--sm"><?= __('reset') ?></a>
+                <?php endif; ?>
+            </div>
             <input type="hidden" name="sort" value="<?= htmlspecialchars($sort) ?>">
         </div>
     </form>
 </div>
-<?php endif; ?>
 
 <div class="card">
 <?= Table::make()

@@ -1,4 +1,6 @@
 {
+    "all_months": "Tous les mois",
+    "all_years": "Toutes les années",
     "bundle_resignation_report": "Rapport de démission",
     "bundle_resignation_report_desc": "Rapports de démission par employé, avec réactivation du compte.",
     "confirm_delete_resignation_report": "Supprimer définitivement ce rapport de démission ?",
