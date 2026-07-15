@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Services;
 
 use PHPUnit\Framework\TestCase;
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Mail\MailerService;
 use kintai\Core\Services\DailyReportMailService;
 use kintai\Core\Services\DailyReportPermissionService;
 use kintai\Core\Services\TranslationService;
 use kintai\Core\Repositories\LanguageRepositoryInterface;
+use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
+use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\TranslationRepositoryInterface;
 
 final class DailyReportMailServiceTest extends TestCase
@@ -21,7 +24,10 @@ final class DailyReportMailServiceTest extends TestCase
     {
         // DailyReportPermissionService et MailerService sont final — on utilise les vraies classes.
         // MailerService avec driver 'native' : mail() retourne false en CLI, ce qui est attendu.
-        $this->permissions = new DailyReportPermissionService();
+        $this->permissions = new DailyReportPermissionService(new PermissionService(
+            $this->createStub(RoleAssignmentRepositoryInterface::class),
+            $this->createStub(RoleRepositoryInterface::class),
+        ));
         $mailer            = new MailerService(['driver' => 'native', 'from' => ['address' => 'test@kintai.test', 'name' => 'Kintai Test']]);
         $translations      = new TranslationService(
             $this->createStub(TranslationRepositoryInterface::class),
