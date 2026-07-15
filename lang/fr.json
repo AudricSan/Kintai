@@ -906,6 +906,7 @@
     "store_features": "Fonctionnalités",
     "store_features_hint": "Désactivez les fonctionnalités inutilisées pour simplifier l'interface. Les accès et les liens de menu seront retirés pour ce magasin.",
     "store_info": "Informations générales",
+    "store_picker_choose": "Choisir un magasin",
     "store_role": "Rôle dans le store",
     "store_updated": "Store mis à jour.",
     "stores": "Stores",

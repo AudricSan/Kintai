@@ -1,4 +1,6 @@
 {
+    "all_months": "All months",
+    "all_years": "All years",
     "bundle_resignation_report": "Resignation Report",
     "bundle_resignation_report_desc": "Per-employee resignation reports, with account reactivation.",
     "confirm_delete_resignation_report": "Permanently delete this resignation report?",

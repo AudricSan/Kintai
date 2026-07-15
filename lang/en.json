@@ -906,6 +906,7 @@
     "store_features": "Features",
     "store_features_hint": "Disable unused features to simplify the interface. Access and menu links will be removed for this store.",
     "store_info": "General information",
+    "store_picker_choose": "Choose a store",
     "store_role": "Store role",
     "store_updated": "Store updated.",
     "stores": "Stores",
