@@ -16,6 +16,8 @@ use kintai\Bundles\ResignationReport\Controllers\Web\AdminResignationReportContr
 
 $router->group('/admin', function ($r) {
     $r->get('/reports/resignation', [AdminResignationReportController::class, 'allResignationReports'], name: 'admin.reports.resignation');
+    $r->get('/reports/resignation/export/json', [AdminResignationReportController::class, 'exportResignationReportsJson'], name: 'admin.reports.resignation.export_json');
+    $r->get('/reports/resignation/export/pdf',  [AdminResignationReportController::class, 'exportResignationReportsPdf'],  name: 'admin.reports.resignation.export_pdf');
 
     $r->get('/stores/{id}/reports/resignation',                   [AdminResignationReportController::class, 'resignationReports'],      name: 'admin.stores.resignation_reports');
     $r->get('/stores/{id}/reports/resignation/create',            [AdminResignationReportController::class, 'createResignationReport'], name: 'admin.stores.resignation_reports.create');
