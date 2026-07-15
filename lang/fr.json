@@ -840,6 +840,7 @@
     "score_wellbeing_desc": "repos, jours consécutifs, charge max",
     "search": "Recherche",
     "search_translations": "Rechercher une clé...",
+    "search_user_placeholder": "Nom, code employé, email...",
     "section_employee_perf": "Performance par employé",
     "section_financial": "6. Analyse financière",
     "section_hr_stats": "5. Statistiques RH",

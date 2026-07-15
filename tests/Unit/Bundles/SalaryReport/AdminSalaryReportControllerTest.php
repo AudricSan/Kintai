@@ -80,6 +80,27 @@ final class AdminSalaryReportControllerTest extends TestCase
     // Export de la liste (item 5)
     // -------------------------------------------------------------------------
 
+    public function testAllSalaryReportsBuildsStoreMembersByStoreForTheCreateModal(): void
+    {
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+
+        $this->stores->method('findAll')->willReturn([
+            ['id' => 1, 'name' => 'Store A'],
+            ['id' => 2, 'name' => 'Store B'],
+        ]);
+        $this->salaryReports->method('findAll')->willReturn([]);
+        $this->storeUsers->method('findByStore')->willReturnMap([
+            [1, [['user_id' => 10, 'store_id' => 1]]],
+            [2, []],
+        ]);
+        $this->users->method('findById')->with(10)->willReturn(['id' => 10, 'first_name' => 'Jean', 'last_name' => 'Dupont']);
+
+        $response = $this->controller->allSalaryReports($req);
+
+        $this->assertSame(200, $response->status());
+    }
+
     public function testExportSalaryReportsJsonReturnsData(): void
     {
         $req = new Request();

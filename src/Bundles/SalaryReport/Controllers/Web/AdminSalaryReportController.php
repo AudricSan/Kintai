@@ -86,9 +86,19 @@ final class AdminSalaryReportController
 
         $reports = $this->salaryReports->findAll($queryStoreIds, $filters);
 
+        $membersByStore = [];
+        foreach ($allStores as $s) {
+            $sid = (int) $s['id'];
+            $members = $this->storeMembersForReportForm($sid);
+            if ($members !== []) {
+                $membersByStore[$sid] = $members;
+            }
+        }
+
         return Response::html($this->view->render('salary-report::reports-salary', [
             'title'       => __('sr_title'),
             'stores'      => $allStores,
+            'store_members_by_store' => $membersByStore,
             'filter_store_id' => $filterStoreId,
             'filter_year' => $filterYear,
             'filter_month' => $filterMonth,

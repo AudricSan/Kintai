@@ -840,6 +840,7 @@
     "score_wellbeing_desc": "rest, consecutive days, max load",
     "search": "Search",
     "search_translations": "Search a key...",
+    "search_user_placeholder": "Name, employee code, email...",
     "section_employee_perf": "Performance by employee",
     "section_financial": "6. Financial analysis",
     "section_hr_stats": "5. HR statistics",

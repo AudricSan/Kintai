@@ -840,6 +840,7 @@
     "score_wellbeing_desc": "休息、連続勤務日数、最大負荷",
     "search": "検索",
     "search_translations": "キーを検索...",
+    "search_user_placeholder": "氏名、従業員コード、メール...",
     "section_employee_perf": "従業員別パフォーマンス",
     "section_financial": "6. 財務分析",
     "section_hr_stats": "5. 人事統計",
