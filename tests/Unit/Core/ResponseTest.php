@@ -87,6 +87,17 @@ final class ResponseTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
+    // jsonDownload()
+    // -------------------------------------------------------------------------
+
+    public function testJsonDownloadEncodesBodyAsJson(): void
+    {
+        $r = Response::jsonDownload(['id' => 1, 'name' => 'Alice'], 'export.json');
+        $this->assertSame(['id' => 1, 'name' => 'Alice'], json_decode($r->body(), true));
+        $this->assertSame(200, $r->status());
+    }
+
+    // -------------------------------------------------------------------------
     // csv()
     // -------------------------------------------------------------------------
 

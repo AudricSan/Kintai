@@ -264,6 +264,12 @@ img {
     gap: var(--space-2);
 }
 
+/* Variante compacte : action seule alignée à droite, juste au-dessus d'un tableau */
+.page-header--end {
+    justify-content: flex-end;
+    margin-bottom: var(--space-3);
+}
+
 /* ── Guest Layout ──────────────────────────────── */
 .guest-layout {
     display: flex;
@@ -366,6 +372,13 @@ img {
     font-size: var(--text-xl);
     margin-top: var(--space-2);
     color: var(--color-text-muted);
+}
+
+.error-detail {
+    font-size: var(--text-sm);
+    margin-top: var(--space-4);
+    color: var(--color-text-muted);
+    font-family: var(--font-mono, monospace);
 }
 
 .error-link {

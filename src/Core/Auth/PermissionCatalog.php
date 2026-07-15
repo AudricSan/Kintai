@@ -15,17 +15,18 @@ namespace kintai\Core\Auth;
 final class PermissionCatalog
 {
     public const CATEGORIES = [
-        'employees'   => ['view', 'create', 'update', 'delete'],
-        'shifts'      => ['view', 'create', 'update', 'delete', 'import', 'export', 'validate'],
-        'stores'      => ['view', 'create', 'update', 'delete'],
-        'payroll'     => ['view', 'generate', 'export'],
-        'documents'   => ['view', 'create', 'update', 'delete'],
-        'settings'    => ['update'],
-        'timeoff'     => ['view', 'create', 'update', 'approve', 'delete'],
-        'swaps'       => ['view', 'create', 'update', 'approve', 'delete'],
-        'timeclock'   => ['view', 'update', 'delete'],
-        'open_shifts' => ['view', 'publish', 'approve'],
-        'feedbacks'   => ['view', 'update', 'delete'],
+        'employees'     => ['view', 'create', 'update', 'delete'],
+        'shifts'        => ['view', 'create', 'update', 'delete', 'import', 'export', 'validate'],
+        'stores'        => ['view', 'create', 'update', 'delete'],
+        'payroll'       => ['view', 'generate', 'export'],
+        'documents'     => ['view', 'create', 'update', 'delete'],
+        'settings'      => ['update'],
+        'timeoff'       => ['view', 'create', 'update', 'approve', 'delete'],
+        'swaps'         => ['view', 'create', 'update', 'approve', 'delete'],
+        'timeclock'     => ['view', 'update', 'delete'],
+        'open_shifts'   => ['view', 'publish', 'approve'],
+        'feedbacks'     => ['view', 'update', 'delete'],
+        'daily_reports' => ['view', 'create', 'update', 'submit', 'approve', 'delete'],
     ];
 
     /**
@@ -36,11 +37,12 @@ final class PermissionCatalog
      * valides en base et réapparaissent si le bundle est réactivé.
      */
     public const CATEGORY_BUNDLES = [
-        'timeoff'     => 'timeoff',
-        'swaps'       => 'shift-swap',
-        'timeclock'   => 'timeclock',
-        'open_shifts' => 'shift-claim',
-        'feedbacks'   => 'feedback',
+        'timeoff'       => 'timeoff',
+        'swaps'         => 'shift-swap',
+        'timeclock'     => 'timeclock',
+        'open_shifts'   => 'shift-claim',
+        'feedbacks'     => 'feedback',
+        'daily_reports' => 'daily-report',
     ];
 
     /**
@@ -60,6 +62,8 @@ final class PermissionCatalog
         'timeclock.view', 'timeclock.update', 'timeclock.delete',
         'open_shifts.view', 'open_shifts.publish', 'open_shifts.approve',
         'feedbacks.view', 'feedbacks.update', 'feedbacks.delete',
+        'daily_reports.view', 'daily_reports.create', 'daily_reports.update',
+        'daily_reports.submit', 'daily_reports.approve', 'daily_reports.delete',
     ];
 
     /** @return string[] Toutes les clés de permission ("categorie.action"), aplaties. */

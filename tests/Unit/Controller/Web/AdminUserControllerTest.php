@@ -37,10 +37,13 @@ final class AdminUserControllerTest extends TestCase
     private LogRepositoryInterface&MockObject $logRepo;
     private RoleRepositoryInterface&MockObject $roles;
     private RoleAssignmentRepositoryInterface&MockObject $roleAssignments;
+    private ShiftTypeRepositoryInterface&MockObject $shiftTypes;
+    private UserShiftTypeRateRepositoryInterface&MockObject $userRates;
     protected function setUp(): void
     {
         $this->ensureViewFile('staff.users');
         $this->ensureViewFile('staff.users-form');
+        $this->ensureViewFile('staff.users-export-pdf');
         $this->ensureViewFile('layout.app');
         $view = new ViewRenderer(sys_get_temp_dir());
         $this->users = $this->createMock(UserRepositoryInterface::class);
@@ -48,6 +51,8 @@ final class AdminUserControllerTest extends TestCase
         $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
         $this->roles = $this->createMock(RoleRepositoryInterface::class);
         $this->roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
+        $this->shiftTypes = $this->createMock(ShiftTypeRepositoryInterface::class);
+        $this->userRates = $this->createMock(UserShiftTypeRateRepositoryInterface::class);
 
         // AuditLogger::log() délègue à Log::record() -> LogRepositoryInterface::record().
         $this->logRepo = $this->createMock(LogRepositoryInterface::class);
@@ -60,9 +65,9 @@ final class AdminUserControllerTest extends TestCase
             $this->users,
             $this->stores,
             $this->createMock(ShiftRepositoryInterface::class),
-            $this->createMock(ShiftTypeRepositoryInterface::class),
+            $this->shiftTypes,
             $this->storeUsers,
-            $this->createMock(UserShiftTypeRateRepositoryInterface::class),
+            $this->userRates,
             $this->createMock(HiringReportRepositoryInterface::class),
             new AuditLogger(),
             new RoleAssignmentSyncService($this->roles, $this->roleAssignments),
@@ -77,6 +82,83 @@ final class AdminUserControllerTest extends TestCase
         $response = $this->controller->users($req);
 
         $this->assertSame(200, $response->status());
+    }
+
+    // -------------------------------------------------------------------------
+    // Export employés (item 3)
+    // -------------------------------------------------------------------------
+
+    public function testExportUsersJsonReturnsExpectedFields(): void
+    {
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+
+        $this->users->method('findAll')->willReturn([
+            ['id' => 5, 'employee_code' => 'E005', 'last_name' => 'Dupont', 'first_name' => 'Jean',
+             'display_name' => 'Jean Dupont', 'email' => 'jean@test.com', 'phone' => '0102030405',
+             'mobile_phone' => '0601020304', 'postal_code' => '75001', 'address' => 'Rue X',
+             'is_admin' => false, 'is_active' => 1, 'deleted_at' => null],
+        ]);
+        $this->stores->method('findAll')->willReturn([['id' => 1, 'name' => 'Store A']]);
+        $this->storeUsers->method('findByUser')->with(5)->willReturn([['store_id' => 1]]);
+        $this->userRates->method('findByUser')->with(5)->willReturn([['shift_type_id' => 2, 'hourly_rate' => 1200]]);
+        $this->shiftTypes->method('findAll')->willReturn([['id' => 2, 'name' => 'Salle']]);
+
+        $response = $this->controller->exportUsersJson($req);
+        $this->assertSame(200, $response->status());
+
+        $data = json_decode($response->body(), true)['data'];
+        $this->assertCount(1, $data);
+        $this->assertSame('E005', $data[0]['employee_code']);
+        $this->assertSame('jean@test.com', $data[0]['email']);
+        $this->assertSame('0601020304', $data[0]['mobile_phone']);
+        $this->assertSame(['Store A'], $data[0]['stores']);
+        $this->assertTrue($data[0]['is_active']);
+        $this->assertSame('Salle', $data[0]['hourly_rates'][0]['shift_type']);
+        $this->assertEquals(1200, $data[0]['hourly_rates'][0]['hourly_rate']);
+    }
+
+    public function testExportUsersJsonRespectsStoreFilter(): void
+    {
+        $_GET['store_id'] = '1';
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+
+        $this->users->method('findAll')->willReturn([
+            ['id' => 5, 'display_name' => 'In Store', 'email' => 'a@test.com', 'is_active' => 1],
+            ['id' => 6, 'display_name' => 'Other Store', 'email' => 'b@test.com', 'is_active' => 1],
+        ]);
+        $this->stores->method('findAll')->willReturn([['id' => 1, 'name' => 'Store A'], ['id' => 2, 'name' => 'Store B']]);
+        $this->storeUsers->method('findByUser')->willReturnMap([
+            [5, [['store_id' => 1]]],
+            [6, [['store_id' => 2]]],
+        ]);
+        $this->userRates->method('findByUser')->willReturn([]);
+        $this->shiftTypes->method('findAll')->willReturn([]);
+
+        $response = $this->controller->exportUsersJson($req);
+        $data = json_decode($response->body(), true)['data'];
+
+        $this->assertCount(1, $data);
+        $this->assertSame('In Store', $data[0]['display_name']);
+    }
+
+    public function testExportUsersPdfReturnsPdfResponse(): void
+    {
+        // mPDF lit $_SERVER['PHP_SELF'], absent en environnement CLI/tests.
+        $_SERVER['PHP_SELF'] ??= '/index.php';
+
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+
+        $this->users->method('findAll')->willReturn([]);
+        $this->stores->method('findAll')->willReturn([]);
+        $this->shiftTypes->method('findAll')->willReturn([]);
+
+        $response = $this->controller->exportUsersPdf($req);
+
+        $this->assertSame(200, $response->status());
+        $this->assertStringStartsWith('%PDF', $response->body());
     }
 
     public function testEditUserRenders(): void

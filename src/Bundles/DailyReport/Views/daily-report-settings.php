@@ -2,18 +2,13 @@
 /**
  * @var array  $store
  * @var array  $settings
- * @var array|null $storeMembers
  * @var array  $errors
  * @var string $BASE_URL
  */
 $storeId = (int) $store['id'];
 $action  = $BASE_URL . '/admin/stores/' . $storeId . '/daily-reports/settings';
 
-$allRoles          = ['staff' => __('role_employee'), 'manager' => __('role_manager'), 'admin' => __('role_owner')];
-$submitRoles       = $settings['can_submit_roles']   ?? ['staff', 'manager', 'admin'];
-$validateRoles     = $settings['can_validate_roles'] ?? ['manager', 'admin'];
 $recipients        = implode("\n", $settings['mail_recipients'] ?? []);
-$allowedCreateIds  = array_map('intval', $settings['can_create_user_ids'] ?? []);
 $autoValidateTime  = $settings['auto_validate_time'] ?? '';
 $reminderTime      = $settings['reminder_time']      ?? '15:00';
 $noReportTime      = $settings['no_report_time']     ?? '18:00';
@@ -65,65 +60,11 @@ $noReportTime      = $settings['no_report_time']     ?? '18:00';
     <!-- ── Permissions ── -->
     <div class="card card--mb">
         <div class="card-header"><?= __('dr_setting_permissions') ?></div>
-        <div class="card-body form-stack">
-
-            <?php if (!empty($storeMembers)): ?>
-            <div class="form-group">
-                <label class="form-label"><?= __('dr_setting_create_users') ?></label>
-                <div class="check-group">
-                    <?php foreach ($storeMembers as $sm): ?>
-                        <?php
-                        $uid        = (int) $sm['user']['id'];
-                        $memberName = trim(($sm['user']['last_name'] ?? '') . ' ' . ($sm['user']['first_name'] ?? ''))
-                                      ?: ($sm['user']['email'] ?? '#' . $uid);
-                        $isChecked  = !empty($allowedCreateIds) && in_array($uid, $allowedCreateIds, true);
-                        ?>
-                        <label class="check-label">
-                            <input type="checkbox"
-                                   name="can_create_user_ids[]"
-                                   value="<?= $uid ?>"
-                                   <?= $isChecked ? 'checked' : '' ?>>
-                            <span><?= htmlspecialchars($memberName) ?></span>
-                            <small class="text-muted">(<?= htmlspecialchars($sm['membership']['role'] ?? '') ?>)</small>
-                        </label>
-                    <?php endforeach; ?>
-                </div>
-                <span class="form-hint"><?= __('dr_setting_create_users_hint') ?></span>
-            </div>
-            <?php endif; ?>
-
-            <div class="form-group">
-                <label class="form-label"><?= __('dr_setting_submit_roles') ?></label>
-                <div class="check-group">
-                    <?php foreach ($allRoles as $role => $label): ?>
-                        <label class="check-label">
-                            <input type="checkbox"
-                                   name="can_submit_roles[]"
-                                   value="<?= $role ?>"
-                                   <?= in_array($role, $submitRoles, true) ? 'checked' : '' ?>>
-                            <span><?= htmlspecialchars($label) ?></span>
-                        </label>
-                    <?php endforeach; ?>
-                </div>
-                <span class="form-hint"><?= __('dr_setting_submit_hint') ?></span>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label"><?= __('dr_setting_validate_roles') ?></label>
-                <div class="check-group">
-                    <?php foreach ($allRoles as $role => $label): ?>
-                        <label class="check-label">
-                            <input type="checkbox"
-                                   name="can_validate_roles[]"
-                                   value="<?= $role ?>"
-                                   <?= in_array($role, $validateRoles, true) ? 'checked' : '' ?>>
-                            <span><?= htmlspecialchars($label) ?></span>
-                        </label>
-                    <?php endforeach; ?>
-                </div>
-                <span class="form-hint"><?= __('dr_setting_validate_hint') ?></span>
-            </div>
-
+        <div class="card-body">
+            <p class="form-hint">
+                <?= __('dr_setting_permissions_hint') ?>
+                <a href="<?= route_url('admin.roles') ?>"><?= __('roles') ?></a>
+            </p>
         </div>
     </div>
 
