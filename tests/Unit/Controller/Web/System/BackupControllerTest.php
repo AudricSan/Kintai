@@ -64,6 +64,7 @@ final class BackupControllerTest extends TestCase
     {
         $this->removeDir($this->tmpDir);
         putenv('KINTAI_STORAGE_PATH');
+        $_GET = [];
     }
 
     private function setPrivate(object $obj, string $prop, mixed $value): void
@@ -153,6 +154,37 @@ final class BackupControllerTest extends TestCase
 
         $this->assertSame(302, $response->status());
         $this->assertStringContainsString('success=created_', $this->locationOf($response));
+    }
+
+    public function testDownloadRejectsNonOwner(): void
+    {
+        $controller = $this->makeController();
+
+        $this->expectException(ForbiddenException::class);
+        $controller->download($this->requestAs(false));
+    }
+
+    public function testDownloadRedirectsWhenFileMissing(): void
+    {
+        $controller = $this->makeController();
+
+        $_GET = ['filename' => 'does_not_exist.zip'];
+        $response = $controller->download($this->requestAs(true));
+
+        $this->assertSame(302, $response->status());
+        $this->assertStringContainsString('error=not_found', $this->locationOf($response));
+    }
+
+    public function testDownloadStreamsExistingBackup(): void
+    {
+        $controller = $this->makeController();
+        $created = $controller->create($this->requestAs(true));
+        $filename = urldecode(substr($this->locationOf($created), strlen('/admin/backup?success=created_')));
+
+        $_GET = ['filename' => $filename];
+        $response = $controller->download($this->requestAs(true));
+
+        $this->assertSame(200, $response->status());
     }
 
     public function testUpdateRejectsNonOwner(): void
