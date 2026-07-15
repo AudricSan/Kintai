@@ -30,11 +30,6 @@ final class DailyReportPdfService
         try {
             [$html, $title] = $this->buildHtml($report, $store, $author, $locale);
 
-            // DEBUG : dump HTML pour inspecter ce que mPDF reçoit
-            $debugPath = storage_path('app/mpdf');
-            if (!is_dir($debugPath)) { mkdir($debugPath, 0755, true); }
-            file_put_contents($debugPath . '/debug_daily_report.html', $html);
-
             $mpdf = $this->buildMpdf();
             $mpdf->SetTitle($title);
             $mpdf->WriteHTML($html);
@@ -149,7 +144,7 @@ final class DailyReportPdfService
             mkdir($tmpDir, 0755, true);
         }
 
-        return new \Mpdf\Mpdf([
+        return new \Mpdf\Mpdf(PdfCjkFontResolver::applyTo([
             'mode'             => 'utf-8',
             'format'           => 'A4',
             'margin_left'      => 15,
@@ -158,6 +153,6 @@ final class DailyReportPdfService
             'margin_bottom'    => 16,
             'tempDir'          => $tmpDir,
             'useSubstitutions' => true,
-        ]);
+        ]));
     }
 }
