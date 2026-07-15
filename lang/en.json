@@ -949,6 +949,7 @@
     "update_channel_beta": "Beta",
     "update_channel_label": "Update channel:",
     "update_channel_release": "Release",
+    "update_channel_switch_confirm": "Alpha and Beta channels contain builds that are still being tested and may be unstable. Continue?",
     "update_title": "Updates",
     "upload_error": "Error uploading the file.",
     "user": "User",
