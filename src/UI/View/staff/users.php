@@ -64,10 +64,9 @@ $exportQuery = $filter_store_id !== 0 ? '?store_id=' . $filter_store_id : '';
             <?php endif; ?>
             <div class="shifts-filters__group">
                 <label class="shifts-filters__label" for="uf-search"><?= __('search') ?></label>
-                <input type="text" id="uf-search" name="search" class="form-control form-control--sm" value="<?= htmlspecialchars($filter_search) ?>" placeholder="<?= __('search_user_placeholder') ?>">
+                <input type="text" id="uf-search" name="search" class="form-control form-control--sm" data-client-filter="1" value="<?= htmlspecialchars($filter_search) ?>" placeholder="<?= __('search_user_placeholder') ?>">
             </div>
             <div class="shifts-filters__actions">
-                <?= Button::make(__('filter'))->ghost()->sm()->submit()->render() ?>
                 <?php if ($filter_search !== '' || $filter_store_id !== 0): ?>
                     <a href="?sort=<?= htmlspecialchars($sort) ?>" class="btn btn--ghost btn--sm"><?= __('reset') ?></a>
                 <?php endif; ?>
@@ -79,11 +78,21 @@ $exportQuery = $filter_store_id !== 0 ? '?store_id=' . $filter_store_id : '';
 
 <div class="card">
 <?= Table::make()
+    ->attrs(['id' => 'users-table'])
     ->data($users)
     ->emptyMessage(__('none'))
     ->currentSort($sort)
     ->filters($activeFilters)
     ->rowUrl(fn($u) => $BASE_URL . '/admin/users/' . (int) $u['id'] . '/edit')
+    ->rowAttrs(fn($u) => [
+        'data-search-text'    => implode('|', [
+            trim(($u['last_name'] ?? '') . ' ' . ($u['first_name'] ?? '')),
+            $u['display_name'] ?? '',
+            $u['employee_code'] ?? '',
+            $u['email'] ?? '',
+        ]),
+        'data-search-reading' => ($u['furigana_last_name'] ?? '') . ($u['furigana_first_name'] ?? ''),
+    ])
     ->column('#', fn($u) => (string) (int) $u['id'])
     ->sortable(__('name'), 'name', function($u) use ($BASE_URL) {
         $uid = (int) $u['id'];
@@ -180,3 +189,5 @@ $exportQuery = $filter_store_id !== 0 ? '?store_id=' . $filter_store_id : '';
 
 <div id="payslip-meta" data-msg-invalid-range="<?= htmlspecialchars(__('invalid_date_range') ?? 'Plage de dates invalide') ?>" hidden></div>
 <script src="<?= $BASE_URL ?>/assets/js/modules/users-payslip.js"></script>
+<script src="<?= $BASE_URL ?>/assets/js/modules/kana-search.js"></script>
+<script src="<?= $BASE_URL ?>/assets/js/modules/users-list-search.js"></script>

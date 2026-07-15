@@ -33,7 +33,9 @@ echo Flash::fromQuery('success', [
     'password_reset' => __('password_reset_success'),
 ])->render();
 echo Flash::fromQuery('error', [
-    'email_taken' => __('email_taken'),
+    'email_taken'        => __('email_taken'),
+    'name_required'      => __('name_required'),
+    'furigana_required'  => __('furigana_required'),
 ])->render();
 ?>
 <div class="page-header">
@@ -203,3 +205,4 @@ echo Card::make()->body(ob_get_clean())->render();
 <?php endif; ?>
 <?php endif; ?>
 <script src="<?= $BASE_URL ?>/assets/js/modules/user-form-live-check.js"></script>
+<script src="<?= $BASE_URL ?>/assets/js/modules/furigana-suggest.js"></script>
