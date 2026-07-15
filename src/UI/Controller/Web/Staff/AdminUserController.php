@@ -16,6 +16,7 @@ use kintai\Core\Repositories\HiringReportRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\PdfCjkFontResolver;
 use kintai\Core\Services\RoleAssignmentSyncService;
 use kintai\UI\ViewRenderer;
 use kintai\UI\Controller\Web\HasAdminAccess;
@@ -193,6 +194,153 @@ final class AdminUserController
             'user_store_map'   => $userStoreMap,
             'filter_store_id'  => $filterStoreId,
         ], 'layout.app'));
+    }
+
+    // -------------------------------------------------------------------------
+    // Users — export (item 3)
+    // -------------------------------------------------------------------------
+
+    public function exportUsersJson(Request $request): Response
+    {
+        $rows = $this->usersForExport($request);
+
+        $this->auditLogger->log($request, 'export.employees_json', 'user', 0, ['count' => count($rows)]);
+
+        return Response::jsonDownload(['data' => $rows], 'employees_' . date('Ymd') . '.json');
+    }
+
+    public function exportUsersPdf(Request $request): Response
+    {
+        $rows = $this->usersForExport($request);
+
+        $html = $this->view->render('staff.users-export-pdf', [
+            'rows'         => $rows,
+            'generated_at' => date('Y-m-d H:i'),
+        ]);
+
+        $tmpDir = storage_path('app/mpdf');
+        if (!is_dir($tmpDir)) {
+            mkdir($tmpDir, 0755, true);
+        }
+
+        $mpdf = new \Mpdf\Mpdf(PdfCjkFontResolver::applyTo([
+            'mode'          => 'utf-8',
+            'format'        => 'A4-L',
+            'margin_left'   => 10,
+            'margin_right'  => 10,
+            'margin_top'    => 12,
+            'margin_bottom' => 12,
+            'tempDir'       => $tmpDir,
+        ]));
+        $mpdf->SetTitle('Employés');
+        $mpdf->WriteHTML($html);
+
+        $this->auditLogger->log($request, 'export.employees_pdf', 'user', 0, ['count' => count($rows)]);
+
+        return Response::pdf(
+            $mpdf->Output('', \Mpdf\Output\Destination::STRING_RETURN),
+            'employees_' . date('Ymd') . '.pdf',
+        );
+    }
+
+    /**
+     * Liste des employés visibles (mêmes filtres store_id que la page), avec
+     * coordonnées et taux horaires — pour les exports PDF/JSON.
+     */
+    private function usersForExport(Request $request): array
+    {
+        $managedIds = $this->managedIds($request);
+
+        if ($managedIds !== null) {
+            $memberIds = $this->memberUserIds($managedIds);
+            $users = array_values(array_filter(
+                $this->users->findAll(),
+                fn($u) => in_array((int) $u['id'], $memberIds, true)
+            ));
+        } else {
+            $users = $this->users->findAll();
+        }
+
+        $availableStores = $this->availableStores($managedIds);
+        $availableStoreIds = array_map(fn($s) => (int) $s['id'], $availableStores);
+        $storeNames = [];
+        foreach ($availableStores as $s) {
+            $storeNames[(int) $s['id']] = $s['name'] ?? '';
+        }
+
+        $userStoreIds = [];
+        foreach ($users as $u) {
+            $uid = (int) $u['id'];
+            $ids = [];
+            foreach ($this->storeUsers->findByUser($uid) as $m) {
+                $sid = (int) $m['store_id'];
+                if (in_array($sid, $availableStoreIds, true)) {
+                    $ids[] = $sid;
+                }
+            }
+            $userStoreIds[$uid] = $ids;
+        }
+
+        $filterStoreId = (int) ($request->query('store_id') ?? 0);
+        if ($filterStoreId > 0) {
+            $users = array_values(array_filter(
+                $users,
+                fn($u) => in_array($filterStoreId, $userStoreIds[(int) $u['id']] ?? [], true)
+            ));
+        } elseif ($filterStoreId === -1) {
+            $users = array_values(array_filter(
+                $users,
+                fn($u) => empty($userStoreIds[(int) $u['id']])
+            ));
+        }
+
+        usort($users, fn($a, $b) => strcmp(
+            strtolower($a['display_name'] ?? $a['email'] ?? ''),
+            strtolower($b['display_name'] ?? $b['email'] ?? ''),
+        ));
+
+        $shiftTypeNames = [];
+        foreach ($this->shiftTypes->findAll() as $t) {
+            $shiftTypeNames[(int) $t['id']] = $t['name'] ?? ('#' . $t['id']);
+        }
+
+        $rows = [];
+        foreach ($users as $u) {
+            $uid = (int) $u['id'];
+
+            $rates = [];
+            foreach ($this->userRates->findByUser($uid) as $r) {
+                $tid = (int) $r['shift_type_id'];
+                $rates[] = [
+                    'shift_type'  => $shiftTypeNames[$tid] ?? ('#' . $tid),
+                    'hourly_rate' => (float) $r['hourly_rate'],
+                ];
+            }
+
+            $storeLabels = array_values(array_filter(array_map(
+                fn($sid) => $storeNames[$sid] ?? null,
+                $userStoreIds[$uid] ?? [],
+            )));
+
+            $rows[] = [
+                'id'            => $uid,
+                'employee_code' => $u['employee_code'] ?? null,
+                'last_name'     => $u['last_name'] ?? '',
+                'first_name'    => $u['first_name'] ?? '',
+                'display_name'  => $u['display_name'] ?? '',
+                'email'         => $u['email'] ?? '',
+                'phone'         => $u['phone'] ?? null,
+                'mobile_phone'  => $u['mobile_phone'] ?? null,
+                'postal_code'   => $u['postal_code'] ?? null,
+                'address'       => $u['address'] ?? null,
+                'stores'        => $storeLabels,
+                'is_admin'      => !empty($u['is_admin']),
+                'is_active'     => !empty($u['is_active']) && empty($u['deleted_at']),
+                'hourly_rates'  => $rates,
+            ];
+        }
+
+        return $rows;
     }
 
     public function createUser(Request $request): Response
