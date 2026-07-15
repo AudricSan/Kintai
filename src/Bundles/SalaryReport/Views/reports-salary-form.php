@@ -22,10 +22,12 @@ $action = $mode === 'edit'
     : $BASE_URL . '/admin/stores/' . $storeId . '/reports/salary/create';
 
 $val = fn(string $key, string $default = '') => htmlspecialchars((string) ($report[$key] ?? $default));
+$employeeId = (int) ($report['user_id'] ?? 0);
 ?>
 <div class="page-header">
     <h2 class="page-header__title">
         <?= $mode === 'edit' ? __('sr_edit') : __('sr_new') ?> — <?= htmlspecialchars($store['name'] ?? '') ?>
+        <?php if ($employeeId > 0): ?> — <?= $val('employee_name') ?><?php endif; ?>
     </h2>
     <div class="page-header__actions">
         <?= Button::make('← ' . __('back'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . $storeId . '/reports/salary')->render() ?>
@@ -37,8 +39,20 @@ ob_start();
 ?>
 <form method="POST" action="<?= htmlspecialchars($action) ?>">
     <?= csrf_field() ?>
+    <input type="hidden" name="user_id" value="<?= $employeeId ?>">
+    <input type="hidden" name="employee_name" value="<?= $val('employee_name') ?>">
 
     <h3 class="form-section-title"><?= __('sr_section_basic') ?></h3>
+
+    <?php if ($employeeId > 0): ?>
+    <div class="form-row">
+        <div class="form-group form-group--flex1">
+            <label class="form-label"><?= __('employee_name') ?></label>
+            <input type="text" class="form-control" value="<?= $val('employee_name') ?>" readonly disabled>
+        </div>
+    </div>
+    <p class="form-hint"><?= __('sr_employee_scope_hint') ?></p>
+    <?php endif; ?>
 
     <div class="form-row">
         <div class="form-group form-group--flex1">

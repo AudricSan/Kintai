@@ -122,10 +122,8 @@ trait HasStaffReportCrud
         $cfg = $this->reportConfig();
 
         $changes = $this->postData($request, $cfg['fields']);
-        if ($cfg['slug'] !== 'salary') {
-            $userId = (int) $request->post('user_id', 0);
-            $changes = ['user_id' => $userId > 0 ? $userId : null] + $changes;
-        }
+        $userId = (int) $request->post('user_id', 0);
+        $changes = ['user_id' => $userId > 0 ? $userId : null] + $changes;
         $data = array_merge($report, $changes);
 
         $this->reportRepo()->save($data);

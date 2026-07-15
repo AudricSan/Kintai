@@ -21,6 +21,7 @@
     "sr_created": "給与報告書を作成しました。",
     "sr_deleted": "給与報告書を削除しました。",
     "sr_edit": "報告書を編集",
+    "sr_employee_scope_hint": "この報告書はこの従業員のみを対象としています。以下の時間と給与はこの従業員自身のシフトのみで、店舗全体のものではありません。",
     "sr_employee_work_hours": "従業員労働時間",
     "sr_empty": "この店舗の給与報告書はありません。",
     "sr_hand_delivered_salary": "手渡し給与",
