@@ -207,7 +207,7 @@ $actionLabels = [
             </div>
             <div class="shifts-filters__group">
                 <label class="shifts-filters__label" for="al-user"><?= __('user') ?></label>
-                <select id="al-user" name="user_id" class="form-control form-control--sm">
+                <select id="al-user" name="user_id" class="form-control form-control--sm" onchange="this.form.submit()">
                     <option value=""><?= __('all') ?></option>
                     <?php foreach ($users_map as $uid => $uname): ?>
                         <option value="<?= $uid ?>" <?= (string) $userIdFilter === (string) $uid ? 'selected' : '' ?>><?= htmlspecialchars($uname) ?></option>
@@ -219,7 +219,6 @@ $actionLabels = [
                 <input type="text" id="al-query" name="query" value="<?= htmlspecialchars($queryFilter) ?>" class="form-control form-control--sm" placeholder="...">
             </div>
             <div class="shifts-filters__actions">
-                <?= Button::make(__('filter'))->primary()->sm()->submit()->render() ?>
                 <a href="?" class="btn btn--ghost btn--sm"><?= __('reset') ?></a>
             </div>
         </div>
