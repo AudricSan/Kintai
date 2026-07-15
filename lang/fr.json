@@ -358,6 +358,8 @@
     "end": "Fin",
     "end_time": "Heure de fin",
     "error": "Erreur",
+    "error_403_message": "Vous n'avez pas la permission d'accéder à cette page.",
+    "error_403_title": "403 — Accès refusé",
     "error_404_message": "Page non trouvée",
     "error_404_title": "404 — Page non trouvée",
     "error_405_message": "Méthode non autorisée",
