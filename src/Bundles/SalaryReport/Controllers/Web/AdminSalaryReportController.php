@@ -277,6 +277,14 @@ final class AdminSalaryReportController
         ];
     }
 
+    /** Employés du store, pour le menu "créer un rapport pour cet employé" de la liste. */
+    protected function reportListExtras(int $storeId): array
+    {
+        return [
+            'store_members' => $this->storeMembersForReportForm($storeId),
+        ];
+    }
+
     /**
      * Calcule les valeurs pré-remplies pour un rapport de salaire à partir
      * des rapports journaliers et des shifts existants.

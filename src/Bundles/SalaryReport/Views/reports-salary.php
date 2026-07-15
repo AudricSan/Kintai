@@ -12,11 +12,14 @@ use kintai\UI\Components\Table;
  * @var array       $reports
  * @var string      $BASE_URL
  * @var array|null  $stores
+ * @var array|null  $store_members
  * @var int         $filter_store_id
  * @var string      $filter_year
  * @var string      $filter_month
  * @var string      $filter_person
  */
+
+$store_members ??= [];
 
 $stores ??= [];
 $filter_store_id ??= 0;
@@ -79,7 +82,21 @@ echo Flash::fromQuery('success', [
         <?= Button::make('PDF')->ghost()->sm()->link($BASE_URL . '/admin/reports/salary/export/pdf' . $exportQueryString)->render() ?>
         <?= Button::make('JSON')->ghost()->sm()->link($BASE_URL . '/admin/reports/salary/export/json' . $exportQueryString)->render() ?>
         <?php endif; ?>
-        <?php if ($createBase !== null): ?>
+        <?php if (!$allMode): ?>
+        <details class="store-picker">
+            <summary class="btn btn--primary">+ <?= __('sr_new') ?></summary>
+            <div class="store-picker__panel">
+                <a class="store-picker__item" href="<?= htmlspecialchars($createBase . '/create') ?>">🏬 <?= __('sr_new_store_wide') ?></a>
+                <?php if ($store_members !== []): ?>
+                    <div class="store-picker__title"><?= __('sr_new_for_employee') ?></div>
+                    <?php foreach ($store_members as $m): ?>
+                        <?php $mName = trim(($m['last_name'] ?? '') . ' ' . ($m['first_name'] ?? '')) ?: ($m['display_name'] ?? $m['email'] ?? '#' . $m['id']); ?>
+                        <a class="store-picker__item" href="<?= htmlspecialchars($createBase . '/create?user_id=' . (int) $m['id']) ?>"><?= htmlspecialchars($mName) ?></a>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+        </details>
+        <?php elseif ($createBase !== null): ?>
         <?= Button::make('+ ' . __('sr_new'))->primary()->link($createBase . '/create')->render() ?>
         <?php elseif ($allMode): ?>
         <details class="store-picker">

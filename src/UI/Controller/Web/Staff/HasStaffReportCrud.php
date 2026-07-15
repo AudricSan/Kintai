@@ -81,11 +81,46 @@ trait HasStaffReportCrud
         $store = $this->findStoreOrFail($storeId);
         $this->assertStoreAccess($request, $storeId);
 
-        return Response::html($this->view->render($this->reportConfig()['view'], [
+        return Response::html($this->view->render($this->reportConfig()['view'], array_merge([
             'title'   => $titlePrefix . ' — ' . ($store['name'] ?? ''),
             'store'   => $store,
             'reports' => $this->reportRepo()->findByStore($storeId),
-        ], 'layout.app'));
+        ], $this->reportListExtras($storeId)), 'layout.app'));
+    }
+
+    /** Données additionnelles pour la vue liste, propres à un type de rapport (voir AdminSalaryReportController). */
+    protected function reportListExtras(int $storeId): array
+    {
+        return [];
+    }
+
+    /**
+     * Employés du store (pour un menu déroulant "Utilisateur"/employé du formulaire) —
+     * inclut aussi $keepUserId même s'il n'est plus membre du store (édition
+     * d'un ancien rapport dont l'employé a depuis été retiré du store).
+     */
+    private function storeMembersForReportForm(int $storeId, int $keepUserId = 0): array
+    {
+        $seenIds = [];
+        $members = [];
+        foreach ($this->storeUsers->findByStore($storeId) as $m) {
+            $uid = (int) $m['user_id'];
+            if (in_array($uid, $seenIds, true)) {
+                continue;
+            }
+            $user = $this->users->findById($uid);
+            if ($user !== null) {
+                $seenIds[] = $uid;
+                $members[] = $user;
+            }
+        }
+        if ($keepUserId > 0 && !in_array($keepUserId, $seenIds, true)) {
+            $user = $this->users->findById($keepUserId);
+            if ($user !== null) {
+                $members[] = $user;
+            }
+        }
+        return $members;
     }
 
     private function showReport(Request $request): Response
