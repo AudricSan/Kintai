@@ -13,6 +13,7 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\DailyReportDataNormalizer;
 use kintai\UI\Controller\Web\HasAdminAccess;
 use kintai\UI\Controller\Web\Staff\HasStaffReportCrud;
 use kintai\UI\ViewRenderer;
@@ -161,7 +162,7 @@ final class AdminSalaryReportController
 
         $authUser = $request->getAttribute('auth_user');
         $targetMonth = date('Y-m');
-        $preset = $this->calculateSalaryPreset($storeId, $targetMonth, $authUser);
+        $preset = $this->calculateSalaryPreset($store, $targetMonth, $authUser);
 
         $userId = (int) ($request->query('user_id') ?? 0);
         if ($userId > 0) {
@@ -273,8 +274,9 @@ final class AdminSalaryReportController
      * Calcule les valeurs pré-remplies pour un rapport de salaire à partir
      * des rapports journaliers et des shifts existants.
      */
-    private function calculateSalaryPreset(int $storeId, string $targetMonth, array $authUser): array
+    private function calculateSalaryPreset(array $store, string $targetMonth, array $authUser): array
     {
+        $storeId = (int) $store['id'];
         $preset = [
             'target_month'      => $targetMonth,
             'person_in_charge'  => $authUser['display_name'] ?? '',
@@ -283,13 +285,24 @@ final class AdminSalaryReportController
         $from = $targetMonth . '-01';
         $to = date('Y-m-t', strtotime($from));
 
-        // Total des ventes depuis les rapports journaliers validés/soumis
-        $dailyReports = $this->dailyReports->findByStoreAndDateRange($storeId, $from, $to);
+        // Total des ventes depuis les rapports journaliers validés/soumis. En mode
+        // de saisie "cumulatif" (daily_report_settings.cumulative_mode), sales_total
+        // contient déjà le cumul depuis le début de la période : le ramener à des
+        // deltas journaliers avant de sommer, sans quoi chaque jour compterait
+        // plusieurs fois (voir DailyReportDataNormalizer).
+        $dailyReports = array_values(array_filter(
+            $this->dailyReports->findByStoreAndDateRange($storeId, $from, $to),
+            fn($r) => in_array($r['status'] ?? '', ['validated', 'submitted'], true)
+        ));
+        usort($dailyReports, fn($a, $b) => strcmp($a['report_date'], $b['report_date']));
+        $dailyReports = DailyReportDataNormalizer::toDailyDeltas(
+            $dailyReports,
+            DailyReportDataNormalizer::cumulativeModeOf($store),
+        );
+
         $totalPayment = 0;
         foreach ($dailyReports as $r) {
-            if (in_array($r['status'] ?? '', ['validated', 'submitted'], true)) {
-                $totalPayment += (float) ($r['sales_total'] ?? 0);
-            }
+            $totalPayment += (float) ($r['sales_total'] ?? 0);
         }
 
         // Heures et salaires depuis les shifts

@@ -17,10 +17,13 @@ echo Flash::fromQuery('error', [
 ?>
 <div class="page-header">
     <h2 class="page-header__title"><?= __('roles') ?></h2>
-    <a href="<?= route_url('admin.roles.create') ?>" class="btn btn--primary"><?= __('new_role') ?></a>
 </div>
 
 <?php include __DIR__ . '/../_partials/_settings-tabs.php'; ?>
+
+<div class="page-header page-header--end">
+    <a href="<?= route_url('admin.roles.create') ?>" class="btn btn--primary"><?= __('new_role') ?></a>
+</div>
 
 <div class="card">
     <div class="table-wrap">
