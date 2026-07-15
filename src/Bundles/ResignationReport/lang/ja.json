@@ -1,4 +1,6 @@
 {
+    "all_months": "全月",
+    "all_years": "全年度",
     "bundle_resignation_report": "退職報告書",
     "bundle_resignation_report_desc": "従業員ごとの退職報告書、アカウント再有効化機能付き。",
     "confirm_delete_resignation_report": "この退職報告書を削除しますか？",

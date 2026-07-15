@@ -35,6 +35,7 @@ final class AdminSalaryReportControllerTest extends TestCase
     protected function setUp(): void
     {
         $viewDir = sys_get_temp_dir() . '/kintai-salary-report-views';
+        $this->ensureViewFile($viewDir, 'reports-salary');
         $this->ensureViewFile($viewDir, 'reports-salary-show');
         $this->ensureViewFile($viewDir, 'reports-salary-form');
         $this->ensureViewFile($viewDir, 'reports-salary-export-pdf');
@@ -79,6 +80,27 @@ final class AdminSalaryReportControllerTest extends TestCase
     // Export de la liste (item 5)
     // -------------------------------------------------------------------------
 
+    public function testAllSalaryReportsBuildsStoreMembersByStoreForTheCreateModal(): void
+    {
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+
+        $this->stores->method('findAll')->willReturn([
+            ['id' => 1, 'name' => 'Store A'],
+            ['id' => 2, 'name' => 'Store B'],
+        ]);
+        $this->salaryReports->method('findAll')->willReturn([]);
+        $this->storeUsers->method('findByStore')->willReturnMap([
+            [1, [['user_id' => 10, 'store_id' => 1]]],
+            [2, []],
+        ]);
+        $this->users->method('findById')->with(10)->willReturn(['id' => 10, 'first_name' => 'Jean', 'last_name' => 'Dupont']);
+
+        $response = $this->controller->allSalaryReports($req);
+
+        $this->assertSame(200, $response->status());
+    }
+
     public function testExportSalaryReportsJsonReturnsData(): void
     {
         $req = new Request();
@@ -111,6 +133,24 @@ final class AdminSalaryReportControllerTest extends TestCase
 
         $this->assertSame(200, $response->status());
         $this->assertStringStartsWith('%PDF', $response->body());
+    }
+
+    public function testSalaryReportsPassesStoreMembersForTheEmployeePicker(): void
+    {
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '1']);
+
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Store A']);
+        $this->salaryReports->method('findByStore')->with(1)->willReturn([]);
+        $this->storeUsers->expects($this->once())->method('findByStore')->with(1)->willReturn([
+            ['user_id' => 10, 'store_id' => 1],
+        ]);
+        $this->users->method('findById')->with(10)->willReturn(['id' => 10, 'first_name' => 'Jean', 'last_name' => 'Dupont']);
+
+        $response = $this->controller->salaryReports($req);
+
+        $this->assertSame(200, $response->status());
     }
 
     public function testShowSalaryReportLogsConsultation(): void

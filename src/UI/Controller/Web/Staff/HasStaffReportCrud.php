@@ -81,11 +81,46 @@ trait HasStaffReportCrud
         $store = $this->findStoreOrFail($storeId);
         $this->assertStoreAccess($request, $storeId);
 
-        return Response::html($this->view->render($this->reportConfig()['view'], [
+        return Response::html($this->view->render($this->reportConfig()['view'], array_merge([
             'title'   => $titlePrefix . ' — ' . ($store['name'] ?? ''),
             'store'   => $store,
             'reports' => $this->reportRepo()->findByStore($storeId),
-        ], 'layout.app'));
+        ], $this->reportListExtras($storeId)), 'layout.app'));
+    }
+
+    /** Données additionnelles pour la vue liste, propres à un type de rapport (voir AdminSalaryReportController). */
+    protected function reportListExtras(int $storeId): array
+    {
+        return [];
+    }
+
+    /**
+     * Employés du store (pour un menu déroulant "Utilisateur"/employé du formulaire) —
+     * inclut aussi $keepUserId même s'il n'est plus membre du store (édition
+     * d'un ancien rapport dont l'employé a depuis été retiré du store).
+     */
+    private function storeMembersForReportForm(int $storeId, int $keepUserId = 0): array
+    {
+        $seenIds = [];
+        $members = [];
+        foreach ($this->storeUsers->findByStore($storeId) as $m) {
+            $uid = (int) $m['user_id'];
+            if (in_array($uid, $seenIds, true)) {
+                continue;
+            }
+            $user = $this->users->findById($uid);
+            if ($user !== null) {
+                $seenIds[] = $uid;
+                $members[] = $user;
+            }
+        }
+        if ($keepUserId > 0 && !in_array($keepUserId, $seenIds, true)) {
+            $user = $this->users->findById($keepUserId);
+            if ($user !== null) {
+                $members[] = $user;
+            }
+        }
+        return $members;
     }
 
     private function showReport(Request $request): Response
@@ -231,10 +266,14 @@ trait HasStaffReportCrud
     }
 
     /**
-     * Retourne la liste des responsables (admin/manager) pour le store courant
-     * ou pour tous les stores d'un employé donné. Utilisée par démission et salaire.
-     * Nécessite $this->storeUsers (StoreUserRepositoryInterface) et $this->users
-     * (UserRepositoryInterface) sur la classe utilisatrice.
+     * Retourne la liste des responsables (Owner + admin/manager du store) pour le
+     * store courant ou pour tous les stores d'un employé donné. Utilisée par
+     * démission et salaire. Nécessite $this->storeUsers (StoreUserRepositoryInterface)
+     * et $this->users (UserRepositoryInterface) sur la classe utilisatrice.
+     *
+     * L'Owner est toujours inclus même si non listé dans store_user : voir
+     * install.php, qui ne crée qu'une ligne role_assignments globale pour lui,
+     * pas d'adhésion à un store précis.
      */
     private function getManagersForReportForm(int $storeId, int $userId = 0): array
     {
@@ -249,6 +288,12 @@ trait HasStaffReportCrud
 
         $seenIds = [];
         $managers = [];
+        foreach ($this->users->findAll() as $u) {
+            if (!empty($u['is_admin'])) {
+                $seenIds[] = (int) $u['id'];
+                $managers[] = $u;
+            }
+        }
         foreach ($storeIds as $sid) {
             $members = $this->storeUsers->findByStore($sid);
             foreach ($members as $m) {

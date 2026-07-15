@@ -84,6 +84,40 @@ final class AdminUserControllerTest extends TestCase
         $this->assertSame(200, $response->status());
     }
 
+    public function testUsersSearchFiltersByNameEmployeeCodeOrEmail(): void
+    {
+        $this->users->method('findAll')->willReturn([
+            ['id' => 1, 'first_name' => 'Jean', 'last_name' => 'Dupont', 'employee_code' => 'EMP001', 'email' => 'jean@test.com'],
+            ['id' => 2, 'first_name' => 'Paul', 'last_name' => 'Martin', 'employee_code' => 'EMP002', 'email' => 'paul@test.com'],
+        ]);
+
+        $_GET = ['search' => 'Dupont'];
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+
+        $response = $this->controller->users($req);
+
+        $this->assertSame(200, $response->status());
+        $_GET = [];
+    }
+
+    public function testUsersSearchByEmployeeCode(): void
+    {
+        $this->users->method('findAll')->willReturn([
+            ['id' => 1, 'first_name' => 'Jean', 'last_name' => 'Dupont', 'employee_code' => 'EMP001', 'email' => 'jean@test.com'],
+            ['id' => 2, 'first_name' => 'Paul', 'last_name' => 'Martin', 'employee_code' => 'EMP002', 'email' => 'paul@test.com'],
+        ]);
+
+        $_GET = ['search' => 'EMP002'];
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+
+        $response = $this->controller->users($req);
+
+        $this->assertSame(200, $response->status());
+        $_GET = [];
+    }
+
     // -------------------------------------------------------------------------
     // Export employés (item 3)
     // -------------------------------------------------------------------------

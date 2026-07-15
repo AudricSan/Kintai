@@ -37,14 +37,17 @@ echo csrf_field();
 
 echo '<div class="form-group">';
 echo '<label class="form-label" for="f-user_id">' . __('user') . '</label>';
-echo '<select id="f-user_id" name="user_id" class="form-control">';
+echo '<select id="f-user_id" name="user_id" class="form-control" onchange="rrFillFromUser(this)">';
 echo '<option value="">— ' . __('select') . ' —</option>';
 $selectedUserId = (int) ($report['user_id'] ?? 0);
 foreach ($users as $u) {
     $uid = (int) $u['id'];
     $uName = trim(($u['last_name'] ?? '') . ' ' . ($u['first_name'] ?? '')) ?: ($u['display_name'] ?? $u['email'] ?? '#' . $uid);
     $sel = $uid === $selectedUserId ? ' selected' : '';
-    echo '<option value="' . $uid . '"' . $sel . '>' . htmlspecialchars($uName) . '</option>';
+    echo '<option value="' . $uid . '"' . $sel
+        . ' data-number="' . htmlspecialchars($u['employee_code'] ?? '') . '"'
+        . ' data-name="' . htmlspecialchars($uName) . '"'
+        . '>' . htmlspecialchars($uName) . '</option>';
 }
 echo '</select></div>';
 
@@ -97,3 +100,10 @@ echo '</div></form>';
 
 echo Card::make()->body(ob_get_clean())->render();
 ?>
+<script>
+function rrFillFromUser(select) {
+    var opt = select.options[select.selectedIndex];
+    document.getElementById('f-employee_number').value = opt.dataset.number || '';
+    document.getElementById('f-employee_name').value = opt.dataset.name || '';
+}
+</script>
