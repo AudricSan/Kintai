@@ -77,4 +77,35 @@ final class EmployeeFeedbacksSchemaTest extends TestCase
         $this->assertNotNull($record->id);
         $this->assertNull(Feedback::find($record->id)->user_id);
     }
+
+    /**
+     * store_id est nullable depuis la migration 2026_07_15_000004 : l'Owner (et tout
+     * rôle global sans adhésion à un store) doit pouvoir signaler un bug sans être
+     * rattaché à un magasin. Les colonnes page_path/app_version/device_type sont le
+     * contexte technique auto-détecté (migration 2026_07_15_000003).
+     */
+    public function testMigratedSchemaAcceptsOwnerFeedbackWithoutStoreAndTechnicalContext(): void
+    {
+        $this->migratedCapsule();
+
+        $record = Feedback::create([
+            'store_id'    => null,
+            'user_id'     => 99,
+            'shift_id'    => null,
+            'category'    => 'app',
+            'rating'      => null,
+            'message'     => 'Bug sur la page owner-settings.',
+            'anonymous'   => 0,
+            'page_path'   => '/admin/owner-settings',
+            'app_version' => '0.7.2',
+            'device_type' => 'desktop',
+            'created_at'  => date('Y-m-d H:i:s'),
+        ]);
+
+        $fresh = Feedback::find($record->id);
+        $this->assertNull($fresh->store_id);
+        $this->assertSame('/admin/owner-settings', $fresh->page_path);
+        $this->assertSame('0.7.2', $fresh->app_version);
+        $this->assertSame('desktop', $fresh->device_type);
+    }
 }
