@@ -98,6 +98,10 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(Capsule::class),
         ));
 
+        $this->container->singleton(AppResetService::class, fn(Container $c) => new AppResetService(
+            $c->make(Capsule::class),
+        ));
+
         $this->container->singleton(UpdateService::class, fn() => new UpdateService());
 
         $this->container->singleton(GithubUpdateService::class, fn(Container $c) => new GithubUpdateService(
