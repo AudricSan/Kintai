@@ -347,6 +347,7 @@
     "employee": "Employee",
     "employee_code": "Employee code",
     "employee_code_hint": "optional, used for quick login",
+    "employee_code_taken_hint": "This employee code is already used by another account.",
     "employee_info": "Employee Information",
     "employee_login_hint": "The employee can log in with their code and the store code.",
     "employee_name": "Employee Name",

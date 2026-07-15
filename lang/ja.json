@@ -347,6 +347,7 @@
     "employee": "従業員",
     "employee_code": "従業員コード",
     "employee_code_hint": "任意、クイックログインに使用",
+    "employee_code_taken_hint": "この従業員コードは既に別のアカウントで使用されています。",
     "employee_info": "従業員情報",
     "employee_login_hint": "従業員はコードと店舗コードでログインできます。",
     "employee_name": "従業員名",

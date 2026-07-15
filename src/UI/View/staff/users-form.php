@@ -202,3 +202,4 @@ echo Card::make()->body(ob_get_clean())->render();
 </div>
 <?php endif; ?>
 <?php endif; ?>
+<script src="<?= $BASE_URL ?>/assets/js/modules/user-form-live-check.js"></script>

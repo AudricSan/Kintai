@@ -700,17 +700,3 @@
     margin-bottom: var(--space-3);
 }
 
-#qc-employee-code {
-    text-transform: uppercase;
-}
-
-#qc-code-status {
-    font-size: 1rem;
-    min-width: 1.2rem;
-    text-align: center;
-}
-
-#qc-code-error {
-    color: var(--color-danger);
-}
-

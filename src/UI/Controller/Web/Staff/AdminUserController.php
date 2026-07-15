@@ -562,14 +562,35 @@ final class AdminUserController
         ]);
     }
 
-    /** Vérifie en temps réel si un code employé est disponible. Retourne JSON {available: bool}. */
+    /**
+     * Vérifie en temps réel si un code employé est disponible. Retourne JSON {available: bool}.
+     * `exclude_id` (édition) : ignore la correspondance si c'est le propre code de l'utilisateur en cours d'édition.
+     */
     public function checkEmployeeCode(Request $request): Response
     {
         $code = strtoupper(trim($request->query('code', '')));
         if ($code === '') {
             return Response::json(['available' => true]);
         }
-        $taken = $this->users->findByEmployeeCode($code) !== null;
+        $existing  = $this->users->findByEmployeeCode($code);
+        $excludeId = (int) $request->query('exclude_id', 0);
+        $taken     = $existing !== null && (int) $existing['id'] !== $excludeId;
+        return Response::json(['available' => !$taken]);
+    }
+
+    /**
+     * Vérifie en temps réel si une adresse email est disponible. Retourne JSON {available: bool}.
+     * `exclude_id` (édition) : ignore la correspondance si c'est le propre email de l'utilisateur en cours d'édition.
+     */
+    public function checkEmail(Request $request): Response
+    {
+        $email = trim($request->query('email', ''));
+        if ($email === '') {
+            return Response::json(['available' => true]);
+        }
+        $existing  = $this->users->findByEmail($email);
+        $excludeId = (int) $request->query('exclude_id', 0);
+        $taken     = $existing !== null && (int) $existing['id'] !== $excludeId;
         return Response::json(['available' => !$taken]);
     }
 
