@@ -245,9 +245,9 @@ final class AdminSalaryReportControllerTest extends TestCase
         $this->storeUsers->method('findByStore')->with(1)->willReturn([]);
 
         $this->dailyReports->method('findByStoreAndDateRange')->willReturn([
-            ['status' => 'validated', 'sales_total' => '10000'],
-            ['status' => 'submitted', 'sales_total' => '5000'],
-            ['status' => 'draft', 'sales_total' => '9999'],
+            ['report_date' => date('Y-m') . '-01', 'status' => 'validated', 'sales_total' => '10000'],
+            ['report_date' => date('Y-m') . '-02', 'status' => 'submitted', 'sales_total' => '5000'],
+            ['report_date' => date('Y-m') . '-03', 'status' => 'draft', 'sales_total' => '9999'],
         ]);
         $this->shifts->method('findByStore')->with(1)->willReturn([
             ['shift_date' => date('Y-m') . '-05', 'duration_minutes' => 480, 'estimated_salary' => 6000, 'user_id' => 7],
@@ -257,6 +257,52 @@ final class AdminSalaryReportControllerTest extends TestCase
         $response = $this->controller->createSalaryReport($req);
 
         $this->assertSame(200, $response->status());
+    }
+
+    // -------------------------------------------------------------------------
+    // calculateSalaryPreset — mode de saisie cumulatif du rapport journalier (item 4)
+    // -------------------------------------------------------------------------
+
+    public function testCalculateSalaryPresetSumsRawValuesInPerDayMode(): void
+    {
+        $store = ['id' => 1, 'name' => 'Store A', 'daily_report_settings' => null];
+        $authUser = ['id' => 1, 'display_name' => 'Manager X'];
+
+        $this->dailyReports->method('findByStoreAndDateRange')->willReturn([
+            ['report_date' => date('Y-m') . '-01', 'status' => 'validated', 'sales_total' => 1000],
+            ['report_date' => date('Y-m') . '-02', 'status' => 'validated', 'sales_total' => 2000],
+        ]);
+        $this->shifts->method('findByStore')->willReturn([]);
+
+        $preset = $this->invokeCalculateSalaryPreset($store, date('Y-m'), $authUser);
+
+        $this->assertSame(3000.0, $preset['total_payment']);
+    }
+
+    public function testCalculateSalaryPresetUsesDailyDeltasInCumulativeInputMode(): void
+    {
+        $store = ['id' => 1, 'name' => 'Store A', 'daily_report_settings' => json_encode(['cumulative_mode' => 'cumulative_input'])];
+        $authUser = ['id' => 1, 'display_name' => 'Manager X'];
+
+        // Saisies cumulées depuis le début du mois : la dernière valeur (3300) EST le total du mois,
+        // sommer les 3 lignes brutes donnerait 6400 (faux).
+        $this->dailyReports->method('findByStoreAndDateRange')->willReturn([
+            ['report_date' => date('Y-m') . '-01', 'status' => 'validated', 'sales_total' => 1000],
+            ['report_date' => date('Y-m') . '-02', 'status' => 'validated', 'sales_total' => 2100],
+            ['report_date' => date('Y-m') . '-03', 'status' => 'validated', 'sales_total' => 3300],
+        ]);
+        $this->shifts->method('findByStore')->willReturn([]);
+
+        $preset = $this->invokeCalculateSalaryPreset($store, date('Y-m'), $authUser);
+
+        $this->assertSame(3300.0, $preset['total_payment']);
+    }
+
+    private function invokeCalculateSalaryPreset(array $store, string $targetMonth, array $authUser): array
+    {
+        $method = new \ReflectionMethod($this->controller, 'calculateSalaryPreset');
+        $method->setAccessible(true);
+        return $method->invoke($this->controller, $store, $targetMonth, $authUser);
     }
 
     private function ensureViewFile(string $dir, string $view): void
