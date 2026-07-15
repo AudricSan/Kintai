@@ -138,35 +138,6 @@ final class AdminResignationReportController
         return $this->renderPdf($html, 'resignation_reports_' . date('Ymd') . '.pdf');
     }
 
-    /**
-     * Employés du store (pour le menu déroulant "Utilisateur" du formulaire) —
-     * inclut aussi $keepUserId même s'il n'est plus membre du store (édition
-     * d'un ancien rapport dont l'employé a depuis été retiré du store).
-     */
-    private function storeMembersForReportForm(int $storeId, int $keepUserId = 0): array
-    {
-        $seenIds = [];
-        $members = [];
-        foreach ($this->storeUsers->findByStore($storeId) as $m) {
-            $uid = (int) $m['user_id'];
-            if (in_array($uid, $seenIds, true)) {
-                continue;
-            }
-            $user = $this->users->findById($uid);
-            if ($user !== null) {
-                $seenIds[] = $uid;
-                $members[] = $user;
-            }
-        }
-        if ($keepUserId > 0 && !in_array($keepUserId, $seenIds, true)) {
-            $user = $this->users->findById($keepUserId);
-            if ($user !== null) {
-                $members[] = $user;
-            }
-        }
-        return $members;
-    }
-
     public function createResignationReport(Request $request): Response
     {
         $storeId = (int) $request->param('id');
