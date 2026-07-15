@@ -33,6 +33,7 @@ final class AdminResignationReportControllerTest extends TestCase
         $viewDir = sys_get_temp_dir() . '/kintai-resignation-report-views';
         $this->ensureViewFile($viewDir, 'reports-resignation-show');
         $this->ensureViewFile($viewDir, 'reports-resignation-form');
+        $this->ensureViewFile($viewDir, 'reports-resignation-export-pdf');
         $this->ensureViewFile(sys_get_temp_dir(), 'layout.app');
 
         $view = new ViewRenderer(sys_get_temp_dir());
@@ -64,6 +65,44 @@ final class AdminResignationReportControllerTest extends TestCase
         $_POST = [];
         $_SERVER = [];
         Log::reset();
+    }
+
+    // -------------------------------------------------------------------------
+    // Export de la liste (item 5)
+    // -------------------------------------------------------------------------
+
+    public function testExportResignationReportsJsonReturnsData(): void
+    {
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+
+        $this->stores->method('findAll')->willReturn([['id' => 1, 'name' => 'Store A']]);
+        $this->resignationReports->method('findAll')->willReturn([
+            ['id' => 10, 'store_id' => 1, 'employee_name' => 'Jean Dupont'],
+        ]);
+
+        $response = $this->controller->exportResignationReportsJson($req);
+        $this->assertSame(200, $response->status());
+
+        $data = json_decode($response->body(), true)['data'];
+        $this->assertCount(1, $data);
+        $this->assertSame('Jean Dupont', $data[0]['employee_name']);
+    }
+
+    public function testExportResignationReportsPdfReturnsPdfResponse(): void
+    {
+        $_SERVER['PHP_SELF'] ??= '/index.php';
+
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+
+        $this->stores->method('findAll')->willReturn([['id' => 1, 'name' => 'Store A']]);
+        $this->resignationReports->method('findAll')->willReturn([]);
+
+        $response = $this->controller->exportResignationReportsPdf($req);
+
+        $this->assertSame(200, $response->status());
+        $this->assertStringStartsWith('%PDF', $response->body());
     }
 
     public function testShowResignationReportLogsConsultation(): void

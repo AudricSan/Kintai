@@ -51,6 +51,11 @@ if (!empty($stores)): ?>
 <div class="page-header">
     <h2 class="page-header__title"><?= __('resignation_reports') ?> <span class="page-count">(<?= count($reports) ?>)</span></h2>
     <div class="page-header__actions">
+        <?php if (!empty($stores)): ?>
+        <?php $exportQuery = $filter_store_id > 0 ? '?store_id=' . $filter_store_id : ''; ?>
+        <?= Button::make('PDF')->ghost()->sm()->link($BASE_URL . '/admin/reports/resignation/export/pdf' . $exportQuery)->render() ?>
+        <?= Button::make('JSON')->ghost()->sm()->link($BASE_URL . '/admin/reports/resignation/export/json' . $exportQuery)->render() ?>
+        <?php endif; ?>
         <?php if ($storeId > 0): ?>
         <?= Button::make('+ ' . __('new_resignation_report'))->primary()->link($base . '/create')->render() ?>
         <?= Button::make(__('back'))->ghost()->link($BASE_URL . '/admin/stores/' . $storeId . '/edit')->render() ?>

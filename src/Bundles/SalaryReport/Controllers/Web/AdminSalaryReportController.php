@@ -100,6 +100,59 @@ final class AdminSalaryReportController
         return $this->listReports($request, __('sr_title'));
     }
 
+    // -------------------------------------------------------------------------
+    // Export de la liste "tous les magasins" (item 5)
+    // -------------------------------------------------------------------------
+
+    private function exportFilters(Request $request): array
+    {
+        $filters = [];
+        $filterYear = $request->query('year', '');
+        if ($filterYear !== '') {
+            $filters['year'] = $filterYear;
+        }
+        $filterMonth = $request->query('month', '');
+        if ($filterMonth !== '') {
+            $filters['month'] = $filterMonth;
+        }
+        $filterPerson = trim($request->query('person', ''));
+        if ($filterPerson !== '') {
+            $filters['person_in_charge'] = $filterPerson;
+        }
+        return $filters;
+    }
+
+    public function exportSalaryReportsJson(Request $request): Response
+    {
+        [, $queryStoreIds] = $this->storesAndFilter($request);
+        $reports = $this->salaryReports->findAll($queryStoreIds, $this->exportFilters($request));
+
+        $this->auditLogger->log($request, 'export.salary_reports_json', 'salary_report', 0, [
+            'count' => count($reports),
+        ]);
+
+        return Response::jsonDownload(['data' => $reports], 'salary_reports_' . date('Ymd') . '.json');
+    }
+
+    public function exportSalaryReportsPdf(Request $request): Response
+    {
+        [$allStores, $queryStoreIds] = $this->storesAndFilter($request);
+        $reports = $this->salaryReports->findAll($queryStoreIds, $this->exportFilters($request));
+        $storeNames = array_column($allStores, 'name', 'id');
+
+        $html = $this->view->render('salary-report::reports-salary-export-pdf', [
+            'reports'      => $reports,
+            'store_names'  => $storeNames,
+            'generated_at' => date('Y-m-d H:i'),
+        ]);
+
+        $this->auditLogger->log($request, 'export.salary_reports_pdf', 'salary_report', 0, [
+            'count' => count($reports),
+        ]);
+
+        return $this->renderPdf($html, 'salary_reports_' . date('Ymd') . '.pdf');
+    }
+
     public function createSalaryReport(Request $request): Response
     {
         $storeId = (int) $request->param('id');

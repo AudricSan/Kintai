@@ -62,7 +62,18 @@ echo Flash::fromQuery('success', [
         <?= __('sr_title') ?><?php if (!$allMode): ?> — <?= htmlspecialchars($store['name'] ?? '') ?><?php endif; ?>
     </h2>
     <div class="page-header__actions">
-        <?php if (!$allMode): ?>
+        <?php if ($allMode):
+            $exportQuery = array_filter([
+                'store_id' => $filter_store_id ?: null,
+                'year'     => $filter_year ?: null,
+                'month'    => $filter_month ?: null,
+                'person'   => $filter_person ?: null,
+            ]);
+            $exportQueryString = $exportQuery ? '?' . http_build_query($exportQuery) : '';
+        ?>
+        <?= Button::make('PDF')->ghost()->sm()->link($BASE_URL . '/admin/reports/salary/export/pdf' . $exportQueryString)->render() ?>
+        <?= Button::make('JSON')->ghost()->sm()->link($BASE_URL . '/admin/reports/salary/export/json' . $exportQueryString)->render() ?>
+        <?php else: ?>
         <?= Button::make('+ ' . __('sr_new'))->primary()->link($baseList . '/create')->render() ?>
         <?= Button::make('← ' . __('back'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . $storeId . '/edit')->render() ?>
         <?php endif; ?>

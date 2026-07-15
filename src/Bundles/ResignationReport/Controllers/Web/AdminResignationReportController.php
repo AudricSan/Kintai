@@ -64,6 +64,41 @@ final class AdminResignationReportController
         return $this->listReports($request, __('resignation_reports'));
     }
 
+    // -------------------------------------------------------------------------
+    // Export de la liste "tous les magasins" (item 5)
+    // -------------------------------------------------------------------------
+
+    public function exportResignationReportsJson(Request $request): Response
+    {
+        [, $queryStoreIds] = $this->storesAndFilter($request);
+        $reports = $this->resignationReports->findAll($queryStoreIds);
+
+        $this->auditLogger->log($request, 'export.resignation_reports_json', 'resignation_report', 0, [
+            'count' => count($reports),
+        ]);
+
+        return Response::jsonDownload(['data' => $reports], 'resignation_reports_' . date('Ymd') . '.json');
+    }
+
+    public function exportResignationReportsPdf(Request $request): Response
+    {
+        [$allStores, $queryStoreIds] = $this->storesAndFilter($request);
+        $reports = $this->resignationReports->findAll($queryStoreIds);
+        $storeNames = array_column($allStores, 'name', 'id');
+
+        $html = $this->view->render('resignation-report::reports-resignation-export-pdf', [
+            'reports'      => $reports,
+            'store_names'  => $storeNames,
+            'generated_at' => date('Y-m-d H:i'),
+        ]);
+
+        $this->auditLogger->log($request, 'export.resignation_reports_pdf', 'resignation_report', 0, [
+            'count' => count($reports),
+        ]);
+
+        return $this->renderPdf($html, 'resignation_reports_' . date('Ymd') . '.pdf');
+    }
+
     public function createResignationReport(Request $request): Response
     {
         $storeId = (int) $request->param('id');
