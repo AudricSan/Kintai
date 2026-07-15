@@ -5,6 +5,7 @@ declare(strict_types=1);
 use kintai\UI\Components\Badge;
 use kintai\UI\Components\Button;
 use kintai\UI\Components\Flash;
+use kintai\UI\Components\Modal;
 use kintai\UI\Components\Table;
 
 /**
@@ -12,11 +13,16 @@ use kintai\UI\Components\Table;
  * @var array       $reports
  * @var string      $BASE_URL
  * @var array|null  $stores
+ * @var array|null  $store_members
+ * @var array|null  $store_members_by_store
  * @var int         $filter_store_id
  * @var string      $filter_year
  * @var string      $filter_month
  * @var string      $filter_person
  */
+
+$store_members ??= [];
+$store_members_by_store ??= [];
 
 $stores ??= [];
 $filter_store_id ??= 0;
@@ -79,8 +85,22 @@ echo Flash::fromQuery('success', [
         <?= Button::make('PDF')->ghost()->sm()->link($BASE_URL . '/admin/reports/salary/export/pdf' . $exportQueryString)->render() ?>
         <?= Button::make('JSON')->ghost()->sm()->link($BASE_URL . '/admin/reports/salary/export/json' . $exportQueryString)->render() ?>
         <?php endif; ?>
-        <?php if ($createBase !== null): ?>
-        <?= Button::make('+ ' . __('sr_new'))->primary()->link($createBase . '/create')->render() ?>
+        <?php if (!$allMode): ?>
+        <details class="store-picker">
+            <summary class="btn btn--primary">+ <?= __('sr_new') ?></summary>
+            <div class="store-picker__panel">
+                <a class="store-picker__item" href="<?= htmlspecialchars($createBase . '/create') ?>">🏬 <?= __('sr_new_store_wide') ?></a>
+                <?php if ($store_members !== []): ?>
+                    <div class="store-picker__title"><?= __('sr_new_for_employee') ?></div>
+                    <?php foreach ($store_members as $m): ?>
+                        <?php $mName = trim(($m['last_name'] ?? '') . ' ' . ($m['first_name'] ?? '')) ?: ($m['display_name'] ?? $m['email'] ?? '#' . $m['id']); ?>
+                        <a class="store-picker__item" href="<?= htmlspecialchars($createBase . '/create?user_id=' . (int) $m['id']) ?>"><?= htmlspecialchars($mName) ?></a>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+        </details>
+        <?php else: ?>
+        <button type="button" class="btn btn--primary" onclick="srResetCreateModal();openModal('sr-create-modal')">+ <?= __('sr_new') ?></button>
         <?php endif; ?>
         <?php if (!$allMode): ?>
         <?= Button::make('← ' . __('back'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . $storeId . '/edit')->render() ?>
@@ -176,3 +196,83 @@ echo Flash::fromQuery('success', [
         ->render();
 endif; ?>
 </div>
+
+<?php if ($allMode):
+ob_start();
+?>
+<div id="sr-step-choice">
+    <p class="text-muted mb-sm"><?= __('sr_new_choice_intro') ?></p>
+    <div class="sr-choice-row">
+        <button type="button" class="btn btn--outline sr-choice-btn" onclick="srShowStep('store')">🏬<br><?= __('sr_new_store_wide') ?></button>
+        <button type="button" class="btn btn--outline sr-choice-btn" onclick="srShowStep('employee')">👤<br><?= __('sr_new_for_employee') ?></button>
+    </div>
+</div>
+<div id="sr-step-store" class="hidden">
+    <button type="button" class="btn btn--ghost btn--sm mb-sm" onclick="srShowStep('choice')">← <?= __('back') ?></button>
+    <input type="text" class="form-control form-control--sm mb-sm" placeholder="<?= __('search') ?>…" oninput="srFilterList(this, 'sr-store-list')">
+    <div id="sr-store-list" class="store-picker__panel store-picker__panel--static">
+        <?php foreach ($stores as $s): ?>
+            <a class="store-picker__item" href="<?= htmlspecialchars($BASE_URL . '/admin/stores/' . (int) $s['id'] . '/reports/salary/create') ?>"><?= htmlspecialchars($s['name'] ?? '') ?></a>
+        <?php endforeach; ?>
+    </div>
+</div>
+<div id="sr-step-employee" class="hidden">
+    <button type="button" class="btn btn--ghost btn--sm mb-sm" onclick="srShowStep('choice')">← <?= __('back') ?></button>
+    <?php if ($store_members_by_store !== []): ?>
+    <input type="text" class="form-control form-control--sm mb-sm" placeholder="<?= __('search') ?>…" oninput="srFilterList(this, 'sr-employee-list')">
+    <?php endif; ?>
+    <div id="sr-employee-list" class="store-picker__panel store-picker__panel--static">
+        <?php if ($store_members_by_store === []): ?>
+            <p class="text-muted"><?= __('sr_no_employees') ?></p>
+        <?php endif; ?>
+        <?php foreach ($store_members_by_store as $sid => $members): ?>
+            <div class="store-picker__title"><?= htmlspecialchars($storeNames[$sid] ?? ('#' . $sid)) ?></div>
+            <?php foreach ($members as $m): ?>
+                <?php $mName = trim(($m['last_name'] ?? '') . ' ' . ($m['first_name'] ?? '')) ?: ($m['display_name'] ?? $m['email'] ?? '#' . $m['id']); ?>
+                <a class="store-picker__item" href="<?= htmlspecialchars($BASE_URL . '/admin/stores/' . $sid . '/reports/salary/create?user_id=' . (int) $m['id']) ?>"><?= htmlspecialchars($mName) ?></a>
+            <?php endforeach; ?>
+        <?php endforeach; ?>
+    </div>
+</div>
+<?php
+$srModalBody = ob_get_clean();
+echo Modal::make('sr-create-modal')->title(__('sr_new'))->body($srModalBody)->render();
+?>
+<script>
+function srShowStep(step) {
+    document.getElementById('sr-step-choice').classList.toggle('hidden', step !== 'choice');
+    document.getElementById('sr-step-store').classList.toggle('hidden', step !== 'store');
+    document.getElementById('sr-step-employee').classList.toggle('hidden', step !== 'employee');
+}
+function srFilterList(input, panelId) {
+    var term = input.value.trim().toLowerCase();
+    var panel = document.getElementById(panelId);
+    var nodes = Array.prototype.slice.call(panel.children);
+    nodes.forEach(function (el) {
+        if (el.classList.contains('store-picker__item')) {
+            el.style.display = el.textContent.toLowerCase().indexOf(term) !== -1 ? '' : 'none';
+        }
+    });
+    nodes.forEach(function (el, i) {
+        if (!el.classList.contains('store-picker__title')) return;
+        var hasVisible = false;
+        for (var j = i + 1; j < nodes.length && !nodes[j].classList.contains('store-picker__title'); j++) {
+            if (nodes[j].classList.contains('store-picker__item') && nodes[j].style.display !== 'none') {
+                hasVisible = true;
+                break;
+            }
+        }
+        el.style.display = hasVisible ? '' : 'none';
+    });
+}
+function srResetCreateModal() {
+    srShowStep('choice');
+    document.querySelectorAll('#sr-create-modal input[type="text"]').forEach(function (input) {
+        input.value = '';
+    });
+    document.querySelectorAll('#sr-create-modal .store-picker__item, #sr-create-modal .store-picker__title').forEach(function (el) {
+        el.style.display = '';
+    });
+}
+</script>
+<?php endif; ?>
