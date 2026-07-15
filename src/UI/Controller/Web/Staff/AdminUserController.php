@@ -154,21 +154,13 @@ final class AdminUserController
             ));
         }
 
-        // Recherche texte (nom, code employé, email)
+        // Recherche texte (nom, code employé, email) — appliquée entièrement
+        // côté client (voir kana-search.js/users-list-search.js) pour un
+        // filtrage instantané, tolérant à la langue (romaji/hiragana/kana
+        // vers un nom stocké en kanji, via les furigana_*) et sans
+        // rechargement de page à chaque frappe. `$search` ne sert ici qu'à
+        // pré-remplir le champ pour un lien direct (`?search=...`).
         $search = trim((string) ($request->query('search') ?? ''));
-        if ($search !== '') {
-            $needle = mb_strtolower($search);
-            $users = array_values(array_filter(
-                $users,
-                function ($u) use ($needle) {
-                    $haystack = mb_strtolower(trim(
-                        ($u['last_name'] ?? '') . ' ' . ($u['first_name'] ?? '') . ' '
-                        . ($u['display_name'] ?? '') . ' ' . ($u['employee_code'] ?? '') . ' ' . ($u['email'] ?? '')
-                    ));
-                    return str_contains($haystack, $needle);
-                }
-            ));
-        }
 
         // Tri
         $sort = $request->query('sort') ?? 'name_asc';
@@ -379,6 +371,14 @@ final class AdminUserController
             return Response::redirect($this->base() . '/admin/users/create?error=email_taken');
         }
 
+        if (trim($request->post('last_name', '')) === '' || trim($request->post('first_name', '')) === '') {
+            return Response::redirect($this->base() . '/admin/users/create?error=name_required');
+        }
+
+        if (trim($request->post('furigana_last_name', '')) === '' || trim($request->post('furigana_first_name', '')) === '') {
+            return Response::redirect($this->base() . '/admin/users/create?error=furigana_required');
+        }
+
         $password = $request->post('password', '');
         $empCode  = strtoupper(trim($request->post('employee_code', ''))) ?: null;
         if ($password === '') {
@@ -397,6 +397,8 @@ final class AdminUserController
             'phone'              => $request->post('phone', '') ?: null,
             'mobile_phone'       => $request->post('mobile_phone', '') ?: null,
             'furigana'           => $request->post('furigana', '') ?: null,
+            'furigana_last_name'  => $request->post('furigana_last_name', '') ?: null,
+            'furigana_first_name' => $request->post('furigana_first_name', '') ?: null,
             'gender'             => $request->post('gender', '') ?: null,
             'tax_classification' => $request->post('tax_classification', '') ?: null,
             'birth_date'         => $request->post('birth_date', '') ?: null,
@@ -479,8 +481,14 @@ final class AdminUserController
         $storeId     = (int) $request->post('store_id', 0);
         $storeRoleId = (int) $request->post('store_role_id', 0);
 
-        if ($firstName === '' && $displayName === '') {
-            return Response::json(['success' => false, 'error' => 'Prénom ou nom d\'affichage requis.'], 422);
+        if ($lastName === '' || $firstName === '') {
+            return Response::json(['success' => false, 'error' => 'name_required'], 422);
+        }
+
+        $furiganaLastName  = trim($request->post('furigana_last_name', ''));
+        $furiganaFirstName = trim($request->post('furigana_first_name', ''));
+        if ($furiganaLastName === '' || $furiganaFirstName === '') {
+            return Response::json(['success' => false, 'error' => 'furigana_required'], 422);
         }
 
         if ($displayName === '') {
@@ -527,8 +535,8 @@ final class AdminUserController
             'phone'         => $phone,
             'mobile_phone'  => $request->post('mobile_phone', '') ?: null,
             'furigana'            => null,
-            'furigana_last_name'  => $request->post('furigana_last_name', '') ?: null,
-            'furigana_first_name' => $request->post('furigana_first_name', '') ?: null,
+            'furigana_last_name'  => $furiganaLastName,
+            'furigana_first_name' => $furiganaFirstName,
             'gender'        => $request->post('gender', '') ?: null,
             'birth_date'    => $request->post('birth_date', '') ?: null,
             'education'     => $request->post('education', '') ?: null,
@@ -694,17 +702,29 @@ final class AdminUserController
             }
         }
 
+        $lastName  = trim($request->post('last_name', $user['last_name'] ?? ''));
+        $firstName = trim($request->post('first_name', $user['first_name'] ?? ''));
+        if ($lastName === '' || $firstName === '') {
+            return Response::redirect($this->base() . '/admin/users/' . $user['id'] . '/edit?error=name_required');
+        }
+
+        $furiganaLastName  = trim($request->post('furigana_last_name', $user['furigana_last_name'] ?? ''));
+        $furiganaFirstName = trim($request->post('furigana_first_name', $user['furigana_first_name'] ?? ''));
+        if ($furiganaLastName === '' || $furiganaFirstName === '') {
+            return Response::redirect($this->base() . '/admin/users/' . $user['id'] . '/edit?error=furigana_required');
+        }
+
         $empCode = strtoupper(trim($request->post('employee_code', ''))) ?: null;
         $data = array_merge($user, [
             'display_name'       => $request->post('display_name', $user['display_name'] ?? ''),
-            'first_name'         => $request->post('first_name', $user['first_name'] ?? ''),
-            'last_name'          => $request->post('last_name', $user['last_name'] ?? ''),
+            'first_name'         => $firstName,
+            'last_name'          => $lastName,
             'email'              => $email,
             'phone'              => $request->post('phone', '') ?: null,
             'mobile_phone'       => $request->post('mobile_phone', '') ?: null,
             'furigana'            => null,
-            'furigana_last_name'  => $request->post('furigana_last_name', '') ?: null,
-            'furigana_first_name' => $request->post('furigana_first_name', '') ?: null,
+            'furigana_last_name'  => $furiganaLastName,
+            'furigana_first_name' => $furiganaFirstName,
             'gender'             => $request->post('gender', '') ?: null,
             'tax_classification' => $request->post('tax_classification', '') ?: null,
             'birth_date'         => $request->post('birth_date', '') ?: null,
