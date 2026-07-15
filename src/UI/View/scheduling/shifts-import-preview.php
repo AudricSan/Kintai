@@ -228,4 +228,5 @@ echo Modal::make(__('quick_create_title'), ob_get_clean())
         'msgError'   => __('quick_create_error'),
     ],
 ], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?></script>
+<script src="<?= $BASE_URL ?>/assets/js/modules/user-form-live-check.js"></script>
 <script src="<?= $BASE_URL ?>/assets/js/modules/shifts-import-preview.js"></script>

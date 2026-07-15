@@ -9,6 +9,8 @@ $assignable_roles      ??= [];
 $default_store_role_id ??= 0;
 $genderOptions = ['male' => __('male'), 'female' => __('female')];
 $taxOptions = ['kou' => '甲', 'otsu' => '乙'];
+$currentUserId = (int) ($user['id'] ?? 0);
+$baseUrl = rtrim($BASE_URL ?? '', '/');
 ?>
 <div class="form-stack">
     <!-- ── Identité ─────────────────────────────── -->
@@ -91,8 +93,14 @@ $taxOptions = ['kou' => '甲', 'otsu' => '乙'];
         <div class="form-row">
             <div class="form-group">
                 <label class="form-label form-label--required"><?= __('email') ?></label>
-                <input type="email" name="email" class="form-control"
-                       value="<?= htmlspecialchars($user['email'] ?? '') ?>" required>
+                <input type="email" name="email" class="form-control live-check-input"
+                       value="<?= htmlspecialchars($user['email'] ?? '') ?>"
+                       data-check-url="<?= htmlspecialchars($baseUrl . '/admin/users/check-email') ?>"
+                       data-check-param="email"
+                       data-exclude-id="<?= $currentUserId ?>"
+                       data-original-value="<?= htmlspecialchars($user['email'] ?? '') ?>"
+                       required>
+                <p class="form-error" data-check-error hidden><?= __('email_taken') ?></p>
             </div>
         </div>
 
@@ -150,10 +158,15 @@ $taxOptions = ['kou' => '甲', 'otsu' => '乙'];
 
         <div class="form-group">
             <label class="form-label"><?= __('employee_code') ?> <span class="text-hint">(<?= __('employee_code_hint') ?>)</span></label>
-            <input type="text" name="employee_code" class="form-control input-code mw-200"
+            <input type="text" name="employee_code" class="form-control input-code mw-200 live-check-input"
                    value="<?= htmlspecialchars($user['employee_code'] ?? '') ?>"
+                   data-check-url="<?= htmlspecialchars($baseUrl . '/admin/users/check-employee-code') ?>"
+                   data-check-param="code"
+                   data-exclude-id="<?= $currentUserId ?>"
+                   data-original-value="<?= htmlspecialchars($user['employee_code'] ?? '') ?>"
                    placeholder="ex : EMP001">
             <p class="form-hint"><?= __('employee_login_hint') ?></p>
+            <p class="form-error" data-check-error hidden><?= __('employee_code_taken_hint') ?></p>
         </div>
 
         <?php if ($mode === 'create'): ?>

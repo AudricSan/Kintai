@@ -171,6 +171,7 @@ $router->group('/admin', function ($r) {
     $r->post('/users/create',             [AdminUserController::class, 'storeUser'],           name: 'admin.users.store');
     $r->post('/users/quick-create',       [AdminUserController::class, 'quickCreateUser'],     name: 'admin.users.quick_create');
     $r->get('/users/check-employee-code', [AdminUserController::class, 'checkEmployeeCode'],   name: 'admin.users.check_employee_code');
+    $r->get('/users/check-email',         [AdminUserController::class, 'checkEmail'],          name: 'admin.users.check_email');
     $r->get('/users/{id}/edit',           [AdminUserController::class, 'editUser'],            name: 'admin.users.edit');
     $r->post('/users/{id}/edit',          [AdminUserController::class, 'updateUser'],          name: 'admin.users.update');
     $r->post('/users/{id}/delete',        [AdminUserController::class, 'deleteUser'],          name: 'admin.users.delete');

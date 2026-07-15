@@ -26,6 +26,7 @@ return [
     'admin.users.store'               => 'employees.create',
     'admin.users.quick_create'        => 'employees.create',
     'admin.users.check_employee_code' => 'employees.view',
+    'admin.users.check_email'         => 'employees.view',
     'admin.users.edit'                => 'employees.view',
     'admin.users.update'              => 'employees.update',
     'admin.users.delete'              => 'employees.delete',
