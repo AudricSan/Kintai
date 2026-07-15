@@ -76,7 +76,7 @@ if ($canCreate && ($settings['enabled'] ?? true) && $_currentTime >= $_reminderT
         <?php if ($cumulativeMode === 'cumulative_input'): ?><span class="badge badge--info badge--sm"><?= __('dr_badge_cumulative_input') ?></span><?php endif; ?>
     </h2>
     <div class="page-header__actions">
-        <?php if ($isAdmin || in_array($membership['role'] ?? '', ['admin', 'manager'], true)): ?>
+        <?php if ($permissions->canManageSettings($authUser, $store)): ?>
             <a href="<?= $BASE_URL ?>/admin/stores/<?= $storeId ?>/daily-reports/settings"
                class="btn btn--ghost">⚙ <?= __('dr_settings') ?></a>
         <?php endif; ?>
