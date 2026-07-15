@@ -6,6 +6,8 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+## [0.7.5] - 2026-07-15
+
 ### Security
 - **Breaking (API)**: `/api/v1/*` now enforces RBAC authorization — until now, any authenticated token (including a plain employee's) could read and modify every resource of every store. A new `ApiPermissionMiddleware` (after `ApiAuthMiddleware` on the `/api/v1` group) checks each route against a declarative `config/api-permissions.php` map (route name → `PermissionCatalog` key, with an optional "self" rule letting users access their own sub-resources — own profile, own prefs/rates/iCal tokens — without any permission). When the request targets a store (`store_id` route param, query param, or body field), the permission must be granted **for that store** (or through a global-scope role); otherwise holding it anywhere suffices. Owner passes everything via the system role; token-holder operations (`/auth/*`) are exempt. Existing integrations using an employee-level token for admin reads will now receive `403 {"code": "FORBIDDEN"}` and need a token from a user whose role grants the corresponding permission. Bundle API endpoints (timeoff, swaps, timeclock, shift claims, messages, feedbacks, daily reports) are not mapped yet and keep token-only auth for now.
 - **Breaking (API)**: `/api/v1/notifications*` is now strictly personal: every endpoint operates on the token holder's notifications only. The `?user_id=` parameter that allowed reading, marking as read, or mass-marking **another user's** notifications is gone (it's ignored), and fetching/deleting someone else's notification by id now returns 404 instead of leaking or destroying it.
