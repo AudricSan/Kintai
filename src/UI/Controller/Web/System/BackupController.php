@@ -25,6 +25,20 @@ final class BackupController
         private readonly AppSettingsService $settings,
     ) {}
 
+    /** GET /admin/backup/download?filename= — télécharge une archive de sauvegarde existante. */
+    public function download(Request $request): Response
+    {
+        $this->requireOwner($request);
+
+        $filename = (string) $request->query('filename', '');
+        $path = $this->backup->getPath($filename);
+        if ($filename === '' || !file_exists($path)) {
+            return Response::redirect('/admin/backup?error=not_found');
+        }
+
+        return Response::fileStream($path, 'application/zip', basename($path));
+    }
+
     public function index(Request $request): Response
     {
         $this->requireOwner($request);

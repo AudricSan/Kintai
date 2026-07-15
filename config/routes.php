@@ -24,6 +24,7 @@ use kintai\UI\Controller\Web\Staff\AdminUserController;
 use kintai\UI\Controller\Web\System\ActivityController;
 use kintai\UI\Controller\Web\System\AdminController;
 use kintai\UI\Controller\Web\System\AdminRoleController;
+use kintai\UI\Controller\Web\System\AppResetController;
 use kintai\UI\Controller\Web\System\BackupController;
 use kintai\UI\Controller\Web\System\BundleSettingsController;
 use kintai\UI\Controller\Web\System\LanguageController;
@@ -253,10 +254,15 @@ $router->group('/admin', function ($r) {
 
     // Sauvegardes
     $r->get('/backup',               [BackupController::class, 'index'],  name: 'admin.backup');
+    $r->get('/backup/download',      [BackupController::class, 'download'], name: 'admin.backup.download');
     $r->post('/backup/create',       [BackupController::class, 'create'], name: 'admin.backup.create');
     $r->post('/backup/restore',      [BackupController::class, 'restore'], name: 'admin.backup.restore');
     $r->post('/backup/delete',       [BackupController::class, 'delete'], name: 'admin.backup.delete');
     $r->post('/backup/delete-all',   [BackupController::class, 'deleteAll'], name: 'admin.backup.delete_all');
+
+    // Réinitialisation de l'application ("danger zone")
+    $r->post('/reset/prepare', [AppResetController::class, 'prepare'], name: 'admin.reset.prepare');
+    $r->post('/reset/execute', [AppResetController::class, 'execute'], name: 'admin.reset.execute');
 
     // Mises à jour
     $r->get('/update',               [BackupController::class, 'updatePage'], name: 'admin.update');
