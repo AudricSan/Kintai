@@ -81,6 +81,16 @@ echo Flash::fromQuery('success', [
         <?php endif; ?>
         <?php if ($createBase !== null): ?>
         <?= Button::make('+ ' . __('sr_new'))->primary()->link($createBase . '/create')->render() ?>
+        <?php elseif ($allMode): ?>
+        <details class="store-picker">
+            <summary class="btn btn--primary">+ <?= __('sr_new') ?></summary>
+            <div class="store-picker__panel">
+                <div class="store-picker__title"><?= __('store_picker_choose') ?></div>
+                <?php foreach ($stores as $s): ?>
+                    <a class="store-picker__item" href="<?= htmlspecialchars($BASE_URL . '/admin/stores/' . (int) $s['id'] . '/reports/salary/create') ?>"><?= htmlspecialchars($s['name'] ?? '') ?></a>
+                <?php endforeach; ?>
+            </div>
+        </details>
         <?php endif; ?>
         <?php if (!$allMode): ?>
         <?= Button::make('← ' . __('back'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . $storeId . '/edit')->render() ?>

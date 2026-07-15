@@ -231,10 +231,14 @@ trait HasStaffReportCrud
     }
 
     /**
-     * Retourne la liste des responsables (admin/manager) pour le store courant
-     * ou pour tous les stores d'un employé donné. Utilisée par démission et salaire.
-     * Nécessite $this->storeUsers (StoreUserRepositoryInterface) et $this->users
-     * (UserRepositoryInterface) sur la classe utilisatrice.
+     * Retourne la liste des responsables (Owner + admin/manager du store) pour le
+     * store courant ou pour tous les stores d'un employé donné. Utilisée par
+     * démission et salaire. Nécessite $this->storeUsers (StoreUserRepositoryInterface)
+     * et $this->users (UserRepositoryInterface) sur la classe utilisatrice.
+     *
+     * L'Owner est toujours inclus même si non listé dans store_user : voir
+     * install.php, qui ne crée qu'une ligne role_assignments globale pour lui,
+     * pas d'adhésion à un store précis.
      */
     private function getManagersForReportForm(int $storeId, int $userId = 0): array
     {
@@ -249,6 +253,12 @@ trait HasStaffReportCrud
 
         $seenIds = [];
         $managers = [];
+        foreach ($this->users->findAll() as $u) {
+            if (!empty($u['is_admin'])) {
+                $seenIds[] = (int) $u['id'];
+                $managers[] = $u;
+            }
+        }
         foreach ($storeIds as $sid) {
             $members = $this->storeUsers->findByStore($sid);
             foreach ($members as $m) {

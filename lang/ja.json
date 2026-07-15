@@ -906,6 +906,7 @@
     "store_features": "機能設定",
     "store_features_hint": "未使用の機能を無効にして、インターフェースをシンプルにします。この店舗のアクセス権とメニューリンクが削除されます。",
     "store_info": "基本情報",
+    "store_picker_choose": "店舗を選択",
     "store_role": "店舗内役割",
     "store_updated": "店舗を更新しました。",
     "stores": "店舗",
