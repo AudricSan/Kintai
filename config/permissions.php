@@ -20,6 +20,8 @@ return [
 
     // --- Employés -----------------------------------------------------------
     'admin.users'                     => 'employees.view',
+    'admin.users.export_pdf'          => 'employees.view',
+    'admin.users.export_json'         => 'employees.view',
     'admin.users.create'              => 'employees.create',
     'admin.users.store'               => 'employees.create',
     'admin.users.quick_create'        => 'employees.create',
