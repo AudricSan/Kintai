@@ -210,7 +210,7 @@ document.addEventListener('keydown', function (e) {
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('form.filter-bar, form.shifts-filters').forEach(form => {
         let debounceTimer;
-        form.querySelectorAll('input[type="text"]:not([onchange]), input[type="search"]:not([onchange])').forEach(input => {
+        form.querySelectorAll('input[type="text"]:not([onchange]):not([data-client-filter]), input[type="search"]:not([onchange]):not([data-client-filter])').forEach(input => {
             input.addEventListener('input', () => {
                 clearTimeout(debounceTimer);
                 debounceTimer = setTimeout(() => form.submit(), 500);

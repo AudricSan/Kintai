@@ -25,29 +25,29 @@ $baseUrl = rtrim($BASE_URL ?? '', '/');
 
         <div class="form-row">
             <div class="form-group">
-                <label class="form-label"><?= __('last_name') ?></label>
+                <label class="form-label form-label--required"><?= __('last_name') ?></label>
                 <input type="text" name="last_name" class="form-control"
-                       value="<?= htmlspecialchars($user['last_name'] ?? '') ?>">
+                       value="<?= htmlspecialchars($user['last_name'] ?? '') ?>" required>
             </div>
             <div class="form-group">
-                <label class="form-label"><?= __('first_name') ?></label>
+                <label class="form-label form-label--required"><?= __('first_name') ?></label>
                 <input type="text" name="first_name" class="form-control"
-                       value="<?= htmlspecialchars($user['first_name'] ?? '') ?>">
+                       value="<?= htmlspecialchars($user['first_name'] ?? '') ?>" required>
             </div>
         </div>
 
         <div class="form-row">
             <div class="form-group">
-                <label class="form-label"><?= __('furigana_last_name') ?></label>
+                <label class="form-label form-label--required"><?= __('furigana_last_name') ?></label>
                 <input type="text" name="furigana_last_name" class="form-control"
                        value="<?= htmlspecialchars($user['furigana_last_name'] ?? '') ?>"
-                       placeholder="カタカナ">
+                       placeholder="カタカナ" required>
             </div>
             <div class="form-group">
-                <label class="form-label"><?= __('furigana_first_name') ?></label>
+                <label class="form-label form-label--required"><?= __('furigana_first_name') ?></label>
                 <input type="text" name="furigana_first_name" class="form-control"
                        value="<?= htmlspecialchars($user['furigana_first_name'] ?? '') ?>"
-                       placeholder="カタカナ">
+                       placeholder="カタカナ" required>
             </div>
         </div>
 

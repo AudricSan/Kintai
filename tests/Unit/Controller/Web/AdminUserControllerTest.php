@@ -84,31 +84,24 @@ final class AdminUserControllerTest extends TestCase
         $this->assertSame(200, $response->status());
     }
 
-    public function testUsersSearchFiltersByNameEmployeeCodeOrEmail(): void
+    /**
+     * La recherche par nom est appliquée entièrement côté client
+     * (kana-search.js / users-list-search.js, voir CONTRIBUTING.md "Filter
+     * bars apply instantly") pour rester instantanée et sans rechargement de
+     * page. Le contrôleur ne doit donc plus retirer d'utilisateurs de la
+     * liste quand `?search=` est présent — il ne sert qu'à pré-remplir le
+     * champ pour un lien direct. La correspondance romaji/hiragana/kana est
+     * couverte par KanaSearchTest (le service PHP reste utilisé nulle part
+     * ici mais son portage JS, kana-search.js, réplique le même algorithme).
+     */
+    public function testUsersSearchDoesNotErrorAndDoesNotFilterServerSide(): void
     {
         $this->users->method('findAll')->willReturn([
-            ['id' => 1, 'first_name' => 'Jean', 'last_name' => 'Dupont', 'employee_code' => 'EMP001', 'email' => 'jean@test.com'],
+            ['id' => 1, 'first_name' => '太郎', 'last_name' => '山田', 'furigana_last_name' => 'ヤマダ', 'furigana_first_name' => 'タロウ', 'employee_code' => 'EMP001', 'email' => 'yamada@test.com'],
             ['id' => 2, 'first_name' => 'Paul', 'last_name' => 'Martin', 'employee_code' => 'EMP002', 'email' => 'paul@test.com'],
         ]);
 
-        $_GET = ['search' => 'Dupont'];
-        $req = new Request();
-        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
-
-        $response = $this->controller->users($req);
-
-        $this->assertSame(200, $response->status());
-        $_GET = [];
-    }
-
-    public function testUsersSearchByEmployeeCode(): void
-    {
-        $this->users->method('findAll')->willReturn([
-            ['id' => 1, 'first_name' => 'Jean', 'last_name' => 'Dupont', 'employee_code' => 'EMP001', 'email' => 'jean@test.com'],
-            ['id' => 2, 'first_name' => 'Paul', 'last_name' => 'Martin', 'employee_code' => 'EMP002', 'email' => 'paul@test.com'],
-        ]);
-
-        $_GET = ['search' => 'EMP002'];
+        $_GET = ['search' => 'yamada'];
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
 
@@ -246,6 +239,8 @@ final class AdminUserControllerTest extends TestCase
             'password'     => 'secret',
             'color'        => '#FF0000',
             'is_admin'     => '0',
+            'furigana_last_name'  => 'ドウ',
+            'furigana_first_name' => 'ジョン',
         ]);
         $req->setAttribute('managed_store_ids', null);
 
@@ -273,6 +268,25 @@ final class AdminUserControllerTest extends TestCase
         $this->assertFalse($data['success']);
     }
 
+    /** Le furigana est désormais obligatoire pour tous les chemins de création. */
+    public function testQuickCreateUserFailsWhenFuriganaMissing(): void
+    {
+        $req = $this->makePostRequest([
+            'first_name'   => 'John',
+            'last_name'    => 'Doe',
+            'display_name' => 'John',
+            'email'        => 'john@example.com',
+        ]);
+        $this->users->expects($this->never())->method('save');
+
+        $response = $this->controller->quickCreateUser($req);
+
+        $this->assertSame(422, $response->status());
+        $data = json_decode($response->body(), true);
+        $this->assertFalse($data['success']);
+        $this->assertSame('furigana_required', $data['error']);
+    }
+
     public function testQuickCreateUserGeneratesDisplayName(): void
     {
         $req = $this->makePostRequest([
@@ -281,6 +295,8 @@ final class AdminUserControllerTest extends TestCase
             'display_name' => '',
             'email'      => 'jane@example.com',
             'password'   => 'pass',
+            'furigana_last_name'  => 'スミス',
+            'furigana_first_name' => 'ジェーン',
         ]);
         $req->setAttribute('managed_store_ids', null);
 
@@ -304,6 +320,8 @@ final class AdminUserControllerTest extends TestCase
             'display_name' => 'Jane Smith',
             'email'        => '',
             'password'     => 'pass',
+            'furigana_last_name'  => 'スミス',
+            'furigana_first_name' => 'ジェーン',
         ]);
         $req->setAttribute('managed_store_ids', null);
 
@@ -326,10 +344,12 @@ final class AdminUserControllerTest extends TestCase
         $req = $this->makePostRequest([
             'display_name'   => 'John',
             'first_name'     => 'John',
-            'last_name'      => '',
+            'last_name'      => 'Doe',
             'email'          => 'john@example.com',
             'employee_code'  => 'EMP001',
             'password'       => 'pass',
+            'furigana_last_name'  => 'ジョン',
+            'furigana_first_name' => 'ジョン',
         ]);
 
         $this->users->method('findByEmployeeCode')->with('EMP001')->willReturn(['id' => 99]);
@@ -353,8 +373,11 @@ final class AdminUserControllerTest extends TestCase
         $req = $this->makePostRequest([
             'display_name' => 'John',
             'first_name'   => 'John',
+            'last_name'    => 'Doe',
             'email'        => 'existing@example.com',
             'password'     => 'pass',
+            'furigana_last_name'  => 'ジョン',
+            'furigana_first_name' => 'ジョン',
         ]);
 
         $this->users->method('findByEmail')->with('existing@example.com')->willReturn(['id' => 99]);
@@ -373,8 +396,11 @@ final class AdminUserControllerTest extends TestCase
         $req = $this->makePostRequest([
             'display_name' => 'John',
             'first_name'   => 'John',
+            'last_name'    => 'Doe',
             'email'        => 'john@example.com',
             'password'     => '',
+            'furigana_last_name'  => 'ジョン',
+            'furigana_first_name' => 'ジョン',
         ]);
         $req->setAttribute('managed_store_ids', null);
 
@@ -395,10 +421,13 @@ final class AdminUserControllerTest extends TestCase
         $req = $this->makePostRequest([
             'display_name'  => 'John',
             'first_name'    => 'John',
+            'last_name'     => 'Doe',
             'email'         => 'john@example.com',
             'password'      => 'pass',
             'store_id'      => '3',
             'store_role_id' => '2',
+            'furigana_last_name'  => 'ジョン',
+            'furigana_first_name' => 'ジョン',
         ]);
         $req->setAttribute('managed_store_ids', null);
 
@@ -432,10 +461,13 @@ final class AdminUserControllerTest extends TestCase
         $req = $this->makePostRequest([
             'display_name'  => 'John',
             'first_name'    => 'John',
+            'last_name'     => 'Doe',
             'email'         => 'john@example.com',
             'password'      => 'pass',
             'store_id'      => '3',
             'store_role_id' => '2',
+            'furigana_last_name'  => 'ジョン',
+            'furigana_first_name' => 'ジョン',
         ]);
         $req->setAttribute('managed_store_ids', null);
 
@@ -455,9 +487,12 @@ final class AdminUserControllerTest extends TestCase
         $req = $this->makePostRequest([
             'display_name' => 'John',
             'first_name'   => 'John',
+            'last_name'    => 'Doe',
             'email'        => 'john@example.com',
             'password'     => 'pass',
             'store_id'     => '3',
+            'furigana_last_name'  => 'ジョン',
+            'furigana_first_name' => 'ジョン',
         ]);
         $req->setAttribute('managed_store_ids', null);
 
@@ -490,9 +525,12 @@ final class AdminUserControllerTest extends TestCase
         $req = $this->makePostRequest([
             'display_name' => 'Jane',
             'first_name'   => 'Jane',
+            'last_name'    => 'Doe',
             'email'        => 'jane@example.com',
             'password'     => 'pass',
             'is_admin'     => '1',
+            'furigana_last_name'  => 'ジェーン',
+            'furigana_first_name' => 'ジェーン',
         ]);
 
         $this->users->method('save')->willReturn(['id' => 11, 'display_name' => 'Jane']);
@@ -522,6 +560,36 @@ final class AdminUserControllerTest extends TestCase
         $this->assertSame(302, $response->status());
     }
 
+    /** Le nom et le prénom sont désormais obligatoires à la création (formulaire principal). */
+    public function testStoreUserRedirectsWithErrorWhenNameMissing(): void
+    {
+        $req = $this->makePostRequest([
+            'display_name' => 'John',
+            'email'        => 'new@example.com',
+        ]);
+        $this->users->expects($this->never())->method('save');
+
+        $response = $this->controller->storeUser($req);
+
+        $this->assertSame(302, $response->status());
+    }
+
+    /** Le furigana est désormais obligatoire à la création (formulaire principal). */
+    public function testStoreUserRedirectsWithErrorWhenFuriganaMissing(): void
+    {
+        $req = $this->makePostRequest([
+            'display_name' => 'John',
+            'last_name'    => 'Doe',
+            'first_name'   => 'John',
+            'email'        => 'new@example.com',
+        ]);
+        $this->users->expects($this->never())->method('save');
+
+        $response = $this->controller->storeUser($req);
+
+        $this->assertSame(302, $response->status());
+    }
+
     public function testUpdateUserRedirectsWithErrorWhenEmailTakenByAnotherUser(): void
     {
         $this->users->method('findById')->with(5)->willReturn(['id' => 5, 'email' => 'me@example.com']);
@@ -536,13 +604,45 @@ final class AdminUserControllerTest extends TestCase
         $this->assertSame(302, $response->status());
     }
 
+    /** Le nom et le prénom sont désormais obligatoires à l'édition, sauf s'ils sont déjà en base. */
+    public function testUpdateUserRedirectsWithErrorWhenNameMissing(): void
+    {
+        $this->users->method('findById')->with(5)->willReturn(['id' => 5, 'email' => 'me@example.com', 'last_name' => null, 'first_name' => null]);
+        $this->users->expects($this->never())->method('save');
+
+        $req = $this->makePostRequest(['email' => 'me@example.com']);
+        $req->setRouteParams(['id' => 5]);
+
+        $response = $this->controller->updateUser($req);
+
+        $this->assertSame(302, $response->status());
+    }
+
+    /** Le furigana est désormais obligatoire à l'édition, sauf s'il est déjà en base. */
+    public function testUpdateUserRedirectsWithErrorWhenFuriganaMissing(): void
+    {
+        $this->users->method('findById')->with(5)->willReturn(['id' => 5, 'email' => 'me@example.com', 'last_name' => 'Doe', 'first_name' => 'John', 'furigana_last_name' => null, 'furigana_first_name' => null]);
+        $this->users->expects($this->never())->method('save');
+
+        $req = $this->makePostRequest(['email' => 'me@example.com']);
+        $req->setRouteParams(['id' => 5]);
+
+        $response = $this->controller->updateUser($req);
+
+        $this->assertSame(302, $response->status());
+    }
+
     public function testUpdateUserAllowsKeepingOwnEmailUnchanged(): void
     {
-        $this->users->method('findById')->with(5)->willReturn(['id' => 5, 'email' => 'me@example.com']);
+        $this->users->method('findById')->with(5)->willReturn(['id' => 5, 'email' => 'me@example.com', 'last_name' => 'Doe', 'first_name' => 'John']);
         $this->users->expects($this->never())->method('findByEmail');
         $this->users->expects($this->once())->method('save')->willReturn(['id' => 5]);
 
-        $req = $this->makePostRequest(['email' => 'me@example.com']);
+        $req = $this->makePostRequest([
+            'email' => 'me@example.com',
+            'furigana_last_name'  => 'テスト',
+            'furigana_first_name' => 'テスト',
+        ]);
         $req->setRouteParams(['id' => 5]);
 
         $response = $this->controller->updateUser($req);
