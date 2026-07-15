@@ -125,7 +125,8 @@ final class FilterBar implements ComponentInterface
                     $html .= '<input type="date" id="ff-' . htmlspecialchars($field['name']) . '"'
                         . ' name="' . htmlspecialchars($field['name']) . '"'
                         . ' value="' . htmlspecialchars($field['value']) . '"'
-                        . ' class="form-control form-control--sm">';
+                        . ' class="form-control form-control--sm"'
+                        . ' onchange="this.form.submit()">';
                     break;
 
                 case 'month':
@@ -142,7 +143,6 @@ final class FilterBar implements ComponentInterface
 
         // Actions
         $html .= '<div class="shifts-filters__actions">';
-        $html .= '<button type="submit" class="btn btn--primary btn--sm">Filtrer</button>';
         if ($this->showReset) {
             $html .= '<a href="' . htmlspecialchars($this->action ?: '?') . '" class="btn btn--ghost btn--sm">Réinitialiser</a>';
         }
