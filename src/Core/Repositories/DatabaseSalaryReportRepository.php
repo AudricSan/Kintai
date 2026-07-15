@@ -43,11 +43,12 @@ final class DatabaseSalaryReportRepository implements SalaryReportRepositoryInte
         return $q->get()->toArray();
     }
 
-    public function findByStoreAndMonth(int $storeId, string $targetMonth): ?array
+    public function findByStoreAndMonth(int $storeId, string $targetMonth, ?int $userId = null): ?array
     {
-        $r = EloquentSalaryReport::where('store_id', $storeId)
-            ->where('target_month', $targetMonth)
-            ->first();
+        $q = EloquentSalaryReport::where('store_id', $storeId)
+            ->where('target_month', $targetMonth);
+        $userId !== null ? $q->where('user_id', $userId) : $q->whereNull('user_id');
+        $r = $q->first();
         return $r ? $r->toArray() : null;
     }
 

@@ -21,6 +21,7 @@
     "sr_created": "Salary report created.",
     "sr_deleted": "Salary report deleted.",
     "sr_edit": "Edit Report",
+    "sr_employee_scope_hint": "This report covers only this employee: the hours and pay below are their own shifts, not the whole store.",
     "sr_employee_work_hours": "Employee Work Hours",
     "sr_empty": "No salary reports found for this store.",
     "sr_hand_delivered_salary": "Hand-delivered Salary",

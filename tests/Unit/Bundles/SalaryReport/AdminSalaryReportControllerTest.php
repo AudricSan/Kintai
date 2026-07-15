@@ -298,11 +298,95 @@ final class AdminSalaryReportControllerTest extends TestCase
         $this->assertSame(3300.0, $preset['total_payment']);
     }
 
-    private function invokeCalculateSalaryPreset(array $store, string $targetMonth, array $authUser): array
+    // -------------------------------------------------------------------------
+    // Rapport de salaire par employé (item 7)
+    // -------------------------------------------------------------------------
+
+    public function testCreateSalaryReportWithUserIdPresetsEmployeeAndScopesHours(): void
+    {
+        $_GET['user_id'] = '7';
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setAttribute('auth_user', ['id' => 1, 'display_name' => 'Manager X']);
+        $req->setRouteParams(['id' => '1']);
+
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Store A']);
+        $this->storeUsers->method('findByStore')->with(1)->willReturn([]);
+        $this->users->method('findById')->with(7)->willReturn(['id' => 7, 'last_name' => 'Dupont', 'first_name' => 'Jean']);
+        $this->dailyReports->method('findByStoreAndDateRange')->willReturn([]);
+        $this->shifts->method('findByStore')->with(1)->willReturn([
+            ['shift_date' => date('Y-m') . '-05', 'duration_minutes' => 480, 'estimated_salary' => 6000, 'user_id' => 7],
+            ['shift_date' => date('Y-m') . '-06', 'duration_minutes' => 240, 'estimated_salary' => 3000, 'user_id' => 9],
+        ]);
+
+        $response = $this->controller->createSalaryReport($req);
+        $this->assertSame(200, $response->status());
+    }
+
+    public function testCalculateSalaryPresetScopesHoursToOneEmployeeWhenUserIdGiven(): void
+    {
+        $store = ['id' => 1, 'name' => 'Store A', 'daily_report_settings' => null];
+        $authUser = ['id' => 1, 'display_name' => 'Manager X'];
+
+        $this->dailyReports->method('findByStoreAndDateRange')->willReturn([]);
+        $this->shifts->method('findByStore')->willReturn([
+            ['shift_date' => date('Y-m') . '-05', 'duration_minutes' => 480, 'estimated_salary' => 6000, 'user_id' => 7],
+            ['shift_date' => date('Y-m') . '-06', 'duration_minutes' => 240, 'estimated_salary' => 3000, 'user_id' => 9],
+        ]);
+        $this->users->method('findById')->with(7)->willReturn(['id' => 7, 'last_name' => 'Dupont', 'first_name' => 'Jean']);
+
+        $preset = $this->invokeCalculateSalaryPreset($store, date('Y-m'), $authUser, 7);
+
+        // Seul l'employé 7 est compté : 8h à 6000, pas les 4h de l'employé 9.
+        $this->assertSame(8.0, $preset['staff_man_hours']);
+        $this->assertSame(6000.0, $preset['staff_total_payment']);
+        $this->assertSame(1, $preset['active_employees']);
+        // Le total des ventes du magasin n'a pas de sens pour un rapport individuel.
+        $this->assertSame(0.0, $preset['total_payment']);
+    }
+
+    public function testStoreSalaryReportSavesUserIdWhenProvided(): void
+    {
+        $_POST = ['target_month' => '2026-08', 'user_id' => '7', 'employee_name' => 'Jean Dupont'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setAttribute('auth_user', ['id' => 1]);
+        $req->setRouteParams(['id' => '1']);
+
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1]);
+        $this->salaryReports->method('findByStoreAndMonth')->with(1, '2026-08', 7)->willReturn(null);
+        $this->salaryReports->expects($this->once())->method('save')->with($this->callback(
+            fn(array $data) => $data['user_id'] === 7 && $data['employee_name'] === 'Jean Dupont'
+        ))->willReturn(['id' => 60]);
+
+        $response = $this->controller->storeSalaryReport($req);
+
+        $this->assertSame(302, $response->status());
+    }
+
+    public function testStoreSalaryReportAllowsEmployeeReportAlongsideStoreWideReport(): void
+    {
+        $_POST = ['target_month' => '2026-08', 'user_id' => '7'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setAttribute('auth_user', ['id' => 1]);
+        $req->setRouteParams(['id' => '1']);
+
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1]);
+        // Un rapport global existe déjà pour ce mois (user_id=null), mais celui de l'employé 7 n'existe pas encore.
+        $this->salaryReports->method('findByStoreAndMonth')->with(1, '2026-08', 7)->willReturn(null);
+        $this->salaryReports->expects($this->once())->method('save')->willReturn(['id' => 61]);
+
+        $response = $this->controller->storeSalaryReport($req);
+
+        $this->assertSame(302, $response->status());
+    }
+
+    private function invokeCalculateSalaryPreset(array $store, string $targetMonth, array $authUser, ?int $userId = null): array
     {
         $method = new \ReflectionMethod($this->controller, 'calculateSalaryPreset');
         $method->setAccessible(true);
-        return $method->invoke($this->controller, $store, $targetMonth, $authUser);
+        return $method->invoke($this->controller, $store, $targetMonth, $authUser, $userId);
     }
 
     private function ensureViewFile(string $dir, string $view): void

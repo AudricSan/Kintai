@@ -135,6 +135,7 @@ echo Flash::fromQuery('success', [
     echo $tbl
         ->currentSort($sort ?? 'target_month_desc')
         ->sortable(__('sr_target_month'), 'target_month', fn($r) => htmlspecialchars($r['target_month'] ?? ''))
+        ->column(__('employee_name'), fn($r) => !empty($r['user_id']) ? htmlspecialchars($r['employee_name'] ?? '—') : '<span class="text-muted">—</span>')
         ->sortable(__('sr_person_in_charge'), 'person_in_charge', fn($r) => htmlspecialchars($r['person_in_charge'] ?? '—'))
         ->sortable(__('sr_total_payment'), 'total_payment', fn($r) => '<span class="td-mono">' . format_currency((float) ($r['total_payment'] ?? 0), 'JPY') . '</span>', 'td-right')
         ->sortable(__('sr_net_payment'), 'net_payment', fn($r) => '<span class="td-mono">' . format_currency((float) ($r['net_payment'] ?? 0), 'JPY') . '</span>', 'td-right')
