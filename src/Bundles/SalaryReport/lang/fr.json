@@ -21,6 +21,7 @@
     "sr_created": "Rapport de salaire créé.",
     "sr_deleted": "Rapport de salaire supprimé.",
     "sr_edit": "Modifier le rapport",
+    "sr_employee_scope_hint": "Ce rapport ne concerne que cet employé : les heures et le salaire ci-dessous ne portent que sur ses propres shifts, pas sur l'ensemble du magasin.",
     "sr_employee_work_hours": "Heures de travail des employés",
     "sr_empty": "Aucun rapport de salaire trouvé pour ce store.",
     "sr_hand_delivered_salary": "Salaire remis en main propre",

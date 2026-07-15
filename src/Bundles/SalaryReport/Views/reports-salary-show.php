@@ -46,6 +46,9 @@ ob_start();
 <table class="detail-table">
     <tr><th><?= __('sr_target_month') ?></th><td><?= $fmt($report['target_month'] ?? '') ?></td></tr>
     <tr><th><?= __('store') ?></th><td><?= $fmt($report['store_name'] ?? ($store['name'] ?? '')) ?></td></tr>
+    <?php if (!empty($report['user_id'])): ?>
+    <tr><th><?= __('employee_name') ?></th><td><?= $fmt($report['employee_name'] ?? '') ?></td></tr>
+    <?php endif; ?>
     <tr><th><?= __('sr_person_in_charge') ?></th><td><?= $fmt($report['person_in_charge'] ?? '') ?></td></tr>
 </table>
 <?php $sections[__('sr_section_basic')] = ob_get_clean();
