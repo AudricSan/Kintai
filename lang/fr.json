@@ -347,6 +347,7 @@
     "employee": "Employé",
     "employee_code": "Code employé",
     "employee_code_hint": "optionnel, utilisé pour la connexion rapide",
+    "employee_code_taken_hint": "Ce code employé est déjà utilisé par un autre compte.",
     "employee_info": "Informations employé",
     "employee_login_hint": "L'employé peut se connecter avec son code et le code du magasin.",
     "employee_name": "Nom de l'employé",

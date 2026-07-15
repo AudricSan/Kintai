@@ -14,45 +14,18 @@
     var msgError   = i18n.msgError   || '';
     var filterTpl  = cfg.filterTpl   || ':n';
 
-    var _currentRow    = null;
-    var _codeCheckTimer = null;
-    var _codeAvailable  = true;
+    var _currentRow = null;
 
-    /* ── Vérification unicité code employé ─────── */
-    function resetCodeStatus() {
-        clearTimeout(_codeCheckTimer);
-        _codeAvailable = true;
-        var st = document.getElementById('qc-code-status');
-        var er = document.getElementById('qc-code-error');
-        if (st) st.textContent = '';
-        if (er) er.style.display = 'none';
-    }
-
-    var codeInput = document.querySelector('#qc-form input[name="employee_code"]');
-    if (codeInput) {
-        codeInput.addEventListener('input', function () {
-            var code = this.value.trim().toUpperCase();
-            resetCodeStatus();
-            if (code === '') return;
-            var statusEl = document.getElementById('qc-code-status');
-            if (statusEl) statusEl.textContent = '⏳';
-            _codeAvailable = null;
-            _codeCheckTimer = setTimeout(function () {
-                fetch(BASE + '/admin/users/check-employee-code?code=' + encodeURIComponent(code), {
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                })
-                .then(function (r) { return r.json(); })
-                .then(function (data) {
-                    _codeAvailable = data.available;
-                    if (statusEl) statusEl.textContent = data.available ? '✅' : '❌';
-                    var er = document.getElementById('qc-code-error');
-                    if (er) er.style.display = data.available ? 'none' : '';
-                })
-                .catch(function () {
-                    if (statusEl) statusEl.textContent = '';
-                    _codeAvailable = true;
-                });
-            }, 350);
+    // La vérification en temps réel (email/code employé) est gérée par le
+    // module générique user-form-live-check.js, branché sur les mêmes champs
+    // `.live-check-input` du partiel _form-user.php inclus dans #qc-form :
+    // il pose/retire la classe `is-invalid` et affiche [data-check-error].
+    function resetLiveCheckState() {
+        document.querySelectorAll('#qc-form .live-check-input').forEach(function (el) {
+            el.classList.remove('is-invalid');
+            var group = el.closest('.form-group');
+            var err = group ? group.querySelector('[data-check-error]') : null;
+            if (err) err.hidden = true;
         });
     }
 
@@ -81,7 +54,7 @@
 
         var intro = document.getElementById('qc-intro');
         if (intro) intro.innerHTML = introTpl.replace(':name', escHtml(staffName));
-        resetCodeStatus();
+        resetLiveCheckState();
         var alertEl = document.getElementById('qc-alert');
         if (alertEl) { alertEl.style.display = 'none'; alertEl.className = 'alert mb-sm'; }
         var overlay = document.getElementById('qc-overlay');
@@ -92,7 +65,7 @@
     window.qcClose = function () {
         var overlay = document.getElementById('qc-overlay');
         if (overlay) overlay.classList.remove('open');
-        resetCodeStatus();
+        resetLiveCheckState();
         _currentRow = null;
     };
 
@@ -100,17 +73,16 @@
     window.qcSubmit = function () {
         var qcForm = document.getElementById('qc-form');
         if (!qcForm) return;
-        var fn  = document.querySelector('#qc-form input[name="first_name"]');
+        var fn = document.querySelector('#qc-form input[name="first_name"]');
         if (!fn || !fn.value.trim()) { if (fn) fn.focus(); return; }
-        var ec  = document.querySelector('#qc-form input[name="employee_code"]');
-        var er  = document.getElementById('qc-code-error');
-        if (er) er.style.display = 'none';
-        if (_codeAvailable === false) {
-            if (er) er.style.display = '';
-            if (ec) ec.focus();
+
+        // Un champ signalé pris par la vérification en temps réel bloque l'envoi.
+        var invalidField = qcForm.querySelector('.live-check-input.is-invalid');
+        if (invalidField) {
+            invalidField.focus();
             return;
         }
-        if (_codeAvailable === null) return;
+
         var submitBtn = document.getElementById('qc-submit');
         if (submitBtn) submitBtn.disabled = true;
 
@@ -133,9 +105,15 @@
         .then(function (data) {
             if (submitBtn) submitBtn.disabled = false;
             if (!data.success) {
-                if (data.error === 'employee_code_taken') {
-                    if (er) er.style.display = '';
-                    if (ec) ec.focus();
+                var fieldName = data.error === 'employee_code_taken' ? 'employee_code'
+                    : data.error === 'email_taken' ? 'email' : null;
+                var field = fieldName ? qcForm.querySelector('.live-check-input[name="' + fieldName + '"]') : null;
+                if (field) {
+                    field.classList.add('is-invalid');
+                    var group = field.closest('.form-group');
+                    var err = group ? group.querySelector('[data-check-error]') : null;
+                    if (err) err.hidden = false;
+                    field.focus();
                 } else {
                     showAlert('alert--error', msgError + (data.error ? ' — ' + data.error : ''));
                 }
