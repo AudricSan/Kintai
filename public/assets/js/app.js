@@ -206,6 +206,22 @@ document.addEventListener('keydown', function (e) {
     });
 });
 
+// ── Filtres instantanés (texte : debounce, date/select restants : au change) ──
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('form.filter-bar, form.shifts-filters').forEach(form => {
+        let debounceTimer;
+        form.querySelectorAll('input[type="text"]:not([onchange]), input[type="search"]:not([onchange])').forEach(input => {
+            input.addEventListener('input', () => {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => form.submit(), 500);
+            });
+        });
+        form.querySelectorAll('input[type="date"]:not([onchange]), select:not([onchange])').forEach(input => {
+            input.addEventListener('change', () => form.submit());
+        });
+    });
+});
+
 // ── Segmented control (ex. Liste/Calendrier/Timeline) ────────────────
 // Anime le curseur vers l'option cliquée avant de suivre le lien, pour
 // que le changement de vue ne soit pas un simple rechargement sec.
