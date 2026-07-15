@@ -34,10 +34,15 @@ $allMode = !empty($stores); // mode "tous les magasins"
 if ($allMode) {
     $baseList = $BASE_URL . '/admin/reports/salary';
     $storeId = 0;
+    // En vue "tous les magasins", la création n'est possible qu'une fois un
+    // magasin précis choisi via le filtre — sans quoi on ne sait pas pour
+    // quel magasin créer le rapport.
+    $createBase = $filter_store_id > 0 ? $BASE_URL . '/admin/stores/' . $filter_store_id . '/reports/salary' : null;
 } else {
     $storeId = (int) $store['id'];
     $storeNames[$storeId] = $store['name'] ?? '';
     $baseList = $BASE_URL . '/admin/stores/' . $storeId . '/reports/salary';
+    $createBase = $baseList;
 }
 
 // Générer la liste des années disponibles (2020 à année courante +1)
@@ -73,8 +78,11 @@ echo Flash::fromQuery('success', [
         ?>
         <?= Button::make('PDF')->ghost()->sm()->link($BASE_URL . '/admin/reports/salary/export/pdf' . $exportQueryString)->render() ?>
         <?= Button::make('JSON')->ghost()->sm()->link($BASE_URL . '/admin/reports/salary/export/json' . $exportQueryString)->render() ?>
-        <?php else: ?>
-        <?= Button::make('+ ' . __('sr_new'))->primary()->link($baseList . '/create')->render() ?>
+        <?php endif; ?>
+        <?php if ($createBase !== null): ?>
+        <?= Button::make('+ ' . __('sr_new'))->primary()->link($createBase . '/create')->render() ?>
+        <?php endif; ?>
+        <?php if (!$allMode): ?>
         <?= Button::make('← ' . __('back'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . $storeId . '/edit')->render() ?>
         <?php endif; ?>
     </div>

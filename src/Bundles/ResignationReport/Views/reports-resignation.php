@@ -23,10 +23,14 @@ if (!empty($stores)) {
     // Mode "tous les magasins" (owner)
     $base = $BASE_URL . '/admin/reports/resignation';
     $storeId = 0;
+    // La création n'est possible qu'une fois un magasin précis choisi via le
+    // filtre — sans quoi on ne sait pas pour quel magasin créer le rapport.
+    $createBase = $filter_store_id > 0 ? $BASE_URL . '/admin/stores/' . $filter_store_id . '/reports/resignation' : null;
 } else {
     $storeId = (int) $store['id'];
     $storeNames[$storeId] = $store['name'] ?? '';
     $base = $BASE_URL . '/admin/stores/' . $storeId . '/reports/resignation';
+    $createBase = $base;
 }
 
 echo Flash::fromQuery('success', [
@@ -56,8 +60,10 @@ if (!empty($stores)): ?>
         <?= Button::make('PDF')->ghost()->sm()->link($BASE_URL . '/admin/reports/resignation/export/pdf' . $exportQuery)->render() ?>
         <?= Button::make('JSON')->ghost()->sm()->link($BASE_URL . '/admin/reports/resignation/export/json' . $exportQuery)->render() ?>
         <?php endif; ?>
+        <?php if ($createBase !== null): ?>
+        <?= Button::make('+ ' . __('new_resignation_report'))->primary()->link($createBase . '/create')->render() ?>
+        <?php endif; ?>
         <?php if ($storeId > 0): ?>
-        <?= Button::make('+ ' . __('new_resignation_report'))->primary()->link($base . '/create')->render() ?>
         <?= Button::make(__('back'))->ghost()->link($BASE_URL . '/admin/stores/' . $storeId . '/edit')->render() ?>
         <?php endif; ?>
     </div>
