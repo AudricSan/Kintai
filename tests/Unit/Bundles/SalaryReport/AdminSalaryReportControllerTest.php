@@ -37,6 +37,7 @@ final class AdminSalaryReportControllerTest extends TestCase
         $viewDir = sys_get_temp_dir() . '/kintai-salary-report-views';
         $this->ensureViewFile($viewDir, 'reports-salary-show');
         $this->ensureViewFile($viewDir, 'reports-salary-form');
+        $this->ensureViewFile($viewDir, 'reports-salary-export-pdf');
         $this->ensureViewFile(sys_get_temp_dir(), 'layout.app');
 
         $view = new ViewRenderer(sys_get_temp_dir());
@@ -72,6 +73,44 @@ final class AdminSalaryReportControllerTest extends TestCase
         $_POST = [];
         $_SERVER = [];
         Log::reset();
+    }
+
+    // -------------------------------------------------------------------------
+    // Export de la liste (item 5)
+    // -------------------------------------------------------------------------
+
+    public function testExportSalaryReportsJsonReturnsData(): void
+    {
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+
+        $this->stores->method('findAll')->willReturn([['id' => 1, 'name' => 'Store A']]);
+        $this->salaryReports->method('findAll')->willReturn([
+            ['id' => 10, 'store_id' => 1, 'target_month' => '2026-07'],
+        ]);
+
+        $response = $this->controller->exportSalaryReportsJson($req);
+        $this->assertSame(200, $response->status());
+
+        $data = json_decode($response->body(), true)['data'];
+        $this->assertCount(1, $data);
+        $this->assertSame('2026-07', $data[0]['target_month']);
+    }
+
+    public function testExportSalaryReportsPdfReturnsPdfResponse(): void
+    {
+        $_SERVER['PHP_SELF'] ??= '/index.php';
+
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+
+        $this->stores->method('findAll')->willReturn([['id' => 1, 'name' => 'Store A']]);
+        $this->salaryReports->method('findAll')->willReturn([]);
+
+        $response = $this->controller->exportSalaryReportsPdf($req);
+
+        $this->assertSame(200, $response->status());
+        $this->assertStringStartsWith('%PDF', $response->body());
     }
 
     public function testShowSalaryReportLogsConsultation(): void

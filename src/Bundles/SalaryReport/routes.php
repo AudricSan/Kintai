@@ -16,6 +16,8 @@ use kintai\Bundles\SalaryReport\Controllers\Web\AdminSalaryReportController;
 
 $router->group('/admin', function ($r) {
     $r->get('/reports/salary', [AdminSalaryReportController::class, 'allSalaryReports'], name: 'admin.reports.salary');
+    $r->get('/reports/salary/export/json', [AdminSalaryReportController::class, 'exportSalaryReportsJson'], name: 'admin.reports.salary.export_json');
+    $r->get('/reports/salary/export/pdf',  [AdminSalaryReportController::class, 'exportSalaryReportsPdf'],  name: 'admin.reports.salary.export_pdf');
 
     $r->get('/stores/{id}/reports/salary',              [AdminSalaryReportController::class, 'salaryReports'],      name: 'admin.stores.salary_reports');
     $r->get('/stores/{id}/reports/salary/create',       [AdminSalaryReportController::class, 'createSalaryReport'], name: 'admin.stores.salary_reports.create');
