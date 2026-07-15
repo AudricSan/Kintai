@@ -112,7 +112,7 @@ echo Flash::fromQuery('success', [
             $sId = $user_store_map[$uid];
             $html .= '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/employee-report/' . $uid . '/stats" class="btn btn--ghost btn--sm" title="' . __('employee_stats') . '">📊</a>';
             $html .= '<button type="button" class="btn btn--ghost btn--sm ps-period-trigger" data-url="' . htmlspecialchars($BASE_URL . '/admin/stores/' . $sId . '/employee-report/' . $uid . '/payslip?from=__FROM__&to=__TO__') . '" title="' . __('payslip') . '">🖨</button>';
-            $html .= '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/reports/salary/create?employee_name=' . urlencode($u['display_name'] ?? '') . '" class="btn btn--ghost btn--sm" title="' . __('salary_report') . '">💰</a>';
+            $html .= '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/reports/salary/create?user_id=' . $uid . '" class="btn btn--ghost btn--sm" title="' . __('salary_report') . '">💰</a>';
             $html .= '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/reports/resignation/create?user_id=' . $uid . '" class="btn btn--danger btn--sm" title="' . __('resign') . '">✕</a>';
         }
         $html .= '</div>';

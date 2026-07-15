@@ -58,6 +58,12 @@ th { background: #f0f0f0; font-weight: 600; }
         <th><?= __('store') ?></th>
         <td><?= $fmt($report['store_name'] ?? ($store['name'] ?? '')) ?></td>
     </tr>
+    <?php if (!empty($report['user_id'])): ?>
+    <tr>
+        <th><?= __('employee_name') ?></th>
+        <td><?= $fmt($report['employee_name'] ?? '') ?></td>
+    </tr>
+    <?php endif; ?>
     <tr>
         <th><?= __('sr_person_in_charge') ?></th>
         <td><?= $fmt($report['person_in_charge'] ?? '') ?></td>

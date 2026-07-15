@@ -30,6 +30,7 @@ final class AdminSalaryReportController
         'not_found' => 'Rapport de salaire introuvable.',
         'fields'    => [
             'store_name'            => 'str',
+            'employee_name'         => 'str',
             'person_in_charge'      => 'str',
             'total_payment'         => 'float',
             'total_deductions'      => 'float',
@@ -109,17 +110,21 @@ final class AdminSalaryReportController
 
         $authUser = $request->getAttribute('auth_user');
         $targetMonth = date('Y-m');
-        $preset = $this->calculateSalaryPreset($store, $targetMonth, $authUser);
 
         $userId = (int) ($request->query('user_id') ?? 0);
-        if ($userId > 0) {
-            $user = $this->users->findById($userId);
-            if ($user !== null) {
-                $preset['employee_name'] = $user['display_name'] ?? '';
-            }
+        $employee = $userId > 0 ? $this->users->findById($userId) : null;
+        if ($employee === null) {
+            $userId = 0;
         }
 
-        $managers = $this->getManagersForReportForm($storeId);
+        $preset = $this->calculateSalaryPreset($store, $targetMonth, $authUser, $userId ?: null);
+        if ($employee !== null) {
+            $preset['user_id'] = $userId;
+            $preset['employee_name'] = trim(($employee['last_name'] ?? '') . ' ' . ($employee['first_name'] ?? ''))
+                ?: ($employee['display_name'] ?? '');
+        }
+
+        $managers = $this->getManagersForReportForm($storeId, $userId);
         $authName = trim(($authUser['last_name'] ?? '') . ' ' . ($authUser['first_name'] ?? '')) ?: ($authUser['display_name'] ?? '');
         $isManager = !empty(array_filter($managers, fn($m) => (int) $m['id'] === (int) ($authUser['id'] ?? 0)));
         if ($isManager && empty($preset['person_in_charge'])) {
@@ -142,14 +147,16 @@ final class AdminSalaryReportController
         $this->assertStoreAccess($request, $storeId);
 
         $targetMonth = $request->post('target_month', '');
+        $userId = (int) $request->post('user_id', 0);
 
-        $existing = $this->salaryReports->findByStoreAndMonth($storeId, $targetMonth);
+        $existing = $this->salaryReports->findByStoreAndMonth($storeId, $targetMonth, $userId ?: null);
         if ($existing !== null) {
             return Response::redirect($this->base() . '/admin/stores/' . $storeId . '/reports/salary/' . $existing['id'] . '/edit?error=already_exists');
         }
 
         $data = array_merge([
             'store_id'     => $storeId,
+            'user_id'      => $userId ?: null,
             'target_month' => $targetMonth,
         ], $this->postData($request, self::REPORT_TYPE['fields']), [
             'created_by' => $request->getAttribute('auth_user')['id'] ?? 0,
@@ -221,7 +228,13 @@ final class AdminSalaryReportController
      * Calcule les valeurs pré-remplies pour un rapport de salaire à partir
      * des rapports journaliers et des shifts existants.
      */
-    private function calculateSalaryPreset(array $store, string $targetMonth, array $authUser): array
+    /**
+     * @param int|null $userId Rapport pour un seul employé (item 7) au lieu du magasin entier :
+     *                         les heures/salaire ne portent que sur ses propres shifts, et le
+     *                         total des ventes du magasin (sans rapport avec un seul employé)
+     *                         n'est pas pré-rempli.
+     */
+    private function calculateSalaryPreset(array $store, string $targetMonth, array $authUser, ?int $userId = null): array
     {
         $storeId = (int) $store['id'];
         $preset = [
@@ -232,30 +245,33 @@ final class AdminSalaryReportController
         $from = $targetMonth . '-01';
         $to = date('Y-m-t', strtotime($from));
 
-        // Total des ventes depuis les rapports journaliers validés/soumis. En mode
-        // de saisie "cumulatif" (daily_report_settings.cumulative_mode), sales_total
-        // contient déjà le cumul depuis le début de la période : le ramener à des
-        // deltas journaliers avant de sommer, sans quoi chaque jour compterait
-        // plusieurs fois (voir DailyReportDataNormalizer).
-        $dailyReports = array_values(array_filter(
-            $this->dailyReports->findByStoreAndDateRange($storeId, $from, $to),
-            fn($r) => in_array($r['status'] ?? '', ['validated', 'submitted'], true)
-        ));
-        usort($dailyReports, fn($a, $b) => strcmp($a['report_date'], $b['report_date']));
-        $dailyReports = DailyReportDataNormalizer::toDailyDeltas(
-            $dailyReports,
-            DailyReportDataNormalizer::cumulativeModeOf($store),
-        );
-
         $totalPayment = 0;
-        foreach ($dailyReports as $r) {
-            $totalPayment += (float) ($r['sales_total'] ?? 0);
+        if ($userId === null) {
+            // Total des ventes depuis les rapports journaliers validés/soumis. En mode
+            // de saisie "cumulatif" (daily_report_settings.cumulative_mode), sales_total
+            // contient déjà le cumul depuis le début de la période : le ramener à des
+            // deltas journaliers avant de sommer, sans quoi chaque jour compterait
+            // plusieurs fois (voir DailyReportDataNormalizer).
+            $dailyReports = array_values(array_filter(
+                $this->dailyReports->findByStoreAndDateRange($storeId, $from, $to),
+                fn($r) => in_array($r['status'] ?? '', ['validated', 'submitted'], true)
+            ));
+            usort($dailyReports, fn($a, $b) => strcmp($a['report_date'], $b['report_date']));
+            $dailyReports = DailyReportDataNormalizer::toDailyDeltas(
+                $dailyReports,
+                DailyReportDataNormalizer::cumulativeModeOf($store),
+            );
+
+            foreach ($dailyReports as $r) {
+                $totalPayment += (float) ($r['sales_total'] ?? 0);
+            }
         }
 
-        // Heures et salaires depuis les shifts
+        // Heures et salaires depuis les shifts (du seul employé si $userId est fourni)
         $allShifts = $this->shifts->findByStore($storeId);
         $monthShifts = array_filter($allShifts, fn($s) =>
             ($s['shift_date'] ?? '') >= $from && ($s['shift_date'] ?? '') <= $to
+            && ($userId === null || (int) ($s['user_id'] ?? 0) === $userId)
         );
 
         $totalMinutes = 0;
