@@ -137,7 +137,6 @@ echo Flash::fromQuery('success', [
             </div>
 
             <div class="shifts-filters__actions">
-                <?= Button::make(__('filter'))->ghost()->sm()->submit()->render() ?>
                 <?php if ($filter_year !== '' || $filter_month !== '' || $filter_person !== '' || $filter_store_id > 0): ?>
                     <a href="<?= $allMode ? $BASE_URL . '/admin/reports/resignation' : $baseList ?>" class="btn btn--ghost btn--sm"><?= __('reset') ?></a>
                 <?php endif; ?>

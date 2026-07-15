@@ -75,6 +75,16 @@
         if (!qcForm) return;
         var fn = document.querySelector('#qc-form input[name="first_name"]');
         if (!fn || !fn.value.trim()) { if (fn) fn.focus(); return; }
+        var ln = document.querySelector('#qc-form input[name="last_name"]');
+        if (!ln || !ln.value.trim()) { if (ln) ln.focus(); return; }
+
+        // qc-form n'est pas soumis nativement (appel JS direct) : les attributs
+        // required de last_name/first_name/furigana_last_name/furigana_first_name
+        // ne sont donc pas vérifiés par le navigateur, il faut le faire ici.
+        var furiganaLast  = document.querySelector('#qc-form input[name="furigana_last_name"]');
+        var furiganaFirst = document.querySelector('#qc-form input[name="furigana_first_name"]');
+        if (furiganaLast && !furiganaLast.value.trim()) { furiganaLast.focus(); return; }
+        if (furiganaFirst && !furiganaFirst.value.trim()) { furiganaFirst.focus(); return; }
 
         // Un champ signalé pris par la vérification en temps réel bloque l'envoi.
         var invalidField = qcForm.querySelector('.live-check-input.is-invalid');
