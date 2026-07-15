@@ -32,7 +32,8 @@ ob_start();
     <?= __('update_channel_label') ?>
     <span class="btn-group">
         <?php foreach ($channels as $value => $label): ?>
-            <form method="POST" action="<?= htmlspecialchars($channelAction) ?>" class="d-inline">
+            <?php $needsConfirm = $value !== 'release' && $value !== $updateChannel; ?>
+            <form method="POST" action="<?= htmlspecialchars($channelAction) ?>" class="d-inline"<?= $needsConfirm ? " onsubmit=\"return confirm('" . __('update_channel_switch_confirm') . "')\"" : '' ?>>
                 <?= csrf_field() ?>
                 <input type="hidden" name="channel" value="<?= htmlspecialchars($value) ?>">
                 <?= Button::make($label)->sm()->{$value === $updateChannel ? 'primary' : 'outline'}()->submit()->disabled($value === $updateChannel)->render() ?>
