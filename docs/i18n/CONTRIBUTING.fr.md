@@ -43,6 +43,7 @@ Ouvrez une issue avec le template **Feature Request**. Expliquez le cas d'usage 
 - Les commentaires dans le code sont écrits en français ; tout le reste (messages de commit, descriptions de PR, documentation) en anglais
 - Aucune dépendance framework externe au-delà d'`illuminate/database` (Eloquent, utilisé uniquement comme ORM)
 - Jamais de `style="..."` inline dans les vues — étendez un module CSS sous `public/assets/css/src/`
+- Les barres de filtres s'appliquent instantanément — pas de bouton "Filtrer". Les champs texte soumettent le formulaire avec un debounce sur `input` (voir le câblage générique dans `public/assets/js/app.js` qui cible `form.filter-bar`/`form.shifts-filters`), les champs `select`/date soumettent sur `onchange`. Cela s'applique à tous les filtres, y compris les champs de recherche par nom/texte
 
 ## Lancer les tests
 
