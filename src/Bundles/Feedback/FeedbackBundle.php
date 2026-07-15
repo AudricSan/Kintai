@@ -14,10 +14,11 @@ use kintai\Core\Repositories\DatabaseFeedbackRepository;
  * pas par le Core. Désactiver "feedback" retire entièrement la fonctionnalité
  * (soumission employé, liste/suppression admin, /api/v1/feedbacks). Voir
  * aussi src/UI/View/layout/partials/feedback-modal.php : ce partial reste
- * dans le Core (inclus directement par app.php pour tous les utilisateurs
- * employé) mais son inclusion est conditionnée par FeatureManager via
- * AuthMiddleware ($feedback_enabled), pour ne pas afficher un formulaire dont
- * la cible POST n'existe plus quand ce bundle est désactivé.
+ * dans le Core (inclus directement par app.php pour tout utilisateur
+ * authentifié, employé comme admin/owner) mais son inclusion est
+ * conditionnée par FeatureManager via AuthMiddleware ($feedback_enabled),
+ * pour ne pas afficher un formulaire dont la cible POST n'existe plus quand
+ * ce bundle est désactivé.
  */
 final class FeedbackBundle extends Bundle
 {

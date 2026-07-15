@@ -970,6 +970,7 @@
     "update_channel_beta": "Bêta",
     "update_channel_label": "Canal de mise à jour :",
     "update_channel_release": "Release",
+    "update_channel_switch_confirm": "Les canaux Alpha et Bêta contiennent des versions en cours de test, potentiellement instables. Continuer ?",
     "update_title": "Mises à jour",
     "upload_error": "Erreur lors de l'envoi du fichier.",
     "user": "Utilisateur",
