@@ -39,12 +39,10 @@ final class PermissionMiddleware implements MiddlewareInterface
         $user    = $request->getAttribute('auth_user') ?? [];
         $isOwner = !empty($user['is_admin']); // Owner (rôle système, ponté sur is_admin par AuthService)
 
-        // Helper pour les vues (sidebar, boutons) : l'utilisateur détient-il
-        // cette permission quelque part ? Partagé même quand la route n'exige
-        // aucune permission fine, pour que la navigation reflète les droits.
-        $this->view->share('user_can', fn(string $permissionKey): bool
-            => $isOwner || $this->permissions->can($user, $permissionKey, null));
-
+        // Le helper de vue user_can est partagé par AuthMiddleware (toutes les
+        // pages authentifiées) pour que la navigation reste identique partout ;
+        // ce middleware ne s'occupe plus que du contrôle d'accès et de la
+        // portée managed_store_ids.
         $key = $this->requiredPermission((string) ($request->getAttribute('route_name') ?? ''));
         if ($key === null || $isOwner) {
             return $next($request);
