@@ -4,26 +4,28 @@ declare(strict_types=1);
 
 namespace kintai\Core\Services;
 
+use kintai\Core\Auth\PermissionService;
+
 /**
  * Contrôle d'accès pour les rapports journaliers.
  *
- * Les permissions sont configurables par store via la colonne JSON `daily_report_settings`.
- * Structure du JSON :
- * {
- *   "enabled": true,
- *   "can_submit_roles":   ["staff","manager","admin"],
- *   "can_validate_roles": ["manager","admin"],
- *   "mail_recipients":    ["email@example.com"],
- *   "auto_send_on_validate": false
- * }
+ * S'appuie sur le RBAC dynamique (PermissionCatalog::CATEGORIES['daily_reports'],
+ * portée par store via role_assignments) pour les actions de gestion
+ * (voir/éditer/supprimer n'importe quel rapport, valider, paramétrer le
+ * store). Créer et soumettre son propre brouillon restent en libre-service
+ * (tout membre du store peut le faire sans permission dédiée), pour ne pas
+ * priver un employé sans rôle géré de la possibilité de faire son rapport —
+ * exactement comme un employé peut pointer ou poser un congé pour lui-même
+ * sans permission particulière ailleurs dans l'application.
+ *
+ * Les paramètres non liés aux droits (activation, destinataires mail, envoi
+ * automatique, colonnes affichées, mode cumulatif) restent configurables par
+ * store via la colonne JSON `daily_report_settings`.
  */
 final class DailyReportPermissionService
 {
     private const DEFAULTS = [
         'enabled'               => true,
-        'can_create_user_ids'   => [],
-        'can_submit_roles'      => ['staff', 'manager', 'admin'],
-        'can_validate_roles'    => ['manager', 'admin'],
         'mail_recipients'       => [],
         'auto_send_on_validate' => false,
         'auto_validate_time'    => null,
@@ -32,6 +34,10 @@ final class DailyReportPermissionService
         'show_columns'          => ['employee', 'type', 'schedule', 'gross_hours', 'pause', 'net_hours'],
         'cumulative_mode'       => 'per_day',
     ];
+
+    public function __construct(
+        private readonly PermissionService $permissions,
+    ) {}
 
     public function getSettings(array $store): array
     {
@@ -50,54 +56,35 @@ final class DailyReportPermissionService
 
     /**
      * Vérifie si l'utilisateur peut créer un rapport pour ce store.
-     * - Super admin : toujours autorisé.
-     * - Admin/manager du store : toujours autorisé (si fonctionnalité activée).
-     * - Staff : autorisé si dans la liste blanche `can_create_user_ids`
-     *   (liste vide = tous les membres staff peuvent créer).
+     * - Détenteur de `daily_reports.create` (portée store ou globale) : toujours autorisé.
+     * - Sinon, tout membre du store peut créer son propre rapport (libre-service),
+     *   si la fonctionnalité est activée.
      */
     public function canCreate(array $user, array $store, ?array $membership): bool
     {
         if (!$this->isEnabled($store)) {
             return false;
         }
-        if (!empty($user['is_admin'])) {
+        if ($this->can($user, 'daily_reports.create', $store)) {
             return true;
         }
-        if ($membership === null) {
-            return false;
-        }
-        if (in_array($membership['role'], ['admin', 'manager'], true)) {
-            return true;
-        }
-        $settings   = $this->getSettings($store);
-        $allowedIds = array_map('intval', $settings['can_create_user_ids'] ?? []);
-        if (empty($allowedIds)) {
-            return true;
-        }
-        return in_array((int) $user['id'], $allowedIds, true);
+        return $membership !== null;
     }
 
     /**
      * L'auteur peut modifier son propre brouillon.
-     * Managers/admins peuvent modifier tout brouillon ou rapport soumis (avant validation finale).
+     * Le détenteur de `daily_reports.update` peut modifier tout brouillon ou
+     * rapport soumis (avant validation finale).
      */
     public function canEdit(array $user, array $store, array $report, ?array $membership): bool
     {
-        $status = $report['status'];
-        if (!in_array($status, ['draft', 'submitted'], true)) {
+        if (!in_array($report['status'], ['draft', 'submitted'], true)) {
             return false;
         }
-        if (!empty($user['is_admin'])) {
+        if ($this->can($user, 'daily_reports.update', $store)) {
             return true;
         }
-        if ($membership === null) {
-            return false;
-        }
-        if (in_array($membership['role'], ['admin', 'manager'], true)) {
-            return true;
-        }
-        // Staff : uniquement son propre brouillon
-        return $status === 'draft' && (int) $report['author_id'] === (int) $user['id'];
+        return $report['status'] === 'draft' && (int) $report['author_id'] === (int) $user['id'];
     }
 
     public function canSubmit(array $user, array $store, array $report, ?array $membership): bool
@@ -105,14 +92,10 @@ final class DailyReportPermissionService
         if ($report['status'] !== 'draft') {
             return false;
         }
-        if (!empty($user['is_admin'])) {
+        if ($this->can($user, 'daily_reports.submit', $store)) {
             return true;
         }
-        if ($membership === null) {
-            return false;
-        }
-        $settings = $this->getSettings($store);
-        return in_array($membership['role'], $settings['can_submit_roles'], true);
+        return $membership !== null && (int) $report['author_id'] === (int) $user['id'];
     }
 
     public function canValidate(array $user, array $store, array $report, ?array $membership): bool
@@ -120,14 +103,7 @@ final class DailyReportPermissionService
         if ($report['status'] !== 'submitted') {
             return false;
         }
-        if (!empty($user['is_admin'])) {
-            return true;
-        }
-        if ($membership === null) {
-            return false;
-        }
-        $settings = $this->getSettings($store);
-        return in_array($membership['role'], $settings['can_validate_roles'], true);
+        return $this->can($user, 'daily_reports.approve', $store);
     }
 
     public function canSendMail(array $user, array $store, array $report, ?array $membership): bool
@@ -135,13 +111,7 @@ final class DailyReportPermissionService
         if ($report['status'] !== 'validated') {
             return false;
         }
-        if (!empty($user['is_admin'])) {
-            return true;
-        }
-        if ($membership === null) {
-            return false;
-        }
-        return in_array($membership['role'], ['admin', 'manager'], true);
+        return $this->can($user, 'daily_reports.approve', $store);
     }
 
     public function canDelete(array $user, array $store, array $report, ?array $membership): bool
@@ -149,18 +119,12 @@ final class DailyReportPermissionService
         if ($report['deleted_at'] !== null) {
             return false;
         }
-        if (!empty($user['is_admin'])) {
-            return true;
-        }
-        if ($membership === null) {
-            return false;
-        }
-        return in_array($membership['role'], ['admin', 'manager'], true);
+        return $this->can($user, 'daily_reports.delete', $store);
     }
 
     public function canViewList(array $user, array $store, ?array $membership): bool
     {
-        if (!empty($user['is_admin'])) {
+        if ($this->can($user, 'daily_reports.view', $store)) {
             return true;
         }
         if ($membership === null) {
@@ -171,16 +135,24 @@ final class DailyReportPermissionService
 
     public function canViewReport(array $user, array $store, array $report, ?array $membership): bool
     {
-        if (!empty($user['is_admin'])) {
+        if ($this->can($user, 'daily_reports.view', $store)) {
             return true;
         }
         if ($membership === null) {
             return false;
         }
-        // Staff ne peut voir que ses propres rapports
-        if ($membership['role'] === 'staff') {
-            return (int) $report['author_id'] === (int) $user['id'];
-        }
-        return true;
+        // Sans la permission de gestion, un membre ne voit que ses propres rapports.
+        return (int) $report['author_id'] === (int) $user['id'];
+    }
+
+    /** Paramétrage du store (réglages e-mail, colonnes, etc.) : réservé aux gestionnaires. */
+    public function canManageSettings(array $user, array $store): bool
+    {
+        return $this->can($user, 'daily_reports.update', $store);
+    }
+
+    private function can(array $user, string $permissionKey, array $store): bool
+    {
+        return $this->permissions->can($user, $permissionKey, (int) $store['id']);
     }
 }
