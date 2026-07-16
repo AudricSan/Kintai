@@ -72,20 +72,40 @@ jobs:
         run: |
           set -euo pipefail
 
+          extract_section() {
+            awk -v header="$1" '
+              index($0, header) == 1 && !found { found=1; next }
+              found && /^## \[/ { exit }
+              found { print }
+            ' CHANGELOG.md
+          }
+
+          # Vide au sens strict = aucun caractère non-blanc (un awk qui ne
+          # trouve que la ligne blanche séparant deux "## [" produit 1 octet
+          # de saut de ligne, que `[ -s ]` considère à tort comme non-vide).
+          is_blank() {
+            ! grep -q '[^[:space:]]' "$1"
+          }
+
+          BASE_VERSION="${{ steps.version.outputs.base_version }}"
+
           if [ "${{ steps.version.outputs.channel }}" = "release" ]; then
-            HEADER="## [${{ steps.version.outputs.base_version }}]"
+            extract_section "## [${BASE_VERSION}]" > release-notes.txt
           else
-            HEADER="## [Unreleased]"
+            # Sur alpha/beta, la plupart des push accumulent leurs notes sous
+            # [Unreleased] — sauf le commit de release lui-même, qui renomme
+            # [Unreleased] en "## [X.Y.Z]" dans le même commit (voir
+            # docs/releasing.md) et laisse donc [Unreleased] vide : dans ce
+            # cas précis, les notes réelles vivent déjà sous la section
+            # versionnée qui vient d'être créée.
+            extract_section "## [Unreleased]" > release-notes.txt
+            if is_blank release-notes.txt; then
+              extract_section "## [${BASE_VERSION}]" > release-notes.txt
+            fi
           fi
 
-          awk -v header="$HEADER" '
-            index($0, header) == 1 && !found { found=1; next }
-            found && /^## \[/ { exit }
-            found { print }
-          ' CHANGELOG.md > release-notes.txt
-
-          if [ ! -s release-notes.txt ]; then
-            echo "::error::Aucune entrée CHANGELOG.md trouvée pour '${HEADER}' — ajoutez les notes de version avant de publier une release sur ce canal."
+          if is_blank release-notes.txt; then
+            echo "::error::Aucune entrée CHANGELOG.md trouvée pour '[Unreleased]' ou '[${BASE_VERSION}]' — ajoutez les notes de version avant de publier une release sur ce canal."
             exit 1
           fi
 
