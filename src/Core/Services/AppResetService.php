@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace kintai\Core\Services;
 
 use Illuminate\Database\Capsule\Manager as Capsule;
+use kintai\Core\Database\MigrationRunner;
 
 /**
  * Réinitialisation de l'application depuis /admin/backup (bouton "Danger zone").
@@ -26,8 +27,10 @@ final class AppResetService
         'ui_prefs'    => ['user_dashboard_prefs', 'user_nav_prefs'],
     ];
 
-    public function __construct(private readonly Capsule $capsule)
-    {
+    public function __construct(
+        private readonly Capsule $capsule,
+        private readonly MigrationRunner $migrationRunner,
+    ) {
     }
 
     /**
@@ -61,6 +64,16 @@ final class AppResetService
      */
     public function resetFactory(): array
     {
+        // Retrait du tracking *avant* le vidage des tables : si le process s'arrête
+        // entre les deux, on obtient au pire "migration à rejouer, données encore
+        // présentes" — inoffensif (la garde d'idempotence de la migration la rend
+        // no-op, ou executeMigration() absorbe l'éventuelle contrainte unique déjà
+        // en place) — plutôt que "données vidées, migration jamais rejouée", qui
+        // reproduirait le bug que ce mécanisme corrige.
+        $this->capsule->table('migrations')
+            ->whereIn('migration', $this->migrationRunner->getSeedMigrationNames())
+            ->delete();
+
         $toWipe = array_values(array_diff($this->allTableNames(), ['migrations']));
         $this->truncateTables($toWipe);
 

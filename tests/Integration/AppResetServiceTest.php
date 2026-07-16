@@ -13,6 +13,7 @@ final class AppResetServiceTest extends TestCase
 {
     private string $tmpDir;
     private Capsule $capsule;
+    private MigrationRunner $runner;
     private AppResetService $service;
 
     protected function setUp(): void
@@ -28,18 +29,18 @@ final class AppResetServiceTest extends TestCase
         $this->capsule->setAsGlobal();
         $this->capsule->bootEloquent();
 
-        $runner = (new \ReflectionClass(MigrationRunner::class))->newInstanceWithoutConstructor();
-        $capsuleProp = new \ReflectionProperty($runner, 'capsule');
+        $this->runner = (new \ReflectionClass(MigrationRunner::class))->newInstanceWithoutConstructor();
+        $capsuleProp = new \ReflectionProperty($this->runner, 'capsule');
         $capsuleProp->setAccessible(true);
-        $capsuleProp->setValue($runner, $this->capsule);
-        $pathProp = new \ReflectionProperty($runner, 'migrationsPath');
+        $capsuleProp->setValue($this->runner, $this->capsule);
+        $pathProp = new \ReflectionProperty($this->runner, 'migrationsPath');
         $pathProp->setAccessible(true);
-        $pathProp->setValue($runner, dirname(__DIR__, 2) . '/database/migrations/php');
-        $runner->run();
+        $pathProp->setValue($this->runner, dirname(__DIR__, 2) . '/database/migrations/php');
+        $this->runner->run();
 
         $this->seedMinimalData();
 
-        $this->service = new AppResetService($this->capsule);
+        $this->service = new AppResetService($this->capsule, $this->runner);
     }
 
     protected function tearDown(): void
@@ -117,5 +118,34 @@ final class AppResetServiceTest extends TestCase
         $this->assertGreaterThan(0, $this->capsule->table('migrations')->count(), 'la table migrations elle-même ne doit jamais être vidée');
         $this->assertFileDoesNotExist($this->tmpDir . '/storage/installed.lock');
         $this->assertFileDoesNotExist($this->tmpDir . '/storage/uploads/avatars/1.png');
+    }
+
+    /**
+     * Régression : après un resetFactory(), la table roles restait vide pour
+     * toujours, car la migration de seed des rôles par défaut était trackée comme
+     * déjà appliquée (table migrations préservée) alors que ses données avaient été
+     * vidées — sa garde d'idempotence bloquait tout reseed. Ce test rejoue la vraie
+     * migration via MigrationRunner (pas seulement la suppression de sa ligne de
+     * tracking) pour vérifier que le reseed complet fonctionne réellement de bout
+     * en bout, comme après la réinstallation qui suit un reset usine.
+     */
+    public function testResetFactoryThenReplayingMigrationsReseedsDefaultRolesAndManagerPermissions(): void
+    {
+        $this->service->resetFactory();
+        $this->assertSame(0, $this->capsule->table('roles')->count(), 'roles doit être vidé par le reset');
+
+        $this->runner->run();
+
+        $roles = $this->capsule->table('roles')->pluck('slug')->all();
+        sort($roles);
+        $this->assertSame(['employee', 'manager', 'owner'], $roles, 'les 3 rôles système doivent être reseedés');
+
+        $managerId = $this->capsule->table('roles')->where('slug', 'manager')->value('id');
+        $managerPermissions = $this->capsule->table('role_permissions')->where('role_id', $managerId)->count();
+        $this->assertSame(
+            count(\kintai\Core\Auth\PermissionCatalog::MANAGER_DEFAULTS),
+            $managerPermissions,
+            'le Manager doit récupérer toutes ses permissions par défaut',
+        );
     }
 }
