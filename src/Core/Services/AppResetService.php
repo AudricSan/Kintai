@@ -26,6 +26,16 @@ final class AppResetService
         'ui_prefs'    => ['user_dashboard_prefs', 'user_nav_prefs'],
     ];
 
+    /**
+     * Migrations qui seedent des données structurelles (pas du schéma pur) et doivent
+     * donc se rejouer après un resetFactory(), qui vide leurs données mais préserve la
+     * table migrations : sans ceci, leur garde d'idempotence (ex. "le rôle Owner existe
+     * déjà ?") empêcherait tout reseed après la réinstallation qui suit le reset.
+     */
+    private const SEED_MIGRATIONS_TO_REPLAY = [
+        '2026_07_14_000003_seed_default_roles',
+    ];
+
     public function __construct(private readonly Capsule $capsule)
     {
     }
@@ -63,6 +73,10 @@ final class AppResetService
     {
         $toWipe = array_values(array_diff($this->allTableNames(), ['migrations']));
         $this->truncateTables($toWipe);
+
+        $this->capsule->table('migrations')
+            ->whereIn('migration', self::SEED_MIGRATIONS_TO_REPLAY)
+            ->delete();
 
         $this->removeInstalledLock();
         $this->clearUploads();

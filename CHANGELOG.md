@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Fixed
+- Full (factory) reset (`/admin/backup` danger zone) followed by reinstalling through the web installer used to leave the `roles` table permanently empty: the seed migration that creates Owner/Manager/Employé guards itself against re-inserting duplicates, but since `resetFactory()` wipes every table's data except `migrations`, the migration stayed marked as already-applied and its guard silently blocked any reseed forever. `AppResetService::resetFactory()` now also clears the tracking row for that migration so it replays on the next install.
+
 ## [0.7.5] - 2026-07-15
 
 ### Security
