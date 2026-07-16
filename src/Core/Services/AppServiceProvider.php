@@ -100,6 +100,7 @@ final class AppServiceProvider extends ServiceProvider
 
         $this->container->singleton(AppResetService::class, fn(Container $c) => new AppResetService(
             $c->make(Capsule::class),
+            $c->make(MigrationRunner::class),
         ));
 
         $this->container->singleton(UpdateService::class, fn() => new UpdateService());
