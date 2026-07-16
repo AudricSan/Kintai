@@ -17,6 +17,11 @@ use kintai\Core\Auth\PermissionCatalog;
  * mise à jour via scripts/db-migrate.php.
  */
 return new class($this->capsule) extends Migration {
+    public function isSeed(): bool
+    {
+        return true;
+    }
+
     public function up(): void
     {
         $conn = $this->capsule->getConnection();
