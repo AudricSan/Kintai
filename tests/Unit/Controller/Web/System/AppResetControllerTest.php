@@ -63,7 +63,7 @@ final class AppResetControllerTest extends TestCase
         $this->backup = new BackupService($capsule);
         $this->setPrivate($this->backup, 'backupDir', $this->tmpDir . '/storage/backups');
 
-        $this->reset = new AppResetService($capsule);
+        $this->reset = new AppResetService($capsule, $runner);
 
         $this->auth = new AuthService(
             $this->createStub(UserRepositoryInterface::class),
