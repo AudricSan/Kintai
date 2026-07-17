@@ -57,7 +57,7 @@ echo Flash::fromQuery('error', [
                             <input type="hidden" name="code" value="<?= htmlspecialchars($code) ?>">
                             <input type="hidden" name="is_active" value="<?= $isActive ? '1' : '0' ?>">
                             <input type="text" name="name" value="<?= htmlspecialchars($lang['name']) ?>"
-                                   class="form-control form-control--sm lang-name-input" maxlength="100" required>
+                                   class="form-control form-control-sm lang-name-input" maxlength="100" required>
                             <button type="submit" class="btn btn--ghost btn--xs"><?= __('save') ?></button>
                         </form>
                     </td>
@@ -103,12 +103,12 @@ echo Flash::fromQuery('error', [
         <form method="POST" action="<?= $BASE_URL ?>/admin/languages" class="form-flex">
             <div class="form-group">
                 <label class="form-label"><?= __('language_code') ?></label>
-                <input type="text" name="code" class="form-control form-control--sm" maxlength="10"
+                <input type="text" name="code" class="form-control form-control-sm" maxlength="10"
                        placeholder="es" pattern="[a-zA-Z]{2}(-[a-zA-Z]{2})?" required>
             </div>
             <div class="form-group">
                 <label class="form-label"><?= __('language_name') ?></label>
-                <input type="text" name="name" class="form-control form-control--sm" maxlength="100"
+                <input type="text" name="name" class="form-control form-control-sm" maxlength="100"
                        placeholder="Español" required>
             </div>
             <input type="hidden" name="is_active" value="1">

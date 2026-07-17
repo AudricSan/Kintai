@@ -29,7 +29,7 @@ Kintaiは **GNU Affero General Public License v3.0**（AGPL-3.0）の下で公�
 2. ブランチを作成する：`git checkout -b feat/my-feature` または `fix/my-bug`
 3. 下記の規約に従って変更を行う
 4. テストを実行する：`./vendor/bin/phpunit`
-5. `main` ブランチに対してプルリクエストを開く
+5. `develop` ブランチに対してプルリクエストを開く（`main`・`alpha`・`beta` は保護されたリリースチャンネル用ブランチです — これらへのマージはGitHub Releaseの自動タグ付け・公開をトリガーします。[releasing.ja.md](releasing.ja.md) を参照）
 
 ## コーディング規約
 
@@ -43,6 +43,7 @@ Kintaiは **GNU Affero General Public License v3.0**（AGPL-3.0）の下で公�
 - コード内のコメントはフランス語で記述する。それ以外（コミットメッセージ、PRの説明、ドキュメント）はすべて英語
 - `illuminate/database`（ORMとしてのみ使用するEloquent）以外の外部フレームワーク依存を追加しない
 - ビュー内でインラインの `style="..."` は使用禁止 — `public/assets/css/src/` 配下のCSSモジュールを拡張すること
+- フィルターバーは即座に適用される仕組みにすること — 「フィルター」ボタンは不要。テキスト入力は `input` イベントでデバウンスしてフォームを送信し（`public/assets/js/app.js` の `form.filter-bar`/`form.shifts-filters` を対象とした汎用処理を参照）、`select`/日付フィールドは `onchange` で送信する。これは名前・テキスト検索フィールドを含むすべてのフィルターに適用される
 
 ## テストの実行
 

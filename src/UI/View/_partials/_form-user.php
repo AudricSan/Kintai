@@ -1,17 +1,30 @@
 <?php
-/** @var string $mode       'create'|'edit' */
-/** @var array  $user       Données de l'utilisateur */
-/** @var array  $all_stores Liste des magasins */
+/** @var string $mode                  'create'|'edit' */
+/** @var array  $user                  Données de l'utilisateur */
+/** @var array  $all_stores            Liste des magasins */
+/** @var array  $assignable_roles      Rôles dynamiques assignables par store (table roles) */
+/** @var int    $default_store_role_id Rôle pré-sélectionné par défaut */
+/** @var bool   $as_cards              true : chaque section devient une Card séparée (page d'édition complète) ;
+ *                                     false/absent : rendu compact d'origine (modale de création rapide, voir shifts-import-preview.php). */
 $mode ??= 'create';
-$roles = ['staff' => __('staff'), 'manager' => 'Manager', 'admin' => __('admin')];
+$assignable_roles      ??= [];
+$default_store_role_id ??= 0;
+$as_cards ??= false;
 $genderOptions = ['male' => __('male'), 'female' => __('female')];
 $taxOptions = ['kou' => '甲', 'otsu' => '乙'];
+$currentUserId = (int) ($user['id'] ?? 0);
+$baseUrl = rtrim($BASE_URL ?? '', '/');
+
+$section = function (string $titleKey, string $body) use ($as_cards): void {
+    if ($as_cards) {
+        echo \kintai\UI\Components\Card::make()->header(__($titleKey))->body($body)->render();
+        return;
+    }
+    echo '<div class="section-divider"><h4 class="section-title">' . htmlspecialchars(__($titleKey)) . '</h4>' . $body . '</div>';
+};
 ?>
 <div class="form-stack">
-    <!-- ── Identité ─────────────────────────────── -->
-    <div class="section-divider">
-        <h4 class="section-title"><?= __('identity') ?></h4>
-
+    <?php ob_start(); ?>
         <div class="form-group">
             <label class="form-label form-label--required"><?= __('display_name') ?></label>
             <input type="text" name="display_name" class="form-control"
@@ -20,29 +33,29 @@ $taxOptions = ['kou' => '甲', 'otsu' => '乙'];
 
         <div class="form-row">
             <div class="form-group">
-                <label class="form-label"><?= __('last_name') ?></label>
+                <label class="form-label form-label--required"><?= __('last_name') ?></label>
                 <input type="text" name="last_name" class="form-control"
-                       value="<?= htmlspecialchars($user['last_name'] ?? '') ?>">
+                       value="<?= htmlspecialchars($user['last_name'] ?? '') ?>" required>
             </div>
             <div class="form-group">
-                <label class="form-label"><?= __('first_name') ?></label>
+                <label class="form-label form-label--required"><?= __('first_name') ?></label>
                 <input type="text" name="first_name" class="form-control"
-                       value="<?= htmlspecialchars($user['first_name'] ?? '') ?>">
+                       value="<?= htmlspecialchars($user['first_name'] ?? '') ?>" required>
             </div>
         </div>
 
         <div class="form-row">
             <div class="form-group">
-                <label class="form-label"><?= __('furigana_last_name') ?></label>
+                <label class="form-label form-label--required"><?= __('furigana_last_name') ?></label>
                 <input type="text" name="furigana_last_name" class="form-control"
                        value="<?= htmlspecialchars($user['furigana_last_name'] ?? '') ?>"
-                       placeholder="カタカナ">
+                       placeholder="カタカナ" required>
             </div>
             <div class="form-group">
-                <label class="form-label"><?= __('furigana_first_name') ?></label>
+                <label class="form-label form-label--required"><?= __('furigana_first_name') ?></label>
                 <input type="text" name="furigana_first_name" class="form-control"
                        value="<?= htmlspecialchars($user['furigana_first_name'] ?? '') ?>"
-                       placeholder="カタカナ">
+                       placeholder="カタカナ" required>
             </div>
         </div>
 
@@ -79,17 +92,26 @@ $taxOptions = ['kou' => '甲', 'otsu' => '乙'];
                        value="<?= htmlspecialchars($user['education'] ?? '') ?>">
             </div>
         </div>
-    </div>
+    <?php $section('identity', ob_get_clean()); ?>
 
-    <!-- ── Coordonnées ──────────────────────────── -->
-    <div class="section-divider">
-        <h4 class="section-title"><?= __('contact') ?></h4>
-
+    <?php ob_start(); ?>
         <div class="form-row">
             <div class="form-group">
                 <label class="form-label form-label--required"><?= __('email') ?></label>
-                <input type="email" name="email" class="form-control"
-                       value="<?= htmlspecialchars($user['email'] ?? '') ?>" required>
+                <input type="email" name="email" class="form-control live-check-input"
+                       value="<?= htmlspecialchars($user['email'] ?? '') ?>"
+                       data-check-url="<?= htmlspecialchars($baseUrl . '/admin/users/check-email') ?>"
+                       data-check-param="email"
+                       data-exclude-id="<?= $currentUserId ?>"
+                       data-original-value="<?= htmlspecialchars($user['email'] ?? '') ?>"
+                       required>
+                <p class="form-error" data-check-error hidden><?= __('email_taken') ?></p>
+            </div>
+            <div class="form-group">
+                <label class="form-label"><?= __('postal_code') ?></label>
+                <input type="text" name="postal_code" class="form-control"
+                       value="<?= htmlspecialchars($user['postal_code'] ?? '') ?>"
+                       placeholder="123-4567">
             </div>
         </div>
 
@@ -108,25 +130,13 @@ $taxOptions = ['kou' => '甲', 'otsu' => '乙'];
             </div>
         </div>
 
-        <div class="form-row">
-            <div class="form-group">
-                <label class="form-label"><?= __('postal_code') ?></label>
-                <input type="text" name="postal_code" class="form-control"
-                       value="<?= htmlspecialchars($user['postal_code'] ?? '') ?>"
-                       placeholder="123-4567">
-            </div>
-        </div>
-
         <div class="form-group">
             <label class="form-label"><?= __('address') ?></label>
             <textarea name="address" class="form-control" rows="2"><?= htmlspecialchars($user['address'] ?? '') ?></textarea>
         </div>
-    </div>
+    <?php $section('contact', ob_get_clean()); ?>
 
-    <!-- ── Garant ───────────────────────────────── -->
-    <div class="section-divider">
-        <h4 class="section-title"><?= __('guarantor') ?></h4>
-
+    <?php ob_start(); ?>
         <div class="form-row">
             <div class="form-group">
                 <label class="form-label"><?= __('guarantor_name') ?></label>
@@ -139,18 +149,20 @@ $taxOptions = ['kou' => '甲', 'otsu' => '乙'];
                        value="<?= htmlspecialchars($user['guarantor_phone'] ?? '') ?>">
             </div>
         </div>
-    </div>
+    <?php $section('guarantor', ob_get_clean()); ?>
 
-    <!-- ── Employé ──────────────────────────────── -->
-    <div class="section-divider">
-        <h4 class="section-title"><?= __('employee_info') ?></h4>
-
+    <?php ob_start(); ?>
         <div class="form-group">
             <label class="form-label"><?= __('employee_code') ?> <span class="text-hint">(<?= __('employee_code_hint') ?>)</span></label>
-            <input type="text" name="employee_code" class="form-control input-code mw-200"
+            <input type="text" name="employee_code" class="form-control input-code mw-200 live-check-input"
                    value="<?= htmlspecialchars($user['employee_code'] ?? '') ?>"
+                   data-check-url="<?= htmlspecialchars($baseUrl . '/admin/users/check-employee-code') ?>"
+                   data-check-param="code"
+                   data-exclude-id="<?= $currentUserId ?>"
+                   data-original-value="<?= htmlspecialchars($user['employee_code'] ?? '') ?>"
                    placeholder="ex : EMP001">
             <p class="form-hint"><?= __('employee_login_hint') ?></p>
+            <p class="form-error" data-check-error hidden><?= __('employee_code_taken_hint') ?></p>
         </div>
 
         <?php if ($mode === 'create'): ?>
@@ -172,12 +184,9 @@ $taxOptions = ['kou' => '甲', 'otsu' => '乙'];
             </form>
         </div>
         <?php endif; ?>
-    </div>
+    <?php $section('employee_info', ob_get_clean()); ?>
 
-    <!-- ── Rôles & apparence ────────────────────── -->
-    <div class="section-divider">
-        <h4 class="section-title"><?= __('roles_appearance') ?></h4>
-
+    <?php ob_start(); ?>
         <div class="form-row">
             <div class="form-group">
                 <label class="form-label"><?= __('identification_color') ?></label>
@@ -194,7 +203,9 @@ $taxOptions = ['kou' => '甲', 'otsu' => '乙'];
                     <option value="1" <?= !empty($user['is_admin']) ? 'selected' : '' ?>><?= __('admin') ?></option>
                 </select>
             </div>
-            <?php if ($mode === 'edit'): ?>
+        </div>
+        <?php if ($mode === 'edit'): ?>
+        <div class="form-row">
             <div class="form-group">
                 <label class="form-label"><?= __('status') ?></label>
                 <select name="is_active" class="form-control">
@@ -202,15 +213,18 @@ $taxOptions = ['kou' => '甲', 'otsu' => '乙'];
                     <option value="0" <?= empty($user['is_active']) ? 'selected' : '' ?>><?= __('inactive') ?></option>
                 </select>
             </div>
-            <?php endif; ?>
         </div>
-    </div>
+        <?php endif; ?>
+    <?php $section('roles_appearance', ob_get_clean()); ?>
 
-    <!-- ── Affectation store (création uniquement) ─ -->
     <?php if ($mode === 'create'): ?>
-    <div class="section-divider">
-        <h4 class="section-title"><?= __('assign_to_store') ?></h4>
+    <?php ob_start(); ?>
         <div class="form-row">
+            <?php if (!empty($all_stores)): ?>
+            <!-- Sélecteur de store affiché uniquement quand le formulaire propose un choix -->
+            <!-- (ex. modale de création rapide depuis l'import : le store est déjà fixé -->
+            <!-- via un champ caché du formulaire parent, sinon le nom "store_id" entrerait -->
+            <!-- en collision avec ce select et écraserait la valeur transmise) -->
             <div class="form-group">
                 <label class="form-label"><?= __('store') ?></label>
                 <select name="store_id" class="form-control">
@@ -220,15 +234,18 @@ $taxOptions = ['kou' => '甲', 'otsu' => '乙'];
                     <?php endforeach; ?>
                 </select>
             </div>
+            <?php endif; ?>
+            <?php if (!empty($assignable_roles)): ?>
             <div class="form-group">
                 <label class="form-label"><?= __('store_role') ?></label>
-                <select name="store_role" class="form-control">
-                    <?php foreach ($roles as $val => $label): ?>
-                        <option value="<?= $val ?>" <?= $val === 'staff' ? 'selected' : '' ?>><?= $label ?></option>
+                <select name="store_role_id" class="form-control">
+                    <?php foreach ($assignable_roles as $r): ?>
+                        <option value="<?= (int) $r['id'] ?>" <?= (int) $r['id'] === (int) $default_store_role_id ? 'selected' : '' ?>><?= htmlspecialchars($r['name'] ?? '') ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
+            <?php endif; ?>
         </div>
-    </div>
+    <?php $section('assign_to_store', ob_get_clean()); ?>
     <?php endif; ?>
 </div>

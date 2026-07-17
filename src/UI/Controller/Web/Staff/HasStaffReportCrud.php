@@ -7,6 +7,7 @@ namespace kintai\UI\Controller\Web\Staff;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\Services\PdfCjkFontResolver;
 
 /**
  * CRUD générique pour les rapports RH par store (embauche, démission, salaire) :
@@ -80,11 +81,46 @@ trait HasStaffReportCrud
         $store = $this->findStoreOrFail($storeId);
         $this->assertStoreAccess($request, $storeId);
 
-        return Response::html($this->view->render($this->reportConfig()['view'], [
+        return Response::html($this->view->render($this->reportConfig()['view'], array_merge([
             'title'   => $titlePrefix . ' — ' . ($store['name'] ?? ''),
             'store'   => $store,
             'reports' => $this->reportRepo()->findByStore($storeId),
-        ], 'layout.app'));
+        ], $this->reportListExtras($storeId)), 'layout.app'));
+    }
+
+    /** Données additionnelles pour la vue liste, propres à un type de rapport (voir AdminSalaryReportController). */
+    protected function reportListExtras(int $storeId): array
+    {
+        return [];
+    }
+
+    /**
+     * Employés du store (pour un menu déroulant "Utilisateur"/employé du formulaire) —
+     * inclut aussi $keepUserId même s'il n'est plus membre du store (édition
+     * d'un ancien rapport dont l'employé a depuis été retiré du store).
+     */
+    private function storeMembersForReportForm(int $storeId, int $keepUserId = 0): array
+    {
+        $seenIds = [];
+        $members = [];
+        foreach ($this->storeUsers->findByStore($storeId) as $m) {
+            $uid = (int) $m['user_id'];
+            if (in_array($uid, $seenIds, true)) {
+                continue;
+            }
+            $user = $this->users->findById($uid);
+            if ($user !== null) {
+                $seenIds[] = $uid;
+                $members[] = $user;
+            }
+        }
+        if ($keepUserId > 0 && !in_array($keepUserId, $seenIds, true)) {
+            $user = $this->users->findById($keepUserId);
+            if ($user !== null) {
+                $members[] = $user;
+            }
+        }
+        return $members;
     }
 
     private function showReport(Request $request): Response
@@ -96,11 +132,17 @@ trait HasStaffReportCrud
             'store_id' => $storeId,
         ], $storeId);
 
-        return Response::html($this->view->render($this->reportConfig()['view'] . '-show', [
+        return Response::html($this->view->render($this->reportConfig()['view'] . '-show', array_merge([
             'title'  => $this->reportShowTitle($report),
             'store'  => $this->stores->findById($storeId),
             'report' => $report,
-        ], 'layout.app'));
+        ], $this->reportShowExtras($storeId, $report)), 'layout.app'));
+    }
+
+    /** Données additionnelles pour la vue show/pdf, propres à un type de rapport (voir AdminSalaryReportController). */
+    protected function reportShowExtras(int $storeId, array $report): array
+    {
+        return [];
     }
 
     private function editReport(Request $request): Response
@@ -121,10 +163,8 @@ trait HasStaffReportCrud
         $cfg = $this->reportConfig();
 
         $changes = $this->postData($request, $cfg['fields']);
-        if ($cfg['slug'] !== 'salary') {
-            $userId = (int) $request->post('user_id', 0);
-            $changes = ['user_id' => $userId > 0 ? $userId : null] + $changes;
-        }
+        $userId = (int) $request->post('user_id', 0);
+        $changes = ['user_id' => $userId > 0 ? $userId : null] + $changes;
         $data = array_merge($report, $changes);
 
         $this->reportRepo()->save($data);
@@ -148,15 +188,37 @@ trait HasStaffReportCrud
         return $this->redirectToList($storeId, $this->reportConfig()['slug'], 'deleted');
     }
 
+    /**
+     * Aperçu HTML du PDF (route .../pdf) : pas de téléchargement automatique,
+     * juste la même vue *-pdf.php rendue directement dans le navigateur avec
+     * une barre d'outils (impression / téléchargement réel / fermer), comme
+     * l'ancienne fiche de paie autonome. Le vrai fichier PDF n'est généré que
+     * si l'utilisateur clique explicitement sur "Télécharger" (reportPdfDownload()).
+     */
     private function reportPdf(Request $request): Response
     {
         [$report, $storeId, $reportId] = $this->findReportOrFail($request);
         $cfg = $this->reportConfig();
 
-        $html = $this->view->render($cfg['view'] . '-pdf', [
+        $html = $this->view->render($cfg['view'] . '-pdf', array_merge([
+            'report'      => $report,
+            'store'       => $this->stores->findById($storeId),
+            'downloadUrl' => $this->base() . '/admin/stores/' . $storeId . '/reports/' . $cfg['slug'] . '/' . $reportId . '/pdf/download',
+        ], $this->reportShowExtras($storeId, $report)));
+
+        return Response::html($html);
+    }
+
+    /** Génération réelle du fichier PDF (mPDF), déclenchée depuis la barre d'outils de l'aperçu. */
+    private function reportPdfDownload(Request $request): Response
+    {
+        [$report, $storeId, $reportId] = $this->findReportOrFail($request);
+        $cfg = $this->reportConfig();
+
+        $html = $this->view->render($cfg['view'] . '-pdf', array_merge([
             'report' => $report,
             'store'  => $this->stores->findById($storeId),
-        ]);
+        ], $this->reportShowExtras($storeId, $report)));
 
         return $this->renderPdf($html, $cfg['entity'] . '_' . $reportId . '.pdf');
     }
@@ -214,7 +276,7 @@ trait HasStaffReportCrud
             mkdir($tmpDir, 0755, true);
         }
 
-        $config = [
+        $config = PdfCjkFontResolver::applyTo([
             'mode'          => 'utf-8',
             'format'        => 'A4',
             'margin_left'   => 15,
@@ -222,15 +284,7 @@ trait HasStaffReportCrud
             'margin_top'    => 16,
             'margin_bottom' => 16,
             'tempDir'       => $tmpDir,
-        ];
-
-        // Polices CJK (japonais, chinois) pour compatibilité multilingue
-        $fontConfig = $this->findCjkFont();
-        if ($fontConfig !== null) {
-            $config['fontDir']  = $fontConfig['dir'];
-            $config['fontdata'] = $fontConfig['data'];
-            $config['default_font'] = $fontConfig['default'];
-        }
+        ]);
 
         $mpdf = new \Mpdf\Mpdf($config);
         $mpdf->SetTitle($filename);
@@ -239,50 +293,15 @@ trait HasStaffReportCrud
         return Response::pdf($mpdf->Output('', \Mpdf\Output\Destination::STRING_RETURN), $filename);
     }
 
-    private function findCjkFont(): ?array
-    {
-        $customDir  = storage_path('fonts');
-        $customFile = $customDir . '/NotoSansJP-Regular.ttf';
-        if (file_exists($customFile)) {
-            return [
-                'dir'     => [$customDir],
-                'data'    => ['notosansjp' => ['R' => 'NotoSansJP-Regular.ttf']],
-                'default' => 'notosansjp',
-            ];
-        }
-
-        $sysRoot  = rtrim((string) (getenv('SystemRoot') ?: 'C:/Windows'), '/\\');
-        $winFonts = $sysRoot . '/Fonts';
-
-        $candidates = [
-            'YuGothR.ttc'  => ['fontName' => 'yugothic', 'ttcId' => 1],
-            'meiryo.ttc'   => ['fontName' => 'meiryo',   'ttcId' => 1],
-            'msgothic.ttc' => ['fontName' => 'msgothic', 'ttcId' => 1],
-        ];
-
-        foreach ($candidates as $file => $meta) {
-            if (file_exists($winFonts . '/' . $file)) {
-                return [
-                    'dir'     => [$winFonts],
-                    'data'    => [
-                        $meta['fontName'] => [
-                            'R'         => $file,
-                            'TTCfontID' => ['R' => $meta['ttcId']],
-                        ],
-                    ],
-                    'default' => $meta['fontName'],
-                ];
-            }
-        }
-
-        return null;
-    }
-
     /**
-     * Retourne la liste des responsables (admin/manager) pour le store courant
-     * ou pour tous les stores d'un employé donné. Utilisée par démission et salaire.
-     * Nécessite $this->storeUsers (StoreUserRepositoryInterface) et $this->users
-     * (UserRepositoryInterface) sur la classe utilisatrice.
+     * Retourne la liste des responsables (Owner + admin/manager du store) pour le
+     * store courant ou pour tous les stores d'un employé donné. Utilisée par
+     * démission et salaire. Nécessite $this->storeUsers (StoreUserRepositoryInterface)
+     * et $this->users (UserRepositoryInterface) sur la classe utilisatrice.
+     *
+     * L'Owner est toujours inclus même si non listé dans store_user : voir
+     * install.php, qui ne crée qu'une ligne role_assignments globale pour lui,
+     * pas d'adhésion à un store précis.
      */
     private function getManagersForReportForm(int $storeId, int $userId = 0): array
     {
@@ -297,6 +316,12 @@ trait HasStaffReportCrud
 
         $seenIds = [];
         $managers = [];
+        foreach ($this->users->findAll() as $u) {
+            if (!empty($u['is_admin'])) {
+                $seenIds[] = (int) $u['id'];
+                $managers[] = $u;
+            }
+        }
         foreach ($storeIds as $sid) {
             $members = $this->storeUsers->findByStore($sid);
             foreach ($members as $m) {

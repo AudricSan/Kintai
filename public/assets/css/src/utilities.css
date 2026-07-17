@@ -18,6 +18,8 @@
 
 /* ── Flex ───────────────────────────────────────── */
 .flex-1 { flex: 1; min-width: 0; }
+.flex-row { display: flex; align-items: center; flex-wrap: wrap; }
+.gap-sm { gap: var(--space-3); }
 
 /* ── Display ────────────────────────────────────── */
 .hidden    { display: none; }

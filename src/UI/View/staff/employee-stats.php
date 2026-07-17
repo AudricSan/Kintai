@@ -28,8 +28,7 @@ use kintai\UI\Components\Table;
  * @var array  $dowChart       ['Lun' => float, ...]
  * @var array  $recentShifts
  * @var array  $storeTypesMap
- * @var string $payslipUrl
- * @var string $pdfUrl
+ * @var string $salaryReportUrl
  * @var string $BASE_URL
  */
 
@@ -76,8 +75,7 @@ $reportUrl = $BASE_URL . '/admin/stores/' . (int) $store['id'] . '/employee-repo
     <span class="page-count"><?= htmlspecialchars($store['name'] ?? '') ?></span>
   </h2>
   <div class="page-header__actions">
-    <?= Button::make('⬇ ' . __('download_pdf'))->primary()->sm()->link(htmlspecialchars($pdfUrl))->render() ?>
-    <?= Button::make('🖨 ' . __('payslip'))->ghost()->sm()->link(htmlspecialchars($payslipUrl))->render() ?>
+    <?= Button::make('💰 ' . __('salary_report'))->primary()->sm()->link(htmlspecialchars($salaryReportUrl))->render() ?>
     <?= Button::make('← ' . __('back_to_report'))->ghost()->sm()->link(htmlspecialchars($reportUrl))->render() ?>
   </div>
 </div>

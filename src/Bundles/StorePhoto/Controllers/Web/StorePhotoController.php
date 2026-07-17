@@ -44,7 +44,7 @@ final class StorePhotoController
         }
 
         return Response::html($this->view->render('store-photos::store-photos', [
-            'title'             => __('photos'),
+            'title'             => __('photos_report'),
             'submissions'       => $submissions,
             'submissionImages'  => $submissionImages,
             'storeNames'        => $storeNames,

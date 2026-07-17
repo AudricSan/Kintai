@@ -39,6 +39,17 @@ final class Response
         return $r;
     }
 
+    /** JSON téléchargé comme fichier (Content-Disposition), pour les exports — à distinguer de json() qui sert les réponses d'API. */
+    public static function jsonDownload(mixed $data, string $filename): self
+    {
+        $r = new self();
+        $r->body = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR);
+        $r->status = 200;
+        $r->headers['Content-Type'] = 'application/json; charset=UTF-8';
+        $r->headers['Content-Disposition'] = "attachment; filename=\"{$filename}\"";
+        return $r;
+    }
+
     public static function csv(string $body, string $filename): self
     {
         $r = new self();

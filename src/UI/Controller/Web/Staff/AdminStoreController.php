@@ -15,6 +15,7 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\RoleAssignmentSyncService;
 use kintai\Core\Services\StoreServiceInterface;
 use kintai\Core\Services\StoreStatsServiceInterface;
 use kintai\UI\ViewRenderer;
@@ -22,8 +23,6 @@ use kintai\UI\ViewRenderer;
 final class AdminStoreController
 {
     use HasAdminAccess;
-
-    private const ROLES = ['admin' => 'Administrateur', 'manager' => 'Manager', 'staff' => 'Employé'];
 
     public function __construct(
         private readonly ViewRenderer $view,
@@ -34,6 +33,7 @@ final class AdminStoreController
         private readonly StoreServiceInterface $storeService,
         private readonly StoreStatsServiceInterface $storeStatsService,
         private readonly FeatureManager $features,
+        private readonly RoleAssignmentSyncService $roleSync,
     ) {}
 
     /**
@@ -111,11 +111,16 @@ final class AdminStoreController
         $this->assertStoreAccess($request, (int) $store['id']);
 
         $storeId = (int) $store['id'];
-        $members = array_map(function ($m) {
+        $roleMap = $this->roleSync->storeRoleMapForStore($storeId);
+        $members = array_map(function ($m) use ($roleMap) {
             $name = trim(($m['last_name'] ?? '') . ' ' . ($m['first_name'] ?? ''));
+            $assigned = $roleMap[(int) $m['membership']['user_id']] ?? null;
             return array_merge($m['membership'], [
-                'user_name'  => $name ?: ($m['email'] ?? '—'),
-                'user_email' => $m['email'] ?? '',
+                'user_name'        => $name ?: ($m['email'] ?? '—'),
+                'user_email'       => $m['email'] ?? '',
+                'role_id'          => $assigned['role_id'] ?? null,
+                'role_name'        => $assigned['name'] ?? ($m['membership']['role'] ?? '—'),
+                'role_is_managing' => !empty($assigned['is_managing']),
             ]);
         }, $this->storeService->getStoreMembers($storeId));
 
@@ -132,7 +137,8 @@ final class AdminStoreController
             'store'             => $store,
             'members'           => $members,
             'available'         => $available,
-            'roles'             => self::ROLES,
+            'assignable_roles'  => $this->roleSync->assignableStoreRoles(),
+            'default_role_id'   => (int) ($this->roleSync->defaultStoreRole()['id'] ?? 0),
             'deductionSettings' => $this->storeService->getDeductionSettings($storeId),
             // Aucune ligne en base = jamais configuré → toutes les fonctionnalités actives par défaut (null)
             'enabledFeatures'   => ($_ef = $this->stores->getFeatures($storeId)) !== [] ? $_ef : null,
@@ -237,14 +243,22 @@ final class AdminStoreController
         $this->assertStoreAccess($request, $storeId);
 
         $userId = (int) $request->post('user_id', 0);
-        $role   = $request->post('role', 'staff');
+        // Rôle dynamique (roles en base) — repli sur le rôle par défaut si
+        // l'id posté est absent/invalide, pour rester tolérant aux anciens formulaires.
+        $role = $this->roleSync->findAssignableRole((int) $request->post('role_id', 0))
+            ?? $this->roleSync->defaultStoreRole();
 
-        if ($userId > 0) {
-            $this->storeService->addMember($storeId, $userId, $role);
+        if ($userId > 0 && $role !== null) {
+            $roleId = (int) $role['id'];
+            $membership = $this->storeService->addMember($storeId, $userId, $this->roleSync->legacyRoleFor($roleId));
+            if ($membership !== null) {
+                $this->roleSync->syncStoreRoleById($userId, $storeId, $roleId);
+            }
             $this->auditLogger->log($request, 'store.member_added', 'store_user', null, [
                 'store_id' => $storeId,
                 'user_id'  => $userId,
-                'role'     => $role,
+                'role_id'  => $roleId,
+                'role'     => $role['name'] ?? null,
             ], $storeId);
         }
 
@@ -264,11 +278,17 @@ final class AdminStoreController
         }
         $this->assertStoreAccess($request, $storeId);
 
-        $role = $request->post('role', 'staff');
-        $oldRole = $membership['role'];
+        $role = $this->roleSync->findAssignableRole((int) $request->post('role_id', 0));
+        if ($role === null) {
+            return Response::redirect($this->base() . '/admin/stores/' . $storeId . '/edit?error=invalid_role');
+        }
+        $roleId  = (int) $role['id'];
+        $userId  = (int) $membership['user_id'];
+        $oldRole = ($this->roleSync->storeRoleMapForStore($storeId)[$userId]['name'] ?? null) ?? $membership['role'];
 
-        $this->storeService->updateMemberRole($mid, $storeId, $role);
-        $this->auditLogger->logUpdate($request, 'store.member_role_updated', 'store_user', $mid, ['role' => $oldRole], ['role' => $role], [
+        $this->storeService->updateMemberRole($mid, $storeId, $this->roleSync->legacyRoleFor($roleId));
+        $this->roleSync->syncStoreRoleById($userId, $storeId, $roleId);
+        $this->auditLogger->logUpdate($request, 'store.member_role_updated', 'store_user', $mid, ['role' => $oldRole], ['role' => $role['name'] ?? null, 'role_id' => $roleId], [
             'store_id' => $storeId,
             'user_id' => $membership['user_id'] ?? null,
         ], $storeId);
@@ -288,6 +308,7 @@ final class AdminStoreController
         $this->assertStoreAccess($request, $storeId);
 
         $this->storeService->removeMember($mid, $storeId);
+        $this->roleSync->revokeStoreRole((int) $membership['user_id'], $storeId);
         $this->auditLogger->log($request, 'store.member_removed', 'store_user', $mid, [
             'store_id' => $storeId,
             'user_id' => $membership['user_id'] ?? null,
@@ -493,94 +514,6 @@ final class AdminStoreController
         ]), 'layout.app'));
     }
 
-    public function employeePayslip(Request $request): Response
-    {
-        $storeId = (int) $request->param('id');
-        $userId  = (int) $request->param('uid');
-        $this->assertStoreAccess($request, $storeId);
-
-        $store = $this->stores->findById($storeId);
-        if ($store === null) throw new NotFoundException('Magasin introuvable.');
-
-        $user = $this->users->findById($userId);
-        if ($user === null) throw new NotFoundException('Employé introuvable.');
-
-        $membership = $this->storeUsers->findMembership($storeId, $userId);
-        if ($membership === null) throw new ForbiddenException('Cet employé n\'est pas membre de ce magasin.');
-
-        [$from, $to] = self::parseDateRange($request);
-        $data        = $this->storeStatsService->buildPayslipData($storeId, $userId, $from, $to);
-
-        $this->auditLogger->log($request, 'payslip.viewed', 'user', $userId, [
-            'store_id' => $storeId, 'from' => $from, 'to' => $to,
-        ], $storeId);
-
-        return Response::html($this->view->render('staff.employee-payslip', array_merge($data, [
-            'store'      => $store,
-            'user'       => $user,
-            'membership' => $membership,
-            'currency'   => $store['currency'] ?? 'EUR',
-            'autoprint'  => $request->query('autoprint') === '1',
-        ])));
-    }
-
-    public function employeePayslipPdf(Request $request): Response
-    {
-        $storeId = (int) $request->param('id');
-        $userId  = (int) $request->param('uid');
-        $this->assertStoreAccess($request, $storeId);
-
-        $store = $this->stores->findById($storeId);
-        if ($store === null) throw new NotFoundException('Magasin introuvable.');
-
-        $user = $this->users->findById($userId);
-        if ($user === null) throw new NotFoundException('Employé introuvable.');
-
-        $membership = $this->storeUsers->findMembership($storeId, $userId);
-        if ($membership === null) throw new ForbiddenException('Cet employé n\'est pas membre de ce magasin.');
-
-        [$from, $to] = self::parseDateRange($request);
-        $data        = $this->storeStatsService->buildPayslipData($storeId, $userId, $from, $to);
-
-        $html = $this->view->render('staff.employee-payslip-pdf', array_merge($data, [
-            'store'      => $store,
-            'user'       => $user,
-            'membership' => $membership,
-            'currency'   => $store['currency'] ?? 'EUR',
-        ]));
-
-        $tmpDir = storage_path('app/mpdf');
-        if (!is_dir($tmpDir)) {
-            mkdir($tmpDir, 0755, true);
-        }
-
-        $mpdf = new \Mpdf\Mpdf([
-            'mode'          => 'utf-8',
-            'format'        => 'A4',
-            'margin_left'   => 15,
-            'margin_right'  => 15,
-            'margin_top'    => 16,
-            'margin_bottom' => 16,
-            'tempDir'       => $tmpDir,
-        ]);
-        $mpdf->SetTitle('Fiche de paie');
-        $mpdf->WriteHTML($html);
-
-        $slug     = preg_replace('/[^a-zA-Z0-9_-]/', '', str_replace(' ', '_', trim(($user['last_name'] ?? '') . '_' . ($user['first_name'] ?? '')))) ?: 'employe';
-        $filename = 'payslip_' . $slug . '_' . str_replace('-', '', $from) . '_' . str_replace('-', '', $to) . '.pdf';
-
-        $this->auditLogger->log($request, 'export.payslip_pdf', 'user', $userId, [
-            'store_id' => $storeId,
-            'from'     => $from,
-            'to'       => $to,
-            'format'   => 'pdf',
-        ], $storeId);
-
-        $pdfBytes = $mpdf->Output('', \Mpdf\Output\Destination::STRING_RETURN);
-
-        return Response::pdf($pdfBytes, $filename);
-    }
-
     public function employeeStats(Request $request): Response
     {
         $storeId = (int) $request->param('id');
@@ -603,18 +536,16 @@ final class AdminStoreController
             'store_id' => $storeId, 'period' => $period,
         ], $storeId);
 
-        $empName    = trim(($user['last_name'] ?? '') . ' ' . ($user['first_name'] ?? '')) ?: ($user['email'] ?? '');
-        $payslipUrl = $this->base() . '/admin/stores/' . $storeId . '/employee-report/' . $userId . '/payslip?period=' . $period;
-        $pdfUrl     = $this->base() . '/admin/stores/' . $storeId . '/employee-report/' . $userId . '/payslip/pdf?period=' . $period;
+        $empName        = trim(($user['last_name'] ?? '') . ' ' . ($user['first_name'] ?? '')) ?: ($user['email'] ?? '');
+        $salaryReportUrl = $this->base() . '/admin/stores/' . $storeId . '/reports/salary/create?user_id=' . $userId;
 
         return Response::html($this->view->render('staff.employee-stats', array_merge($data, [
-            'title'      => 'Statistiques — ' . $empName,
-            'store'      => $store,
-            'user'       => $user,
-            'membership' => $membership,
-            'currency'   => $store['currency'] ?? 'EUR',
-            'payslipUrl' => $payslipUrl,
-            'pdfUrl'     => $pdfUrl,
+            'title'           => 'Statistiques — ' . $empName,
+            'store'           => $store,
+            'user'            => $user,
+            'membership'      => $membership,
+            'currency'        => $store['currency'] ?? 'EUR',
+            'salaryReportUrl' => $salaryReportUrl,
         ]), 'layout.app'));
     }
 
@@ -638,18 +569,4 @@ final class AdminStoreController
         ]), 'layout.app'));
     }
 
-    public static function parseDateRange(Request $request): array
-    {
-        $from = (string) ($request->query('from') ?? '');
-        $to   = (string) ($request->query('to')   ?? '');
-
-        $valid = fn(string $d): bool => (bool) \DateTime::createFromFormat('Y-m-d', $d);
-
-        if (!$valid($from) || !$valid($to) || $from > $to) {
-            $from = date('Y-m-01');
-            $to   = date('Y-m-t');
-        }
-
-        return [$from, $to];
-    }
 }

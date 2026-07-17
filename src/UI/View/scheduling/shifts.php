@@ -89,12 +89,12 @@ foreach ($shifts as $s) {
         <div class="shifts-filters__row">
             <div class="shifts-filters__group">
                 <label class="shifts-filters__label" for="sf-month"><?= __('month') ?></label>
-                <input type="month" id="sf-month" name="month" value="<?= htmlspecialchars($filter_month) ?>" class="form-control form-control--sm" onchange="this.form.submit()">
+                <input type="month" id="sf-month" name="month" value="<?= htmlspecialchars($filter_month) ?>" class="form-control form-control-sm" onchange="this.form.submit()">
             </div>
             <?php if (count($stores_map) > 1): ?>
             <div class="shifts-filters__group">
                 <label class="shifts-filters__label" for="sf-store"><?= __('store') ?></label>
-                <select id="sf-store" name="store_id" class="form-control form-control--sm" onchange="this.form.submit()">
+                <select id="sf-store" name="store_id" class="form-control form-control-sm" onchange="this.form.submit()">
                     <option value="0"><?= __('all_stores') ?></option>
                     <?php foreach ($stores_map as $sid => $sname): ?>
                         <option value="<?= $sid ?>" <?= $filter_store_id === $sid ? 'selected' : '' ?>><?= htmlspecialchars($sname) ?></option>
@@ -104,7 +104,7 @@ foreach ($shifts as $s) {
             <?php endif; ?>
             <div class="shifts-filters__group">
                 <label class="shifts-filters__label" for="sf-user"><?= __('user') ?></label>
-                <select id="sf-user" name="user_id" class="form-control form-control--sm" onchange="this.form.submit()">
+                <select id="sf-user" name="user_id" class="form-control form-control-sm" onchange="this.form.submit()">
                     <option value="0"><?= __('all_staff') ?></option>
                     <?php foreach ($users_for_filter as $uid => $uname): ?>
                         <option value="<?= $uid ?>" <?= $filter_user_id === $uid ? 'selected' : '' ?>><?= htmlspecialchars($uname) ?></option>

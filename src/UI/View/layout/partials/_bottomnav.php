@@ -21,17 +21,21 @@ if ($showAdminMenu) {
     elseif ($path === '/employee' || $path === '/') $_bnActive = 'home';
 }
 
+// Permissions fines RBAC (partagé par AuthMiddleware) : mêmes gardes que la
+// sidebar, pour que la navigation mobile reflète aussi les droits du rôle.
+$can = $user_can ?? fn(string $k): bool => true;
+
 // href en closures : évite d'appeler route_url() sur une route dont le bundle
 // est désactivé avant le filtrage par $feat() ci-dessous (route_url() lève une
 // exception si la route n'est pas enregistrée).
 $_bnAdminPool = [
-        'shifts'        => ['icon' => 'calendar', 'label' => __('shifts'),        'href' => fn() => route_url('admin.shifts.timeline'), 'feat' => 'shifts'],
-        'team'          => ['icon' => 'users',     'label' => __('team'),          'href' => fn() => route_url('admin.users'),           'feat' => null],
-        'requests'      => ['icon' => 'clipboard', 'label' => __('requests'),      'href' => fn() => route_url('admin.timeoff'),         'feat' => 'timeoff'],
-        'messages'      => ['icon' => 'message',   'label' => __('messages'),      'href' => fn() => route_url('admin.messages'),        'feat' => 'messages'],
-        'swaps'         => ['icon' => 'arrows',    'label' => __('swaps'),         'href' => fn() => route_url('admin.swap_requests'),   'feat' => 'swaps'],
-        'timeclocks'    => ['icon' => 'clock',     'label' => __('timeclocks'),    'href' => fn() => route_url('admin.timeclocks'),      'feat' => 'timeclock'],
-        'daily_reports' => ['icon' => 'chart',     'label' => __('daily_reports'), 'href' => fn() => route_url('admin.daily_reports.all'),  'feat' => 'daily_reports'],
+        'shifts'        => ['icon' => 'calendar', 'label' => __('shifts'),        'href' => fn() => route_url('admin.shifts.timeline'), 'feat' => 'shifts',        'perm' => 'shifts.view'],
+        'team'          => ['icon' => 'users',     'label' => __('team'),          'href' => fn() => route_url('admin.users'),           'feat' => null,            'perm' => 'employees.view'],
+        'requests'      => ['icon' => 'clipboard', 'label' => __('requests'),      'href' => fn() => route_url('admin.timeoff'),         'feat' => 'timeoff',       'perm' => 'timeoff.view'],
+        'messages'      => ['icon' => 'message',   'label' => __('messages'),      'href' => fn() => route_url('admin.messages'),        'feat' => 'messages',      'perm' => null],
+        'swaps'         => ['icon' => 'arrows',    'label' => __('swaps'),         'href' => fn() => route_url('admin.swap_requests'),   'feat' => 'swaps',         'perm' => 'swaps.view'],
+        'timeclocks'    => ['icon' => 'clock',     'label' => __('timeclocks'),    'href' => fn() => route_url('admin.timeclocks'),      'feat' => 'timeclock',     'perm' => 'timeclock.view'],
+        'daily_reports' => ['icon' => 'chart',     'label' => __('daily_reports'), 'href' => fn() => route_url('admin.daily_reports.all'),  'feat' => 'daily_reports', 'perm' => null],
 ];
 $_bnEmployeePool = [
     'my_planning' => ['icon' => 'calendar', 'label' => __('my_planning'),  'href' => fn() => route_url('employee.shifts.day'),  'feat' => 'shifts'],
@@ -60,7 +64,9 @@ foreach ($_bnKeys as $_bnKey) {
     if (!isset($_bnPool[$_bnKey])) continue;
     $_bnItem = $_bnPool[$_bnKey];
     $f = $_bnItem['feat'] ?? null;
+    $p = $_bnItem['perm'] ?? null;
     if ($f !== null && !$feat($f)) continue;
+    if ($p !== null && !$can($p)) continue;
     $_bnRendered[$_bnKey] = $_bnItem;
 }
 if (count($_bnRendered) < 2) {
@@ -69,7 +75,9 @@ if (count($_bnRendered) < 2) {
         if (!isset($_bnPool[$_bnKey]) || isset($_bnRendered[$_bnKey])) continue;
         $_bnItem = $_bnPool[$_bnKey];
         $f = $_bnItem['feat'] ?? null;
+        $p = $_bnItem['perm'] ?? null;
         if ($f !== null && !$feat($f)) continue;
+        if ($p !== null && !$can($p)) continue;
         $_bnRendered[$_bnKey] = $_bnItem;
     }
 }

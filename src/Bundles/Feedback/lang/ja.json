@@ -5,5 +5,7 @@
     "feedback_anonymous_author": "匿名",
     "feedback_delete_confirm": "このフィードバックを完全に削除しますか？",
     "feedback_deleted": "フィードバックを削除しました。",
+    "feedback_device_desktop": "💻 PC",
+    "feedback_device_mobile": "📱 モバイル",
     "no_feedback": "フィードバックはまだありません。"
 }

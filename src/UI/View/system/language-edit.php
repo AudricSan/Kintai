@@ -51,7 +51,7 @@ $code = $language['code'];
                     <td data-label="<?= htmlspecialchars(__('translation_key')) ?>" class="td-nowrap"><code class="text-xs"><?= htmlspecialchars($item['key']) ?></code></td>
                     <td data-label="<?= htmlspecialchars(__('translation_reference')) ?>" class="text-xs text-muted"><?= htmlspecialchars($item['reference']) ?></td>
                     <td data-label="<?= htmlspecialchars(__('translation_value')) ?>">
-                        <textarea class="form-control form-control--sm translation-value-input" rows="1"><?= htmlspecialchars($item['value']) ?></textarea>
+                        <textarea class="form-control form-control-sm translation-value-input" rows="1"><?= htmlspecialchars($item['value']) ?></textarea>
                     </td>
                     <td data-label="<?= htmlspecialchars(__('actions')) ?>" class="td-center td-nowrap">
                         <button type="button" class="btn btn--danger btn--xs translation-delete-btn"><?= __('delete_key') ?></button>
@@ -74,11 +74,11 @@ $code = $language['code'];
         <div class="form-flex">
             <div class="form-group">
                 <label class="form-label"><?= __('translation_key') ?></label>
-                <input type="text" id="new-key-input" class="form-control form-control--sm" pattern="[a-zA-Z0-9_.]+">
+                <input type="text" id="new-key-input" class="form-control form-control-sm" pattern="[a-zA-Z0-9_.]+">
             </div>
             <div class="form-group">
                 <label class="form-label"><?= __('translation_value') ?></label>
-                <input type="text" id="new-value-input" class="form-control form-control--sm">
+                <input type="text" id="new-value-input" class="form-control form-control-sm">
             </div>
             <div class="form-group">
                 <button type="button" id="add-key-btn" class="btn btn--primary btn--sm"><?= __('add_custom_key') ?></button>
