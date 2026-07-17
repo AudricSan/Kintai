@@ -38,6 +38,7 @@ final class HiringReportRoutesTest extends TestCase
     public static function adminRoutesProvider(): array
     {
         return [
+            ['GET', '/admin/reports/hiring'],
             ['GET', '/admin/stores/1/reports/hiring'],
             ['GET', '/admin/stores/1/reports/hiring/create'],
             ['POST', '/admin/stores/1/reports/hiring/create'],
