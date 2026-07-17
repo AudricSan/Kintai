@@ -17,6 +17,7 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\Log;
+use kintai\Core\Services\StoreStatsServiceInterface;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -30,6 +31,7 @@ final class AdminSalaryReportControllerTest extends TestCase
     private DailyReportRepositoryInterface&MockObject $dailyReports;
     private ShiftRepositoryInterface&MockObject $shifts;
     private LogRepositoryInterface&MockObject $logRepo;
+    private StoreStatsServiceInterface&MockObject $storeStatsService;
     private AdminSalaryReportController $controller;
 
     protected function setUp(): void
@@ -50,6 +52,7 @@ final class AdminSalaryReportControllerTest extends TestCase
         $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
         $this->dailyReports = $this->createMock(DailyReportRepositoryInterface::class);
         $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
+        $this->storeStatsService = $this->createMock(StoreStatsServiceInterface::class);
 
         $this->logRepo = $this->createMock(LogRepositoryInterface::class);
         $container = new Container();
@@ -65,6 +68,7 @@ final class AdminSalaryReportControllerTest extends TestCase
             $this->dailyReports,
             $this->shifts,
             new AuditLogger(),
+            $this->storeStatsService,
         );
     }
 
@@ -422,6 +426,124 @@ final class AdminSalaryReportControllerTest extends TestCase
         $this->assertSame(1, $preset['active_employees']);
         // Le total des ventes du magasin n'a pas de sens pour un rapport individuel.
         $this->assertSame(0.0, $preset['total_payment']);
+    }
+
+    public function testCalculateSalaryPresetPrefillsDeductionsForSingleEmployee(): void
+    {
+        $store = ['id' => 1, 'name' => 'Store A', 'daily_report_settings' => null];
+        $authUser = ['id' => 1, 'display_name' => 'Manager X'];
+
+        $this->dailyReports->method('findByStoreAndDateRange')->willReturn([]);
+        $this->shifts->method('findByStore')->willReturn([
+            ['shift_date' => date('Y-m') . '-05', 'duration_minutes' => 480, 'estimated_salary' => 6000, 'user_id' => 7],
+        ]);
+        $this->users->method('findById')->with(7)->willReturn(['id' => 7, 'last_name' => 'Dupont', 'first_name' => 'Jean']);
+        $this->stores->method('getDeductionSettings')->with(1)->willReturn([
+            'enabled' => true,
+            'health_insurance_rate' => 5,
+            'pension_rate' => 9,
+            'employment_insurance_rate' => 1,
+            'income_tax_rate' => 3,
+            'resident_tax_monthly' => 1000,
+        ]);
+        $this->storeUsers->method('findMembership')->with(1, 7)->willReturn(['id' => 55]);
+        $this->storeUsers->method('getSubjectToDeductions')->with(55)->willReturn(true);
+
+        $preset = $this->invokeCalculateSalaryPreset($store, date('Y-m'), $authUser, 7);
+
+        $this->assertSame(6000.0, $preset['income_tax_base']);
+        $this->assertSame(900.0, $preset['other_deductions']);
+        $this->assertSame(180.0, $preset['withholding_tax']);
+        $this->assertSame(1000.0, $preset['residence_tax']);
+        $this->assertSame(2080.0, $preset['total_deductions']);
+        $this->assertSame(3920.0, $preset['net_payment']);
+        $this->assertSame(3920.0, $preset['hand_delivered_salary']);
+    }
+
+    public function testCalculateSalaryPresetSumsDeductionsAcrossEmployeesForStoreWideReport(): void
+    {
+        $store = ['id' => 1, 'name' => 'Store A', 'daily_report_settings' => null];
+        $authUser = ['id' => 1, 'display_name' => 'Manager X'];
+
+        $this->dailyReports->method('findByStoreAndDateRange')->willReturn([]);
+        $this->shifts->method('findByStore')->willReturn([
+            ['shift_date' => date('Y-m') . '-05', 'duration_minutes' => 480, 'estimated_salary' => 6000, 'user_id' => 7],
+            ['shift_date' => date('Y-m') . '-06', 'duration_minutes' => 240, 'estimated_salary' => 3000, 'user_id' => 9],
+        ]);
+        $this->users->method('findById')->willReturnMap([
+            [7, ['id' => 7, 'last_name' => 'Dupont', 'first_name' => 'Jean']],
+            [9, ['id' => 9, 'last_name' => 'Martin', 'first_name' => 'Léa']],
+        ]);
+        $this->stores->method('getDeductionSettings')->with(1)->willReturn([
+            'enabled' => true,
+            'health_insurance_rate' => 5,
+            'pension_rate' => 9,
+            'employment_insurance_rate' => 1,
+            'income_tax_rate' => 3,
+            'resident_tax_monthly' => 1000,
+        ]);
+        $this->storeUsers->method('findMembership')->willReturnMap([
+            [1, 7, ['id' => 55]],
+            [1, 9, ['id' => 56]],
+        ]);
+        $this->storeUsers->method('getSubjectToDeductions')->willReturnMap([
+            [55, true],
+            [56, true],
+        ]);
+
+        $preset = $this->invokeCalculateSalaryPreset($store, date('Y-m'), $authUser);
+
+        $this->assertSame(9000.0, $preset['income_tax_base']);
+        $this->assertSame(1350.0, $preset['other_deductions']);
+        $this->assertSame(270.0, $preset['withholding_tax']);
+        $this->assertSame(2000.0, $preset['residence_tax']);
+        $this->assertSame(3620.0, $preset['total_deductions']);
+        $this->assertSame(5380.0, $preset['net_payment']);
+    }
+
+    public function testCalculateSalaryPresetSkipsDeductionsWhenEmployeeNotSubject(): void
+    {
+        $store = ['id' => 1, 'name' => 'Store A', 'daily_report_settings' => null];
+        $authUser = ['id' => 1, 'display_name' => 'Manager X'];
+
+        $this->dailyReports->method('findByStoreAndDateRange')->willReturn([]);
+        $this->shifts->method('findByStore')->willReturn([
+            ['shift_date' => date('Y-m') . '-05', 'duration_minutes' => 480, 'estimated_salary' => 6000, 'user_id' => 7],
+        ]);
+        $this->users->method('findById')->with(7)->willReturn(['id' => 7, 'last_name' => 'Dupont', 'first_name' => 'Jean']);
+        $this->stores->method('getDeductionSettings')->with(1)->willReturn([
+            'enabled' => true,
+            'health_insurance_rate' => 5,
+            'pension_rate' => 9,
+            'employment_insurance_rate' => 1,
+            'income_tax_rate' => 3,
+            'resident_tax_monthly' => 1000,
+        ]);
+        $this->storeUsers->method('findMembership')->with(1, 7)->willReturn(['id' => 55]);
+        $this->storeUsers->method('getSubjectToDeductions')->with(55)->willReturn(false);
+
+        $preset = $this->invokeCalculateSalaryPreset($store, date('Y-m'), $authUser, 7);
+
+        $this->assertArrayNotHasKey('total_deductions', $preset);
+    }
+
+    public function testShowSalaryReportWithUserIdIncludesShiftDetailFromPayslipData(): void
+    {
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '1', 'rid' => '30']);
+
+        $this->salaryReports->method('findById')->with(30)->willReturn([
+            'id' => 30, 'store_id' => 1, 'user_id' => 7, 'target_month' => '2026-08',
+        ]);
+        $this->stores->method('findById')->willReturn(['id' => 1, 'name' => 'Store A']);
+        $this->storeStatsService->expects($this->once())->method('buildPayslipData')
+            ->with(1, 7, '2026-08-01', '2026-08-31')
+            ->willReturn(['shiftRows' => [], 'totalGrossMin' => 0, 'totalNetMin' => 0, 'totalCost' => 0.0, 'anyRate' => false, 'deductions' => [], 'totalDeductions' => 0.0, 'netPay' => 0.0, 'deductionsEnabled' => false]);
+
+        $response = $this->controller->showSalaryReport($req);
+
+        $this->assertSame(200, $response->status());
     }
 
     public function testStoreSalaryReportSavesUserIdWhenProvided(): void
