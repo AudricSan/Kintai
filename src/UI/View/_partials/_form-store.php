@@ -4,16 +4,15 @@
  * @var string $mode   'create'|'edit'
  * @var array  $store  Données du magasin
  * @var array|null $deductionSettings  Paramètres de cotisations
+ * @var array|null $importSettings  Paramètres d'import Excel / pause auto (table store_import_settings)
  */
 $mode ??= 'create';
 $store ??= [];
 $deductionSettings ??= [];
+$importSettings ??= [];
 
 $excelDefaults = \kintai\Core\Services\ExcelShiftImport\ExcelShiftImportService::DEFAULTS;
-$excelSettings = array_merge(
-    $excelDefaults,
-    json_decode($store['excel_import_settings'] ?? '{}', true) ?: []
-);
+$excelSettings = array_merge($excelDefaults, $importSettings);
 
 $ded = $deductionSettings;
 $dedEnabled     = !empty($ded['enabled']);
@@ -130,34 +129,40 @@ $dedResidentTax = $ded['resident_tax_monthly'] ?? 0;
                     <span><?= __('deductions_enabled') ?></span>
                 </label>
             </div>
-            <div class="form-row" id="ded-fields" <?= $dedEnabled ? '' : 'hidden' ?>>
-                <div class="form-col">
-                    <label class="form-label"><?= __('ded_health_insurance') ?> (%)</label>
-                    <input type="number" name="ded_health_rate" class="form-control" step="0.01" min="0" max="100"
-                           value="<?= htmlspecialchars((string) $dedHealth) ?>">
-                    <span class="form-hint"><?= __('ded_rate_hint') ?></span>
+            <div id="ded-fields" <?= $dedEnabled ? '' : 'hidden' ?>>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label"><?= __('ded_health_insurance') ?> (%)</label>
+                        <input type="number" name="ded_health_rate" class="form-control" step="0.01" min="0" max="100"
+                               value="<?= htmlspecialchars((string) $dedHealth) ?>">
+                        <span class="form-hint"><?= __('ded_rate_hint') ?></span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label"><?= __('ded_pension') ?> (%)</label>
+                        <input type="number" name="ded_pension_rate" class="form-control" step="0.01" min="0" max="100"
+                               value="<?= htmlspecialchars((string) $dedPension) ?>">
+                    </div>
                 </div>
-                <div class="form-col">
-                    <label class="form-label"><?= __('ded_pension') ?> (%)</label>
-                    <input type="number" name="ded_pension_rate" class="form-control" step="0.01" min="0" max="100"
-                           value="<?= htmlspecialchars((string) $dedPension) ?>">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label"><?= __('ded_employment_insurance') ?> (%)</label>
+                        <input type="number" name="ded_employment_rate" class="form-control" step="0.01" min="0" max="100"
+                               value="<?= htmlspecialchars((string) $dedEmployment) ?>">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label"><?= __('ded_income_tax') ?> (%)</label>
+                        <input type="number" name="ded_income_tax_rate" class="form-control" step="0.01" min="0" max="100"
+                               value="<?= htmlspecialchars((string) $dedIncomeTax) ?>">
+                        <span class="form-hint"><?= __('ded_income_tax_hint') ?></span>
+                    </div>
                 </div>
-                <div class="form-col">
-                    <label class="form-label"><?= __('ded_employment_insurance') ?> (%)</label>
-                    <input type="number" name="ded_employment_rate" class="form-control" step="0.01" min="0" max="100"
-                           value="<?= htmlspecialchars((string) $dedEmployment) ?>">
-                </div>
-                <div class="form-col">
-                    <label class="form-label"><?= __('ded_income_tax') ?> (%)</label>
-                    <input type="number" name="ded_income_tax_rate" class="form-control" step="0.01" min="0" max="100"
-                           value="<?= htmlspecialchars((string) $dedIncomeTax) ?>">
-                    <span class="form-hint"><?= __('ded_income_tax_hint') ?></span>
-                </div>
-                <div class="form-col">
-                    <label class="form-label"><?= __('ded_resident_tax') ?> (<?= __('monthly_fixed') ?>)</label>
-                    <input type="number" name="ded_resident_tax" class="form-control" step="1" min="0"
-                           value="<?= htmlspecialchars((string) $dedResidentTax) ?>">
-                    <span class="form-hint"><?= __('ded_resident_tax_hint') ?></span>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label"><?= __('ded_resident_tax') ?> (<?= __('monthly_fixed') ?>)</label>
+                        <input type="number" name="ded_resident_tax" class="form-control" step="1" min="0"
+                               value="<?= htmlspecialchars((string) $dedResidentTax) ?>">
+                        <span class="form-hint"><?= __('ded_resident_tax_hint') ?></span>
+                    </div>
                 </div>
             </div>
         </div>

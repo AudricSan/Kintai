@@ -118,7 +118,7 @@ endif;
             <?php if (!empty($stores_map) && count($stores_map) > 1): ?>
             <div class="shifts-filters__group">
                 <label class="shifts-filters__label" for="cf-store"><?= __('store') ?></label>
-                <select id="cf-store" name="store_id" class="form-control form-control--sm" onchange="this.form.submit()">
+                <select id="cf-store" name="store_id" class="form-control form-control-sm" onchange="this.form.submit()">
                     <option value="0"><?= __('all_stores') ?></option>
                     <?php foreach ($stores_map as $sid => $sname): ?>
                         <option value="<?= $sid ?>" <?= $filter_store_id === $sid ? 'selected' : '' ?>><?= htmlspecialchars($sname) ?></option>

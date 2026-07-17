@@ -4,16 +4,20 @@ declare(strict_types=1);
 
 /**
  * Template HTML optimisé mPDF — 給与報告書 (Salary Report)
- * Rendu sans layout, utilisé uniquement pour la génération PDF serveur.
+ * Rendu sans layout : soit pour la génération PDF serveur, soit directement
+ * comme aperçu navigateur (avec barre d'outils) quand $downloadUrl est
+ * fourni — voir HasStaffReportCrud::reportPdf() vs reportPdfDownload().
  *
- * @var array  $report
- * @var array  $store
+ * @var array       $report
+ * @var array       $store
+ * @var string|null $downloadUrl
  */
 
 $currency = $store['currency'] ?? 'JPY';
 
-$fmt = fn(?string $v, string $def = '—') => $v !== null && $v !== '' ? htmlspecialchars($v) : $def;
-$cur = fn(?string $v) => $v !== null && $v !== '' ? format_currency((float) $v, $currency) : '—';
+$fmt = fn(mixed $v, string $def = '—') => $v !== null && $v !== '' ? htmlspecialchars((string) $v) : $def;
+$cur = fn(mixed $v) => $v !== null && $v !== '' ? format_currency((float) $v, $currency) : '—';
+$isEmployeeScoped = !empty($report['user_id']);
 ?>
 <!DOCTYPE html>
 <html>
@@ -22,6 +26,8 @@ $cur = fn(?string $v) => $v !== null && $v !== '' ? format_currency((float) $v, 
 <style>
 <?php
 echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-base.css');
+echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-brand.css');
+echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-preview.css');
 ?>
 body { font-family: sans-serif; font-size: 10pt; color: #222; padding: 20px; }
 h1 { font-size: 16pt; text-align: center; margin-bottom: 4px; }
@@ -41,6 +47,9 @@ th { background: #f0f0f0; font-weight: 600; }
 </head>
 <body>
 
+<?php include __DIR__ . '/../../../UI/View/_partials/_pdf-preview-toolbar.php'; ?>
+<div class="pdf-preview-page">
+
 <h1><?= __('sr_pdf_title') ?></h1>
 <p class="subtitle">
     <?= htmlspecialchars($store['name'] ?? '') ?> —
@@ -58,6 +67,12 @@ th { background: #f0f0f0; font-weight: 600; }
         <th><?= __('store') ?></th>
         <td><?= $fmt($report['store_name'] ?? ($store['name'] ?? '')) ?></td>
     </tr>
+    <?php if (!empty($report['user_id'])): ?>
+    <tr>
+        <th><?= __('employee_name') ?></th>
+        <td><?= $fmt($report['employee_name'] ?? '') ?></td>
+    </tr>
+    <?php endif; ?>
     <tr>
         <th><?= __('sr_person_in_charge') ?></th>
         <td><?= $fmt($report['person_in_charge'] ?? '') ?></td>
@@ -100,9 +115,15 @@ th { background: #f0f0f0; font-weight: 600; }
         <td class="tr td-mono"><?= $cur($report['hand_delivered_salary'] ?? null) ?></td>
     </tr>
     <tr>
+        <th><?= __('sr_bank_transfer_salary') ?></th>
+        <td class="tr td-mono"><?= $cur($report['bank_transfer_salary'] ?? null) ?></td>
+    </tr>
+    <?php if (!$isEmployeeScoped): ?>
+    <tr>
         <th><?= __('sr_active_employees') ?></th>
         <td class="tr td-mono"><?= $fmt($report['active_employees'] ?? null) ?></td>
     </tr>
+    <?php endif; ?>
 </table>
 
 <!-.- Personnel -->
@@ -124,14 +145,18 @@ th { background: #f0f0f0; font-weight: 600; }
         <th><?= __('sr_employee_work_hours') ?></th>
         <td><?= nl2br($fmt($report['employee_work_hours'] ?? null, '')) ?></td>
     </tr>
+    <?php if (!$isEmployeeScoped): ?>
     <tr>
         <th><?= __('sr_new_hires') ?></th>
         <td class="tr td-mono"><?= $fmt($report['new_hires'] ?? null) ?></td>
     </tr>
+    <?php endif; ?>
+    <?php if (!$isEmployeeScoped): ?>
     <tr>
         <th><?= __('sr_resigned_staff') ?></th>
         <td class="tr td-mono"><?= $fmt($report['resigned_staff'] ?? null) ?></td>
     </tr>
+    <?php endif; ?>
     <?php if (!empty($report['hire_registrations'])): ?>
     <tr>
         <th><?= __('sr_hire_registrations') ?></th>
@@ -139,6 +164,82 @@ th { background: #f0f0f0; font-weight: 600; }
     </tr>
     <?php endif; ?>
 </table>
+
+<?php if (isset($shiftRows)): ?>
+<!-.- Détail des shifts (employé) -->
+<h2><?= __('sr_shift_detail') ?></h2>
+<?php if (empty($shiftRows)): ?>
+<p><?= __('payslip_no_shift') ?></p>
+<?php else: ?>
+<?php include __DIR__ . '/../../../UI/View/_partials/_payslip-helpers.php'; ?>
+<table>
+    <tr>
+        <th><?= __('col_day') ?></th>
+        <th><?= __('date') ?></th>
+        <th><?= __('shift_type') ?></th>
+        <th><?= __('schedule') ?></th>
+        <th class="tr"><?= __('gross_h_col') ?></th>
+        <th class="tr"><?= __('pause') ?></th>
+        <th class="tr"><?= __('net_h_col') ?></th>
+        <?php if ($anyRate): ?>
+        <th class="tr"><?= __('col_rate_h') ?></th>
+        <th class="tr"><?= __('amount') ?></th>
+        <?php endif; ?>
+    </tr>
+    <?php foreach ($shiftRows as $row): ?>
+    <tr>
+        <td><?= payslip_dow($row['date']) ?></td>
+        <td><?= payslip_date($row['date']) ?></td>
+        <td><?= htmlspecialchars($row['type']) ?></td>
+        <td><?= htmlspecialchars($row['start']) ?>–<?= htmlspecialchars($row['end']) ?></td>
+        <td class="tr td-mono"><?= payslip_hours($row['gross_min']) ?></td>
+        <td class="tr td-mono"><?= $row['pause_min'] > 0 ? $row['pause_min'] . ' min' : '—' ?></td>
+        <td class="tr td-mono"><?= payslip_hours($row['net_min']) ?></td>
+        <?php if ($anyRate): ?>
+        <td class="tr td-mono"><?= $row['has_rate'] ? number_format($row['rate'], 2) . ' ' . $currency : '—' ?></td>
+        <td class="tr td-mono"><?= $row['has_rate'] ? format_currency($row['cost'], $currency) : '—' ?></td>
+        <?php endif; ?>
+    </tr>
+    <?php endforeach; ?>
+    <tr style="font-weight:bold; background:#f5f5f5">
+        <td colspan="4"><?= __('total_row') ?></td>
+        <td class="tr td-mono"><?= payslip_hours($totalGrossMin) ?></td>
+        <td></td>
+        <td class="tr td-mono"><?= payslip_hours($totalNetMin) ?></td>
+        <?php if ($anyRate): ?>
+        <td></td>
+        <td class="tr td-mono"><?= format_currency($totalCost, $currency) ?></td>
+        <?php endif; ?>
+    </tr>
+</table>
+<?php if ($deductionsEnabled && !empty($deductions)): ?>
+<h2><?= __('payslip_summary') ?></h2>
+<table>
+    <tr>
+        <th style="width:70%"><?= __('gross_pay') ?></th>
+        <td class="tr td-mono"><?= format_currency($totalCost, $currency) ?></td>
+    </tr>
+    <?php foreach ($deductions as $ded): ?>
+    <tr>
+        <th style="width:70%">
+            <?= isset($ded['label_key']) ? __($ded['label_key']) : htmlspecialchars($ded['label'] ?? '') ?>
+            <?php if (!empty($ded['is_flat'])): ?> (<?= __('monthly_fixed') ?>)<?php elseif (isset($ded['rate'])): ?> (<?= number_format((float) $ded['rate'], 2) ?>%)<?php endif; ?>
+        </th>
+        <td class="tr td-mono">−<?= format_currency($ded['amount'], $currency) ?></td>
+    </tr>
+    <?php endforeach; ?>
+    <tr style="font-weight:bold">
+        <th><?= __('total_deductions') ?></th>
+        <td class="tr td-mono">−<?= format_currency($totalDeductions, $currency) ?></td>
+    </tr>
+    <tr style="font-weight:bold; background:#f5f5f5">
+        <th><?= __('net_pay') ?></th>
+        <td class="tr td-mono"><?= format_currency($netPay, $currency) ?></td>
+    </tr>
+</table>
+<?php endif; ?>
+<?php endif; ?>
+<?php endif; ?>
 
 <?php if (!empty($report['remarks'])): ?>
 <!-.- Remarques -->
@@ -173,5 +274,6 @@ th { background: #f0f0f0; font-weight: 600; }
     <?= __('sr_pdf_footer', ['store' => htmlspecialchars($store['name'] ?? ''), 'date' => date('Y/m/d H:i')]) ?>
 </div>
 
+</div>
 </body>
 </html>

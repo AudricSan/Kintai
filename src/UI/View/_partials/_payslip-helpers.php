@@ -8,7 +8,9 @@
  * l'écran) mais partagent le formatage et la résolution du nom / rôle.
  *
  * Variables attendues dans la vue incluante : array $user, array $membership.
- * Définit : $empName (string), $role (string).
+ * Définit : $empName (string), $role (string) — seulement si $user/$membership
+ * sont fournis (facultatif : les vues qui ne veulent que payslip_hours/date/dow
+ * peuvent inclure ce fichier sans les définir, ex. reports-salary-show.php).
  */
 
 if (!function_exists('payslip_hours')) {
@@ -37,7 +39,9 @@ if (!function_exists('payslip_dow')) {
     }
 }
 
-$empName = trim(($user['last_name'] ?? '') . ' ' . ($user['first_name'] ?? ''))
-    ?: ($user['display_name'] ?? ($user['email'] ?? ''));
+if (isset($user)) {
+    $empName = trim(($user['last_name'] ?? '') . ' ' . ($user['first_name'] ?? ''))
+        ?: ($user['display_name'] ?? ($user['email'] ?? ''));
 
-$role = __(['admin' => 'role_owner', 'manager' => 'role_manager', 'staff' => 'role_employee'][$membership['role'] ?? 'staff'] ?? 'role_employee');
+    $role = __(['admin' => 'role_owner', 'manager' => 'role_manager', 'staff' => 'role_employee'][$membership['role'] ?? 'staff'] ?? 'role_employee');
+}

@@ -1,10 +1,13 @@
 <?php
 /**
  * Template HTML for mPDF — Hiring Report (採用報告書)
- * Rendered standalone (no layout) for PDF generation.
+ * Rendered standalone (no layout) for PDF generation, or directly as an
+ * HTML preview (with a toolbar) when $downloadUrl is set — see
+ * HasStaffReportCrud::reportPdf() vs reportPdfDownload().
  *
- * @var array $report
- * @var array $store
+ * @var array       $report
+ * @var array       $store
+ * @var string|null $downloadUrl
  */
 $genderLabel = match ($report['gender'] ?? null) {
     'male'   => __('male'),
@@ -22,6 +25,10 @@ $taxLabel = match ($report['tax_classification'] ?? null) {
 <head>
 <meta charset="UTF-8">
 <style>
+<?php
+echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-brand.css');
+echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-preview.css');
+?>
 body { font-family: sans-serif; font-size: 10pt; color: #333; margin: 0; padding: 0; }
 h1 { text-align: center; font-size: 16pt; margin-bottom: 4pt; }
 .subtitle { text-align: center; font-size: 9pt; color: #666; margin-bottom: 20pt; }
@@ -34,6 +41,9 @@ td { padding: 5pt 8pt; border: 1px solid #ccc; font-size: 9pt; }
 </style>
 </head>
 <body>
+
+<?php include __DIR__ . '/../../../UI/View/_partials/_pdf-preview-toolbar.php'; ?>
+<div class="pdf-preview-page">
 
 <h1><?= __('hiring_report') ?></h1>
 <div class="subtitle"><?= htmlspecialchars($store['name'] ?? '') ?></div>
@@ -77,5 +87,6 @@ td { padding: 5pt 8pt; border: 1px solid #ccc; font-size: 9pt; }
     <?= __('pdf_generated_by') ?> Kintai — <?= date('Y-m-d H:i') ?>
 </div>
 
+</div>
 </body>
 </html>
