@@ -4,7 +4,7 @@
 
 **Gestion open-source des plannings, du pointage et des ressources humaines pour les entreprises multi-magasins.**
 
-[![Version](https://img.shields.io/badge/version-0.7.8-purple.svg)](CHANGELOG.fr.md)
+[![Version](https://img.shields.io/badge/version-0.7.9-purple.svg)](CHANGELOG.fr.md)
 [![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 [![PHP Version](https://img.shields.io/badge/php-%3E%3D%208.3-8892bf.svg)](https://php.net)
 [![Tests](https://github.com/AudricSan/Kintai/actions/workflows/tests.yml/badge.svg)](https://github.com/AudricSan/Kintai/actions/workflows/tests.yml)
@@ -12,7 +12,7 @@
 
 Kintai est le pont entre le tableur Excel et l'ERP d'entreprise : planning, pointage, congés, échanges de shifts, rapports journaliers et estimation de la paie pour les entreprises de retail et d'hôtellerie-restauration gérant plusieurs magasins — auto-hébergé, sur votre propre infrastructure, avec vos propres données.
 
-> **Statut : bêta (`0.7.8`).** Kintai est fonctionnel et utilisé quotidiennement sur l'instance de démonstration ci-dessous, mais l'API et le schéma de données peuvent encore évoluer avant une version stable `1.0.0`. Voir [CHANGELOG.fr.md](CHANGELOG.fr.md).
+> **Statut : bêta (`0.7.9`).** Kintai est fonctionnel et utilisé quotidiennement sur l'instance de démonstration ci-dessous, mais l'API et le schéma de données peuvent encore évoluer avant une version stable `1.0.0`. Voir [CHANGELOG.fr.md](CHANGELOG.fr.md).
 
 ---
 
