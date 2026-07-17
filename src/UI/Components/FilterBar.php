@@ -100,7 +100,7 @@ final class FilterBar implements ComponentInterface
                 case 'select':
                     $html .= '<select id="ff-' . htmlspecialchars($field['name']) . '"'
                         . ' name="' . htmlspecialchars($field['name']) . '"'
-                        . ' class="form-control form-control--sm"'
+                        . ' class="form-control form-control-sm"'
                         . ' onchange="this.form.submit()">';
                     if ($field['placeholder'] !== '') {
                         $html .= '<option value="">' . htmlspecialchars($field['placeholder']) . '</option>';
@@ -118,14 +118,14 @@ final class FilterBar implements ComponentInterface
                         . ' name="' . htmlspecialchars($field['name']) . '"'
                         . ' value="' . htmlspecialchars($field['value']) . '"'
                         . ($field['placeholder'] !== '' ? ' placeholder="' . htmlspecialchars($field['placeholder']) . '"' : '')
-                        . ' class="form-control form-control--sm">';
+                        . ' class="form-control form-control-sm">';
                     break;
 
                 case 'date':
                     $html .= '<input type="date" id="ff-' . htmlspecialchars($field['name']) . '"'
                         . ' name="' . htmlspecialchars($field['name']) . '"'
                         . ' value="' . htmlspecialchars($field['value']) . '"'
-                        . ' class="form-control form-control--sm"'
+                        . ' class="form-control form-control-sm"'
                         . ' onchange="this.form.submit()">';
                     break;
 
@@ -133,7 +133,7 @@ final class FilterBar implements ComponentInterface
                     $html .= '<input type="month" id="ff-' . htmlspecialchars($field['name']) . '"'
                         . ' name="' . htmlspecialchars($field['name']) . '"'
                         . ' value="' . htmlspecialchars($field['value']) . '"'
-                        . ' class="form-control form-control--sm"'
+                        . ' class="form-control form-control-sm"'
                         . ' onchange="this.form.submit()">';
                     break;
             }
