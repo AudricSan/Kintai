@@ -104,7 +104,7 @@ function renderPreview() {
         div.appendChild(name);
         preview.appendChild(div);
     }
-    photoCount.textContent = selectedFiles.length ? selectedFiles.length + ' <?= __('photos_report') ?>' : '';
+    photoCount.textContent = selectedFiles.length ? selectedFiles.length + ' <?= __('photos_count') ?>' : '';
     var maxBytes = 40 * 1024 * 1024;
     if (total > maxBytes) {
         sizeError.classList.remove('hidden');
