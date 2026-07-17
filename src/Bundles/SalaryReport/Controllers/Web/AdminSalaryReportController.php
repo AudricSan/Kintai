@@ -468,13 +468,15 @@ final class AdminSalaryReportController
         $netPayment = round($totalShiftSalary - $totalDeductions, 2);
 
         return [
-            'income_tax_base'       => round($totalShiftSalary, 2),
-            'other_deductions'      => $otherDeductions,
-            'withholding_tax'       => $withholdingTax,
-            'residence_tax'         => $residenceTax,
-            'total_deductions'      => $totalDeductions,
-            'net_payment'           => $netPayment,
-            'hand_delivered_salary' => $netPayment,
+            'income_tax_base'      => round($totalShiftSalary, 2),
+            'other_deductions'     => $otherDeductions,
+            'withholding_tax'      => $withholdingTax,
+            'residence_tax'        => $residenceTax,
+            'total_deductions'     => $totalDeductions,
+            'net_payment'          => $netPayment,
+            // Par défaut le net est versé par virement ; "salaire en main propre"
+            // reste à 0 et n'est renseigné que si une partie est réellement payée en espèces.
+            'bank_transfer_salary' => $netPayment,
         ];
     }
 }
