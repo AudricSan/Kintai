@@ -457,7 +457,8 @@ final class AdminSalaryReportControllerTest extends TestCase
         $this->assertSame(1000.0, $preset['residence_tax']);
         $this->assertSame(2080.0, $preset['total_deductions']);
         $this->assertSame(3920.0, $preset['net_payment']);
-        $this->assertSame(3920.0, $preset['hand_delivered_salary']);
+        $this->assertSame(3920.0, $preset['bank_transfer_salary']);
+        $this->assertArrayNotHasKey('hand_delivered_salary', $preset);
     }
 
     public function testCalculateSalaryPresetSumsDeductionsAcrossEmployeesForStoreWideReport(): void
