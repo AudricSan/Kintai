@@ -6,6 +6,8 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-07-17
+
 ### Changed
 - `alpha`/`beta` releases now use a rolling tag (`vX.Y.Z-{channel}`, deleted and recreated on each push) instead of an ever-incrementing `vX.Y.Z-{channel}.N` — the old scheme had reached `.16` for a single version and helped bury the actual latest stable release under a long tail of prereleases. The `Release` workflow now also refuses to publish an alpha/beta prerelease once `vX.Y.Z` (no suffix) already shipped as a stable Release, since a same-numbered prerelease would be semver-lower than the stable tag and therefore invisible to that update channel — bump the base version first instead.
 - Documented the MINOR vs. PATCH convention in `docs/releasing.md`: any release bundling a new feature or behavior change bumps MINOR (even if fixes ride along in the same release), PATCH is reserved for bugfix-only releases. Prompted by `main` sitting at `0.6.0` while `beta` had raced to `0.7.9` through nine consecutive PATCH bumps that actually contained feature work — understating how far the stable channel had drifted.
