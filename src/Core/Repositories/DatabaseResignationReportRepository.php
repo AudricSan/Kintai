@@ -22,11 +22,23 @@ final class DatabaseResignationReportRepository implements ResignationReportRepo
             ->toArray();
     }
 
-    public function findAll(?array $storeIds = null): array
+    public function findAll(?array $storeIds = null, array $filters = []): array
     {
         $q = EloquentResignationReport::orderByDesc('created_at');
         if ($storeIds !== null && $storeIds !== []) {
             $q->whereIn('store_id', $storeIds);
+        }
+        if (!empty($filters['year'])) {
+            $q->whereYear('resignation_date', (int) $filters['year']);
+        }
+        if (!empty($filters['month'])) {
+            $q->whereMonth('resignation_date', (int) $filters['month']);
+        }
+        if (!empty($filters['person_in_charge'])) {
+            $q->where('person_in_charge', 'LIKE', '%' . $filters['person_in_charge'] . '%');
+        }
+        if (!empty($filters['store_id'])) {
+            $q->where('store_id', (int) $filters['store_id']);
         }
         return $q->get()->toArray();
     }

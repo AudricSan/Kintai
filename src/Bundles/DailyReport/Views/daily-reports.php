@@ -76,7 +76,7 @@ if ($canCreate && ($settings['enabled'] ?? true) && $_currentTime >= $_reminderT
         <?php if ($cumulativeMode === 'cumulative_input'): ?><span class="badge badge--info badge--sm"><?= __('dr_badge_cumulative_input') ?></span><?php endif; ?>
     </h2>
     <div class="page-header__actions">
-        <?php if ($isAdmin || in_array($membership['role'] ?? '', ['admin', 'manager'], true)): ?>
+        <?php if ($permissions->canManageSettings($authUser, $store)): ?>
             <a href="<?= $BASE_URL ?>/admin/stores/<?= $storeId ?>/daily-reports/settings"
                class="btn btn--ghost">⚙ <?= __('dr_settings') ?></a>
         <?php endif; ?>
@@ -94,7 +94,7 @@ if ($canCreate && ($settings['enabled'] ?? true) && $_currentTime >= $_reminderT
             <?= csrf_field() ?>
             <div class="form-group">
                 <label class="form-label"><?= __('status') ?></label>
-                <select name="status" class="form-control form-control--sm" onchange="this.form.submit()">
+                <select name="status" class="form-control form-control-sm" onchange="this.form.submit()">
                     <option value=""><?= __('all') ?></option>
                     <?php foreach (['draft','submitted','validated'] as $s): ?>
                         <option value="<?= $s ?>" <?= $status === $s ? 'selected' : '' ?>>
@@ -105,13 +105,13 @@ if ($canCreate && ($settings['enabled'] ?? true) && $_currentTime >= $_reminderT
             </div>
             <div class="form-group">
                 <label class="form-label"><?= __('from') ?></label>
-                <input type="date" name="from" class="form-control form-control--sm"
+                <input type="date" name="from" class="form-control form-control-sm"
                        value="<?= htmlspecialchars($fromDate) ?>"
                        onchange="this.form.submit()">
             </div>
             <div class="form-group">
                 <label class="form-label"><?= __('to') ?></label>
-                <input type="date" name="to" class="form-control form-control--sm"
+                <input type="date" name="to" class="form-control form-control-sm"
                        value="<?= htmlspecialchars($toDate) ?>"
                        onchange="this.form.submit()">
             </div>
@@ -132,10 +132,10 @@ if ($canCreate && ($settings['enabled'] ?? true) && $_currentTime >= $_reminderT
                     <tr>
                         <th><?= __('date') ?></th>
                         <th><?= __('dr_author') ?></th>
-                        <th class="text-right">売上 (<?= $currency ?>)</th>
-                        <th class="text-right">客数</th>
-                        <th class="text-right">人件費 (<?= $currency ?>)</th>
-                        <th class="text-right">廃棄 (<?= $currency ?>)</th>
+                        <th class="text-right"><?= __('dr_sales') ?> (<?= $currency ?>)</th>
+                        <th class="text-right"><?= __('dr_customers') ?></th>
+                        <th class="text-right"><?= __('dr_labor') ?> (<?= $currency ?>)</th>
+                        <th class="text-right"><?= __('dr_waste') ?> (<?= $currency ?>)</th>
                         <th><?= __('status') ?></th>
                         <th><?= __('dr_pdf') ?></th>
                         <th><?= __('actions') ?></th>

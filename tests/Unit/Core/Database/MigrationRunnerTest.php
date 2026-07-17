@@ -186,6 +186,50 @@ PHP);
         $this->assertSame([], $runner->getPendingMigrations());
     }
 
+    public function testGetSeedMigrationNamesReturnsOnlyMigrationsMarkedAsSeed(): void
+    {
+        $capsule = new Capsule();
+        $capsule->addConnection(['driver' => 'sqlite', 'database' => ':memory:']);
+        $capsule->setAsGlobal();
+        $capsule->bootEloquent();
+
+        $this->writeMigration('2026_01_01_000000_plain', <<<'PHP'
+use kintai\Core\Database\Migration;
+
+return new class($this->capsule) extends Migration {
+    public function up(): void
+    {
+    }
+
+    public function down(): void
+    {
+    }
+};
+PHP);
+        $this->writeMigration('2026_01_02_000000_seed', <<<'PHP'
+use kintai\Core\Database\Migration;
+
+return new class($this->capsule) extends Migration {
+    public function isSeed(): bool
+    {
+        return true;
+    }
+
+    public function up(): void
+    {
+    }
+
+    public function down(): void
+    {
+    }
+};
+PHP);
+
+        $runner = $this->makeRunner($capsule);
+
+        $this->assertSame(['2026_01_02_000000_seed'], $runner->getSeedMigrationNames());
+    }
+
     public function testUnrelatedFailureStillThrows(): void
     {
         $capsule = new Capsule();

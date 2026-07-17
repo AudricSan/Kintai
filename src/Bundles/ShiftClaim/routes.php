@@ -5,6 +5,8 @@ declare(strict_types=1);
 use kintai\Core\Middleware\AuthMiddleware;
 use kintai\Core\Middleware\AdminMiddleware;
 use kintai\Core\Middleware\ApiAuthMiddleware;
+use kintai\Core\Middleware\ApiPermissionMiddleware;
+use kintai\Core\Middleware\PermissionMiddleware;
 use kintai\Bundles\ShiftClaim\Controllers\Web\EmployeeShiftClaimController;
 use kintai\Bundles\ShiftClaim\Controllers\Web\AdminShiftClaimController;
 use kintai\Bundles\ShiftClaim\Controllers\Api\ShiftClaimController as ApiShiftClaimController;
@@ -33,7 +35,7 @@ $router->group('/admin', function ($r) {
     $r->post('/shifts/{id}/unpublish',    [AdminShiftClaimController::class, 'unpublishShift'],       name: 'admin.shifts.unpublish');
     $r->post('/open-shifts/{id}/approve', [AdminShiftClaimController::class, 'approveShiftClaim'],    name: 'admin.open_shifts.approve');
     $r->post('/open-shifts/{id}/reject',  [AdminShiftClaimController::class, 'rejectShiftClaim'],     name: 'admin.open_shifts.reject');
-}, middleware: [AuthMiddleware::class, AdminMiddleware::class]);
+}, middleware: [AuthMiddleware::class, AdminMiddleware::class, PermissionMiddleware::class]);
 
 // =============================================================================
 // ShiftClaim — Routes API
@@ -45,4 +47,4 @@ $router->group('/api/v1', function ($r) {
     $r->get('/shift-claims/{id}',    [ApiShiftClaimController::class, 'show'],    name: 'api.v1.shift_claims.show');
     $r->put('/shift-claims/{id}',    [ApiShiftClaimController::class, 'update'],  name: 'api.v1.shift_claims.update');
     $r->delete('/shift-claims/{id}', [ApiShiftClaimController::class, 'destroy'], name: 'api.v1.shift_claims.destroy');
-}, middleware: [ApiAuthMiddleware::class]);
+}, middleware: [ApiAuthMiddleware::class, ApiPermissionMiddleware::class]);

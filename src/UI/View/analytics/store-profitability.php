@@ -84,9 +84,9 @@ ob_start();
         <?= csrf_field() ?>
         <label class="form-label"><?= __('custom_range') ?></label>
         <div class="form-filter">
-            <input type="date" name="from" value="<?= htmlspecialchars($from) ?>" class="form-control form-control--sm" onchange="this.form.submit()">
+            <input type="date" name="from" value="<?= htmlspecialchars($from) ?>" class="form-control form-control-sm" onchange="this.form.submit()">
             <span class="text-muted">→</span>
-            <input type="date" name="to"   value="<?= htmlspecialchars($to) ?>"   class="form-control form-control--sm" onchange="this.form.submit()">
+            <input type="date" name="to"   value="<?= htmlspecialchars($to) ?>"   class="form-control form-control-sm" onchange="this.form.submit()">
         </div>
     </form>
 </div>

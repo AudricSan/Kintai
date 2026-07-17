@@ -29,7 +29,7 @@ Ouvrez une issue avec le template **Feature Request**. Expliquez le cas d'usage 
 2. Créez une branche : `git checkout -b feat/ma-fonctionnalite` ou `fix/mon-bug`
 3. Faites vos changements en suivant les conventions ci-dessous
 4. Lancez les tests : `./vendor/bin/phpunit`
-5. Ouvrez une pull request contre la branche `main`
+5. Ouvrez une pull request contre la branche `develop` (`main`, `alpha` et `beta` sont des branches de canal de release protégées — les fusionner y publie automatiquement une Release GitHub, voir [releasing.fr.md](releasing.fr.md))
 
 ## Conventions de code
 
@@ -43,6 +43,7 @@ Ouvrez une issue avec le template **Feature Request**. Expliquez le cas d'usage 
 - Les commentaires dans le code sont écrits en français ; tout le reste (messages de commit, descriptions de PR, documentation) en anglais
 - Aucune dépendance framework externe au-delà d'`illuminate/database` (Eloquent, utilisé uniquement comme ORM)
 - Jamais de `style="..."` inline dans les vues — étendez un module CSS sous `public/assets/css/src/`
+- Les barres de filtres s'appliquent instantanément — pas de bouton "Filtrer". Les champs texte soumettent le formulaire avec un debounce sur `input` (voir le câblage générique dans `public/assets/js/app.js` qui cible `form.filter-bar`/`form.shifts-filters`), les champs `select`/date soumettent sur `onchange`. Cela s'applique à tous les filtres, y compris les champs de recherche par nom/texte
 
 ## Lancer les tests
 

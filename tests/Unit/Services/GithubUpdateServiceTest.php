@@ -6,9 +6,12 @@ namespace kintai\Tests\Unit\Services;
 
 use Illuminate\Database\Capsule\Manager as Capsule;
 use kintai\Core\Database\MigrationRunner;
+use kintai\Core\Repositories\AppSettingsRepositoryInterface;
+use kintai\Core\Services\AppSettingsService;
 use kintai\Core\Services\BackupService;
 use kintai\Core\Services\GithubUpdateService;
 use kintai\Core\Services\UpdateService;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class GithubUpdateServiceTest extends TestCase
@@ -96,19 +99,34 @@ final class GithubUpdateServiceTest extends TestCase
         $zip->close();
     }
 
-    private function makeService(string $tag, array $files, ?string $currentVersion = '0.0.0'): GithubUpdateService
+    private function makeSettings(string $channel = 'release'): AppSettingsService
+    {
+        $repo = $this->createStub(AppSettingsRepositoryInterface::class);
+        $repo->method('all')->willReturn(['update_channel' => $channel]);
+        return new AppSettingsService($repo);
+    }
+
+    private function makeService(string $tag, array $files, ?string $currentVersion = '0.0.0', string $channel = 'release', bool $prerelease = false): GithubUpdateService
+    {
+        return $this->makeServiceWithReleases([
+            [
+                'tag_name'     => $tag,
+                'zipball_url'  => 'https://example.test/zipball/' . $tag,
+                'html_url'     => 'https://example.test/releases/' . $tag,
+                'body'         => 'notes for ' . $tag,
+                'published_at' => '2026-01-01T00:00:00Z',
+                'prerelease'   => $prerelease,
+            ],
+        ], $files, $currentVersion, $channel);
+    }
+
+    private function makeServiceWithReleases(array $releases, array $files, ?string $currentVersion = '0.0.0', string $channel = 'release'): GithubUpdateService
     {
         if ($currentVersion !== null) {
             $this->writeAppVersion($currentVersion);
         }
 
-        $releaseFetcher = fn(string $repo, string $token): ?array => [
-            'tag_name'     => $tag,
-            'zipball_url'  => 'https://example.test/zipball/' . $tag,
-            'html_url'     => 'https://example.test/releases/' . $tag,
-            'body'         => 'notes for ' . $tag,
-            'published_at' => '2026-01-01T00:00:00Z',
-        ];
+        $releaseFetcher = fn(string $repo, string $token): ?array => $releases;
 
         $zipDownloader = function (string $url, string $dest, string $token) use ($files): bool {
             $this->makeReleaseZip($dest, $files);
@@ -119,6 +137,7 @@ final class GithubUpdateServiceTest extends TestCase
             $this->updateService,
             $this->backup,
             $this->migrator,
+            $this->makeSettings($channel),
             $this->tmpDir,
             $releaseFetcher,
             $zipDownloader,
@@ -131,6 +150,7 @@ final class GithubUpdateServiceTest extends TestCase
             $this->updateService,
             $this->backup,
             $this->migrator,
+            $this->makeSettings(),
             $this->tmpDir,
             fn(string $repo, string $token): ?array => null,
         );
@@ -159,6 +179,57 @@ final class GithubUpdateServiceTest extends TestCase
         $this->assertFalse($info['has_update']);
     }
 
+    public function testReleaseChannelIgnoresAlphaAndBetaTags(): void
+    {
+        $service = $this->makeServiceWithReleases([
+            ['tag_name' => 'v2.0.0-alpha.3', 'zipball_url' => 'z', 'prerelease' => true],
+            ['tag_name' => 'v1.5.0-beta.2', 'zipball_url' => 'z', 'prerelease' => true],
+            ['tag_name' => 'v1.0.0', 'zipball_url' => 'z', 'prerelease' => false],
+        ], ['README.md' => 'hello'], currentVersion: '0.0.0', channel: 'release');
+
+        $info = $service->checkLatestRelease();
+
+        $this->assertNotNull($info);
+        $this->assertSame('1.0.0', $info['latest_version']);
+    }
+
+    public function testBetaChannelPrefersHighestStableOrBetaTag(): void
+    {
+        $service = $this->makeServiceWithReleases([
+            ['tag_name' => 'v2.0.0-alpha.1', 'zipball_url' => 'z', 'prerelease' => true],
+            ['tag_name' => 'v1.5.0-beta.2', 'zipball_url' => 'z', 'prerelease' => true],
+            ['tag_name' => 'v1.0.0', 'zipball_url' => 'z', 'prerelease' => false],
+        ], ['README.md' => 'hello'], currentVersion: '0.0.0', channel: 'beta');
+
+        $info = $service->checkLatestRelease();
+
+        $this->assertNotNull($info);
+        $this->assertSame('1.5.0-beta.2', $info['latest_version']);
+    }
+
+    public function testAlphaChannelPrefersHighestTagOverall(): void
+    {
+        $service = $this->makeServiceWithReleases([
+            ['tag_name' => 'v2.0.0-alpha.1', 'zipball_url' => 'z', 'prerelease' => true],
+            ['tag_name' => 'v1.5.0-beta.2', 'zipball_url' => 'z', 'prerelease' => true],
+            ['tag_name' => 'v1.0.0', 'zipball_url' => 'z', 'prerelease' => false],
+        ], ['README.md' => 'hello'], currentVersion: '0.0.0', channel: 'alpha');
+
+        $info = $service->checkLatestRelease();
+
+        $this->assertNotNull($info);
+        $this->assertSame('2.0.0-alpha.1', $info['latest_version']);
+    }
+
+    public function testReleaseChannelReturnsNullWhenOnlyPrereleasesExist(): void
+    {
+        $service = $this->makeServiceWithReleases([
+            ['tag_name' => 'v1.0.0-beta.1', 'zipball_url' => 'z', 'prerelease' => true],
+        ], ['README.md' => 'hello'], currentVersion: '0.0.0', channel: 'release');
+
+        $this->assertNull($service->checkLatestRelease());
+    }
+
     public function testApplyUpdateReturnsErrorWhenNoUpdateAvailable(): void
     {
         $service = $this->makeService('v1.0.0', ['README.md' => 'hello'], currentVersion: '1.0.0');
@@ -175,10 +246,13 @@ final class GithubUpdateServiceTest extends TestCase
             $this->updateService,
             $this->backup,
             $this->migrator,
+            $this->makeSettings(),
             $this->tmpDir,
             fn(string $repo, string $token): ?array => [
-                'tag_name'    => 'v1.0.0',
-                'zipball_url' => 'https://example.test/zipball/v1.0.0',
+                [
+                    'tag_name'    => 'v1.0.0',
+                    'zipball_url' => 'https://example.test/zipball/v1.0.0',
+                ],
             ],
             fn(string $url, string $dest, string $token): bool => false,
         );
@@ -330,5 +404,82 @@ final class GithubUpdateServiceTest extends TestCase
         $service->applyUpdate();
 
         $this->assertNull($this->updateService->getLastUpdateDuration());
+    }
+
+    public function testGetLastCheckErrorIsNullAfterSuccessfulCheck(): void
+    {
+        $service = $this->makeService('v1.2.0', ['README.md' => 'hello']);
+
+        $service->checkLatestRelease();
+
+        $this->assertNull($service->getLastCheckError());
+    }
+
+    public function testGetLastCheckErrorIsNullWhenChannelHasNoCompatibleRelease(): void
+    {
+        // Aucune release ne correspond au canal : ce n'est pas un échec technique,
+        // juste l'absence de release compatible — ne doit pas remonter d'erreur.
+        $service = $this->makeServiceWithReleases([
+            ['tag_name' => 'v1.0.0-beta.1', 'zipball_url' => 'z', 'prerelease' => true],
+        ], ['README.md' => 'hello'], currentVersion: '0.0.0', channel: 'release');
+
+        $service->checkLatestRelease();
+
+        $this->assertNull($service->getLastCheckError());
+    }
+
+    public function testGetLastCheckErrorReportsGenericFailureWhenFetcherReturnsNull(): void
+    {
+        $service = new GithubUpdateService(
+            $this->updateService,
+            $this->backup,
+            $this->migrator,
+            $this->makeSettings(),
+            $this->tmpDir,
+            fn(string $repo, string $token): ?array => null,
+        );
+
+        $service->checkLatestRelease();
+
+        $this->assertNotNull($service->getLastCheckError());
+    }
+
+    public function testGetLastCheckErrorReportsMissingRepoConfig(): void
+    {
+        $service = new GithubUpdateService(
+            $this->updateService,
+            $this->backup,
+            $this->migrator,
+            $this->makeSettings(),
+            $this->tmpDir,
+            fn(string $repo, string $token): ?array => [['tag_name' => 'v1.0.0', 'zipball_url' => 'z']],
+        );
+        $this->setPrivate($service, 'repo', '');
+
+        $this->assertNull($service->checkLatestRelease());
+        $this->assertNotNull($service->getLastCheckError());
+    }
+
+    #[DataProvider('releaseListValidationProvider')]
+    public function testIsValidReleaseListRejectsGithubErrorObjects(mixed $data, bool $expected): void
+    {
+        $ref = new \ReflectionMethod(GithubUpdateService::class, 'isValidReleaseList');
+        $ref->setAccessible(true);
+
+        $this->assertSame($expected, $ref->invoke(null, $data));
+    }
+
+    public static function releaseListValidationProvider(): array
+    {
+        return [
+            'valid release list' => [[['tag_name' => 'v1.0.0']], true],
+            'empty list'         => [[], true],
+            // Forme réelle d'une réponse GitHub rate-limitée : un objet JSON
+            // (donc un tableau associatif après json_decode), pas une liste.
+            'rate limit error object' => [['message' => 'API rate limit exceeded for x.x.x.x.', 'documentation_url' => 'https://docs.github.com/rest'], false],
+            'not found error object'  => [['message' => 'Not Found'], false],
+            'null response'           => [null, false],
+            'scalar response'         => ['API rate limit exceeded', false],
+        ];
     }
 }

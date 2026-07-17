@@ -16,6 +16,8 @@ use kintai\Core\Repositories\HiringReportRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\PdfCjkFontResolver;
+use kintai\Core\Services\RoleAssignmentSyncService;
 use kintai\UI\ViewRenderer;
 use kintai\UI\Controller\Web\HasAdminAccess;
 
@@ -32,6 +34,7 @@ final class AdminUserController
         private readonly UserShiftTypeRateRepositoryInterface $userRates,
         private readonly HiringReportRepositoryInterface $hiringReports,
         private readonly AuditLogger $auditLogger,
+        private readonly RoleAssignmentSyncService $roleSync,
     ) {}
 
     // -------------------------------------------------------------------------
@@ -151,6 +154,14 @@ final class AdminUserController
             ));
         }
 
+        // Recherche texte (nom, code employé, email) — appliquée entièrement
+        // côté client (voir kana-search.js/users-list-search.js) pour un
+        // filtrage instantané, tolérant à la langue (romaji/hiragana/kana
+        // vers un nom stocké en kanji, via les furigana_*) et sans
+        // rechargement de page à chaque frappe. `$search` ne sert ici qu'à
+        // pré-remplir le champ pour un lien direct (`?search=...`).
+        $search = trim((string) ($request->query('search') ?? ''));
+
         // Tri
         $sort = $request->query('sort') ?? 'name_asc';
         usort($users, function ($a, $b) use ($sort, $userStats) {
@@ -190,21 +201,207 @@ final class AdminUserController
             'user_store_ids'   => $userStoreIds,
             'user_store_map'   => $userStoreMap,
             'filter_store_id'  => $filterStoreId,
+            'filter_search'    => $search,
         ], 'layout.app'));
+    }
+
+    // -------------------------------------------------------------------------
+    // Users — export (item 3)
+    // -------------------------------------------------------------------------
+
+    public function exportUsersJson(Request $request): Response
+    {
+        $rows = $this->usersForExport($request);
+
+        $this->auditLogger->log($request, 'export.employees_json', 'user', 0, ['count' => count($rows)]);
+
+        return Response::jsonDownload(['data' => $rows], 'employees_' . date('Ymd') . '.json');
+    }
+
+    /**
+     * Aperçu HTML du PDF (route .../export/pdf) : pas de téléchargement
+     * automatique, la même vue users-export-pdf.php est rendue directement
+     * dans le navigateur avec une barre d'outils (impression / téléchargement
+     * réel / fermer), comme les rapports RH. Le fichier PDF n'est généré
+     * (via mPDF) que si l'utilisateur clique "Télécharger" (exportUsersPdfDownload()).
+     */
+    public function exportUsersPdf(Request $request): Response
+    {
+        $rows = $this->usersForExport($request);
+
+        $storeId = (int) ($request->query('store_id') ?? 0);
+        $downloadUrl = $this->base() . '/admin/users/export/pdf/download' . ($storeId !== 0 ? '?store_id=' . $storeId : '');
+
+        $html = $this->view->render('staff.users-export-pdf', [
+            'rows'         => $rows,
+            'generated_at' => date('Y-m-d H:i'),
+            'downloadUrl'  => $downloadUrl,
+        ]);
+
+        return Response::html($html);
+    }
+
+    public function exportUsersPdfDownload(Request $request): Response
+    {
+        $rows = $this->usersForExport($request);
+
+        $html = $this->view->render('staff.users-export-pdf', [
+            'rows'         => $rows,
+            'generated_at' => date('Y-m-d H:i'),
+        ]);
+
+        $tmpDir = storage_path('app/mpdf');
+        if (!is_dir($tmpDir)) {
+            mkdir($tmpDir, 0755, true);
+        }
+
+        $mpdf = new \Mpdf\Mpdf(PdfCjkFontResolver::applyTo([
+            'mode'          => 'utf-8',
+            'format'        => 'A4-L',
+            'margin_left'   => 10,
+            'margin_right'  => 10,
+            'margin_top'    => 12,
+            'margin_bottom' => 12,
+            'tempDir'       => $tmpDir,
+        ]));
+        $mpdf->SetTitle('Employés');
+        $mpdf->WriteHTML($html);
+
+        $this->auditLogger->log($request, 'export.employees_pdf', 'user', 0, ['count' => count($rows)]);
+
+        return Response::pdf(
+            $mpdf->Output('', \Mpdf\Output\Destination::STRING_RETURN),
+            'employees_' . date('Ymd') . '.pdf',
+        );
+    }
+
+    /**
+     * Liste des employés visibles (mêmes filtres store_id que la page), avec
+     * coordonnées et taux horaires — pour les exports PDF/JSON.
+     */
+    private function usersForExport(Request $request): array
+    {
+        $managedIds = $this->managedIds($request);
+
+        if ($managedIds !== null) {
+            $memberIds = $this->memberUserIds($managedIds);
+            $users = array_values(array_filter(
+                $this->users->findAll(),
+                fn($u) => in_array((int) $u['id'], $memberIds, true)
+            ));
+        } else {
+            $users = $this->users->findAll();
+        }
+
+        $availableStores = $this->availableStores($managedIds);
+        $availableStoreIds = array_map(fn($s) => (int) $s['id'], $availableStores);
+        $storeNames = [];
+        foreach ($availableStores as $s) {
+            $storeNames[(int) $s['id']] = $s['name'] ?? '';
+        }
+
+        $userStoreIds = [];
+        foreach ($users as $u) {
+            $uid = (int) $u['id'];
+            $ids = [];
+            foreach ($this->storeUsers->findByUser($uid) as $m) {
+                $sid = (int) $m['store_id'];
+                if (in_array($sid, $availableStoreIds, true)) {
+                    $ids[] = $sid;
+                }
+            }
+            $userStoreIds[$uid] = $ids;
+        }
+
+        $filterStoreId = (int) ($request->query('store_id') ?? 0);
+        if ($filterStoreId > 0) {
+            $users = array_values(array_filter(
+                $users,
+                fn($u) => in_array($filterStoreId, $userStoreIds[(int) $u['id']] ?? [], true)
+            ));
+        } elseif ($filterStoreId === -1) {
+            $users = array_values(array_filter(
+                $users,
+                fn($u) => empty($userStoreIds[(int) $u['id']])
+            ));
+        }
+
+        usort($users, fn($a, $b) => strcmp(
+            strtolower($a['display_name'] ?? $a['email'] ?? ''),
+            strtolower($b['display_name'] ?? $b['email'] ?? ''),
+        ));
+
+        $shiftTypeNames = [];
+        foreach ($this->shiftTypes->findAll() as $t) {
+            $shiftTypeNames[(int) $t['id']] = $t['name'] ?? ('#' . $t['id']);
+        }
+
+        $rows = [];
+        foreach ($users as $u) {
+            $uid = (int) $u['id'];
+
+            $rates = [];
+            foreach ($this->userRates->findByUser($uid) as $r) {
+                $tid = (int) $r['shift_type_id'];
+                $rates[] = [
+                    'shift_type'  => $shiftTypeNames[$tid] ?? ('#' . $tid),
+                    'hourly_rate' => (float) $r['hourly_rate'],
+                ];
+            }
+
+            $storeLabels = array_values(array_filter(array_map(
+                fn($sid) => $storeNames[$sid] ?? null,
+                $userStoreIds[$uid] ?? [],
+            )));
+
+            $rows[] = [
+                'id'            => $uid,
+                'employee_code' => $u['employee_code'] ?? null,
+                'last_name'     => $u['last_name'] ?? '',
+                'first_name'    => $u['first_name'] ?? '',
+                'display_name'  => $u['display_name'] ?? '',
+                'email'         => $u['email'] ?? '',
+                'phone'         => $u['phone'] ?? null,
+                'mobile_phone'  => $u['mobile_phone'] ?? null,
+                'postal_code'   => $u['postal_code'] ?? null,
+                'address'       => $u['address'] ?? null,
+                'stores'        => $storeLabels,
+                'is_admin'      => !empty($u['is_admin']),
+                'is_active'     => !empty($u['is_active']) && empty($u['deleted_at']),
+                'hourly_rates'  => $rates,
+            ];
+        }
+
+        return $rows;
     }
 
     public function createUser(Request $request): Response
     {
         return Response::html($this->view->render('staff.users-form', [
-            'title'      => 'Nouvel utilisateur',
-            'mode'       => 'create',
-            'user'       => [],
-            'all_stores' => $this->availableStores($this->managedIds($request)),
+            'title'                 => 'Nouvel utilisateur',
+            'mode'                  => 'create',
+            'user'                  => [],
+            'all_stores'            => $this->availableStores($this->managedIds($request)),
+            'assignable_roles'      => $this->roleSync->assignableStoreRoles(),
+            'default_store_role_id' => (int) ($this->roleSync->defaultStoreRole()['id'] ?? 0),
         ], 'layout.app'));
     }
 
     public function storeUser(Request $request): Response
     {
+        $email = trim($request->post('email', ''));
+        if ($email !== '' && $this->users->findByEmail($email) !== null) {
+            return Response::redirect($this->base() . '/admin/users/create?error=email_taken');
+        }
+
+        if (trim($request->post('last_name', '')) === '' || trim($request->post('first_name', '')) === '') {
+            return Response::redirect($this->base() . '/admin/users/create?error=name_required');
+        }
+
+        if (trim($request->post('furigana_last_name', '')) === '' || trim($request->post('furigana_first_name', '')) === '') {
+            return Response::redirect($this->base() . '/admin/users/create?error=furigana_required');
+        }
+
         $password = $request->post('password', '');
         $empCode  = strtoupper(trim($request->post('employee_code', ''))) ?: null;
         if ($password === '') {
@@ -223,6 +420,8 @@ final class AdminUserController
             'phone'              => $request->post('phone', '') ?: null,
             'mobile_phone'       => $request->post('mobile_phone', '') ?: null,
             'furigana'           => $request->post('furigana', '') ?: null,
+            'furigana_last_name'  => $request->post('furigana_last_name', '') ?: null,
+            'furigana_first_name' => $request->post('furigana_first_name', '') ?: null,
             'gender'             => $request->post('gender', '') ?: null,
             'tax_classification' => $request->post('tax_classification', '') ?: null,
             'birth_date'         => $request->post('birth_date', '') ?: null,
@@ -237,19 +436,22 @@ final class AdminUserController
             'is_admin'           => $request->post('is_admin') === '1' ? 1 : 0,
             'is_active'          => 1,
         ]);
+        $this->roleSync->syncOwnerRole((int) ($saved['id'] ?? 0), $request->post('is_admin') === '1');
 
         // Affecter au magasin si sélectionné
         $storeId = (int) $request->post('store_id', 0);
         if ($storeId > 0 && !empty($saved['id'])) {
             $this->assertStoreAccess($request, $storeId);
-            $validRoles = ['staff', 'manager', 'admin'];
-            $role = $request->post('store_role', 'staff');
-            if (!in_array($role, $validRoles, true)) $role = 'staff';
+            $role = $this->roleSync->findAssignableRole((int) $request->post('store_role_id', 0))
+                ?? $this->roleSync->defaultStoreRole();
             $membership = $this->storeUsers->save([
                 'store_id' => $storeId,
                 'user_id'  => (int) $saved['id'],
-                'role'     => $role,
+                'role'     => $role !== null ? $this->roleSync->legacyRoleFor((int) $role['id']) : 'staff',
             ]);
+            if ($role !== null) {
+                $this->roleSync->syncStoreRoleById((int) $saved['id'], $storeId, (int) $role['id']);
+            }
 
             // Générer automatiquement le rapport d'embauche
             $this->hiringReports->save([
@@ -300,10 +502,16 @@ final class AdminUserController
         $color       = $request->post('color', '#3B82F6');
         $isAdmin     = $request->post('is_admin') === '1' ? 1 : 0;
         $storeId     = (int) $request->post('store_id', 0);
-        $storeRole   = $request->post('store_role', 'staff');
+        $storeRoleId = (int) $request->post('store_role_id', 0);
 
-        if ($firstName === '' && $displayName === '') {
-            return Response::json(['success' => false, 'error' => 'Prénom ou nom d\'affichage requis.'], 422);
+        if ($lastName === '' || $firstName === '') {
+            return Response::json(['success' => false, 'error' => 'name_required'], 422);
+        }
+
+        $furiganaLastName  = trim($request->post('furigana_last_name', ''));
+        $furiganaFirstName = trim($request->post('furigana_first_name', ''));
+        if ($furiganaLastName === '' || $furiganaFirstName === '') {
+            return Response::json(['success' => false, 'error' => 'furigana_required'], 422);
         }
 
         if ($displayName === '') {
@@ -323,6 +531,11 @@ final class AdminUserController
                 $email = $base . $attempt . '@kintai.local';
                 if ($attempt > 99) break;
             }
+        } elseif ($this->users->findByEmail($email) !== null) {
+            // Email fourni explicitement (pas auto-généré) : évite un crash SQL
+            // (contrainte unique) si l'employé existe déjà sous un autre nom Excel
+            // non reconnu par le matching de l'import.
+            return Response::json(['success' => false, 'error' => 'email_taken'], 409);
         }
 
         // Vérifier unicité du code employé si fourni
@@ -345,8 +558,8 @@ final class AdminUserController
             'phone'         => $phone,
             'mobile_phone'  => $request->post('mobile_phone', '') ?: null,
             'furigana'            => null,
-            'furigana_last_name'  => $request->post('furigana_last_name', '') ?: null,
-            'furigana_first_name' => $request->post('furigana_first_name', '') ?: null,
+            'furigana_last_name'  => $furiganaLastName,
+            'furigana_first_name' => $furiganaFirstName,
             'gender'        => $request->post('gender', '') ?: null,
             'birth_date'    => $request->post('birth_date', '') ?: null,
             'education'     => $request->post('education', '') ?: null,
@@ -362,16 +575,19 @@ final class AdminUserController
         if (empty($saved['id'])) {
             return Response::json(['success' => false, 'error' => 'Création échouée.'], 500);
         }
+        $this->roleSync->syncOwnerRole((int) $saved['id'], (bool) $isAdmin);
 
         if ($storeId > 0) {
             $this->assertStoreAccess($request, $storeId);
-            $validRoles = ['staff', 'manager', 'admin'];
-            if (!in_array($storeRole, $validRoles, true)) $storeRole = 'staff';
+            $role = $this->roleSync->findAssignableRole($storeRoleId) ?? $this->roleSync->defaultStoreRole();
             $this->storeUsers->save([
                 'store_id' => $storeId,
                 'user_id'  => (int) $saved['id'],
-                'role'     => $storeRole,
+                'role'     => $role !== null ? $this->roleSync->legacyRoleFor((int) $role['id']) : 'staff',
             ]);
+            if ($role !== null) {
+                $this->roleSync->syncStoreRoleById((int) $saved['id'], $storeId, (int) $role['id']);
+            }
 
             // Générer automatiquement le rapport d'embauche
             $this->hiringReports->save([
@@ -394,14 +610,35 @@ final class AdminUserController
         ]);
     }
 
-    /** Vérifie en temps réel si un code employé est disponible. Retourne JSON {available: bool}. */
+    /**
+     * Vérifie en temps réel si un code employé est disponible. Retourne JSON {available: bool}.
+     * `exclude_id` (édition) : ignore la correspondance si c'est le propre code de l'utilisateur en cours d'édition.
+     */
     public function checkEmployeeCode(Request $request): Response
     {
         $code = strtoupper(trim($request->query('code', '')));
         if ($code === '') {
             return Response::json(['available' => true]);
         }
-        $taken = $this->users->findByEmployeeCode($code) !== null;
+        $existing  = $this->users->findByEmployeeCode($code);
+        $excludeId = (int) $request->query('exclude_id', 0);
+        $taken     = $existing !== null && (int) $existing['id'] !== $excludeId;
+        return Response::json(['available' => !$taken]);
+    }
+
+    /**
+     * Vérifie en temps réel si une adresse email est disponible. Retourne JSON {available: bool}.
+     * `exclude_id` (édition) : ignore la correspondance si c'est le propre email de l'utilisateur en cours d'édition.
+     */
+    public function checkEmail(Request $request): Response
+    {
+        $email = trim($request->query('email', ''));
+        if ($email === '') {
+            return Response::json(['available' => true]);
+        }
+        $existing  = $this->users->findByEmail($email);
+        $excludeId = (int) $request->query('exclude_id', 0);
+        $taken     = $existing !== null && (int) $existing['id'] !== $excludeId;
         return Response::json(['available' => !$taken]);
     }
 
@@ -436,12 +673,15 @@ final class AdminUserController
         }
 
         // Appartenance aux stores (enrichie avec nom du store, rôle, cotisations)
+        $roleMap = $this->roleSync->storeRoleMapForUser($userId);
         $userMemberships = [];
         foreach ($memberships as $m) {
             $sid = (int) $m['store_id'];
             $mid = (int) ($m['id'] ?? 0);
             $userMemberships[] = array_merge($m, [
                 'store_name'         => $storesMap[$sid] ?? '#' . $sid,
+                'role_name'          => $roleMap[$sid]['name'] ?? ($m['role'] ?? '—'),
+                'role_is_managing'   => !empty($roleMap[$sid]['is_managing']),
                 'store_ded_settings' => $this->stores->getDeductionSettings($sid),
                 'ded_overrides'      => ['subject_to_deductions' => $mid > 0 ? $this->storeUsers->getSubjectToDeductions($mid) : false],
             ]);
@@ -465,6 +705,8 @@ final class AdminUserController
             'user_memberships' => $userMemberships,
             'available_stores' => $availableStores,
             'all_stores'       => $this->availableStores($this->managedIds($request)),
+            'assignable_roles'      => $this->roleSync->assignableStoreRoles(),
+            'default_store_role_id' => (int) ($this->roleSync->defaultStoreRole()['id'] ?? 0),
         ], 'layout.app'));
     }
 
@@ -475,17 +717,37 @@ final class AdminUserController
             throw new NotFoundException('Utilisateur introuvable.');
         }
 
+        $email = trim($request->post('email', $user['email'] ?? ''));
+        if ($email !== ($user['email'] ?? '')) {
+            $existing = $this->users->findByEmail($email);
+            if ($existing !== null && (int) $existing['id'] !== (int) $user['id']) {
+                return Response::redirect($this->base() . '/admin/users/' . $user['id'] . '/edit?error=email_taken');
+            }
+        }
+
+        $lastName  = trim($request->post('last_name', $user['last_name'] ?? ''));
+        $firstName = trim($request->post('first_name', $user['first_name'] ?? ''));
+        if ($lastName === '' || $firstName === '') {
+            return Response::redirect($this->base() . '/admin/users/' . $user['id'] . '/edit?error=name_required');
+        }
+
+        $furiganaLastName  = trim($request->post('furigana_last_name', $user['furigana_last_name'] ?? ''));
+        $furiganaFirstName = trim($request->post('furigana_first_name', $user['furigana_first_name'] ?? ''));
+        if ($furiganaLastName === '' || $furiganaFirstName === '') {
+            return Response::redirect($this->base() . '/admin/users/' . $user['id'] . '/edit?error=furigana_required');
+        }
+
         $empCode = strtoupper(trim($request->post('employee_code', ''))) ?: null;
         $data = array_merge($user, [
             'display_name'       => $request->post('display_name', $user['display_name'] ?? ''),
-            'first_name'         => $request->post('first_name', $user['first_name'] ?? ''),
-            'last_name'          => $request->post('last_name', $user['last_name'] ?? ''),
-            'email'              => $request->post('email', $user['email'] ?? ''),
+            'first_name'         => $firstName,
+            'last_name'          => $lastName,
+            'email'              => $email,
             'phone'              => $request->post('phone', '') ?: null,
             'mobile_phone'       => $request->post('mobile_phone', '') ?: null,
             'furigana'            => null,
-            'furigana_last_name'  => $request->post('furigana_last_name', '') ?: null,
-            'furigana_first_name' => $request->post('furigana_first_name', '') ?: null,
+            'furigana_last_name'  => $furiganaLastName,
+            'furigana_first_name' => $furiganaFirstName,
             'gender'             => $request->post('gender', '') ?: null,
             'tax_classification' => $request->post('tax_classification', '') ?: null,
             'birth_date'         => $request->post('birth_date', '') ?: null,
@@ -507,6 +769,7 @@ final class AdminUserController
         }
 
         $this->users->save($data);
+        $this->roleSync->syncOwnerRole((int) $user['id'], $request->post('is_admin') === '1');
         $this->auditLogger->logUpdate($request, 'user.updated', 'user', (int) $user['id'], $user, $data, [], null, null);
         return Response::redirect($this->base() . '/admin/users?success=updated');
     }

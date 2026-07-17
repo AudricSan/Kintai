@@ -7,6 +7,8 @@ namespace kintai\Tests\Unit\Controller\Web;
 use kintai\Core\Container;
 use kintai\Core\FeatureManager;
 use kintai\Core\Repositories\LogRepositoryInterface;
+use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
+use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
@@ -14,6 +16,7 @@ use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\Log;
+use kintai\Core\Services\RoleAssignmentSyncService;
 use kintai\Core\Services\StoreServiceInterface;
 use kintai\Core\Services\StoreStatsServiceInterface;
 use kintai\UI\Controller\Web\Staff\AdminStoreController;
@@ -28,6 +31,8 @@ final class AdminStoreControllerTest extends TestCase
     private UserRepositoryInterface&MockObject $users;
     private StoreStatsServiceInterface&MockObject $storeStatsService;
     private LogRepositoryInterface&MockObject $logRepo;
+    private RoleRepositoryInterface&MockObject $roles;
+    private RoleAssignmentRepositoryInterface&MockObject $roleAssignments;
     private AdminStoreController $controller;
 
     protected function setUp(): void
@@ -35,13 +40,14 @@ final class AdminStoreControllerTest extends TestCase
         $this->ensureViewFile('staff.stores');
         $this->ensureViewFile('staff.stores-form');
         $this->ensureViewFile('staff.employee-stats');
-        $this->ensureViewFile('staff.employee-payslip');
         $this->ensureViewFile('layout.app');
         $view = new ViewRenderer(sys_get_temp_dir());
         $this->stores = $this->createMock(StoreRepositoryInterface::class);
         $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
         $this->users = $this->createMock(UserRepositoryInterface::class);
         $this->storeStatsService = $this->createMock(StoreStatsServiceInterface::class);
+        $this->roles = $this->createMock(RoleRepositoryInterface::class);
+        $this->roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
 
         // AuditLogger::log() délègue à Log::record() -> LogRepositoryInterface::record().
         $this->logRepo = $this->createMock(LogRepositoryInterface::class);
@@ -58,6 +64,7 @@ final class AdminStoreControllerTest extends TestCase
             $this->createMock(StoreServiceInterface::class),
             $this->storeStatsService,
             new FeatureManager(['messaging', 'daily-report', 'store-photos']),
+            new RoleAssignmentSyncService($this->roles, $this->roleAssignments),
         );
     }
 
@@ -116,6 +123,7 @@ final class AdminStoreControllerTest extends TestCase
             $this->createMock(StoreServiceInterface::class),
             $this->storeStatsService,
             new FeatureManager(['daily-report']), // messaging et store-photos désactivés
+            new RoleAssignmentSyncService($this->roles, $this->roleAssignments),
         );
 
         $req = new Request();
@@ -160,6 +168,7 @@ final class AdminStoreControllerTest extends TestCase
             $storeService,
             $this->storeStatsService,
             new FeatureManager(['messaging', 'daily-report', 'store-photos']),
+            new RoleAssignmentSyncService($this->roles, $this->roleAssignments),
         );
 
         $response = $controller->updateStore($req);
@@ -188,29 +197,6 @@ final class AdminStoreControllerTest extends TestCase
         );
 
         $response = $this->controller->employeeStats($req);
-
-        $this->assertSame(200, $response->status());
-    }
-
-    public function testEmployeePayslipLogsConsultation(): void
-    {
-        $req = new Request();
-        $req->setAttribute('managed_store_ids', null);
-        $req->setRouteParams(['id' => '1', 'uid' => '5']);
-
-        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Store A', 'currency' => 'JPY']);
-        $this->users->method('findById')->with(5)->willReturn(['id' => 5, 'last_name' => 'Dupont', 'first_name' => 'Jean']);
-        $this->storeUsers->method('findMembership')->with(1, 5)->willReturn(['id' => 1, 'store_id' => 1, 'user_id' => 5]);
-        $this->storeStatsService->method('buildPayslipData')->willReturn([]);
-
-        $this->logRepo->expects($this->once())->method('record')->with(
-            $this->anything(), $this->anything(), $this->anything(),
-            'payslip.viewed', 'user', 5,
-            $this->anything(), $this->anything(), 1,
-            $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(),
-        );
-
-        $response = $this->controller->employeePayslip($req);
 
         $this->assertSame(200, $response->status());
     }

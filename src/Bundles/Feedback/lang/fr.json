@@ -5,5 +5,7 @@
     "feedback_anonymous_author": "Anonyme",
     "feedback_delete_confirm": "Supprimer ce feedback définitivement ?",
     "feedback_deleted": "Feedback supprimé.",
+    "feedback_device_desktop": "💻 PC",
+    "feedback_device_mobile": "📱 Mobile",
     "no_feedback": "Aucun feedback reçu."
 }

@@ -10,22 +10,18 @@ use kintai\UI\Components\Table;
  * @var array      $store
  * @var array      $members
  * @var array      $available
- * @var array      $roles
+ * @var array      $assignable_roles Rôles dynamiques assignables (table roles)
+ * @var int        $default_role_id  Rôle pré-sélectionné dans le formulaire d'ajout
  * @var array|null $enabledFeatures
  */
-$members   ??= [];
-$available ??= [];
-$roles     ??= [];
+$members          ??= [];
+$available        ??= [];
+$assignable_roles ??= [];
+$default_role_id  ??= 0;
 $action  = $mode === 'edit'
     ? $BASE_URL . '/admin/stores/' . (int) $store['id'] . '/edit'
     : route_url('admin.stores.create');
 $storeId = (int) ($store['id'] ?? 0);
-
-$excelDefaults = \kintai\Core\Services\ExcelShiftImport\ExcelShiftImportService::DEFAULTS;
-$excelSettings = array_merge(
-    $excelDefaults,
-    json_decode($store['excel_import_settings'] ?? '{}', true) ?: []
-);
 
 $ded = $deductionSettings ?? [];
 
@@ -34,6 +30,9 @@ echo Flash::fromQuery('success', [
     'member_added'   => __('member_added'),
     'role_updated'   => __('role_updated'),
     'member_removed' => __('member_removed'),
+])->render();
+echo Flash::fromQuery('error', [
+    'invalid_role' => __('role_invalid'),
 ])->render();
 ?>
 <div class="page-header">
@@ -78,22 +77,21 @@ else:
         ->rowUrl(fn($m) => $BASE_URL . '/admin/users/' . (int) $m['id'] . '/edit')
         ->column(__('name'), fn($m) => '<strong>' . htmlspecialchars($m['user_name']) . '</strong>')
         ->column(__('email'), fn($m) => '<span class="text-sm td-muted">' . htmlspecialchars($m['user_email']) . '</span>')
-        ->column(__('role'), function($m) use ($roles) {
-            $r = $m['role'] ?? 'staff';
-            return Badge::make(htmlspecialchars($roles[$r] ?? $r))
-                ->variant(match($r) { 'admin' => 'danger', 'manager' => 'warning', default => 'active' })
+        ->column(__('role'), function($m) {
+            return Badge::make(htmlspecialchars($m['role_name'] ?? ($m['role'] ?? '—')))
+                ->variant(!empty($m['role_is_managing']) ? 'warning' : 'active')
                 ->render();
         })
         ->column(__('status'), fn($m) => !empty($m['is_active']) ? Badge::make(__('active'))->active()->render() : Badge::make(__('inactive'))->inactive()->render())
-        ->column(__('actions'), function($m) use ($BASE_URL, $storeId, $store, $roles) {
+        ->column(__('actions'), function($m) use ($BASE_URL, $storeId, $store, $assignable_roles) {
             $mid = (int) $m['id'];
-            $r = $m['role'] ?? 'staff';
+            $currentRoleId = (int) ($m['role_id'] ?? 0);
             $html = '<div class="btn-group">';
             $html .= '<form method="POST" action="' . htmlspecialchars($BASE_URL . '/admin/stores/' . $storeId . '/members/' . $mid . '/role') . '" class="form-inline-flex">' . csrf_field()
-                . '<select name="role" class="form-control form-control-sm w-180">';
-            foreach ($roles as $rVal => $rLabel) {
-                $sel = $r === $rVal ? ' selected' : '';
-                $html .= '<option value="' . $rVal . '"' . $sel . '>' . htmlspecialchars($rLabel) . '</option>';
+                . '<select name="role_id" class="form-control form-control-sm w-180">';
+            foreach ($assignable_roles as $r) {
+                $sel = (int) $r['id'] === $currentRoleId ? ' selected' : '';
+                $html .= '<option value="' . (int) $r['id'] . '"' . $sel . '>' . htmlspecialchars($r['name'] ?? '') . '</option>';
             }
             $html .= '</select>' . Button::make(__('apply'))->ghost()->sm()->submit()->render() . '</form>';
             $html .= '<a href="' . $BASE_URL . '/admin/stores/' . (int) $store['id'] . '/members/' . $mid . '/deductions" class="btn btn--ghost btn--sm" title="' . __('deduction_overrides') . '">💰</a>';
@@ -121,9 +119,9 @@ endif;
                 </div>
                 <div class="form-group form-group--fixed">
                     <label class="form-label"><?= __('role') ?></label>
-                    <select name="role" class="form-control">
-                        <?php foreach ($roles as $rVal => $rLabel): ?>
-                            <option value="<?= $rVal ?>"><?= htmlspecialchars($rLabel) ?></option>
+                    <select name="role_id" class="form-control">
+                        <?php foreach ($assignable_roles as $r): ?>
+                            <option value="<?= (int) $r['id'] ?>" <?= (int) $r['id'] === (int) ($default_role_id ?? 0) ? 'selected' : '' ?>><?= htmlspecialchars($r['name'] ?? '') ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>

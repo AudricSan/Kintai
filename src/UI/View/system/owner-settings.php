@@ -83,6 +83,29 @@ echo Flash::fromQuery('success', ['default' => __('save_success')])->render();
     echo Card::make()->header(__('backup_card_title'))->body(ob_get_clean())->render();
     ?>
 
+    <?php
+    ob_start();
+    ?>
+    <div class="form-group">
+        <label class="form-label"><?= __('maintenance_mode_enabled') ?></label>
+        <label class="form-toggle">
+            <input type="checkbox" name="maintenance_mode_enabled" value="1" class="form-toggle__input"
+                   <?= ($settings['maintenance_mode_enabled'] ?? '0') === '1' ? 'checked' : '' ?>>
+            <span class="form-toggle__track"></span>
+        </label>
+        <p class="form-hint"><?= __('maintenance_mode_hint') ?></p>
+    </div>
+    <div class="form-group">
+        <label class="form-label"><?= __('maintenance_message') ?></label>
+        <textarea name="maintenance_message" class="form-control" rows="3"
+                  maxlength="500"
+                  placeholder="<?= __('maintenance_message_placeholder') ?>"><?= htmlspecialchars($settings['maintenance_message'] ?? '', ENT_QUOTES) ?></textarea>
+        <p class="form-hint"><?= __('maintenance_message_hint') ?></p>
+    </div>
+    <?php
+    echo Card::make()->header(__('maintenance_mode'))->body(ob_get_clean())->render();
+    ?>
+
     <div class="form-actions">
         <?= Button::make(__('save'))->primary()->submit()->render() ?>
         <a href="<?= route_url('home') ?>" class="btn btn--ghost"><?= __('cancel') ?></a>

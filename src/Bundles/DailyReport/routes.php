@@ -29,7 +29,8 @@ $router->group('/admin', function ($r) {
     $r->post('/stores/{id}/daily-reports/{rid}/submit',      [DailyReportController::class, 'submit'],      name: 'admin.daily_reports.submit');
     $r->post('/stores/{id}/daily-reports/{rid}/validate',    [DailyReportController::class, 'validate'],    name: 'admin.daily_reports.validate');
     $r->post('/stores/{id}/daily-reports/{rid}/send-mail',   [DailyReportController::class, 'sendMail'],    name: 'admin.daily_reports.send_mail');
-    $r->get('/stores/{id}/daily-reports/{rid}/pdf',          [DailyReportController::class, 'downloadPdf'], name: 'admin.daily_reports.pdf');
+    $r->get('/stores/{id}/daily-reports/{rid}/pdf',          [DailyReportController::class, 'previewPdf'],  name: 'admin.daily_reports.pdf');
+    $r->get('/stores/{id}/daily-reports/{rid}/pdf/download', [DailyReportController::class, 'downloadPdf'], name: 'admin.daily_reports.pdf_download');
     $r->post('/stores/{id}/daily-reports/{rid}/delete',      [DailyReportController::class, 'destroy'],     name: 'admin.daily_reports.delete');
 }, middleware: [AuthMiddleware::class]);
 

@@ -61,4 +61,27 @@ final class AppSettingsService
     {
         return $this->get('backup_auto_enabled', '1') === '1';
     }
+
+    // ── Mises à jour ───────────────────────────────────────────────────────────
+
+    /** Canal de mise à jour suivi : release (défaut), beta, ou alpha. */
+    public function updateChannel(): string
+    {
+        $channel = $this->get('update_channel', 'release');
+        return in_array($channel, ['alpha', 'beta', 'release'], true) ? $channel : 'release';
+    }
+
+    // ── Mode maintenance ──────────────────────────────────────────────────────
+
+    /** Mode maintenance activé : seul l'Owner peut accéder aux pages web. */
+    public function maintenanceModeEnabled(): bool
+    {
+        return $this->get('maintenance_mode_enabled', '0') === '1';
+    }
+
+    /** Message affiché sur la page de maintenance (vide = message générique par défaut). */
+    public function maintenanceMessage(): string
+    {
+        return $this->get('maintenance_message');
+    }
 }

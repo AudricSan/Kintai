@@ -49,13 +49,34 @@ final class AdminResignationReportController
     {
         [$allStores, $queryStoreIds, $filterStoreId] = $this->storesAndFilter($request);
 
-        $reports = $this->resignationReports->findAll($queryStoreIds);
+        $filterYear = $request->query('year', '');
+        $filterMonth = $request->query('month', '');
+        $filterPerson = trim($request->query('person', ''));
+
+        $filters = [];
+        if ($filterStoreId > 0) {
+            $filters['store_id'] = $filterStoreId;
+        }
+        if ($filterYear !== '') {
+            $filters['year'] = $filterYear;
+        }
+        if ($filterMonth !== '') {
+            $filters['month'] = $filterMonth;
+        }
+        if ($filterPerson !== '') {
+            $filters['person_in_charge'] = $filterPerson;
+        }
+
+        $reports = $this->resignationReports->findAll($queryStoreIds, $filters);
 
         return Response::html($this->view->render('resignation-report::reports-resignation', [
-            'title'   => __('resignation_reports'),
-            'stores'  => $allStores,
+            'title'          => __('resignation_reports'),
+            'stores'         => $allStores,
             'filter_store_id' => $filterStoreId,
-            'reports' => $reports,
+            'filter_year'    => $filterYear,
+            'filter_month'   => $filterMonth,
+            'filter_person'  => $filterPerson,
+            'reports'        => $reports,
         ], 'layout.app'));
     }
 
@@ -64,18 +85,103 @@ final class AdminResignationReportController
         return $this->listReports($request, __('resignation_reports'));
     }
 
+    // -------------------------------------------------------------------------
+    // Export de la liste "tous les magasins" (item 5)
+    // -------------------------------------------------------------------------
+
+    private function exportFilters(Request $request): array
+    {
+        $filters = [];
+        $filterYear = $request->query('year', '');
+        if ($filterYear !== '') {
+            $filters['year'] = $filterYear;
+        }
+        $filterMonth = $request->query('month', '');
+        if ($filterMonth !== '') {
+            $filters['month'] = $filterMonth;
+        }
+        $filterPerson = trim($request->query('person', ''));
+        if ($filterPerson !== '') {
+            $filters['person_in_charge'] = $filterPerson;
+        }
+        return $filters;
+    }
+
+    public function exportResignationReportsJson(Request $request): Response
+    {
+        [, $queryStoreIds] = $this->storesAndFilter($request);
+        $reports = $this->resignationReports->findAll($queryStoreIds, $this->exportFilters($request));
+
+        $this->auditLogger->log($request, 'export.resignation_reports_json', 'resignation_report', 0, [
+            'count' => count($reports),
+        ]);
+
+        return Response::jsonDownload(['data' => $reports], 'resignation_reports_' . date('Ymd') . '.json');
+    }
+
+    /**
+     * Aperçu HTML du PDF (route .../export/pdf) : pas de téléchargement
+     * automatique — voir HasStaffReportCrud::reportPdf() pour le même
+     * principe appliqué aux rapports individuels.
+     */
+    public function exportResignationReportsPdf(Request $request): Response
+    {
+        [$allStores, $queryStoreIds] = $this->storesAndFilter($request);
+        $reports = $this->resignationReports->findAll($queryStoreIds, $this->exportFilters($request));
+        $storeNames = array_column($allStores, 'name', 'id');
+
+        $html = $this->view->render('resignation-report::reports-resignation-export-pdf', [
+            'reports'      => $reports,
+            'store_names'  => $storeNames,
+            'generated_at' => date('Y-m-d H:i'),
+            'downloadUrl'  => $this->base() . '/admin/reports/resignation/export/pdf/download' . $this->exportQueryString($request),
+        ]);
+
+        return Response::html($html);
+    }
+
+    public function exportResignationReportsPdfDownload(Request $request): Response
+    {
+        [$allStores, $queryStoreIds] = $this->storesAndFilter($request);
+        $reports = $this->resignationReports->findAll($queryStoreIds, $this->exportFilters($request));
+        $storeNames = array_column($allStores, 'name', 'id');
+
+        $html = $this->view->render('resignation-report::reports-resignation-export-pdf', [
+            'reports'      => $reports,
+            'store_names'  => $storeNames,
+            'generated_at' => date('Y-m-d H:i'),
+        ]);
+
+        $this->auditLogger->log($request, 'export.resignation_reports_pdf', 'resignation_report', 0, [
+            'count' => count($reports),
+        ]);
+
+        return $this->renderPdf($html, 'resignation_reports_' . date('Ymd') . '.pdf');
+    }
+
+    private function exportQueryString(Request $request): string
+    {
+        $query = array_filter([
+            'store_id' => (int) $request->query('store_id', 0) ?: null,
+            'year'     => $request->query('year', '') ?: null,
+            'month'    => $request->query('month', '') ?: null,
+            'person'   => $request->query('person', '') ?: null,
+        ]);
+        return $query ? '?' . http_build_query($query) : '';
+    }
+
     public function createResignationReport(Request $request): Response
     {
         $storeId = (int) $request->param('id');
         $store = $this->findStoreOrFail($storeId);
         $this->assertStoreAccess($request, $storeId);
 
-        $users = $this->users->findAll();
         $authUser = $request->getAttribute('auth_user');
 
         // Pré-remplir avec les données d'un employé si user_id est fourni
         $preset = [];
         $userId = (int) ($request->query('user_id') ?? 0);
+        $users = $this->storeMembersForReportForm($storeId, $userId);
         if ($userId > 0) {
             $user = $this->users->findById($userId);
             if ($user !== null) {
@@ -163,6 +269,11 @@ final class AdminResignationReportController
         return $this->reportPdf($request);
     }
 
+    public function resignationReportPdfDownload(Request $request): Response
+    {
+        return $this->reportPdfDownload($request);
+    }
+
     public function reactivateUser(Request $request): Response
     {
         $storeId = (int) $request->param('id');
@@ -208,9 +319,10 @@ final class AdminResignationReportController
 
     protected function reportEditExtras(int $storeId, array $report): array
     {
+        $userId = (int) ($report['user_id'] ?? 0);
         return [
-            'users'    => $this->users->findAll(),
-            'managers' => $this->getManagersForReportForm($storeId, (int) ($report['user_id'] ?? 0)),
+            'users'    => $this->storeMembersForReportForm($storeId, $userId),
+            'managers' => $this->getManagersForReportForm($storeId, $userId),
         ];
     }
 }

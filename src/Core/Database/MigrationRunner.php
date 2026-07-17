@@ -62,6 +62,33 @@ final class MigrationRunner
         return $pending;
     }
 
+    /**
+     * Noms des migrations marquées isSeed() (voir Migration::isSeed()) — utilisé par
+     * AppResetService::resetFactory() pour savoir lesquelles doivent rejouer après un
+     * reset, sans avoir à connaître aucun nom de migration en dur.
+     *
+     * @return string[]
+     */
+    public function getSeedMigrationNames(): array
+    {
+        $files = glob($this->migrationsPath . '/*.php');
+        sort($files);
+
+        $names = [];
+        foreach ($files as $file) {
+            $migrationClass = require $file;
+            $migration = is_object($migrationClass) && $migrationClass instanceof Migration
+                ? $migrationClass
+                : new $migrationClass($this->capsule);
+
+            if ($migration->isSeed()) {
+                $names[] = basename($file, '.php');
+            }
+        }
+
+        return $names;
+    }
+
     private function ensureMigrationsTable(): void
     {
         $schema = $this->capsule->getConnection()->getSchemaBuilder();

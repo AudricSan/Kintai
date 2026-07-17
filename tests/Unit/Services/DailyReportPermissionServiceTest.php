@@ -5,20 +5,40 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Services;
 
 use PHPUnit\Framework\TestCase;
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Services\DailyReportPermissionService;
+use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
+use kintai\Core\Repositories\RoleRepositoryInterface;
 
 final class DailyReportPermissionServiceTest extends TestCase
 {
-    private DailyReportPermissionService $service;
-
-    protected function setUp(): void
-    {
-        $this->service = new DailyReportPermissionService();
-    }
-
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
+
+    /** Service dont l'utilisateur détient les clés données, portée sur $storeId (ou globale si null). */
+    private function serviceGranting(array $keys, ?int $storeId = null): DailyReportPermissionService
+    {
+        $assignments = $this->createStub(RoleAssignmentRepositoryInterface::class);
+        $assignments->method('findByUser')->willReturn([
+            ['id' => 1, 'user_id' => 10, 'role_id' => 1, 'scope_type' => $storeId === null ? 'global' : 'store', 'scope_id' => $storeId],
+        ]);
+        $roles = $this->createStub(RoleRepositoryInterface::class);
+        $roles->method('findById')->willReturn(['id' => 1, 'is_system' => 0]);
+        $roles->method('getPermissions')->willReturn($keys);
+
+        return new DailyReportPermissionService(new PermissionService($assignments, $roles));
+    }
+
+    /** Service pour un utilisateur sans aucune permission (libre-service uniquement). */
+    private function serviceWithoutPermissions(): DailyReportPermissionService
+    {
+        $assignments = $this->createStub(RoleAssignmentRepositoryInterface::class);
+        $assignments->method('findByUser')->willReturn([]);
+        $roles = $this->createStub(RoleRepositoryInterface::class);
+
+        return new DailyReportPermissionService(new PermissionService($assignments, $roles));
+    }
 
     private function store(array $settings = []): array
     {
@@ -26,260 +46,282 @@ final class DailyReportPermissionServiceTest extends TestCase
         return ['id' => 1, 'name' => 'Test Store', 'daily_report_settings' => $json];
     }
 
-    private function user(bool $isAdmin = false, int $id = 10): array
+    private function user(int $id = 99): array
     {
-        return ['id' => $id, 'is_admin' => $isAdmin ? 1 : 0];
+        return ['id' => $id];
     }
 
-    private function membership(string $role): array
+    private function membership(): array
     {
-        return ['role' => $role, 'store_id' => 1];
+        return ['role' => 'employee', 'store_id' => 1];
     }
 
-    private function report(string $status = 'draft', int $authorId = 10): array
+    private function report(string $status = 'draft', int $authorId = 99): array
     {
         return ['id' => 5, 'store_id' => 1, 'status' => $status, 'author_id' => $authorId, 'deleted_at' => null];
     }
 
     // -------------------------------------------------------------------------
-    // getSettings
+    // getSettings / isEnabled
     // -------------------------------------------------------------------------
 
     public function testGetSettingsReturnsDefaultsWhenNoJson(): void
     {
-        $store    = ['id' => 1, 'daily_report_settings' => null];
-        $settings = $this->service->getSettings($store);
+        $service  = $this->serviceWithoutPermissions();
+        $settings = $service->getSettings(['id' => 1, 'daily_report_settings' => null]);
 
         $this->assertTrue($settings['enabled']);
-        $this->assertContains('staff', $settings['can_submit_roles']);
-        $this->assertContains('manager', $settings['can_validate_roles']);
         $this->assertEmpty($settings['mail_recipients']);
         $this->assertFalse($settings['auto_send_on_validate']);
     }
 
     public function testGetSettingsMergesCustomValues(): void
     {
-        $store    = $this->store(['enabled' => false, 'can_validate_roles' => ['admin']]);
-        $settings = $this->service->getSettings($store);
+        $service  = $this->serviceWithoutPermissions();
+        $settings = $service->getSettings($this->store(['enabled' => false, 'mail_recipients' => ['a@example.com']]));
 
         $this->assertFalse($settings['enabled']);
-        $this->assertSame(['admin'], $settings['can_validate_roles']);
-        // Non-overridden defaults preserved
-        $this->assertContains('staff', $settings['can_submit_roles']);
+        $this->assertSame(['a@example.com'], $settings['mail_recipients']);
     }
 
     // -------------------------------------------------------------------------
     // canCreate
     // -------------------------------------------------------------------------
 
-    public function testGlobalAdminCanAlwaysCreate(): void
+    public function testPermissionHolderCanAlwaysCreate(): void
     {
-        $this->assertTrue($this->service->canCreate($this->user(true), $this->store(), null));
+        $service = $this->serviceGranting(['daily_reports.create'], storeId: 1);
+        $this->assertTrue($service->canCreate($this->user(10), $this->store(), null));
     }
 
-    public function testStaffMemberCanCreateWhenEnabled(): void
+    public function testStoreMemberCanCreateAsSelfServiceWhenEnabled(): void
     {
-        $this->assertTrue(
-            $this->service->canCreate($this->user(), $this->store(['enabled' => true]), $this->membership('staff'))
-        );
+        $service = $this->serviceWithoutPermissions();
+        $this->assertTrue($service->canCreate($this->user(), $this->store(['enabled' => true]), $this->membership()));
     }
 
-    public function testCannotCreateWithoutMembership(): void
+    public function testCannotCreateWithoutMembershipOrPermission(): void
     {
-        $this->assertFalse($this->service->canCreate($this->user(), $this->store(), null));
+        $service = $this->serviceWithoutPermissions();
+        $this->assertFalse($service->canCreate($this->user(), $this->store(), null));
     }
 
-    public function testCannotCreateWhenDisabled(): void
+    public function testCannotCreateWhenDisabledEvenAsMember(): void
     {
-        $this->assertFalse(
-            $this->service->canCreate($this->user(), $this->store(['enabled' => false]), $this->membership('staff'))
-        );
+        $service = $this->serviceWithoutPermissions();
+        $this->assertFalse($service->canCreate($this->user(), $this->store(['enabled' => false]), $this->membership()));
+    }
+
+    public function testPermissionHolderCannotCreateWhenDisabled(): void
+    {
+        $service = $this->serviceGranting(['daily_reports.create'], storeId: 1);
+        $this->assertFalse($service->canCreate($this->user(10), $this->store(['enabled' => false]), null));
     }
 
     // -------------------------------------------------------------------------
     // canEdit
     // -------------------------------------------------------------------------
 
-    public function testAuthorCanEditOwnDraft(): void
+    public function testAuthorCanEditOwnDraftAsSelfService(): void
     {
-        $this->assertTrue(
-            $this->service->canEdit($this->user(false, 10), $this->store(), $this->report('draft', 10), $this->membership('staff'))
-        );
+        $service = $this->serviceWithoutPermissions();
+        $this->assertTrue($service->canEdit($this->user(10), $this->store(), $this->report('draft', 10), $this->membership()));
     }
 
-    public function testManagerCanEditAnyDraft(): void
+    public function testPermissionHolderCanEditAnyDraft(): void
     {
-        $this->assertTrue(
-            $this->service->canEdit($this->user(false, 99), $this->store(), $this->report('draft', 10), $this->membership('manager'))
-        );
+        $service = $this->serviceGranting(['daily_reports.update'], storeId: 1);
+        $this->assertTrue($service->canEdit($this->user(10), $this->store(), $this->report('draft', 99), $this->membership()));
     }
 
-    public function testStaffCannotEditOwnSubmittedReport(): void
+    public function testPermissionHolderCanEditSubmittedReport(): void
     {
-        $this->assertFalse(
-            $this->service->canEdit($this->user(false, 10), $this->store(), $this->report('submitted', 10), $this->membership('staff'))
-        );
+        $service = $this->serviceGranting(['daily_reports.update'], storeId: 1);
+        $this->assertTrue($service->canEdit($this->user(10), $this->store(), $this->report('submitted', 99), $this->membership()));
     }
 
-    public function testManagerCanEditSubmittedReport(): void
+    public function testAuthorCannotEditOwnSubmittedReportWithoutPermission(): void
     {
-        $this->assertTrue(
-            $this->service->canEdit($this->user(false, 99), $this->store(), $this->report('submitted', 10), $this->membership('manager'))
-        );
+        $service = $this->serviceWithoutPermissions();
+        $this->assertFalse($service->canEdit($this->user(10), $this->store(), $this->report('submitted', 10), $this->membership()));
     }
 
-    public function testAdminCanEditSubmittedReport(): void
+    public function testNonAuthorCannotEditOthersDraftWithoutPermission(): void
     {
-        $this->assertTrue(
-            $this->service->canEdit($this->user(false, 99), $this->store(), $this->report('submitted', 10), $this->membership('admin'))
-        );
+        $service = $this->serviceWithoutPermissions();
+        $this->assertFalse($service->canEdit($this->user(20), $this->store(), $this->report('draft', 10), $this->membership()));
     }
 
-    public function testGlobalAdminCanEditSubmittedReport(): void
+    public function testCannotEditValidatedReportEvenWithPermission(): void
     {
-        $this->assertTrue(
-            $this->service->canEdit($this->user(true), $this->store(), $this->report('submitted', 10), null)
-        );
-    }
-
-    public function testCannotEditValidatedReport(): void
-    {
-        $this->assertFalse(
-            $this->service->canEdit($this->user(false, 99), $this->store(), $this->report('validated', 10), $this->membership('manager'))
-        );
-    }
-
-    public function testNonAuthorStaffCannotEditOthersDraft(): void
-    {
-        $this->assertFalse(
-            $this->service->canEdit($this->user(false, 20), $this->store(), $this->report('draft', 10), $this->membership('staff'))
-        );
+        $service = $this->serviceGranting(['daily_reports.update'], storeId: 1);
+        $this->assertFalse($service->canEdit($this->user(10), $this->store(), $this->report('validated', 10), $this->membership()));
     }
 
     // -------------------------------------------------------------------------
     // canSubmit
     // -------------------------------------------------------------------------
 
-    public function testStaffCanSubmitDraftByDefault(): void
+    public function testAuthorCanSubmitOwnDraftAsSelfService(): void
     {
-        $this->assertTrue(
-            $this->service->canSubmit($this->user(), $this->store(), $this->report('draft'), $this->membership('staff'))
-        );
+        $service = $this->serviceWithoutPermissions();
+        $this->assertTrue($service->canSubmit($this->user(10), $this->store(), $this->report('draft', 10), $this->membership()));
+    }
+
+    public function testCannotSubmitOthersDraftWithoutPermission(): void
+    {
+        $service = $this->serviceWithoutPermissions();
+        $this->assertFalse($service->canSubmit($this->user(20), $this->store(), $this->report('draft', 10), $this->membership()));
+    }
+
+    public function testPermissionHolderCanSubmitAnyDraft(): void
+    {
+        $service = $this->serviceGranting(['daily_reports.submit'], storeId: 1);
+        $this->assertTrue($service->canSubmit($this->user(20), $this->store(), $this->report('draft', 10), $this->membership()));
     }
 
     public function testCannotSubmitAlreadySubmittedReport(): void
     {
-        $this->assertFalse(
-            $this->service->canSubmit($this->user(), $this->store(), $this->report('submitted'), $this->membership('staff'))
-        );
-    }
-
-    public function testCannotSubmitWhenRoleNotAllowed(): void
-    {
-        $store = $this->store(['can_submit_roles' => ['manager', 'admin']]);
-        $this->assertFalse(
-            $this->service->canSubmit($this->user(), $store, $this->report('draft'), $this->membership('staff'))
-        );
+        $service = $this->serviceWithoutPermissions();
+        $this->assertFalse($service->canSubmit($this->user(10), $this->store(), $this->report('submitted', 10), $this->membership()));
     }
 
     // -------------------------------------------------------------------------
     // canValidate
     // -------------------------------------------------------------------------
 
-    public function testManagerCanValidateSubmittedReport(): void
+    public function testPermissionHolderCanValidateSubmittedReport(): void
     {
-        $this->assertTrue(
-            $this->service->canValidate($this->user(), $this->store(), $this->report('submitted'), $this->membership('manager'))
-        );
+        $service = $this->serviceGranting(['daily_reports.approve'], storeId: 1);
+        $this->assertTrue($service->canValidate($this->user(10), $this->store(), $this->report('submitted'), $this->membership()));
     }
 
-    public function testStaffCannotValidateByDefault(): void
+    public function testAuthorCannotValidateOwnReportWithoutPermission(): void
     {
-        $this->assertFalse(
-            $this->service->canValidate($this->user(), $this->store(), $this->report('submitted'), $this->membership('staff'))
-        );
+        $service = $this->serviceWithoutPermissions();
+        $this->assertFalse($service->canValidate($this->user(99), $this->store(), $this->report('submitted', 99), $this->membership()));
     }
 
     public function testCannotValidateDraftReport(): void
     {
-        $this->assertFalse(
-            $this->service->canValidate($this->user(), $this->store(), $this->report('draft'), $this->membership('manager'))
-        );
+        $service = $this->serviceGranting(['daily_reports.approve'], storeId: 1);
+        $this->assertFalse($service->canValidate($this->user(10), $this->store(), $this->report('draft'), $this->membership()));
     }
 
     // -------------------------------------------------------------------------
     // canSendMail
     // -------------------------------------------------------------------------
 
-    public function testManagerCanSendMailForValidatedReport(): void
+    public function testPermissionHolderCanSendMailForValidatedReport(): void
     {
-        $this->assertTrue(
-            $this->service->canSendMail($this->user(), $this->store(), $this->report('validated'), $this->membership('manager'))
-        );
+        $service = $this->serviceGranting(['daily_reports.approve'], storeId: 1);
+        $this->assertTrue($service->canSendMail($this->user(10), $this->store(), $this->report('validated'), $this->membership()));
     }
 
-    public function testStaffCannotSendMail(): void
+    public function testNonPermissionHolderCannotSendMail(): void
     {
-        $this->assertFalse(
-            $this->service->canSendMail($this->user(), $this->store(), $this->report('validated'), $this->membership('staff'))
-        );
+        $service = $this->serviceWithoutPermissions();
+        $this->assertFalse($service->canSendMail($this->user(99), $this->store(), $this->report('validated', 99), $this->membership()));
     }
 
     public function testCannotSendMailForNonValidatedReport(): void
     {
-        $this->assertFalse(
-            $this->service->canSendMail($this->user(), $this->store(), $this->report('submitted'), $this->membership('manager'))
-        );
+        $service = $this->serviceGranting(['daily_reports.approve'], storeId: 1);
+        $this->assertFalse($service->canSendMail($this->user(10), $this->store(), $this->report('submitted'), $this->membership()));
     }
 
     // -------------------------------------------------------------------------
     // canDelete
     // -------------------------------------------------------------------------
 
-    public function testManagerCanDeleteReport(): void
+    public function testPermissionHolderCanDeleteReport(): void
     {
-        $this->assertTrue(
-            $this->service->canDelete($this->user(), $this->store(), $this->report(), $this->membership('manager'))
-        );
+        $service = $this->serviceGranting(['daily_reports.delete'], storeId: 1);
+        $this->assertTrue($service->canDelete($this->user(10), $this->store(), $this->report(), $this->membership()));
     }
 
-    public function testStaffCannotDeleteReport(): void
+    public function testAuthorCannotDeleteOwnReportWithoutPermission(): void
     {
-        $this->assertFalse(
-            $this->service->canDelete($this->user(), $this->store(), $this->report(), $this->membership('staff'))
-        );
+        $service = $this->serviceWithoutPermissions();
+        $this->assertFalse($service->canDelete($this->user(99), $this->store(), $this->report(status: 'draft', authorId: 99), $this->membership()));
     }
 
     public function testCannotDeleteAlreadyDeletedReport(): void
     {
-        $report = array_merge($this->report(), ['deleted_at' => '2025-01-01 00:00:00']);
-        $this->assertFalse(
-            $this->service->canDelete($this->user(true), $this->store(), $report, null)
-        );
+        $service = $this->serviceGranting(['daily_reports.delete'], storeId: 1);
+        $report  = array_merge($this->report(), ['deleted_at' => '2025-01-01 00:00:00']);
+        $this->assertFalse($service->canDelete($this->user(10), $this->store(), $report, null));
+    }
+
+    // -------------------------------------------------------------------------
+    // canViewList
+    // -------------------------------------------------------------------------
+
+    public function testPermissionHolderCanViewListEvenWhenDisabled(): void
+    {
+        $service = $this->serviceGranting(['daily_reports.view'], storeId: 1);
+        $this->assertTrue($service->canViewList($this->user(10), $this->store(['enabled' => false]), null));
+    }
+
+    public function testMemberCanViewListAsSelfServiceWhenEnabled(): void
+    {
+        $service = $this->serviceWithoutPermissions();
+        $this->assertTrue($service->canViewList($this->user(), $this->store(['enabled' => true]), $this->membership()));
+    }
+
+    public function testMemberCannotViewListWhenDisabled(): void
+    {
+        $service = $this->serviceWithoutPermissions();
+        $this->assertFalse($service->canViewList($this->user(), $this->store(['enabled' => false]), $this->membership()));
+    }
+
+    public function testNonMemberCannotViewList(): void
+    {
+        $service = $this->serviceWithoutPermissions();
+        $this->assertFalse($service->canViewList($this->user(), $this->store(), null));
     }
 
     // -------------------------------------------------------------------------
     // canViewReport
     // -------------------------------------------------------------------------
 
-    public function testStaffCanViewOwnReport(): void
+    public function testAuthorCanViewOwnReportAsSelfService(): void
     {
-        $this->assertTrue(
-            $this->service->canViewReport($this->user(false, 10), $this->store(), $this->report('draft', 10), $this->membership('staff'))
-        );
+        $service = $this->serviceWithoutPermissions();
+        $this->assertTrue($service->canViewReport($this->user(10), $this->store(), $this->report('draft', 10), $this->membership()));
     }
 
-    public function testStaffCannotViewOthersReport(): void
+    public function testNonAuthorCannotViewOthersReportWithoutPermission(): void
     {
-        $this->assertFalse(
-            $this->service->canViewReport($this->user(false, 20), $this->store(), $this->report('draft', 10), $this->membership('staff'))
-        );
+        $service = $this->serviceWithoutPermissions();
+        $this->assertFalse($service->canViewReport($this->user(20), $this->store(), $this->report('draft', 10), $this->membership()));
     }
 
-    public function testManagerCanViewAnyReport(): void
+    public function testPermissionHolderCanViewAnyReport(): void
     {
-        $this->assertTrue(
-            $this->service->canViewReport($this->user(false, 99), $this->store(), $this->report('draft', 10), $this->membership('manager'))
-        );
+        $service = $this->serviceGranting(['daily_reports.view'], storeId: 1);
+        $this->assertTrue($service->canViewReport($this->user(10), $this->store(), $this->report('draft', 99), $this->membership()));
+    }
+
+    public function testNonMemberCannotViewReport(): void
+    {
+        $service = $this->serviceWithoutPermissions();
+        $this->assertFalse($service->canViewReport($this->user(20), $this->store(), $this->report('draft', 10), null));
+    }
+
+    // -------------------------------------------------------------------------
+    // canManageSettings
+    // -------------------------------------------------------------------------
+
+    public function testPermissionHolderCanManageSettings(): void
+    {
+        $service = $this->serviceGranting(['daily_reports.update'], storeId: 1);
+        $this->assertTrue($service->canManageSettings($this->user(10), $this->store()));
+    }
+
+    public function testNonPermissionHolderCannotManageSettings(): void
+    {
+        $service = $this->serviceWithoutPermissions();
+        $this->assertFalse($service->canManageSettings($this->user(99), $this->store()));
     }
 }

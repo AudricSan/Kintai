@@ -477,6 +477,15 @@ final class StoreStatsService implements StoreStatsServiceInterface
         ));
         usort($reports, fn($a, $b) => strcmp($a['report_date'], $b['report_date']));
 
+        // Rapports en mode "cumulatif (saisie)" : sales_total/labor_cost/... contiennent
+        // déjà le cumul depuis le début de la période plutôt qu'une valeur du jour —
+        // les ramener à des deltas journaliers avant tout calcul agrégé (voir
+        // DailyReportDataNormalizer), sans quoi sommer sur la plage compterait
+        // chaque jour plusieurs fois.
+        $store = $this->stores->findById($storeId);
+        $cumulativeMode = $store !== null ? DailyReportDataNormalizer::cumulativeModeOf($store) : 'per_day';
+        $reports = DailyReportDataNormalizer::toDailyDeltas($reports, $cumulativeMode);
+
         $allShifts     = array_values(array_filter(
             $this->shifts->findByStore($storeId),
             fn($s) => empty($s['deleted_at']) && $s['shift_date'] >= $from && $s['shift_date'] <= $to

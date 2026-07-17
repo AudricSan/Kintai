@@ -29,6 +29,7 @@ final class AdminHiringReportControllerTest extends TestCase
     protected function setUp(): void
     {
         $viewDir = sys_get_temp_dir() . '/kintai-hiring-report-views';
+        $this->ensureViewFile($viewDir, 'reports-hiring');
         $this->ensureViewFile($viewDir, 'reports-hiring-show');
         $this->ensureViewFile($viewDir, 'reports-hiring-form');
         $this->ensureViewFile(sys_get_temp_dir(), 'layout.app');
@@ -60,6 +61,64 @@ final class AdminHiringReportControllerTest extends TestCase
         $_POST = [];
         $_SERVER = [];
         Log::reset();
+    }
+
+    public function testAllHiringReportsListsAcrossStoresForAdmin(): void
+    {
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+        $req->setAttribute('managed_store_ids', null);
+
+        $this->stores->method('findAll')->willReturn([
+            ['id' => 1, 'name' => 'Store A'],
+            ['id' => 2, 'name' => 'Store B'],
+        ]);
+        $this->hiringReports->expects($this->once())->method('findAll')
+            ->with([], [])
+            ->willReturn([
+                ['id' => 10, 'store_id' => 1, 'employee_name' => 'Alice'],
+                ['id' => 11, 'store_id' => 2, 'employee_name' => 'Bob'],
+            ]);
+
+        $response = $this->controller->allHiringReports($req);
+
+        $this->assertSame(200, $response->status());
+    }
+
+    public function testAllHiringReportsAppliesStoreYearMonthFilters(): void
+    {
+        $_GET = ['store_id' => '2', 'year' => '2026', 'month' => '08'];
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+        $req->setAttribute('managed_store_ids', null);
+
+        $this->stores->method('findAll')->willReturn([
+            ['id' => 1, 'name' => 'Store A'],
+            ['id' => 2, 'name' => 'Store B'],
+        ]);
+        $this->hiringReports->expects($this->once())->method('findAll')
+            ->with([2], ['store_id' => 2, 'year' => '2026', 'month' => '08'])
+            ->willReturn([]);
+
+        $response = $this->controller->allHiringReports($req);
+
+        $this->assertSame(200, $response->status());
+    }
+
+    public function testAllHiringReportsScopesNonAdminToManagedStores(): void
+    {
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1]);
+        $req->setAttribute('managed_store_ids', [3]);
+
+        $this->stores->method('findById')->with(3)->willReturn(['id' => 3, 'name' => 'Store C']);
+        $this->hiringReports->expects($this->once())->method('findAll')
+            ->with([3], [])
+            ->willReturn([]);
+
+        $response = $this->controller->allHiringReports($req);
+
+        $this->assertSame(200, $response->status());
     }
 
     public function testShowHiringReportLogsConsultation(): void

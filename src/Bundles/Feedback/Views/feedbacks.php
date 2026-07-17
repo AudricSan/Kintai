@@ -95,7 +95,22 @@ echo FilterBar::make()
         }
         return '<span class="fb-stars" title="' . (int)$r . '/5">' . $stars . '</span>';
     })
-    ->column(__('feedback_message'), fn($fb) => nl2br(htmlspecialchars($fb['message'] ?? '')))
+    ->column(__('feedback_message'), function($fb) {
+        $html = nl2br(htmlspecialchars($fb['message'] ?? ''));
+        $context = array_filter([
+            $fb['page_path'] ?? null,
+            isset($fb['app_version']) ? 'v' . $fb['app_version'] : null,
+            match ($fb['device_type'] ?? null) {
+                'mobile'  => __('feedback_device_mobile'),
+                'desktop' => __('feedback_device_desktop'),
+                default   => null,
+            },
+        ]);
+        if ($context !== []) {
+            $html .= '<div class="text-hint mt-xs">' . htmlspecialchars(implode(' · ', $context)) . '</div>';
+        }
+        return $html;
+    })
     ->column('', function($fb) use ($BASE_URL) {
         $id = (int) ($fb['id'] ?? 0);
         return '<form method="POST" action="' . htmlspecialchars($BASE_URL . '/admin/feedbacks/' . $id . '/delete') . '"'

@@ -22,6 +22,20 @@ final class NotificationControllerTest extends TestCase
         $this->controller    = new NotificationController($this->notifications);
     }
 
+    private function makeRequest(int $authUserId, array $routeParams = [], array $query = []): Request
+    {
+        $_GET = $query;
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => $authUserId]);
+        $req->setRouteParams($routeParams);
+        return $req;
+    }
+
+    protected function tearDown(): void
+    {
+        $_GET = [];
+    }
+
     /**
      * Régression : DELETE /api/v1/notifications/{id} appelait markRead() au lieu de
      * réellement supprimer la notification.
@@ -32,10 +46,7 @@ final class NotificationControllerTest extends TestCase
         $this->notifications->expects($this->once())->method('delete')->with(7);
         $this->notifications->expects($this->never())->method('markRead');
 
-        $req = new Request();
-        $req->setRouteParams(['id' => '7']);
-
-        $response = $this->controller->destroy($req);
+        $response = $this->controller->destroy($this->makeRequest(1, ['id' => '7']));
 
         $this->assertSame(204, $response->status());
     }
@@ -44,11 +55,8 @@ final class NotificationControllerTest extends TestCase
     {
         $this->notifications->method('findById')->with(99)->willReturn(null);
 
-        $req = new Request();
-        $req->setRouteParams(['id' => '99']);
-
         $this->expectException(NotFoundException::class);
-        $this->controller->destroy($req);
+        $this->controller->destroy($this->makeRequest(1, ['id' => '99']));
     }
 
     public function testMarkReadStillMarksReadRatherThanDeleting(): void
@@ -57,11 +65,48 @@ final class NotificationControllerTest extends TestCase
         $this->notifications->expects($this->once())->method('markRead')->with(7, 1);
         $this->notifications->expects($this->never())->method('delete');
 
-        $req = new Request();
-        $req->setAttribute('auth_user', ['id' => 1]);
-        $req->setRouteParams(['id' => '7']);
+        $response = $this->controller->markRead($this->makeRequest(1, ['id' => '7']));
 
-        $response = $this->controller->markRead($req);
+        $this->assertSame(204, $response->status());
+    }
+
+    // -------------------------------------------------------------------------
+    // Ressource strictement personnelle (RBAC/API) : la notification d'un autre
+    // utilisateur est traitée comme inexistante.
+    // -------------------------------------------------------------------------
+
+    public function testShowRejectsAnotherUsersNotificationAsNotFound(): void
+    {
+        $this->notifications->method('findById')->with(7)->willReturn(['id' => 7, 'user_id' => 2]);
+
+        $this->expectException(NotFoundException::class);
+        $this->controller->show($this->makeRequest(1, ['id' => '7']));
+    }
+
+    public function testDestroyRejectsAnotherUsersNotification(): void
+    {
+        $this->notifications->method('findById')->with(7)->willReturn(['id' => 7, 'user_id' => 2]);
+        $this->notifications->expects($this->never())->method('delete');
+
+        $this->expectException(NotFoundException::class);
+        $this->controller->destroy($this->makeRequest(1, ['id' => '7']));
+    }
+
+    public function testIndexIgnoresUserIdQueryAndListsTokenUsersNotifications(): void
+    {
+        // L'ancien `?user_id=` permettait de lister les notifications d'autrui
+        $this->notifications->expects($this->once())->method('findByUser')->with(1, 1000)->willReturn([]);
+
+        $response = $this->controller->index($this->makeRequest(1, [], ['user_id' => '2']));
+
+        $this->assertSame(200, $response->status());
+    }
+
+    public function testMarkAllReadTargetsTokenUserOnly(): void
+    {
+        $this->notifications->expects($this->once())->method('markAllRead')->with(1);
+
+        $response = $this->controller->markAllRead($this->makeRequest(1, [], ['user_id' => '2']));
 
         $this->assertSame(204, $response->status());
     }

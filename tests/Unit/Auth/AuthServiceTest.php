@@ -10,12 +10,16 @@ use kintai\Core\Auth\AuthService;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
+use kintai\Core\Repositories\RoleRepositoryInterface;
+use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 
 final class AuthServiceTest extends TestCase
 {
     private UserRepositoryInterface&MockObject $users;
     private StoreUserRepositoryInterface&MockObject $storeUsers;
     private StoreRepositoryInterface&MockObject $stores;
+    private RoleRepositoryInterface&MockObject $roles;
+    private RoleAssignmentRepositoryInterface&MockObject $roleAssignments;
     private AuthService $auth;
 
     protected function setUp(): void
@@ -25,11 +29,36 @@ final class AuthServiceTest extends TestCase
         }
         unset($_SESSION['auth_user_id']);
 
-        $this->users      = $this->createMock(UserRepositoryInterface::class);
-        $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
-        $this->stores     = $this->createMock(StoreRepositoryInterface::class);
+        $this->users           = $this->createMock(UserRepositoryInterface::class);
+        $this->storeUsers      = $this->createMock(StoreUserRepositoryInterface::class);
+        $this->stores          = $this->createMock(StoreRepositoryInterface::class);
+        $this->roles           = $this->createMock(RoleRepositoryInterface::class);
+        $this->roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
 
-        $this->auth = new AuthService($this->users, $this->storeUsers, $this->stores);
+        $this->auth = new AuthService($this->users, $this->storeUsers, $this->stores, $this->roles, $this->roleAssignments);
+    }
+
+    /** Simule une affectation Owner (portée globale, rôle système) pour cet utilisateur. */
+    private function grantOwnerRole(int $userId): void
+    {
+        $this->roleAssignments->method('findByUser')->willReturnCallback(
+            fn(int $uid) => $uid === $userId ? [
+                ['id' => 1, 'user_id' => $userId, 'role_id' => 1, 'scope_type' => 'global', 'scope_id' => null],
+            ] : []
+        );
+        $this->roles->method('findById')->with(1)->willReturn(['id' => 1, 'slug' => 'owner', 'is_system' => 1]);
+    }
+
+    /** Simule une affectation store-scope à un rôle non-système accordant $permissions. */
+    private function grantStoreRole(int $userId, int $storeId, int $roleId, array $permissions): void
+    {
+        $this->roleAssignments->method('findByUser')->willReturnCallback(
+            fn(int $uid) => $uid === $userId ? [
+                ['id' => 2, 'user_id' => $userId, 'role_id' => $roleId, 'scope_type' => 'store', 'scope_id' => $storeId],
+            ] : []
+        );
+        $this->roles->method('findById')->with($roleId)->willReturn(['id' => $roleId, 'slug' => 'manager', 'is_system' => 0]);
+        $this->roles->method('getPermissions')->with($roleId)->willReturn($permissions);
     }
 
     protected function tearDown(): void
@@ -221,10 +250,11 @@ final class AuthServiceTest extends TestCase
         $this->assertFalse($this->auth->isAdmin());
     }
 
-    public function testIsAdminReturnsTrueForAdminUser(): void
+    public function testIsAdminReturnsTrueForOwnerRoleAssignment(): void
     {
         $_SESSION['auth_user_id'] = 10;
-        $this->users->method('findById')->willReturn($this->activeUser(10, true));
+        $this->users->method('findById')->willReturn($this->activeUser(10, false));
+        $this->grantOwnerRole(10);
         $this->assertTrue($this->auth->isAdmin());
     }
 
@@ -232,6 +262,18 @@ final class AuthServiceTest extends TestCase
     {
         $_SESSION['auth_user_id'] = 10;
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
+        $this->roleAssignments->method('findByUser')->willReturn([]);
+        $this->assertFalse($this->auth->isAdmin());
+    }
+
+    public function testIsAdminIgnoresLegacyIsAdminColumnWithoutRoleAssignment(): void
+    {
+        // La colonne users.is_admin brute n'est plus la source de vérité —
+        // seule une affectation role_assignments de portée globale à un rôle
+        // système compte désormais.
+        $_SESSION['auth_user_id'] = 10;
+        $this->users->method('findById')->willReturn($this->activeUser(10, true));
+        $this->roleAssignments->method('findByUser')->willReturn([]);
         $this->assertFalse($this->auth->isAdmin());
     }
 
@@ -249,32 +291,26 @@ final class AuthServiceTest extends TestCase
     {
         // Admin global → retourne [] (pas de restriction)
         $_SESSION['auth_user_id'] = 10;
-        $this->users->method('findById')->willReturn($this->activeUser(10, true));
+        $this->users->method('findById')->willReturn($this->activeUser(10, false));
+        $this->grantOwnerRole(10);
         $this->assertSame([], $this->auth->managedStoreIds());
     }
 
-    public function testManagedStoreIdsForManagerRole(): void
+    public function testManagedStoreIdsForRoleGrantingPermissions(): void
     {
         $_SESSION['auth_user_id'] = 10;
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
-        $this->storeUsers->method('findByUser')->with(10)->willReturn([
-            ['store_id' => 1, 'role' => 'manager'],
-            ['store_id' => 2, 'role' => 'staff'],
-            ['store_id' => 3, 'role' => 'admin'],
-        ]);
+        $this->grantStoreRole(10, 1, 2, ['employees.view']);
 
         $ids = $this->auth->managedStoreIds();
-        sort($ids);
-        $this->assertSame([1, 3], $ids); // seulement manager et admin
+        $this->assertSame([1], $ids);
     }
 
-    public function testManagedStoreIdsEmptyForStaffOnly(): void
+    public function testManagedStoreIdsEmptyForRoleWithoutPermissions(): void
     {
         $_SESSION['auth_user_id'] = 10;
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
-        $this->storeUsers->method('findByUser')->willReturn([
-            ['store_id' => 1, 'role' => 'staff'],
-        ]);
+        $this->grantStoreRole(10, 1, 3, []); // rôle sans aucune permission (ex. Employé)
 
         $this->assertSame([], $this->auth->managedStoreIds());
     }
@@ -286,27 +322,24 @@ final class AuthServiceTest extends TestCase
     public function testIsManagerTrueForGlobalAdmin(): void
     {
         $_SESSION['auth_user_id'] = 10;
-        $this->users->method('findById')->willReturn($this->activeUser(10, true));
+        $this->users->method('findById')->willReturn($this->activeUser(10, false));
+        $this->grantOwnerRole(10);
         $this->assertTrue($this->auth->isManager());
     }
 
-    public function testIsManagerTrueForStoreManager(): void
+    public function testIsManagerTrueForRoleGrantingPermissions(): void
     {
         $_SESSION['auth_user_id'] = 10;
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
-        $this->storeUsers->method('findByUser')->willReturn([
-            ['store_id' => 1, 'role' => 'manager'],
-        ]);
+        $this->grantStoreRole(10, 1, 2, ['employees.view']);
         $this->assertTrue($this->auth->isManager());
     }
 
-    public function testIsManagerFalseForStaffOnly(): void
+    public function testIsManagerFalseForRoleWithoutPermissions(): void
     {
         $_SESSION['auth_user_id'] = 10;
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
-        $this->storeUsers->method('findByUser')->willReturn([
-            ['store_id' => 1, 'role' => 'staff'],
-        ]);
+        $this->grantStoreRole(10, 1, 3, []);
         $this->assertFalse($this->auth->isManager());
     }
 }

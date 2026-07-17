@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use kintai\Core\Middleware\AuthMiddleware;
 use kintai\Core\Middleware\AdminMiddleware;
+use kintai\Core\Middleware\PermissionMiddleware;
 use kintai\Bundles\StorePhoto\Controllers\Web\StorePhotoController;
 
 /** @var kintai\Core\Router $router */
@@ -22,4 +23,4 @@ $router->group('/admin', function ($r) {
     $r->post('/photos/{id}/upload',            [StorePhotoController::class, 'uploadFile'],   name: 'admin.photos.upload_file');
     $r->get('/photos/{store_id}/{id}',         [StorePhotoController::class, 'show'],         name: 'admin.photos.show');
     $r->post('/photos/{store_id}/{id}/delete', [StorePhotoController::class, 'delete'],       name: 'admin.photos.delete');
-}, middleware: [AuthMiddleware::class, AdminMiddleware::class]);
+}, middleware: [AuthMiddleware::class, AdminMiddleware::class, PermissionMiddleware::class]);

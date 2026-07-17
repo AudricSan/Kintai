@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\Bundles\DailyReport;
 
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Bundle;
 use kintai\Core\Repositories\DailyReportRepositoryInterface;
 use kintai\Core\Repositories\DatabaseDailyReportRepository;
@@ -53,7 +54,9 @@ final class DailyReportBundle extends Bundle
             fn() => new DatabaseDailyReportRepository()
         );
 
-        $container->singleton(DailyReportPermissionService::class, fn() => new DailyReportPermissionService());
+        $container->singleton(DailyReportPermissionService::class, fn(Container $c) => new DailyReportPermissionService(
+            $c->make(PermissionService::class),
+        ));
         
         $container->singleton(DailyReportPdfService::class, fn(Container $c) => new DailyReportPdfService(
             $c->make(ViewRenderer::class),

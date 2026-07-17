@@ -5,6 +5,8 @@ declare(strict_types=1);
 use kintai\Core\Middleware\AuthMiddleware;
 use kintai\Core\Middleware\AdminMiddleware;
 use kintai\Core\Middleware\ApiAuthMiddleware;
+use kintai\Core\Middleware\ApiPermissionMiddleware;
+use kintai\Core\Middleware\PermissionMiddleware;
 use kintai\Bundles\ShiftSwap\Controllers\Web\EmployeeSwapController;
 use kintai\Bundles\ShiftSwap\Controllers\Web\AdminSwapController;
 use kintai\Bundles\ShiftSwap\Controllers\Api\ShiftSwapRequestController as ApiShiftSwapRequestController;
@@ -36,7 +38,7 @@ $router->group('/admin', function ($r) {
     $r->post('/swap-requests/{id}/approve', [AdminSwapController::class, 'approveSwap'],  name: 'admin.swap.approve');
     $r->post('/swap-requests/{id}/refuse',  [AdminSwapController::class, 'refuseSwap'],   name: 'admin.swap.refuse');
     $r->post('/swap-requests/{id}/delete',  [AdminSwapController::class, 'deleteSwap'],   name: 'admin.swap.delete');
-}, middleware: [AuthMiddleware::class, AdminMiddleware::class]);
+}, middleware: [AuthMiddleware::class, AdminMiddleware::class, PermissionMiddleware::class]);
 
 // =============================================================================
 // ShiftSwap — Routes API
@@ -48,4 +50,4 @@ $router->group('/api/v1', function ($r) {
     $r->get('/shift-swap-requests/{id}',    [ApiShiftSwapRequestController::class, 'show'],    name: 'api.v1.swap.show');
     $r->put('/shift-swap-requests/{id}',    [ApiShiftSwapRequestController::class, 'update'],  name: 'api.v1.swap.update');
     $r->delete('/shift-swap-requests/{id}', [ApiShiftSwapRequestController::class, 'destroy'], name: 'api.v1.swap.destroy');
-}, middleware: [ApiAuthMiddleware::class]);
+}, middleware: [ApiAuthMiddleware::class, ApiPermissionMiddleware::class]);

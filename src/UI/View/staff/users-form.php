@@ -14,13 +14,14 @@ use kintai\UI\Components\Flash;
  * @var array  $user_rates
  * @var array  $stores_map
  */
-$user_shift_types ??= [];
-$user_rates       ??= [];
-$stores_map       ??= [];
-$user_memberships ??= [];
-$available_stores ??= [];
-$all_stores       ??= [];
-$roles = ['staff' => __('staff'), 'manager' => 'Manager', 'admin' => __('admin')];
+$user_shift_types      ??= [];
+$user_rates            ??= [];
+$stores_map            ??= [];
+$user_memberships      ??= [];
+$available_stores      ??= [];
+$all_stores            ??= [];
+$assignable_roles      ??= [];
+$default_store_role_id ??= 0;
 $action = $mode === 'edit'
     ? $BASE_URL . '/admin/users/' . (int) $user['id'] . '/edit'
     : route_url('admin.users.create');
@@ -31,6 +32,11 @@ echo Flash::fromQuery('success', [
     'rate_deleted'   => __('user_rate_deleted'),
     'password_reset' => __('password_reset_success'),
 ])->render();
+echo Flash::fromQuery('error', [
+    'email_taken'        => __('email_taken'),
+    'name_required'      => __('name_required'),
+    'furigana_required'  => __('furigana_required'),
+])->render();
 ?>
 <div class="page-header">
     <h2 class="page-header__title"><?= $mode === 'edit' ? __('edit_user') : __('new_user') ?></h2>
@@ -39,17 +45,14 @@ echo Flash::fromQuery('success', [
     </div>
 </div>
 
-<?php
-ob_start();
-echo '<form method="POST" action="' . htmlspecialchars($action) . '">';
-echo csrf_field();
-include __DIR__ . '/../_partials/_form-user.php';
-echo '<div class="form-actions">';
-echo Button::make($mode === 'edit' ? __('save') : __('new_user'))->primary()->submit()->render();
-echo ' <a href="' . route_url('admin.users') . '" class="btn btn--ghost">' . __('cancel') . '</a>';
-echo '</div></form>';
-echo Card::make()->body(ob_get_clean())->render();
-?>
+<form method="POST" action="<?= htmlspecialchars($action) ?>" class="form-stack">
+    <?= csrf_field() ?>
+    <?php $as_cards = true; include __DIR__ . '/../_partials/_form-user.php'; ?>
+    <div class="form-actions">
+        <?= Button::make($mode === 'edit' ? __('save') : __('new_user'))->primary()->submit()->render() ?>
+        <a href="<?= route_url('admin.users') ?>" class="btn btn--ghost"><?= __('cancel') ?></a>
+    </div>
+</form>
 
 <?php if ($mode === 'edit'): ?>
 <div class="card card--mt">
@@ -64,7 +67,7 @@ echo Card::make()->body(ob_get_clean())->render();
                     <?php foreach ($user_memberships as $m): ?>
                         <tr>
                             <td data-label="<?= htmlspecialchars(__('store')) ?>"><?= htmlspecialchars($m['store_name'] ?? '') ?></td>
-                            <td data-label="<?= htmlspecialchars(__('role')) ?>"><?= Badge::make(htmlspecialchars($roles[$m['role'] ?? ''] ?? ($m['role'] ?? '—')))->render() ?></td>
+                            <td data-label="<?= htmlspecialchars(__('role')) ?>"><?= Badge::make(htmlspecialchars($m['role_name'] ?? ($m['role'] ?? '—')))->variant(!empty($m['role_is_managing']) ? 'warning' : 'active')->render() ?></td>
                             <td>
                                 <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= (int)$m['store_id'] ?>/members/<?= (int)$m['id'] ?>/delete" class="form-inline" onsubmit="return confirm('<?= __('confirm_remove_member') ?>')">
                                     <?= csrf_field() ?>
@@ -95,9 +98,9 @@ echo Card::make()->body(ob_get_clean())->render();
             </div>
             <div class="form-group form-group--160">
                 <label class="form-label"><?= __('role') ?></label>
-                <select name="role" class="form-control">
-                    <?php foreach ($roles as $val => $label): ?>
-                        <option value="<?= $val ?>" <?= $val === 'staff' ? 'selected' : '' ?>><?= $label ?></option>
+                <select name="role_id" class="form-control">
+                    <?php foreach ($assignable_roles as $r): ?>
+                        <option value="<?= (int) $r['id'] ?>" <?= (int) $r['id'] === (int) $default_store_role_id ? 'selected' : '' ?>><?= htmlspecialchars($r['name'] ?? '') ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -171,23 +174,7 @@ echo Card::make()->body(ob_get_clean())->render();
                                 <?= csrf_field() ?>
                                 <?= Button::make('✕')->ghost()->sm()->attrs(['onclick' => "return confirm('" . __('confirm_delete_custom_rate') . "')", 'title' => __('reset_to_default_rate')])->submit()->render() ?>
                             </form>
-<div class="card card--mt">
-    <div class="card-header"><span><?= __('reports') ?></span></div>
-    <div class="card-body">
-        <?php if (!empty($user_memberships)): ?>
-            <?php foreach ($user_memberships as $m): ?>
-                <?php $sid = (int) $m['store_id']; ?>
-                <div class="btn-group" style="margin-bottom: 0.5rem;">
-                    <a href="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/reports/resignation/create?user_id=<?= (int)$user['id'] ?>" class="btn btn--danger btn--sm"><?= __('resign') ?> — <?= htmlspecialchars($m['store_name'] ?? '') ?></a>
-                    <a href="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/reports/salary/create?user_id=<?= (int)$user['id'] ?>" class="btn btn--ghost btn--sm"><?= __('salary_report') ?> — <?= htmlspecialchars($m['store_name'] ?? '') ?></a>
-                </div>
-            <?php endforeach; ?>
-        <?php else: ?>
-            <p class="text-dim"><?= __('no_store_assigned') ?></p>
-        <?php endif; ?>
-    </div>
-</div>
-<?php endif; ?>
+                            <?php endif; ?>
                         </div>
                     </td>
                 </tr>
@@ -197,4 +184,23 @@ echo Card::make()->body(ob_get_clean())->render();
     </div>
 </div>
 <?php endif; ?>
-<?php endif; ?>
+
+<div class="card card--mt">
+    <div class="card-header"><span><?= __('reports') ?></span></div>
+    <div class="card-body">
+        <?php if (!empty($user_memberships)): ?>
+            <?php foreach ($user_memberships as $m): ?>
+                <?php $sid = (int) $m['store_id']; ?>
+                <div class="btn-group mb-sm">
+                    <a href="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/reports/resignation/create?user_id=<?= (int)$user['id'] ?>" class="btn btn--danger btn--sm"><?= __('resign') ?> — <?= htmlspecialchars($m['store_name'] ?? '') ?></a>
+                    <a href="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/reports/salary/create?user_id=<?= (int)$user['id'] ?>" class="btn btn--ghost btn--sm"><?= __('salary_report') ?> — <?= htmlspecialchars($m['store_name'] ?? '') ?></a>
+                </div>
+            <?php endforeach; ?>
+        <?php else: ?>
+            <p class="text-dim"><?= __('no_store_assigned') ?></p>
+        <?php endif; ?>
+    </div>
+</div>
+<?php endif; // mode === 'edit' (ligne 57) ?>
+<script src="<?= $BASE_URL ?>/assets/js/modules/user-form-live-check.js"></script>
+<script src="<?= $BASE_URL ?>/assets/js/modules/furigana-suggest.js"></script>
