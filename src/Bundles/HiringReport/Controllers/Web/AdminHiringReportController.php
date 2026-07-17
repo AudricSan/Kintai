@@ -61,6 +61,39 @@ final class AdminHiringReportController
         return $this->listReports($request, '採用報告書');
     }
 
+    /**
+     * Liste "tous les magasins" : facile d'accès pour repérer les nouveaux
+     * employés sans devoir ouvrir chaque store un par un (voir la sidebar).
+     */
+    public function allHiringReports(Request $request): Response
+    {
+        [$allStores, $queryStoreIds, $filterStoreId] = $this->storesAndFilter($request);
+
+        $filters = [];
+        if ($filterStoreId > 0) {
+            $filters['store_id'] = $filterStoreId;
+        }
+        $filterYear = $request->query('year', '');
+        if ($filterYear !== '') {
+            $filters['year'] = $filterYear;
+        }
+        $filterMonth = $request->query('month', '');
+        if ($filterMonth !== '') {
+            $filters['month'] = $filterMonth;
+        }
+
+        $reports = $this->hiringReports->findAll($queryStoreIds, $filters);
+
+        return Response::html($this->view->render('hiring-report::reports-hiring', [
+            'title'        => __('hiring_reports'),
+            'stores'       => $allStores,
+            'reports'      => $reports,
+            'filter_store_id' => $filterStoreId,
+            'filter_year'  => $filterYear,
+            'filter_month' => $filterMonth,
+        ], 'layout.app'));
+    }
+
     public function createHiringReport(Request $request): Response
     {
         $storeId = (int) $request->param('id');

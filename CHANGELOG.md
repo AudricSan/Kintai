@@ -6,6 +6,12 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Added
+- A global, cross-store "Hiring Reports" list (`/admin/reports/hiring`, `admin.reports.hiring`), filterable by store/year/month and sorted newest-first — an easy-access place to see recently created staff without opening each store's user list or the full user edit page. Clicking a row opens the existing read-only hiring report summary (name, contact, guarantor, employment info), not the user edit form. Added a sidebar entry (Reports section) so the existing per-store hiring reports feature — auto-generated whenever a new employee is created with a store assignment, but previously unreachable from any menu — is now discoverable.
+
+### Fixed
+- The per-store hiring reports list referenced `$authUser` (camelCase) for its admin-only delete button, but the globally shared variable is `$auth_user` (snake_case, set by `AuthMiddleware`) — the variable was always undefined, so the delete button never rendered for anyone. Fixed in both the per-store and new global list views.
+
 ## [0.7.8] - 2026-07-17
 
 ### Fixed

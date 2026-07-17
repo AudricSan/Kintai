@@ -115,6 +115,7 @@ return [
     'admin.feedbacks.delete'          => 'feedbacks.delete',
 
     // --- Rapports d'embauche (bundle HiringReport) → documents.* ----------------
+    'admin.reports.hiring'                 => 'documents.view',
     'admin.stores.hiring_reports'          => 'documents.view',
     'admin.stores.hiring_reports.create'   => 'documents.create',
     'admin.stores.hiring_reports.store'    => 'documents.create',
