@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Fixed
+- The store edit form's "auto pause" fields (`auto_pause_after_minutes`, `auto_pause_minutes`, under "Shift settings") appeared to never save: `updateStore()` correctly persists them to the `store_import_settings` table via `saveImportSettings()`, but the edit form re-read them from `stores.excel_import_settings`, a legacy JSON column nothing writes to anymore — so the form always displayed stale/default values regardless of what was actually saved. `_form-store.php` now reads these fields from `$importSettings` (`StoreRepositoryInterface::getImportSettings()`, already fetched by `AdminStoreController::editStore()` but previously unused), matching the source the real Excel-import path (`AdminShiftImportController`) already relies on. Also removed a duplicate, dead copy of the same buggy lookup in `stores-form.php`.
+
 ## [0.7.6] - 2026-07-16
 
 ### Fixed
