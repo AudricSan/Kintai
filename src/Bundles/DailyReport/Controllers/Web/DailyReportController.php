@@ -631,6 +631,35 @@ final class DailyReportController
     // Téléchargement PDF
     // -------------------------------------------------------------------------
 
+    /**
+     * Aperçu HTML du PDF (route .../pdf) : pas de téléchargement automatique,
+     * la même vue daily-report-pdf.php est rendue directement dans le
+     * navigateur avec une barre d'outils (impression / téléchargement réel /
+     * fermer), comme les autres rapports RH. Le fichier PDF n'est généré
+     * (via mPDF) que si l'utilisateur clique "Télécharger" (downloadPdf()).
+     */
+    public function previewPdf(Request $request): Response
+    {
+        $storeId    = (int) $request->param('id');
+        $reportId   = (int) $request->param('rid');
+        $authUser   = $request->getAttribute('auth_user');
+        $store      = $this->requireStore($storeId);
+        $report     = $this->requireReport($reportId, $storeId);
+        $membership = $this->storeUsers->findMembership($storeId, (int) $authUser['id']);
+
+        $this->assertStoreAccess($request, $storeId);
+
+        if (!$this->permissions->canViewReport($authUser, $store, $report, $membership)) {
+            throw new ForbiddenException('Accès refusé.');
+        }
+
+        $pdfAuthor   = $this->users->findById((int) $report['author_id']) ?? [];
+        $downloadUrl = $this->base() . '/admin/stores/' . $storeId . '/daily-reports/' . $reportId . '/pdf/download';
+        $html        = $this->pdfService->generateHtml($report, $store, $pdfAuthor, $this->translations->getLocale(), $downloadUrl);
+
+        return Response::html($html);
+    }
+
     public function downloadPdf(Request $request): Response
     {
         $storeId    = (int) $request->param('id');

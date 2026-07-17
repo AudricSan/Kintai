@@ -1,10 +1,14 @@
 <?php
 /**
  * Template HTML for mPDF — Employee export (item 3).
- * Rendered standalone (no layout) for PDF generation.
+ * Rendered standalone (no layout) : soit pour la génération PDF serveur,
+ * soit directement comme aperçu navigateur (avec barre d'outils) quand
+ * $downloadUrl est fourni — voir AdminUserController::exportUsersPdf() vs
+ * exportUsersPdfDownload().
  *
- * @var array  $rows          Voir AdminUserController::usersForExport()
- * @var string $generated_at
+ * @var array       $rows          Voir AdminUserController::usersForExport()
+ * @var string      $generated_at
+ * @var string|null $downloadUrl
  */
 ?>
 <!DOCTYPE html>
@@ -12,6 +16,10 @@
 <head>
 <meta charset="UTF-8">
 <style>
+<?php
+echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-brand.css');
+echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-preview.css');
+?>
 body { font-family: sans-serif; font-size: 8pt; color: #333; margin: 0; padding: 0; }
 h1 { text-align: center; font-size: 15pt; margin-bottom: 4pt; }
 .subtitle { text-align: center; font-size: 9pt; color: #666; margin-bottom: 16pt; }
@@ -23,6 +31,9 @@ td { padding: 4pt 5pt; border: 1px solid #ccc; font-size: 7.5pt; vertical-align:
 </style>
 </head>
 <body>
+
+<?php include __DIR__ . '/../_partials/_pdf-preview-toolbar.php'; ?>
+<div class="pdf-preview-page pdf-preview-page--landscape">
 
 <h1><?= __('users') ?></h1>
 <div class="subtitle"><?= count($rows) ?> — <?= htmlspecialchars($generated_at) ?></div>
@@ -66,5 +77,6 @@ td { padding: 4pt 5pt; border: 1px solid #ccc; font-size: 7.5pt; vertical-align:
     <?= __('pdf_generated_by') ?> Kintai — <?= htmlspecialchars($generated_at) ?>
 </div>
 
+</div>
 </body>
 </html>

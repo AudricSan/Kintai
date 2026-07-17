@@ -31,7 +31,7 @@ $isEmployeeScoped = !empty($report['user_id']);
     <div class="page-header__actions">
         <?= Button::make('← ' . __('back'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . $storeId . '/reports/salary')->render() ?>
         <?= Button::make(__('edit'))->primary()->sm()->link($base . '/edit')->render() ?>
-        <?= Button::make(__('sr_pdf'))->ghost()->sm()->link($base . '/pdf')->render() ?>
+        <?= Button::make(__('sr_pdf'))->ghost()->sm()->link($base . '/pdf')->attrs(['target' => '_blank'])->render() ?>
         <form method="POST" action="<?= htmlspecialchars($base . '/delete') ?>" class="form-inline" onsubmit="return confirm('<?= __('sr_confirm_delete') ?>')">
             <?= csrf_field() ?>
             <?= Button::make(__('delete'))->danger()->sm()->submit()->render() ?>

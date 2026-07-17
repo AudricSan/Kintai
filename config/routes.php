@@ -167,6 +167,7 @@ $router->group('/admin', function ($r) {
     // Utilisateurs
     $r->get('/users',                     [AdminUserController::class, 'users'],               name: 'admin.users');
     $r->get('/users/export/pdf',          [AdminUserController::class, 'exportUsersPdf'],      name: 'admin.users.export_pdf');
+    $r->get('/users/export/pdf/download', [AdminUserController::class, 'exportUsersPdfDownload'], name: 'admin.users.export_pdf_download');
     $r->get('/users/export/json',         [AdminUserController::class, 'exportUsersJson'],     name: 'admin.users.export_json');
     $r->get('/users/create',              [AdminUserController::class, 'createUser'],          name: 'admin.users.create');
     $r->post('/users/create',             [AdminUserController::class, 'storeUser'],           name: 'admin.users.store');

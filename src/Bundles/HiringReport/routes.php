@@ -25,4 +25,5 @@ $router->group('/admin', function ($r) {
     $r->post('/stores/{id}/reports/hiring/{rid}/edit',  [AdminHiringReportController::class, 'updateHiringReport'], name: 'admin.stores.hiring_reports.update');
     $r->post('/stores/{id}/reports/hiring/{rid}/delete', [AdminHiringReportController::class, 'deleteHiringReport'], name: 'admin.stores.hiring_reports.delete');
     $r->get('/stores/{id}/reports/hiring/{rid}/pdf',    [AdminHiringReportController::class, 'hiringReportPdf'],    name: 'admin.stores.hiring_reports.pdf');
+    $r->get('/stores/{id}/reports/hiring/{rid}/pdf/download', [AdminHiringReportController::class, 'hiringReportPdfDownload'], name: 'admin.stores.hiring_reports.pdf_download');
 }, middleware: [AuthMiddleware::class, AdminMiddleware::class, PermissionMiddleware::class]);

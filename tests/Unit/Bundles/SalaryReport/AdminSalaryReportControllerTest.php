@@ -123,7 +123,7 @@ final class AdminSalaryReportControllerTest extends TestCase
         $this->assertSame('2026-07', $data[0]['target_month']);
     }
 
-    public function testExportSalaryReportsPdfReturnsPdfResponse(): void
+    public function testExportSalaryReportsPdfReturnsHtmlPreview(): void
     {
         $_SERVER['PHP_SELF'] ??= '/index.php';
 
@@ -134,6 +134,22 @@ final class AdminSalaryReportControllerTest extends TestCase
         $this->salaryReports->method('findAll')->willReturn([]);
 
         $response = $this->controller->exportSalaryReportsPdf($req);
+
+        $this->assertSame(200, $response->status());
+        $this->assertStringNotContainsString('%PDF', $response->body());
+    }
+
+    public function testExportSalaryReportsPdfDownloadReturnsPdfResponse(): void
+    {
+        $_SERVER['PHP_SELF'] ??= '/index.php';
+
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+
+        $this->stores->method('findAll')->willReturn([['id' => 1, 'name' => 'Store A']]);
+        $this->salaryReports->method('findAll')->willReturn([]);
+
+        $response = $this->controller->exportSalaryReportsPdfDownload($req);
 
         $this->assertSame(200, $response->status());
         $this->assertStringStartsWith('%PDF', $response->body());
