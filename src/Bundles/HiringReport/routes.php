@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use kintai\Core\Middleware\AuthMiddleware;
 use kintai\Core\Middleware\AdminMiddleware;
+use kintai\Core\Middleware\PermissionMiddleware;
 use kintai\Bundles\HiringReport\Controllers\Web\AdminHiringReportController;
 
 /** @var kintai\Core\Router $router */
@@ -14,6 +15,8 @@ use kintai\Bundles\HiringReport\Controllers\Web\AdminHiringReportController;
 // =============================================================================
 
 $router->group('/admin', function ($r) {
+    $r->get('/reports/hiring', [AdminHiringReportController::class, 'allHiringReports'], name: 'admin.reports.hiring');
+
     $r->get('/stores/{id}/reports/hiring',              [AdminHiringReportController::class, 'hiringReports'],      name: 'admin.stores.hiring_reports');
     $r->get('/stores/{id}/reports/hiring/create',       [AdminHiringReportController::class, 'createHiringReport'], name: 'admin.stores.hiring_reports.create');
     $r->post('/stores/{id}/reports/hiring/create',      [AdminHiringReportController::class, 'storeHiringReport'],  name: 'admin.stores.hiring_reports.store');
@@ -22,4 +25,5 @@ $router->group('/admin', function ($r) {
     $r->post('/stores/{id}/reports/hiring/{rid}/edit',  [AdminHiringReportController::class, 'updateHiringReport'], name: 'admin.stores.hiring_reports.update');
     $r->post('/stores/{id}/reports/hiring/{rid}/delete', [AdminHiringReportController::class, 'deleteHiringReport'], name: 'admin.stores.hiring_reports.delete');
     $r->get('/stores/{id}/reports/hiring/{rid}/pdf',    [AdminHiringReportController::class, 'hiringReportPdf'],    name: 'admin.stores.hiring_reports.pdf');
-}, middleware: [AuthMiddleware::class, AdminMiddleware::class]);
+    $r->get('/stores/{id}/reports/hiring/{rid}/pdf/download', [AdminHiringReportController::class, 'hiringReportPdfDownload'], name: 'admin.stores.hiring_reports.pdf_download');
+}, middleware: [AuthMiddleware::class, AdminMiddleware::class, PermissionMiddleware::class]);

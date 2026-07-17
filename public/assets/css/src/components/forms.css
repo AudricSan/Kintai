@@ -61,6 +61,14 @@
     color: var(--color-text-muted);
 }
 
+.form-control.is-invalid {
+    border-color: var(--color-danger);
+}
+
+.form-control.is-invalid:focus {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger) 15%, transparent);
+}
+
 select.form-control {
     cursor: pointer;
 }
@@ -162,6 +170,15 @@ select.form-control {
 
 .form-group--date {
     max-width: 220px;
+}
+
+.form-group--full {
+    grid-column: 1 / -1;
+}
+
+.form-group--inline {
+    flex-direction: row;
+    align-items: center;
 }
 
 .input-group {
@@ -412,5 +429,41 @@ select.form-control {
 
 .form-toggle__input:checked+.form-toggle__track::after {
     left: 19px;
+}
+
+/* ── Matrice de permissions (rôles) ────────────────── */
+.permission-group {
+    margin-bottom: var(--space-3);
+}
+
+.permission-group__label {
+    font-size: var(--text-xs-2);
+    font-weight: 600;
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-1);
+    display: block;
+}
+
+.permission-group__options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+}
+
+.permission-option {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-size: var(--text-sm);
+    cursor: pointer;
+}
+
+.role-holders-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
 }
 

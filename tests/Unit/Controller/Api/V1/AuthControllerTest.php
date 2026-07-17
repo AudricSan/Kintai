@@ -7,6 +7,8 @@ namespace kintai\Tests\Unit\Controller\Api\V1;
 use kintai\Core\Auth\AuthService;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\ApiTokenRepositoryInterface;
+use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
+use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
@@ -26,10 +28,12 @@ final class AuthControllerTest extends TestCase
     {
         $storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
         $stores     = $this->createMock(StoreRepositoryInterface::class);
+        $roles           = $this->createMock(RoleRepositoryInterface::class);
+        $roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
         $this->users  = $this->createMock(UserRepositoryInterface::class);
         $this->tokens = $this->createMock(ApiTokenRepositoryInterface::class);
 
-        $this->auth       = new AuthService($this->users, $storeUsers, $stores);
+        $this->auth       = new AuthService($this->users, $storeUsers, $stores, $roles, $roleAssignments);
         $this->controller = new AuthController($this->auth, $this->tokens, $this->users);
     }
 

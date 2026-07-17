@@ -22,6 +22,24 @@ final class DatabaseHiringReportRepository implements HiringReportRepositoryInte
             ->toArray();
     }
 
+    public function findAll(?array $storeIds = null, array $filters = []): array
+    {
+        $q = EloquentHiringReport::orderByDesc('created_at');
+        if ($storeIds !== null && $storeIds !== []) {
+            $q->whereIn('store_id', $storeIds);
+        }
+        if (!empty($filters['year'])) {
+            $q->whereYear('hire_date', (int) $filters['year']);
+        }
+        if (!empty($filters['month'])) {
+            $q->whereMonth('hire_date', (int) $filters['month']);
+        }
+        if (!empty($filters['store_id'])) {
+            $q->where('store_id', (int) $filters['store_id']);
+        }
+        return $q->get()->toArray();
+    }
+
     public function save(array $data): array
     {
         if (!empty($data['id'])) {

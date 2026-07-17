@@ -98,13 +98,24 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(Capsule::class),
         ));
 
+        $this->container->singleton(AppResetService::class, fn(Container $c) => new AppResetService(
+            $c->make(Capsule::class),
+            $c->make(MigrationRunner::class),
+        ));
+
         $this->container->singleton(UpdateService::class, fn() => new UpdateService());
 
         $this->container->singleton(GithubUpdateService::class, fn(Container $c) => new GithubUpdateService(
             $c->make(UpdateService::class),
             $c->make(BackupService::class),
             $c->make(MigrationRunner::class),
+            $c->make(AppSettingsService::class),
         ));
+
+        // Binding explicite requis : le constructeur a un paramètre ?\Closure
+        // (non "builtin" pour Container::resolveParameter), donc la résolution
+        // par réflexion échouerait sinon en essayant d'instancier \Closure.
+        $this->container->singleton(WikiSyncService::class, fn() => new WikiSyncService());
 
         $this->container->singleton(TranslationManagementService::class, fn(Container $c) => new TranslationManagementService(
             $c->make(TranslationRepositoryInterface::class),

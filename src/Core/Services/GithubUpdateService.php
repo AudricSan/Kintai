@@ -29,15 +29,17 @@ final class GithubUpdateService
     private string $updatesDir;
     private string $repo;
     private string $token;
+    private ?string $lastError = null;
 
     /**
-     * @param \Closure|null $releaseFetcher fn(string $repo, string $token): ?array — surchargeable pour les tests
+     * @param \Closure|null $releaseFetcher fn(string $repo, string $token): ?array — liste de releases GitHub (surchargeable pour les tests)
      * @param \Closure|null $zipDownloader  fn(string $url, string $dest, string $token): bool — surchargeable pour les tests
      */
     public function __construct(
         private readonly UpdateService $updateService,
         private readonly BackupService $backup,
         private readonly MigrationRunner $migrator,
+        private readonly AppSettingsService $settings,
         ?string $basePath = null,
         private readonly ?\Closure $releaseFetcher = null,
         private readonly ?\Closure $zipDownloader = null,
@@ -50,17 +52,31 @@ final class GithubUpdateService
     }
 
     /**
-     * Interroge la dernière Release GitHub taguée. Retourne null si le repo
-     * n'est pas configuré, si la requête échoue, ou si aucune release
-     * n'existe encore (404 sur /releases/latest).
+     * Interroge les Releases GitHub taguées et retient la plus récente
+     * compatible avec le canal de mise à jour configuré (release/beta/alpha).
+     * Retourne null si le repo n'est pas configuré, si la requête échoue, ou
+     * si aucune release compatible n'existe. En cas d'échec technique (réseau,
+     * quota GitHub, etc.), la raison est disponible via getLastCheckError() —
+     * contrairement à "aucune release compatible", qui n'est pas une erreur.
      */
     public function checkLatestRelease(): ?array
     {
+        $this->lastError = null;
+
         if ($this->repo === '') {
+            $this->lastError = 'Aucun dépôt GitHub configuré (GITHUB_UPDATE_REPO).';
             return null;
         }
 
-        $release = $this->fetchLatestReleaseData();
+        $releases = $this->fetchReleaseListData();
+        if ($releases === null) {
+            if ($this->lastError === null) {
+                $this->lastError = 'La vérification a échoué pour une raison inconnue.';
+            }
+            return null;
+        }
+
+        $release = $this->selectReleaseForChannel($releases, $this->settings->updateChannel());
         if ($release === null || !isset($release['tag_name'], $release['zipball_url'])) {
             return null;
         }
@@ -78,6 +94,51 @@ final class GithubUpdateService
             'zipball_url'     => $release['zipball_url'],
             'tag_name'        => $release['tag_name'],
         ];
+    }
+
+    /**
+     * Raison technique du dernier échec de checkLatestRelease() (réseau, quota
+     * GitHub API, aucune méthode HTTP disponible...), ou null si la dernière
+     * vérification a réussi (avec ou sans mise à jour trouvée).
+     */
+    public function getLastCheckError(): ?string
+    {
+        return $this->lastError;
+    }
+
+    /**
+     * Parmi les releases GitHub disponibles, retient celles compatibles avec
+     * le canal demandé puis la plus récente au sens de version_compare() :
+     * - release : uniquement les tags stables (ni "-alpha"/"-beta", ni prerelease GitHub) ;
+     * - beta    : les tags stables et "-beta" (exclut "-alpha") ;
+     * - alpha   : tous les tags, canal le plus permissif.
+     */
+    private function selectReleaseForChannel(array $releases, string $channel): ?array
+    {
+        $candidates = array_values(array_filter($releases, function (array $release) use ($channel): bool {
+            $tag = ltrim((string) ($release['tag_name'] ?? ''), 'v');
+            $isAlpha = str_contains($tag, '-alpha');
+            $isBeta = str_contains($tag, '-beta');
+            $isPrerelease = (bool) ($release['prerelease'] ?? false);
+
+            return match ($channel) {
+                'alpha' => true,
+                'beta'  => !$isAlpha,
+                default => !$isAlpha && !$isBeta && !$isPrerelease,
+            };
+        }));
+
+        if ($candidates === []) {
+            return null;
+        }
+
+        usort($candidates, function (array $a, array $b): int {
+            $va = ltrim((string) ($a['tag_name'] ?? ''), 'v');
+            $vb = ltrim((string) ($b['tag_name'] ?? ''), 'v');
+            return version_compare($vb, $va);
+        });
+
+        return $candidates[0];
     }
 
     /**
@@ -339,13 +400,14 @@ final class GithubUpdateService
         rmdir($dir);
     }
 
-    private function fetchLatestReleaseData(): ?array
+    /** @return array|null Liste des releases GitHub (voir GET /repos/{repo}/releases), ou null si la requête échoue. */
+    private function fetchReleaseListData(): ?array
     {
         if ($this->releaseFetcher !== null) {
             return ($this->releaseFetcher)($this->repo, $this->token);
         }
 
-        $url = "https://api.github.com/repos/{$this->repo}/releases/latest";
+        $url = "https://api.github.com/repos/{$this->repo}/releases?per_page=30";
         $headers = [
             'User-Agent: Kintai-UpdateCheck/1.0',
             'Accept: application/vnd.github+json',
@@ -354,11 +416,85 @@ final class GithubUpdateService
             $headers[] = 'Authorization: Bearer ' . $this->token;
         }
 
+        $response = $this->httpGet($url, $headers, 10);
+        if ($response === null) {
+            return null;
+        }
+
+        $data = json_decode($response, true);
+        if (!self::isValidReleaseList($data)) {
+            $this->lastError = is_array($data) && isset($data['message'])
+                ? 'GitHub : ' . $data['message']
+                : 'Réponse GitHub inattendue.';
+            Log::warning('update_check_invalid_response', [
+                'url'            => $url,
+                'github_message' => is_array($data) ? ($data['message'] ?? null) : null,
+            ]);
+            return null;
+        }
+
+        return $data;
+    }
+
+    /**
+     * Effectue une requête GET HTTPS en préférant curl (plus fiable sur les
+     * hébergements mutualisés où `allow_url_fopen` est parfois désactivé),
+     * avec repli sur les wrappers de flux PHP si curl n'est pas chargé.
+     * Renseigne $this->lastError et logue la raison exacte en cas d'échec —
+     * jusqu'ici la vérification échouait entièrement en silence (@file_get_contents),
+     * rendant le diagnostic impossible sur un hébergement où on ne voit pas les logs.
+     */
+    private function httpGet(string $url, array $headers, int $timeoutSeconds): ?string
+    {
+        if (function_exists('curl_init')) {
+            return $this->httpGetViaCurl($url, $headers, $timeoutSeconds);
+        }
+
+        if (!(bool) ini_get('allow_url_fopen')) {
+            $this->lastError = "Aucune méthode HTTP disponible sur ce serveur : l'extension curl est absente et allow_url_fopen est désactivé.";
+            Log::warning('update_check_no_http_method', ['url' => $url]);
+            return null;
+        }
+
+        return $this->httpGetViaStreamWrapper($url, $headers, $timeoutSeconds);
+    }
+
+    private function httpGetViaCurl(string $url, array $headers, int $timeoutSeconds): ?string
+    {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTPHEADER     => $headers,
+            CURLOPT_TIMEOUT        => $timeoutSeconds,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+        ]);
+        $body = curl_exec($ch);
+        if ($body === false) {
+            $error = curl_error($ch);
+            curl_close($ch);
+            $this->lastError = 'Erreur curl : ' . $error;
+            Log::warning('update_check_curl_failed', ['url' => $url, 'curl_error' => $error]);
+            return null;
+        }
+        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($status >= 400) {
+            $this->lastError = "GitHub a répondu avec le statut HTTP {$status}.";
+        }
+
+        return (string) $body;
+    }
+
+    private function httpGetViaStreamWrapper(string $url, array $headers, int $timeoutSeconds): ?string
+    {
         $context = stream_context_create([
             'http' => [
                 'method'        => 'GET',
                 'header'        => implode("\r\n", $headers),
-                'timeout'       => 10,
+                'timeout'       => $timeoutSeconds,
                 'ignore_errors' => true,
             ],
             'ssl' => [
@@ -369,11 +505,26 @@ final class GithubUpdateService
 
         $response = @file_get_contents($url, false, $context);
         if ($response === false) {
+            $error = error_get_last();
+            $message = $error['message'] ?? 'raison inconnue';
+            $this->lastError = 'Échec de la requête HTTP : ' . $message;
+            Log::warning('update_check_stream_failed', ['url' => $url, 'php_error' => $message]);
             return null;
         }
 
-        $data = json_decode($response, true);
-        return is_array($data) ? $data : null;
+        return $response;
+    }
+
+    /**
+     * GitHub renvoie un objet d'erreur (ex: {"message": "API rate limit exceeded..."})
+     * pour les réponses en erreur (rate limit, auth, 404...) au lieu de la liste des
+     * releases attendue. json_decode(..., true) le transforme en tableau associatif,
+     * donc is_array() seul ne suffit pas à l'écarter : on exige une liste (tableau
+     * indexé séquentiellement), ce que sera toujours une vraie réponse de releases.
+     */
+    private static function isValidReleaseList(mixed $data): bool
+    {
+        return is_array($data) && array_is_list($data);
     }
 
     private function downloadZip(string $url, string $destination): bool
@@ -387,10 +538,57 @@ final class GithubUpdateService
             return ($this->zipDownloader)($url, $destination, $this->token);
         }
 
+        $headers = ['User-Agent: Kintai-UpdateCheck/1.0'];
+        if ($this->token !== '') {
+            $headers[] = 'Authorization: Bearer ' . $this->token;
+        }
+
+        if (function_exists('curl_init')) {
+            return $this->downloadZipViaCurl($url, $destination, $headers);
+        }
+
+        if (!(bool) ini_get('allow_url_fopen')) {
+            return false;
+        }
+
+        return $this->downloadZipViaStreamWrapper($url, $destination, $headers);
+    }
+
+    private function downloadZipViaCurl(string $url, string $destination, array $headers): bool
+    {
+        $out = fopen($destination, 'wb');
+        if ($out === false) {
+            return false;
+        }
+
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_FILE           => $out,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTPHEADER     => $headers,
+            CURLOPT_TIMEOUT        => 60,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+        ]);
+        $ok = curl_exec($ch);
+        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        fclose($out);
+
+        if ($ok === false || $status >= 400) {
+            @unlink($destination);
+            return false;
+        }
+
+        return true;
+    }
+
+    private function downloadZipViaStreamWrapper(string $url, string $destination, array $headers): bool
+    {
         $context = stream_context_create([
             'http' => [
                 'method'          => 'GET',
-                'header'          => "User-Agent: Kintai-UpdateCheck/1.0\r\n" . ($this->token !== '' ? "Authorization: Bearer {$this->token}\r\n" : ''),
+                'header'          => implode("\r\n", $headers),
                 'timeout'         => 60,
                 'ignore_errors'   => true,
                 'follow_location' => 1,

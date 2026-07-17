@@ -13,7 +13,6 @@ use kintai\UI\Controller\Web\DocsController;
 use kintai\UI\Controller\Web\PrivacyController;
 use kintai\UI\Controller\Web\PwaController;
 use kintai\UI\Controller\Web\StorageFileController;
-use kintai\UI\Controller\Web\WikiPdfController;
 
 use kintai\UI\Controller\Web\Scheduling\AdminShiftController;
 use kintai\UI\Controller\Web\Scheduling\AdminShiftImportController;
@@ -24,6 +23,8 @@ use kintai\UI\Controller\Web\Staff\AdminUserController;
 
 use kintai\UI\Controller\Web\System\ActivityController;
 use kintai\UI\Controller\Web\System\AdminController;
+use kintai\UI\Controller\Web\System\AdminRoleController;
+use kintai\UI\Controller\Web\System\AppResetController;
 use kintai\UI\Controller\Web\System\BackupController;
 use kintai\UI\Controller\Web\System\BundleSettingsController;
 use kintai\UI\Controller\Web\System\LanguageController;
@@ -31,7 +32,9 @@ use kintai\UI\Controller\Web\System\MailTestController;
 use kintai\UI\Controller\Web\System\OwnerSettingsController;
 use kintai\Core\Middleware\AuthMiddleware;
 use kintai\Core\Middleware\AdminMiddleware;
+use kintai\Core\Middleware\PermissionMiddleware;
 use kintai\Core\Middleware\ApiAuthMiddleware;
+use kintai\Core\Middleware\ApiPermissionMiddleware;
 use kintai\Core\Middleware\RateLimiterMiddleware;
 use kintai\UI\Controller\Api\V1\AuthController as ApiAuthController;
 use kintai\UI\Controller\Api\V1\UserController as ApiUserController;
@@ -101,6 +104,8 @@ $router->group('/notifications', function ($r) {
 
 // --- Documentation ---
 $router->get('/docs', [DocsController::class, 'index'], middleware: [AuthMiddleware::class], name: 'docs.index');
+$router->post('/docs/sync', [DocsController::class, 'sync'], middleware: [AuthMiddleware::class], name: 'docs.sync');
+$router->get('/docs/{lang}/{page}', [DocsController::class, 'show'], middleware: [AuthMiddleware::class], name: 'docs.show');
 
 $router->group('/employee', function ($r) {
 
@@ -142,7 +147,7 @@ $router->post('/switch-device', [AuthController::class, 'switchDevice'], middlew
 $router->get('/lang/{locale}', [AuthController::class, 'switchLanguage'], name: 'lang.switch');
 
 // --- Accueil / Dashboard ---
-$router->get('/', [HomeController::class, 'index'], middleware: [AuthMiddleware::class, AdminMiddleware::class], name: 'home');
+$router->get('/', [HomeController::class, 'index'], middleware: [AuthMiddleware::class, AdminMiddleware::class, PermissionMiddleware::class], name: 'home');
 $router->post('/admin/dashboard/widgets', [HomeController::class, 'saveDashboardWidgets'], middleware: [AuthMiddleware::class, AdminMiddleware::class], name: 'admin.dashboard.widgets');
 
 // =============================================================================
@@ -161,10 +166,14 @@ $router->group('/admin', function ($r) {
 
     // Utilisateurs
     $r->get('/users',                     [AdminUserController::class, 'users'],               name: 'admin.users');
+    $r->get('/users/export/pdf',          [AdminUserController::class, 'exportUsersPdf'],      name: 'admin.users.export_pdf');
+    $r->get('/users/export/pdf/download', [AdminUserController::class, 'exportUsersPdfDownload'], name: 'admin.users.export_pdf_download');
+    $r->get('/users/export/json',         [AdminUserController::class, 'exportUsersJson'],     name: 'admin.users.export_json');
     $r->get('/users/create',              [AdminUserController::class, 'createUser'],          name: 'admin.users.create');
     $r->post('/users/create',             [AdminUserController::class, 'storeUser'],           name: 'admin.users.store');
     $r->post('/users/quick-create',       [AdminUserController::class, 'quickCreateUser'],     name: 'admin.users.quick_create');
     $r->get('/users/check-employee-code', [AdminUserController::class, 'checkEmployeeCode'],   name: 'admin.users.check_employee_code');
+    $r->get('/users/check-email',         [AdminUserController::class, 'checkEmail'],          name: 'admin.users.check_email');
     $r->get('/users/{id}/edit',           [AdminUserController::class, 'editUser'],            name: 'admin.users.edit');
     $r->post('/users/{id}/edit',          [AdminUserController::class, 'updateUser'],          name: 'admin.users.update');
     $r->post('/users/{id}/delete',        [AdminUserController::class, 'deleteUser'],          name: 'admin.users.delete');
@@ -191,8 +200,6 @@ $router->group('/admin', function ($r) {
     $r->get('/stores/{id}/profitability',      [AdminStoreController::class, 'storeProfitability'], name: 'admin.stores.profitability');
     $r->get('/stores/{id}/employee-report',                      [AdminStoreController::class, 'employeeReport'],    name: 'admin.stores.employee_report');
     $r->get('/stores/{id}/employee-report/{uid}/stats',          [AdminStoreController::class, 'employeeStats'],     name: 'admin.stores.employee_stats');
-    $r->get('/stores/{id}/employee-report/{uid}/payslip',        [AdminStoreController::class, 'employeePayslip'],   name: 'admin.stores.employee_payslip');
-    $r->get('/stores/{id}/employee-report/{uid}/payslip/pdf',    [AdminStoreController::class, 'employeePayslipPdf'], name: 'admin.stores.employee_payslip_pdf');
 
     // Rapports d'embauche : voir src/Bundles/HiringReport/routes.php
 
@@ -246,16 +253,22 @@ $router->group('/admin', function ($r) {
 
     // Sauvegardes
     $r->get('/backup',               [BackupController::class, 'index'],  name: 'admin.backup');
+    $r->get('/backup/download',      [BackupController::class, 'download'], name: 'admin.backup.download');
     $r->post('/backup/create',       [BackupController::class, 'create'], name: 'admin.backup.create');
     $r->post('/backup/restore',      [BackupController::class, 'restore'], name: 'admin.backup.restore');
     $r->post('/backup/delete',       [BackupController::class, 'delete'], name: 'admin.backup.delete');
     $r->post('/backup/delete-all',   [BackupController::class, 'deleteAll'], name: 'admin.backup.delete_all');
+
+    // Réinitialisation de l'application ("danger zone")
+    $r->post('/reset/prepare', [AppResetController::class, 'prepare'], name: 'admin.reset.prepare');
+    $r->post('/reset/execute', [AppResetController::class, 'execute'], name: 'admin.reset.execute');
 
     // Mises à jour
     $r->get('/update',               [BackupController::class, 'updatePage'], name: 'admin.update');
     $r->post('/update/apply',        [BackupController::class, 'update'], name: 'admin.update.apply');
     $r->post('/update/stream',       [BackupController::class, 'updateStream'], name: 'admin.update.stream');
     $r->post('/update/migrate',      [BackupController::class, 'migrate'], name: 'admin.update.migrate');
+    $r->post('/update/channel',      [BackupController::class, 'saveChannel'], name: 'admin.update.channel');
 
     // Photos : voir src/Bundles/StorePhoto/routes.php
 
@@ -273,7 +286,15 @@ $router->group('/admin', function ($r) {
     $r->get('/bundles',  [BundleSettingsController::class, 'show'], name: 'admin.bundles');
     $r->post('/bundles', [BundleSettingsController::class, 'save'], name: 'admin.bundles.save');
 
-}, middleware: [AuthMiddleware::class, AdminMiddleware::class]);
+    // Rôles & permissions (Owner uniquement) — voir task/mermission.md
+    $r->get('/roles',              [AdminRoleController::class, 'roles'],      name: 'admin.roles');
+    $r->get('/roles/create',       [AdminRoleController::class, 'createRole'], name: 'admin.roles.create');
+    $r->post('/roles/create',      [AdminRoleController::class, 'storeRole'],  name: 'admin.roles.store');
+    $r->get('/roles/{id}/edit',    [AdminRoleController::class, 'editRole'],   name: 'admin.roles.edit');
+    $r->post('/roles/{id}/edit',   [AdminRoleController::class, 'updateRole'], name: 'admin.roles.update');
+    $r->post('/roles/{id}/delete', [AdminRoleController::class, 'deleteRole'], name: 'admin.roles.delete');
+
+}, middleware: [AuthMiddleware::class, AdminMiddleware::class, PermissionMiddleware::class]);
 
 // =============================================================================
 // API v1
@@ -282,7 +303,6 @@ $router->group('/admin', function ($r) {
 // --- Routes publiques ---
 $router->get('/api/v1/ping',       [ApiAuthController::class, 'ping'],  name: 'api.v1.ping');
 $router->post('/api/v1/auth/login', [ApiAuthController::class, 'login'], name: 'api.v1.auth.login');
-$router->get('/api/v1/pdf/generate', [WikiPdfController::class, 'generate'], name: 'api.v1.pdf.generate');
 
 // --- Routes protégées par token Bearer ---
 $router->group('/api/v1', function ($r) {
@@ -371,4 +391,4 @@ $router->group('/api/v1', function ($r) {
     // Journal d'activité
     $r->get('/activity', [ApiActivityController::class, 'index'], name: 'api.v1.activity.index');
 
-}, middleware: [ApiAuthMiddleware::class]);
+}, middleware: [ApiAuthMiddleware::class, ApiPermissionMiddleware::class]);

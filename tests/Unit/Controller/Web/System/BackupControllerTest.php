@@ -54,6 +54,7 @@ final class BackupControllerTest extends TestCase
 
         $settingsRepo = $this->createStub(AppSettingsRepositoryInterface::class);
         $settingsRepo->method('get')->willReturn(null);
+        $settingsRepo->method('all')->willReturn([]);
         $this->settings = new AppSettingsService($settingsRepo);
 
         $this->view = new ViewRenderer(sys_get_temp_dir());
@@ -63,6 +64,7 @@ final class BackupControllerTest extends TestCase
     {
         $this->removeDir($this->tmpDir);
         putenv('KINTAI_STORAGE_PATH');
+        $_GET = [];
     }
 
     private function setPrivate(object $obj, string $prop, mixed $value): void
@@ -113,6 +115,7 @@ final class BackupControllerTest extends TestCase
             $this->updateService,
             $this->backup,
             $this->migrator,
+            $this->settings,
             $this->tmpDir,
             $releaseFetcher,
             $zipDownloader,
@@ -153,6 +156,37 @@ final class BackupControllerTest extends TestCase
         $this->assertStringContainsString('success=created_', $this->locationOf($response));
     }
 
+    public function testDownloadRejectsNonOwner(): void
+    {
+        $controller = $this->makeController();
+
+        $this->expectException(ForbiddenException::class);
+        $controller->download($this->requestAs(false));
+    }
+
+    public function testDownloadRedirectsWhenFileMissing(): void
+    {
+        $controller = $this->makeController();
+
+        $_GET = ['filename' => 'does_not_exist.zip'];
+        $response = $controller->download($this->requestAs(true));
+
+        $this->assertSame(302, $response->status());
+        $this->assertStringContainsString('error=not_found', $this->locationOf($response));
+    }
+
+    public function testDownloadStreamsExistingBackup(): void
+    {
+        $controller = $this->makeController();
+        $created = $controller->create($this->requestAs(true));
+        $filename = urldecode(substr($this->locationOf($created), strlen('/admin/backup?success=created_')));
+
+        $_GET = ['filename' => $filename];
+        $response = $controller->download($this->requestAs(true));
+
+        $this->assertSame(200, $response->status());
+    }
+
     public function testUpdateRejectsNonOwner(): void
     {
         $controller = $this->makeController();
@@ -165,10 +199,10 @@ final class BackupControllerTest extends TestCase
     {
         $this->writeAppVersion('1.0.0');
         $controller = $this->makeController(
-            fn(string $repo, string $token): ?array => [
+            fn(string $repo, string $token): ?array => [[
                 'tag_name'    => 'v1.0.0',
                 'zipball_url' => 'https://example.test/zipball/v1.0.0',
-            ],
+            ]],
         );
 
         $response = $controller->update($this->requestAs(true));
@@ -181,13 +215,13 @@ final class BackupControllerTest extends TestCase
     {
         $this->writeAppVersion('1.0.0');
         $controller = $this->makeController(
-            fn(string $repo, string $token): ?array => [
+            fn(string $repo, string $token): ?array => [[
                 'tag_name'    => 'v2.0.0',
                 'zipball_url' => 'https://example.test/zipball/v2.0.0',
                 'html_url'    => 'https://example.test/releases/v2.0.0',
                 'body'        => 'notes',
                 'published_at' => '2026-01-01T00:00:00Z',
-            ],
+            ]],
             function (string $url, string $dest, string $token): bool {
                 $this->makeReleaseZip($dest, [
                     'README.md'    => 'v2',
@@ -204,6 +238,51 @@ final class BackupControllerTest extends TestCase
         $this->assertStringStartsWith('/admin/update?success=updated_2.0.0_files-2_deleted-0', $location);
         $this->assertSame('2.0.0', $this->updateService->getCurrentVersion());
         $this->assertFileExists($this->tmpDir . '/README.md');
+        $this->assertFalse($this->settings->maintenanceModeEnabled());
+    }
+
+    public function testUpdateEnablesMaintenanceModeDuringApplyThenDisablesIt(): void
+    {
+        $this->writeAppVersion('1.0.0');
+        $enabledDuringApply = null;
+        $controller = $this->makeController(
+            fn(string $repo, string $token): ?array => [[
+                'tag_name'    => 'v2.0.0',
+                'zipball_url' => 'https://example.test/zipball/v2.0.0',
+            ]],
+            function (string $url, string $dest, string $token) use (&$enabledDuringApply): bool {
+                $enabledDuringApply = $this->settings->maintenanceModeEnabled();
+                $this->makeReleaseZip($dest, ['config/app.php' => "<?php return ['version' => '2.0.0'];"]);
+                return true;
+            },
+        );
+
+        $this->assertFalse($this->settings->maintenanceModeEnabled());
+
+        $controller->update($this->requestAs(true));
+
+        $this->assertTrue($enabledDuringApply);
+        $this->assertFalse($this->settings->maintenanceModeEnabled());
+    }
+
+    public function testUpdateLeavesMaintenanceModeOnIfAlreadyEnabledBeforehand(): void
+    {
+        $this->writeAppVersion('1.0.0');
+        $this->settings->setMany(['maintenance_mode_enabled' => '1']);
+        $controller = $this->makeController(
+            fn(string $repo, string $token): ?array => [[
+                'tag_name'    => 'v2.0.0',
+                'zipball_url' => 'https://example.test/zipball/v2.0.0',
+            ]],
+            function (string $url, string $dest, string $token): bool {
+                $this->makeReleaseZip($dest, ['config/app.php' => "<?php return ['version' => '2.0.0'];"]);
+                return true;
+            },
+        );
+
+        $controller->update($this->requestAs(true));
+
+        $this->assertTrue($this->settings->maintenanceModeEnabled());
     }
 
     public function testMigrateRejectsNonOwner(): void
@@ -222,5 +301,39 @@ final class BackupControllerTest extends TestCase
 
         $this->assertSame(302, $response->status());
         $this->assertStringStartsWith('/admin/update?success=migrated', $this->locationOf($response));
+        $this->assertFalse($this->settings->maintenanceModeEnabled());
+    }
+
+    public function testSaveChannelRejectsNonOwner(): void
+    {
+        $controller = $this->makeController();
+
+        $this->expectException(ForbiddenException::class);
+        $controller->saveChannel($this->requestAs(false));
+    }
+
+    public function testSaveChannelPersistsValidChannel(): void
+    {
+        $controller = $this->makeController();
+
+        $_POST = ['channel' => 'alpha'];
+        $response = $controller->saveChannel($this->requestAs(true));
+        $_POST = [];
+
+        $this->assertSame(302, $response->status());
+        $this->assertStringContainsString('success=channel_alpha', $this->locationOf($response));
+        $this->assertSame('alpha', $this->settings->updateChannel());
+    }
+
+    public function testSaveChannelFallsBackToReleaseForInvalidValue(): void
+    {
+        $controller = $this->makeController();
+
+        $_POST = ['channel' => 'nightly'];
+        $response = $controller->saveChannel($this->requestAs(true));
+        $_POST = [];
+
+        $this->assertStringContainsString('success=channel_release', $this->locationOf($response));
+        $this->assertSame('release', $this->settings->updateChannel());
     }
 }
