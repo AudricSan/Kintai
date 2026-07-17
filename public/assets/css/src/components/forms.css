@@ -172,6 +172,15 @@ select.form-control {
     max-width: 220px;
 }
 
+.form-group--full {
+    grid-column: 1 / -1;
+}
+
+.form-group--inline {
+    flex-direction: row;
+    align-items: center;
+}
+
 .input-group {
     display: flex;
     align-items: center;
