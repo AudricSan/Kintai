@@ -26,6 +26,7 @@ $taxLabel = match ($report['tax_classification'] ?? null) {
 <meta charset="UTF-8">
 <style>
 <?php
+echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-brand.css');
 echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-preview.css');
 ?>
 body { font-family: sans-serif; font-size: 10pt; color: #333; margin: 0; padding: 0; }
