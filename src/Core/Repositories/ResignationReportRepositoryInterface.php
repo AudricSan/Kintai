@@ -8,7 +8,7 @@ interface ResignationReportRepositoryInterface
 {
     public function findById(int $id): ?array;
     public function findByStore(int $storeId): array;
-    public function findAll(?array $storeIds = null): array;
+    public function findAll(?array $storeIds = null, array $filters = []): array;
     public function save(array $data): array;
     public function delete(int $id): int;
 }

@@ -6,6 +6,7 @@ namespace kintai\Tests\Unit\Core\Cron;
 
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\MockObject\MockObject;
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Cron\AutoValidateJob;
 use kintai\Core\Mail\MailerService;
 use kintai\Core\Request;
@@ -17,6 +18,8 @@ use kintai\Core\Services\DailyReportPermissionService;
 use kintai\Core\Services\TranslationService;
 use kintai\Core\Repositories\DailyReportRepositoryInterface;
 use kintai\Core\Repositories\LanguageRepositoryInterface;
+use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
+use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
@@ -48,7 +51,10 @@ final class AutoValidateJobTest extends TestCase
             $users,
         );
 
-        $permissions = new DailyReportPermissionService();
+        $permissions = new DailyReportPermissionService(new PermissionService(
+            $this->createStub(RoleAssignmentRepositoryInterface::class),
+            $this->createStub(RoleRepositoryInterface::class),
+        ));
         $mailService = new DailyReportMailService(
             $permissions,
             new MailerService(['driver' => 'native', 'from' => ['address' => 'test@kintai.test', 'name' => 'Kintai']]),

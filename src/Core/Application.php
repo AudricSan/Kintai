@@ -146,6 +146,8 @@ final class Application
         [$route, $params] = $this->router->dispatch($request->method(), $request->uri());
 
         $request->setRouteParams($params);
+        // Nom de la route matchée, exploité par PermissionMiddleware (config/permissions.php)
+        $request->setAttribute('route_name', $route->name);
 
         // Merge global + route-specific middleware
         $allMiddleware = array_merge($this->globalMiddleware, $route->middleware);

@@ -30,11 +30,6 @@ final class DailyReportPdfService
         try {
             [$html, $title] = $this->buildHtml($report, $store, $author, $locale);
 
-            // DEBUG : dump HTML pour inspecter ce que mPDF reçoit
-            $debugPath = storage_path('app/mpdf');
-            if (!is_dir($debugPath)) { mkdir($debugPath, 0755, true); }
-            file_put_contents($debugPath . '/debug_daily_report.html', $html);
-
             $mpdf = $this->buildMpdf();
             $mpdf->SetTitle($title);
             $mpdf->WriteHTML($html);
@@ -43,6 +38,17 @@ final class DailyReportPdfService
         } catch (\Throwable) {
             return null;
         }
+    }
+
+    /**
+     * Rend le même template que generateBytes(), mais en HTML brut pour un
+     * aperçu navigateur (avec barre d'outils impression/téléchargement) au
+     * lieu d'un PDF — voir DailyReportController::previewPdf().
+     */
+    public function generateHtml(array $report, array $store, array $author = [], ?string $locale = null, ?string $downloadUrl = null): string
+    {
+        [$html] = $this->buildHtml($report, $store, $author, $locale, $downloadUrl);
+        return $html;
     }
 
     // -------------------------------------------------------------------------
@@ -69,7 +75,7 @@ final class DailyReportPdfService
      *
      * @return array{0: string, 1: string}  [html, title]
      */
-    private function buildHtml(array $report, array $store, array $author, ?string $localeOverride): array
+    private function buildHtml(array $report, array $store, array $author, ?string $localeOverride, ?string $downloadUrl = null): array
     {
         $locale   = $this->resolveLocale($author, $store, $localeOverride);
         $previous = $this->translations->getLocale();
@@ -77,11 +83,12 @@ final class DailyReportPdfService
 
         try {
             $html  = $this->view->render('daily-report::daily-report-pdf', [
-                'report'    => $report,
-                'store'     => $store,
-                'author'    => $author,
-                'locale'    => $locale,
-                'shiftRows' => $this->buildShiftRows($store, $report),
+                'report'      => $report,
+                'store'       => $store,
+                'author'      => $author,
+                'locale'      => $locale,
+                'shiftRows'   => $this->buildShiftRows($store, $report),
+                'downloadUrl' => $downloadUrl,
             ]);
             $title = __('dr_title') . ' — ' . ($report['report_date'] ?? '');
         } finally {
@@ -149,7 +156,7 @@ final class DailyReportPdfService
             mkdir($tmpDir, 0755, true);
         }
 
-        return new \Mpdf\Mpdf([
+        return new \Mpdf\Mpdf(PdfCjkFontResolver::applyTo([
             'mode'             => 'utf-8',
             'format'           => 'A4',
             'margin_left'      => 15,
@@ -158,6 +165,6 @@ final class DailyReportPdfService
             'margin_bottom'    => 16,
             'tempDir'          => $tmpDir,
             'useSubstitutions' => true,
-        ]);
+        ]));
     }
 }

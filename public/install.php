@@ -10,6 +10,8 @@ require BASE_PATH . '/src/Core/helpers.php';
 use Illuminate\Database\Capsule\Manager as Capsule;
 use kintai\Core\Application;
 use kintai\Core\Database\MigrationRunner;
+use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
+use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 
 // ─── Already installed ────────────────────────────────────────────────────────
@@ -178,7 +180,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $userRepo = $app->container()->make(UserRepositoryInterface::class);
 
-            $userRepo->save([
+            $adminUser = $userRepo->save([
                 'first_name'    => $adminFirstName,
                 'last_name'     => $adminLastName,
                 'display_name'  => $adminFirstName . ' ' . $adminLastName,
@@ -189,6 +191,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'created_at'    => date('Y-m-d H:i:s'),
                 'updated_at'    => date('Y-m-d H:i:s'),
             ]);
+
+            // AuthService::isAdmin() lit désormais role_assignments (RBAC dynamique) plutôt
+            // que la colonne users.is_admin ci-dessus — sans cette affectation, le compte
+            // créé par l'installeur ne serait pas reconnu comme Owner.
+            $ownerRole = $app->container()->make(RoleRepositoryInterface::class)->findBySlug('owner');
+            if ($ownerRole !== null) {
+                $app->container()->make(RoleAssignmentRepositoryInterface::class)
+                    ->assign((int) $adminUser['id'], (int) $ownerRole['id'], 'global', null);
+            }
 
             // ── Step E: Lock installation ─────────────────────────────────
 

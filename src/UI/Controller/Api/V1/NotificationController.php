@@ -10,26 +10,23 @@ use kintai\Core\Repositories\NotificationRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 
+/**
+ * Notifications du porteur du token — ressource strictement personnelle :
+ * chaque endpoint opère sur les notifications de l'utilisateur authentifié
+ * uniquement (l'ancien paramètre `?user_id=` qui permettait de lire ou
+ * marquer les notifications d'un autre compte a été supprimé).
+ */
 final class NotificationController
 {
     public function __construct(private readonly NotificationRepositoryInterface $notifications) {}
 
-    /**
-     * GET /api/v1/notifications?user_id=X&limit=20
-     * user_id obligatoire.
-     */
+    /** GET /api/v1/notifications?limit=20 */
     public function index(Request $request): Response
     {
-        $userId = $request->query('user_id');
-        if ($userId === null) {
-            $authUser = $request->getAttribute('auth_user');
-            $userId   = $authUser['id'] ?? null;
-        }
+        $userId = (int) ($request->getAttribute('auth_user')['id'] ?? 0);
 
         [$page, $limit] = Paginator::params($request);
-        $items = $userId !== null
-            ? $this->notifications->findByUser((int) $userId, 1000)
-            : [];
+        $items = $userId > 0 ? $this->notifications->findByUser($userId, 1000) : [];
 
         return Response::json(Paginator::paginate($items, $page, $limit));
     }
@@ -37,49 +34,47 @@ final class NotificationController
     /** GET /api/v1/notifications/{id} */
     public function show(Request $request): Response
     {
-        $item = $this->notifications->findById((int) $request->param('id'));
-        if ($item === null) {
-            throw new NotFoundException('Notification introuvable.');
-        }
-        return Response::json($item);
+        return Response::json($this->findOwn($request));
     }
 
     /** POST /api/v1/notifications/{id}/read */
     public function markRead(Request $request): Response
     {
-        $id   = (int) $request->param('id');
-        $item = $this->notifications->findById($id);
-        if ($item === null) {
-            throw new NotFoundException('Notification introuvable.');
-        }
-
-        $authUser = $request->getAttribute('auth_user');
-        $this->notifications->markRead($id, (int) ($authUser['id'] ?? $item['user_id']));
+        $item = $this->findOwn($request);
+        $this->notifications->markRead((int) $item['id'], (int) $item['user_id']);
         return Response::empty();
     }
 
-    /** POST /api/v1/notifications/read-all?user_id=X */
+    /** POST /api/v1/notifications/read-all */
     public function markAllRead(Request $request): Response
     {
-        $userId = $request->query('user_id');
-        if ($userId === null) {
-            $authUser = $request->getAttribute('auth_user');
-            $userId   = $authUser['id'] ?? 0;
+        $userId = (int) ($request->getAttribute('auth_user')['id'] ?? 0);
+        if ($userId > 0) {
+            $this->notifications->markAllRead($userId);
         }
-        $this->notifications->markAllRead((int) $userId);
         return Response::empty();
     }
 
     /** DELETE /api/v1/notifications/{id} */
     public function destroy(Request $request): Response
     {
-        $id   = (int) $request->param('id');
-        $item = $this->notifications->findById($id);
-        if ($item === null) {
+        $item = $this->findOwn($request);
+        $this->notifications->delete((int) $item['id']);
+        return Response::empty();
+    }
+
+    /**
+     * Charge la notification ciblée en vérifiant qu'elle appartient bien au
+     * porteur du token. Une notification d'autrui est traitée comme
+     * inexistante (404) pour ne pas révéler son existence.
+     */
+    private function findOwn(Request $request): array
+    {
+        $item   = $this->notifications->findById((int) $request->param('id'));
+        $userId = (int) ($request->getAttribute('auth_user')['id'] ?? 0);
+        if ($item === null || (int) ($item['user_id'] ?? 0) !== $userId) {
             throw new NotFoundException('Notification introuvable.');
         }
-
-        $this->notifications->delete($id);
-        return Response::empty();
+        return $item;
     }
 }

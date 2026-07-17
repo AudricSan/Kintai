@@ -22,13 +22,13 @@ echo Flash::fromQuery('success', ['saved' => __('save_success')])->render();
         <div class="card-body form-stack">
             <div class="form-group">
                 <label class="form-label"><?= __('photo_retention_days') ?></label>
-                <input type="number" name="photo_retention_days" class="form-control form-control--sm"
+                <input type="number" name="photo_retention_days" class="form-control form-control-sm"
                        value="<?= (int) $retentionDays ?>" min="1" max="365" required>
                 <span class="form-hint"><?= __('photo_retention_days_hint') ?></span>
             </div>
             <div class="form-group">
                 <label class="form-label"><?= __('photo_cleanup_delay') ?></label>
-                <input type="number" name="photo_cleanup_delay" class="form-control form-control--sm"
+                <input type="number" name="photo_cleanup_delay" class="form-control form-control-sm"
                        value="<?= (int) $cleanupDelay ?>" min="1" max="365" required>
                 <span class="form-hint"><?= __('photo_cleanup_delay_hint') ?></span>
             </div>

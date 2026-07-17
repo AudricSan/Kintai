@@ -25,6 +25,20 @@ final class BackupController
         private readonly AppSettingsService $settings,
     ) {}
 
+    /** GET /admin/backup/download?filename= — télécharge une archive de sauvegarde existante. */
+    public function download(Request $request): Response
+    {
+        $this->requireOwner($request);
+
+        $filename = (string) $request->query('filename', '');
+        $path = $this->backup->getPath($filename);
+        if ($filename === '' || !file_exists($path)) {
+            return Response::redirect('/admin/backup?error=not_found');
+        }
+
+        return Response::fileStream($path, 'application/zip', basename($path));
+    }
+
     public function index(Request $request): Response
     {
         $this->requireOwner($request);
@@ -45,10 +59,13 @@ final class BackupController
 
         $flash = $request->query('success', '');
 
+        $updateInfo = $this->githubUpdate->checkLatestRelease();
+
         return Response::html($this->view->render('system.update', [
             'title'                     => 'Mises à jour',
             'currentVersion'            => $this->update->getCurrentVersion(),
-            'updateInfo'                => $this->githubUpdate->checkLatestRelease(),
+            'updateInfo'                => $updateInfo,
+            'updateCheckError'          => $this->githubUpdate->getLastCheckError(),
             'updateChannel'             => $this->settings->updateChannel(),
             'pendingMigs'               => $this->update->getPendingMigrations(),
             'lastUpdateDurationSeconds' => $this->update->getLastUpdateDuration(),
@@ -76,26 +93,37 @@ final class BackupController
     {
         $this->requireOwner($request);
 
+        $wasMaintenanceEnabled = $this->settings->maintenanceModeEnabled();
+        if (!$wasMaintenanceEnabled) {
+            $this->settings->setMany(['maintenance_mode_enabled' => '1']);
+        }
+
         try {
-            $result = $this->githubUpdate->applyUpdate();
-        } catch (\Throwable $e) {
-            return Response::redirect('/admin/update?success=error_' . urlencode($e->getMessage()));
+            try {
+                $result = $this->githubUpdate->applyUpdate();
+            } catch (\Throwable $e) {
+                return Response::redirect('/admin/update?success=error_' . urlencode($e->getMessage()));
+            }
+
+            if (!$result['ok']) {
+                return Response::redirect('/admin/update?success=error_' . urlencode((string) $result['error']));
+            }
+
+            $summary = sprintf(
+                'updated_%s_files-%d_deleted-%d_migrations-%d_composer-%s',
+                $result['version'],
+                $result['files_copied'],
+                $result['files_deleted'],
+                $result['migrations_applied'],
+                $result['composer'],
+            );
+
+            return Response::redirect('/admin/update?success=' . urlencode($summary));
+        } finally {
+            if (!$wasMaintenanceEnabled) {
+                $this->settings->setMany(['maintenance_mode_enabled' => '0']);
+            }
         }
-
-        if (!$result['ok']) {
-            return Response::redirect('/admin/update?success=error_' . urlencode((string) $result['error']));
-        }
-
-        $summary = sprintf(
-            'updated_%s_files-%d_deleted-%d_migrations-%d_composer-%s',
-            $result['version'],
-            $result['files_copied'],
-            $result['files_deleted'],
-            $result['migrations_applied'],
-            $result['composer'],
-        );
-
-        return Response::redirect('/admin/update?success=' . urlencode($summary));
     }
 
     /**
@@ -124,20 +152,35 @@ final class BackupController
             flush();
         };
 
+        // exit() n'exécute pas les blocs finally en PHP : on restaure la maintenance
+        // explicitement avant chaque exit() plutôt que de compter sur un try/finally.
+        $wasMaintenanceEnabled = $this->settings->maintenanceModeEnabled();
+        if (!$wasMaintenanceEnabled) {
+            $this->settings->setMany(['maintenance_mode_enabled' => '1']);
+        }
+        $restoreMaintenance = function () use ($wasMaintenanceEnabled): void {
+            if (!$wasMaintenanceEnabled) {
+                $this->settings->setMany(['maintenance_mode_enabled' => '0']);
+            }
+        };
+
         try {
             $result = $this->githubUpdate->applyUpdate(function (int $percent, string $label) use ($emit): void {
                 $emit('progress', ['percent' => $percent, 'label' => $label]);
             });
         } catch (\Throwable $e) {
+            $restoreMaintenance();
             $emit('error', ['message' => $e->getMessage()]);
             exit(0);
         }
 
         if (!$result['ok']) {
+            $restoreMaintenance();
             $emit('error', ['message' => (string) $result['error']]);
             exit(0);
         }
 
+        $restoreMaintenance();
         $emit('done', $result);
         exit(0);
     }
@@ -194,13 +237,24 @@ final class BackupController
     {
         $this->requireOwner($request);
 
+        $wasMaintenanceEnabled = $this->settings->maintenanceModeEnabled();
+        if (!$wasMaintenanceEnabled) {
+            $this->settings->setMany(['maintenance_mode_enabled' => '1']);
+        }
+
         try {
-            $count = $this->migrator->run();
-            $request->setAttribute('_log_extra', ['migrations_applied' => $count]);
-            return Response::redirect('/admin/update?success=migrated');
-        } catch (\Throwable $e) {
-            $request->setAttribute('_log_extra', ['migration_error' => $e->getMessage()]);
-            return Response::redirect('/admin/update?success=error_' . urlencode($e->getMessage()));
+            try {
+                $count = $this->migrator->run();
+                $request->setAttribute('_log_extra', ['migrations_applied' => $count]);
+                return Response::redirect('/admin/update?success=migrated');
+            } catch (\Throwable $e) {
+                $request->setAttribute('_log_extra', ['migration_error' => $e->getMessage()]);
+                return Response::redirect('/admin/update?success=error_' . urlencode($e->getMessage()));
+            }
+        } finally {
+            if (!$wasMaintenanceEnabled) {
+                $this->settings->setMany(['maintenance_mode_enabled' => '0']);
+            }
         }
     }
 

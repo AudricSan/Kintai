@@ -5,6 +5,8 @@ declare(strict_types=1);
 use kintai\Core\Middleware\AuthMiddleware;
 use kintai\Core\Middleware\AdminMiddleware;
 use kintai\Core\Middleware\ApiAuthMiddleware;
+use kintai\Core\Middleware\ApiPermissionMiddleware;
+use kintai\Core\Middleware\PermissionMiddleware;
 use kintai\Bundles\TimeOff\Controllers\Web\EmployeeTimeoffController;
 use kintai\Bundles\TimeOff\Controllers\Web\AdminTimeoffController;
 use kintai\Bundles\TimeOff\Controllers\Api\TimeoffRequestController as ApiTimeoffRequestController;
@@ -33,7 +35,7 @@ $router->group('/admin', function ($r) {
     $r->post('/timeoff/{id}/approve', [AdminTimeoffController::class, 'approveTimeoff'],         name: 'admin.timeoff.approve');
     $r->post('/timeoff/{id}/refuse',  [AdminTimeoffController::class, 'refuseTimeoff'],          name: 'admin.timeoff.refuse');
     $r->post('/timeoff/{id}/delete',  [AdminTimeoffController::class, 'deleteTimeoff'],          name: 'admin.timeoff.delete');
-}, middleware: [AuthMiddleware::class, AdminMiddleware::class]);
+}, middleware: [AuthMiddleware::class, AdminMiddleware::class, PermissionMiddleware::class]);
 
 // =============================================================================
 // TimeOff — Routes API
@@ -45,4 +47,4 @@ $router->group('/api/v1', function ($r) {
     $r->get('/timeoff-requests/{id}',    [ApiTimeoffRequestController::class, 'show'],    name: 'api.v1.timeoff.show');
     $r->put('/timeoff-requests/{id}',    [ApiTimeoffRequestController::class, 'update'],  name: 'api.v1.timeoff.update');
     $r->delete('/timeoff-requests/{id}', [ApiTimeoffRequestController::class, 'destroy'], name: 'api.v1.timeoff.destroy');
-}, middleware: [ApiAuthMiddleware::class]);
+}, middleware: [ApiAuthMiddleware::class, ApiPermissionMiddleware::class]);

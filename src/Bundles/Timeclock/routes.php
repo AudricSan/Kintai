@@ -5,6 +5,8 @@ declare(strict_types=1);
 use kintai\Core\Middleware\AuthMiddleware;
 use kintai\Core\Middleware\AdminMiddleware;
 use kintai\Core\Middleware\ApiAuthMiddleware;
+use kintai\Core\Middleware\ApiPermissionMiddleware;
+use kintai\Core\Middleware\PermissionMiddleware;
 use kintai\Bundles\Timeclock\Controllers\Web\EmployeeTimeclockController;
 use kintai\Bundles\Timeclock\Controllers\Web\AdminTimeclockController;
 use kintai\Bundles\Timeclock\Controllers\Api\TimeclockController as ApiTimeclockController;
@@ -30,7 +32,7 @@ $router->group('/admin', function ($r) {
     $r->get('/timeclocks',              [AdminTimeclockController::class, 'timeclocks'],       name: 'admin.timeclocks');
     $r->post('/timeclocks/{id}/edit',   [AdminTimeclockController::class, 'timeclocksEdit'],   name: 'admin.timeclocks.edit');
     $r->post('/timeclocks/{id}/delete', [AdminTimeclockController::class, 'timeclocksDelete'], name: 'admin.timeclocks.delete');
-}, middleware: [AuthMiddleware::class, AdminMiddleware::class]);
+}, middleware: [AuthMiddleware::class, AdminMiddleware::class, PermissionMiddleware::class]);
 
 // =============================================================================
 // Timeclock — Routes API
@@ -43,4 +45,4 @@ $router->group('/api/v1', function ($r) {
     $r->get('/timeclocks/{id}',       [ApiTimeclockController::class, 'show'],     name: 'api.v1.timeclock.show');
     $r->put('/timeclocks/{id}',       [ApiTimeclockController::class, 'update'],   name: 'api.v1.timeclock.update');
     $r->delete('/timeclocks/{id}',    [ApiTimeclockController::class, 'destroy'],  name: 'api.v1.timeclock.destroy');
-}, middleware: [ApiAuthMiddleware::class]);
+}, middleware: [ApiAuthMiddleware::class, ApiPermissionMiddleware::class]);

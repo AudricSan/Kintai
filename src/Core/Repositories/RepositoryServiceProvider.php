@@ -35,6 +35,8 @@ final class RepositoryServiceProvider extends ServiceProvider
         $this->container->singleton(AppSettingsRepositoryInterface::class, fn() => new DatabaseAppSettingsRepository());
         $this->container->singleton(CronTokenRepositoryInterface::class, fn() => new DatabaseCronTokenRepository());
         $this->container->singleton(LogRepositoryInterface::class, fn() => new DatabaseLogRepository());
+        $this->container->singleton(RoleRepositoryInterface::class, fn() => new DatabaseRoleRepository());
+        $this->container->singleton(RoleAssignmentRepositoryInterface::class, fn() => new DatabaseRoleAssignmentRepository());
 
         // Rapports
         // HiringReportRepositoryInterface reste ici (contrairement à Resignation/Salary,
