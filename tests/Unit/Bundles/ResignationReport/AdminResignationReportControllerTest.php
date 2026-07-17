@@ -90,7 +90,7 @@ final class AdminResignationReportControllerTest extends TestCase
         $this->assertSame('Jean Dupont', $data[0]['employee_name']);
     }
 
-    public function testExportResignationReportsPdfReturnsPdfResponse(): void
+    public function testExportResignationReportsPdfReturnsHtmlPreview(): void
     {
         $_SERVER['PHP_SELF'] ??= '/index.php';
 
@@ -101,6 +101,22 @@ final class AdminResignationReportControllerTest extends TestCase
         $this->resignationReports->method('findAll')->willReturn([]);
 
         $response = $this->controller->exportResignationReportsPdf($req);
+
+        $this->assertSame(200, $response->status());
+        $this->assertStringNotContainsString('%PDF', $response->body());
+    }
+
+    public function testExportResignationReportsPdfDownloadReturnsPdfResponse(): void
+    {
+        $_SERVER['PHP_SELF'] ??= '/index.php';
+
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+
+        $this->stores->method('findAll')->willReturn([['id' => 1, 'name' => 'Store A']]);
+        $this->resignationReports->method('findAll')->willReturn([]);
+
+        $response = $this->controller->exportResignationReportsPdfDownload($req);
 
         $this->assertSame(200, $response->status());
         $this->assertStringStartsWith('%PDF', $response->body());

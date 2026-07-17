@@ -1,11 +1,14 @@
 <?php
 /**
  * Template HTML for mPDF — Salary reports list export (item 5).
- * Rendered standalone (no layout) for PDF generation.
+ * Rendered standalone (no layout) : soit pour la génération PDF serveur,
+ * soit directement comme aperçu navigateur (avec barre d'outils) quand
+ * $downloadUrl est fourni.
  *
- * @var array  $reports
- * @var array  $store_names  Map store_id => nom
- * @var string $generated_at
+ * @var array       $reports
+ * @var array       $store_names  Map store_id => nom
+ * @var string      $generated_at
+ * @var string|null $downloadUrl
  */
 ?>
 <!DOCTYPE html>
@@ -13,6 +16,10 @@
 <head>
 <meta charset="UTF-8">
 <style>
+<?php
+echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-brand.css');
+echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-preview.css');
+?>
 body { font-family: sans-serif; font-size: 8pt; color: #333; margin: 0; padding: 0; }
 h1 { text-align: center; font-size: 15pt; margin-bottom: 4pt; }
 .subtitle { text-align: center; font-size: 9pt; color: #666; margin-bottom: 16pt; }
@@ -24,6 +31,9 @@ td { padding: 4pt 5pt; border: 1px solid #ccc; font-size: 7.5pt; vertical-align:
 </style>
 </head>
 <body>
+
+<?php include __DIR__ . '/../../../UI/View/_partials/_pdf-preview-toolbar.php'; ?>
+<div class="pdf-preview-page">
 
 <h1><?= __('sr_title') ?></h1>
 <div class="subtitle"><?= count($reports) ?> — <?= htmlspecialchars($generated_at) ?></div>
@@ -53,5 +63,6 @@ td { padding: 4pt 5pt; border: 1px solid #ccc; font-size: 7.5pt; vertical-align:
     <?= __('pdf_generated_by') ?> Kintai — <?= htmlspecialchars($generated_at) ?>
 </div>
 
+</div>
 </body>
 </html>
