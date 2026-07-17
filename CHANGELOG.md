@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Changed
+- Documented the MINOR vs. PATCH convention in `docs/releasing.md`: any release bundling a new feature or behavior change bumps MINOR (even if fixes ride along in the same release), PATCH is reserved for bugfix-only releases. Prompted by `main` sitting at `0.6.0` while `beta` had raced to `0.7.9` through nine consecutive PATCH bumps that actually contained feature work — understating how far the stable channel had drifted.
+
 ### Fixed
 - Deleting a resignation report left the linked employee deactivated: `storeResignationReport()` sets `is_active = 0` on creation, and the explicit "Reactivate" action already reverses that, but deleting the report itself did not — so removing the report (e.g. created by mistake) permanently stranded the employee as inactive with no report left to reactivate from. `deleteResignationReport()` now reactivates the linked user first, same as the explicit reactivate action, before deleting the report.
 - The navigation settings page (`/admin/nav-settings`) had no toggle to hide/show the hiring, resignation or salary report links — `$allSections['statistics']` (which drives the checkbox list) only listed `employee_report`/`daily_reports`/`photos`, even though the sidebar itself already supports hiding all three (`$navHide('hiring_report')`/`'resignation_report'`/`'salary_report'`). Added the missing entries (for both Owner and Manager, gated by the same `bundle_enabled()` check the sidebar uses, so a disabled report bundle doesn't show a dead toggle).
