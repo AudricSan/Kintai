@@ -58,6 +58,16 @@ jobs:
               exit 0
             fi
           else
+            # Un canal alpha/beta ne doit jamais tagger une base version déjà
+            # publiée en stable : vX.Y.Z-{channel} serait alors sémantiquement
+            # *inférieur* à vX.Y.Z (déjà sur main) et donc invisible pour le
+            # canal, même avec des commits plus récents dessous — échec
+            # explicite plutôt qu'une release silencieusement inatteignable.
+            if git rev-parse "refs/tags/v${BASE_VERSION}" >/dev/null 2>&1; then
+              echo "::error::v${BASE_VERSION} est déjà publiée en stable sur main ; bump la version de base (composer.json/config/app.php/CHANGELOG.md) avant de publier une nouvelle prerelease sur ce canal."
+              exit 1
+            fi
+
             # Tag glissant : un seul vX.Y.Z-{channel} par version en cours,
             # réécrit à chaque push tant que la version de base ne change pas
             # (voir l'étape suivante, qui le force-update s'il existe déjà).

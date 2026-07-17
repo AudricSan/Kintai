@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Changed
+- `alpha`/`beta` releases now use a rolling tag (`vX.Y.Z-{channel}`, deleted and recreated on each push) instead of an ever-incrementing `vX.Y.Z-{channel}.N` — the old scheme had reached `.16` for a single version and helped bury the actual latest stable release under a long tail of prereleases. The `Release` workflow now also refuses to publish an alpha/beta prerelease once `vX.Y.Z` (no suffix) already shipped as a stable Release, since a same-numbered prerelease would be semver-lower than the stable tag and therefore invisible to that update channel — bump the base version first instead.
+
 ### Fixed
 - Deleting a resignation report left the linked employee deactivated: `storeResignationReport()` sets `is_active = 0` on creation, and the explicit "Reactivate" action already reverses that, but deleting the report itself did not — so removing the report (e.g. created by mistake) permanently stranded the employee as inactive with no report left to reactivate from. `deleteResignationReport()` now reactivates the linked user first, same as the explicit reactivate action, before deleting the report.
 - The navigation settings page (`/admin/nav-settings`) had no toggle to hide/show the hiring, resignation or salary report links — `$allSections['statistics']` (which drives the checkbox list) only listed `employee_report`/`daily_reports`/`photos`, even though the sidebar itself already supports hiding all three (`$navHide('hiring_report')`/`'resignation_report'`/`'salary_report'`). Added the missing entries (for both Owner and Manager, gated by the same `bundle_enabled()` check the sidebar uses, so a disabled report bundle doesn't show a dead toggle).
