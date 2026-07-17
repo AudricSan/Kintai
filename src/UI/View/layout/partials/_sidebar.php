@@ -77,8 +77,11 @@ $ico              = fn(string $k): string => '<span class="sidebar-link__icon">'
                     <?php endif; ?>
                     <?php endif; ?>
                 <?php break; case 'statistics': ?>
-                    <?php if (($feat('daily_reports') && !$navHide('daily_reports')) || (bundle_enabled('resignation-report') && !$navHide('resignation_report')) || (bundle_enabled('salary-report') && !$navHide('salary_report')) || ($feat('photos') && !$navHide('photos'))): ?>
+                    <?php if ((bundle_enabled('hiring-report') && !$navHide('hiring_report')) || ($feat('daily_reports') && !$navHide('daily_reports')) || (bundle_enabled('resignation-report') && !$navHide('resignation_report')) || (bundle_enabled('salary-report') && !$navHide('salary_report')) || ($feat('photos') && !$navHide('photos'))): ?>
                     <li class="sidebar-section"><?= __('reports') ?></li>
+                    <?php if (bundle_enabled('hiring-report') && !$navHide('hiring_report')): ?>
+                    <li><a href="<?= route_url('admin.reports.hiring') ?>" class="sidebar-link<?= str_contains($path, '/reports/hiring') ? ' active' : '' ?>"><?= $ico('person') ?><?= __('hiring_reports') ?></a></li>
+                    <?php endif; ?>
                     <?php if ($feat('daily_reports') && !$navHide('daily_reports')): ?>
                     <li><a href="<?= route_url('admin.daily_reports.all') ?>" class="sidebar-link<?= str_contains($path, '/daily-reports') ? ' active' : '' ?>"><?= $ico('chart') ?><?= __('daily_reports') ?></a></li>
                     <?php endif; ?>
@@ -178,12 +181,16 @@ $ico              = fn(string $k): string => '<span class="sidebar-link__icon">'
                     <?php endif; ?>
                 <?php break; case 'statistics': ?>
                     <?php
+                    $_canHiring      = bundle_enabled('hiring-report') && $can('documents.view');
                     $_canResignation = bundle_enabled('resignation-report') && $can('documents.view');
                     $_canSalary      = bundle_enabled('salary-report') && $can('payroll.view');
                     $_canPhotos      = $feat('photos') && $can('documents.view');
                     ?>
-                    <?php if (($can('payroll.view') && !$navHide('employee_report')) || ($feat('daily_reports') && !$navHide('daily_reports')) || ($_canResignation && !$navHide('resignation_report')) || ($_canSalary && !$navHide('salary_report')) || ($_canPhotos && !$navHide('photos'))): ?>
+                    <?php if ($_canHiring || ($can('payroll.view') && !$navHide('employee_report')) || ($feat('daily_reports') && !$navHide('daily_reports')) || ($_canResignation && !$navHide('resignation_report')) || ($_canSalary && !$navHide('salary_report')) || ($_canPhotos && !$navHide('photos'))): ?>
                     <li class="sidebar-section"><?= __('reports') ?></li>
+                    <?php if ($_canHiring && !$navHide('hiring_report')): ?>
+                    <li><a href="<?= route_url('admin.reports.hiring') ?>" class="sidebar-link<?= str_contains($path, '/reports/hiring') ? ' active' : '' ?>"><?= $ico('person') ?><?= __('hiring_reports') ?></a></li>
+                    <?php endif; ?>
                     <?php if ($can('payroll.view') && !$navHide('employee_report')): ?>
                     <li><a href="<?= $reportHref ?>" class="sidebar-link<?= str_contains($path, '/employee-report') ? ' active' : '' ?>"><?= $ico('chart') ?><?= __('employee_report') ?></a></li>
                     <?php endif; ?>
