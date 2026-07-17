@@ -18,14 +18,14 @@ final class AdminController
         'shifts', 'calendar', 'shift_types', 'timeclocks',
         'users', 'stores',
         'timeoff', 'swaps', 'open_shifts', 'messages',
-        'daily_reports', 'photos',
+        'hiring_report', 'daily_reports', 'resignation_report', 'salary_report', 'photos',
         'audit_log',
     ];
 
     private const NAV_MANAGER_KEYS = [
         'shifts', 'calendar', 'shift_types', 'timeclocks',
         'timeoff', 'swaps', 'open_shifts', 'messages',
-        'employee_report', 'daily_reports', 'photos',
+        'employee_report', 'hiring_report', 'daily_reports', 'resignation_report', 'salary_report', 'photos',
     ];
 
     private const NAV_OWNER_SECTIONS   = ['planning', 'hr', 'requests', 'statistics', 'system'];
