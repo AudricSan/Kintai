@@ -159,6 +159,11 @@ final class AdminHiringReportController
         return $this->reportPdf($request);
     }
 
+    public function hiringReportPdfDownload(Request $request): Response
+    {
+        return $this->reportPdfDownload($request);
+    }
+
     protected function reportRepo(): object
     {
         return $this->hiringReports;

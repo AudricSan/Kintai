@@ -218,7 +218,30 @@ final class AdminUserController
         return Response::jsonDownload(['data' => $rows], 'employees_' . date('Ymd') . '.json');
     }
 
+    /**
+     * Aperçu HTML du PDF (route .../export/pdf) : pas de téléchargement
+     * automatique, la même vue users-export-pdf.php est rendue directement
+     * dans le navigateur avec une barre d'outils (impression / téléchargement
+     * réel / fermer), comme les rapports RH. Le fichier PDF n'est généré
+     * (via mPDF) que si l'utilisateur clique "Télécharger" (exportUsersPdfDownload()).
+     */
     public function exportUsersPdf(Request $request): Response
+    {
+        $rows = $this->usersForExport($request);
+
+        $storeId = (int) ($request->query('store_id') ?? 0);
+        $downloadUrl = $this->base() . '/admin/users/export/pdf/download' . ($storeId !== 0 ? '?store_id=' . $storeId : '');
+
+        $html = $this->view->render('staff.users-export-pdf', [
+            'rows'         => $rows,
+            'generated_at' => date('Y-m-d H:i'),
+            'downloadUrl'  => $downloadUrl,
+        ]);
+
+        return Response::html($html);
+    }
+
+    public function exportUsersPdfDownload(Request $request): Response
     {
         $rows = $this->usersForExport($request);
 

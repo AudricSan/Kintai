@@ -82,7 +82,7 @@ echo Flash::fromQuery('success', [
             ]);
             $exportQueryString = $exportQuery ? '?' . http_build_query($exportQuery) : '';
         ?>
-        <?= Button::make('PDF')->ghost()->sm()->link($BASE_URL . '/admin/reports/salary/export/pdf' . $exportQueryString)->render() ?>
+        <?= Button::make('PDF')->ghost()->sm()->link($BASE_URL . '/admin/reports/salary/export/pdf' . $exportQueryString)->attrs(['target' => '_blank'])->render() ?>
         <?= Button::make('JSON')->ghost()->sm()->link($BASE_URL . '/admin/reports/salary/export/json' . $exportQueryString)->render() ?>
         <?php endif; ?>
         <?php if (!$allMode): ?>
@@ -189,7 +189,7 @@ echo Flash::fromQuery('success', [
             $html .= csrf_field();
             $html .= Button::make(__('delete'))->danger()->sm()->submit()->render();
             $html .= '</form>';
-            $html .= Button::make(__('sr_pdf'))->ghost()->sm()->link($base . '/pdf')->render();
+            $html .= Button::make(__('sr_pdf'))->ghost()->sm()->link($base . '/pdf')->attrs(['target' => '_blank'])->render();
             $html .= '</div>';
             return $html;
         })

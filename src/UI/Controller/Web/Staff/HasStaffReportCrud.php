@@ -188,7 +188,29 @@ trait HasStaffReportCrud
         return $this->redirectToList($storeId, $this->reportConfig()['slug'], 'deleted');
     }
 
+    /**
+     * Aperçu HTML du PDF (route .../pdf) : pas de téléchargement automatique,
+     * juste la même vue *-pdf.php rendue directement dans le navigateur avec
+     * une barre d'outils (impression / téléchargement réel / fermer), comme
+     * l'ancienne fiche de paie autonome. Le vrai fichier PDF n'est généré que
+     * si l'utilisateur clique explicitement sur "Télécharger" (reportPdfDownload()).
+     */
     private function reportPdf(Request $request): Response
+    {
+        [$report, $storeId, $reportId] = $this->findReportOrFail($request);
+        $cfg = $this->reportConfig();
+
+        $html = $this->view->render($cfg['view'] . '-pdf', array_merge([
+            'report'      => $report,
+            'store'       => $this->stores->findById($storeId),
+            'downloadUrl' => $this->base() . '/admin/stores/' . $storeId . '/reports/' . $cfg['slug'] . '/' . $reportId . '/pdf/download',
+        ], $this->reportShowExtras($storeId, $report)));
+
+        return Response::html($html);
+    }
+
+    /** Génération réelle du fichier PDF (mPDF), déclenchée depuis la barre d'outils de l'aperçu. */
+    private function reportPdfDownload(Request $request): Response
     {
         [$report, $storeId, $reportId] = $this->findReportOrFail($request);
         $cfg = $this->reportConfig();

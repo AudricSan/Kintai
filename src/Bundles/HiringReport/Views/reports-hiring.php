@@ -146,13 +146,15 @@ echo Flash::fromQuery('success', [
             $sid = (int) ($r['store_id'] ?? 0);
             $base = $BASE_URL . '/admin/stores/' . $sid . '/reports/hiring/' . $rid;
             $html = '<div class="btn-group">';
-            $html .= Button::make('PDF')->ghost()->sm()->link($base . '/pdf')->render();
+            $html .= Button::make(__('view'))->ghost()->sm()->link($base)->render();
+            $html .= Button::make(__('edit'))->ghost()->sm()->link($base . '/edit')->render();
             if (!empty($auth_user['is_admin'])) {
                 $html .= '<form method="POST" action="' . htmlspecialchars($base . '/delete') . '" class="form-inline" onsubmit="return confirm(\'' . __('confirm_delete_hiring_report') . '\')">';
                 $html .= csrf_field();
                 $html .= Button::make(__('delete'))->danger()->sm()->submit()->render();
                 $html .= '</form>';
             }
+            $html .= Button::make('PDF')->ghost()->sm()->link($base . '/pdf')->attrs(['target' => '_blank'])->render();
             $html .= '</div>';
             return $html;
         })

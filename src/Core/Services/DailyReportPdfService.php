@@ -40,6 +40,17 @@ final class DailyReportPdfService
         }
     }
 
+    /**
+     * Rend le même template que generateBytes(), mais en HTML brut pour un
+     * aperçu navigateur (avec barre d'outils impression/téléchargement) au
+     * lieu d'un PDF — voir DailyReportController::previewPdf().
+     */
+    public function generateHtml(array $report, array $store, array $author = [], ?string $locale = null, ?string $downloadUrl = null): string
+    {
+        [$html] = $this->buildHtml($report, $store, $author, $locale, $downloadUrl);
+        return $html;
+    }
+
     // -------------------------------------------------------------------------
     // Helpers privés
     // -------------------------------------------------------------------------
@@ -64,7 +75,7 @@ final class DailyReportPdfService
      *
      * @return array{0: string, 1: string}  [html, title]
      */
-    private function buildHtml(array $report, array $store, array $author, ?string $localeOverride): array
+    private function buildHtml(array $report, array $store, array $author, ?string $localeOverride, ?string $downloadUrl = null): array
     {
         $locale   = $this->resolveLocale($author, $store, $localeOverride);
         $previous = $this->translations->getLocale();
@@ -72,11 +83,12 @@ final class DailyReportPdfService
 
         try {
             $html  = $this->view->render('daily-report::daily-report-pdf', [
-                'report'    => $report,
-                'store'     => $store,
-                'author'    => $author,
-                'locale'    => $locale,
-                'shiftRows' => $this->buildShiftRows($store, $report),
+                'report'      => $report,
+                'store'       => $store,
+                'author'      => $author,
+                'locale'      => $locale,
+                'shiftRows'   => $this->buildShiftRows($store, $report),
+                'downloadUrl' => $downloadUrl,
             ]);
             $title = __('dr_title') . ' — ' . ($report['report_date'] ?? '');
         } finally {
