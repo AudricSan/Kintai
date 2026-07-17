@@ -4,16 +4,15 @@
  * @var string $mode   'create'|'edit'
  * @var array  $store  Données du magasin
  * @var array|null $deductionSettings  Paramètres de cotisations
+ * @var array|null $importSettings  Paramètres d'import Excel / pause auto (table store_import_settings)
  */
 $mode ??= 'create';
 $store ??= [];
 $deductionSettings ??= [];
+$importSettings ??= [];
 
 $excelDefaults = \kintai\Core\Services\ExcelShiftImport\ExcelShiftImportService::DEFAULTS;
-$excelSettings = array_merge(
-    $excelDefaults,
-    json_decode($store['excel_import_settings'] ?? '{}', true) ?: []
-);
+$excelSettings = array_merge($excelDefaults, $importSettings);
 
 $ded = $deductionSettings;
 $dedEnabled     = !empty($ded['enabled']);
