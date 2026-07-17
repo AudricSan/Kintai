@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Fixed
+- Deleting a resignation report left the linked employee deactivated: `storeResignationReport()` sets `is_active = 0` on creation, and the explicit "Reactivate" action already reverses that, but deleting the report itself did not — so removing the report (e.g. created by mistake) permanently stranded the employee as inactive with no report left to reactivate from. `deleteResignationReport()` now reactivates the linked user first, same as the explicit reactivate action, before deleting the report.
+
 ## [0.7.9] - 2026-07-17
 
 ### Changed

@@ -259,8 +259,29 @@ final class AdminResignationReportController
         return $this->updateReport($request);
     }
 
+    /**
+     * Supprimer un rapport de démission réactive automatiquement l'employé
+     * concerné (storeResignationReport() le désactive à la création) — sinon
+     * il resterait désactivé alors que le rapport qui l'a désactivé n'existe
+     * plus.
+     */
     public function deleteResignationReport(Request $request): Response
     {
+        [$report] = $this->findReportOrFail($request);
+        $userId = (int) ($report['user_id'] ?? 0);
+        if ($userId > 0) {
+            $user = $this->users->findById($userId);
+            if ($user !== null) {
+                $user['is_active'] = 1;
+                $this->users->save($user);
+                $this->auditLogger->log($request, 'resignation_report.reactivated', 'resignation_report', (int) $report['id'], [
+                    'store_id' => (int) $report['store_id'],
+                    'user_id'  => $userId,
+                    'reason'   => 'report_deleted',
+                ]);
+            }
+        }
+
         return $this->deleteReport($request);
     }
 
