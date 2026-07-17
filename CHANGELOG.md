@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Changed
+- `alpha`/`beta` releases now use a rolling tag (`vX.Y.Z-{channel}`, deleted and recreated on each push) instead of an ever-incrementing `vX.Y.Z-{channel}.N` — the old scheme had reached `.16` for a single version and helped bury the actual latest stable release under a long tail of prereleases. The `Release` workflow now also refuses to publish an alpha/beta prerelease once `vX.Y.Z` (no suffix) already shipped as a stable Release, since a same-numbered prerelease would be semver-lower than the stable tag and therefore invisible to that update channel — bump the base version first instead.
+
 ### Fixed
 - `GithubUpdateService::fetchReleaseListData()` only requested the first page (30 items) of `GET /repos/{repo}/releases`, which the GitHub API returns newest-first — once a repo accumulates more than 30 releases (alpha/beta included, each a distinct GitHub Release under this project's channel workflow), the last stable release can be pushed past that page entirely. On the "release" channel this meant the instance update page silently showed "No GitHub release available" instead of comparing against the actual latest stable release. Now paginates (100 per page, up to 5 pages) and stops as soon as a release compatible with the configured channel is found among the pages fetched so far.
 - Deleting a resignation report left the linked employee deactivated: `storeResignationReport()` sets `is_active = 0` on creation, and the explicit "Reactivate" action already reverses that, but deleting the report itself did not — so removing the report (e.g. created by mistake) permanently stranded the employee as inactive with no report left to reactivate from. `deleteResignationReport()` now reactivates the linked user first, same as the explicit reactivate action, before deleting the report.

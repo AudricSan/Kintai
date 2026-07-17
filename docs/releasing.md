@@ -27,7 +27,7 @@ The base version number (`X.Y.Z` in `composer.json`/`config/app.php`/`CHANGELOG.
 2. Open a PR targeting the channel branch you want to publish to (`alpha`, `beta`, or `main`), and merge it once CI is green (required by branch protection).
 3. `.github/workflows/release.yml` runs on the resulting push and:
    - reads the base version from `composer.json`;
-   - on `alpha`/`beta`, tags `vX.Y.Z-{channel}.N` (`N` auto-incremented from the last matching tag) and marks the GitHub Release as a prerelease;
+   - on `alpha`/`beta`, tags `vX.Y.Z-{channel}` — a **rolling tag**: if that tag/Release already exists (e.g. a follow-up push on the same `X.Y.Z` still in progress), it's deleted and recreated pointing at the new commit, instead of accumulating `vX.Y.Z-{channel}.1`, `.2`, `.3`... Marked as a prerelease. **Fails the build** if `vX.Y.Z` (no suffix) already exists as a stable Release — publishing a prerelease with the same base version as an already-shipped stable one would be semver-*lower* than that stable tag and therefore invisible to the channel; bump the base version first;
    - on `main`, tags `vX.Y.Z` as a normal (non-prerelease) Release — skipped with a log message if that exact tag already exists (i.e. no version bump happened since the last stable release);
    - extracts the release notes from `CHANGELOG.md` (the dated `## [X.Y.Z]` section for `main`, the `## [Unreleased]` section for `alpha`/`beta`).
 
