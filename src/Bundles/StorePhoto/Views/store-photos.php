@@ -70,7 +70,7 @@ echo Flash::fromQuery('success', [
                 <div class="card-body" style="padding:var(--space-3)">
                     <div class="photo-card__meta">
                         <strong><?= htmlspecialchars($storeName) ?></strong>
-                        <span class="badge badge--secondary badge--sm"><?= $count ?> <?= __('photos_report') ?></span>
+                        <span class="badge badge--secondary badge--sm"><?= $count ?> <?= __('photos_count') ?></span>
                     </div>
                     <div class="text-muted text-sm"><?= htmlspecialchars($sub['week_label'] ?? '') ?></div>
                     <?php if (!empty($sub['notes'])): ?>

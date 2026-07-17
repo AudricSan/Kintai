@@ -28,19 +28,30 @@ $featMap = [
     'timeoff'     => 'timeoff', 'swaps' => 'swaps', 'open_shifts' => 'open_shifts',
     'messages'    => 'messages', 'employee_report' => null, 'daily_reports' => 'daily_reports',
     'photos'      => null, 'audit_log' => null,
+    'hiring_report' => null, 'resignation_report' => null, 'salary_report' => null,
+];
+// Les rapports RH sont des bundles activables/désactivables globalement (pas des feature
+// flags par store) — voir _sidebar.php, qui les gate via bundle_enabled(). Une clé absente
+// d'ici n'est pas soumise à ce filtre supplémentaire.
+$bundleMap = [
+    'hiring_report'      => 'hiring-report',
+    'resignation_report' => 'resignation-report',
+    'salary_report'      => 'salary-report',
 ];
 $allSections = [
     'planning'   => ['shifts', 'calendar', 'shift_types', 'timeclocks'],
     'hr'         => ['users', 'stores'],
     'requests'   => ['timeoff', 'swaps', 'open_shifts', 'messages'],
-    'statistics' => ['employee_report', 'daily_reports', 'photos'],
+    'statistics' => ['hiring_report', 'employee_report', 'daily_reports', 'resignation_report', 'salary_report', 'photos'],
     'system'     => ['audit_log'],
 ];
 $bnFeatMap = ['shifts' => 'shifts', 'team' => null, 'requests' => 'timeoff', 'messages' => 'messages', 'swaps' => 'swaps', 'timeclocks' => 'timeclock', 'daily_reports' => 'daily_reports'];
 
 $sections = [];
 foreach ($allSections as $sk => $keys) {
-    $f = array_values(array_filter(array_intersect($keys, $allowedKeys), fn(string $k) => $hasFeat($featMap[$k] ?? null)));
+    $f = array_values(array_filter(array_intersect($keys, $allowedKeys), fn(string $k) =>
+        $hasFeat($featMap[$k] ?? null) && (!isset($bundleMap[$k]) || bundle_enabled($bundleMap[$k]))
+    ));
     if (!empty($f)) $sections[$sk] = $f;
 }
 $bottomNavPool = array_values(array_filter($bottomNavPool, fn(string $k) => $hasFeat($bnFeatMap[$k] ?? null)));
