@@ -16,7 +16,7 @@ All notable changes to Kintai are documented here.
 - New "Bank transfer salary" field (`bank_transfer_salary`, defaults to 0) on the salary report, alongside the existing "hand-delivered salary" — for stores that split an employee's net pay between cash and bank transfer.
 
 ### Changed
-- On a salary report scoped to a single employee, the "Active employees" and "New hires" fields (store-wide concepts, not meaningful for one person) are hidden from the create/edit form and the detail/PDF views instead of being shown as always-zero noise; their stored values are preserved via hidden inputs on save.
+- On a salary report scoped to a single employee, the "Active employees", "New hires" and "Resigned staff" fields (store-wide concepts, not meaningful for one person) are hidden from the create/edit form and the detail/PDF views instead of being shown as always-zero noise; their stored values are preserved via hidden inputs on save.
 
 ## [0.7.7] - 2026-07-17
 

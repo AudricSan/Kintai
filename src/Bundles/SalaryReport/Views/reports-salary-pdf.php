@@ -143,10 +143,12 @@ th { background: #f0f0f0; font-weight: 600; }
         <td class="tr td-mono"><?= $fmt($report['new_hires'] ?? null) ?></td>
     </tr>
     <?php endif; ?>
+    <?php if (!$isEmployeeScoped): ?>
     <tr>
         <th><?= __('sr_resigned_staff') ?></th>
         <td class="tr td-mono"><?= $fmt($report['resigned_staff'] ?? null) ?></td>
     </tr>
+    <?php endif; ?>
     <?php if (!empty($report['hire_registrations'])): ?>
     <tr>
         <th><?= __('sr_hire_registrations') ?></th>

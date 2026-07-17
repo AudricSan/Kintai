@@ -178,11 +178,15 @@ ob_start();
         <?php else: ?>
         <input type="hidden" name="new_hires" value="<?= $val('new_hires', '0') ?>">
         <?php endif; ?>
+        <?php if ($employeeId <= 0): ?>
         <div class="form-group form-group--flex1">
             <label class="form-label"><?= __('sr_resigned_staff') ?></label>
             <input type="number" name="resigned_staff" class="form-control"
                    step="1" min="0" value="<?= $val('resigned_staff', '0') ?>">
         </div>
+        <?php else: ?>
+        <input type="hidden" name="resigned_staff" value="<?= $val('resigned_staff', '0') ?>">
+        <?php endif; ?>
     </div>
 
     <div class="form-group">

@@ -84,7 +84,9 @@ ob_start();
     <?php if (!$isEmployeeScoped): ?>
     <tr><th><?= __('sr_new_hires') ?></th><td class="td-mono"><?= $num($report['new_hires'] ?? null) ?></td></tr>
     <?php endif; ?>
+    <?php if (!$isEmployeeScoped): ?>
     <tr><th><?= __('sr_resigned_staff') ?></th><td class="td-mono"><?= $num($report['resigned_staff'] ?? null) ?></td></tr>
+    <?php endif; ?>
 </table>
 
 <?php if (!empty($report['employee_work_hours'])): ?>
