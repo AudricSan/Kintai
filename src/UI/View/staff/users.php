@@ -53,7 +53,7 @@ $exportQuery = $filter_store_id !== 0 ? '?store_id=' . $filter_store_id : '';
             <?php if (count($available_stores) > 1 || $filter_store_id !== 0): ?>
             <div class="shifts-filters__group">
                 <label class="shifts-filters__label" for="uf-store"><?= __('store') ?></label>
-                <select id="uf-store" name="store_id" class="form-control form-control--sm" onchange="this.form.submit()">
+                <select id="uf-store" name="store_id" class="form-control form-control-sm" onchange="this.form.submit()">
                     <option value="0"><?= __('all_stores') ?></option>
                     <?php foreach ($available_stores as $s): ?>
                         <option value="<?= (int) $s['id'] ?>" <?= $filter_store_id === (int) $s['id'] ? 'selected' : '' ?>><?= htmlspecialchars($s['name']) ?></option>
@@ -64,7 +64,7 @@ $exportQuery = $filter_store_id !== 0 ? '?store_id=' . $filter_store_id : '';
             <?php endif; ?>
             <div class="shifts-filters__group">
                 <label class="shifts-filters__label" for="uf-search"><?= __('search') ?></label>
-                <input type="text" id="uf-search" name="search" class="form-control form-control--sm" data-client-filter="1" value="<?= htmlspecialchars($filter_search) ?>" placeholder="<?= __('search_user_placeholder') ?>">
+                <input type="text" id="uf-search" name="search" class="form-control form-control-sm" data-client-filter="1" value="<?= htmlspecialchars($filter_search) ?>" placeholder="<?= __('search_user_placeholder') ?>">
             </div>
             <div class="shifts-filters__actions">
                 <?php if ($filter_search !== '' || $filter_store_id !== 0): ?>

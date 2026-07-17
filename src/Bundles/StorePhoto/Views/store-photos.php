@@ -25,7 +25,7 @@ echo Flash::fromQuery('success', [
         <form method="GET" action="" class="form-flex">
             <div class="form-group">
                 <label class="form-label"><?= __('store') ?></label>
-                <select name="store_id" class="form-control form-control--sm" onchange="this.form.submit()">
+                <select name="store_id" class="form-control form-control-sm" onchange="this.form.submit()">
                     <option value="0"><?= __('all') ?></option>
                     <?php foreach ($availableStores as $s): ?>
                         <option value="<?= (int) $s['id'] ?>" <?= $filterStoreId === (int) $s['id'] ? 'selected' : '' ?>>

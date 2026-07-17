@@ -48,7 +48,7 @@ $noReportTime      = $settings['no_report_time']     ?? '18:00';
             </label>
             <div class="form-group">
                 <label class="form-label"><?= __('dr_setting_cumulative') ?></label>
-                <select name="cumulative_mode" class="form-control form-control--sm">
+                <select name="cumulative_mode" class="form-control form-control-sm">
                     <option value="per_day" <?= $settings['cumulative_mode'] === 'per_day' ? 'selected' : '' ?>><?= __('dr_mode_per_day') ?></option>
                     <option value="cumulative_system" <?= $settings['cumulative_mode'] === 'cumulative_system' ? 'selected' : '' ?>><?= __('dr_mode_cumulative_system') ?></option>
                     <option value="cumulative_input" <?= $settings['cumulative_mode'] === 'cumulative_input' ? 'selected' : '' ?>><?= __('dr_mode_cumulative_input') ?></option>

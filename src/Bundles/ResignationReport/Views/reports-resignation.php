@@ -102,7 +102,7 @@ echo Flash::fromQuery('success', [
             <?php if ($allMode): ?>
             <div class="shifts-filters__group">
                 <label class="shifts-filters__label" for="rf-store"><?= __('store') ?></label>
-                <select id="rf-store" name="store_id" class="form-control form-control--sm" onchange="this.form.submit()">
+                <select id="rf-store" name="store_id" class="form-control form-control-sm" onchange="this.form.submit()">
                     <option value="0"><?= __('all_stores') ?></option>
                     <?php foreach ($stores as $s): ?>
                         <option value="<?= (int) $s['id'] ?>" <?= (int) $s['id'] === $filter_store_id ? 'selected' : '' ?>><?= htmlspecialchars($s['name'] ?? '') ?></option>
@@ -113,7 +113,7 @@ echo Flash::fromQuery('success', [
 
             <div class="shifts-filters__group">
                 <label class="shifts-filters__label" for="rf-year"><?= __('year') ?></label>
-                <select id="rf-year" name="year" class="form-control form-control--sm" onchange="this.form.submit()">
+                <select id="rf-year" name="year" class="form-control form-control-sm" onchange="this.form.submit()">
                     <option value=""><?= __('all_years') ?></option>
                     <?php foreach ($years as $y): ?>
                         <option value="<?= $y ?>" <?= (string) $y === $filter_year ? 'selected' : '' ?>><?= $y ?></option>
@@ -123,7 +123,7 @@ echo Flash::fromQuery('success', [
 
             <div class="shifts-filters__group">
                 <label class="shifts-filters__label" for="rf-month"><?= __('month') ?></label>
-                <select id="rf-month" name="month" class="form-control form-control--sm" onchange="this.form.submit()">
+                <select id="rf-month" name="month" class="form-control form-control-sm" onchange="this.form.submit()">
                     <option value=""><?= __('all_months') ?></option>
                     <?php foreach ($months as $val => $label): ?>
                         <option value="<?= $val ?>" <?= $val === $filter_month ? 'selected' : '' ?>><?= $label ?></option>
@@ -133,7 +133,7 @@ echo Flash::fromQuery('success', [
 
             <div class="shifts-filters__group">
                 <label class="shifts-filters__label" for="rf-person"><?= __('person_in_charge') ?></label>
-                <input type="text" id="rf-person" name="person" class="form-control form-control--sm" value="<?= htmlspecialchars($filter_person) ?>">
+                <input type="text" id="rf-person" name="person" class="form-control form-control-sm" value="<?= htmlspecialchars($filter_person) ?>">
             </div>
 
             <div class="shifts-filters__actions">

@@ -18,7 +18,7 @@ $thisWeek = date('Y-m-d', strtotime('tuesday this week'));
     <div class="card-body form-stack">
         <div class="form-group">
             <label class="form-label"><?= __('store') ?></label>
-            <select name="store_id" class="form-control form-control--sm" required id="f_store_id">
+            <select name="store_id" class="form-control form-control-sm" required id="f_store_id">
                 <option value="">— <?= __('select') ?> —</option>
                 <?php foreach ($myStores as $s): ?>
                     <option value="<?= (int) $s['id'] ?>" <?= $prefillStoreId === (int) $s['id'] ? 'selected' : '' ?>>
@@ -29,7 +29,7 @@ $thisWeek = date('Y-m-d', strtotime('tuesday this week'));
         </div>
         <div class="form-group">
             <label class="form-label"><?= __('photo_week') ?></label>
-            <input type="date" name="week_label" class="form-control form-control--sm" id="f_week_label"
+            <input type="date" name="week_label" class="form-control form-control-sm" id="f_week_label"
                    value="<?= htmlspecialchars($thisWeek) ?>">
         </div>
         <div class="form-group">

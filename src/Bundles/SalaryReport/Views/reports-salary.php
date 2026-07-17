@@ -116,7 +116,7 @@ echo Flash::fromQuery('success', [
             <?php if ($allMode): ?>
             <div class="shifts-filters__group">
                 <label class="shifts-filters__label" for="sf-store"><?= __('store') ?></label>
-                <select id="sf-store" name="store_id" class="form-control form-control--sm" onchange="this.form.submit()">
+                <select id="sf-store" name="store_id" class="form-control form-control-sm" onchange="this.form.submit()">
                     <option value="0"><?= __('all_stores') ?></option>
                     <?php foreach ($stores as $s): ?>
                         <option value="<?= (int) $s['id'] ?>" <?= (int) $s['id'] === $filter_store_id ? 'selected' : '' ?>><?= htmlspecialchars($s['name'] ?? '') ?></option>
@@ -127,7 +127,7 @@ echo Flash::fromQuery('success', [
 
             <div class="shifts-filters__group">
                 <label class="shifts-filters__label" for="sf-year"><?= __('year') ?></label>
-                <select id="sf-year" name="year" class="form-control form-control--sm" onchange="this.form.submit()">
+                <select id="sf-year" name="year" class="form-control form-control-sm" onchange="this.form.submit()">
                     <option value=""><?= __('all_years') ?></option>
                     <?php foreach ($years as $y): ?>
                         <option value="<?= $y ?>" <?= (string) $y === $filter_year ? 'selected' : '' ?>><?= $y ?></option>
@@ -137,7 +137,7 @@ echo Flash::fromQuery('success', [
 
             <div class="shifts-filters__group">
                 <label class="shifts-filters__label" for="sf-month"><?= __('month') ?></label>
-                <select id="sf-month" name="month" class="form-control form-control--sm" onchange="this.form.submit()">
+                <select id="sf-month" name="month" class="form-control form-control-sm" onchange="this.form.submit()">
                     <option value=""><?= __('all_months') ?></option>
                     <?php foreach ($months as $val => $label): ?>
                         <option value="<?= $val ?>" <?= $val === $filter_month ? 'selected' : '' ?>><?= $label ?></option>
@@ -147,7 +147,7 @@ echo Flash::fromQuery('success', [
 
             <div class="shifts-filters__group">
                 <label class="shifts-filters__label" for="sf-person"><?= __('sr_person_in_charge') ?></label>
-                <input type="text" id="sf-person" name="person" class="form-control form-control--sm" value="<?= htmlspecialchars($filter_person) ?>">
+                <input type="text" id="sf-person" name="person" class="form-control form-control-sm" value="<?= htmlspecialchars($filter_person) ?>">
             </div>
 
             <div class="shifts-filters__actions">
@@ -209,7 +209,7 @@ ob_start();
 </div>
 <div id="sr-step-store" class="hidden">
     <button type="button" class="btn btn--ghost btn--sm mb-sm" onclick="srShowStep('choice')">← <?= __('back') ?></button>
-    <input type="text" class="form-control form-control--sm mb-sm" placeholder="<?= __('search') ?>…" oninput="srFilterList(this, 'sr-store-list')">
+    <input type="text" class="form-control form-control-sm mb-sm" placeholder="<?= __('search') ?>…" oninput="srFilterList(this, 'sr-store-list')">
     <div id="sr-store-list" class="store-picker__panel store-picker__panel--static">
         <?php foreach ($stores as $s): ?>
             <a class="store-picker__item" href="<?= htmlspecialchars($BASE_URL . '/admin/stores/' . (int) $s['id'] . '/reports/salary/create') ?>"><?= htmlspecialchars($s['name'] ?? '') ?></a>
@@ -219,7 +219,7 @@ ob_start();
 <div id="sr-step-employee" class="hidden">
     <button type="button" class="btn btn--ghost btn--sm mb-sm" onclick="srShowStep('choice')">← <?= __('back') ?></button>
     <?php if ($store_members_by_store !== []): ?>
-    <input type="text" class="form-control form-control--sm mb-sm" placeholder="<?= __('search') ?>…" oninput="srFilterList(this, 'sr-employee-list')">
+    <input type="text" class="form-control form-control-sm mb-sm" placeholder="<?= __('search') ?>…" oninput="srFilterList(this, 'sr-employee-list')">
     <?php endif; ?>
     <div id="sr-employee-list" class="store-picker__panel store-picker__panel--static">
         <?php if ($store_members_by_store === []): ?>

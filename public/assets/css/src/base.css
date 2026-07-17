@@ -349,6 +349,12 @@ img {
     font-size: var(--text-sm);
 }
 
+.empty-state__icon {
+    font-size: 2rem;
+    line-height: 1;
+    margin-bottom: var(--space-2);
+}
+
 /* ── Error Pages ───────────────────────────────── */
 .error-body {
     display: flex;
