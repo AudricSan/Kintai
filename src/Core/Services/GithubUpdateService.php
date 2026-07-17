@@ -24,6 +24,15 @@ final class GithubUpdateService
         '.env',
     ];
 
+    /**
+     * Nombre de pages de l'API Releases GitHub interrogées au maximum. Les
+     * releases sont triées par date de création décroissante : une longue
+     * série d'alpha/beta peut repousser la dernière release stable au-delà
+     * d'une seule page — voir fetchReleaseListData().
+     */
+    private const MAX_RELEASE_PAGES = 5;
+    private const RELEASES_PER_PAGE = 100;
+
     private string $basePath;
     private string $manifestFile;
     private string $updatesDir;
@@ -32,7 +41,7 @@ final class GithubUpdateService
     private ?string $lastError = null;
 
     /**
-     * @param \Closure|null $releaseFetcher fn(string $repo, string $token): ?array — liste de releases GitHub (surchargeable pour les tests)
+     * @param \Closure|null $releaseFetcher fn(string $repo, string $token, int $page): ?array — une page de releases GitHub, ou null pour signaler un échec (surchargeable pour les tests)
      * @param \Closure|null $zipDownloader  fn(string $url, string $dest, string $token): bool — surchargeable pour les tests
      */
     public function __construct(
@@ -68,7 +77,8 @@ final class GithubUpdateService
             return null;
         }
 
-        $releases = $this->fetchReleaseListData();
+        $channel = $this->settings->updateChannel();
+        $releases = $this->fetchReleaseListData($channel);
         if ($releases === null) {
             if ($this->lastError === null) {
                 $this->lastError = 'La vérification a échoué pour une raison inconnue.';
@@ -76,7 +86,7 @@ final class GithubUpdateService
             return null;
         }
 
-        $release = $this->selectReleaseForChannel($releases, $this->settings->updateChannel());
+        $release = $this->selectReleaseForChannel($releases, $channel);
         if ($release === null || !isset($release['tag_name'], $release['zipball_url'])) {
             return null;
         }
@@ -400,14 +410,20 @@ final class GithubUpdateService
         rmdir($dir);
     }
 
-    /** @return array|null Liste des releases GitHub (voir GET /repos/{repo}/releases), ou null si la requête échoue. */
-    private function fetchReleaseListData(): ?array
+    /**
+     * Récupère les releases GitHub, en paginant au besoin.
+     *
+     * L'API GitHub trie les releases par date de création décroissante. Une
+     * longue série d'alpha/beta (chacune étant une release distincte, voir
+     * .github/workflows/release.yml) peut repousser la dernière release
+     * stable au-delà de la première page : on continue donc à paginer tant
+     * qu'aucune release compatible avec $channel n'a été trouvée dans les
+     * pages déjà récupérées, jusqu'à MAX_RELEASE_PAGES.
+     *
+     * @return array|null Liste des releases GitHub (voir GET /repos/{repo}/releases), ou null si la première page échoue.
+     */
+    private function fetchReleaseListData(string $channel): ?array
     {
-        if ($this->releaseFetcher !== null) {
-            return ($this->releaseFetcher)($this->repo, $this->token);
-        }
-
-        $url = "https://api.github.com/repos/{$this->repo}/releases?per_page=30";
         $headers = [
             'User-Agent: Kintai-UpdateCheck/1.0',
             'Accept: application/vnd.github+json',
@@ -415,6 +431,34 @@ final class GithubUpdateService
         if ($this->token !== '') {
             $headers[] = 'Authorization: Bearer ' . $this->token;
         }
+
+        $all = [];
+        for ($page = 1; $page <= self::MAX_RELEASE_PAGES; $page++) {
+            $data = $this->releaseFetcher !== null
+                ? ($this->releaseFetcher)($this->repo, $this->token, $page)
+                : $this->fetchReleasePage($page, $headers);
+
+            if ($data === null) {
+                return $all !== [] ? $all : null;
+            }
+
+            $all = [...$all, ...$data];
+
+            if ($this->selectReleaseForChannel($all, $channel) !== null) {
+                break;
+            }
+            if (count($data) < self::RELEASES_PER_PAGE) {
+                break;
+            }
+        }
+
+        return $all;
+    }
+
+    /** @return array|null Une page de releases GitHub, ou null si la requête échoue. */
+    private function fetchReleasePage(int $page, array $headers): ?array
+    {
+        $url = "https://api.github.com/repos/{$this->repo}/releases?per_page=" . self::RELEASES_PER_PAGE . "&page={$page}";
 
         $response = $this->httpGet($url, $headers, 10);
         if ($response === null) {
