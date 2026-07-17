@@ -19,6 +19,14 @@ Consequences:
 - Only **GitHub Releases** count (not bare tags, not commits). Until a matching Release exists for the instance's channel, `checkLatestRelease()` returns `null`.
 - The version number follows [semver](https://semver.org/) (`MAJOR.MINOR.PATCH[-alpha|beta.N]`), without a `v` prefix in config files (the `v` prefix only exists on the Git tag — `GithubUpdateService` strips it before comparing versions).
 
+## Choosing MAJOR vs MINOR vs PATCH
+
+- **PATCH** (`0.7.9` → `0.7.10`): bugfix-only changes — nothing in the bump adds or changes user-facing behavior beyond "it now works as intended".
+- **MINOR** (`0.7.9` → `0.8.0`): any release that includes a new feature, even a small one, or a behavior change — bump MINOR even if the same release also bundles fixes. Don't ride a feature in on a PATCH bump just because a fix happened to land the same day.
+- **MAJOR**: reserved for breaking changes (unlikely in this app's normal lifecycle, but keep the option open).
+
+If in doubt between PATCH and MINOR, bump MINOR — it costs nothing and keeps the version number meaningful (a stale `0.6.0` on `main` being compared against a `0.7.9` on `beta`, when in fact most of that gap is feature work, undersells how far behind the stable channel actually is).
+
 ## Publishing a new version (recommended flow)
 
 The base version number (`X.Y.Z` in `composer.json`/`config/app.php`/`CHANGELOG.md`) is still bumped **by hand**, exactly as before. What changed is *who creates the Git tag and GitHub Release*: that part is now automated by `.github/workflows/release.yml` whenever a bump lands on `alpha`, `beta`, or `main` — you no longer tag or `gh release create` yourself.
