@@ -6,6 +6,11 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-07-18
+
+### Changed
+- No functional change — version bump to verify that a previously-stuck instance (silently failing update checks pre-`0.8.0`, see `0.8.0` notes) correctly detects and installs this release once manually brought current.
+
 ## [0.8.0] - 2026-07-17
 
 ### Changed
