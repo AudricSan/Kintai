@@ -128,10 +128,19 @@ ob_start();
                    step="0.01" min="0" value="<?= $val('hand_delivered_salary', '0') ?>">
         </div>
         <div class="form-group form-group--flex1">
+            <label class="form-label"><?= __('sr_bank_transfer_salary') ?></label>
+            <input type="number" name="bank_transfer_salary" class="form-control"
+                   step="0.01" min="0" value="<?= $val('bank_transfer_salary', '0') ?>">
+        </div>
+        <?php if ($employeeId <= 0): ?>
+        <div class="form-group form-group--flex1">
             <label class="form-label"><?= __('sr_active_employees') ?></label>
             <input type="number" name="active_employees" class="form-control"
                    step="1" min="0" value="<?= $val('active_employees', '0') ?>">
         </div>
+        <?php else: ?>
+        <input type="hidden" name="active_employees" value="<?= $val('active_employees', '0') ?>">
+        <?php endif; ?>
     </div>
 
     <h3 class="form-section-title"><?= __('sr_section_staff') ?></h3>
@@ -160,16 +169,24 @@ ob_start();
     </div>
 
     <div class="form-row">
+        <?php if ($employeeId <= 0): ?>
         <div class="form-group form-group--flex1">
             <label class="form-label"><?= __('sr_new_hires') ?></label>
             <input type="number" name="new_hires" class="form-control"
                    step="1" min="0" value="<?= $val('new_hires', '0') ?>">
         </div>
+        <?php else: ?>
+        <input type="hidden" name="new_hires" value="<?= $val('new_hires', '0') ?>">
+        <?php endif; ?>
+        <?php if ($employeeId <= 0): ?>
         <div class="form-group form-group--flex1">
             <label class="form-label"><?= __('sr_resigned_staff') ?></label>
             <input type="number" name="resigned_staff" class="form-control"
                    step="1" min="0" value="<?= $val('resigned_staff', '0') ?>">
         </div>
+        <?php else: ?>
+        <input type="hidden" name="resigned_staff" value="<?= $val('resigned_staff', '0') ?>">
+        <?php endif; ?>
     </div>
 
     <div class="form-group">

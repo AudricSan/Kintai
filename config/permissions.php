@@ -53,8 +53,6 @@ return [
     'admin.stores.profitability'      => 'payroll.view',
     'admin.stores.employee_report'    => 'payroll.view',
     'admin.stores.employee_stats'     => 'payroll.view',
-    'admin.stores.employee_payslip'   => 'payroll.generate',
-    'admin.stores.employee_payslip_pdf' => 'payroll.generate',
 
     // --- Types de shifts ---------------------------------------------------------
     'admin.shift_types'               => 'shifts.view',

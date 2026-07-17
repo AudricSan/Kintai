@@ -186,13 +186,11 @@ function repHoursFormat(float $hours): string {
         $t->column(__('absence_days_col'), fn($stat) => '<span class="td-right td-mono ' . ((($stat['abs_days'] ?? 0) > 3) ? 'erep-val--warn' : '') . '">' . ((($stat['abs_days'] ?? 0) > 0) ? $stat['abs_days'] : '—') . '</span>', 'td-right')
             ->column(__('swaps_col'), fn($stat) => '<span class="td-right td-mono">' . (($stat['swaps'] ?? 0) > 0 ? $stat['swaps'] : '—') . '</span>', 'td-right')
             ->column(__('max_consec_col'), fn($stat) => '<span class="td-right td-mono ' . ((($stat['max_consec'] ?? 0) >= 6) ? 'erep-val--warn' : '') . '">' . (($stat['max_consec'] ?? 0) > 0 ? $stat['max_consec'] : '—') . '</span>', 'td-right')
-            ->column(__('actions'), function($stat, $uid) use ($BASE_URL, $store, $period, $usersMap) {
+            ->column(__('actions'), function($stat, $uid) use ($BASE_URL, $store, $period) {
                 $uid = (int) $uid;
                 $statsUrl = $BASE_URL . '/admin/stores/' . (int) $store['id'] . '/employee-report/' . $uid . '/stats?period=' . $period;
-                $payslipBase = $BASE_URL . '/admin/stores/' . (int) $store['id'] . '/employee-report/' . $uid . '/payslip?from=__FROM__&to=__TO__';
-                $salaryUrl = $BASE_URL . '/admin/stores/' . (int) $store['id'] . '/reports/salary/create?employee_name=' . urlencode(repUserName($usersMap, $uid));
+                $salaryUrl = $BASE_URL . '/admin/stores/' . (int) $store['id'] . '/reports/salary/create?user_id=' . $uid;
                 return Button::make('📊 ' . __('view_stats'))->ghost()->sm()->link($statsUrl)->render()
-                    . Button::make('🖨 ' . __('payslip'))->ghost()->sm()->attrs(['data-url' => $payslipBase, 'onclick' => 'psPeriodOpen(this)'])->render()
                     . Button::make('💰 ' . __('salary_report'))->ghost()->sm()->link($salaryUrl)->render();
             })
             ->footer(function($data) use ($totalShifts, $totalGrossHours, $totalNetHours, $anyHasRate, $totalCost, $totalAbsDays, $currency) {
@@ -247,49 +245,3 @@ arsort($chartCosts);
 <div class="erep-print-footer">
     <?= htmlspecialchars(__('report_employees')) ?> — <?= htmlspecialchars($store['name'] ?? '') ?> — <?= htmlspecialchars($since) ?> / <?= htmlspecialchars($today) ?>
 </div>
-
-<!-- Modale sélection de période — fiche de paie -->
-<div id="ps-period-modal" class="ps-modal-overlay" hidden>
-    <div class="ps-modal">
-        <div class="ps-modal__header">
-            <span>🖨 <?= __('payslip') ?> — <?= __('select_period') ?></span>
-            <button type="button" class="ps-modal__close" onclick="psPeriodClose()">✕</button>
-        </div>
-        <div class="ps-modal__body">
-            <!-- Sélecteur de mois rapide -->
-            <div class="ps-modal__section-label"><?= __('quick_month') ?></div>
-            <div class="ps-month-grid" id="ps-month-grid">
-                <?php
-                for ($i = 12; $i >= 0; $i--) {
-                    $dt    = new \DateTime("first day of -$i months");
-                    $from  = $dt->format('Y-m-01');
-                    $to    = $dt->format('Y-m-t');
-                    $label = $dt->format('M Y');
-                    echo '<button type="button" class="ps-month-btn" data-from="' . $from . '" data-to="' . $to . '">'
-                        . htmlspecialchars($label) . '</button>';
-                }
-                ?>
-            </div>
-            <!-- Dates personnalisées -->
-            <div class="ps-modal__section-label"><?= __('custom_range') ?></div>
-            <div class="ps-date-row">
-                <label class="ps-date-label">
-                    <?= __('from_date') ?>
-                    <input type="date" id="ps-from" class="ps-date-input">
-                </label>
-                <span class="ps-date-sep">→</span>
-                <label class="ps-date-label">
-                    <?= __('to_date') ?>
-                    <input type="date" id="ps-to" class="ps-date-input">
-                </label>
-            </div>
-        </div>
-        <div class="ps-modal__footer">
-            <?= Button::make(__('cancel'))->ghost()->sm()->attrs(['onclick' => 'psPeriodClose()'])->render() ?>
-            <?= Button::make('🖨 ' . __('open'))->primary()->sm()->attrs(['onclick' => 'psPeriodOpen()'])->render() ?>
-        </div>
-    </div>
-</div>
-
-<script type="application/json" id="kintai-report-data">{"i18n":{"invalidDateRange":<?= json_encode(__('invalid_date_range') ?? 'Plage de dates invalide') ?>}}</script>
-<script src="<?= $BASE_URL ?>/assets/js/modules/employee-report.js"></script>

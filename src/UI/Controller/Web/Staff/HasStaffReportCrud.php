@@ -132,11 +132,17 @@ trait HasStaffReportCrud
             'store_id' => $storeId,
         ], $storeId);
 
-        return Response::html($this->view->render($this->reportConfig()['view'] . '-show', [
+        return Response::html($this->view->render($this->reportConfig()['view'] . '-show', array_merge([
             'title'  => $this->reportShowTitle($report),
             'store'  => $this->stores->findById($storeId),
             'report' => $report,
-        ], 'layout.app'));
+        ], $this->reportShowExtras($storeId, $report)), 'layout.app'));
+    }
+
+    /** Données additionnelles pour la vue show/pdf, propres à un type de rapport (voir AdminSalaryReportController). */
+    protected function reportShowExtras(int $storeId, array $report): array
+    {
+        return [];
     }
 
     private function editReport(Request $request): Response
@@ -187,10 +193,10 @@ trait HasStaffReportCrud
         [$report, $storeId, $reportId] = $this->findReportOrFail($request);
         $cfg = $this->reportConfig();
 
-        $html = $this->view->render($cfg['view'] . '-pdf', [
+        $html = $this->view->render($cfg['view'] . '-pdf', array_merge([
             'report' => $report,
             'store'  => $this->stores->findById($storeId),
-        ]);
+        ], $this->reportShowExtras($storeId, $report)));
 
         return $this->renderPdf($html, $cfg['entity'] . '_' . $reportId . '.pdf');
     }
