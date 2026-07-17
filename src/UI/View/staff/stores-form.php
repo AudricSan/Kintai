@@ -23,12 +23,6 @@ $action  = $mode === 'edit'
     : route_url('admin.stores.create');
 $storeId = (int) ($store['id'] ?? 0);
 
-$excelDefaults = \kintai\Core\Services\ExcelShiftImport\ExcelShiftImportService::DEFAULTS;
-$excelSettings = array_merge(
-    $excelDefaults,
-    json_decode($store['excel_import_settings'] ?? '{}', true) ?: []
-);
-
 $ded = $deductionSettings ?? [];
 
 echo Flash::fromQuery('success', [
