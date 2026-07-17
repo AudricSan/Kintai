@@ -11,6 +11,7 @@ use kintai\Core\Services\AppSettingsService;
 use kintai\Core\Services\BackupService;
 use kintai\Core\Services\GithubUpdateService;
 use kintai\Core\Services\UpdateService;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class GithubUpdateServiceTest extends TestCase
@@ -229,6 +230,46 @@ final class GithubUpdateServiceTest extends TestCase
         $this->assertNull($service->checkLatestRelease());
     }
 
+    public function testCheckLatestReleasePaginatesPastPrereleasesToFindStableRelease(): void
+    {
+        // Simule une longue série d'alpha/beta plus récente qu'une release
+        // stable : la release stable ne doit pas être perdue simplement
+        // parce qu'elle se trouve sur une page suivante de l'API GitHub.
+        $prereleasePage = array_map(
+            fn(int $i): array => ['tag_name' => "v9.{$i}.0-beta.1", 'zipball_url' => 'z', 'prerelease' => true],
+            range(1, 100)
+        );
+        $stablePage = [
+            ['tag_name' => 'v1.0.0', 'zipball_url' => 'z', 'prerelease' => false],
+        ];
+
+        $this->writeAppVersion('0.0.0');
+        $calls = [];
+        $releaseFetcher = function (string $repo, string $token, int $page) use (&$calls, $prereleasePage, $stablePage): ?array {
+            $calls[] = $page;
+            return match ($page) {
+                1 => $prereleasePage,
+                2 => $stablePage,
+                default => [],
+            };
+        };
+
+        $service = new GithubUpdateService(
+            $this->updateService,
+            $this->backup,
+            $this->migrator,
+            $this->makeSettings('release'),
+            $this->tmpDir,
+            $releaseFetcher,
+        );
+
+        $info = $service->checkLatestRelease();
+
+        $this->assertNotNull($info);
+        $this->assertSame('1.0.0', $info['latest_version']);
+        $this->assertSame([1, 2], $calls);
+    }
+
     public function testApplyUpdateReturnsErrorWhenNoUpdateAvailable(): void
     {
         $service = $this->makeService('v1.0.0', ['README.md' => 'hello'], currentVersion: '1.0.0');
@@ -403,5 +444,82 @@ final class GithubUpdateServiceTest extends TestCase
         $service->applyUpdate();
 
         $this->assertNull($this->updateService->getLastUpdateDuration());
+    }
+
+    public function testGetLastCheckErrorIsNullAfterSuccessfulCheck(): void
+    {
+        $service = $this->makeService('v1.2.0', ['README.md' => 'hello']);
+
+        $service->checkLatestRelease();
+
+        $this->assertNull($service->getLastCheckError());
+    }
+
+    public function testGetLastCheckErrorIsNullWhenChannelHasNoCompatibleRelease(): void
+    {
+        // Aucune release ne correspond au canal : ce n'est pas un échec technique,
+        // juste l'absence de release compatible — ne doit pas remonter d'erreur.
+        $service = $this->makeServiceWithReleases([
+            ['tag_name' => 'v1.0.0-beta.1', 'zipball_url' => 'z', 'prerelease' => true],
+        ], ['README.md' => 'hello'], currentVersion: '0.0.0', channel: 'release');
+
+        $service->checkLatestRelease();
+
+        $this->assertNull($service->getLastCheckError());
+    }
+
+    public function testGetLastCheckErrorReportsGenericFailureWhenFetcherReturnsNull(): void
+    {
+        $service = new GithubUpdateService(
+            $this->updateService,
+            $this->backup,
+            $this->migrator,
+            $this->makeSettings(),
+            $this->tmpDir,
+            fn(string $repo, string $token): ?array => null,
+        );
+
+        $service->checkLatestRelease();
+
+        $this->assertNotNull($service->getLastCheckError());
+    }
+
+    public function testGetLastCheckErrorReportsMissingRepoConfig(): void
+    {
+        $service = new GithubUpdateService(
+            $this->updateService,
+            $this->backup,
+            $this->migrator,
+            $this->makeSettings(),
+            $this->tmpDir,
+            fn(string $repo, string $token): ?array => [['tag_name' => 'v1.0.0', 'zipball_url' => 'z']],
+        );
+        $this->setPrivate($service, 'repo', '');
+
+        $this->assertNull($service->checkLatestRelease());
+        $this->assertNotNull($service->getLastCheckError());
+    }
+
+    #[DataProvider('releaseListValidationProvider')]
+    public function testIsValidReleaseListRejectsGithubErrorObjects(mixed $data, bool $expected): void
+    {
+        $ref = new \ReflectionMethod(GithubUpdateService::class, 'isValidReleaseList');
+        $ref->setAccessible(true);
+
+        $this->assertSame($expected, $ref->invoke(null, $data));
+    }
+
+    public static function releaseListValidationProvider(): array
+    {
+        return [
+            'valid release list' => [[['tag_name' => 'v1.0.0']], true],
+            'empty list'         => [[], true],
+            // Forme réelle d'une réponse GitHub rate-limitée : un objet JSON
+            // (donc un tableau associatif après json_decode), pas une liste.
+            'rate limit error object' => [['message' => 'API rate limit exceeded for x.x.x.x.', 'documentation_url' => 'https://docs.github.com/rest'], false],
+            'not found error object'  => [['message' => 'Not Found'], false],
+            'null response'           => [null, false],
+            'scalar response'         => ['API rate limit exceeded', false],
+        ];
     }
 }

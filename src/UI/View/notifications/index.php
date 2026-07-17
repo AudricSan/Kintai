@@ -34,7 +34,7 @@ $typeIcons = [
 
 <?php if (empty($notifications)): ?>
     <div class="empty-state">
-        <p class="empty-state__text"><?= __('no_notifications') ?></p>
+        <p><?= __('no_notifications') ?></p>
     </div>
 <?php else: ?>
     <div class="notif-list">

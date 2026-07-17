@@ -14,10 +14,12 @@ use kintai\UI\Components\Table;
 /** @var string $store_currency */
 /** @var string $sort */
 /** @var int    $filter_store_id */
+/** @var string $filter_search */
 
 $store_currency   ??= 'JPY';
 $sort             ??= 'name_asc';
 $filter_store_id  ??= 0;
+$filter_search    ??= '';
 $available_stores ??= [];
 $store_names      ??= [];
 $user_store_ids   ??= [];
@@ -27,32 +29,31 @@ $activeFilters = array_filter([
     'store_id' => $filter_store_id ?: null,
 ], fn($v) => $v !== null);
 
-$userRoles = [
-    'admin' => __('admin'),
-    'manager' => 'Manager',
-    'staff' => __('staff'),
-];
-
 echo Flash::fromQuery('success', [
     'created' => __('operation_success'),
     'updated' => __('user_updated'),
     'deleted' => __('operation_success'),
 ])->render();
 ?>
+<?php
+$exportQuery = $filter_store_id !== 0 ? '?store_id=' . $filter_store_id : '';
+?>
 <div class="page-header">
     <h2 class="page-header__title"><?= __('users') ?> <span class="page-count">(<?= count($users) ?>)</span></h2>
     <div class="page-header__actions">
         <?= Button::make('+ ' . __('new_user'))->primary()->link(route_url('admin.users.create'))->render() ?>
+        <?= Button::make('PDF')->ghost()->sm()->link(route_url('admin.users.export_pdf') . $exportQuery)->attrs(['target' => '_blank'])->render() ?>
+        <?= Button::make('JSON')->ghost()->sm()->link(route_url('admin.users.export_json') . $exportQuery)->render() ?>
     </div>
 </div>
 
-<?php if (count($available_stores) > 1 || $filter_store_id !== 0): ?>
 <div class="card card--filters mb-sm">
     <form method="GET" action="" class="filter-bar">
         <div class="shifts-filters__row">
+            <?php if (count($available_stores) > 1 || $filter_store_id !== 0): ?>
             <div class="shifts-filters__group">
                 <label class="shifts-filters__label" for="uf-store"><?= __('store') ?></label>
-                <select id="uf-store" name="store_id" class="form-control form-control--sm" onchange="this.form.submit()">
+                <select id="uf-store" name="store_id" class="form-control form-control-sm" onchange="this.form.submit()">
                     <option value="0"><?= __('all_stores') ?></option>
                     <?php foreach ($available_stores as $s): ?>
                         <option value="<?= (int) $s['id'] ?>" <?= $filter_store_id === (int) $s['id'] ? 'selected' : '' ?>><?= htmlspecialchars($s['name']) ?></option>
@@ -60,19 +61,38 @@ echo Flash::fromQuery('success', [
                     <option value="-1" <?= $filter_store_id === -1 ? 'selected' : '' ?>><?= __('without_store') ?></option>
                 </select>
             </div>
+            <?php endif; ?>
+            <div class="shifts-filters__group">
+                <label class="shifts-filters__label" for="uf-search"><?= __('search') ?></label>
+                <input type="text" id="uf-search" name="search" class="form-control form-control-sm" data-client-filter="1" value="<?= htmlspecialchars($filter_search) ?>" placeholder="<?= __('search_user_placeholder') ?>">
+            </div>
+            <div class="shifts-filters__actions">
+                <?php if ($filter_search !== '' || $filter_store_id !== 0): ?>
+                    <a href="?sort=<?= htmlspecialchars($sort) ?>" class="btn btn--ghost btn--sm"><?= __('reset') ?></a>
+                <?php endif; ?>
+            </div>
             <input type="hidden" name="sort" value="<?= htmlspecialchars($sort) ?>">
         </div>
     </form>
 </div>
-<?php endif; ?>
 
 <div class="card">
 <?= Table::make()
+    ->attrs(['id' => 'users-table'])
     ->data($users)
     ->emptyMessage(__('none'))
     ->currentSort($sort)
     ->filters($activeFilters)
     ->rowUrl(fn($u) => $BASE_URL . '/admin/users/' . (int) $u['id'] . '/edit')
+    ->rowAttrs(fn($u) => [
+        'data-search-text'    => implode('|', [
+            trim(($u['last_name'] ?? '') . ' ' . ($u['first_name'] ?? '')),
+            $u['display_name'] ?? '',
+            $u['employee_code'] ?? '',
+            $u['email'] ?? '',
+        ]),
+        'data-search-reading' => ($u['furigana_last_name'] ?? '') . ($u['furigana_first_name'] ?? ''),
+    ])
     ->column('#', fn($u) => (string) (int) $u['id'])
     ->sortable(__('name'), 'name', function($u) use ($BASE_URL) {
         $uid = (int) $u['id'];
@@ -117,8 +137,7 @@ echo Flash::fromQuery('success', [
         if (isset($user_store_map[$uid])) {
             $sId = $user_store_map[$uid];
             $html .= '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/employee-report/' . $uid . '/stats" class="btn btn--ghost btn--sm" title="' . __('employee_stats') . '">📊</a>';
-            $html .= '<button type="button" class="btn btn--ghost btn--sm ps-period-trigger" data-url="' . htmlspecialchars($BASE_URL . '/admin/stores/' . $sId . '/employee-report/' . $uid . '/payslip?from=__FROM__&to=__TO__') . '" title="' . __('payslip') . '">🖨</button>';
-            $html .= '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/reports/salary/create?employee_name=' . urlencode($u['display_name'] ?? '') . '" class="btn btn--ghost btn--sm" title="' . __('salary_report') . '">💰</a>';
+            $html .= '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/reports/salary/create?user_id=' . $uid . '" class="btn btn--ghost btn--sm" title="' . __('salary_report') . '">💰</a>';
             $html .= '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/reports/resignation/create?user_id=' . $uid . '" class="btn btn--danger btn--sm" title="' . __('resign') . '">✕</a>';
         }
         $html .= '</div>';
@@ -127,45 +146,5 @@ echo Flash::fromQuery('success', [
     ->render()
 ?></div>
 
-<div id="ps-period-modal" class="ps-modal-overlay" hidden>
-    <div class="ps-modal">
-        <div class="ps-modal__header">
-            <span>🖨 <?= __('payslip') ?> — <?= __('select_period') ?></span>
-            <button type="button" class="ps-modal__close" onclick="psPeriodClose()">✕</button>
-        </div>
-        <div class="ps-modal__body">
-            <div class="ps-modal__section-label"><?= __('quick_month') ?></div>
-            <div class="ps-month-grid" id="ps-month-grid">
-                <?php
-                for ($i = 12; $i >= 0; $i--) {
-                    $dt    = new \DateTime("first day of -$i months");
-                    $from  = $dt->format('Y-m-01');
-                    $to    = $dt->format('Y-m-t');
-                    $label = $dt->format('M Y');
-                    echo '<button type="button" class="ps-month-btn" data-from="' . $from . '" data-to="' . $to . '">'
-                        . htmlspecialchars($label) . '</button>';
-                }
-                ?>
-            </div>
-            <div class="ps-modal__section-label"><?= __('custom_range') ?></div>
-            <div class="ps-date-row">
-                <label class="ps-date-label">
-                    <?= __('from_date') ?>
-                    <input type="date" id="ps-from" class="ps-date-input">
-                </label>
-                <span class="ps-date-sep">→</span>
-                <label class="ps-date-label">
-                    <?= __('to_date') ?>
-                    <input type="date" id="ps-to" class="ps-date-input">
-                </label>
-            </div>
-        </div>
-        <div class="ps-modal__footer">
-            <button type="button" class="btn btn--ghost btn--sm" onclick="psPeriodClose()"><?= __('cancel') ?></button>
-            <button type="button" class="btn btn--primary btn--sm" onclick="psPeriodOpen()">🖨 <?= __('open') ?></button>
-        </div>
-    </div>
-</div>
-
-<div id="payslip-meta" data-msg-invalid-range="<?= htmlspecialchars(__('invalid_date_range') ?? 'Plage de dates invalide') ?>" hidden></div>
-<script src="<?= $BASE_URL ?>/assets/js/modules/users-payslip.js"></script>
+<script src="<?= $BASE_URL ?>/assets/js/modules/kana-search.js"></script>
+<script src="<?= $BASE_URL ?>/assets/js/modules/users-list-search.js"></script>

@@ -13,6 +13,7 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\UpdateService;
 use kintai\UI\Controller\Web\HasBaseUrl;
 use kintai\UI\ViewRenderer;
 
@@ -20,6 +21,9 @@ final class FeedbackController
 {
     use HasBaseUrl;
     private const CATEGORIES = ['shift', 'schedule', 'app', 'other'];
+
+    /** User-Agent contenant un de ces marqueurs = considéré comme mobile. */
+    private const MOBILE_USER_AGENT_MARKERS = ['Mobi', 'Android', 'iPhone', 'iPad', 'iPod'];
 
     public function __construct(
         private readonly ViewRenderer $view,
@@ -30,6 +34,7 @@ final class FeedbackController
         private readonly StoreUserRepositoryInterface $storeUsers,
         private readonly UserRepositoryInterface $users,
         private readonly AuditLogger $auditLogger,
+        private readonly UpdateService $updateService,
     ) {}
 
     /**
@@ -40,11 +45,10 @@ final class FeedbackController
         $user   = $request->getAttribute('auth_user') ?? [];
         $userId = (int) ($user['id'] ?? 0);
 
+        // L'Owner (et tout rôle global) n'a pas forcément d'adhésion à un store —
+        // le feedback reste alors non rattaché à un magasin (store_id nullable).
         $memberships = $this->storeUsers->findByUser($userId);
-        if (empty($memberships)) {
-            return Response::redirect($this->base() . '/employee?fb_error=no_store');
-        }
-        $storeId = (int) $memberships[0]['store_id'];
+        $storeId     = $memberships !== [] ? (int) $memberships[0]['store_id'] : null;
 
         $category  = $request->post('category', 'other');
         $message   = trim((string) $request->post('message', ''));
@@ -57,9 +61,9 @@ final class FeedbackController
         }
 
         $returnTo = trim((string) $request->post('return_to', ''));
-        $safeBase = $this->base();
+        // Valider que le chemin ne sort pas du domaine (commence par / et ne contient pas //)
         if ($returnTo === '' || !str_starts_with($returnTo, '/') || str_contains($returnTo, '//')) {
-            $returnTo = $safeBase . '/employee';
+            $returnTo = $this->base() . '/';
         }
 
         if ($message === '') {
@@ -86,14 +90,17 @@ final class FeedbackController
         }
 
         $saved = $this->feedbacks->save([
-            'store_id'   => $storeId,
-            'user_id'    => $anonymous ? null : $userId,
-            'shift_id'   => $shiftId,
-            'category'   => $category,
-            'rating'     => $rating,
-            'message'    => $message,
-            'anonymous'  => $anonymous ? 1 : 0,
-            'created_at' => date('Y-m-d H:i:s'),
+            'store_id'    => $storeId,
+            'user_id'     => $anonymous ? null : $userId,
+            'shift_id'    => $shiftId,
+            'category'    => $category,
+            'rating'      => $rating,
+            'message'     => $message,
+            'anonymous'   => $anonymous ? 1 : 0,
+            'page_path'   => parse_url($returnTo, PHP_URL_PATH) ?: null,
+            'app_version' => $this->updateService->getCurrentVersion(),
+            'device_type' => $this->detectDeviceType($request->header('User-Agent')),
+            'created_at'  => date('Y-m-d H:i:s'),
         ]);
 
         $this->auditLogger->log(
@@ -106,14 +113,20 @@ final class FeedbackController
             $anonymous ? null : $userId
         );
 
-        // Retourner sur la page d'origine (passée en champ caché) ou le dashboard
-        $returnTo = trim((string) $request->post('return_to', ''));
-        $safeBase = $this->base();
-        // Valider que le chemin ne sort pas du domaine (commence par / et ne contient pas //)
-        if ($returnTo === '' || !str_starts_with($returnTo, '/') || str_contains($returnTo, '//')) {
-            $returnTo = $safeBase . '/employee';
-        }
         return Response::redirect($returnTo . '?fb_success=sent');
+    }
+
+    private function detectDeviceType(?string $userAgent): string
+    {
+        if ($userAgent === null) {
+            return 'unknown';
+        }
+        foreach (self::MOBILE_USER_AGENT_MARKERS as $marker) {
+            if (stripos($userAgent, $marker) !== false) {
+                return 'mobile';
+            }
+        }
+        return 'desktop';
     }
 
     /**
@@ -229,8 +242,9 @@ final class FeedbackController
             return Response::redirect($this->base() . '/admin/feedbacks?error=not_found');
         }
 
+        $storeId    = $feedback['store_id'] !== null ? (int) $feedback['store_id'] : null;
         $managedIds = $request->getAttribute('managed_store_ids');
-        if ($managedIds !== null && !in_array((int) $feedback['store_id'], $managedIds, true)) {
+        if ($managedIds !== null && ($storeId === null || !in_array($storeId, $managedIds, true))) {
             return Response::redirect($this->base() . '/admin/feedbacks?error=forbidden');
         }
 
@@ -242,7 +256,7 @@ final class FeedbackController
             'employee_feedback',
             $id,
             ['category' => $feedback['category'] ?? ''],
-            (int) $feedback['store_id']
+            $storeId
         );
 
         return Response::redirect($this->base() . '/admin/feedbacks?success=deleted');

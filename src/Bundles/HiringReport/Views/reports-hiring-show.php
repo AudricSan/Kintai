@@ -13,12 +13,12 @@ $base = $BASE_URL . '/admin/stores/' . $storeId . '/reports/hiring';
 <div class="page-header">
     <h2 class="page-header__title"><?= __('hiring_report') ?> — <?= htmlspecialchars($report['employee_name'] ?? '') ?></h2>
     <div class="page-header__actions">
-        <?= Button::make(__('back'))->ghost()->link($base)->render() ?>
-        <?= Button::make(__('edit'))->primary()->link($base . '/' . $reportId . '/edit')->render() ?>
-        <?= Button::make('PDF')->success()->link($base . '/' . $reportId . '/pdf')->render() ?>
+        <?= Button::make('← ' . __('back'))->ghost()->sm()->link($base)->render() ?>
+        <?= Button::make(__('edit'))->primary()->sm()->link($base . '/' . $reportId . '/edit')->render() ?>
+        <?= Button::make('PDF')->ghost()->sm()->link($base . '/' . $reportId . '/pdf')->attrs(['target' => '_blank'])->render() ?>
         <form method="POST" action="<?= htmlspecialchars($base . '/' . $reportId . '/delete') ?>" class="form-inline" onsubmit="return confirm('<?= __('confirm_delete_hiring_report') ?>')">
             <?= csrf_field() ?>
-            <?= Button::make(__('delete'))->danger()->submit()->render() ?>
+            <?= Button::make(__('delete'))->danger()->sm()->submit()->render() ?>
         </form>
     </div>
 </div>

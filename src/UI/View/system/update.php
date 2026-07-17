@@ -6,6 +6,7 @@ use kintai\UI\Components\Card;
 /**
  * @var string      $currentVersion
  * @var array|null  $updateInfo
+ * @var string|null $updateCheckError
  * @var string      $updateChannel
  * @var array       $pendingMigs
  * @var int|null    $lastUpdateDurationSeconds
@@ -32,7 +33,8 @@ ob_start();
     <?= __('update_channel_label') ?>
     <span class="btn-group">
         <?php foreach ($channels as $value => $label): ?>
-            <form method="POST" action="<?= htmlspecialchars($channelAction) ?>" class="d-inline">
+            <?php $needsConfirm = $value !== 'release' && $value !== $updateChannel; ?>
+            <form method="POST" action="<?= htmlspecialchars($channelAction) ?>" class="d-inline"<?= $needsConfirm ? " onsubmit=\"return confirm('" . __('update_channel_switch_confirm') . "')\"" : '' ?>>
                 <?= csrf_field() ?>
                 <input type="hidden" name="channel" value="<?= htmlspecialchars($value) ?>">
                 <?= Button::make($label)->sm()->{$value === $updateChannel ? 'primary' : 'outline'}()->submit()->disabled($value === $updateChannel)->render() ?>
@@ -78,6 +80,10 @@ ob_start();
     <?php else: ?>
         <div class="alert alert--success mt-sm"><?= sprintf(__('backup_up_to_date'), htmlspecialchars($currentVersion)) ?></div>
     <?php endif; ?>
+<?php elseif (!empty($updateCheckError)): ?>
+    <div class="alert alert--warning mt-sm">
+        <?= sprintf(__('backup_update_check_failed'), htmlspecialchars($updateCheckError)) ?>
+    </div>
 <?php else: ?>
     <p class="text-muted mt-sm"><?= __('backup_no_update_server') ?></p>
 <?php endif; ?>

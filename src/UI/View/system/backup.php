@@ -67,3 +67,39 @@ endif;
 <div class="alert alert--warning">
     <strong><?= __('backup_warning_title') ?></strong> : <?= __('backup_warning_text') ?>
 </div>
+
+<?php
+$resetAction = route_url('admin.reset.prepare');
+$optionalCategories = [
+    'stores'      => ['label' => __('reset_keep_stores'), 'hint' => __('reset_keep_stores_hint')],
+    'shift_types' => ['label' => __('reset_keep_shift_types'), 'hint' => __('reset_keep_shift_types_hint')],
+    'ui_prefs'    => ['label' => __('reset_keep_ui_prefs'), 'hint' => __('reset_keep_ui_prefs_hint')],
+];
+ob_start();
+?>
+<p class="text-muted mb-sm"><?= __('reset_intro') ?></p>
+<form method="POST" action="<?= htmlspecialchars($resetAction) ?>" class="form-stack" onsubmit="return confirm('<?= __('reset_data_confirm') ?>')">
+    <?= csrf_field() ?>
+    <p class="form-label"><?= __('reset_keep_label') ?></p>
+    <?php foreach ($optionalCategories as $key => $cat): ?>
+        <div class="form-group">
+            <label class="form-toggle">
+                <input type="checkbox" name="keep[]" value="<?= htmlspecialchars($key) ?>" class="form-toggle__input">
+                <span class="form-toggle__track"></span>
+            </label>
+            <span><?= htmlspecialchars($cat['label']) ?></span>
+            <p class="form-hint"><?= htmlspecialchars($cat['hint']) ?></p>
+        </div>
+    <?php endforeach; ?>
+    <div class="form-actions">
+        <input type="hidden" name="mode" value="data">
+        <?= Button::make(__('reset_data_btn'))->danger()->submit()->render() ?>
+    </div>
+</form>
+<form method="POST" action="<?= htmlspecialchars($resetAction) ?>" class="mt-sm" onsubmit="return confirm('<?= __('reset_factory_confirm') ?>')">
+    <?= csrf_field() ?>
+    <input type="hidden" name="mode" value="factory">
+    <?= Button::make(__('reset_factory_btn'))->danger()->submit()->render() ?>
+    <p class="form-hint"><?= __('reset_factory_hint') ?></p>
+</form>
+<?php echo Card::make()->header(__('reset_title'))->body(ob_get_clean())->render(); ?>
