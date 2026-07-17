@@ -6,6 +6,18 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Fixed
+- The salary report detail page (`/admin/stores/{id}/reports/salary/{rid}`) and its PDF export threw a 500 error: `reports-salary-show.php`/`reports-salary-pdf.php` declared their formatting closures as `fn(?string $v)` under `declare(strict_types=1)`, but numeric report fields (`active_employees`, `staff_man_hours`, deduction amounts...) come back from SQLite as native `int`/`float`, not `string`, causing a `TypeError` on every call. The closures now accept `mixed` and cast explicitly.
+
+### Changed
+- Merged the standalone "Payslip" feature (`/employee-report/{uid}/payslip[/pdf]`, the 🖨 buttons on the employee list/report pages) into the Salary Report: every field the payslip auto-generated (day-by-day shift breakdown, gross/net hours, social deduction breakdown — health insurance/pension/employment insurance/income tax/resident tax) is now shown directly on a per-employee salary report's detail page and PDF, computed live via the same `StoreStatsService::buildPayslipData()` the payslip used, ending in a gross-to-net recap (gross pay → each deduction → total deductions → net pay). `calculateSalaryPreset()` (the "create report" pre-fill) now also pre-fills the deduction fields (other deductions, withholding tax, residence tax, total deductions, net payment, hand-delivered salary, income tax base) from the store's deduction settings — for a single-employee report from that employee's own pay, for a store-wide report by summing every employee who had shifts that month and is subject to deductions. All pre-existing salary report fields are unchanged and still manually editable; the standalone payslip routes/controller/views/JS are removed.
+
+### Added
+- New "Bank transfer salary" field (`bank_transfer_salary`, defaults to 0) on the salary report, alongside the existing "hand-delivered salary" — for stores that split an employee's net pay between cash and bank transfer.
+
+### Changed
+- On a salary report scoped to a single employee, the "Active employees" and "New hires" fields (store-wide concepts, not meaningful for one person) are hidden from the create/edit form and the detail/PDF views instead of being shown as always-zero noise; their stored values are preserved via hidden inputs on save.
+
 ## [0.7.7] - 2026-07-17
 
 ### Fixed

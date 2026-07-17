@@ -514,94 +514,6 @@ final class AdminStoreController
         ]), 'layout.app'));
     }
 
-    public function employeePayslip(Request $request): Response
-    {
-        $storeId = (int) $request->param('id');
-        $userId  = (int) $request->param('uid');
-        $this->assertStoreAccess($request, $storeId);
-
-        $store = $this->stores->findById($storeId);
-        if ($store === null) throw new NotFoundException('Magasin introuvable.');
-
-        $user = $this->users->findById($userId);
-        if ($user === null) throw new NotFoundException('Employé introuvable.');
-
-        $membership = $this->storeUsers->findMembership($storeId, $userId);
-        if ($membership === null) throw new ForbiddenException('Cet employé n\'est pas membre de ce magasin.');
-
-        [$from, $to] = self::parseDateRange($request);
-        $data        = $this->storeStatsService->buildPayslipData($storeId, $userId, $from, $to);
-
-        $this->auditLogger->log($request, 'payslip.viewed', 'user', $userId, [
-            'store_id' => $storeId, 'from' => $from, 'to' => $to,
-        ], $storeId);
-
-        return Response::html($this->view->render('staff.employee-payslip', array_merge($data, [
-            'store'      => $store,
-            'user'       => $user,
-            'membership' => $membership,
-            'currency'   => $store['currency'] ?? 'EUR',
-            'autoprint'  => $request->query('autoprint') === '1',
-        ])));
-    }
-
-    public function employeePayslipPdf(Request $request): Response
-    {
-        $storeId = (int) $request->param('id');
-        $userId  = (int) $request->param('uid');
-        $this->assertStoreAccess($request, $storeId);
-
-        $store = $this->stores->findById($storeId);
-        if ($store === null) throw new NotFoundException('Magasin introuvable.');
-
-        $user = $this->users->findById($userId);
-        if ($user === null) throw new NotFoundException('Employé introuvable.');
-
-        $membership = $this->storeUsers->findMembership($storeId, $userId);
-        if ($membership === null) throw new ForbiddenException('Cet employé n\'est pas membre de ce magasin.');
-
-        [$from, $to] = self::parseDateRange($request);
-        $data        = $this->storeStatsService->buildPayslipData($storeId, $userId, $from, $to);
-
-        $html = $this->view->render('staff.employee-payslip-pdf', array_merge($data, [
-            'store'      => $store,
-            'user'       => $user,
-            'membership' => $membership,
-            'currency'   => $store['currency'] ?? 'EUR',
-        ]));
-
-        $tmpDir = storage_path('app/mpdf');
-        if (!is_dir($tmpDir)) {
-            mkdir($tmpDir, 0755, true);
-        }
-
-        $mpdf = new \Mpdf\Mpdf([
-            'mode'          => 'utf-8',
-            'format'        => 'A4',
-            'margin_left'   => 15,
-            'margin_right'  => 15,
-            'margin_top'    => 16,
-            'margin_bottom' => 16,
-            'tempDir'       => $tmpDir,
-        ]);
-        $mpdf->SetTitle('Fiche de paie');
-        $mpdf->WriteHTML($html);
-
-        $slug     = preg_replace('/[^a-zA-Z0-9_-]/', '', str_replace(' ', '_', trim(($user['last_name'] ?? '') . '_' . ($user['first_name'] ?? '')))) ?: 'employe';
-        $filename = 'payslip_' . $slug . '_' . str_replace('-', '', $from) . '_' . str_replace('-', '', $to) . '.pdf';
-
-        $this->auditLogger->log($request, 'export.payslip_pdf', 'user', $userId, [
-            'store_id' => $storeId,
-            'from'     => $from,
-            'to'       => $to,
-            'format'   => 'pdf',
-        ], $storeId);
-
-        $pdfBytes = $mpdf->Output('', \Mpdf\Output\Destination::STRING_RETURN);
-
-        return Response::pdf($pdfBytes, $filename);
-    }
-
     public function employeeStats(Request $request): Response
     {
         $storeId = (int) $request->param('id');
@@ -624,18 +536,16 @@ final class AdminStoreController
             'store_id' => $storeId, 'period' => $period,
         ], $storeId);
 
-        $empName    = trim(($user['last_name'] ?? '') . ' ' . ($user['first_name'] ?? '')) ?: ($user['email'] ?? '');
-        $payslipUrl = $this->base() . '/admin/stores/' . $storeId . '/employee-report/' . $userId . '/payslip?period=' . $period;
-        $pdfUrl     = $this->base() . '/admin/stores/' . $storeId . '/employee-report/' . $userId . '/payslip/pdf?period=' . $period;
+        $empName        = trim(($user['last_name'] ?? '') . ' ' . ($user['first_name'] ?? '')) ?: ($user['email'] ?? '');
+        $salaryReportUrl = $this->base() . '/admin/stores/' . $storeId . '/reports/salary/create?user_id=' . $userId;
 
         return Response::html($this->view->render('staff.employee-stats', array_merge($data, [
-            'title'      => 'Statistiques — ' . $empName,
-            'store'      => $store,
-            'user'       => $user,
-            'membership' => $membership,
-            'currency'   => $store['currency'] ?? 'EUR',
-            'payslipUrl' => $payslipUrl,
-            'pdfUrl'     => $pdfUrl,
+            'title'           => 'Statistiques — ' . $empName,
+            'store'           => $store,
+            'user'            => $user,
+            'membership'      => $membership,
+            'currency'        => $store['currency'] ?? 'EUR',
+            'salaryReportUrl' => $salaryReportUrl,
         ]), 'layout.app'));
     }
 
@@ -659,18 +569,4 @@ final class AdminStoreController
         ]), 'layout.app'));
     }
 
-    public static function parseDateRange(Request $request): array
-    {
-        $from = (string) ($request->query('from') ?? '');
-        $to   = (string) ($request->query('to')   ?? '');
-
-        $valid = fn(string $d): bool => (bool) \DateTime::createFromFormat('Y-m-d', $d);
-
-        if (!$valid($from) || !$valid($to) || $from > $to) {
-            $from = date('Y-m-01');
-            $to   = date('Y-m-t');
-        }
-
-        return [$from, $to];
-    }
 }

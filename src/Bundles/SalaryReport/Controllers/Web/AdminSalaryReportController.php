@@ -14,6 +14,7 @@ use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\DailyReportDataNormalizer;
+use kintai\Core\Services\StoreStatsServiceInterface;
 use kintai\UI\Controller\Web\HasAdminAccess;
 use kintai\UI\Controller\Web\Staff\HasStaffReportCrud;
 use kintai\UI\ViewRenderer;
@@ -41,6 +42,7 @@ final class AdminSalaryReportController
             'net_payment'           => 'float',
             'active_employees'      => 'int',
             'hand_delivered_salary' => 'float',
+            'bank_transfer_salary'  => 'float',
             'staff_man_hours'       => 'float',
             'staff_total_payment'   => 'float',
             'staff_avg_hourly_wage' => 'float',
@@ -61,6 +63,7 @@ final class AdminSalaryReportController
         private readonly DailyReportRepositoryInterface $dailyReports,
         private readonly ShiftRepositoryInterface $shifts,
         private readonly AuditLogger $auditLogger,
+        private readonly StoreStatsServiceInterface $storeStatsService,
     ) {}
 
     public function allSalaryReports(Request $request): Response
@@ -296,6 +299,26 @@ final class AdminSalaryReportController
     }
 
     /**
+     * Pour un rapport lié à un employé, ajoute le détail jour par jour des shifts
+     * et des retenues — exactement les données que produisait l'ancienne fiche de
+     * paie autonome (StoreStatsService::buildPayslipData), maintenant affichées
+     * directement dans le rapport de salaire (show + PDF) au lieu d'une page séparée.
+     */
+    protected function reportShowExtras(int $storeId, array $report): array
+    {
+        $userId = (int) ($report['user_id'] ?? 0);
+        $targetMonth = (string) ($report['target_month'] ?? '');
+        if ($userId <= 0 || $targetMonth === '') {
+            return [];
+        }
+
+        $from = $targetMonth . '-01';
+        $to = date('Y-m-t', strtotime($from));
+
+        return $this->storeStatsService->buildPayslipData($storeId, $userId, $from, $to);
+    }
+
+    /**
      * Calcule les valeurs pré-remplies pour un rapport de salaire à partir
      * des rapports journaliers et des shifts existants.
      */
@@ -348,13 +371,16 @@ final class AdminSalaryReportController
         $totalMinutes = 0;
         $totalShiftSalary = 0;
         $employeeMinutes = [];
+        $employeeCost = [];
         foreach ($monthShifts as $s) {
             $minutes = (int) ($s['duration_minutes'] ?? 0);
+            $cost = (float) ($s['estimated_salary'] ?? 0);
             $totalMinutes += $minutes;
-            $totalShiftSalary += (float) ($s['estimated_salary'] ?? 0);
+            $totalShiftSalary += $cost;
             $uid = (int) ($s['user_id'] ?? 0);
             if ($uid > 0) {
                 $employeeMinutes[$uid] = ($employeeMinutes[$uid] ?? 0) + $minutes;
+                $employeeCost[$uid] = ($employeeCost[$uid] ?? 0) + $cost;
             }
         }
 
@@ -380,6 +406,75 @@ final class AdminSalaryReportController
         $preset['active_employees'] = $activeEmployees;
         $preset['employee_work_hours'] = implode("\n", $lines);
 
+        $preset = array_merge($preset, $this->calculateDeductionsPreset(
+            $storeId,
+            $totalShiftSalary,
+            $userId,
+            $employeeCost,
+        ));
+
         return $preset;
+    }
+
+    /**
+     * Pré-remplit les champs de retenues (assurance santé, pension, chômage,
+     * impôt à la source, taxe de résidence) à partir des paramètres de
+     * retenues du store — même logique que StoreStatsService::buildPayslipData(),
+     * appliquée soit à un seul employé, soit sommée sur tous les employés ayant
+     * eu des shifts ce mois-ci (rapport magasin entier).
+     *
+     * @param array<int, float> $employeeCost Coût brut par employé (user_id => somme estimated_salary), pour le mode magasin entier.
+     */
+    private function calculateDeductionsPreset(int $storeId, float $totalShiftSalary, ?int $userId, array $employeeCost): array
+    {
+        $deductionSettings = $this->stores->getDeductionSettings($storeId);
+        if (empty($deductionSettings['enabled'])) {
+            return [];
+        }
+
+        $costsByEmployee = $userId !== null ? [$userId => $totalShiftSalary] : $employeeCost;
+
+        $health = 0.0;
+        $pension = 0.0;
+        $employment = 0.0;
+        $incomeTax = 0.0;
+        $residentTax = 0.0;
+
+        foreach ($costsByEmployee as $uid => $cost) {
+            if ($cost <= 0) {
+                continue;
+            }
+            $membership = $this->storeUsers->findMembership($storeId, $uid);
+            $membershipId = (int) ($membership['id'] ?? 0);
+            if ($membershipId <= 0 || !$this->storeUsers->getSubjectToDeductions($membershipId)) {
+                continue;
+            }
+            $health      += round($cost * (float) ($deductionSettings['health_insurance_rate'] ?? 0) / 100, 2);
+            $pension     += round($cost * (float) ($deductionSettings['pension_rate'] ?? 0) / 100, 2);
+            $employment  += round($cost * (float) ($deductionSettings['employment_insurance_rate'] ?? 0) / 100, 2);
+            $incomeTax   += round($cost * (float) ($deductionSettings['income_tax_rate'] ?? 0) / 100, 2);
+            $residentTax += (float) ($deductionSettings['resident_tax_monthly'] ?? 0);
+        }
+
+        $otherDeductions = round($health + $pension + $employment, 2);
+        $withholdingTax = round($incomeTax, 2);
+        $residenceTax = round($residentTax, 2);
+        $totalDeductions = round($otherDeductions + $withholdingTax + $residenceTax, 2);
+
+        if ($totalDeductions <= 0) {
+            return [];
+        }
+
+        $netPayment = round($totalShiftSalary - $totalDeductions, 2);
+
+        return [
+            'income_tax_base'       => round($totalShiftSalary, 2),
+            'other_deductions'      => $otherDeductions,
+            'withholding_tax'       => $withholdingTax,
+            'residence_tax'         => $residenceTax,
+            'total_deductions'      => $totalDeductions,
+            'net_payment'           => $netPayment,
+            'hand_delivered_salary' => $netPayment,
+        ];
     }
 }

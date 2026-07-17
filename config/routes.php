@@ -199,8 +199,6 @@ $router->group('/admin', function ($r) {
     $r->get('/stores/{id}/profitability',      [AdminStoreController::class, 'storeProfitability'], name: 'admin.stores.profitability');
     $r->get('/stores/{id}/employee-report',                      [AdminStoreController::class, 'employeeReport'],    name: 'admin.stores.employee_report');
     $r->get('/stores/{id}/employee-report/{uid}/stats',          [AdminStoreController::class, 'employeeStats'],     name: 'admin.stores.employee_stats');
-    $r->get('/stores/{id}/employee-report/{uid}/payslip',        [AdminStoreController::class, 'employeePayslip'],   name: 'admin.stores.employee_payslip');
-    $r->get('/stores/{id}/employee-report/{uid}/payslip/pdf',    [AdminStoreController::class, 'employeePayslipPdf'], name: 'admin.stores.employee_payslip_pdf');
 
     // Rapports d'embauche : voir src/Bundles/HiringReport/routes.php
 

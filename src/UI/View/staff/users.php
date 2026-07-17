@@ -137,7 +137,6 @@ $exportQuery = $filter_store_id !== 0 ? '?store_id=' . $filter_store_id : '';
         if (isset($user_store_map[$uid])) {
             $sId = $user_store_map[$uid];
             $html .= '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/employee-report/' . $uid . '/stats" class="btn btn--ghost btn--sm" title="' . __('employee_stats') . '">📊</a>';
-            $html .= '<button type="button" class="btn btn--ghost btn--sm ps-period-trigger" data-url="' . htmlspecialchars($BASE_URL . '/admin/stores/' . $sId . '/employee-report/' . $uid . '/payslip?from=__FROM__&to=__TO__') . '" title="' . __('payslip') . '">🖨</button>';
             $html .= '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/reports/salary/create?user_id=' . $uid . '" class="btn btn--ghost btn--sm" title="' . __('salary_report') . '">💰</a>';
             $html .= '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/reports/resignation/create?user_id=' . $uid . '" class="btn btn--danger btn--sm" title="' . __('resign') . '">✕</a>';
         }
@@ -147,47 +146,5 @@ $exportQuery = $filter_store_id !== 0 ? '?store_id=' . $filter_store_id : '';
     ->render()
 ?></div>
 
-<div id="ps-period-modal" class="ps-modal-overlay" hidden>
-    <div class="ps-modal">
-        <div class="ps-modal__header">
-            <span>🖨 <?= __('payslip') ?> — <?= __('select_period') ?></span>
-            <button type="button" class="ps-modal__close" onclick="psPeriodClose()">✕</button>
-        </div>
-        <div class="ps-modal__body">
-            <div class="ps-modal__section-label"><?= __('quick_month') ?></div>
-            <div class="ps-month-grid" id="ps-month-grid">
-                <?php
-                for ($i = 12; $i >= 0; $i--) {
-                    $dt    = new \DateTime("first day of -$i months");
-                    $from  = $dt->format('Y-m-01');
-                    $to    = $dt->format('Y-m-t');
-                    $label = $dt->format('M Y');
-                    echo '<button type="button" class="ps-month-btn" data-from="' . $from . '" data-to="' . $to . '">'
-                        . htmlspecialchars($label) . '</button>';
-                }
-                ?>
-            </div>
-            <div class="ps-modal__section-label"><?= __('custom_range') ?></div>
-            <div class="ps-date-row">
-                <label class="ps-date-label">
-                    <?= __('from_date') ?>
-                    <input type="date" id="ps-from" class="ps-date-input">
-                </label>
-                <span class="ps-date-sep">→</span>
-                <label class="ps-date-label">
-                    <?= __('to_date') ?>
-                    <input type="date" id="ps-to" class="ps-date-input">
-                </label>
-            </div>
-        </div>
-        <div class="ps-modal__footer">
-            <button type="button" class="btn btn--ghost btn--sm" onclick="psPeriodClose()"><?= __('cancel') ?></button>
-            <button type="button" class="btn btn--primary btn--sm" onclick="psPeriodOpen()">🖨 <?= __('open') ?></button>
-        </div>
-    </div>
-</div>
-
-<div id="payslip-meta" data-msg-invalid-range="<?= htmlspecialchars(__('invalid_date_range') ?? 'Plage de dates invalide') ?>" hidden></div>
-<script src="<?= $BASE_URL ?>/assets/js/modules/users-payslip.js"></script>
 <script src="<?= $BASE_URL ?>/assets/js/modules/kana-search.js"></script>
 <script src="<?= $BASE_URL ?>/assets/js/modules/users-list-search.js"></script>

@@ -40,7 +40,6 @@ final class AdminStoreControllerTest extends TestCase
         $this->ensureViewFile('staff.stores');
         $this->ensureViewFile('staff.stores-form');
         $this->ensureViewFile('staff.employee-stats');
-        $this->ensureViewFile('staff.employee-payslip');
         $this->ensureViewFile('layout.app');
         $view = new ViewRenderer(sys_get_temp_dir());
         $this->stores = $this->createMock(StoreRepositoryInterface::class);
@@ -198,29 +197,6 @@ final class AdminStoreControllerTest extends TestCase
         );
 
         $response = $this->controller->employeeStats($req);
-
-        $this->assertSame(200, $response->status());
-    }
-
-    public function testEmployeePayslipLogsConsultation(): void
-    {
-        $req = new Request();
-        $req->setAttribute('managed_store_ids', null);
-        $req->setRouteParams(['id' => '1', 'uid' => '5']);
-
-        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Store A', 'currency' => 'JPY']);
-        $this->users->method('findById')->with(5)->willReturn(['id' => 5, 'last_name' => 'Dupont', 'first_name' => 'Jean']);
-        $this->storeUsers->method('findMembership')->with(1, 5)->willReturn(['id' => 1, 'store_id' => 1, 'user_id' => 5]);
-        $this->storeStatsService->method('buildPayslipData')->willReturn([]);
-
-        $this->logRepo->expects($this->once())->method('record')->with(
-            $this->anything(), $this->anything(), $this->anything(),
-            'payslip.viewed', 'user', 5,
-            $this->anything(), $this->anything(), 1,
-            $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(),
-        );
-
-        $response = $this->controller->employeePayslip($req);
 
         $this->assertSame(200, $response->status());
     }
