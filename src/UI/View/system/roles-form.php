@@ -31,12 +31,13 @@ echo Flash::fromQuery('error', [
             <?php endif; ?>
 
             <div class="form-row">
+                <?php if (!$isSystem): ?>
                 <div class="form-group">
                     <label class="form-label form-label--required"><?= __('name') ?></label>
                     <input type="text" name="name" class="form-control"
-                           value="<?= htmlspecialchars($role['name'] ?? '') ?>"
-                           <?= $isSystem ? 'disabled' : 'required' ?>>
+                           value="<?= htmlspecialchars($role['name'] ?? '') ?>" required>
                 </div>
+                <?php endif; ?>
                 <div class="form-group">
                     <label class="form-label"><?= __('color') ?></label>
                     <input type="color" name="color" class="input-color"
