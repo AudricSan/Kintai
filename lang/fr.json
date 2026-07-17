@@ -172,6 +172,7 @@
     "backup_title": "Sauvegardes",
     "backup_up_to_date": "Instance à jour (%s).",
     "backup_update_available": "Mise à jour disponible",
+    "backup_update_check_failed": "La vérification des mises à jour a échoué : %s",
     "backup_update_confirm": "Cette action va télécharger et appliquer la dernière version depuis GitHub, en supprimant les fichiers obsolètes. Un backup complet (base de données, fichiers, code) est créé avant. Continuer ?",
     "backup_update_done_summary": "v{version} — {copied} fichier(s) copié(s), {deleted} supprimé(s), {migrations} migration(s)",
     "backup_update_last_duration": "Dernière mise à jour : environ %d s. La prochaine devrait être similaire.",

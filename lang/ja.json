@@ -172,6 +172,7 @@
     "backup_title": "バックアップ",
     "backup_up_to_date": "最新です（%s）。",
     "backup_update_available": "アップデートあり",
+    "backup_update_check_failed": "アップデートの確認に失敗しました：%s",
     "backup_update_confirm": "GitHubから最新バージョンをダウンロードして適用し、不要になったファイルを削除します。事前に完全なバックアップ（データベース、ファイル、コード）が作成されます。続行しますか？",
     "backup_update_done_summary": "v{version} — {copied} 件コピー、{deleted} 件削除、{migrations} 件のマイグレーション",
     "backup_update_last_duration": "前回のアップデートは約 %d 秒でした。次回も同程度と予想されます。",
