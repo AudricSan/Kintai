@@ -17,6 +17,12 @@ All notable changes to Kintai are documented here.
 
 ### Changed
 - On a salary report scoped to a single employee, the "Active employees", "New hires" and "Resigned staff" fields (store-wide concepts, not meaningful for one person) are hidden from the create/edit form and the detail/PDF views instead of being shown as always-zero noise; their stored values are preserved via hidden inputs on save.
+- Reworked the hiring report and user forms (`reports-hiring-form.php`, `users-form.php`/`_form-user.php`) to split their fields into separate, headed sections (mirroring the hiring report's own detail/PDF pages, and matching the pattern already used lower on the user edit page) instead of one flat card with plain `<h3>`/`<h4>` dividers. The user form's section-per-card layout is opt-in (`$as_cards`) so the same partial keeps its compact look in the shift-import quick-create modal.
+- Fixed a real layout bug shared by several forms: `.form-row` is a strict 2-column CSS grid, but a few rows packed 3–5 fields into one (hiring report's gender/tax classification/education row via a non-existent `form-row--3col` class, the store deduction-rate row via a non-existent `.form-col` class) — the extra field(s) wrapped onto a new row alone with an empty cell beside them. All affected rows now hold exactly 2 fields (or 1, alone, when there's an odd one out), and the deduction-rate fields use the real, styled `.form-group` class.
+
+### Fixed
+- The user edit page (`/admin/users/{id}/edit`) rendered its "Reports" block (resignation/salary report links per store) *inside* the custom hourly rates table — nested inside a `<td>`, inside the per-shift-type-row loop — for any employee with at least one custom rate set, producing invalid, duplicated markup. Moved out to its own card, rendered once.
+- `hourly_rate` on the shift type form and the deduction-rate fields on the store form had no unit shown on their label; added "(/h)" and fixed the deduction row's missing `.form-group` styling respectively.
 
 ## [0.7.7] - 2026-07-17
 
