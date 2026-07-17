@@ -172,7 +172,7 @@ echo $tbl
         }
         $html .= '<form method="POST" action="' . $baseStore . '/' . $rid . '/delete" class="form-inline">' . csrf_field()
             . '<button type="submit" class="btn btn--danger btn--sm" onclick="return confirm(\'' . __('confirm_delete_resignation_report') . '\')">' . __('delete') . '</button></form>';
-        $html .= '<a href="' . $baseStore . '/' . $rid . '/pdf" class="btn btn--ghost btn--sm" title="PDF">⎙</a>';
+        $html .= Button::make('PDF')->ghost()->sm()->link($baseStore . '/' . $rid . '/pdf')->render();
         $html .= '</div>';
         return $html;
     })
