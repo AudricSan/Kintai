@@ -92,7 +92,7 @@ $ico              = fn(string $k): string => '<span class="sidebar-link__icon">'
                     <li><a href="<?= route_url('admin.reports.salary') ?>" class="sidebar-link<?= str_contains($path, '/reports/salary') ? ' active' : '' ?>"><?= $ico('money') ?><?= __('salary_report') ?></a></li>
                     <?php endif; ?>
                     <?php if ($feat('photos') && !$navHide('photos')): ?>
-                    <li><a href="<?= route_url('admin.photos.index') ?>" class="sidebar-link<?= str_contains($path, '/admin/photos') ? ' active' : '' ?>"><?= $ico('camera') ?>Photos</a></li>
+                    <li><a href="<?= route_url('admin.photos.index') ?>" class="sidebar-link<?= str_contains($path, '/admin/photos') ? ' active' : '' ?>"><?= $ico('camera') ?><?= __('photos_report') ?></a></li>
                     <?php endif; ?>
                     <?php endif; ?>
                 <?php break; case 'system': ?>
