@@ -406,6 +406,60 @@ final class GithubUpdateServiceTest extends TestCase
         $this->assertNull($this->updateService->getLastUpdateDuration());
     }
 
+    public function testGetLastCheckErrorIsNullAfterSuccessfulCheck(): void
+    {
+        $service = $this->makeService('v1.2.0', ['README.md' => 'hello']);
+
+        $service->checkLatestRelease();
+
+        $this->assertNull($service->getLastCheckError());
+    }
+
+    public function testGetLastCheckErrorIsNullWhenChannelHasNoCompatibleRelease(): void
+    {
+        // Aucune release ne correspond au canal : ce n'est pas un échec technique,
+        // juste l'absence de release compatible — ne doit pas remonter d'erreur.
+        $service = $this->makeServiceWithReleases([
+            ['tag_name' => 'v1.0.0-beta.1', 'zipball_url' => 'z', 'prerelease' => true],
+        ], ['README.md' => 'hello'], currentVersion: '0.0.0', channel: 'release');
+
+        $service->checkLatestRelease();
+
+        $this->assertNull($service->getLastCheckError());
+    }
+
+    public function testGetLastCheckErrorReportsGenericFailureWhenFetcherReturnsNull(): void
+    {
+        $service = new GithubUpdateService(
+            $this->updateService,
+            $this->backup,
+            $this->migrator,
+            $this->makeSettings(),
+            $this->tmpDir,
+            fn(string $repo, string $token): ?array => null,
+        );
+
+        $service->checkLatestRelease();
+
+        $this->assertNotNull($service->getLastCheckError());
+    }
+
+    public function testGetLastCheckErrorReportsMissingRepoConfig(): void
+    {
+        $service = new GithubUpdateService(
+            $this->updateService,
+            $this->backup,
+            $this->migrator,
+            $this->makeSettings(),
+            $this->tmpDir,
+            fn(string $repo, string $token): ?array => [['tag_name' => 'v1.0.0', 'zipball_url' => 'z']],
+        );
+        $this->setPrivate($service, 'repo', '');
+
+        $this->assertNull($service->checkLatestRelease());
+        $this->assertNotNull($service->getLastCheckError());
+    }
+
     #[DataProvider('releaseListValidationProvider')]
     public function testIsValidReleaseListRejectsGithubErrorObjects(mixed $data, bool $expected): void
     {
