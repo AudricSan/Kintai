@@ -1,10 +1,13 @@
 <?php
 /**
  * Template HTML optimisé mPDF — 退職報告書 (Resignation Report)
- * Rendu sans layout, utilisé uniquement pour la génération PDF serveur.
+ * Rendu sans layout : soit pour la génération PDF serveur, soit directement
+ * comme aperçu navigateur (avec barre d'outils) quand $downloadUrl est
+ * fourni — voir HasStaffReportCrud::reportPdf() vs reportPdfDownload().
  *
- * @var array $report
- * @var array $store
+ * @var array       $report
+ * @var array       $store
+ * @var string|null $downloadUrl
  */
 ?>
 <!DOCTYPE html>
@@ -14,6 +17,7 @@
 <style>
 <?php
 echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-base.css');
+echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-preview.css');
 ?>
 body { font-family: sans-serif; font-size: 12pt; color: #333; }
 h1 { text-align: center; font-size: 18pt; margin-bottom: 20px; }
@@ -24,6 +28,9 @@ th { background: #f5f5f5; font-weight: bold; width: 30%; }
 </style>
 </head>
 <body>
+
+<?php include __DIR__ . '/../../../UI/View/_partials/_pdf-preview-toolbar.php'; ?>
+<div class="pdf-preview-page">
 
 <h1><?= __('resignation_report_pdf_title') ?></h1>
 
@@ -66,5 +73,6 @@ th { background: #f5f5f5; font-weight: bold; width: 30%; }
     <?= htmlspecialchars($store['name'] ?? '') ?> — <?= date('Y-m-d H:i') ?>
 </div>
 
+</div>
 </body>
 </html>

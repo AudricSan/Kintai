@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Changed
+- Unified how every PDF is produced across the app (salary/hiring/resignation reports, daily reports, the employee list export, and the salary/resignation bulk list exports): the "PDF" button no longer forces an immediate download. It now opens an HTML preview of the document first — the same template used for the real PDF, in a simulated A4 (or A4 landscape for the employee export) page on a neutral background — with a small toolbar offering "Print" (browser print dialog, can save as PDF), "Download PDF" (the actual server-generated file via mPDF, at a new `.../pdf/download` route) and "Close". This restores the flow the old standalone payslip page used before it was merged into the Salary Report, and replaces the previous behavior where clicking "PDF" (most visibly on the hiring reports list, which had no other way to open a report) triggered a server-rendered file download with no way to check the content first.
+
 ### Added
 - A global, cross-store "Hiring Reports" list (`/admin/reports/hiring`, `admin.reports.hiring`), filterable by store/year/month and sorted newest-first — an easy-access place to see recently created staff without opening each store's user list or the full user edit page. Clicking a row opens the existing read-only hiring report summary (name, contact, guarantor, employment info), not the user edit form. Added a sidebar entry (Reports section) so the existing per-store hiring reports feature — auto-generated whenever a new employee is created with a store assignment, but previously unreachable from any menu — is now discoverable.
 

@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 /**
  * Template HTML optimisé mPDF — 給与報告書 (Salary Report)
- * Rendu sans layout, utilisé uniquement pour la génération PDF serveur.
+ * Rendu sans layout : soit pour la génération PDF serveur, soit directement
+ * comme aperçu navigateur (avec barre d'outils) quand $downloadUrl est
+ * fourni — voir HasStaffReportCrud::reportPdf() vs reportPdfDownload().
  *
- * @var array  $report
- * @var array  $store
+ * @var array       $report
+ * @var array       $store
+ * @var string|null $downloadUrl
  */
 
 $currency = $store['currency'] ?? 'JPY';
@@ -23,6 +26,7 @@ $isEmployeeScoped = !empty($report['user_id']);
 <style>
 <?php
 echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-base.css');
+echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-preview.css');
 ?>
 body { font-family: sans-serif; font-size: 10pt; color: #222; padding: 20px; }
 h1 { font-size: 16pt; text-align: center; margin-bottom: 4px; }
@@ -41,6 +45,9 @@ th { background: #f0f0f0; font-weight: 600; }
 </style>
 </head>
 <body>
+
+<?php include __DIR__ . '/../../../UI/View/_partials/_pdf-preview-toolbar.php'; ?>
+<div class="pdf-preview-page">
 
 <h1><?= __('sr_pdf_title') ?></h1>
 <p class="subtitle">
@@ -266,5 +273,6 @@ th { background: #f0f0f0; font-weight: 600; }
     <?= __('sr_pdf_footer', ['store' => htmlspecialchars($store['name'] ?? ''), 'date' => date('Y/m/d H:i')]) ?>
 </div>
 
+</div>
 </body>
 </html>

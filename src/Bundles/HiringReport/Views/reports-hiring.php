@@ -154,7 +154,7 @@ echo Flash::fromQuery('success', [
                 $html .= Button::make(__('delete'))->danger()->sm()->submit()->render();
                 $html .= '</form>';
             }
-            $html .= Button::make('PDF')->ghost()->sm()->link($base . '/pdf')->render();
+            $html .= Button::make('PDF')->ghost()->sm()->link($base . '/pdf')->attrs(['target' => '_blank'])->render();
             $html .= '</div>';
             return $html;
         })

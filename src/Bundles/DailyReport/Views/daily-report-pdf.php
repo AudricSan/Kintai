@@ -1,12 +1,15 @@
 <?php
 /**
  * Template HTML optimisé mPDF — Rapport journalier
- * Rendu sans layout, uniquement pour la génération PDF serveur.
+ * Rendu sans layout : soit pour la génération PDF serveur, soit directement
+ * comme aperçu navigateur (avec barre d'outils) quand $downloadUrl est
+ * fourni — voir DailyReportPdfService::generateHtml() vs generateBytes().
  *
- * @var array  $report
- * @var array  $store
- * @var array  $author   auteur du rapport (first_name, last_name, email, employee_code…)
- * @var string $locale   'fr' | 'en' | 'ja'
+ * @var array       $report
+ * @var array       $store
+ * @var array       $author       auteur du rapport (first_name, last_name, email, employee_code…)
+ * @var string      $locale       'fr' | 'en' | 'ja'
+ * @var string|null $downloadUrl
  */
 
 function drPdfNum(mixed $n, int $dec = 0): string {
@@ -51,6 +54,7 @@ $bodyFont = $locale === 'ja'
 <?php
 echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-base.css');
 echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-daily-report.css');
+echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-preview.css');
 ?>
 <?php if ($locale === 'ja'): ?>
 body { font-family: sun-exta, Arial, sans-serif; }
@@ -58,6 +62,9 @@ body { font-family: sun-exta, Arial, sans-serif; }
 </style>
 </head>
 <body>
+
+<?php include __DIR__ . '/../../../UI/View/_partials/_pdf-preview-toolbar.php'; ?>
+<div class="pdf-preview-page">
 
 <!-- En-tête -->
 <table class="header-table">
@@ -202,5 +209,6 @@ body { font-family: sun-exta, Arial, sans-serif; }
   <?= __('payslip_footer', ['date' => date('d/m/Y H:i')]) ?>
 </div>
 
+</div>
 </body>
 </html>
