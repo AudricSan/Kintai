@@ -14,7 +14,7 @@ echo Flash::fromQuery('success', [
 ])->render();
 ?>
 <div class="page-header">
-    <h2 class="page-header__title"><?= __('photos') ?> <span class="page-count">(<?= count($submissions) ?>)</span></h2>
+    <h2 class="page-header__title"><?= __('photos_report') ?> <span class="page-count">(<?= count($submissions) ?>)</span></h2>
     <div class="page-header__actions">
         <a href="<?= $BASE_URL ?>/admin/photos/create" class="btn btn--primary">+ <?= __('photo_new_submission') ?></a>
     </div>
@@ -70,7 +70,7 @@ echo Flash::fromQuery('success', [
                 <div class="card-body" style="padding:var(--space-3)">
                     <div class="photo-card__meta">
                         <strong><?= htmlspecialchars($storeName) ?></strong>
-                        <span class="badge badge--secondary badge--sm"><?= $count ?> <?= __('photos') ?></span>
+                        <span class="badge badge--secondary badge--sm"><?= $count ?> <?= __('photos_report') ?></span>
                     </div>
                     <div class="text-muted text-sm"><?= htmlspecialchars($sub['week_label'] ?? '') ?></div>
                     <?php if (!empty($sub['notes'])): ?>
