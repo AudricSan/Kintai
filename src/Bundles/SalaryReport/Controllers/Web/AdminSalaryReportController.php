@@ -149,7 +149,28 @@ final class AdminSalaryReportController
         return Response::jsonDownload(['data' => $reports], 'salary_reports_' . date('Ymd') . '.json');
     }
 
+    /**
+     * Aperçu HTML du PDF (route .../export/pdf) : pas de téléchargement
+     * automatique — voir HasStaffReportCrud::reportPdf() pour le même
+     * principe appliqué aux rapports individuels.
+     */
     public function exportSalaryReportsPdf(Request $request): Response
+    {
+        [$allStores, $queryStoreIds] = $this->storesAndFilter($request);
+        $reports = $this->salaryReports->findAll($queryStoreIds, $this->exportFilters($request));
+        $storeNames = array_column($allStores, 'name', 'id');
+
+        $html = $this->view->render('salary-report::reports-salary-export-pdf', [
+            'reports'      => $reports,
+            'store_names'  => $storeNames,
+            'generated_at' => date('Y-m-d H:i'),
+            'downloadUrl'  => $this->base() . '/admin/reports/salary/export/pdf/download' . $this->exportQueryString($request),
+        ]);
+
+        return Response::html($html);
+    }
+
+    public function exportSalaryReportsPdfDownload(Request $request): Response
     {
         [$allStores, $queryStoreIds] = $this->storesAndFilter($request);
         $reports = $this->salaryReports->findAll($queryStoreIds, $this->exportFilters($request));
@@ -166,6 +187,17 @@ final class AdminSalaryReportController
         ]);
 
         return $this->renderPdf($html, 'salary_reports_' . date('Ymd') . '.pdf');
+    }
+
+    private function exportQueryString(Request $request): string
+    {
+        $query = array_filter([
+            'store_id' => (int) $request->query('store_id', 0) ?: null,
+            'year'     => $request->query('year', '') ?: null,
+            'month'    => $request->query('month', '') ?: null,
+            'person'   => $request->query('person', '') ?: null,
+        ]);
+        return $query ? '?' . http_build_query($query) : '';
     }
 
     public function createSalaryReport(Request $request): Response
@@ -261,6 +293,11 @@ final class AdminSalaryReportController
     public function salaryReportPdf(Request $request): Response
     {
         return $this->reportPdf($request);
+    }
+
+    public function salaryReportPdfDownload(Request $request): Response
+    {
+        return $this->reportPdfDownload($request);
     }
 
     protected function reportRepo(): object

@@ -75,7 +75,7 @@ function drShowNum(mixed $n, int $dec = 0): string {
            class="btn btn--ghost">← <?= __('back') ?></a>
         <?php if (($report['status'] ?? '') === 'validated'): ?>
             <a href="<?= $BASE_URL ?>/admin/stores/<?= $storeId ?>/daily-reports/<?= $reportId ?>/pdf"
-               class="btn btn--ghost" target="_blank">⬇ PDF</a>
+               class="btn btn--ghost" target="_blank">PDF</a>
         <?php endif; ?>
     </div>
 </div>

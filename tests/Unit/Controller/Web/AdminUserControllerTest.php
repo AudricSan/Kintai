@@ -170,7 +170,7 @@ final class AdminUserControllerTest extends TestCase
         $this->assertSame('In Store', $data[0]['display_name']);
     }
 
-    public function testExportUsersPdfReturnsPdfResponse(): void
+    public function testExportUsersPdfReturnsHtmlPreview(): void
     {
         // mPDF lit $_SERVER['PHP_SELF'], absent en environnement CLI/tests.
         $_SERVER['PHP_SELF'] ??= '/index.php';
@@ -183,6 +183,24 @@ final class AdminUserControllerTest extends TestCase
         $this->shiftTypes->method('findAll')->willReturn([]);
 
         $response = $this->controller->exportUsersPdf($req);
+
+        $this->assertSame(200, $response->status());
+        $this->assertStringNotContainsString('%PDF', $response->body());
+    }
+
+    public function testExportUsersPdfDownloadReturnsPdfResponse(): void
+    {
+        // mPDF lit $_SERVER['PHP_SELF'], absent en environnement CLI/tests.
+        $_SERVER['PHP_SELF'] ??= '/index.php';
+
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+
+        $this->users->method('findAll')->willReturn([]);
+        $this->stores->method('findAll')->willReturn([]);
+        $this->shiftTypes->method('findAll')->willReturn([]);
+
+        $response = $this->controller->exportUsersPdfDownload($req);
 
         $this->assertSame(200, $response->status());
         $this->assertStringStartsWith('%PDF', $response->body());
