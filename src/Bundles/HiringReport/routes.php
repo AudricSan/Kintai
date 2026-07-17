@@ -15,6 +15,8 @@ use kintai\Bundles\HiringReport\Controllers\Web\AdminHiringReportController;
 // =============================================================================
 
 $router->group('/admin', function ($r) {
+    $r->get('/reports/hiring', [AdminHiringReportController::class, 'allHiringReports'], name: 'admin.reports.hiring');
+
     $r->get('/stores/{id}/reports/hiring',              [AdminHiringReportController::class, 'hiringReports'],      name: 'admin.stores.hiring_reports');
     $r->get('/stores/{id}/reports/hiring/create',       [AdminHiringReportController::class, 'createHiringReport'], name: 'admin.stores.hiring_reports.create');
     $r->post('/stores/{id}/reports/hiring/create',      [AdminHiringReportController::class, 'storeHiringReport'],  name: 'admin.stores.hiring_reports.store');
