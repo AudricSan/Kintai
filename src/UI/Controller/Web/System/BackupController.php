@@ -59,10 +59,13 @@ final class BackupController
 
         $flash = $request->query('success', '');
 
+        $updateInfo = $this->githubUpdate->checkLatestRelease();
+
         return Response::html($this->view->render('system.update', [
             'title'                     => 'Mises à jour',
             'currentVersion'            => $this->update->getCurrentVersion(),
-            'updateInfo'                => $this->githubUpdate->checkLatestRelease(),
+            'updateInfo'                => $updateInfo,
+            'updateCheckError'          => $this->githubUpdate->getLastCheckError(),
             'updateChannel'             => $this->settings->updateChannel(),
             'pendingMigs'               => $this->update->getPendingMigrations(),
             'lastUpdateDurationSeconds' => $this->update->getLastUpdateDuration(),

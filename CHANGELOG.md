@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Fixed
+- The GitHub update check (`/admin/update`) relied exclusively on `@file_get_contents()` over PHP's URL stream wrapper, with every network/SSL/DNS error and every GitHub API error response (rate limit, auth, 404...) silently swallowed into a bare `null` — the page then showed the exact same "no update available" message whether the instance was genuinely up to date or the check had failed outright, with nothing written to any log. This made the failure undiagnosable on hosts like OVH shared hosting where `allow_url_fopen` can be disabled or outbound requests to `api.github.com` restricted/rate-limited on a shared IP. `GithubUpdateService` now prefers curl (typically available even when `allow_url_fopen` is off) with a stream-wrapper fallback, for both the release-list check and the update zip download; any failure is logged (`Log::warning`, visible in the activity log) with the actual reason (curl error, HTTP status, PHP stream error, or the raw GitHub API error message) and exposed via a new `getLastCheckError()`. The update page now shows a distinct warning with that reason instead of the generic "no release available" message when the check itself failed, while still showing the plain "no release yet" message when the check succeeded but no release matches the selected channel (not an error).
+
 ## [0.7.6] - 2026-07-16
 
 ### Fixed

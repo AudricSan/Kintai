@@ -172,6 +172,7 @@
     "backup_title": "Backups",
     "backup_up_to_date": "Instance up to date (%s).",
     "backup_update_available": "Update available",
+    "backup_update_check_failed": "Update check failed: %s",
     "backup_update_confirm": "This will download and apply the latest version from GitHub, deleting obsolete files. A full backup (database, files, code) is created first. Continue?",
     "backup_update_done_summary": "v{version} — {copied} file(s) copied, {deleted} deleted, {migrations} migration(s)",
     "backup_update_last_duration": "Last update took about %d s. The next one should be similar.",

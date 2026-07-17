@@ -6,6 +6,7 @@ use kintai\UI\Components\Card;
 /**
  * @var string      $currentVersion
  * @var array|null  $updateInfo
+ * @var string|null $updateCheckError
  * @var string      $updateChannel
  * @var array       $pendingMigs
  * @var int|null    $lastUpdateDurationSeconds
@@ -79,6 +80,10 @@ ob_start();
     <?php else: ?>
         <div class="alert alert--success mt-sm"><?= sprintf(__('backup_up_to_date'), htmlspecialchars($currentVersion)) ?></div>
     <?php endif; ?>
+<?php elseif (!empty($updateCheckError)): ?>
+    <div class="alert alert--warning mt-sm">
+        <?= sprintf(__('backup_update_check_failed'), htmlspecialchars($updateCheckError)) ?>
+    </div>
 <?php else: ?>
     <p class="text-muted mt-sm"><?= __('backup_no_update_server') ?></p>
 <?php endif; ?>
