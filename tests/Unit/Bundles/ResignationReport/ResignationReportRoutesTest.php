@@ -47,6 +47,7 @@ final class ResignationReportRoutesTest extends TestCase
             ['GET', '/admin/stores/1/reports/resignation/10/edit'],
             ['POST', '/admin/stores/1/reports/resignation/10/edit'],
             ['POST', '/admin/stores/1/reports/resignation/10/delete'],
+            ['POST', '/admin/stores/1/reports/resignation/10/delete-permanently'],
             ['GET', '/admin/stores/1/reports/resignation/10/pdf'],
             ['POST', '/admin/stores/1/reports/resignation/10/reactivate'],
         ];
