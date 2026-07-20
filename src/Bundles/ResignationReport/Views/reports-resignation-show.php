@@ -16,12 +16,47 @@ $base = $BASE_URL . '/admin/stores/' . $storeId . '/reports/resignation';
         <?= Button::make('← ' . __('back'))->ghost()->sm()->link($base)->render() ?>
         <?= Button::make(__('edit'))->primary()->sm()->link($base . '/' . $reportId . '/edit')->render() ?>
         <?= Button::make('PDF')->ghost()->sm()->link($base . '/' . $reportId . '/pdf')->attrs(['target' => '_blank'])->render() ?>
+        <?php if (!empty($report['user_id'])): ?>
+        <button type="button" class="btn btn--danger btn--sm js-rr-delete"
+            data-reactivate-url="<?= htmlspecialchars($base . '/' . $reportId . '/delete') ?>"
+            data-delete-url="<?= htmlspecialchars($base . '/' . $reportId . '/delete-permanently') ?>"
+            data-employee-name="<?= htmlspecialchars($report['employee_name'] ?? '') ?>"><?= __('delete') ?></button>
+        <?php else: ?>
         <form method="POST" action="<?= $base . '/' . $reportId . '/delete' ?>" class="form-inline" onsubmit="return confirm('<?= __('confirm_delete_resignation_report') ?>')">
             <?= csrf_field() ?>
             <?= Button::make(__('delete'))->danger()->sm()->submit()->render() ?>
         </form>
+        <?php endif; ?>
     </div>
 </div>
+
+<div id="rr-delete-modal" class="modal">
+    <div class="modal__backdrop js-rr-delete-close"></div>
+    <div class="modal__dialog">
+        <div class="modal__header">
+            <h3 class="modal__title"><?= __('delete_resignation_report_title') ?></h3>
+            <button type="button" class="modal__close js-rr-delete-close">✕</button>
+        </div>
+        <div class="modal__body">
+            <p><?= __('delete_resignation_report_intro') ?> <strong id="rr-delete-employee-name"></strong></p>
+            <form id="rr-reactivate-form" method="POST" action="">
+                <?= csrf_field() ?>
+                <button type="submit" class="btn btn--warning btn--block"><?= __('reactivate_and_delete_report') ?></button>
+                <p class="form-hint"><?= __('reactivate_and_delete_report_hint') ?></p>
+            </form>
+            <form id="rr-delete-permanently-form" method="POST" action="" class="mt-sm" onsubmit="return confirm('<?= __('confirm_delete_employee_permanently') ?>')">
+                <?= csrf_field() ?>
+                <button type="submit" class="btn btn--danger btn--block"><?= __('delete_employee_and_report_permanently') ?></button>
+                <p class="form-hint"><?= __('delete_employee_and_report_permanently_hint') ?></p>
+            </form>
+        </div>
+        <div class="modal__footer">
+            <button type="button" class="btn btn--ghost js-rr-delete-close"><?= __('cancel') ?></button>
+        </div>
+    </div>
+</div>
+
+<script src="<?= $BASE_URL ?>/assets/js/modules/resignation-report-delete-modal.js"></script>
 
 <div class="card">
     <div class="card-body">
