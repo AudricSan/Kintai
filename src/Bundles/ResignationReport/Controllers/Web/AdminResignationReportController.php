@@ -285,6 +285,32 @@ final class AdminResignationReportController
         return $this->deleteReport($request);
     }
 
+    /**
+     * Alternative à deleteResignationReport() : au lieu de réactiver l'employé,
+     * supprime définitivement son compte en plus du rapport. Proposée via la
+     * popup de confirmation du bouton "Supprimer" côté vue.
+     */
+    public function deleteResignationReportPermanently(Request $request): Response
+    {
+        [$report, $storeId, $reportId] = $this->findReportOrFail($request);
+        $userId = (int) ($report['user_id'] ?? 0);
+
+        $this->resignationReports->delete($reportId);
+        $this->auditLogger->log($request, 'resignation_report.deleted', 'resignation_report', $reportId, [
+            'store_id' => $storeId,
+        ]);
+
+        if ($userId > 0) {
+            $this->users->delete($userId);
+            $this->auditLogger->log($request, 'user.deleted', 'user', $userId, [
+                'reason'   => 'resignation_report_deleted',
+                'store_id' => $storeId,
+            ]);
+        }
+
+        return $this->redirectToList($storeId, 'resignation', 'user_deleted');
+    }
+
     public function resignationReportPdf(Request $request): Response
     {
         return $this->reportPdf($request);
