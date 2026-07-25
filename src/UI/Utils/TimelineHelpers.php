@@ -39,7 +39,8 @@ final class TimelineHelpers
 
     public static function atPayBreakdown(
         string $startTime, string $endTime, int $pauseMin, bool $crossMidnight,
-        int $uid, int $storeId, array $typesMap, array $ratesMap, string $currency
+        int $uid, int $storeId, array $typesMap, array $ratesMap, string $currency,
+        string $currencySymbolStyle = 'kanji'
     ): array {
         $sm = self::atMin($startTime); $em = self::atMin($endTime);
         if ($crossMidnight || $em <= $sm) $em += 1440;
@@ -74,8 +75,8 @@ final class TimelineHelpers
             if ($rate > 0) $hasRate = true;
             $items[] = [
                 'type_name' => $type['name'] ?? '?', 'minutes' => $minutes,
-                'rate' => $rate, 'rate_fmt' => $rate > 0 ? format_currency($rate, $currency) . '/h' : '',
-                'pay_fmt' => $rate > 0 ? format_currency($pay, $currency) : '', 'has_rate' => $rate > 0,
+                'rate' => $rate, 'rate_fmt' => $rate > 0 ? format_currency($rate, $currency, $currencySymbolStyle) . '/h' : '',
+                'pay_fmt' => $rate > 0 ? format_currency($pay, $currency, $currencySymbolStyle) : '', 'has_rate' => $rate > 0,
             ];
         }
         return ['total' => $totalPay, 'has_rate' => $hasRate, 'net_minutes' => $netMin, 'items' => $items];

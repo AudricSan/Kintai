@@ -17,6 +17,7 @@ use kintai\UI\Components\Table;
 /** @var string $filter_search */
 
 $store_currency   ??= 'JPY';
+$store_currency_symbol_style ??= 'kanji';
 $sort             ??= 'name_asc';
 $filter_store_id  ??= 0;
 $filter_search    ??= '';
@@ -126,9 +127,9 @@ $exportQuery = $filter_store_id !== 0 ? '?store_id=' . $filter_store_id : '';
         $hw = ($user_stats ?? [])[(int) $u['id']]['hours_week'] ?? 0;
         return $hw > 0 ? number_format((float) $hw, 1) . ' h' : '<span class="text-muted">—</span>';
     })
-    ->column(__('estimated_pay'), function($u) use ($user_stats, $store_currency) {
+    ->column(__('estimated_pay'), function($u) use ($user_stats, $store_currency, $store_currency_symbol_style) {
         $pay = ($user_stats ?? [])[(int) $u['id']]['estimated_pay'] ?? 0;
-        return $pay > 0 ? format_currency((float) $pay, $store_currency) : '<span class="text-muted" title="' . __('no_rate_configured') . '">—</span>';
+        return $pay > 0 ? format_currency((float) $pay, $store_currency, $store_currency_symbol_style) : '<span class="text-muted" title="' . __('no_rate_configured') . '">—</span>';
     })
     ->column(__('date'), fn($u) => '<span class="td-date-muted">' . htmlspecialchars(substr($u['created_at'] ?? '', 0, 10)) . '</span>')
     ->column(__('actions'), function($u) use ($BASE_URL, $user_store_map) {

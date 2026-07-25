@@ -114,6 +114,7 @@ final class AdminUserController
 
         $availableStores = $this->availableStores($managedIds);
         $storeCurrency   = strtoupper(trim($availableStores[0]['currency'] ?? 'JPY'));
+        $storeCurrencyStyle = store_currency_style($availableStores[0] ?? null);
 
         // Map store id → name
         $storeNames = [];
@@ -195,6 +196,7 @@ final class AdminUserController
             'user_stats'       => $userStats,
             'month_label'      => date('F Y'),
             'store_currency'   => $storeCurrency,
+            'store_currency_symbol_style' => $storeCurrencyStyle,
             'sort'             => $sort,
             'available_stores' => $availableStores,
             'store_names'      => $storeNames,
