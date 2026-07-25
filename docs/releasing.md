@@ -19,6 +19,14 @@ Consequences:
 - Only **GitHub Releases** count (not bare tags, not commits). Until a matching Release exists for the instance's channel, `checkLatestRelease()` returns `null`.
 - The version number follows [semver](https://semver.org/) (`MAJOR.MINOR.PATCH[-alpha|beta.N]`), without a `v` prefix in config files (the `v` prefix only exists on the Git tag — `GithubUpdateService` strips it before comparing versions).
 
+## Choosing MAJOR vs MINOR vs PATCH
+
+- **PATCH** (`0.7.9` → `0.7.10`): bugfix-only changes — nothing in the bump adds or changes user-facing behavior beyond "it now works as intended".
+- **MINOR** (`0.7.9` → `0.8.0`): any release that includes a new feature, even a small one, or a behavior change — bump MINOR even if the same release also bundles fixes. Don't ride a feature in on a PATCH bump just because a fix happened to land the same day.
+- **MAJOR**: reserved for breaking changes (unlikely in this app's normal lifecycle, but keep the option open).
+
+If in doubt between PATCH and MINOR, bump MINOR — it costs nothing and keeps the version number meaningful (a stale `0.6.0` on `main` being compared against a `0.7.9` on `beta`, when in fact most of that gap is feature work, undersells how far behind the stable channel actually is).
+
 ## Publishing a new version (recommended flow)
 
 The base version number (`X.Y.Z` in `composer.json`/`config/app.php`/`CHANGELOG.md`) is still bumped **by hand**, exactly as before. What changed is *who creates the Git tag and GitHub Release*: that part is now automated by `.github/workflows/release.yml` whenever a bump lands on `alpha`, `beta`, or `main` — you no longer tag or `gh release create` yourself.
@@ -27,7 +35,7 @@ The base version number (`X.Y.Z` in `composer.json`/`config/app.php`/`CHANGELOG.
 2. Open a PR targeting the channel branch you want to publish to (`alpha`, `beta`, or `main`), and merge it once CI is green (required by branch protection).
 3. `.github/workflows/release.yml` runs on the resulting push and:
    - reads the base version from `composer.json`;
-   - on `alpha`/`beta`, tags `vX.Y.Z-{channel}.N` (`N` auto-incremented from the last matching tag) and marks the GitHub Release as a prerelease;
+   - on `alpha`/`beta`, tags `vX.Y.Z-{channel}` — a **rolling tag**: if that tag/Release already exists (e.g. a follow-up push on the same `X.Y.Z` still in progress), it's deleted and recreated pointing at the new commit, instead of accumulating `vX.Y.Z-{channel}.1`, `.2`, `.3`... Marked as a prerelease. **Fails the build** if `vX.Y.Z` (no suffix) already exists as a stable Release — publishing a prerelease with the same base version as an already-shipped stable one would be semver-*lower* than that stable tag and therefore invisible to the channel; bump the base version first;
    - on `main`, tags `vX.Y.Z` as a normal (non-prerelease) Release — skipped with a log message if that exact tag already exists (i.e. no version bump happened since the last stable release);
    - extracts the release notes from `CHANGELOG.md` (the dated `## [X.Y.Z]` section for `main`, the `## [Unreleased]` section for `alpha`/`beta`).
 
