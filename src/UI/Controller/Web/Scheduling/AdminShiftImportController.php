@@ -108,22 +108,16 @@ final class AdminShiftImportController
             return Response::redirect($this->base() . '/admin/shifts/import?error=empty');
         }
 
-        $entries = $this->mergeAdjacentEntries($entries);
-        $allUsers  = $this->users->findAll();
-        $nameIndex = [];
-        foreach ($allUsers as $u) {
-            $full    = trim(($u['last_name'] ?? '') . ' ' . ($u['first_name'] ?? ''));
-            $display = trim($u['display_name'] ?? '');
-            if ($full !== '')    $nameIndex[mb_strtolower($full)]    = (int) $u['id'];
-            if ($display !== '') $nameIndex[mb_strtolower($display)] = (int) $u['id'];
-        }
+        $entries  = $this->mergeAdjacentEntries($entries);
+        $allUsers = $this->users->findAll();
+
+        $storeMembers = array_values(array_filter(
+            $allUsers,
+            fn($u) => in_array((int) $u['id'], $this->storeMemberIds($storeId), true)
+        ));
 
         $aliases = $this->importAliases->findByStore($storeId);
-        foreach ($entries as &$e) {
-            $key = mb_strtolower($e['staff_name']);
-            $e['user_id'] = $nameIndex[$key] ?? $aliases[$key] ?? 0;
-        }
-        unset($e);
+        $entries = $this->resolveEntryUserIds($entries, $storeMembers, $aliases);
 
         foreach ($entries as &$e) {
             $e['db_exact_match']    = false;
@@ -289,6 +283,47 @@ final class AdminShiftImportController
             'deleted_obsolete' => $obsoleteDeleted,
         ], $storeId);
         return Response::redirect($this->base() . '/admin/shifts?success=imported&count=' . ($count + $updated));
+    }
+
+    /**
+     * @return int[] IDs des utilisateurs membres du magasin donné.
+     */
+    private function storeMemberIds(int $storeId): array
+    {
+        return array_map(fn($su) => (int) $su['user_id'], $this->storeUsers->findByStore($storeId));
+    }
+
+    /**
+     * Résout automatiquement le user_id de chaque entrée importée par correspondance
+     * de nom, en ne matchant que sur les employés du magasin courant ($storeUsers).
+     * Deux employés de magasins différents peuvent partager le même nom de famille :
+     * matcher sur l'ensemble des utilisateurs de l'application ferait alors assigner
+     * le shift au mauvais utilisateur (et donc apparaître un staff d'un autre magasin
+     * dans les shifts / rapports journaliers de ce magasin).
+     *
+     * @param array<array{staff_name:string}> $entries
+     * @param array $storeUsers Utilisateurs membres du magasin courant uniquement
+     * @param array<string,int> $aliases Alias nom -> user_id déjà connus pour ce magasin
+     * @return array Entrées enrichies du champ 'user_id'
+     */
+    private function resolveEntryUserIds(array $entries, array $storeUsers, array $aliases): array
+    {
+        $nameIndex = [];
+        foreach ($storeUsers as $u) {
+            $uid     = (int) $u['id'];
+            $full    = trim(($u['last_name'] ?? '') . ' ' . ($u['first_name'] ?? ''));
+            $display = trim($u['display_name'] ?? '');
+            if ($full !== '')    $nameIndex[mb_strtolower($full)]    = $uid;
+            if ($display !== '') $nameIndex[mb_strtolower($display)] = $uid;
+        }
+
+        foreach ($entries as &$e) {
+            $key = mb_strtolower($e['staff_name']);
+            $e['user_id'] = $nameIndex[$key] ?? $aliases[$key] ?? 0;
+        }
+        unset($e);
+
+        return $entries;
     }
 
     private function mergeAdjacentEntries(array $entries): array
