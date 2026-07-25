@@ -6,6 +6,16 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Added
+- Stores can now choose how the yen displays when their currency is JPY: kanji (円, the historical default) or the international symbol (¥), via a new "Yen symbol style" setting on the store form (`/admin/stores/{id}/edit`).
+
+### Changed
+- Currency amounts across the app (dashboard, sidebar widget, shift timeline, salary reports, daily reports, store stats/profitability, CSV exports) now consistently render as a symbol (€, $, £, ¥/円, ₩...) instead of the raw ISO code, and respect each store's own currency and yen-symbol-style setting instead of a hardcoded default.
+
+### Fixed
+- The "all stores" salary reports list (`/admin/reports/salary`) always formatted amounts as JPY regardless of each report's actual store currency.
+- `/admin/stores/{id}/stats` computed cost figures with `number_format()` + a raw currency-code suffix instead of `format_currency()`, so JPY stores incorrectly showed 2 decimals instead of 0.
+
 ## [0.8.3] - 2026-07-25
 
 ### Fixed

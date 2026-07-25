@@ -88,6 +88,7 @@ final class AdminStoreController
             'timezone'        => ($tmp = $request->post('timezone', '')) !== '' ? $tmp : 'UTC',
             'locale'          => ($tmp = $request->post('locale', '')) !== '' ? $tmp : 'en',
             'currency'        => strtoupper(trim(($tmp = $request->post('currency', '')) !== '' ? $tmp : 'EUR')),
+            'currency_symbol_style' => $request->post('currency_symbol_style', 'kanji'),
             'phone'           => $request->post('phone', '') ?: null,
             'email'           => $request->post('email', '') ?: null,
             'address_street'  => $request->post('address_street', '') ?: null,
@@ -171,6 +172,7 @@ final class AdminStoreController
             'timezone'              => ($tmp = $request->post('timezone', '')) !== '' ? $tmp : ($store['timezone'] ?? 'UTC'),
             'locale'                => ($tmp = $request->post('locale', '')) !== '' ? $tmp : ($store['locale'] ?? 'en'),
             'currency'              => strtoupper(trim(($tmp = $request->post('currency', '')) !== '' ? $tmp : ($store['currency'] ?? 'EUR'))),
+            'currency_symbol_style' => $request->post('currency_symbol_style', $store['currency_symbol_style'] ?? 'kanji'),
             'phone'                 => $request->post('phone', '') ?: null,
             'email'                 => $request->post('email', '') ?: null,
             'address_street'        => $request->post('address_street', '') ?: null,
@@ -414,7 +416,7 @@ final class AdminStoreController
         $today   = $data['today'];
         $n       = $data['n'];
         $name    = $store['name'] ?? 'store';
-        $currency = $store['currency'] ?? 'EUR';
+        $currency = currency_symbol($store['currency'] ?? 'EUR', store_currency_style($store));
 
         $buf = fopen('php://memory', 'r+');
         fprintf($buf, "\xEF\xBB\xBF");
@@ -502,7 +504,7 @@ final class AdminStoreController
         if ($from > $to) [$from, $to] = [$to, $from];
 
         $data     = $this->storeStatsService->storeProfitability($storeId, $from, $to);
-        $currency = currency_symbol($store['currency'] ?? 'EUR');
+        $currency = currency_symbol($store['currency'] ?? 'EUR', store_currency_style($store));
 
         return Response::html($this->view->render('analytics.store-profitability', array_merge($data, [
             'title'    => 'Rentabilité — ' . ($store['name'] ?? ''),

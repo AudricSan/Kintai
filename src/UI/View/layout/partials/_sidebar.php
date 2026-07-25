@@ -276,7 +276,8 @@ $ico              = fn(string $k): string => '<span class="sidebar-link__icon">'
 
     <?php if (!$showAdminMenu && isset($employee_month_stats)): ?>
         <?php $ems = $employee_month_stats;
-        $emsCur = $ems['currency'] ?? 'JPY'; ?>
+        $emsCur = $ems['currency'] ?? 'JPY';
+        $emsStyle = $ems['currency_symbol_style'] ?? 'kanji'; ?>
         <div class="sb-stats">
             <div class="sb-month-nav">
                 <button onclick="sbMonthNav('<?= htmlspecialchars($ems['prev_month']) ?>')"
@@ -299,7 +300,7 @@ $ico              = fn(string $k): string => '<span class="sidebar-link__icon">'
                 <?php if ($ems['has_rate']): ?>
                     <div class="sb-stats-row sb-stats-row--border">
                         <span class="sb-stats-label"><?= __('estimated_pay') ?></span>
-                        <strong class="sb-stats-value--success"><?= format_currency((float) $ems['estimated_pay'], $emsCur) ?></strong>
+                        <strong class="sb-stats-value--success"><?= format_currency((float) $ems['estimated_pay'], $emsCur, $emsStyle) ?></strong>
                     </div>
                 <?php endif; ?>
                 <?php if (!empty($ems['shift_details'])): ?>
@@ -364,7 +365,7 @@ $ico              = fn(string $k): string => '<span class="sidebar-link__icon">'
                                     </td>
                                     <?php if ($ems['has_rate']): ?>
                                         <td></td>
-                                        <td class="td-right sb-stats-value--success"><?= format_currency((float) $ems['estimated_pay'], $emsCur) ?></td>
+                                        <td class="td-right sb-stats-value--success"><?= format_currency((float) $ems['estimated_pay'], $emsCur, $emsStyle) ?></td>
                                     <?php endif; ?>
                                 </tr>
                             </tfoot>

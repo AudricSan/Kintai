@@ -17,6 +17,7 @@ $report ??= [];
 $storeId = (int) $store['id'];
 $reportId = (int) ($report['id'] ?? 0);
 $currency = $store['currency'] ?? 'JPY';
+$currencySymbol = currency_symbol($currency, store_currency_style($store));
 
 $action = $mode === 'edit'
     ? $BASE_URL . '/admin/stores/' . $storeId . '/reports/salary/' . $reportId . '/edit'
@@ -27,7 +28,7 @@ $employeeId = (int) ($report['user_id'] ?? 0);
 $isEmployeeScoped = $employeeId > 0;
 
 /** Libellé de champ suffixé par son unité (devise du store, ou heures) — les montants nus sans unité sont une des choses qui rendaient ce formulaire dense et peu lisible. */
-$moneyLabel = fn(string $key) => __($key) . ' (' . $currency . ')';
+$moneyLabel = fn(string $key) => __($key) . ' (' . $currencySymbol . ')';
 $hoursLabel = fn(string $key) => __($key) . ' (h)';
 ?>
 <div class="page-header">
@@ -160,7 +161,7 @@ $hoursLabel = fn(string $key) => __($key) . ' (h)';
     </div>
     <div class="form-row">
         <div class="form-group">
-            <label class="form-label"><?= __('sr_staff_avg_hourly_wage') ?> (<?= $currency ?>/h)</label>
+            <label class="form-label"><?= __('sr_staff_avg_hourly_wage') ?> (<?= $currencySymbol ?>/h)</label>
             <input type="number" name="staff_avg_hourly_wage" class="form-control"
                    step="0.01" min="0" value="<?= $val('staff_avg_hourly_wage', '0') ?>">
         </div>
