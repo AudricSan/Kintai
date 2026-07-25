@@ -777,6 +777,7 @@
     "report_employees": "従業員パフォーマンスレポート",
     "reports": "レポート",
     "request_swap": "交換申請",
+    "required_fields_missing": "保存する前に、必須項目（*）をすべて入力してください。",
     "requester": "申請者",
     "requests": "申請",
     "reset": "リセット",

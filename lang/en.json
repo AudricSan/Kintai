@@ -777,6 +777,7 @@
     "report_employees": "Employee performance report",
     "reports": "Reports",
     "request_swap": "Request a swap",
+    "required_fields_missing": "Please fill in all required fields (*) before saving.",
     "requester": "Requester",
     "requests": "Requests",
     "reset": "Reset",
