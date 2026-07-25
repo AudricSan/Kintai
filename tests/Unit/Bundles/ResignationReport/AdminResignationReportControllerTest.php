@@ -328,6 +328,74 @@ final class AdminResignationReportControllerTest extends TestCase
         $this->assertSame(302, $response->status());
     }
 
+    public function testDeleteResignationReportReactivatesTheAssociatedAccount(): void
+    {
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '1', 'rid' => '10']);
+
+        $this->resignationReports->method('findById')->with(10)->willReturn(['id' => 10, 'store_id' => 1, 'user_id' => 5]);
+        $this->resignationReports->expects($this->once())->method('delete')->with(10);
+        $this->users->method('findById')->with(5)->willReturn(['id' => 5, 'is_active' => 0]);
+
+        $captured = null;
+        $this->users->expects($this->once())->method('save')->willReturnCallback(function (array $u) use (&$captured) {
+            $captured = $u;
+            return $u;
+        });
+
+        $response = $this->controller->deleteResignationReport($req);
+
+        $this->assertSame(302, $response->status());
+        $this->assertSame(1, $captured['is_active']);
+    }
+
+    public function testDeleteResignationReportWithoutLinkedUserDoesNotTouchUsers(): void
+    {
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '1', 'rid' => '10']);
+
+        $this->resignationReports->method('findById')->with(10)->willReturn(['id' => 10, 'store_id' => 1]);
+        $this->resignationReports->expects($this->once())->method('delete')->with(10);
+        $this->users->expects($this->never())->method('save');
+
+        $response = $this->controller->deleteResignationReport($req);
+
+        $this->assertSame(302, $response->status());
+    }
+
+    public function testDeleteResignationReportPermanentlyDeletesReportAndUser(): void
+    {
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '1', 'rid' => '10']);
+
+        $this->resignationReports->method('findById')->with(10)->willReturn(['id' => 10, 'store_id' => 1, 'user_id' => 5]);
+        $this->resignationReports->expects($this->once())->method('delete')->with(10);
+        $this->users->expects($this->once())->method('delete')->with(5);
+        $this->users->expects($this->never())->method('save');
+
+        $response = $this->controller->deleteResignationReportPermanently($req);
+
+        $this->assertSame(302, $response->status());
+    }
+
+    public function testDeleteResignationReportPermanentlyWithoutLinkedUserOnlyDeletesReport(): void
+    {
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '1', 'rid' => '10']);
+
+        $this->resignationReports->method('findById')->with(10)->willReturn(['id' => 10, 'store_id' => 1]);
+        $this->resignationReports->expects($this->once())->method('delete')->with(10);
+        $this->users->expects($this->never())->method('delete');
+
+        $response = $this->controller->deleteResignationReportPermanently($req);
+
+        $this->assertSame(302, $response->status());
+    }
+
     public function testReactivateUserReactivatesTheAssociatedAccount(): void
     {
         $req = new Request();
