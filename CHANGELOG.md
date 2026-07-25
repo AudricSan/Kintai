@@ -6,6 +6,8 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+## [0.8.3] - 2026-07-25
+
 ### Fixed
 - The daily report's "shifts tomorrow" table (`.../daily-reports/{id}/create|edit|show`) could display a staff member who does not belong to the store the report is for. Root cause: the Excel shift-import name matching (`AdminShiftImportController::processImport`) resolved a sheet name (e.g. "Dupont") against **every** user in the application rather than just the current store's staff — two employees at different stores sharing the same last name could collide, silently assigning the imported shift to the wrong store's employee. The automatic match is now restricted to the store's own members (store-scoped import aliases already were); a name with no match in that store is left unassigned instead of guessing across stores. `DailyReportController::getFormShiftRows()` also now defensively drops any shift whose `user_id` isn't an actual member of the report's store, so already-misassigned shifts stop leaking into reports even before a re-import.
 
