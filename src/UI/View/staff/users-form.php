@@ -45,14 +45,21 @@ echo Flash::fromQuery('error', [
     </div>
 </div>
 
-<form method="POST" action="<?= htmlspecialchars($action) ?>" class="form-stack">
+<form method="POST" action="<?= htmlspecialchars($action) ?>" class="form-stack" novalidate>
     <?= csrf_field() ?>
     <?php $as_cards = true; include __DIR__ . '/../_partials/_form-user.php'; ?>
+    <p class="form-error" data-required-error hidden><?= __('required_fields_missing') ?></p>
     <div class="form-actions">
         <?= Button::make($mode === 'edit' ? __('save') : __('new_user'))->primary()->submit()->render() ?>
         <a href="<?= route_url('admin.users') ?>" class="btn btn--ghost"><?= __('cancel') ?></a>
     </div>
 </form>
+<?php if ($mode === 'edit'): ?>
+<form method="POST" action="<?= $BASE_URL ?>/admin/users/<?= (int) $user['id'] ?>/reset-password" id="resetPasswordForm">
+    <?= csrf_field() ?>
+</form>
+<?php endif; ?>
+<script src="<?= $BASE_URL ?>/assets/js/modules/required-fields-feedback.js"></script>
 
 <?php if ($mode === 'edit'): ?>
 <div class="card card--mt">
