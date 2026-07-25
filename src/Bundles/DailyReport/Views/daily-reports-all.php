@@ -42,6 +42,7 @@ foreach ($reportsV2 as $report) {
 
     $store    = $report['store_obj'] ?? [];
     $currency = $store['currency'] ?? 'JPY';
+    $currencyStyle = store_currency_style($store);
 
     if (!isset($byYearMonth[$year])) {
         $byYearMonth[$year] = [];
@@ -55,6 +56,7 @@ foreach ($reportsV2 as $report) {
             'stores'   => [],
             'totals'   => ['sales_total' => 0.0, 'customer_count' => 0, 'labor_cost' => 0.0, 'waste_total' => 0.0],
             'currency' => $currency,
+            'currency_style' => $currencyStyle,
         ];
     }
 
@@ -175,7 +177,7 @@ unset($months, $days);
         $storeSettings = json_decode($store['daily_report_settings'] ?? '{}', true);
         $cumulativeMode = $storeSettings['cumulative_mode'] ?? 'per_day';
         $reports  = array_slice($group['reports'], 0, 5);
-        $currency = currency_symbol($store['currency'] ?? 'JPY');
+        $currency = currency_symbol($store['currency'] ?? 'JPY', store_currency_style($store));
 
         // Cumuls pour ce store (mode système)
         $cumulativeTotals = [];
@@ -301,7 +303,8 @@ unset($months, $days);
                         $yearTotals['waste_total']    += $dayData['totals']['waste_total'];
                     }
                 }
-                $firstCurrency = currency_symbol(reset($months)[array_key_first(reset($months))]['currency'] ?? 'JPY');
+                $firstDayData  = reset($months)[array_key_first(reset($months))];
+                $firstCurrency = currency_symbol($firstDayData['currency'] ?? 'JPY', $firstDayData['currency_style'] ?? 'kanji');
                 ?>
                 <div class="dr-v2-year-totals text-muted">
                     <?= __('dr_sales') ?> <strong><?= drAllFormatNum($yearTotals['sales_total']) ?></strong>
@@ -354,7 +357,7 @@ unset($months, $days);
                                         <?php
                                         $totals     = $dayData['totals'];
                                         $storeCount = count($dayData['stores']);
-                                        $sym        = currency_symbol($dayData['currency']);
+                                        $sym        = currency_symbol($dayData['currency'], $dayData['currency_style'] ?? 'kanji');
 
                                         // Données modal (JSON)
                                         $modalStores = [];
@@ -377,7 +380,7 @@ unset($months, $days);
                                                 'waste_total'    => (float) ($r['waste_total']    ?? 0),
                                                 'status_label'   => $badge['label'],
                                                 'status_class'   => $badge['class'],
-                                                'currency_sym'   => currency_symbol($s['currency'] ?? 'JPY'),
+                                                'currency_sym'   => currency_symbol($s['currency'] ?? 'JPY', store_currency_style($s)),
                                                 'notes'          => $r['notes'] ?? '',
                                             ];
                                         }

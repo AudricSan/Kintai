@@ -34,6 +34,7 @@ use kintai\UI\Components\Table;
 
 $empName  = trim(($user['last_name'] ?? '') . ' ' . ($user['first_name'] ?? ''))
     ?: ($user['display_name'] ?? ($user['email'] ?? ''));
+$currencyStyle = store_currency_style($store);
 $roleMap  = ['admin' => __('role_owner'), 'manager' => __('role_manager'), 'staff' => __('role_employee')];
 $roleLabel = $roleMap[$membership['role'] ?? 'staff'] ?? __('role_employee');
 
@@ -138,7 +139,7 @@ $reportUrl = $BASE_URL . '/admin/stores/' . (int) $store['id'] . '/employee-repo
 
     <?php if ($anyRate): ?>
     <div class="sstat-card">
-      <div class="sstat-card__value text-success"><?= format_currency($cost, $currency) ?></div>
+      <div class="sstat-card__value text-success"><?= format_currency($cost, $currency, $currencyStyle) ?></div>
       <div class="sstat-card__label"><?= __('estimated_cost_col') ?></div>
       <div class="sstat-card__sub"><?= __('on_period') ?></div>
     </div>

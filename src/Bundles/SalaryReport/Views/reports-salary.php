@@ -51,6 +51,19 @@ if ($allMode) {
     $createBase = $baseList;
 }
 
+// devise/style par store (mode "tous les magasins" : les stores peuvent avoir des devises différentes)
+$storeCurrencyMap = [];
+if ($allMode) {
+    foreach ($stores as $s) {
+        $storeCurrencyMap[(int) $s['id']] = ['currency' => $s['currency'] ?? 'EUR', 'style' => store_currency_style($s)];
+    }
+} else {
+    $storeCurrencyMap[$storeId] = ['currency' => $store['currency'] ?? 'EUR', 'style' => store_currency_style($store)];
+}
+$rowCurrency = function (array $r) use ($storeCurrencyMap): array {
+    return $storeCurrencyMap[(int) ($r['store_id'] ?? 0)] ?? ['currency' => 'EUR', 'style' => 'kanji'];
+};
+
 // Générer la liste des années disponibles (2020 à année courante +1)
 $currentYear = (int) date('Y');
 $years = range(2020, $currentYear + 1);
@@ -175,8 +188,14 @@ echo Flash::fromQuery('success', [
         ->sortable(__('sr_target_month'), 'target_month', fn($r) => htmlspecialchars($r['target_month'] ?? ''))
         ->column(__('employee_name'), fn($r) => !empty($r['user_id']) ? htmlspecialchars($r['employee_name'] ?? '—') : '<span class="text-muted">—</span>')
         ->sortable(__('sr_person_in_charge'), 'person_in_charge', fn($r) => htmlspecialchars($r['person_in_charge'] ?? '—'))
-        ->sortable(__('sr_total_payment'), 'total_payment', fn($r) => '<span class="td-mono">' . format_currency((float) ($r['total_payment'] ?? 0), 'JPY') . '</span>', 'td-right')
-        ->sortable(__('sr_net_payment'), 'net_payment', fn($r) => '<span class="td-mono">' . format_currency((float) ($r['net_payment'] ?? 0), 'JPY') . '</span>', 'td-right')
+        ->sortable(__('sr_total_payment'), 'total_payment', function ($r) use ($rowCurrency) {
+            $c = $rowCurrency($r);
+            return '<span class="td-mono">' . format_currency((float) ($r['total_payment'] ?? 0), $c['currency'], $c['style']) . '</span>';
+        }, 'td-right')
+        ->sortable(__('sr_net_payment'), 'net_payment', function ($r) use ($rowCurrency) {
+            $c = $rowCurrency($r);
+            return '<span class="td-mono">' . format_currency((float) ($r['net_payment'] ?? 0), $c['currency'], $c['style']) . '</span>';
+        }, 'td-right')
         ->column(__('sr_active_employees'), fn($r) => '<span class="td-mono">' . ((int) ($r['active_employees'] ?? 0)) . '</span>', 'td-right')
         ->column(__('actions'), function($r) use ($BASE_URL) {
             $rid = (int) $r['id'];
