@@ -14,7 +14,7 @@
 $storeId  = (int) $store['id'];
 $isAdmin  = !empty($authUser['is_admin']);
 $canCreate = $permissions->canCreate($authUser, $store, $membership);
-$currency  = currency_symbol($store['currency'] ?? 'JPY');
+$currency  = currency_symbol($store['currency'] ?? 'JPY', store_currency_style($store));
 
 $statusLabels = [
     'draft'     => ['label' => __('dr_status_draft'),     'class' => 'badge--secondary'],

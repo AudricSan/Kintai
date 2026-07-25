@@ -18,6 +18,7 @@ use kintai\UI\Utils\TimelineHelpers;
 /** @var string               $next_start */
 /** @var array                $rates_map           uid → type_id → rate */
 /** @var array                $currency_map        uid → currency */
+/** @var string               $currency_symbol_style  'kanji'|'international' */
 /** @var int                  $filter_store_id */
 /** @var array                $stores_map          id → nom */
 /** @var array                $available_stores    [{id, name, ...}] */
@@ -29,6 +30,7 @@ use kintai\UI\Utils\TimelineHelpers;
 $_canManage     = $can_manage ?? true;
 $_ratesMap      = $rates_map     ?? [];
 $_currencyMap   = $currency_map  ?? [];
+$_currencySymbolStyle = $currency_symbol_style ?? 'kanji';
 $_minStaffDay   = (int) ($store_settings['min_staff_per_day']    ?? 0);
 $_minShiftMin   = (int) ($store_settings['min_shift_minutes']    ?? 0);
 $_maxShiftMin   = (int) ($store_settings['max_shift_minutes']    ?? 0);
@@ -359,12 +361,12 @@ ob_start();
                                     $shPay = TimelineHelpers::atPayBreakdown(
                                         $sh['start_time'] ?? '00:00', $sh['end_time'] ?? '00:00',
                                         $shPause, !empty($sh['cross_midnight']),
-                                        $shUid, $shStoreId, $types_map, $_ratesMap, $shCurrency
+                                        $shUid, $shStoreId, $types_map, $_ratesMap, $shCurrency, $_currencySymbolStyle
                                     );
                                     $shNetMin     = $shPay['net_minutes'];
                                     $shHoursLabel = intdiv($shNetMin, 60) . 'h' . str_pad($shNetMin % 60, 2, '0', STR_PAD_LEFT)
                                         . ($shPause > 0 ? ' (pause ' . $shPause . ' min)' : '');
-                                    $shPayLabel   = $shPay['has_rate'] ? format_currency($shPay['total'], $shCurrency) : '';
+                                    $shPayLabel   = $shPay['has_rate'] ? format_currency($shPay['total'], $shCurrency, $_currencySymbolStyle) : '';
                                     $shRateDetail = htmlspecialchars(json_encode($shPay['items'], JSON_UNESCAPED_UNICODE), ENT_QUOTES);
 
                                     $tooltip = htmlspecialchars(
