@@ -432,7 +432,8 @@ final class EmployeeController
         $ratesMap    = []; // uid → shift_type_id → hourly_rate
         $currencyMap = []; // uid → currency string
         $storeObj    = $filterStoreId > 0 ? $this->stores->findById($filterStoreId) : null;
-        $currency    = strtoupper(trim($storeObj['currency'] ?? 'JPY'));
+        $currency      = strtoupper(trim($storeObj['currency'] ?? 'JPY'));
+        $currencyStyle = store_currency_style($storeObj);
         foreach ($memberIds as $uid) {
             $currencyMap[$uid] = $currency;
             foreach ($this->userRates->findByUser($uid) as $r) {
@@ -468,6 +469,7 @@ final class EmployeeController
             'can_manage'          => $canManage,
             'rates_map'           => $ratesMap,
             'currency_map'        => $currencyMap,
+            'currency_symbol_style' => $currencyStyle,
             'filter_store_id'     => $filterStoreId,
             'stores_map'          => $storesMap,
             'available_stores'    => $storesList,

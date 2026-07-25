@@ -56,11 +56,13 @@ final class EmployeeStatsService
             $personalRates[(int) $r['shift_type_id']] = (float) $r['hourly_rate'];
         }
 
-        $memberships = $this->storeUsers->findByUser($userId);
-        $currency    = 'JPY';
+        $memberships  = $this->storeUsers->findByUser($userId);
+        $currency     = 'JPY';
+        $currencyStyle = 'kanji';
         if (!empty($memberships)) {
-            $store    = $this->stores->findById((int) $memberships[0]['store_id']);
-            $currency = strtoupper(trim($store['currency'] ?? 'JPY'));
+            $store         = $this->stores->findById((int) $memberships[0]['store_id']);
+            $currency      = strtoupper(trim($store['currency'] ?? 'JPY'));
+            $currencyStyle = store_currency_style($store);
         }
 
         $monthMinutes = 0;
@@ -108,8 +110,8 @@ final class EmployeeStatsService
                 'net_hours_fmt' => $h . 'h' . str_pad((string)$m, 2, '0', STR_PAD_LEFT),
                 'pause_min'     => $pauseMin,
                 'rate'          => $rate,
-                'rate_fmt'      => $rate > 0 ? format_currency($rate, $currency) . '/h' : '—',
-                'pay_fmt'       => $rate > 0 ? format_currency($pay, $currency) : '—',
+                'rate_fmt'      => $rate > 0 ? format_currency($rate, $currency, $currencyStyle) . '/h' : '—',
+                'pay_fmt'       => $rate > 0 ? format_currency($pay, $currency, $currencyStyle) : '—',
                 'has_rate'      => $rate > 0,
             ];
         }
@@ -129,8 +131,9 @@ final class EmployeeStatsService
             'prev_month'    => $prevMonth,
             'next_month'    => $nextMonth,
             'is_current'    => ($month === date('Y-m')),
-            'currency'      => $currency,
-            'shift_details' => $shiftDetails,
+            'currency'               => $currency,
+            'currency_symbol_style'  => $currencyStyle,
+            'shift_details'          => $shiftDetails,
         ];
     }
 }
