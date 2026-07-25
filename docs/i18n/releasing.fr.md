@@ -19,6 +19,14 @@ Conséquences :
 - Seules les **Releases GitHub** comptent (pas les tags seuls, pas les commits). Tant qu'aucune Release ne correspond au canal de l'instance, `checkLatestRelease()` renvoie `null`.
 - Le numéro de version doit suivre [semver](https://semver.org/) (`MAJEUR.MINEUR.CORRECTIF[-alpha|beta.N]`), sans préfixe `v` dans les fichiers de config (le préfixe `v` n'existe que sur le tag Git — `GithubUpdateService` le retire automatiquement pour comparer les versions).
 
+## Choisir entre MAJEUR, MINEUR et CORRECTIF
+
+- **CORRECTIF** (`0.7.9` → `0.7.10`) : uniquement des corrections de bugs — rien dans le bump n'ajoute ou ne change un comportement visible par l'utilisateur, au-delà de « ça fonctionne maintenant comme prévu ».
+- **MINEUR** (`0.7.9` → `0.8.0`) : toute release qui inclut une nouvelle fonctionnalité, même petite, ou un changement de comportement — bump le MINEUR même si la même release embarque aussi des corrections. Ne faites pas voyager une fonctionnalité sur un bump de CORRECTIF simplement parce qu'un fix est arrivé le même jour.
+- **MAJEUR** : réservé aux changements cassants (improbable dans le cycle de vie normal de cette appli, mais on garde l'option ouverte).
+
+En cas de doute entre CORRECTIF et MINEUR, bump le MINEUR — ça ne coûte rien et ça garde le numéro de version significatif (un `0.6.0` figé sur `main` comparé à un `0.7.9` sur `beta`, alors que l'essentiel de cet écart est du travail de fonctionnalités, sous-estime à quel point le canal stable est réellement en retard).
+
 ## Publier une nouvelle version (flux recommandé)
 
 Le numéro de version de base (`X.Y.Z` dans `composer.json`/`config/app.php`/`CHANGELOG.md`) reste bumpé **à la main**, exactement comme avant. Ce qui change, c'est *qui crée le tag Git et la Release GitHub* : c'est désormais automatisé par `.github/workflows/release.yml` à chaque bump poussé sur `alpha`, `beta` ou `main` — vous ne taguez plus et n'appelez plus `gh release create` vous-même.
@@ -27,7 +35,7 @@ Le numéro de version de base (`X.Y.Z` dans `composer.json`/`config/app.php`/`CH
 2. Ouvrez une PR ciblant la branche du canal à publier (`alpha`, `beta` ou `main`), et fusionnez-la une fois la CI verte (exigée par la protection de branche).
 3. `.github/workflows/release.yml` se déclenche sur le push résultant et :
    - lit la version de base dans `composer.json` ;
-   - sur `alpha`/`beta`, tague `vX.Y.Z-{canal}.N` (`N` auto-incrémenté depuis le dernier tag correspondant) et marque la Release GitHub comme prerelease ;
+   - sur `alpha`/`beta`, tague `vX.Y.Z-{canal}` — un **tag glissant** : si ce tag/Release existe déjà (ex. un nouveau push sur la même version `X.Y.Z` toujours en cours), il est supprimé puis recréé sur le nouveau commit, plutôt que de s'accumuler en `vX.Y.Z-{canal}.1`, `.2`, `.3`... Marqué comme prerelease. **Fait échouer le build** si `vX.Y.Z` (sans suffixe) existe déjà en Release stable — publier une prerelease avec la même version de base qu'une stable déjà sortie serait sémantiquement *inférieur* à ce tag stable, donc invisible pour le canal ; bumper la version de base d'abord ;
    - sur `main`, tague `vX.Y.Z` comme Release normale (non-prerelease) — ignoré avec un message de log si ce tag exact existe déjà (c'est-à-dire si aucun bump de version n'a eu lieu depuis la dernière release stable) ;
    - extrait les notes de release depuis `CHANGELOG.md` (la section datée `## [X.Y.Z]` pour `main`, la section `## [Unreleased]` pour `alpha`/`beta`).
 
