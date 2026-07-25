@@ -817,9 +817,15 @@ final class DailyReportController
 
     private function getFormShiftRows(int $storeId, string $date): array
     {
+        // On ne garde que les shifts dont l'utilisateur est réellement membre de ce
+        // magasin : un shift mal assigné (ex. import Excel ayant matché le mauvais
+        // utilisateur à cause d'un nom de famille en doublon dans un autre magasin)
+        // ne doit jamais faire apparaître un staff d'un autre magasin dans le rapport.
         $rawShifts = array_filter(
             $this->shifts->findByDate($storeId, $date),
-            fn($s) => empty($s['deleted_at']) && !empty($s['user_id'])
+            fn($s) => empty($s['deleted_at'])
+                && !empty($s['user_id'])
+                && $this->storeUsers->findMembership($storeId, (int) $s['user_id']) !== null
         );
 
         $typesMap  = array_column($this->shiftTypes->findByStore($storeId), null, 'id');
