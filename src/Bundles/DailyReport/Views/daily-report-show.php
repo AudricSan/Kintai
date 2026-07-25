@@ -17,7 +17,7 @@
  */
 $storeId  = (int) $store['id'];
 $reportId = (int) $report['id'];
-$currency = currency_symbol($store['currency'] ?? 'JPY');
+$currency = currency_symbol($store['currency'] ?? 'JPY', store_currency_style($store));
 
 $statusLabels = [
     'draft'     => ['label' => __('dr_status_draft'),     'class' => 'badge--secondary'],

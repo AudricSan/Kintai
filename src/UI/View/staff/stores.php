@@ -33,7 +33,7 @@ echo Flash::fromQuery('success', [
     ->sortable(__('name'), 'name', fn($s) => '<strong>' . htmlspecialchars($s['name'] ?? '') . '</strong>')
     ->sortable(__('type'), 'type', fn($s) => htmlspecialchars($s['type'] ?? ''))
     ->column(__('timezone'), fn($s) => '<span class="text-sm-muted">' . htmlspecialchars($s['timezone'] ?? '') . '</span>')
-    ->column(__('currency'), fn($s) => htmlspecialchars($s['currency'] ?? ''))
+    ->column(__('currency'), fn($s) => htmlspecialchars(currency_symbol($s['currency'] ?? '', store_currency_style($s))))
     ->sortable(__('status'), 'status', fn($s) =>
         (!empty($s['is_active']) && empty($s['deleted_at']))
             ? Badge::make(__('active'))->active()->render()

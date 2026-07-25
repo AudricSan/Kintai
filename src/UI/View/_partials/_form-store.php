@@ -57,16 +57,29 @@ $dedResidentTax = $ded['resident_tax_monthly'] ?? 0;
             </div>
             <div class="form-row">
                 <div class="form-group">
-                    <label class="form-label"><?= __('currency') ?> (code ISO)</label>
-                    <input type="text" name="currency" class="form-control" maxlength="3"
-                           value="<?= htmlspecialchars($store['currency'] ?? 'USD') ?>"
-                           placeholder="EUR, USD, JPY">
+                    <label class="form-label"><?= __('currency') ?></label>
+                    <?php $storeCurrency = strtoupper($store['currency'] ?? 'EUR'); ?>
+                    <select name="currency" class="form-control">
+                        <?php foreach (['EUR', 'USD', 'JPY', 'GBP', 'CHF', 'KRW'] as $curOpt): ?>
+                            <option value="<?= $curOpt ?>"<?= $storeCurrency === $curOpt ? ' selected' : '' ?>><?= $curOpt ?> (<?= currency_symbol($curOpt) ?>)</option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label class="form-label"><?= __('locale') ?></label>
                     <input type="text" name="locale" class="form-control" maxlength="10"
                            value="<?= htmlspecialchars($store['locale'] ?? 'en') ?>"
                            placeholder="fr, en, ja">
+                </div>
+            </div>
+            <div class="form-row" id="jpy-symbol-style-group">
+                <div class="form-group">
+                    <label class="form-label"><?= __('currency_symbol_style') ?></label>
+                    <?php $symbolStyle = store_currency_style($store); ?>
+                    <select name="currency_symbol_style" class="form-control">
+                        <option value="kanji"<?= $symbolStyle === 'kanji' ? ' selected' : '' ?>><?= __('currency_symbol_style_kanji') ?></option>
+                        <option value="international"<?= $symbolStyle === 'international' ? ' selected' : '' ?>><?= __('currency_symbol_style_international') ?></option>
+                    </select>
                 </div>
             </div>
             <div class="form-row">

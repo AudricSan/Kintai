@@ -17,7 +17,7 @@ $storeId  = (int) $store['id'];
 $isEdit   = $report !== null;
 $reportId = $isEdit ? (int) $report['id'] : null;
 $old      = $old ?? $report ?? [];
-$currency = currency_symbol($store['currency'] ?? 'JPY');
+$currency = currency_symbol($store['currency'] ?? 'JPY', store_currency_style($store));
 
 $action = $isEdit
     ? $BASE_URL . '/admin/stores/' . $storeId . '/daily-reports/' . $reportId . '/edit'
