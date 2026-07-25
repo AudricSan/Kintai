@@ -777,6 +777,7 @@
     "report_employees": "Rapport de performance des employés",
     "reports": "Rapports",
     "request_swap": "Demander un échange",
+    "required_fields_missing": "Merci de remplir tous les champs obligatoires (*) avant d'enregistrer.",
     "requester": "Demandeur",
     "requests": "Demandes",
     "reset": "Réinitialiser",
