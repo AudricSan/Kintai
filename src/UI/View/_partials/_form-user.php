@@ -177,11 +177,15 @@ $section = function (string $titleKey, string $body) use ($as_cards): void {
         <div class="form-group">
             <label class="form-label"><?= __('password') ?></label>
             <p class="form-hint"><?= __('password_edit_hint') ?></p>
-            <form method="POST" action="<?= $BASE_URL ?>/admin/users/<?= (int) $user['id'] ?>/reset-password"
-                  onsubmit="return confirm('<?= htmlspecialchars(__('reset_password_confirm'), ENT_QUOTES) ?>')">
-                <?= csrf_field() ?>
-                <button type="submit" class="btn btn--warning btn--sm"><?= __('reset_password_btn') ?></button>
-            </form>
+            <!-- Bouton rattaché à #resetPasswordForm (attribut form=) plutôt qu'à un formulaire
+                 imbriqué ici : un formulaire ne peut pas être imbriqué dans celui d'édition qui
+                 englobe ce partiel (users-form.php) sans que le navigateur ne referme ce dernier
+                 prématurément à la fermeture du formulaire interne — ce qui éjectait le bouton
+                 "Enregistrer" hors de tout formulaire et le rendait inopérant. -->
+            <button type="submit" form="resetPasswordForm" class="btn btn--warning btn--sm"
+                    onclick="return confirm('<?= htmlspecialchars(__('reset_password_confirm'), ENT_QUOTES) ?>')">
+                <?= __('reset_password_btn') ?>
+            </button>
         </div>
         <?php endif; ?>
     <?php $section('employee_info', ob_get_clean()); ?>
