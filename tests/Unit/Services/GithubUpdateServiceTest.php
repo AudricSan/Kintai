@@ -230,6 +230,46 @@ final class GithubUpdateServiceTest extends TestCase
         $this->assertNull($service->checkLatestRelease());
     }
 
+    public function testCheckLatestReleasePaginatesPastPrereleasesToFindStableRelease(): void
+    {
+        // Simule une longue série d'alpha/beta plus récente qu'une release
+        // stable : la release stable ne doit pas être perdue simplement
+        // parce qu'elle se trouve sur une page suivante de l'API GitHub.
+        $prereleasePage = array_map(
+            fn(int $i): array => ['tag_name' => "v9.{$i}.0-beta.1", 'zipball_url' => 'z', 'prerelease' => true],
+            range(1, 100)
+        );
+        $stablePage = [
+            ['tag_name' => 'v1.0.0', 'zipball_url' => 'z', 'prerelease' => false],
+        ];
+
+        $this->writeAppVersion('0.0.0');
+        $calls = [];
+        $releaseFetcher = function (string $repo, string $token, int $page) use (&$calls, $prereleasePage, $stablePage): ?array {
+            $calls[] = $page;
+            return match ($page) {
+                1 => $prereleasePage,
+                2 => $stablePage,
+                default => [],
+            };
+        };
+
+        $service = new GithubUpdateService(
+            $this->updateService,
+            $this->backup,
+            $this->migrator,
+            $this->makeSettings('release'),
+            $this->tmpDir,
+            $releaseFetcher,
+        );
+
+        $info = $service->checkLatestRelease();
+
+        $this->assertNotNull($info);
+        $this->assertSame('1.0.0', $info['latest_version']);
+        $this->assertSame([1, 2], $calls);
+    }
+
     public function testApplyUpdateReturnsErrorWhenNoUpdateAvailable(): void
     {
         $service = $this->makeService('v1.0.0', ['README.md' => 'hello'], currentVersion: '1.0.0');
