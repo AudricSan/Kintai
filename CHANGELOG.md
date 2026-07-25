@@ -9,6 +9,10 @@ All notable changes to Kintai are documented here.
 ### Added
 - The "Delete" button on a resignation report now opens a confirmation popup offering two distinct choices instead of silently reactivating the linked employee (the previous, only, behavior): "Reactivate the employee and delete the report" (unchanged), or "Permanently delete the employee and the report" — a new `.../delete-permanently` action that hard-deletes the linked user account together with the report. The permanent option carries its own extra browser confirmation given it cannot be undone.
 
+### Fixed
+- The "Save" button on the employee edit form (`/admin/users/{id}/edit`) did nothing at all when clicked: the "Reset password" mini-form nested inside the employee-info section was itself a `<form>`, and HTML forbids nesting a `<form>` inside another — the browser's parser closed the outer edit form as soon as it hit that inner form's closing tag, so everything rendered after it in the markup (including the "Save" button) ended up outside any `<form>` element and had no submit target (`button.form === null`). The reset-password button is now a standalone `<button form="resetPasswordForm">` pointing at a sibling form placed after the edit form closes, instead of a form nested inside it.
+- While investigating the above, also found that the same form's required fields (name, furigana, email, ...) relied entirely on the browser's native constraint validation, which blocks submission silently with no feedback near the button on this long, multi-section form — easy to miss and easy to mistake for the button "not working". The form now validates required fields itself (`required-fields-feedback.js`) and shows a clear red message next to "Save"/"Cancel", highlighting and scrolling to the first missing field.
+
 ## [0.8.1] - 2026-07-18
 
 ### Changed
