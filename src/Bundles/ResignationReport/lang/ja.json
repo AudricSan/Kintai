@@ -3,14 +3,22 @@
     "all_years": "全年度",
     "bundle_resignation_report": "退職報告書",
     "bundle_resignation_report_desc": "従業員ごとの退職報告書、アカウント再有効化機能付き。",
+    "confirm_delete_employee_permanently": "この従業員とその退職報告書を完全に削除しますか？この操作は取り消せません。",
     "confirm_delete_resignation_report": "この退職報告書を削除しますか？",
     "confirm_reactivate": "この従業員を再活性化しますか？ログインが再び可能になります。",
+    "delete_employee_and_report_permanently": "従業員と報告書を完全に削除",
+    "delete_employee_and_report_permanently_hint": "従業員のアカウントとこの報告書が完全に削除されます。この操作は取り消せません。",
+    "delete_resignation_report_intro": "次の従業員について、どちらの操作を行いますか：",
+    "delete_resignation_report_title": "退職報告書の削除",
     "edit_resignation_report": "退職報告書を編集",
     "new_resignation_report": "新規退職報告書",
     "person_in_charge": "受付担当者",
     "reactivate": "再活性化",
+    "reactivate_and_delete_report": "従業員を再活性化して報告書を削除",
+    "reactivate_and_delete_report_hint": "従業員のアカウントは再び有効になり、報告書のみ削除されます。",
     "resignation_date": "退職日",
     "resignation_notice": "退職届",
     "resignation_report_pdf_title": "退職報告書",
-    "resignation_reports": "退職報告書一覧"
+    "resignation_reports": "退職報告書一覧",
+    "user_deleted_permanently": "従業員と報告書は完全に削除されました。"
 }
