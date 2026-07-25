@@ -6,6 +6,8 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+## [0.8.2] - 2026-07-25
+
 ### Added
 - The "Delete" button on a resignation report now opens a confirmation popup offering two distinct choices instead of silently reactivating the linked employee (the previous, only, behavior): "Reactivate the employee and delete the report" (unchanged), or "Permanently delete the employee and the report" — a new `.../delete-permanently` action that hard-deletes the linked user account together with the report. The permanent option carries its own extra browser confirmation given it cannot be undone.
 
