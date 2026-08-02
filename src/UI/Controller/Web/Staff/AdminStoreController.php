@@ -158,9 +158,23 @@ final class AdminStoreController
         $this->assertStoreAccess($request, $storeId);
 
         $allFeatureSlugs = ['shifts', 'timeclock', 'timeoff', 'swaps', 'open_shifts', 'messages', 'daily_reports', 'photos'];
+        $availableSlugs = $this->availableFeatureSlugs();
+        $currentFeatures = $this->stores->getFeatures($storeId);
+        // Aucune ligne en base = jamais configuré → toutes actives par défaut (cf. l'affichage plus bas).
+        $currentlyEnabled = fn(string $slug): bool => $currentFeatures === [] || in_array($slug, $currentFeatures, true);
+
         $enabledFeatures = [];
         foreach ($allFeatureSlugs as $slug) {
-            if ($request->post('feature_' . $slug)) {
+            if ($availableSlugs[$slug] ?? true) {
+                // Case proposée sur ce formulaire : on suit la valeur soumise.
+                if ($request->post('feature_' . $slug)) {
+                    $enabledFeatures[] = $slug;
+                }
+            } elseif ($currentlyEnabled($slug)) {
+                // Case masquée car son bundle est désactivé au niveau instance : le champ
+                // n'a pas pu être soumis, on conserve l'état actuel au lieu de le traiter
+                // comme décoché — sinon éditer un store désactive silencieusement toute
+                // fonctionnalité de bundle qui se trouvait indisponible à ce moment-là.
                 $enabledFeatures[] = $slug;
             }
         }

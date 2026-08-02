@@ -167,7 +167,10 @@ final class AdminStoreControllerTest extends TestCase
             new AuditLogger(),
             $storeService,
             $this->storeStatsService,
-            new FeatureManager(['messaging', 'daily-report', 'store-photos']),
+            // Tous les bundles de fonctionnalités par-store activés, pour que ce test ne
+            // couvre que la soumission normale d'une case cochée (voir
+            // testUpdateStorePreservesFeatureHiddenByDisabledBundle pour le cas masqué).
+            new FeatureManager(['messaging', 'daily-report', 'store-photos', 'timeoff', 'shift-swap', 'shift-claim', 'timeclock']),
             new RoleAssignmentSyncService($this->roles, $this->roleAssignments),
         );
 
@@ -176,6 +179,47 @@ final class AdminStoreControllerTest extends TestCase
         $this->assertSame(302, $response->status());
         $this->assertNotNull($captured);
         $this->assertSame(['photos'], $captured['_features']);
+    }
+
+    public function testUpdateStorePreservesFeatureHiddenByDisabledBundle(): void
+    {
+        // "messages" et "photos" dépendent de bundles désactivés au niveau instance : leurs
+        // cases ne sont pas rendues dans le formulaire, donc jamais soumises. Elles doivent
+        // survivre à la sauvegarde au lieu d'être silencieusement décochées (régression
+        // constatée en prod : éditer un store désactivait "photos" pour de bon).
+        $_POST = ['name' => 'Test Store', 'feature_shifts' => '1'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '1']);
+
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Test Store']);
+        $this->stores->method('getFeatures')->with(1)->willReturn(['shifts', 'timeclock', 'messages', 'photos']);
+
+        $captured = null;
+        $storeService = $this->createMock(StoreServiceInterface::class);
+        $storeService->method('updateStore')->willReturnCallback(function (int $id, array $data) use (&$captured) {
+            $captured = $data;
+            return ['id' => $id] + $data;
+        });
+
+        $controller = new AdminStoreController(
+            new ViewRenderer(sys_get_temp_dir()),
+            $this->users,
+            $this->stores,
+            $this->storeUsers,
+            new AuditLogger(),
+            $storeService,
+            $this->storeStatsService,
+            new FeatureManager(['daily-report']), // messaging et store-photos désactivés
+            new RoleAssignmentSyncService($this->roles, $this->roleAssignments),
+        );
+
+        $response = $controller->updateStore($req);
+
+        $this->assertSame(302, $response->status());
+        $this->assertNotNull($captured);
+        sort($captured['_features']);
+        $this->assertSame(['messages', 'photos', 'shifts', 'timeclock'], $captured['_features']);
     }
 
     public function testEmployeeStatsLogsConsultation(): void
