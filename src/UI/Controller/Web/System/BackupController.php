@@ -69,6 +69,8 @@ final class BackupController
             'updateChannel'             => $this->settings->updateChannel(),
             'pendingMigs'               => $this->update->getPendingMigrations(),
             'lastUpdateDurationSeconds' => $this->update->getLastUpdateDuration(),
+            'releaseHistory'            => $this->githubUpdate->getReleaseHistory(),
+            'repoReleasesUrl'           => $this->githubUpdate->getRepoReleasesUrl(),
             'flash'                     => $flash,
         ], 'layout.app'));
     }

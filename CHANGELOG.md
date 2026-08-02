@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Added
+- The update page (`/admin/update`) now shows a summary of the latest release notes fetched from GitHub, with a "View all" button opening an in-app modal listing the full notes for every recent compatible release (version, date, notes, per-release GitHub link) instead of only linking out to GitHub, plus a "View on GitHub" button to the repository's releases page.
+
 ## [0.9.0] - 2026-08-02
 
 ### Added

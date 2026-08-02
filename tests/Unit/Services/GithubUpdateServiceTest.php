@@ -500,6 +500,61 @@ final class GithubUpdateServiceTest extends TestCase
         $this->assertNotNull($service->getLastCheckError());
     }
 
+    public function testGetReleaseHistoryReturnsCompatibleReleasesSortedDescending(): void
+    {
+        $service = $this->makeServiceWithReleases([
+            ['tag_name' => 'v2.0.0-alpha.1', 'zipball_url' => 'z', 'prerelease' => true, 'body' => 'alpha notes'],
+            ['tag_name' => 'v1.0.0', 'zipball_url' => 'z', 'prerelease' => false, 'body' => 'v1 notes', 'html_url' => 'https://example.test/releases/v1.0.0', 'published_at' => '2026-01-01T00:00:00Z'],
+            ['tag_name' => 'v0.9.0', 'zipball_url' => 'z', 'prerelease' => false, 'body' => 'v0.9 notes'],
+        ], ['README.md' => 'hello'], currentVersion: '0.0.0', channel: 'release');
+
+        $history = $service->getReleaseHistory();
+
+        // Le tag alpha n'est pas compatible avec le canal "release" : exclu de l'historique.
+        $this->assertCount(2, $history);
+        $this->assertSame('1.0.0', $history[0]['version']);
+        $this->assertSame('v1 notes', $history[0]['release_notes']);
+        $this->assertSame('https://example.test/releases/v1.0.0', $history[0]['release_url']);
+        $this->assertSame('2026-01-01T00:00:00Z', $history[0]['published_at']);
+        $this->assertSame('0.9.0', $history[1]['version']);
+    }
+
+    public function testGetReleaseHistoryRespectsLimit(): void
+    {
+        $releases = array_map(
+            fn(int $i): array => ['tag_name' => "v1.{$i}.0", 'zipball_url' => 'z', 'prerelease' => false],
+            range(0, 4)
+        );
+        $service = $this->makeServiceWithReleases($releases, ['README.md' => 'hello'], currentVersion: '0.0.0', channel: 'release');
+
+        $history = $service->getReleaseHistory(2);
+
+        $this->assertCount(2, $history);
+        $this->assertSame('1.4.0', $history[0]['version']);
+        $this->assertSame('1.3.0', $history[1]['version']);
+    }
+
+    public function testGetReleaseHistoryReturnsEmptyArrayWhenFetchFails(): void
+    {
+        $service = new GithubUpdateService(
+            $this->updateService,
+            $this->backup,
+            $this->migrator,
+            $this->makeSettings(),
+            $this->tmpDir,
+            fn(string $repo, string $token): ?array => null,
+        );
+
+        $this->assertSame([], $service->getReleaseHistory());
+    }
+
+    public function testGetRepoReleasesUrlUsesConfiguredRepo(): void
+    {
+        $service = $this->makeService('v1.0.0', ['README.md' => 'hello']);
+
+        $this->assertSame('https://github.com/AudricSan/Kintai/releases', $service->getRepoReleasesUrl());
+    }
+
     #[DataProvider('releaseListValidationProvider')]
     public function testIsValidReleaseListRejectsGithubErrorObjects(mixed $data, bool $expected): void
     {
