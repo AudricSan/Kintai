@@ -120,33 +120,38 @@ final class GithubUpdateService
     }
 
     /**
-     * Historique des releases GitHub compatibles avec le canal configuré, de
-     * la plus récente à la plus ancienne, pour affichage des notes de version
-     * (résumé + modal "voir tout") sans dépendre d'une page GitHub externe.
-     *
-     * @return list<array{version:string, release_notes:string, release_url:?string, published_at:?string}>
+     * Condense des notes de version au format Keep a Changelog ("### Catégorie"
+     * suivi de puces "- ...") à une seule puce par catégorie, pour un résumé
+     * rapide sur la page de mise à jour — le lien "Voir sur GitHub" reste
+     * disponible pour le détail complet.
      */
-    public function getReleaseHistory(int $limit = 15): array
+    public function condenseReleaseNotes(string $notes): string
     {
-        $channel = $this->settings->updateChannel();
-        $releases = $this->fetchReleaseListData($channel);
-        if ($releases === null) {
-            return [];
+        if (trim($notes) === '') {
+            return '';
         }
 
-        $candidates = $this->filterReleasesForChannel($releases, $channel);
-        usort($candidates, function (array $a, array $b): int {
-            $va = ltrim((string) ($a['tag_name'] ?? ''), 'v');
-            $vb = ltrim((string) ($b['tag_name'] ?? ''), 'v');
-            return version_compare($vb, $va);
-        });
+        $lines = preg_split('/\r\n|\r|\n/', trim($notes)) ?: [];
+        $out = [];
+        $skippingBullets = false;
+        foreach ($lines as $line) {
+            if (preg_match('/^#{1,6}\s/', $line) === 1) {
+                $out[] = $line;
+                $skippingBullets = false;
+                continue;
+            }
+            if (preg_match('/^[-*]\s/', $line) === 1) {
+                if ($skippingBullets) {
+                    continue;
+                }
+                $out[] = $line;
+                $skippingBullets = true;
+                continue;
+            }
+            $out[] = $line;
+        }
 
-        return array_map(static fn (array $release): array => [
-            'version'       => ltrim((string) ($release['tag_name'] ?? ''), 'v'),
-            'release_notes' => (string) ($release['body'] ?? ''),
-            'release_url'   => $release['html_url'] ?? null,
-            'published_at'  => $release['published_at'] ?? null,
-        ], array_slice($candidates, 0, $limit));
+        return trim(implode("\n", $out));
     }
 
     /** URL de la page des releases GitHub du dépôt suivi (lien "voir sur GitHub"). */
