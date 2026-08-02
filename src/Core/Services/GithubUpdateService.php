@@ -40,6 +40,9 @@ final class GithubUpdateService
     private string $token;
     private ?string $lastError = null;
 
+    /** Cache mémoire (durée de la requête) des listes de releases déjà récupérées, indexées par canal — évite de refaire un appel GitHub à chaque méthode publique appelée dans la même requête (checkLatestRelease() + getReleaseHistory()). */
+    private array $releaseListCache = [];
+
     /**
      * @param \Closure|null $releaseFetcher fn(string $repo, string $token, int $page): ?array — une page de releases GitHub, ou null pour signaler un échec (surchargeable pour les tests)
      * @param \Closure|null $zipDownloader  fn(string $url, string $dest, string $token): bool — surchargeable pour les tests
@@ -117,15 +120,51 @@ final class GithubUpdateService
     }
 
     /**
+     * Historique des releases GitHub compatibles avec le canal configuré, de
+     * la plus récente à la plus ancienne, pour affichage des notes de version
+     * (résumé + modal "voir tout") sans dépendre d'une page GitHub externe.
+     *
+     * @return list<array{version:string, release_notes:string, release_url:?string, published_at:?string}>
+     */
+    public function getReleaseHistory(int $limit = 15): array
+    {
+        $channel = $this->settings->updateChannel();
+        $releases = $this->fetchReleaseListData($channel);
+        if ($releases === null) {
+            return [];
+        }
+
+        $candidates = $this->filterReleasesForChannel($releases, $channel);
+        usort($candidates, function (array $a, array $b): int {
+            $va = ltrim((string) ($a['tag_name'] ?? ''), 'v');
+            $vb = ltrim((string) ($b['tag_name'] ?? ''), 'v');
+            return version_compare($vb, $va);
+        });
+
+        return array_map(static fn (array $release): array => [
+            'version'       => ltrim((string) ($release['tag_name'] ?? ''), 'v'),
+            'release_notes' => (string) ($release['body'] ?? ''),
+            'release_url'   => $release['html_url'] ?? null,
+            'published_at'  => $release['published_at'] ?? null,
+        ], array_slice($candidates, 0, $limit));
+    }
+
+    /** URL de la page des releases GitHub du dépôt suivi (lien "voir sur GitHub"). */
+    public function getRepoReleasesUrl(): string
+    {
+        return "https://github.com/{$this->repo}/releases";
+    }
+
+    /**
      * Parmi les releases GitHub disponibles, retient celles compatibles avec
-     * le canal demandé puis la plus récente au sens de version_compare() :
+     * le canal demandé :
      * - release : uniquement les tags stables (ni "-alpha"/"-beta", ni prerelease GitHub) ;
      * - beta    : les tags stables et "-beta" (exclut "-alpha") ;
      * - alpha   : tous les tags, canal le plus permissif.
      */
-    private function selectReleaseForChannel(array $releases, string $channel): ?array
+    private function filterReleasesForChannel(array $releases, string $channel): array
     {
-        $candidates = array_values(array_filter($releases, function (array $release) use ($channel): bool {
+        return array_values(array_filter($releases, function (array $release) use ($channel): bool {
             $tag = ltrim((string) ($release['tag_name'] ?? ''), 'v');
             $isAlpha = str_contains($tag, '-alpha');
             $isBeta = str_contains($tag, '-beta');
@@ -137,6 +176,12 @@ final class GithubUpdateService
                 default => !$isAlpha && !$isBeta && !$isPrerelease,
             };
         }));
+    }
+
+    /** Retient, parmi les releases compatibles avec le canal, la plus récente au sens de version_compare(). */
+    private function selectReleaseForChannel(array $releases, string $channel): ?array
+    {
+        $candidates = $this->filterReleasesForChannel($releases, $channel);
 
         if ($candidates === []) {
             return null;
@@ -423,6 +468,15 @@ final class GithubUpdateService
      * @return array|null Liste des releases GitHub (voir GET /repos/{repo}/releases), ou null si la première page échoue.
      */
     private function fetchReleaseListData(string $channel): ?array
+    {
+        if (array_key_exists($channel, $this->releaseListCache)) {
+            return $this->releaseListCache[$channel];
+        }
+
+        return $this->releaseListCache[$channel] = $this->fetchReleaseListDataUncached($channel);
+    }
+
+    private function fetchReleaseListDataUncached(string $channel): ?array
     {
         $headers = [
             'User-Agent: Kintai-UpdateCheck/1.0',
