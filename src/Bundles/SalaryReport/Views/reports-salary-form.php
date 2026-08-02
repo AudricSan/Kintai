@@ -31,15 +31,6 @@ $isEmployeeScoped = $employeeId > 0;
 /** Libellé de champ suffixé par son unité (devise du store, ou heures) — les montants nus sans unité sont une des choses qui rendaient ce formulaire dense et peu lisible. */
 $moneyLabel = fn(string $key) => __($key) . ' (' . $currencySymbol . ')';
 $hoursLabel = fn(string $key) => __($key) . ' (h)';
-/**
- * Aperçu formaté (milliers séparés, décimales de la devise) affiché sous chaque champ
- * <input type="number"> monétaire : ce type de champ ne peut pas afficher de séparateur
- * de milliers nativement, ce qui rend les gros montants illisibles (ex. "158269.64").
- * Mis à jour en direct par salary-report-form.js à la saisie et après un recalcul.
- */
-$moneyPreview = fn(string $field) => '<span class="form-hint td-mono" data-money-preview="' . $field . '">'
-    . htmlspecialchars(format_currency((float) ($report[$field] ?? 0), $currency, store_currency_style($store)))
-    . '</span>';
 ?>
 <div class="page-header">
     <h2 class="page-header__title">
@@ -129,16 +120,14 @@ $moneyPreview = fn(string $field) => '<span class="form-hint td-mono" data-money
         <?php if (!$isEmployeeScoped): ?>
         <div class="form-group">
             <label class="form-label"><?= $moneyLabel('sr_total_payment') ?></label>
-            <input type="number" name="total_payment" class="form-control"
-                   step="0.01" min="0" value="<?= $val('total_payment', '0') ?>">
-            <?= $moneyPreview('total_payment') ?>
+            <input type="text" inputmode="decimal" name="total_payment" class="form-control td-mono js-money-input"
+                   value="<?= $val('total_payment', '0') ?>">
         </div>
         <?php endif; ?>
         <div class="form-group">
             <label class="form-label"><?= $moneyLabel('sr_net_payment') ?></label>
-            <input type="number" name="net_payment" class="form-control"
-                   step="0.01" min="0" value="<?= $val('net_payment', '0') ?>">
-            <?= $moneyPreview('net_payment') ?>
+            <input type="text" inputmode="decimal" name="net_payment" class="form-control td-mono js-money-input"
+                   value="<?= $val('net_payment', '0') ?>">
         </div>
     </div>
 
@@ -146,37 +135,32 @@ $moneyPreview = fn(string $field) => '<span class="form-hint td-mono" data-money
     <div class="form-row">
         <div class="form-group">
             <label class="form-label"><?= $moneyLabel('sr_income_tax_base') ?></label>
-            <input type="number" name="income_tax_base" class="form-control"
-                   step="0.01" min="0" value="<?= $val('income_tax_base', '0') ?>">
-            <?= $moneyPreview('income_tax_base') ?>
+            <input type="text" inputmode="decimal" name="income_tax_base" class="form-control td-mono js-money-input"
+                   value="<?= $val('income_tax_base', '0') ?>">
         </div>
         <div class="form-group">
             <label class="form-label"><?= $moneyLabel('sr_total_deductions') ?></label>
-            <input type="number" name="total_deductions" class="form-control"
-                   step="0.01" min="0" value="<?= $val('total_deductions', '0') ?>">
-            <?= $moneyPreview('total_deductions') ?>
+            <input type="text" inputmode="decimal" name="total_deductions" class="form-control td-mono js-money-input"
+                   value="<?= $val('total_deductions', '0') ?>">
         </div>
     </div>
     <div class="form-row">
         <div class="form-group">
             <label class="form-label"><?= $moneyLabel('sr_withholding_tax') ?></label>
-            <input type="number" name="withholding_tax" class="form-control"
-                   step="0.01" min="0" value="<?= $val('withholding_tax', '0') ?>">
-            <?= $moneyPreview('withholding_tax') ?>
+            <input type="text" inputmode="decimal" name="withholding_tax" class="form-control td-mono js-money-input"
+                   value="<?= $val('withholding_tax', '0') ?>">
         </div>
         <div class="form-group">
             <label class="form-label"><?= $moneyLabel('sr_residence_tax') ?></label>
-            <input type="number" name="residence_tax" class="form-control"
-                   step="0.01" min="0" value="<?= $val('residence_tax', '0') ?>">
-            <?= $moneyPreview('residence_tax') ?>
+            <input type="text" inputmode="decimal" name="residence_tax" class="form-control td-mono js-money-input"
+                   value="<?= $val('residence_tax', '0') ?>">
         </div>
     </div>
     <div class="form-row">
         <div class="form-group">
             <label class="form-label"><?= $moneyLabel('sr_other_deductions') ?></label>
-            <input type="number" name="other_deductions" class="form-control"
-                   step="0.01" min="0" value="<?= $val('other_deductions', '0') ?>">
-            <?= $moneyPreview('other_deductions') ?>
+            <input type="text" inputmode="decimal" name="other_deductions" class="form-control td-mono js-money-input"
+                   value="<?= $val('other_deductions', '0') ?>">
         </div>
     </div>
 
@@ -184,15 +168,13 @@ $moneyPreview = fn(string $field) => '<span class="form-hint td-mono" data-money
     <div class="form-row">
         <div class="form-group">
             <label class="form-label"><?= $moneyLabel('sr_bank_transfer_salary') ?></label>
-            <input type="number" name="bank_transfer_salary" class="form-control"
-                   step="0.01" min="0" value="<?= $val('bank_transfer_salary', '0') ?>">
-            <?= $moneyPreview('bank_transfer_salary') ?>
+            <input type="text" inputmode="decimal" name="bank_transfer_salary" class="form-control td-mono js-money-input"
+                   value="<?= $val('bank_transfer_salary', '0') ?>">
         </div>
         <div class="form-group">
             <label class="form-label"><?= $moneyLabel('sr_hand_delivered_salary') ?></label>
-            <input type="number" name="hand_delivered_salary" class="form-control"
-                   step="0.01" min="0" value="<?= $val('hand_delivered_salary', '0') ?>">
-            <?= $moneyPreview('hand_delivered_salary') ?>
+            <input type="text" inputmode="decimal" name="hand_delivered_salary" class="form-control td-mono js-money-input"
+                   value="<?= $val('hand_delivered_salary', '0') ?>">
         </div>
     </div>
     <?php
@@ -209,17 +191,15 @@ $moneyPreview = fn(string $field) => '<span class="form-hint td-mono" data-money
         </div>
         <div class="form-group">
             <label class="form-label"><?= $moneyLabel('sr_staff_total_payment') ?></label>
-            <input type="number" name="staff_total_payment" class="form-control"
-                   step="0.01" min="0" value="<?= $val('staff_total_payment', '0') ?>">
-            <?= $moneyPreview('staff_total_payment') ?>
+            <input type="text" inputmode="decimal" name="staff_total_payment" class="form-control td-mono js-money-input"
+                   value="<?= $val('staff_total_payment', '0') ?>">
         </div>
     </div>
     <div class="form-row">
         <div class="form-group">
             <label class="form-label"><?= __('sr_staff_avg_hourly_wage') ?> (<?= $currencySymbol ?>/h)</label>
-            <input type="number" name="staff_avg_hourly_wage" class="form-control"
-                   step="0.01" min="0" value="<?= $val('staff_avg_hourly_wage', '0') ?>">
-            <span class="form-hint td-mono" data-money-preview="staff_avg_hourly_wage" data-money-preview-suffix="/h"><?= htmlspecialchars(format_currency((float) ($report['staff_avg_hourly_wage'] ?? 0), $currency, store_currency_style($store))) ?>/h</span>
+            <input type="text" inputmode="decimal" name="staff_avg_hourly_wage" class="form-control td-mono js-money-input"
+                   value="<?= $val('staff_avg_hourly_wage', '0') ?>">
         </div>
         <?php if (!$isEmployeeScoped): ?>
         <div class="form-group">
