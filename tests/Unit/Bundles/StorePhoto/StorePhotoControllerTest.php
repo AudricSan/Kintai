@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Bundles\StorePhoto;
 
 use kintai\Bundles\StorePhoto\Controllers\Web\StorePhotoController;
+use kintai\Bundles\StorePhoto\Services\ImageCompressionService;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Repositories\StorePhotoRepositoryInterface;
@@ -42,6 +43,7 @@ final class StorePhotoControllerTest extends TestCase
             $this->stores,
             $this->appSettings,
             new AuditLogger(),
+            new ImageCompressionService(),
         );
     }
 
