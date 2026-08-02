@@ -197,7 +197,7 @@ th { background: #f0f0f0; font-weight: 600; }
         <td class="tr td-mono"><?= $row['pause_min'] > 0 ? $row['pause_min'] . ' min' : '—' ?></td>
         <td class="tr td-mono"><?= payslip_hours($row['net_min']) ?></td>
         <?php if ($anyRate): ?>
-        <td class="tr td-mono"><?= $row['has_rate'] ? number_format($row['rate'], 2) . ' ' . $currency : '—' ?></td>
+        <td class="tr td-mono"><?= $row['has_rate'] ? number_format($row['rate'], 2) . ' ' . currency_symbol($currency, $currencyStyle) : '—' ?></td>
         <td class="tr td-mono"><?= $row['has_rate'] ? format_currency($row['cost'], $currency, $currencyStyle) : '—' ?></td>
         <?php endif; ?>
     </tr>

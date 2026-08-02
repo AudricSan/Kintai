@@ -81,7 +81,7 @@ ob_start();
 <table class="detail-table">
     <tr><th><?= __('sr_staff_man_hours') ?></th><td class="td-mono"><?= $num($report['staff_man_hours'] ?? null) ?> h</td></tr>
     <tr><th><?= __('sr_staff_total_payment') ?></th><td class="td-mono"><?= $cur($report['staff_total_payment'] ?? null) ?></td></tr>
-    <tr><th><?= __('sr_staff_avg_hourly_wage') ?></th><td class="td-mono"><?= $cur($report['staff_avg_hourly_wage'] ?? null) ?><?= $report['staff_avg_hourly_wage'] !== null && $report['staff_avg_hourly_wage'] !== '' ? '/h' : '' ?></td></tr>
+    <tr><th><?= __('sr_staff_avg_hourly_wage') ?></th><td class="td-mono"><?= $cur($report['staff_avg_hourly_wage'] ?? null) ?><?= ($report['staff_avg_hourly_wage'] ?? null) !== null && ($report['staff_avg_hourly_wage'] ?? '') !== '' ? '/h' : '' ?></td></tr>
     <?php if (!$isEmployeeScoped): ?>
     <tr><th><?= __('sr_new_hires') ?></th><td class="td-mono"><?= $num($report['new_hires'] ?? null) ?></td></tr>
     <?php endif; ?>
@@ -138,7 +138,7 @@ if (isset($shiftRows)):
                 <td class="td-mono"><?= $row['pause_min'] > 0 ? $row['pause_min'] . ' min' : '—' ?></td>
                 <td class="td-mono"><?= payslip_hours($row['net_min']) ?></td>
                 <?php if ($anyRate): ?>
-                <td class="td-mono"><?= $row['has_rate'] ? number_format($row['rate'], 2) . ' ' . $currency : '—' ?></td>
+                <td class="td-mono"><?= $row['has_rate'] ? number_format($row['rate'], 2) . ' ' . currency_symbol($currency, $currencyStyle) : '—' ?></td>
                 <td class="td-mono"><?= $row['has_rate'] ? format_currency($row['cost'], $currency, $currencyStyle) : '—' ?></td>
                 <?php endif; ?>
             </tr>

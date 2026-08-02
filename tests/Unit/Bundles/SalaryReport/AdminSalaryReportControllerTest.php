@@ -359,6 +359,100 @@ final class AdminSalaryReportControllerTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
+    // calculateSalaryReport — recalcul AJAX pour le sélecteur de période
+    // -------------------------------------------------------------------------
+
+    public function testCalculateSalaryReportReturnsRecalculatedPresetForStoreWideRange(): void
+    {
+        $_GET = ['from' => '2026-08-01', 'to' => '2026-08-31'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setAttribute('auth_user', ['id' => 1, 'display_name' => 'Manager X']);
+        $req->setRouteParams(['id' => '1']);
+
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Store A']);
+        $this->dailyReports->method('findByStoreAndDateRange')->willReturn([
+            ['report_date' => '2026-08-01', 'status' => 'validated', 'sales_total' => 10000],
+        ]);
+        $this->shifts->method('findByStore')->with(1)->willReturn([
+            ['shift_date' => '2026-08-05', 'duration_minutes' => 480, 'estimated_salary' => 6000, 'user_id' => 7],
+        ]);
+        $this->users->method('findById')->with(7)->willReturn(['id' => 7, 'last_name' => 'Dupont', 'first_name' => 'Jean']);
+
+        $response = $this->controller->calculateSalaryReport($req);
+
+        $this->assertSame(200, $response->status());
+        $data = json_decode($response->body(), true);
+        // json_decode() renvoie un int pour les flottants sans décimales (10000.0 -> 10000).
+        $this->assertEquals(10000.0, $data['preset']['total_payment']);
+        $this->assertEquals(8.0, $data['preset']['staff_man_hours']);
+        $this->assertSame('2026-08', $data['preset']['target_month']);
+        $this->assertSame('store', $data['detail']['mode']);
+        $this->assertCount(1, $data['detail']['employees']);
+        $this->assertSame('Dupont Jean', $data['detail']['employees'][0]['name']);
+    }
+
+    public function testCalculateSalaryReportUsesPayslipDataForEmployeeScopedRange(): void
+    {
+        $_GET = ['from' => '2026-08-01', 'to' => '2026-08-15', 'user_id' => '7'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setAttribute('auth_user', ['id' => 1, 'display_name' => 'Manager X']);
+        $req->setRouteParams(['id' => '1']);
+
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Store A']);
+        $this->dailyReports->method('findByStoreAndDateRange')->willReturn([]);
+        $this->shifts->method('findByStore')->with(1)->willReturn([
+            ['shift_date' => '2026-08-05', 'duration_minutes' => 480, 'estimated_salary' => 6000, 'user_id' => 7],
+        ]);
+        $this->users->method('findById')->with(7)->willReturn(['id' => 7, 'last_name' => 'Dupont', 'first_name' => 'Jean']);
+
+        $this->storeStatsService->expects($this->once())->method('buildPayslipData')
+            ->with(1, 7, '2026-08-01', '2026-08-15')
+            ->willReturn([
+                'shiftRows' => [], 'totalGrossMin' => 0, 'totalNetMin' => 0, 'totalCost' => 0.0,
+                'anyRate' => false, 'deductions' => [], 'totalDeductions' => 0.0, 'netPay' => 0.0,
+                'deductionsEnabled' => false,
+            ]);
+
+        $response = $this->controller->calculateSalaryReport($req);
+
+        $this->assertSame(200, $response->status());
+        $data = json_decode($response->body(), true);
+        // Seul l'employé 7 est comptabilisé dans le preset (8h à 6000).
+        $this->assertEquals(6000.0, $data['preset']['staff_total_payment']);
+        $this->assertArrayHasKey('shiftRows', $data['detail']);
+    }
+
+    public function testCalculateSalaryReportRejectsInvalidRange(): void
+    {
+        $_GET = ['from' => '2026-08-31', 'to' => '2026-08-01'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '1']);
+
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Store A']);
+
+        $response = $this->controller->calculateSalaryReport($req);
+
+        $this->assertSame(422, $response->status());
+    }
+
+    public function testCalculateSalaryReportRejectsMalformedDates(): void
+    {
+        $_GET = ['from' => 'not-a-date', 'to' => '2026-08-01'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '1']);
+
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Store A']);
+
+        $response = $this->controller->calculateSalaryReport($req);
+
+        $this->assertSame(422, $response->status());
+    }
+
+    // -------------------------------------------------------------------------
     // calculateSalaryPreset — mode de saisie cumulatif du rapport journalier (item 4)
     // -------------------------------------------------------------------------
 
@@ -602,9 +696,12 @@ final class AdminSalaryReportControllerTest extends TestCase
 
     private function invokeCalculateSalaryPreset(array $store, string $targetMonth, array $authUser, ?int $userId = null): array
     {
+        $from = $targetMonth . '-01';
+        $to = date('Y-m-t', strtotime($from));
+
         $method = new \ReflectionMethod($this->controller, 'calculateSalaryPreset');
         $method->setAccessible(true);
-        return $method->invoke($this->controller, $store, $targetMonth, $authUser, $userId);
+        return $method->invoke($this->controller, $store, $from, $to, $authUser, $userId);
     }
 
     private function ensureViewFile(string $dir, string $view): void

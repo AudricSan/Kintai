@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use kintai\UI\Components\Button;
 use kintai\UI\Components\Card;
+use kintai\UI\Components\Modal;
 
 /**
  * @var array  $store
@@ -59,10 +60,41 @@ $hoursLabel = fn(string $key) => __($key) . ' (h)';
     <p class="form-hint"><?= __('sr_employee_scope_hint') ?></p>
     <?php endif; ?>
     <div class="form-row">
-        <div class="form-group">
+        <div class="form-group sr-period" id="sr-period"
+             data-calculate-url="<?= htmlspecialchars($BASE_URL . '/admin/stores/' . $storeId . '/reports/salary/calculate') ?>"
+             data-mode="<?= htmlspecialchars($mode) ?>"
+             data-user-id="<?= $employeeId ?>"
+             data-currency="<?= htmlspecialchars($currency) ?>"
+             data-currency-style="<?= htmlspecialchars(store_currency_style($store)) ?>">
             <label class="form-label"><?= __('sr_target_month') ?></label>
-            <input type="month" name="target_month" class="form-control"
-                   value="<?= $val('target_month') ?>" required>
+
+            <div class="btn-group btn-group--switcher mb-xs" style="--segments:2">
+                <span class="btn-group__thumb" style="--pos:0" aria-hidden="true"></span>
+                <button type="button" class="btn btn--ghost btn--sm btn--active" data-period-mode="month"><?= __('sr_period_month') ?></button>
+                <button type="button" class="btn btn--ghost btn--sm" data-period-mode="custom"><?= __('sr_period_custom') ?></button>
+            </div>
+
+            <div data-period-panel="month">
+                <input type="month" id="sr-period-month" class="form-control" value="<?= $val('target_month') ?>">
+            </div>
+            <div data-period-panel="custom" class="form-row" hidden>
+                <div class="form-group">
+                    <label class="form-label" for="sr-period-from"><?= __('sr_period_from') ?></label>
+                    <input type="date" id="sr-period-from" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="sr-period-to"><?= __('sr_period_to') ?></label>
+                    <input type="date" id="sr-period-to" class="form-control">
+                </div>
+            </div>
+
+            <input type="hidden" name="target_month" id="sr-target-month" value="<?= $val('target_month') ?>">
+
+            <div class="sr-period__actions">
+                <?= Button::make(__('sr_recalculate'))->ghost()->sm()->attrs(['type' => 'button', 'id' => 'sr-recalculate'])->render() ?>
+                <?= Button::make(__('sr_calc_detail'))->ghost()->sm()->attrs(['type' => 'button', 'id' => 'sr-calc-detail'])->render() ?>
+                <span id="sr-period-status" class="sr-period__status" aria-live="polite"></span>
+            </div>
         </div>
         <div class="form-group">
             <label class="form-label"><?= __('sr_person_in_charge') ?></label>
@@ -217,3 +249,27 @@ $hoursLabel = fn(string $key) => __($key) . ' (h)';
         <a href="<?= htmlspecialchars($BASE_URL . '/admin/stores/' . $storeId . '/reports/salary') ?>" class="btn btn--ghost"><?= __('cancel') ?></a>
     </div>
 </form>
+
+<?= Modal::make('sr-calc-detail-modal')->title(htmlspecialchars(__('sr_calc_detail_title')))->wide()->body(
+    '<div id="sr-calc-detail-body"></div>'
+)->render() ?>
+
+<script id="sr-i18n" type="application/json"><?= json_encode([
+    'recalculating'        => __('sr_recalculating'),
+    'calc_error'            => __('sr_calc_error'),
+    'confirm_recalculate'   => __('sr_confirm_recalculate'),
+    'gross_pay'             => __('gross_pay'),
+    'net_pay'               => __('net_pay'),
+    'total_deductions'      => __('total_deductions'),
+    'employee'              => __('employee'),
+    'hours'                 => __('hours'),
+    'amount'                => __('amount'),
+    'payslip_no_shift'      => __('payslip_no_shift'),
+    'monthly_fixed'         => __('monthly_fixed'),
+    'ded_health_insurance'  => __('ded_health_insurance'),
+    'ded_pension'           => __('ded_pension'),
+    'ded_employment_insurance' => __('ded_employment_insurance'),
+    'ded_income_tax'        => __('ded_income_tax'),
+    'ded_resident_tax'      => __('ded_resident_tax'),
+], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR) ?></script>
+<script src="<?= $BASE_URL ?>/assets/js/modules/salary-report-form.js"></script>
