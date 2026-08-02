@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace kintai\Bundles\StorePhoto\Controllers\Web;
 
 use kintai\UI\Controller\Web\HasAdminAccess;
+use kintai\Bundles\StorePhoto\Services\ImageCompressionService;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Repositories\StorePhotoRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
@@ -24,6 +25,7 @@ final class StorePhotoController
         private readonly StoreRepositoryInterface $stores,
         private readonly AppSettingsRepositoryInterface $appSettings,
         private readonly AuditLogger $auditLogger,
+        private readonly ImageCompressionService $imageCompressor,
     ) {}
 
     public function index(Request $request): Response
@@ -144,19 +146,18 @@ final class StorePhotoController
         $subDir    = $storeDir . $submissionId . '/';
         if (!is_dir($subDir)) { mkdir($subDir, 0775, true); }
 
-        $safe = 'photo_' . ($index + 1) . '.' . $ext;
-        $dest = $subDir . $safe;
-
-        if (!move_uploaded_file($file['tmp_name'], $dest)) {
-            return Response::json(['error' => 'Failed to save file'], 500);
+        $compressed = $this->imageCompressor->compress($file['tmp_name'], $subDir . 'photo_' . ($index + 1));
+        if ($compressed === null) {
+            return Response::json(['error' => 'File type not allowed'], 422);
         }
+        $safe = basename($compressed['path']);
 
         $this->photos->saveImage([
             'submission_id' => $submissionId,
             'filename'      => $file['name'],
             'filepath'      => 'storage/img/' . $storeId . '/' . $submissionId . '/' . $safe,
-            'filesize'      => filesize($dest),
-            'mime_type'     => $file['type'] ?? mime_content_type($dest) ?: 'image/jpeg',
+            'filesize'      => $compressed['size'],
+            'mime_type'     => $compressed['mime'],
             'sort_order'    => $index,
         ]);
 
@@ -209,19 +210,19 @@ final class StorePhotoController
             if (!empty($errs[$i]) || !is_uploaded_file($tmp)) continue;
             $ext = $this->safeImageExtension($names[$i] ?? '');
             if ($ext === null) continue;
-            $safe = 'photo_' . ($count + 1) . '.' . $ext;
-            $dest = $subDir . $safe;
-            if (move_uploaded_file($tmp, $dest)) {
-                $this->photos->saveImage([
-                    'submission_id' => $submissionId,
-                    'filename'      => $names[$i],
-                    'filepath'      => 'storage/img/' . $storeId . '/' . $submissionId . '/' . $safe,
-                    'filesize'      => filesize($dest),
-                    'mime_type'     => $types[$i] ?? mime_content_type($dest) ?: 'image/jpeg',
-                    'sort_order'    => $count,
-                ]);
-                $count++;
-            }
+
+            $compressed = $this->imageCompressor->compress($tmp, $subDir . 'photo_' . ($count + 1));
+            if ($compressed === null) continue;
+
+            $this->photos->saveImage([
+                'submission_id' => $submissionId,
+                'filename'      => $names[$i],
+                'filepath'      => 'storage/img/' . $storeId . '/' . $submissionId . '/' . basename($compressed['path']),
+                'filesize'      => $compressed['size'],
+                'mime_type'     => $compressed['mime'],
+                'sort_order'    => $count,
+            ]);
+            $count++;
         }
 
         $this->photos->saveSubmission([
