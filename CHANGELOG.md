@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Changed
+- First step of a visual redesign of the whole interface: the shared design tokens (`public/assets/css/variables.css`) and transverse components (buttons, cards, badges, alerts, tables, tabs, modals, forms) now use a new "Rail" palette (near-black structure, a single amber signal color reserved for primary actions/live status, tighter corner radii, headings set in a condensed display typeface) instead of the previous indigo theme. Both light and dark mode are updated. Page-by-page visual migration is planned as separate follow-up branches.
+
 ### Fixed
 - Salary report create/edit form (`/admin/stores/{id}/reports/salary/create|{rid}/edit`): amount fields (net payment, deductions, withholding/residence tax...) were plain `<input type="number">`, which can't render thousands separators, so autofilled/recalculated values showed as hard-to-read strings like `158269.64`. These fields now format with thousands separators directly in the input (`158,269.64`) while focused elsewhere, switch to the raw editable value on focus, and are converted back to a plain number right before the form submits.
 

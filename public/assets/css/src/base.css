@@ -107,9 +107,12 @@ img {
 }
 
 .sidebar-brand__name {
+    font-family: var(--font-display);
     font-size: var(--text-xl);
     font-weight: 700;
-    letter-spacing: -0.02em;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--color-accent);
 }
 
 .sidebar-brand__subtitle {
@@ -158,10 +161,13 @@ img {
     align-items: center;
     gap: var(--space-3);
     padding: var(--space-3) var(--space-5);
+    /* Liseré transparent par défaut : la pastille de statut du "quai"
+       n'apparaît qu'au survol/actif, pour ne pas surcharger la nav. */
+    border-left: 3px solid transparent;
     color: rgba(255, 255, 255, 0.7);
     text-decoration: none;
     font-size: var(--text-sm);
-    transition: background var(--duration-fast), color var(--duration-fast);
+    transition: background var(--duration-fast), color var(--duration-fast), border-color var(--duration-fast);
 }
 
 .sidebar-link__icon {
@@ -181,6 +187,10 @@ img {
     background: rgba(255, 255, 255, 0.08);
     color: #fff;
     text-decoration: none;
+}
+
+.sidebar-link.active {
+    border-left-color: var(--color-accent);
 }
 
 .sidebar-section {
@@ -254,6 +264,7 @@ img {
 }
 
 .page-header__title {
+    font-family: var(--font-display);
     font-size: var(--text-xl);
     font-weight: 700;
     color: var(--color-text);
@@ -290,8 +301,11 @@ img {
 }
 
 .guest-brand h1 {
+    font-family: var(--font-display);
     font-size: 2rem;
     font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
     color: var(--color-primary);
 }
 

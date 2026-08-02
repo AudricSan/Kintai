@@ -99,8 +99,8 @@
 }
 .docs-wiki__toc-link:hover { background: var(--color-bg); }
 .docs-wiki__toc-link--active {
-    background: var(--color-primary);
-    color: #fff;
+    background: var(--color-accent);
+    color: var(--color-accent-contrast);
     font-weight: 600;
 }
 .docs-wiki__toc-link--unavailable {

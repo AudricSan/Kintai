@@ -6,56 +6,68 @@
 
 :root {
     /* ── Couleurs primaires ──────────────────────── */
-    --color-primary:        #4f46e5;
-    --color-primary-hover:  #4338ca;
-    --color-primary-light:  #ede9fe;
-    --color-primary-lighter:#f5f3ff;
+    /* --color-primary : nuance foncée, lisible en TEXTE (liens, bordures,
+       icônes) sur fond clair. --color-accent : signal ambre vif réservé
+       aux remplissages pleins (bouton principal, présence en direct) —
+       toujours associé à --color-accent-contrast pour le texte dessus,
+       jamais à du blanc (l'ambre est trop clair pour ça). */
+    --color-primary:        #a8660c;
+    --color-primary-hover:  #8a5309;
+    --color-primary-light:  #fbe7c2;
+    --color-primary-lighter:#fdf3e1;
+
+    --color-accent:          #ffb020;
+    --color-accent-hover:    #ffc658;
+    --color-accent-contrast: #14161c;
 
     /* ── Couleurs sémantiques ────────────────────── */
-    --color-success:        #10b981;
-    --color-success-hover:  #059669;
-    --color-success-light:  #d1fae5;
-    --color-success-dark:   #065f46;
+    --color-success:        #1e9165;
+    --color-success-hover:  #167048;
+    --color-success-light:  #ddf0e6;
+    --color-success-dark:   #0f5c3c;
 
-    --color-warning:        #f59e0b;
-    --color-warning-hover:  #d97706;
-    --color-warning-light:  #fef3c7;
-    --color-warning-dark:   #92400e;
+    --color-warning:        #c2571a;
+    --color-warning-hover:  #a3480f;
+    --color-warning-light:  #f6e1d2;
+    --color-warning-dark:   #7a3009;
 
-    --color-danger:         #ef4444;
-    --color-danger-hover:   #dc2626;
-    --color-danger-light:   #fee2e2;
-    --color-danger-dark:    #991b1b;
+    --color-danger:         #d93a2b;
+    --color-danger-hover:   #b32e22;
+    --color-danger-light:   #fbe3e0;
+    --color-danger-dark:    #8c2419;
 
-    --color-info:           #3b82f6;
-    --color-info-light:     #dbeafe;
-    --color-info-dark:      #1e40af;
+    --color-info:           #3d6fb4;
+    --color-info-light:     #dde7f5;
+    --color-info-dark:      #274d82;
 
     /* ── Couleurs sémantiques étendues ──────────── */
-    --color-neutral:        #374151;   /* texte neutre (badges inactifs, états par défaut) */
-    --color-admin-text:     #5b21b6;   /* texte badge administrateur (violet foncé) */
-    --color-primary-medium: #ddd6fe;   /* primaire intermédiaire (hover btn--secondary) */
-    --color-success-border: #6ee7b7;   /* bordure alerte succès */
-    --color-danger-border:  #fca5a5;   /* bordure alerte danger */
-    --color-warning-border: #fcd34d;   /* bordure alerte avertissement & conflits */
-    --color-info-border:    #93c5fd;   /* bordure éléments informatifs */
-    --color-accent:         #4f8ef7;   /* accent complémentaire (propagation, highlights) */
+    --color-neutral:        #3a4150;   /* texte neutre (badges inactifs, états par défaut) */
+    --color-admin-text:     #5b3fa0;   /* texte badge administrateur (violet foncé) */
+    --color-primary-medium: #f3d493;   /* primaire intermédiaire (hover btn--secondary) */
+    --color-success-border: #7fcba6;   /* bordure alerte succès */
+    --color-danger-border:  #efa79c;   /* bordure alerte danger */
+    --color-warning-border: #e3a87d;   /* bordure alerte avertissement & conflits */
+    --color-info-border:    #9dbbe0;   /* bordure éléments informatifs */
 
     /* ── Couleurs neutres ────────────────────────── */
-    --color-text:           #1f2937;
-    --color-text-muted:     #6b7280;
-    --color-text-secondary: #9ca3af;
-    --color-border:         #e5e7eb;
-    --color-border-light:   #f3f4f6;
+    --color-text:           #14161c;
+    --color-text-muted:     #5b6270;
+    --color-text-secondary: #8a93a6;
+    --color-border:         #cbd1db;
+    --color-border-light:   #dee2e9;
 
-    --color-bg:             #f8f9fa;
-    --color-bg-alt:         #f1f5f9;
-    --color-bg-subtle:      #f4f6f8;
+    --color-bg:             #eaedf2;
+    --color-bg-alt:         #e1e5ec;
+    --color-bg-subtle:      #e4e8ee;
     --color-surface:        #ffffff;
-    --color-surface-alt:    #f9fafb;
+    --color-surface-alt:    #f2f4f7;
 
     /* ── Typographie ─────────────────────────────── */
     --font-sans:  -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    /* Titres/labels — signalétique horaire (gares, quais). Familles système
+       uniquement pour l'instant (pas de CDN) ; à remplacer par un webfont
+       auto-hébergé équivalent si la direction est confirmée en Phase 2. */
+    --font-display: 'Bahnschrift', 'Arial Narrow', 'Segoe UI', system-ui, sans-serif;
     --font-mono:  'SF Mono', 'Fira Code', 'Consolas', monospace;
 
     --text-2xs:   0.6875rem;   /* 11px — ultra-compact (badges, compteurs) */
@@ -80,27 +92,29 @@
     --space-12: 3rem;      /* 48px */
 
     /* ── Border radius ───────────────────────────── */
+    /* Angles plus nets que la version précédente — registre "signalétique
+       technique" plutôt qu'arrondi doux. */
     --radius-xs:   2px;        /* ultra-small (swatches, micro-éléments) */
-    --radius-sm:   0.25rem;   /* 4px  */
-    --radius:      0.5rem;    /* 8px  — défaut */
-    --radius-lg:   0.75rem;   /* 12px */
-    --radius-xl:   1rem;      /* 16px */
-    --radius-full: 9999px;    /* pill */
+    --radius-sm:   3px;
+    --radius:      5px;        /* défaut */
+    --radius-lg:   8px;
+    --radius-xl:   10px;
+    --radius-full: 9999px;    /* pill — conservé pour badges/switchers */
 
     /* ── Shadows ─────────────────────────────────── */
-    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
-    --shadow:    0 1px 3px rgba(0, 0, 0, 0.08);
-    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
-    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.10);
-    --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+    --shadow-xs: 0 1px 2px rgba(20, 22, 28, 0.06);
+    --shadow:    0 1px 3px rgba(20, 22, 28, 0.10);
+    --shadow-md: 0 3px 8px rgba(20, 22, 28, 0.10);
+    --shadow-lg: 0 8px 20px rgba(20, 22, 28, 0.14);
+    --shadow-xl: 0 16px 32px rgba(20, 22, 28, 0.18);
 
     /* ── Layout ──────────────────────────────────── */
     --sidebar-width:    240px;
     --topbar-height:    56px;
-    --color-sidebar-bg: #1f2937;
+    --color-sidebar-bg: #14161c;
 
     /* ── Overlays ─────────────────────────────────── */
-    --overlay-bg: rgba(0, 0, 0, .45);
+    --overlay-bg: rgba(10, 11, 14, .5);
 
     /* ── Transitions ─────────────────────────────── */
     --duration-fast:   150ms;
@@ -110,57 +124,60 @@
 /* ── Dark mode tokens (partagés par @media et [data-theme]) ──────────── */
 :root {
     /* ── Arrière-plans ──────────────────────────── */
-    --dark-bg:             #0f172a;   /* Slate 900 — fond principal */
-    --dark-bg-alt:         #131e2e;   /* Slate 875 — variante fond */
-    --dark-bg-subtle:      #1a2334;   /* Slate 850 — fond subtil */
-    --dark-surface:        #1e293b;   /* Slate 800 — surface carte */
-    --dark-surface-alt:    #253347;   /* Slate 780 — surface hover */
+    --dark-bg:             #12141a;   /* quai de nuit — fond principal */
+    --dark-bg-alt:         #181b22;
+    --dark-bg-subtle:      #15171e;
+    --dark-surface:        #1c1f27;
+    --dark-surface-alt:    #232732;
 
     /* ── Textes ─────────────────────────────────── */
-    --dark-text:           #f1f5f9;   /* Slate 100 */
-    --dark-text-muted:     #94a3b8;   /* Slate 400 */
-    --dark-text-secondary: #64748b;   /* Slate 500 */
+    --dark-text:           #e7e9ee;
+    --dark-text-muted:     #8991a3;
+    --dark-text-secondary: #6b7182;
 
     /* ── Bordures ───────────────────────────────── */
-    --dark-border:         #334155;   /* Slate 700 */
-    --dark-border-light:   #243147;   /* Slate 750 — bord léger distinct de surface */
+    --dark-border:         #2a2e38;
+    --dark-border-light:   #21242c;
 
     /* ── Couleurs sémantiques (adaptées fond sombre) ── */
-    --dark-primary:         #818cf8;   /* Indigo 400 — lisible sur sombre */
-    --dark-primary-hover:   #6366f1;   /* Indigo 500 */
-    --dark-primary-light:   rgba(129, 140, 248, 0.15);
-    --dark-primary-lighter: rgba(129, 140, 248, 0.08);
-    --dark-primary-medium:  #2d2b5e;   /* fond hover btn secondaire */
+    --dark-primary:         #e7a63a;   /* ambre lisible en texte sur fond sombre */
+    --dark-primary-hover:   #f0b85c;
+    --dark-primary-light:   rgba(231, 166, 58, 0.16);
+    --dark-primary-lighter: rgba(231, 166, 58, 0.08);
+    --dark-primary-medium:  rgba(231, 166, 58, 0.28);
 
-    --dark-success:         #4ade80;   /* Green 400 */
-    --dark-success-hover:   #22c55e;   /* Green 500 */
-    --dark-success-light:   rgba(74, 222, 128, 0.15);
-    --dark-success-dark:    #16a34a;   /* Green 600 */
-    --dark-success-border:  #34d399;   /* Emerald 400 */
+    --dark-accent:          #ffb020;   /* même signal qu'en clair — ne change pas avec le thème */
+    --dark-accent-hover:    #ffc658;
+    --dark-accent-contrast: #14161c;
 
-    --dark-warning:         #fbbf24;   /* Amber 400 */
-    --dark-warning-hover:   #f59e0b;   /* Amber 500 */
-    --dark-warning-light:   rgba(251, 191, 36, 0.15);
-    --dark-warning-dark:    #d97706;   /* Amber 600 */
-    --dark-warning-border:  #fbbf24;   /* Amber 400 */
+    --dark-success:         #3fc383;
+    --dark-success-hover:   #58d399;
+    --dark-success-light:   rgba(63, 195, 131, 0.16);
+    --dark-success-dark:    #8fe0b8;
+    --dark-success-border:  #3fc383;
 
-    --dark-danger:          #f87171;   /* Red 400 */
-    --dark-danger-hover:    #ef4444;   /* Red 500 */
-    --dark-danger-light:    rgba(248, 113, 113, 0.15);
-    --dark-danger-dark:     #dc2626;   /* Red 600 */
-    --dark-danger-border:   #f87171;   /* Red 400 */
+    --dark-warning:         #e8874a;
+    --dark-warning-hover:   #f09c68;
+    --dark-warning-light:   rgba(232, 135, 74, 0.16);
+    --dark-warning-dark:    #f0a87a;
+    --dark-warning-border:  #e8874a;
 
-    --dark-info:            #60a5fa;   /* Blue 400 */
-    --dark-info-light:      rgba(96, 165, 250, 0.15);
-    --dark-info-dark:       #3b82f6;   /* Blue 500 */
-    --dark-info-border:     #60a5fa;   /* Blue 400 */
+    --dark-danger:          #ff6b57;
+    --dark-danger-hover:    #ff8670;
+    --dark-danger-light:    rgba(255, 107, 87, 0.16);
+    --dark-danger-dark:     #ffa190;
+    --dark-danger-border:   #ff6b57;
 
-    --dark-accent:         #60a5fa;   /* Blue 400 */
-    --dark-neutral:        #94a3b8;   /* Slate 400 */
-    --dark-admin-text:     #c4b5fd;   /* Violet 300 */
+    --dark-info:            #6a9bdb;
+    --dark-info-light:      rgba(106, 155, 219, 0.16);
+    --dark-info-dark:       #a7c4ea;
+    --dark-info-border:     #6a9bdb;
+
+    --dark-neutral:         #8991a3;
+    --dark-admin-text:      #b09ce0;
 
     /* ── Sidebar ────────────────────────────────── */
-    --dark-sidebar-bg:     #0c1220;   /* légèrement plus sombre que bg */
+    --dark-sidebar-bg:     #0b0c10;   /* toujours quasi-noire, clair ou sombre */
 
     /* ── Ombres ─────────────────────────────────── */
     --dark-shadow:    0 1px 3px rgba(0, 0, 0, 0.40);
@@ -187,6 +204,8 @@
         --color-primary-light:   var(--dark-primary-light);
         --color-primary-lighter: var(--dark-primary-lighter);
         --color-primary-medium:  var(--dark-primary-medium);
+        --color-accent-hover:    var(--dark-accent-hover);
+        --color-accent-contrast: var(--dark-accent-contrast);
         --color-success:         var(--dark-success);
         --color-success-hover:   var(--dark-success-hover);
         --color-success-light:   var(--dark-success-light);
@@ -234,6 +253,8 @@ html[data-theme="dark"] {
     --color-primary-light:   var(--dark-primary-light);
     --color-primary-lighter: var(--dark-primary-lighter);
     --color-primary-medium:  var(--dark-primary-medium);
+    --color-accent-hover:    var(--dark-accent-hover);
+    --color-accent-contrast: var(--dark-accent-contrast);
     --color-success:         var(--dark-success);
     --color-success-hover:   var(--dark-success-hover);
     --color-success-light:   var(--dark-success-light);
@@ -265,48 +286,50 @@ html[data-theme="dark"] {
 
 /* Override manuel — clair forcé (annule le @media dark) */
 html[data-theme="light"] {
-    --color-bg:              #f8f9fa;
-    --color-bg-alt:          #f1f5f9;
-    --color-bg-subtle:       #f4f6f8;
+    --color-bg:              #eaedf2;
+    --color-bg-alt:          #e1e5ec;
+    --color-bg-subtle:       #e4e8ee;
     --color-surface:         #ffffff;
-    --color-surface-alt:     #f9fafb;
-    --color-text:            #1f2937;
-    --color-text-muted:      #6b7280;
-    --color-text-secondary:  #9ca3af;
-    --color-border:          #e5e7eb;
-    --color-border-light:    #f3f4f6;
-    --color-primary:         #4f46e5;
-    --color-primary-hover:   #4338ca;
-    --color-primary-light:   #ede9fe;
-    --color-primary-lighter: #f5f3ff;
-    --color-primary-medium:  #ddd6fe;
-    --color-success:         #10b981;
-    --color-success-hover:   #059669;
-    --color-success-light:   #d1fae5;
-    --color-success-dark:    #065f46;
-    --color-success-border:  #6ee7b7;
-    --color-warning:         #f59e0b;
-    --color-warning-hover:   #d97706;
-    --color-warning-light:   #fef3c7;
-    --color-warning-dark:    #92400e;
-    --color-warning-border:  #fcd34d;
-    --color-danger:          #ef4444;
-    --color-danger-hover:    #dc2626;
-    --color-danger-light:    #fee2e2;
-    --color-danger-dark:     #991b1b;
-    --color-danger-border:   #fca5a5;
-    --color-info:            #3b82f6;
-    --color-info-light:      #dbeafe;
-    --color-info-dark:       #1e40af;
-    --color-info-border:     #93c5fd;
-    --color-accent:          #4f8ef7;
-    --color-neutral:         #374151;
-    --color-admin-text:      #5b21b6;
-    --color-sidebar-bg:      #1f2937;
-    --shadow:    0 1px 3px rgba(0, 0, 0, 0.08);
-    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
-    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.10);
-    --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+    --color-surface-alt:     #f2f4f7;
+    --color-text:            #14161c;
+    --color-text-muted:      #5b6270;
+    --color-text-secondary:  #8a93a6;
+    --color-border:          #cbd1db;
+    --color-border-light:    #dee2e9;
+    --color-primary:         #a8660c;
+    --color-primary-hover:   #8a5309;
+    --color-primary-light:   #fbe7c2;
+    --color-primary-lighter: #fdf3e1;
+    --color-primary-medium:  #f3d493;
+    --color-accent-hover:    #ffc658;
+    --color-accent-contrast: #14161c;
+    --color-success:         #1e9165;
+    --color-success-hover:   #167048;
+    --color-success-light:   #ddf0e6;
+    --color-success-dark:    #0f5c3c;
+    --color-success-border:  #7fcba6;
+    --color-warning:         #c2571a;
+    --color-warning-hover:   #a3480f;
+    --color-warning-light:   #f6e1d2;
+    --color-warning-dark:    #7a3009;
+    --color-warning-border:  #e3a87d;
+    --color-danger:          #d93a2b;
+    --color-danger-hover:    #b32e22;
+    --color-danger-light:    #fbe3e0;
+    --color-danger-dark:     #8c2419;
+    --color-danger-border:   #efa79c;
+    --color-info:            #3d6fb4;
+    --color-info-light:      #dde7f5;
+    --color-info-dark:       #274d82;
+    --color-info-border:     #9dbbe0;
+    --color-accent:          #ffb020;
+    --color-neutral:         #3a4150;
+    --color-admin-text:      #5b3fa0;
+    --color-sidebar-bg:      #14161c;
+    --shadow:    0 1px 3px rgba(20, 22, 28, 0.10);
+    --shadow-md: 0 3px 8px rgba(20, 22, 28, 0.10);
+    --shadow-lg: 0 8px 20px rgba(20, 22, 28, 0.14);
+    --shadow-xl: 0 16px 32px rgba(20, 22, 28, 0.18);
 }
 
 @media (prefers-reduced-motion: reduce) {

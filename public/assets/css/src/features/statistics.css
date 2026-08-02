@@ -159,7 +159,7 @@
 .sstat-progress-bar {
     height: 100%;
     border-radius: var(--radius-xs);
-    background: var(--color-primary);
+    background: var(--color-accent);
 }
 
 .sstat-two {
@@ -187,9 +187,9 @@
 
 .sstat-period-nav a.active,
 .sstat-period-nav a:hover {
-    background: var(--color-primary);
-    color: var(--color-surface);
-    border-color: var(--color-primary);
+    background: var(--color-accent);
+    color: var(--color-accent-contrast);
+    border-color: var(--color-accent);
     text-decoration: none;
 }
 

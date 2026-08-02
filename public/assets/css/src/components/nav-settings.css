@@ -133,9 +133,9 @@
 }
 
 .nav-order-btn:hover {
-    background: var(--color-primary);
-    color: #fff;
-    border-color: var(--color-primary);
+    background: var(--color-accent);
+    color: var(--color-accent-contrast);
+    border-color: var(--color-accent);
 }
 
 @media (pointer: coarse) {
