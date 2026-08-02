@@ -59,7 +59,10 @@ final class StorePhotoController
     {
         $managedIds = $this->managedIds($request);
         $storeId    = (int) ($request->query('store_id') ?: 0);
-        $myStores   = $this->availableStores($managedIds);
+        $myStores   = array_values(array_filter(
+            $this->availableStores($managedIds),
+            fn($s) => $this->isPhotosFeatureEnabled((int) $s['id'])
+        ));
         $storeNames = $this->buildStoresMap($managedIds);
 
         if ($managedIds !== null && $storeId > 0) {
@@ -177,10 +180,15 @@ final class StorePhotoController
      */
     private function assertPhotosFeatureEnabled(int $storeId): void
     {
-        $features = $this->stores->getFeatures($storeId);
-        if ($features !== [] && !in_array('photos', $features, true)) {
+        if (!$this->isPhotosFeatureEnabled($storeId)) {
             throw new ForbiddenException("La fonctionnalité Photos n'est pas activée pour ce magasin.");
         }
+    }
+
+    private function isPhotosFeatureEnabled(int $storeId): bool
+    {
+        $features = $this->stores->getFeatures($storeId);
+        return $features === [] || in_array('photos', $features, true);
     }
 
     /**

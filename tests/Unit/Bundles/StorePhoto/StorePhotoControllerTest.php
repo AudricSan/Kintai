@@ -28,6 +28,7 @@ final class StorePhotoControllerTest extends TestCase
         $viewDir = sys_get_temp_dir() . '/kintai-store-photos-views';
         $this->ensureViewFile($viewDir, 'store-photos');
         $this->ensureViewFile($viewDir, 'store-photos-settings');
+        $this->ensureViewFile($viewDir, 'store-photos-form');
         $this->ensureViewFile(sys_get_temp_dir(), 'layout.app');
 
         $view = new ViewRenderer(sys_get_temp_dir());
@@ -99,6 +100,32 @@ final class StorePhotoControllerTest extends TestCase
 
         $this->expectException(ForbiddenException::class);
         $this->controller->create($req);
+    }
+
+    public function testCreateDropdownOnlyListsStoresWithPhotosFeatureEnabled(): void
+    {
+        // Le dropdown ne doit pas proposer un store où l'envoi serait ensuite
+        // refusé (403) par store() faute de fonctionnalité "photos" activée.
+        $viewDir = sys_get_temp_dir() . '/kintai-store-photos-views';
+        file_put_contents($viewDir . DIRECTORY_SEPARATOR . 'store-photos-form.php', '<?php echo json_encode($myStores);');
+        file_put_contents(sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'layout' . DIRECTORY_SEPARATOR . 'app.php', '<?php echo $content;');
+
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+
+        $this->stores->method('findAll')->willReturn([
+            ['id' => 1, 'name' => 'Store A'],
+            ['id' => 2, 'name' => 'Store B'],
+        ]);
+        $this->stores->method('getFeatures')->willReturnMap([
+            [1, ['photos']],
+            [2, ['shifts']],
+        ]);
+
+        $response = $this->controller->create($req);
+
+        $listed = json_decode($response->body(), true);
+        $this->assertSame([1], array_column($listed, 'id'));
     }
 
     public function testStoreWithoutStoreIdRedirectsToCreate(): void
