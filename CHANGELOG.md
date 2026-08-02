@@ -6,6 +6,8 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-08-02
+
 ### Added
 - Stores can now choose how the yen displays when their currency is JPY: kanji (円, the historical default) or the international symbol (¥), via a new "Yen symbol style" setting on the store form (`/admin/stores/{id}/edit`).
 - Salary report create/edit form (`/admin/stores/{id}/reports/salary/create|{rid}/edit`) now lets you pick either a calendar month or a custom date range instead of a fixed month picker, and automatically recalculates hours, pay and deductions from shifts whenever the period changes, via a new `GET .../reports/salary/calculate` endpoint — previously the financial summary was only computed once, when the page first loaded, and never updated after that. A "View calculation detail" button shows the breakdown (per-employee hours/cost, or shift-by-shift for an employee-scoped report, plus the deduction rates applied) behind the recalculated figures. In edit mode, recalculating asks for confirmation before overwriting values already saved on the report.
