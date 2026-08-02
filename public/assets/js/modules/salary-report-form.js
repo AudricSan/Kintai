@@ -48,6 +48,45 @@
         'active_employees', 'employee_work_hours',
     ];
 
+    /* ── Champs montant : un <input type="number"> ne peut pas afficher de
+       séparateur de milliers, ce qui rendait les gros montants illisibles
+       (ex. "158269.64"). Ces champs sont donc des <input type="text"> formatés
+       en direct ("158,269.64"), avec la valeur brute affichée pendant la
+       saisie (focus) pour rester éditables normalement, et reconverties en
+       nombre simple juste avant l'envoi du formulaire. ── */
+    var moneyInputs = form ? form.querySelectorAll('.js-money-input') : [];
+
+    function parseMoneyValue(raw) {
+        var n = parseFloat(String(raw || '').replace(/,/g, ''));
+        return isNaN(n) ? 0 : n;
+    }
+
+    function formatMoneyInput(input) {
+        input.value = parseMoneyValue(input.value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function formatAllMoneyInputs() {
+        moneyInputs.forEach(formatMoneyInput);
+    }
+
+    moneyInputs.forEach(function (input) {
+        formatMoneyInput(input);
+        input.addEventListener('focus', function () {
+            input.value = String(parseMoneyValue(input.value));
+        });
+        input.addEventListener('blur', function () {
+            formatMoneyInput(input);
+        });
+    });
+
+    if (form) {
+        form.addEventListener('submit', function () {
+            moneyInputs.forEach(function (input) {
+                input.value = String(parseMoneyValue(input.value));
+            });
+        });
+    }
+
     /* ── Devise : mirroir minimal de src/helpers.php format_currency()/currency_symbol(),
        nécessaire côté client pour afficher la modale de détail sans aller-retour serveur. ── */
     function currencySymbol(cur, style) {
@@ -168,6 +207,7 @@
             .then(function (data) {
                 if (thisRequestId !== requestId) return;
                 applyPreset(data.preset || {});
+                formatAllMoneyInputs();
                 setStatus('', false);
             })
             .catch(function () {
