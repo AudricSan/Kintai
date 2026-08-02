@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Fixed
+- Salary report create/edit form (`/admin/stores/{id}/reports/salary/create|{rid}/edit`): amount fields (net payment, deductions, withholding/residence tax...) are plain `<input type="number">`, which can't render thousands separators, so autofilled/recalculated values showed as hard-to-read strings like `158269.64`. Each amount field now shows a formatted preview (e.g. `158,270円`) below it, kept in sync as you type and after every recalculation.
+
 ## [0.9.0] - 2026-08-02
 
 ### Added
