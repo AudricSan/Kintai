@@ -8,13 +8,16 @@ All notable changes to Kintai are documented here.
 
 ### Added
 - Stores can now choose how the yen displays when their currency is JPY: kanji (円, the historical default) or the international symbol (¥), via a new "Yen symbol style" setting on the store form (`/admin/stores/{id}/edit`).
+- Salary report create/edit form (`/admin/stores/{id}/reports/salary/create|{rid}/edit`) now lets you pick either a calendar month or a custom date range instead of a fixed month picker, and automatically recalculates hours, pay and deductions from shifts whenever the period changes, via a new `GET .../reports/salary/calculate` endpoint — previously the financial summary was only computed once, when the page first loaded, and never updated after that. A "View calculation detail" button shows the breakdown (per-employee hours/cost, or shift-by-shift for an employee-scoped report, plus the deduction rates applied) behind the recalculated figures. In edit mode, recalculating asks for confirmation before overwriting values already saved on the report.
 
 ### Changed
 - Currency amounts across the app (dashboard, sidebar widget, shift timeline, salary reports, daily reports, store stats/profitability, CSV exports) now consistently render as a symbol (€, $, £, ¥/円, ₩...) instead of the raw ISO code, and respect each store's own currency and yen-symbol-style setting instead of a hardcoded default.
+- Employee-scoped salary reports (create/edit form, detail view, PDF) no longer show the "Total payment" field/row or the "Staff movements" section (new hires, resigned staff, hire registrations) — both are store-wide figures that don't apply to a single employee's report.
 
 ### Fixed
 - The "all stores" salary reports list (`/admin/reports/salary`) always formatted amounts as JPY regardless of each report's actual store currency.
 - `/admin/stores/{id}/stats` computed cost figures with `number_format()` + a raw currency-code suffix instead of `format_currency()`, so JPY stores incorrectly showed 2 decimals instead of 0.
+- The salary report's shift-detail table (`.../reports/salary/{id}` and its PDF) displayed the hourly rate suffixed with the raw currency code ("1,200.00 JPY") instead of the store's configured symbol (円/¥), inconsistent with every other amount on the same page.
 
 ## [0.8.3] - 2026-07-25
 

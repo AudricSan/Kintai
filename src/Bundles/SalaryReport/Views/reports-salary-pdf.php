@@ -83,10 +83,12 @@ th { background: #f0f0f0; font-weight: 600; }
 <!-.- Résumé financier -->
 <h2><?= __('sr_section_financial') ?></h2>
 <table>
+    <?php if (!$isEmployeeScoped): ?>
     <tr>
         <th style="width:50%"><?= __('sr_total_payment') ?></th>
         <td class="tr td-mono"><?= $cur($report['total_payment'] ?? null) ?></td>
     </tr>
+    <?php endif; ?>
     <tr>
         <th><?= __('sr_total_deductions') ?></th>
         <td class="tr td-mono"><?= $cur($report['total_deductions'] ?? null) ?></td>
@@ -197,7 +199,7 @@ th { background: #f0f0f0; font-weight: 600; }
         <td class="tr td-mono"><?= $row['pause_min'] > 0 ? $row['pause_min'] . ' min' : '—' ?></td>
         <td class="tr td-mono"><?= payslip_hours($row['net_min']) ?></td>
         <?php if ($anyRate): ?>
-        <td class="tr td-mono"><?= $row['has_rate'] ? number_format($row['rate'], 2) . ' ' . $currency : '—' ?></td>
+        <td class="tr td-mono"><?= $row['has_rate'] ? number_format($row['rate'], 2) . ' ' . currency_symbol($currency, $currencyStyle) : '—' ?></td>
         <td class="tr td-mono"><?= $row['has_rate'] ? format_currency($row['cost'], $currency, $currencyStyle) : '—' ?></td>
         <?php endif; ?>
     </tr>
