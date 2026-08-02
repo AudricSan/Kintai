@@ -11,17 +11,13 @@ use kintai\UI\Components\Modal;
  * @var string      $updateChannel
  * @var array       $pendingMigs
  * @var int|null    $lastUpdateDurationSeconds
- * @var array       $releaseHistory
+ * @var string      $releaseNotesCondensed
  * @var string      $repoReleasesUrl
  * @var string      $BASE_URL
  */
 
-/** Aperçu texte brut des notes de version (markdown non interprété), tronqué pour le résumé. */
-$notesSummary = trim((string) ($updateInfo['release_notes'] ?? ''));
-$notesTruncated = mb_strlen($notesSummary) > 320;
-if ($notesTruncated) {
-    $notesSummary = mb_substr($notesSummary, 0, 320) . '…';
-}
+/** Notes de la dernière release, condensées à 1 point par catégorie côté contrôleur, rendues depuis le Markdown (titres, listes). */
+$notesSummary = trim($releaseNotesCondensed);
 
 $action = route_url('admin.update');
 $channelAction = route_url('admin.update.channel');
@@ -99,17 +95,17 @@ ob_start();
 <?php endif; ?>
 <?php echo Card::make()->header(__('backup_instance_version'))->body(ob_get_clean())->render(); ?>
 
-<?php if ($notesSummary !== '' || $releaseHistory !== []): ?>
+<?php if ($updateInfo !== null): ?>
     <?php
     ob_start();
     ?>
     <?php if ($notesSummary !== ''): ?>
-        <p class="update-notes-summary"><?= htmlspecialchars($notesSummary) ?></p>
+        <div class="update-notes-content update-notes-summary"><?= render_markdown($notesSummary) ?></div>
     <?php else: ?>
         <p class="text-muted"><?= __('update_notes_empty') ?></p>
     <?php endif; ?>
     <p class="btn-group mt-sm">
-        <?php if ($releaseHistory !== []): ?>
+        <?php if ($notesSummary !== ''): ?>
             <?= Button::make(__('update_notes_view_more'))->sm()->outline()->attrs(['onclick' => "openModal('update-notes-modal')"])->render() ?>
         <?php endif; ?>
         <?= Button::make(__('update_notes_github_btn'))->sm()->ghost()->link($repoReleasesUrl)->attrs(['target' => '_blank', 'rel' => 'noopener'])->render() ?>
@@ -119,29 +115,23 @@ ob_start();
     ?>
 <?php endif; ?>
 
-<?php if ($releaseHistory !== []): ?>
+<?php if ($updateInfo !== null && $notesSummary !== ''): ?>
     <?php
     ob_start();
-    foreach ($releaseHistory as $release):
-        $itemNotes = trim((string) $release['release_notes']);
-        ?>
-        <div class="update-notes-item">
-            <div class="update-notes-item-header">
-                <span class="update-notes-item-version">v<?= htmlspecialchars($release['version']) ?></span>
-                <?php if ($release['published_at']): ?>
-                    <span class="update-notes-item-date"><?= htmlspecialchars(date('d/m/Y', strtotime($release['published_at']))) ?></span>
-                <?php endif; ?>
-            </div>
-            <?php if ($itemNotes !== ''): ?>
-                <p class="update-notes-item-body"><?= htmlspecialchars($itemNotes) ?></p>
-            <?php else: ?>
-                <p class="update-notes-item-body text-muted"><?= __('update_notes_empty') ?></p>
-            <?php endif; ?>
-            <?php if ($release['release_url']): ?>
-                <a href="<?= htmlspecialchars($release['release_url']) ?>" target="_blank" rel="noopener"><?= __('backup_release_notes') ?></a>
+    ?>
+    <div class="update-notes-item">
+        <div class="update-notes-item-header">
+            <span class="update-notes-item-version">v<?= htmlspecialchars($updateInfo['latest_version']) ?></span>
+            <?php if ($updateInfo['published_at']): ?>
+                <span class="update-notes-item-date"><?= htmlspecialchars(date('d/m/Y', strtotime($updateInfo['published_at']))) ?></span>
             <?php endif; ?>
         </div>
-    <?php endforeach;
+        <div class="update-notes-content update-notes-item-body"><?= render_markdown($notesSummary) ?></div>
+        <?php if ($updateInfo['release_url']): ?>
+            <a href="<?= htmlspecialchars($updateInfo['release_url']) ?>" target="_blank" rel="noopener"><?= __('backup_release_notes') ?></a>
+        <?php endif; ?>
+    </div>
+    <?php
     $notesModalBody = ob_get_clean();
 
     $notesModalFooter = Button::make(__('update_notes_github_btn'))->outline()->link($repoReleasesUrl)->attrs(['target' => '_blank', 'rel' => 'noopener'])->render();

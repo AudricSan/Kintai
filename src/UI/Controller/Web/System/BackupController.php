@@ -60,6 +60,9 @@ final class BackupController
         $flash = $request->query('success', '');
 
         $updateInfo = $this->githubUpdate->checkLatestRelease();
+        $releaseNotesCondensed = $updateInfo !== null
+            ? $this->githubUpdate->condenseReleaseNotes((string) $updateInfo['release_notes'])
+            : '';
 
         return Response::html($this->view->render('system.update', [
             'title'                     => 'Mises à jour',
@@ -69,7 +72,7 @@ final class BackupController
             'updateChannel'             => $this->settings->updateChannel(),
             'pendingMigs'               => $this->update->getPendingMigrations(),
             'lastUpdateDurationSeconds' => $this->update->getLastUpdateDuration(),
-            'releaseHistory'            => $this->githubUpdate->getReleaseHistory(),
+            'releaseNotesCondensed'     => $releaseNotesCondensed,
             'repoReleasesUrl'           => $this->githubUpdate->getRepoReleasesUrl(),
             'flash'                     => $flash,
         ], 'layout.app'));
