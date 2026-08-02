@@ -48,6 +48,27 @@
         'active_employees', 'employee_work_hours',
     ];
 
+    /* ── Aperçus formatés (milliers séparés) sous les champs montant : un
+       <input type="number"> ne peut pas afficher de séparateur de milliers
+       nativement, donc on montre un rendu formatté à côté, tenu à jour à la
+       saisie et après chaque recalcul. ── */
+    var moneyPreviews = form ? form.querySelectorAll('[data-money-preview]') : [];
+
+    function updateMoneyPreview(el) {
+        var input = form.querySelector('[name="' + el.dataset.moneyPreview + '"]');
+        if (!input) return;
+        el.textContent = formatCurrency(input.value, currency, currencyStyle) + (el.dataset.moneyPreviewSuffix || '');
+    }
+
+    function updateAllMoneyPreviews() {
+        moneyPreviews.forEach(updateMoneyPreview);
+    }
+
+    moneyPreviews.forEach(function (el) {
+        var input = form.querySelector('[name="' + el.dataset.moneyPreview + '"]');
+        if (input) input.addEventListener('input', function () { updateMoneyPreview(el); });
+    });
+
     /* ── Devise : mirroir minimal de src/helpers.php format_currency()/currency_symbol(),
        nécessaire côté client pour afficher la modale de détail sans aller-retour serveur. ── */
     function currencySymbol(cur, style) {
@@ -168,6 +189,7 @@
             .then(function (data) {
                 if (thisRequestId !== requestId) return;
                 applyPreset(data.preset || {});
+                updateAllMoneyPreviews();
                 setStatus('', false);
             })
             .catch(function () {
