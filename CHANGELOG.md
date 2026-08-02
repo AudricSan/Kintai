@@ -12,6 +12,7 @@ All notable changes to Kintai are documented here.
 
 ### Changed
 - Currency amounts across the app (dashboard, sidebar widget, shift timeline, salary reports, daily reports, store stats/profitability, CSV exports) now consistently render as a symbol (€, $, £, ¥/円, ₩...) instead of the raw ISO code, and respect each store's own currency and yen-symbol-style setting instead of a hardcoded default.
+- Employee-scoped salary reports (create/edit form, detail view, PDF) no longer show the "Total payment" field/row or the "Staff movements" section (new hires, resigned staff, hire registrations) — both are store-wide figures that don't apply to a single employee's report.
 
 ### Fixed
 - The "all stores" salary reports list (`/admin/reports/salary`) always formatted amounts as JPY regardless of each report's actual store currency.

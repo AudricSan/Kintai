@@ -83,10 +83,12 @@ th { background: #f0f0f0; font-weight: 600; }
 <!-.- Résumé financier -->
 <h2><?= __('sr_section_financial') ?></h2>
 <table>
+    <?php if (!$isEmployeeScoped): ?>
     <tr>
         <th style="width:50%"><?= __('sr_total_payment') ?></th>
         <td class="tr td-mono"><?= $cur($report['total_payment'] ?? null) ?></td>
     </tr>
+    <?php endif; ?>
     <tr>
         <th><?= __('sr_total_deductions') ?></th>
         <td class="tr td-mono"><?= $cur($report['total_deductions'] ?? null) ?></td>

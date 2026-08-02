@@ -52,6 +52,8 @@ $hoursLabel = fn(string $key) => __($key) . ' (h)';
     <input type="hidden" name="active_employees" value="<?= $val('active_employees', '0') ?>">
     <input type="hidden" name="new_hires" value="<?= $val('new_hires', '0') ?>">
     <input type="hidden" name="resigned_staff" value="<?= $val('resigned_staff', '0') ?>">
+    <input type="hidden" name="total_payment" value="<?= $val('total_payment', '0') ?>">
+    <input type="hidden" name="hire_registrations" value="<?= $val('hire_registrations') ?>">
     <?php endif; ?>
 
     <?php
@@ -115,11 +117,13 @@ $hoursLabel = fn(string $key) => __($key) . ' (h)';
 
     <?php ob_start(); ?>
     <div class="form-row">
+        <?php if (!$isEmployeeScoped): ?>
         <div class="form-group">
             <label class="form-label"><?= $moneyLabel('sr_total_payment') ?></label>
             <input type="number" name="total_payment" class="form-control"
                    step="0.01" min="0" value="<?= $val('total_payment', '0') ?>">
         </div>
+        <?php endif; ?>
         <div class="form-group">
             <label class="form-label"><?= $moneyLabel('sr_net_payment') ?></label>
             <input type="number" name="net_payment" class="form-control"
@@ -210,8 +214,8 @@ $hoursLabel = fn(string $key) => __($key) . ' (h)';
         <textarea name="employee_work_hours" class="form-control" rows="3"><?= $val('employee_work_hours') ?></textarea>
     </div>
 
-    <h4 class="section-subtitle"><?= __('sr_section_hr_movements') ?></h4>
     <?php if (!$isEmployeeScoped): ?>
+    <h4 class="section-subtitle"><?= __('sr_section_hr_movements') ?></h4>
     <div class="form-row">
         <div class="form-group">
             <label class="form-label"><?= __('sr_new_hires') ?></label>
@@ -224,11 +228,11 @@ $hoursLabel = fn(string $key) => __($key) . ' (h)';
                    step="1" min="0" value="<?= $val('resigned_staff', '0') ?>">
         </div>
     </div>
-    <?php endif; ?>
     <div class="form-group">
         <label class="form-label"><?= __('sr_hire_registrations') ?></label>
         <textarea name="hire_registrations" class="form-control" rows="3"><?= $val('hire_registrations') ?></textarea>
     </div>
+    <?php endif; ?>
     <?php
     $staffBody = ob_get_clean();
     echo Card::make()->header(__('sr_section_staff'))->body($staffBody)->render();

@@ -48,4 +48,23 @@ final class SalaryReportShowViewTest extends TestCase
         $this->assertStringContainsString('1,200.00 ¥', $html);
         $this->assertStringNotContainsString('1,200.00 円', $html);
     }
+
+    public function testTotalPaymentRowHiddenForEmployeeScopedReport(): void
+    {
+        // Fixture par défaut : report['user_id'] = 7 (rapport par employé) — le total
+        // des ventes du magasin n'a pas de sens pour le salaire d'un seul employé.
+        $html = $this->renderShow(['id' => 1, 'name' => 'Store A', 'currency' => 'JPY']);
+
+        $this->assertStringNotContainsString('sr_total_payment', $html);
+    }
+
+    public function testTotalPaymentRowShownForStoreWideReport(): void
+    {
+        $html = $this->renderShow(['id' => 1, 'name' => 'Store A', 'currency' => 'JPY'], [
+            'report' => ['id' => 30, 'store_id' => 1, 'target_month' => '2026-08', 'total_payment' => 12345],
+            'shiftRows' => null,
+        ]);
+
+        $this->assertStringContainsString('sr_total_payment', $html);
+    }
 }

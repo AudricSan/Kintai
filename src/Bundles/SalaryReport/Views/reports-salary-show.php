@@ -60,7 +60,9 @@ ob_start();
 ob_start();
 ?>
 <table class="detail-table">
+    <?php if (!$isEmployeeScoped): ?>
     <tr><th><?= __('sr_total_payment') ?></th><td class="td-mono"><?= $cur($report['total_payment'] ?? null) ?></td></tr>
+    <?php endif; ?>
     <tr><th><?= __('sr_total_deductions') ?></th><td class="td-mono"><?= $cur($report['total_deductions'] ?? null) ?></td></tr>
     <tr><th><?= __('sr_income_tax_base') ?></th><td class="td-mono"><?= $cur($report['income_tax_base'] ?? null) ?></td></tr>
     <tr><th><?= __('sr_withholding_tax') ?></th><td class="td-mono"><?= $cur($report['withholding_tax'] ?? null) ?></td></tr>
