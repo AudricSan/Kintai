@@ -393,6 +393,17 @@ select.form-control {
     height: 22px;
 }
 
+/* Variante avec libellé accolé (ex. "Afficher les inactifs" dans l'en-tête
+   d'une carte) : la piste garde sa taille fixe, le conteneur s'étire. */
+.form-toggle--labeled {
+    width: auto;
+    height: auto;
+    gap: var(--space-2);
+    margin-left: auto;
+    font-size: var(--text-sm);
+    color: var(--color-text);
+}
+
 .form-toggle__input {
     position: absolute;
     opacity: 0;
