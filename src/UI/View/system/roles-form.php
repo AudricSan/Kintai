@@ -7,7 +7,7 @@ use kintai\UI\Components\Flash;
 /** @var array  $permission_categories Catégorie => [actions] (PermissionCatalog::CATEGORIES) */
 /** @var array  $action_label_keys    Action => clé de traduction */
 /** @var array  $granted_permissions  Clés de permission déjà accordées (mode edit) */
-/** @var array  $holders              ['assignment_id','user_name','scope_label'][] (mode edit) */
+/** @var array  $holders              ['assignment_id','user_name','initials','color','scope_label'][] (mode edit) */
 $mode ??= 'create';
 $isSystem = !empty($role['is_system']);
 
@@ -46,15 +46,7 @@ echo Flash::fromQuery('error', [
     <div class="card card--mb">
         <div class="card-body">
             <h4 class="section-title"><?= __('role_holders') ?> <span class="page-count">(<?= count($holders) ?>)</span></h4>
-            <?php if (empty($holders)): ?>
-                <p class="form-hint"><?= __('none') ?></p>
-            <?php else: ?>
-                <ul class="role-holders-list">
-                    <?php foreach ($holders as $h): ?>
-                        <li><?= htmlspecialchars($h['user_name']) ?> — <span class="text-sm-muted"><?= htmlspecialchars($h['scope_label']) ?></span></li>
-                    <?php endforeach; ?>
-                </ul>
-            <?php endif; ?>
+            <?php include __DIR__ . '/../_partials/_role-holders-list.php'; ?>
         </div>
     </div>
     <?php else: ?>
@@ -83,15 +75,7 @@ echo Flash::fromQuery('error', [
         <div class="card rf-holders">
             <div class="card-body">
                 <h4 class="section-title"><?= __('role_holders') ?> <span class="page-count">(<?= count($holders) ?>)</span></h4>
-                <?php if (empty($holders)): ?>
-                    <p class="form-hint"><?= __('none') ?></p>
-                <?php else: ?>
-                    <ul class="role-holders-list">
-                        <?php foreach ($holders as $h): ?>
-                            <li><?= htmlspecialchars($h['user_name']) ?> — <span class="text-sm-muted"><?= htmlspecialchars($h['scope_label']) ?></span></li>
-                        <?php endforeach; ?>
-                    </ul>
-                <?php endif; ?>
+                <?php include __DIR__ . '/../_partials/_role-holders-list.php'; ?>
             </div>
         </div>
         <?php endif; ?>
@@ -119,7 +103,7 @@ echo Flash::fromQuery('error', [
                                 <button type="button" class="perm-card__toggle-all" data-perm-toggle-all><?= $catGranted === count($actions) ? __('deselect_all') : __('select_all') ?></button>
                             </div>
                         </div>
-                        <div class="perm-card__chips">
+                        <div class="perm-card__list">
                             <?php foreach ($actions as $action): ?>
                             <?php
                                 $key       = $category . '.' . $action;
@@ -127,10 +111,11 @@ echo Flash::fromQuery('error', [
                                 $labelKey  = $action_label_keys[$action] ?? $action;
                                 $checked   = in_array($key, $granted_permissions, true);
                             ?>
-                            <label class="perm-chip<?= $checked ? ' perm-chip--checked' : '' ?>">
-                                <input type="checkbox" name="<?= htmlspecialchars($fieldName) ?>" value="1" data-perm-checkbox
+                            <label class="perm-toggle">
+                                <span class="perm-toggle__text"><?= __($labelKey) ?></span>
+                                <input type="checkbox" name="<?= htmlspecialchars($fieldName) ?>" value="1" class="perm-toggle__input" data-perm-checkbox
                                        <?= $checked ? 'checked' : '' ?>>
-                                <?= __($labelKey) ?>
+                                <span class="perm-toggle__track"></span>
                             </label>
                             <?php endforeach; ?>
                         </div>
