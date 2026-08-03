@@ -235,6 +235,46 @@ document.addEventListener('keydown', function (e) {
     });
 });
 
+// ── Menus d'actions de ligne (colonne "Actions" des tableaux) ────────
+// Délégué au document (pas un listener par ligne) : fonctionne pour
+// n'importe quel nombre de lignes. Le panneau est en position:fixed,
+// positionné ici en JS pour échapper à l'overflow-x:auto du .table-wrap
+// qui l'entoure (sinon rogné dès qu'il dépasse la table).
+document.addEventListener('click', function (e) {
+    var trigger = e.target.closest('.row-actions__trigger');
+    var openMenus = document.querySelectorAll('.row-actions.is-open');
+
+    if (!trigger) {
+        openMenus.forEach(function (m) { m.classList.remove('is-open'); });
+        return;
+    }
+
+    e.stopPropagation();
+    var menu = trigger.closest('.row-actions');
+    var wasOpen = menu.classList.contains('is-open');
+    openMenus.forEach(function (m) { m.classList.remove('is-open'); });
+    if (wasOpen) return;
+
+    var panel = menu.querySelector('.row-actions__panel');
+    var rect = trigger.getBoundingClientRect();
+    panel.style.top = (rect.bottom + 4) + 'px';
+    panel.style.right = (window.innerWidth - rect.right) + 'px';
+    panel.style.left = 'auto';
+    menu.classList.add('is-open');
+});
+
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.row-actions.is-open').forEach(function (m) { m.classList.remove('is-open'); });
+    }
+});
+
+// Position fixe non réancrée en continu : on ferme plutôt que de laisser
+// le panneau se détacher de son déclencheur pendant un scroll.
+document.addEventListener('scroll', function () {
+    document.querySelectorAll('.row-actions.is-open').forEach(function (m) { m.classList.remove('is-open'); });
+}, true);
+
 // ── Filtres instantanés (texte : debounce, date/select restants : au change) ──
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('form.filter-bar, form.shifts-filters').forEach(form => {

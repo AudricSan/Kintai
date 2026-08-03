@@ -144,15 +144,18 @@ $exportQuery = $filter_store_id !== 0 ? '?store_id=' . $filter_store_id : '';
     ->column(__('date'), fn($u) => '<span class="td-date-muted">' . htmlspecialchars(substr($u['created_at'] ?? '', 0, 10)) . '</span>')
     ->column(__('actions'), function($u) use ($BASE_URL, $user_store_map) {
         $uid = (int) $u['id'];
-        $html = '<div class="btn-group">';
-        if (isset($user_store_map[$uid])) {
-            $sId = $user_store_map[$uid];
-            $html .= '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/employee-report/' . $uid . '/stats" class="btn btn--ghost btn--sm" title="' . __('employee_stats') . '">📊</a>';
-            $html .= '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/reports/salary/create?user_id=' . $uid . '" class="btn btn--ghost btn--sm" title="' . __('salary_report') . '">💰</a>';
-            $html .= '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/reports/resignation/create?user_id=' . $uid . '" class="btn btn--danger btn--sm" title="' . __('resign') . '">✕</a>';
+        if (!isset($user_store_map[$uid])) {
+            return '';
         }
-        $html .= '</div>';
-        return $html;
+        $sId = $user_store_map[$uid];
+        return '<div class="row-actions">'
+            . '<button type="button" class="row-actions__trigger" aria-haspopup="true" aria-label="' . htmlspecialchars(__('actions')) . '">⋮</button>'
+            . '<div class="row-actions__panel">'
+            . '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/employee-report/' . $uid . '/stats" class="row-actions__link">📊 ' . htmlspecialchars(__('employee_stats')) . '</a>'
+            . '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/reports/salary/create?user_id=' . $uid . '" class="row-actions__link">💰 ' . htmlspecialchars(__('salary_report')) . '</a>'
+            . '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/reports/resignation/create?user_id=' . $uid . '" class="row-actions__link row-actions__link--danger">✕ ' . htmlspecialchars(__('resign')) . '</a>'
+            . '</div>'
+            . '</div>';
     })
     ->render()
 ?></div>
