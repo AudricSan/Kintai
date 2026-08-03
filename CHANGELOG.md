@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Changed
+- Second, distinct proposal for the interface redesign ("Vitrine" direction): a single vivid violet accent (works both as text/link color and as solid button fill, unlike the previous amber-based "Rail" exploration), generously rounded cards/buttons, soft violet-tinted shadows. The fixed left sidebar is replaced by a single horizontal top bar — brand, primary nav collapsed into dropdown groups (Planning, HR, Requests, Reports, System), notifications and user menu — freeing the full page width for planning tables/timelines. The employee "this month" stats widget, previously embedded in the sidebar, is now a dropdown group in the top bar. All existing per-role/permission/feature-flag visibility rules for nav items are unchanged, only the surrounding markup changed. On narrow screens the nav collapses into a full-screen panel behind a hamburger toggle; the bottom tab bar (mobile) is unaffected.
+
 ### Fixed
 - Salary report create/edit form (`/admin/stores/{id}/reports/salary/create|{rid}/edit`): amount fields (net payment, deductions, withholding/residence tax...) were plain `<input type="number">`, which can't render thousands separators, so autofilled/recalculated values showed as hard-to-read strings like `158269.64`. These fields now format with thousands separators directly in the input (`158,269.64`) while focused elsewhere, switch to the raw editable value on focus, and are converted back to a plain number right before the form submits.
 
