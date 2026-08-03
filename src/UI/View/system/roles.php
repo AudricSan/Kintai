@@ -39,7 +39,7 @@ echo Flash::fromQuery('error', [
             <tbody>
                 <?php foreach ($roles as $role): ?>
                 <?php $rid = (int) $role['id']; ?>
-                <tr>
+                <tr class="tr--clickable" data-href="<?= htmlspecialchars(route_url('admin.roles.edit', ['id' => $rid])) ?>">
                     <td data-label="<?= htmlspecialchars(__('name')) ?>">
                         <?php if (!empty($role['color'])): ?>
                             <span class="color-swatch" style="background:<?= htmlspecialchars($role['color']) ?>"></span>
