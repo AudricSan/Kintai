@@ -15,11 +15,11 @@ $taxOptions = ['kou' => '甲', 'otsu' => '乙'];
 $currentUserId = (int) ($user['id'] ?? 0);
 $baseUrl = rtrim($BASE_URL ?? '', '/');
 
-$section = function (string $titleKey, string $body, bool $full = false) use ($as_cards): void {
+$section = function (string $titleKey, string $body, string $span = '') use ($as_cards): void {
     if ($as_cards) {
         $card = \kintai\UI\Components\Card::make()->header(__($titleKey))->body($body);
-        if ($full) {
-            $card->attrs(['class' => 'card--full']);
+        if ($span !== '') {
+            $card->attrs(['class' => $span]);
         }
         echo $card->render();
         return;
@@ -62,41 +62,38 @@ $section = function (string $titleKey, string $body, bool $full = false) use ($a
                        placeholder="カタカナ" required>
             </div>
         </div>
+    <?php $section('identity', ob_get_clean(), 'card--row-2'); ?>
 
-        <div class="form-row">
-            <div class="form-group">
-                <label class="form-label"><?= __('gender') ?></label>
-                <select name="gender" class="form-control">
-                    <option value="">—</option>
-                    <?php foreach ($genderOptions as $val => $label): ?>
-                        <option value="<?= $val ?>" <?= ($user['gender'] ?? '') === $val ? 'selected' : '' ?>><?= $label ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="form-group">
-                <label class="form-label"><?= __('tax_classification') ?> (甲乙)</label>
-                <select name="tax_classification" class="form-control">
-                    <option value="">—</option>
-                    <?php foreach ($taxOptions as $val => $label): ?>
-                        <option value="<?= $val ?>" <?= ($user['tax_classification'] ?? '') === $val ? 'selected' : '' ?>><?= $label ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+    <?php ob_start(); ?>
+        <div class="form-group">
+            <label class="form-label"><?= __('gender') ?></label>
+            <select name="gender" class="form-control">
+                <option value="">—</option>
+                <?php foreach ($genderOptions as $val => $label): ?>
+                    <option value="<?= $val ?>" <?= ($user['gender'] ?? '') === $val ? 'selected' : '' ?>><?= $label ?></option>
+                <?php endforeach; ?>
+            </select>
         </div>
-
-        <div class="form-row">
-            <div class="form-group">
-                <label class="form-label"><?= __('birth_date') ?></label>
-                <input type="date" name="birth_date" class="form-control"
-                       value="<?= htmlspecialchars($user['birth_date'] ?? '') ?>">
-            </div>
-            <div class="form-group">
-                <label class="form-label"><?= __('education') ?></label>
-                <input type="text" name="education" class="form-control"
-                       value="<?= htmlspecialchars($user['education'] ?? '') ?>">
-            </div>
+        <div class="form-group">
+            <label class="form-label"><?= __('tax_classification') ?> (甲乙)</label>
+            <select name="tax_classification" class="form-control">
+                <option value="">—</option>
+                <?php foreach ($taxOptions as $val => $label): ?>
+                    <option value="<?= $val ?>" <?= ($user['tax_classification'] ?? '') === $val ? 'selected' : '' ?>><?= $label ?></option>
+                <?php endforeach; ?>
+            </select>
         </div>
-    <?php $section('identity', ob_get_clean(), full: true); ?>
+        <div class="form-group">
+            <label class="form-label"><?= __('birth_date') ?></label>
+            <input type="date" name="birth_date" class="form-control"
+                   value="<?= htmlspecialchars($user['birth_date'] ?? '') ?>">
+        </div>
+        <div class="form-group">
+            <label class="form-label"><?= __('education') ?></label>
+            <input type="text" name="education" class="form-control"
+                   value="<?= htmlspecialchars($user['education'] ?? '') ?>">
+        </div>
+    <?php $section('personal_details', ob_get_clean()); ?>
 
     <?php ob_start(); ?>
         <div class="form-row">
@@ -138,7 +135,7 @@ $section = function (string $titleKey, string $body, bool $full = false) use ($a
             <label class="form-label"><?= __('address') ?></label>
             <textarea name="address" class="form-control" rows="2"><?= htmlspecialchars($user['address'] ?? '') ?></textarea>
         </div>
-    <?php $section('contact', ob_get_clean()); ?>
+    <?php $section('contact', ob_get_clean(), 'card--row-2'); ?>
 
     <?php ob_start(); ?>
         <div class="form-row">
