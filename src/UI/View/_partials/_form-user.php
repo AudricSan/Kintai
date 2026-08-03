@@ -194,9 +194,17 @@ $section = function (string $titleKey, string $body) use ($as_cards): void {
         <div class="form-row">
             <div class="form-group">
                 <label class="form-label"><?= __('identification_color') ?></label>
+                <?php
+                $userColor = htmlspecialchars($user['color'] ?? '#3B82F6');
+                $userInitials = htmlspecialchars(strtoupper(
+                    mb_substr((string) ($user['last_name'] ?? ''), 0, 1) . mb_substr((string) ($user['first_name'] ?? ''), 0, 1)
+                ) ?: '··');
+                ?>
                 <div class="input-group">
-                    <input type="color" name="color" class="input-color"
-                           value="<?= htmlspecialchars($user['color'] ?? '#3B82F6') ?>">
+                    <span class="avatar-chip" id="userColorPreview" style="--chip-bg:<?= $userColor ?>"><?= $userInitials ?></span>
+                    <input type="color" name="color" class="input-color" id="userColorInput"
+                           value="<?= $userColor ?>"
+                           oninput="document.getElementById('userColorPreview').style.setProperty('--chip-bg', this.value)">
                     <span class="text-sm-muted"><?= __('planning_visible_hint') ?></span>
                 </div>
             </div>
