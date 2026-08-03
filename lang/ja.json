@@ -670,6 +670,8 @@
     "optional": "任意",
     "other": "その他",
     "overlap_duration": "重複: :duration",
+    "owner_account_hint": "組織全体へのフルアクセス、店舗による制限なし。他の役割は店舗ごとに管理されます(下記および各店舗のページから)。",
+    "owner_role_no_store_hint": "Owner役割は組織全体に適用されます。この役割には上記の店舗選択は不要です。",
     "owner_settings": "組織設定",
     "page_of": "%d / %d ページ",
     "parse_error": "Excelファイルを読み込めません。",
