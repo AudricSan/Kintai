@@ -116,6 +116,8 @@
     if (toggle && dropdown) {
         toggle.addEventListener('click', function (e) {
             e.stopPropagation();
+            document.querySelectorAll('.topbar-nav-group.is-open').forEach(function (g) { g.classList.remove('is-open'); });
+            document.getElementById('user-dropdown')?.classList.remove('user-dropdown--open');
             dropdown.classList.toggle('notif-dropdown--open');
         });
 
