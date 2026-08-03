@@ -147,6 +147,14 @@
     align-items: stretch;
 }
 
+/* .card a un margin-bottom global (pile de cartes hors grille) qui
+   s'ajoutait au gap de la grille : les cartes empilées dans une même
+   colonne se retrouvaient avec plus d'espace vertical (gap + margin)
+   qu'horizontal (gap seul). Neutralisé ici, le gap de la grille suffit. */
+.form-section-grid > .card {
+    margin-bottom: 0;
+}
+
 /* Position (ligne de départ) */
 .card--c1 { grid-column-start: 1; }
 .card--c2 { grid-column-start: 2; }
