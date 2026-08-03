@@ -33,44 +33,68 @@
     };
 }());
 
-// --- Sidebar toggle (mobile) ---
+// --- Topbar nav toggle (mobile) ---
 document.addEventListener('DOMContentLoaded', () => {
-    const toggle = document.getElementById('sidebarToggle');
-    const sidebar = document.getElementById('sidebar');
-    const backdrop = document.getElementById('sidebarBackdrop');
-    const closeBtn = document.getElementById('sidebarClose');
+    const toggle = document.getElementById('topbarNavToggle');
+    const nav = document.getElementById('topbarNav');
 
-    if (!toggle || !sidebar || !backdrop) return;
+    if (!toggle || !nav) return;
 
-    function closeSidebar() {
-        sidebar.classList.remove('open');
-        backdrop.classList.remove('open');
+    function closeNav() {
+        nav.classList.remove('open');
+        toggle.setAttribute('aria-expanded', 'false');
         document.body.style.overflow = '';
     }
 
     toggle.addEventListener('click', () => {
-        const opening = !sidebar.classList.contains('open');
-        sidebar.classList.toggle('open', opening);
-        backdrop.classList.toggle('open', opening);
+        const opening = !nav.classList.contains('open');
+        nav.classList.toggle('open', opening);
+        toggle.setAttribute('aria-expanded', opening ? 'true' : 'false');
         document.body.style.overflow = opening ? 'hidden' : '';
     });
 
-    backdrop.addEventListener('click', closeSidebar);
-    if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
-
     // Ferme le menu après un tap sur un lien (couvre le retour arrière du
     // navigateur qui peut restaurer la page avec le menu resté ouvert).
-    sidebar.querySelectorAll('a').forEach((link) => {
-        link.addEventListener('click', closeSidebar);
+    nav.querySelectorAll('a').forEach((link) => {
+        link.addEventListener('click', closeNav);
     });
 
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closeSidebar();
+        if (e.key === 'Escape') closeNav();
     });
 
     // Restaure un état propre si la page est resservie depuis le bfcache.
     window.addEventListener('pageshow', (e) => {
-        if (e.persisted) closeSidebar();
+        if (e.persisted) closeNav();
+    });
+});
+
+// --- Menus déroulants de la topbar (Planning, RH, Rapports...) ---
+document.addEventListener('DOMContentLoaded', () => {
+    const groups = document.querySelectorAll('.topbar-nav-group');
+    if (!groups.length) return;
+
+    groups.forEach((group) => {
+        const trigger = group.querySelector('.topbar-nav-group__trigger');
+        if (!trigger) return;
+        trigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const opening = !group.classList.contains('is-open');
+            groups.forEach((g) => g.classList.remove('is-open'));
+            group.classList.toggle('is-open', opening);
+        });
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.topbar-nav-group')) {
+            groups.forEach((g) => g.classList.remove('is-open'));
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            groups.forEach((g) => g.classList.remove('is-open'));
+        }
     });
 });
 
