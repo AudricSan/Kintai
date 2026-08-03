@@ -534,6 +534,21 @@ select.form-control {
     color: var(--color-primary);
 }
 
+/* ── Formulaire de rôle : contenu principal + colonne "Utilisateurs
+   ayant ce rôle" (mode édition uniquement, le rôle n'existe pas encore
+   en mode création) ─────────────────────────────────────────────── */
+.role-form-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 280px;
+    gap: var(--space-4);
+    align-items: start;
+}
+
+.role-form-side {
+    position: sticky;
+    top: var(--space-4);
+}
+
 .role-holders-list {
     list-style: none;
     margin: 0;
