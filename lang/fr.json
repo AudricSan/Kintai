@@ -670,6 +670,8 @@
     "optional": "optionnel",
     "other": "Autre",
     "overlap_duration": "Chevauchement : :duration",
+    "owner_account_hint": "Accès complet à toute l'organisation, sans restriction de store. Les autres rôles se gèrent par store, ci-dessous et depuis la page de chaque magasin.",
+    "owner_role_no_store_hint": "Le rôle Owner s'applique à toute l'organisation : le store ci-dessus n'est pas nécessaire pour ce rôle.",
     "owner_settings": "Paramètres de l'organisation",
     "page_of": "Page %d sur %d",
     "parse_error": "Impossible de lire le fichier Excel.",

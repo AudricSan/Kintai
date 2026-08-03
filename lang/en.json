@@ -670,6 +670,8 @@
     "optional": "optional",
     "other": "Other",
     "overlap_duration": "Overlap: :duration",
+    "owner_account_hint": "Full access to the whole organization, no store restriction. Other roles are managed per store, below and from each store's page.",
+    "owner_role_no_store_hint": "The Owner role applies to the whole organization: the store above isn't needed for this role.",
     "owner_settings": "Organization Settings",
     "page_of": "Page %d of %d",
     "parse_error": "Unable to read the Excel file.",
