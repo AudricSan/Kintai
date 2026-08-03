@@ -57,17 +57,18 @@ $storeChipColor = function (string $seed): string {
     )
     ->column(__('actions'), function($s) use ($BASE_URL, $isOwner) {
         $id = (int) $s['id'];
-        $html = '<div class="btn-group">';
-        $html .= Button::make('📊')->ghost()->sm()->link($BASE_URL . '/admin/stores/' . $id . '/stats')->attrs(['title' => __('statistics')])->render();
-        $html .= Button::make('👥')->ghost()->sm()->link($BASE_URL . '/admin/stores/' . $id . '/employee-report')->attrs(['title' => __('employee_report')])->render();
+        $panel = '<a href="' . $BASE_URL . '/admin/stores/' . $id . '/stats" class="row-actions__link">📊 ' . htmlspecialchars(__('statistics')) . '</a>'
+            . '<a href="' . $BASE_URL . '/admin/stores/' . $id . '/employee-report" class="row-actions__link">👥 ' . htmlspecialchars(__('employee_report')) . '</a>';
         if ($isOwner) {
-            $html .= '<form method="POST" action="' . htmlspecialchars($BASE_URL . '/admin/stores/' . $id . '/delete') . '" class="form-inline" onsubmit="return confirm(\'' . __('confirm_delete_store') . '\')">';
-            $html .= csrf_field();
-            $html .= Button::make(__('delete'))->danger()->sm()->submit()->render();
-            $html .= '</form>';
+            $panel .= '<form method="POST" action="' . htmlspecialchars($BASE_URL . '/admin/stores/' . $id . '/delete') . '" onsubmit="return confirm(\'' . __('confirm_delete_store') . '\')">'
+                . csrf_field()
+                . '<button type="submit" class="row-actions__link row-actions__link--danger">🗑 ' . htmlspecialchars(__('delete')) . '</button>'
+                . '</form>';
         }
-        $html .= '</div>';
-        return $html;
+        return '<div class="row-actions">'
+            . '<button type="button" class="row-actions__trigger" aria-haspopup="true" aria-label="' . htmlspecialchars(__('actions')) . '">⋮</button>'
+            . '<div class="row-actions__panel">' . $panel . '</div>'
+            . '</div>';
     })
     ->render()
 ?></div>
