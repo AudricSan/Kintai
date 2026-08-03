@@ -15,15 +15,19 @@ $taxOptions = ['kou' => '甲', 'otsu' => '乙'];
 $currentUserId = (int) ($user['id'] ?? 0);
 $baseUrl = rtrim($BASE_URL ?? '', '/');
 
-$section = function (string $titleKey, string $body) use ($as_cards): void {
+$section = function (string $titleKey, string $body, bool $full = false) use ($as_cards): void {
     if ($as_cards) {
-        echo \kintai\UI\Components\Card::make()->header(__($titleKey))->body($body)->render();
+        $card = \kintai\UI\Components\Card::make()->header(__($titleKey))->body($body);
+        if ($full) {
+            $card->attrs(['class' => 'card--full']);
+        }
+        echo $card->render();
         return;
     }
     echo '<div class="section-divider"><h4 class="section-title">' . htmlspecialchars(__($titleKey)) . '</h4>' . $body . '</div>';
 };
 ?>
-<div class="form-stack">
+<div class="<?= $as_cards ? 'form-section-grid' : 'form-stack' ?>">
     <?php ob_start(); ?>
         <div class="form-group">
             <label class="form-label form-label--required"><?= __('display_name') ?></label>
@@ -92,7 +96,7 @@ $section = function (string $titleKey, string $body) use ($as_cards): void {
                        value="<?= htmlspecialchars($user['education'] ?? '') ?>">
             </div>
         </div>
-    <?php $section('identity', ob_get_clean()); ?>
+    <?php $section('identity', ob_get_clean(), full: true); ?>
 
     <?php ob_start(); ?>
         <div class="form-row">

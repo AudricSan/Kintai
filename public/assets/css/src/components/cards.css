@@ -129,6 +129,29 @@
     font-size: var(--text-base);
 }
 
+/* ── Grille de cartes de section (formulaires longs : store, employé) ──
+   Remplace l'empilement vertical d'un .form-stack par 2 colonnes —
+   plusieurs sections visibles à la fois, moins de scroll. Colonnes CSS
+   plutôt que grid : les cartes ont des hauteurs très inégales (ex. Infos
+   générales vs. Cotisations), et un grid classique laisserait un grand
+   vide sous la carte la plus courte de chaque rangée ; les colonnes CSS
+   équilibrent la hauteur automatiquement entre les deux colonnes.
+   .card--full fait sortir une carte de la grille pour occuper toute la
+   largeur (ex. la section la plus dense). */
+.form-section-grid {
+    column-count: 2;
+    column-gap: var(--space-4);
+}
+
+.form-section-grid > .card {
+    break-inside: avoid;
+    margin-bottom: var(--space-4);
+}
+
+.form-section-grid > .card--full {
+    column-span: all;
+}
+
 /* ── Stat Cards ─────────────────────────────────── */
 .stat-grid {
     display: grid;
