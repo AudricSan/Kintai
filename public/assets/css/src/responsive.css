@@ -69,6 +69,14 @@
         position: static;
     }
 
+    .role-form-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .role-form-side {
+        position: static;
+    }
+
     .cal-grid td {
         height: 80px;
     }
