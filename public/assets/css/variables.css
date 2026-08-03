@@ -6,53 +6,56 @@
 
 :root {
     /* ── Couleurs primaires ──────────────────────── */
-    --color-primary:        #4f46e5;
-    --color-primary-hover:  #4338ca;
-    --color-primary-light:  #ede9fe;
-    --color-primary-lighter:#f5f3ff;
+    /* Violet unique : contrairement à l'ambre de la direction "Rail", cette
+       teinte fonctionne aussi bien en texte/lien qu'en fond de bouton plein
+       (pas besoin d'un token de contraste séparé). */
+    --color-primary:        #6c5ce7;
+    --color-primary-hover:  #5b4bd6;
+    --color-primary-light:  #edebfc;
+    --color-primary-lighter:#f5f3fe;
 
     /* ── Couleurs sémantiques ────────────────────── */
-    --color-success:        #10b981;
-    --color-success-hover:  #059669;
-    --color-success-light:  #d1fae5;
-    --color-success-dark:   #065f46;
+    --color-success:        #1fae6b;
+    --color-success-hover:  #18925a;
+    --color-success-light:  #e2f6ec;
+    --color-success-dark:   #12693f;
 
-    --color-warning:        #f59e0b;
-    --color-warning-hover:  #d97706;
-    --color-warning-light:  #fef3c7;
-    --color-warning-dark:   #92400e;
+    --color-warning:        #c97a12;
+    --color-warning-hover:  #a8630d;
+    --color-warning-light:  #fbedd9;
+    --color-warning-dark:   #7a490a;
 
-    --color-danger:         #ef4444;
-    --color-danger-hover:   #dc2626;
-    --color-danger-light:   #fee2e2;
-    --color-danger-dark:    #991b1b;
+    --color-danger:         #e5484d;
+    --color-danger-hover:   #c93a3f;
+    --color-danger-light:   #fce3e4;
+    --color-danger-dark:    #922025;
 
-    --color-info:           #3b82f6;
-    --color-info-light:     #dbeafe;
-    --color-info-dark:      #1e40af;
+    --color-info:           #2f86d6;
+    --color-info-light:     #e3f0fc;
+    --color-info-dark:      #1e5a93;
 
     /* ── Couleurs sémantiques étendues ──────────── */
-    --color-neutral:        #374151;   /* texte neutre (badges inactifs, états par défaut) */
-    --color-admin-text:     #5b21b6;   /* texte badge administrateur (violet foncé) */
-    --color-primary-medium: #ddd6fe;   /* primaire intermédiaire (hover btn--secondary) */
-    --color-success-border: #6ee7b7;   /* bordure alerte succès */
-    --color-danger-border:  #fca5a5;   /* bordure alerte danger */
-    --color-warning-border: #fcd34d;   /* bordure alerte avertissement & conflits */
-    --color-info-border:    #93c5fd;   /* bordure éléments informatifs */
-    --color-accent:         #4f8ef7;   /* accent complémentaire (propagation, highlights) */
+    --color-neutral:        #4b4864;   /* texte neutre (badges inactifs, états par défaut) */
+    --color-admin-text:     #c2368c;   /* texte badge administrateur (rose — distinct du violet de marque) */
+    --color-primary-medium: #d6d0f7;   /* primaire intermédiaire (hover btn--secondary) */
+    --color-success-border: #8fd9b6;   /* bordure alerte succès */
+    --color-danger-border:  #f2a3a6;   /* bordure alerte danger */
+    --color-warning-border: #ebc17e;   /* bordure alerte avertissement & conflits */
+    --color-info-border:    #9dc7ed;   /* bordure éléments informatifs */
+    --color-accent:         #14b8a6;   /* accent complémentaire (propagation, highlights) */
 
     /* ── Couleurs neutres ────────────────────────── */
-    --color-text:           #1f2937;
-    --color-text-muted:     #6b7280;
-    --color-text-secondary: #9ca3af;
-    --color-border:         #e5e7eb;
-    --color-border-light:   #f3f4f6;
+    --color-text:           #1d1b2e;
+    --color-text-muted:     #6e6b85;
+    --color-text-secondary: #9a97ac;
+    --color-border:         #e7e5f0;
+    --color-border-light:   #f1eff8;
 
-    --color-bg:             #f8f9fa;
-    --color-bg-alt:         #f1f5f9;
-    --color-bg-subtle:      #f4f6f8;
+    --color-bg:             #f6f5fa;
+    --color-bg-alt:         #f0eefa;
+    --color-bg-subtle:      #f3f1fa;
     --color-surface:        #ffffff;
-    --color-surface-alt:    #f9fafb;
+    --color-surface-alt:    #faf9fd;
 
     /* ── Typographie ─────────────────────────────── */
     --font-sans:  -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
@@ -80,27 +83,30 @@
     --space-12: 3rem;      /* 48px */
 
     /* ── Border radius ───────────────────────────── */
-    --radius-xs:   2px;        /* ultra-small (swatches, micro-éléments) */
-    --radius-sm:   0.25rem;   /* 4px  */
-    --radius:      0.5rem;    /* 8px  — défaut */
-    --radius-lg:   0.75rem;   /* 12px */
-    --radius-xl:   1rem;      /* 16px */
+    /* Formes généreusement arrondies — registre "SaaS accueillant" plutôt
+       que technique. */
+    --radius-xs:   4px;
+    --radius-sm:   8px;
+    --radius:      12px;       /* défaut */
+    --radius-lg:   16px;
+    --radius-xl:   20px;
     --radius-full: 9999px;    /* pill */
 
     /* ── Shadows ─────────────────────────────────── */
-    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
-    --shadow:    0 1px 3px rgba(0, 0, 0, 0.08);
-    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
-    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.10);
-    --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+    /* Ombres douces teintées de violet plutôt que gris neutre. */
+    --shadow-xs: 0 1px 2px rgba(29, 27, 46, 0.05);
+    --shadow:    0 2px 6px rgba(29, 27, 46, 0.06), 0 1px 2px rgba(29, 27, 46, 0.04);
+    --shadow-md: 0 6px 16px rgba(108, 92, 231, 0.10), 0 2px 4px rgba(29, 27, 46, 0.05);
+    --shadow-lg: 0 14px 32px rgba(108, 92, 231, 0.14);
+    --shadow-xl: 0 24px 48px rgba(108, 92, 231, 0.18);
 
     /* ── Layout ──────────────────────────────────── */
-    --sidebar-width:    240px;
-    --topbar-height:    56px;
-    --color-sidebar-bg: #1f2937;
+    --topbar-height:    64px;
+    /* Chip "toujours sombre" (tooltips, etc.) — indépendant du thème clair/sombre de l'appli. */
+    --color-sidebar-bg: #1d1b2e;
 
     /* ── Overlays ─────────────────────────────────── */
-    --overlay-bg: rgba(0, 0, 0, .45);
+    --overlay-bg: rgba(29, 27, 46, .45);
 
     /* ── Transitions ─────────────────────────────── */
     --duration-fast:   150ms;
@@ -110,63 +116,63 @@
 /* ── Dark mode tokens (partagés par @media et [data-theme]) ──────────── */
 :root {
     /* ── Arrière-plans ──────────────────────────── */
-    --dark-bg:             #0f172a;   /* Slate 900 — fond principal */
-    --dark-bg-alt:         #131e2e;   /* Slate 875 — variante fond */
-    --dark-bg-subtle:      #1a2334;   /* Slate 850 — fond subtil */
-    --dark-surface:        #1e293b;   /* Slate 800 — surface carte */
-    --dark-surface-alt:    #253347;   /* Slate 780 — surface hover */
+    --dark-bg:             #16151f;
+    --dark-bg-alt:         #1c1a28;
+    --dark-bg-subtle:      #1a1826;
+    --dark-surface:        #1f1e2b;
+    --dark-surface-alt:    #262536;
 
     /* ── Textes ─────────────────────────────────── */
-    --dark-text:           #f1f5f9;   /* Slate 100 */
-    --dark-text-muted:     #94a3b8;   /* Slate 400 */
-    --dark-text-secondary: #64748b;   /* Slate 500 */
+    --dark-text:           #edebf7;
+    --dark-text-muted:     #9c98b3;
+    --dark-text-secondary: #726e8c;
 
     /* ── Bordures ───────────────────────────────── */
-    --dark-border:         #334155;   /* Slate 700 */
-    --dark-border-light:   #243147;   /* Slate 750 — bord léger distinct de surface */
+    --dark-border:         #322f42;
+    --dark-border-light:   #282536;
 
     /* ── Couleurs sémantiques (adaptées fond sombre) ── */
-    --dark-primary:         #818cf8;   /* Indigo 400 — lisible sur sombre */
-    --dark-primary-hover:   #6366f1;   /* Indigo 500 */
-    --dark-primary-light:   rgba(129, 140, 248, 0.15);
-    --dark-primary-lighter: rgba(129, 140, 248, 0.08);
-    --dark-primary-medium:  #2d2b5e;   /* fond hover btn secondaire */
+    --dark-primary:         #8f7ff5;
+    --dark-primary-hover:   #a596f8;
+    --dark-primary-light:   rgba(143, 127, 245, 0.16);
+    --dark-primary-lighter: rgba(143, 127, 245, 0.08);
+    --dark-primary-medium:  rgba(143, 127, 245, 0.30);
 
-    --dark-success:         #4ade80;   /* Green 400 */
-    --dark-success-hover:   #22c55e;   /* Green 500 */
-    --dark-success-light:   rgba(74, 222, 128, 0.15);
-    --dark-success-dark:    #16a34a;   /* Green 600 */
-    --dark-success-border:  #34d399;   /* Emerald 400 */
+    --dark-success:         #4bd695;
+    --dark-success-hover:   #64e0a6;
+    --dark-success-light:   rgba(75, 214, 149, 0.16);
+    --dark-success-dark:    #8fe8be;
+    --dark-success-border:  #4bd695;
 
-    --dark-warning:         #fbbf24;   /* Amber 400 */
-    --dark-warning-hover:   #f59e0b;   /* Amber 500 */
-    --dark-warning-light:   rgba(251, 191, 36, 0.15);
-    --dark-warning-dark:    #d97706;   /* Amber 600 */
-    --dark-warning-border:  #fbbf24;   /* Amber 400 */
+    --dark-warning:         #f0b358;
+    --dark-warning-hover:   #f5c378;
+    --dark-warning-light:   rgba(240, 179, 88, 0.16);
+    --dark-warning-dark:    #f5c88a;
+    --dark-warning-border:  #f0b358;
 
-    --dark-danger:          #f87171;   /* Red 400 */
-    --dark-danger-hover:    #ef4444;   /* Red 500 */
-    --dark-danger-light:    rgba(248, 113, 113, 0.15);
-    --dark-danger-dark:     #dc2626;   /* Red 600 */
-    --dark-danger-border:   #f87171;   /* Red 400 */
+    --dark-danger:          #ff7a7f;
+    --dark-danger-hover:    #ff9498;
+    --dark-danger-light:    rgba(255, 122, 127, 0.16);
+    --dark-danger-dark:     #ffaeb1;
+    --dark-danger-border:   #ff7a7f;
 
-    --dark-info:            #60a5fa;   /* Blue 400 */
-    --dark-info-light:      rgba(96, 165, 250, 0.15);
-    --dark-info-dark:       #3b82f6;   /* Blue 500 */
-    --dark-info-border:     #60a5fa;   /* Blue 400 */
+    --dark-info:            #6cb3f2;
+    --dark-info-light:      rgba(108, 179, 242, 0.16);
+    --dark-info-dark:       #a2cff7;
+    --dark-info-border:     #6cb3f2;
 
-    --dark-accent:         #60a5fa;   /* Blue 400 */
-    --dark-neutral:        #94a3b8;   /* Slate 400 */
-    --dark-admin-text:     #c4b5fd;   /* Violet 300 */
+    --dark-accent:         #2dd4c7;
+    --dark-neutral:        #9c98b3;
+    --dark-admin-text:     #e066b8;
 
-    /* ── Sidebar ────────────────────────────────── */
-    --dark-sidebar-bg:     #0c1220;   /* légèrement plus sombre que bg */
+    /* ── Chip toujours sombre ─────────────────────── */
+    --dark-sidebar-bg:     #0f0e17;
 
     /* ── Ombres ─────────────────────────────────── */
-    --dark-shadow:    0 1px 3px rgba(0, 0, 0, 0.40);
-    --dark-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.40);
-    --dark-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.50);
-    --dark-shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.60);
+    --dark-shadow:    0 1px 3px rgba(0, 0, 0, 0.35);
+    --dark-shadow-md: 0 6px 16px rgba(0, 0, 0, 0.35);
+    --dark-shadow-lg: 0 16px 36px rgba(0, 0, 0, 0.40);
+    --dark-shadow-xl: 0 28px 56px rgba(0, 0, 0, 0.48);
 }
 
 /* Appliqué via préférence système (quand aucune préférence manuelle) */
@@ -265,48 +271,48 @@ html[data-theme="dark"] {
 
 /* Override manuel — clair forcé (annule le @media dark) */
 html[data-theme="light"] {
-    --color-bg:              #f8f9fa;
-    --color-bg-alt:          #f1f5f9;
-    --color-bg-subtle:       #f4f6f8;
+    --color-bg:              #f6f5fa;
+    --color-bg-alt:          #f0eefa;
+    --color-bg-subtle:       #f3f1fa;
     --color-surface:         #ffffff;
-    --color-surface-alt:     #f9fafb;
-    --color-text:            #1f2937;
-    --color-text-muted:      #6b7280;
-    --color-text-secondary:  #9ca3af;
-    --color-border:          #e5e7eb;
-    --color-border-light:    #f3f4f6;
-    --color-primary:         #4f46e5;
-    --color-primary-hover:   #4338ca;
-    --color-primary-light:   #ede9fe;
-    --color-primary-lighter: #f5f3ff;
-    --color-primary-medium:  #ddd6fe;
-    --color-success:         #10b981;
-    --color-success-hover:   #059669;
-    --color-success-light:   #d1fae5;
-    --color-success-dark:    #065f46;
-    --color-success-border:  #6ee7b7;
-    --color-warning:         #f59e0b;
-    --color-warning-hover:   #d97706;
-    --color-warning-light:   #fef3c7;
-    --color-warning-dark:    #92400e;
-    --color-warning-border:  #fcd34d;
-    --color-danger:          #ef4444;
-    --color-danger-hover:    #dc2626;
-    --color-danger-light:    #fee2e2;
-    --color-danger-dark:     #991b1b;
-    --color-danger-border:   #fca5a5;
-    --color-info:            #3b82f6;
-    --color-info-light:      #dbeafe;
-    --color-info-dark:       #1e40af;
-    --color-info-border:     #93c5fd;
-    --color-accent:          #4f8ef7;
-    --color-neutral:         #374151;
-    --color-admin-text:      #5b21b6;
-    --color-sidebar-bg:      #1f2937;
-    --shadow:    0 1px 3px rgba(0, 0, 0, 0.08);
-    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
-    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.10);
-    --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+    --color-surface-alt:     #faf9fd;
+    --color-text:            #1d1b2e;
+    --color-text-muted:      #6e6b85;
+    --color-text-secondary:  #9a97ac;
+    --color-border:          #e7e5f0;
+    --color-border-light:    #f1eff8;
+    --color-primary:         #6c5ce7;
+    --color-primary-hover:   #5b4bd6;
+    --color-primary-light:   #edebfc;
+    --color-primary-lighter: #f5f3fe;
+    --color-primary-medium:  #d6d0f7;
+    --color-success:         #1fae6b;
+    --color-success-hover:   #18925a;
+    --color-success-light:   #e2f6ec;
+    --color-success-dark:    #12693f;
+    --color-success-border:  #8fd9b6;
+    --color-warning:         #c97a12;
+    --color-warning-hover:   #a8630d;
+    --color-warning-light:   #fbedd9;
+    --color-warning-dark:    #7a490a;
+    --color-warning-border:  #ebc17e;
+    --color-danger:          #e5484d;
+    --color-danger-hover:    #c93a3f;
+    --color-danger-light:    #fce3e4;
+    --color-danger-dark:     #922025;
+    --color-danger-border:   #f2a3a6;
+    --color-info:            #2f86d6;
+    --color-info-light:      #e3f0fc;
+    --color-info-dark:       #1e5a93;
+    --color-info-border:     #9dc7ed;
+    --color-accent:          #14b8a6;
+    --color-neutral:         #4b4864;
+    --color-admin-text:      #c2368c;
+    --color-sidebar-bg:      #1d1b2e;
+    --shadow:    0 2px 6px rgba(29, 27, 46, 0.06), 0 1px 2px rgba(29, 27, 46, 0.04);
+    --shadow-md: 0 6px 16px rgba(108, 92, 231, 0.10), 0 2px 4px rgba(29, 27, 46, 0.05);
+    --shadow-lg: 0 14px 32px rgba(108, 92, 231, 0.14);
+    --shadow-xl: 0 24px 48px rgba(108, 92, 231, 0.18);
 }
 
 @media (prefers-reduced-motion: reduce) {

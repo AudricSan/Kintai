@@ -560,6 +560,78 @@ final class AdminUserControllerTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
+    // storeUser — sélecteur "Rôle" unifié (Owner + rôles par store, remplace
+    // l'ancien couple is_admin / store_role_id)
+    // -------------------------------------------------------------------------
+
+    /** Rôle Owner sélectionné : compte admin global, pas de rôle par store à synchroniser même avec un store choisi. */
+    public function testStoreUserSyncsOwnerRoleAndSkipsStoreRoleWhenOwnerSelected(): void
+    {
+        $req = $this->makePostRequest([
+            'display_name' => 'Jane',
+            'last_name'    => 'Doe',
+            'first_name'   => 'Jane',
+            'email'        => 'jane@example.com',
+            'furigana_last_name'  => 'ドウ',
+            'furigana_first_name' => 'ジェーン',
+            'role_id'      => '1',
+            'store_id'     => '3',
+        ]);
+        $req->setAttribute('managed_store_ids', null);
+
+        $this->roles->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Owner', 'is_system' => 1]);
+        $this->roles->method('findBySlug')->with('owner')->willReturn(['id' => 1]);
+        $this->roleAssignments->method('findByUser')->willReturn([]);
+        $this->roleAssignments->expects($this->once())->method('assign')->with(20, 1, 'global', null);
+
+        $captured = null;
+        $this->users->method('save')->willReturnCallback(function (array $d) use (&$captured) {
+            $captured = $d;
+            return $d + ['id' => 20];
+        });
+        // Aucun rôle par store à écrire : la synchronisation store-scope (findAssignableRole
+        // rejette les rôles système) ne doit pas être sollicitée pour ce cas.
+        $this->storeUsers->expects($this->once())->method('save')->willReturnCallback(fn(array $d) => $d);
+
+        $this->controller->storeUser($req);
+
+        $this->assertSame(1, $captured['is_admin']);
+    }
+
+    /** Rôle par store sélectionné (Manager) : comportement inchangé, juste renommé store_role_id -> role_id. */
+    public function testStoreUserSyncsStoreRoleWhenStoreRoleSelected(): void
+    {
+        $req = $this->makePostRequest([
+            'display_name' => 'John',
+            'last_name'    => 'Doe',
+            'first_name'   => 'John',
+            'email'        => 'john@example.com',
+            'furigana_last_name'  => 'ジョン',
+            'furigana_first_name' => 'ジョン',
+            'role_id'      => '2',
+            'store_id'     => '3',
+        ]);
+        $req->setAttribute('managed_store_ids', null);
+
+        $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'name' => 'Manager', 'is_system' => 0]);
+        $this->roles->method('getPermissions')->with(2)->willReturn(['employees.view']);
+        $this->roleAssignments->method('findByUser')->willReturn([]);
+        $this->roleAssignments->expects($this->once())->method('assign')->with(21, 2, 'store', 3);
+
+        $this->users->method('save')->willReturn(['id' => 21, 'display_name' => 'John']);
+
+        $capturedStoreUser = null;
+        $this->storeUsers->method('save')->willReturnCallback(function (array $d) use (&$capturedStoreUser) {
+            $capturedStoreUser = $d;
+            return $d;
+        });
+
+        $this->controller->storeUser($req);
+
+        $this->assertSame('manager', $capturedStoreUser['role']);
+    }
+
+    // -------------------------------------------------------------------------
     // storeUser / updateUser — conflit d'email
     // -------------------------------------------------------------------------
 
