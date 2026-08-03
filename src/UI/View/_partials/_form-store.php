@@ -22,9 +22,9 @@ $dedEmployment  = $ded['employment_insurance_rate'] ?? 0.60;
 $dedIncomeTax   = $ded['income_tax_rate'] ?? 0;
 $dedResidentTax = $ded['resident_tax_monthly'] ?? 0;
 ?>
-<div class="form-stack">
+<div class="form-section-grid">
     <!-- ── Carte 1 : Informations générales ─────────────── -->
-    <div class="card">
+    <div class="card card--full">
         <div class="card-header"><?= __('store_info') ?></div>
         <div class="card-body form-stack">
             <div class="form-row">
@@ -133,7 +133,7 @@ $dedResidentTax = $ded['resident_tax_monthly'] ?? 0;
     </div>
 
     <!-- ── Carte 2 : Cotisations sociales ──────────────── -->
-    <div class="card card--mt">
+    <div class="card">
         <div class="card-header"><?= __('deduction_settings') ?></div>
         <div class="card-body form-stack">
             <div class="form-group form-group--inline">
@@ -182,7 +182,7 @@ $dedResidentTax = $ded['resident_tax_monthly'] ?? 0;
     </div>
 
     <!-- ── Carte 3 : Import Excel ──────────────────────── -->
-    <div class="card card--mt">
+    <div class="card">
         <div class="card-header">
             <span><?= __('excel_import_settings') ?></span>
             <a href="<?= $BASE_URL ?>/assets/doc/template.xlsm" download
@@ -243,7 +243,7 @@ $dedResidentTax = $ded['resident_tax_monthly'] ?? 0;
     </div>
 
     <!-- ── Carte 4 : Paramètres de planning ────────────── -->
-    <div class="card card--mt">
+    <div class="card">
         <div class="card-header"><?= __('shift_settings') ?></div>
         <div class="card-body form-stack">
             <div class="form-row">
@@ -317,7 +317,7 @@ $dedResidentTax = $ded['resident_tax_monthly'] ?? 0;
     </div>
 
     <!-- ── Carte 5 : Fonctionnalités ───────────────────── -->
-    <div class="card card--mt">
+    <div class="card card--full">
         <div class="card-header"><?= __('store_features') ?></div>
         <div class="card-body form-stack">
             <p class="form-hint"><?= __('store_features_hint') ?></p>
