@@ -1,6 +1,8 @@
 /**
- * Formulaire de rôle — grille de permissions (case à cocher stylée en puce,
+ * Formulaire de rôle — grille de permissions (slider Ok/NG par action,
  * compteur et bouton "Tout sélectionner/désélectionner" par catégorie).
+ * L'état visuel du slider (rouge/vert) suit :checked en CSS pur, rien à
+ * faire ici pour ça — seuls le compteur et le libellé sont recalculés.
  */
 'use strict';
 
@@ -13,7 +15,6 @@
         var checkboxes = card.querySelectorAll('[data-perm-checkbox]');
         var checkedCount = 0;
         checkboxes.forEach(function (cb) {
-            cb.closest('.perm-chip').classList.toggle('perm-chip--checked', cb.checked);
             if (cb.checked) checkedCount++;
         });
 
