@@ -6,6 +6,8 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-08-03
+
 ### Changed
 - Second, distinct proposal for the interface redesign ("Vitrine" direction): a single vivid violet accent (works both as text/link color and as solid button fill, unlike the previous amber-based "Rail" exploration), generously rounded cards/buttons, soft violet-tinted shadows. The fixed left sidebar is replaced by a single horizontal top bar — brand, primary nav collapsed into dropdown groups (Planning, HR, Requests, Reports, System), notifications and user menu — freeing the full page width for planning tables/timelines. The employee "this month" stats widget, previously embedded in the sidebar, is now a dropdown group in the top bar. All existing per-role/permission/feature-flag visibility rules for nav items are unchanged, only the surrounding markup changed. On narrow screens the nav collapses into a full-screen panel behind a hamburger toggle; the bottom tab bar (mobile) is unaffected.
 - Extended the "Vitrine" direction beyond the nav bar: data tables (roomier row padding, new reusable `.avatar-chip` utility for colored employee/user initials), the shared tab component and message tab bar (now a pill-track/segmented look instead of an underline, used by the dashboard, profile, and settings tabs), and stat/quick-nav cards (subtle hover lift) — all shared components, so every page that already used them (dashboard, lists, forms) picks up the new look automatically.
