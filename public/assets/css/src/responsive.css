@@ -69,12 +69,13 @@
         position: static;
     }
 
-    .role-form-layout {
+    .role-form-grid {
         grid-template-columns: 1fr;
     }
 
-    .role-form-side {
-        position: static;
+    .rf-info, .rf-holders, .rf-permissions {
+        grid-column: 1;
+        grid-row: auto;
     }
 
     .cal-grid td {

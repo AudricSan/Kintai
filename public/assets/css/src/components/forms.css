@@ -534,19 +534,42 @@ select.form-control {
     color: var(--color-primary);
 }
 
-/* ── Formulaire de rôle : contenu principal + colonne "Utilisateurs
-   ayant ce rôle" (mode édition uniquement, le rôle n'existe pas encore
-   en mode création) ─────────────────────────────────────────────── */
-.role-form-layout {
+/* ── Formulaire de rôle : grille fixe 20 % / 80 %, colonne de gauche
+   (identité + utilisateurs ayant le rôle, empilés sur 2 lignes) et
+   colonne de droite (permissions, sur toute la hauteur de la gauche).
+   Même technique que .form-section-grid (positions/tailles explicites,
+   align-items: stretch pour que les bords s'alignent toujours) plutôt
+   qu'un auto-placement — voir _form-user.php / _form-store.php. */
+.role-form-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 280px;
+    grid-template-columns: 1fr 4fr;
     gap: var(--space-4);
-    align-items: start;
+    align-items: stretch;
 }
 
-.role-form-side {
-    position: sticky;
-    top: var(--space-4);
+.role-form-grid > .card {
+    margin-bottom: 0;
+}
+
+.rf-info {
+    grid-column: 1;
+    grid-row: 1;
+}
+
+.rf-holders {
+    grid-column: 1;
+    grid-row: 2;
+}
+
+.rf-permissions {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+}
+
+/* Mode création (pas encore d'utilisateurs) : une seule ligne à gauche,
+   les permissions n'ont donc qu'une ligne à couvrir. */
+.role-form-grid--single .rf-permissions {
+    grid-row: 1;
 }
 
 .role-holders-list {
