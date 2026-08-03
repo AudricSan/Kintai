@@ -19,20 +19,30 @@
 }
 
 /* ── Grille de cartes de section : 3 → 2 colonnes (<1200px) ─────── */
+/* Le gabarit fixe (positions .card--c1/c2/c3 + .card--r1..4) est pensé
+   pour 3 colonnes desktop. En dessous, on l'annule et on repasse en
+   flux naturel plutôt que de maintenir un second gabarit fixe à 2
+   colonnes (complexité non justifiée pour une largeur transitoire). */
 @media (max-width: 1200px) {
     .form-section-grid {
         grid-template-columns: repeat(2, 1fr);
     }
 
+    .card--c1, .card--c2, .card--c3,
+    .card--r1, .card--r2, .card--r3, .card--r4 {
+        grid-column-start: auto;
+        grid-row-start: auto;
+    }
+
     .card--col-3,
     .card--full {
-        grid-column: span 2;
+        grid-column-end: span 2;
     }
 }
 
 /* ── Calendar responsive (<900px) ───────────────── */
 @media (max-width: 900px) {
-    /* 1 seule colonne : les modificateurs de colonne n'ont plus de sens,
+    /* 1 seule colonne : position/taille explicites n'ont plus de sens,
        et un grid-row: span 2 sans contrainte de largeur créerait une
        carte inutilement haute. */
     .form-section-grid {
@@ -42,11 +52,11 @@
     .card--col-2,
     .card--col-3,
     .card--full {
-        grid-column: span 1;
+        grid-column-end: span 1;
     }
 
     .card--row-2 {
-        grid-row: span 1;
+        grid-row-end: span 1;
     }
 
     .cal-layout {
