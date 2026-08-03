@@ -82,6 +82,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const opening = !group.classList.contains('is-open');
             groups.forEach((g) => g.classList.remove('is-open'));
             group.classList.toggle('is-open', opening);
+            // Ferme les autres menus déroulants de la topbar (notifs, utilisateur)
+            // qui gèrent leur propre stopPropagation et ne se fermeraient pas sinon.
+            document.getElementById('user-dropdown')?.classList.remove('user-dropdown--open');
+            document.getElementById('notif-dropdown')?.classList.remove('notif-dropdown--open');
         });
     });
 
@@ -192,6 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     toggle.addEventListener('click', function (e) {
         e.stopPropagation();
+        document.querySelectorAll('.topbar-nav-group.is-open').forEach(function (g) { g.classList.remove('is-open'); });
         var open = dropdown.classList.toggle('user-dropdown--open');
         toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
     });
