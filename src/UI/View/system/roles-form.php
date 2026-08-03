@@ -58,25 +58,44 @@ echo Flash::fromQuery('error', [
     <div class="card card--mb">
         <div class="card-body form-stack">
             <h4 class="section-title"><?= __('permissions') ?></h4>
-            <?php foreach ($permission_categories as $category => $actions): ?>
-            <div class="permission-group">
-                <span class="permission-group__label"><?= __('perm_category_' . $category) ?></span>
-                <div class="permission-group__options">
-                    <?php foreach ($actions as $action): ?>
-                    <?php
-                        $key       = $category . '.' . $action;
-                        $fieldName = 'perm_' . str_replace('.', '_', $key);
-                        $labelKey  = $action_label_keys[$action] ?? $action;
-                    ?>
-                    <label class="permission-option">
-                        <input type="checkbox" name="<?= htmlspecialchars($fieldName) ?>" value="1"
-                               <?= in_array($key, $granted_permissions, true) ? 'checked' : '' ?>>
-                        <?= __($labelKey) ?>
-                    </label>
-                    <?php endforeach; ?>
+            <div class="perm-grid" data-perm-grid
+                 data-select-all-label="<?= htmlspecialchars(__('select_all')) ?>"
+                 data-deselect-all-label="<?= htmlspecialchars(__('deselect_all')) ?>">
+                <?php foreach ($permission_categories as $category => $actions): ?>
+                <?php
+                    $catGranted = 0;
+                    foreach ($actions as $action) {
+                        if (in_array($category . '.' . $action, $granted_permissions, true)) {
+                            $catGranted++;
+                        }
+                    }
+                ?>
+                <div class="perm-card" data-perm-card>
+                    <div class="perm-card__header">
+                        <span class="perm-card__title"><?= __('perm_category_' . $category) ?></span>
+                        <div class="perm-card__tools">
+                            <span class="perm-card__count" data-perm-count><?= $catGranted ?>/<?= count($actions) ?></span>
+                            <button type="button" class="perm-card__toggle-all" data-perm-toggle-all><?= $catGranted === count($actions) ? __('deselect_all') : __('select_all') ?></button>
+                        </div>
+                    </div>
+                    <div class="perm-card__chips">
+                        <?php foreach ($actions as $action): ?>
+                        <?php
+                            $key       = $category . '.' . $action;
+                            $fieldName = 'perm_' . str_replace('.', '_', $key);
+                            $labelKey  = $action_label_keys[$action] ?? $action;
+                            $checked   = in_array($key, $granted_permissions, true);
+                        ?>
+                        <label class="perm-chip<?= $checked ? ' perm-chip--checked' : '' ?>">
+                            <input type="checkbox" name="<?= htmlspecialchars($fieldName) ?>" value="1" data-perm-checkbox
+                                   <?= $checked ? 'checked' : '' ?>>
+                            <?= __($labelKey) ?>
+                        </label>
+                        <?php endforeach; ?>
+                    </div>
                 </div>
+                <?php endforeach; ?>
             </div>
-            <?php endforeach; ?>
         </div>
     </div>
     <?php endif; ?>
@@ -105,3 +124,7 @@ echo Flash::fromQuery('error', [
     </div>
     <?php endif; ?>
 </form>
+
+<?php if (!$isSystem): ?>
+<script src="<?= $BASE_URL ?>/assets/js/modules/permission-editor.js"></script>
+<?php endif; ?>
