@@ -2,14 +2,22 @@
 /** @var string $mode                  'create'|'edit' */
 /** @var array  $user                  Données de l'utilisateur */
 /** @var array  $all_stores            Liste des magasins */
-/** @var array  $assignable_roles      Rôles dynamiques assignables par store (table roles) */
+/** @var array  $all_roles             Tous les rôles (Owner + rôles par store, table roles) — sélecteur "Rôle" unifié du formulaire de création principal */
 /** @var int    $default_store_role_id Rôle pré-sélectionné par défaut */
+/** @var string $owner_role_name       Nom du rôle système Owner (édition : libellé de la case "compte Owner") */
 /** @var bool   $as_cards              true : chaque section devient une Card séparée (page d'édition complète) ;
  *                                     false/absent : rendu compact d'origine (modale de création rapide, voir shifts-import-preview.php). */
 $mode ??= 'create';
-$assignable_roles      ??= [];
-$default_store_role_id ??= 0;
+$all_roles              ??= [];
+$default_store_role_id  ??= 0;
+$owner_role_name        ??= __('admin');
 $as_cards ??= false;
+// Le formulaire de création principal (all_roles renseigné) propose un
+// sélecteur "Rôle" unique (Owner + rôles par store) à la place de l'ancienne
+// case "Rôle global" Personnel/Administration, déconnectée du système de
+// rôles dynamique. La modale de création rapide (import Excel) ne fournit
+// pas all_roles : elle garde l'ancienne case, plus simple pour ce contexte.
+$hasUnifiedRoleSelect = $mode === 'create' && !empty($all_roles);
 $genderOptions = ['male' => __('male'), 'female' => __('female')];
 $taxOptions = ['kou' => '甲', 'otsu' => '乙'];
 $currentUserId = (int) ($user['id'] ?? 0);
@@ -209,13 +217,15 @@ $section = function (string $titleKey, string $body, string $span = '') use ($as
                     <span class="text-sm-muted"><?= __('planning_visible_hint') ?></span>
                 </div>
             </div>
+            <?php if (!$hasUnifiedRoleSelect): ?>
             <div class="form-group">
-                <label class="form-label"><?= __('global_role') ?></label>
-                <select name="is_admin" class="form-control">
-                    <option value="0" <?= empty($user['is_admin']) ? 'selected' : '' ?>><?= __('staff') ?></option>
-                    <option value="1" <?= !empty($user['is_admin']) ? 'selected' : '' ?>><?= __('admin') ?></option>
-                </select>
+                <label class="form-check">
+                    <input type="checkbox" name="is_admin" value="1" <?= !empty($user['is_admin']) ? 'checked' : '' ?>>
+                    <span><?= htmlspecialchars($owner_role_name) ?></span>
+                </label>
+                <p class="form-hint"><?= __('owner_account_hint') ?></p>
             </div>
+            <?php endif; ?>
         </div>
         <?php if ($mode === 'edit'): ?>
         <div class="form-row">
@@ -238,7 +248,7 @@ $section = function (string $titleKey, string $body, string $span = '') use ($as
             <!-- (ex. modale de création rapide depuis l'import : le store est déjà fixé -->
             <!-- via un champ caché du formulaire parent, sinon le nom "store_id" entrerait -->
             <!-- en collision avec ce select et écraserait la valeur transmise) -->
-            <div class="form-group">
+            <div class="form-group" id="userStoreGroup">
                 <label class="form-label"><?= __('store') ?></label>
                 <select name="store_id" class="form-control">
                     <option value="">— <?= __('none') ?> —</option>
@@ -248,14 +258,17 @@ $section = function (string $titleKey, string $body, string $span = '') use ($as
                 </select>
             </div>
             <?php endif; ?>
-            <?php if (!empty($assignable_roles)): ?>
+            <?php if ($hasUnifiedRoleSelect): ?>
             <div class="form-group">
-                <label class="form-label"><?= __('store_role') ?></label>
-                <select name="store_role_id" class="form-control">
-                    <?php foreach ($assignable_roles as $r): ?>
-                        <option value="<?= (int) $r['id'] ?>" <?= (int) $r['id'] === (int) $default_store_role_id ? 'selected' : '' ?>><?= htmlspecialchars($r['name'] ?? '') ?></option>
+                <label class="form-label"><?= __('role') ?></label>
+                <select name="role_id" class="form-control" id="userRoleSelect">
+                    <?php foreach ($all_roles as $r): ?>
+                        <option value="<?= (int) $r['id'] ?>"
+                                data-system="<?= !empty($r['is_system']) ? '1' : '0' ?>"
+                                <?= (int) $r['id'] === (int) $default_store_role_id ? 'selected' : '' ?>><?= htmlspecialchars($r['name'] ?? '') ?></option>
                     <?php endforeach; ?>
                 </select>
+                <p class="form-hint"><?= __('owner_role_no_store_hint') ?></p>
             </div>
             <?php endif; ?>
         </div>

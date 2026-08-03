@@ -384,7 +384,7 @@ final class AdminUserController
             'mode'                  => 'create',
             'user'                  => [],
             'all_stores'            => $this->availableStores($this->managedIds($request)),
-            'assignable_roles'      => $this->roleSync->assignableStoreRoles(),
+            'all_roles'             => $this->roleSync->allRoles(),
             'default_store_role_id' => (int) ($this->roleSync->defaultStoreRole()['id'] ?? 0),
         ], 'layout.app'));
     }
@@ -414,6 +414,12 @@ final class AdminUserController
             $pw  = preg_replace('/[^a-z0-9]/', '', iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $pw));
             $password = $pw ?: ('User' . $suf);
         }
+
+        // Un seul sélecteur "Rôle" (Owner + rôles par store) remplace l'ancien
+        // couple "Rôle global" (is_admin) / "Rôle dans le store" (store_role_id).
+        $selectedRole = $this->roleSync->findRole((int) $request->post('role_id', 0));
+        $isOwner      = $selectedRole !== null && !empty($selectedRole['is_system']);
+
         $saved    = $this->users->save([
             'display_name'       => $request->post('display_name', ''),
             'first_name'         => $request->post('first_name', ''),
@@ -435,21 +441,21 @@ final class AdminUserController
             'color'              => $request->post('color', '#3B82F6'),
             'employee_code'      => $empCode,
             'password_hash'      => password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]),
-            'is_admin'           => $request->post('is_admin') === '1' ? 1 : 0,
+            'is_admin'           => $isOwner ? 1 : 0,
             'is_active'          => 1,
         ]);
-        $this->roleSync->syncOwnerRole((int) ($saved['id'] ?? 0), $request->post('is_admin') === '1');
+        $this->roleSync->syncOwnerRole((int) ($saved['id'] ?? 0), $isOwner);
 
         // Affecter au magasin si sélectionné
         $storeId = (int) $request->post('store_id', 0);
         if ($storeId > 0 && !empty($saved['id'])) {
             $this->assertStoreAccess($request, $storeId);
-            $role = $this->roleSync->findAssignableRole((int) $request->post('store_role_id', 0))
-                ?? $this->roleSync->defaultStoreRole();
+            // Owner : pas de rôle par store à synchroniser, l'affectation globale suffit.
+            $role = $isOwner ? null : ($selectedRole ?? $this->roleSync->defaultStoreRole());
             $membership = $this->storeUsers->save([
                 'store_id' => $storeId,
                 'user_id'  => (int) $saved['id'],
-                'role'     => $role !== null ? $this->roleSync->legacyRoleFor((int) $role['id']) : 'staff',
+                'role'     => $isOwner ? 'manager' : ($role !== null ? $this->roleSync->legacyRoleFor((int) $role['id']) : 'staff'),
             ]);
             if ($role !== null) {
                 $this->roleSync->syncStoreRoleById((int) $saved['id'], $storeId, (int) $role['id']);
@@ -709,6 +715,7 @@ final class AdminUserController
             'all_stores'       => $this->availableStores($this->managedIds($request)),
             'assignable_roles'      => $this->roleSync->assignableStoreRoles(),
             'default_store_role_id' => (int) ($this->roleSync->defaultStoreRole()['id'] ?? 0),
+            'owner_role_name'       => (string) ($this->roleSync->ownerRole()['name'] ?? __('admin')),
         ], 'layout.app'));
     }
 
