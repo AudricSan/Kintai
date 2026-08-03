@@ -62,7 +62,7 @@ $section = function (string $titleKey, string $body, string $span = '') use ($as
                        placeholder="カタカナ" required>
             </div>
         </div>
-    <?php $section('identity', ob_get_clean(), 'card--row-2'); ?>
+    <?php $section('identity', ob_get_clean(), 'card--c1 card--r1'); ?>
 
     <?php ob_start(); ?>
         <div class="form-group">
@@ -93,7 +93,7 @@ $section = function (string $titleKey, string $body, string $span = '') use ($as
             <input type="text" name="education" class="form-control"
                    value="<?= htmlspecialchars($user['education'] ?? '') ?>">
         </div>
-    <?php $section('personal_details', ob_get_clean()); ?>
+    <?php $section('personal_details', ob_get_clean(), 'card--c2 card--r1 card--row-2'); ?>
 
     <?php ob_start(); ?>
         <div class="form-row">
@@ -135,7 +135,7 @@ $section = function (string $titleKey, string $body, string $span = '') use ($as
             <label class="form-label"><?= __('address') ?></label>
             <textarea name="address" class="form-control" rows="2"><?= htmlspecialchars($user['address'] ?? '') ?></textarea>
         </div>
-    <?php $section('contact', ob_get_clean(), 'card--row-2'); ?>
+    <?php $section('contact', ob_get_clean(), 'card--c3 card--r1 card--row-2'); ?>
 
     <?php ob_start(); ?>
         <div class="form-row">
@@ -150,7 +150,7 @@ $section = function (string $titleKey, string $body, string $span = '') use ($as
                        value="<?= htmlspecialchars($user['guarantor_phone'] ?? '') ?>">
             </div>
         </div>
-    <?php $section('guarantor', ob_get_clean()); ?>
+    <?php $section('guarantor', ob_get_clean(), 'card--c1 card--r2'); ?>
 
     <?php ob_start(); ?>
         <div class="form-group">
@@ -189,7 +189,7 @@ $section = function (string $titleKey, string $body, string $span = '') use ($as
             </button>
         </div>
         <?php endif; ?>
-    <?php $section('employee_info', ob_get_clean()); ?>
+    <?php $section('employee_info', ob_get_clean(), 'card--c1 card--r3'); ?>
 
     <?php ob_start(); ?>
         <div class="form-row">
@@ -228,7 +228,7 @@ $section = function (string $titleKey, string $body, string $span = '') use ($as
             </div>
         </div>
         <?php endif; ?>
-    <?php $section('roles_appearance', ob_get_clean()); ?>
+    <?php $section('roles_appearance', ob_get_clean(), 'card--c2 card--r3 card--col-2'); ?>
 
     <?php if ($mode === 'create'): ?>
     <?php ob_start(); ?>
@@ -259,6 +259,6 @@ $section = function (string $titleKey, string $body, string $span = '') use ($as
             </div>
             <?php endif; ?>
         </div>
-    <?php $section('assign_to_store', ob_get_clean()); ?>
+    <?php $section('assign_to_store', ob_get_clean(), 'card--c1 card--r4 card--full'); ?>
     <?php endif; ?>
 </div>
