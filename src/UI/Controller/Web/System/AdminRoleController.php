@@ -256,10 +256,24 @@ final class AdminRoleController
             $holders[] = [
                 'assignment_id' => (int) $assignment['id'],
                 'user_name'     => $user['display_name'] ?? ($user['email'] ?? ('#' . $assignment['user_id'])),
+                'initials'      => $this->userInitials($user),
+                'color'         => $user['color'] ?? '#6c5ce7',
                 'scope_label'   => $scopeLabel,
             ];
         }
         return $holders;
+    }
+
+    /** Initiales nom+prénom (repli sur les 2 premiers caractères du nom affiché) — même règle que la colonne "Nom" de /admin/users. */
+    private function userInitials(?array $user): string
+    {
+        $initials = mb_strtoupper(
+            mb_substr((string) ($user['last_name'] ?? ''), 0, 1) . mb_substr((string) ($user['first_name'] ?? ''), 0, 1)
+        );
+        if ($initials === '') {
+            $initials = mb_substr(strip_tags((string) ($user['display_name'] ?? '')), 0, 2);
+        }
+        return $initials;
     }
 
     private function slugify(string $name): string

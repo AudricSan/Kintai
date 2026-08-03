@@ -4,8 +4,8 @@
 
 /* ── Dashboard ──────────────────────────────────── */
 .dash-tabs-nav {
+    max-width: 100%;
     overflow-x: auto;
-    padding: 0 var(--space-5);
     scrollbar-width: none;
 }
 .dash-tabs-nav::-webkit-scrollbar { display: none; }

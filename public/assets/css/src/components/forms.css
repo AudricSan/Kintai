@@ -181,6 +181,15 @@ select.form-control {
     align-items: center;
 }
 
+.form-check {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    cursor: pointer;
+    font-size: var(--text-sm);
+    color: var(--color-text);
+}
+
 .input-group {
     display: flex;
     align-items: center;
@@ -393,6 +402,17 @@ select.form-control {
     height: 22px;
 }
 
+/* Variante avec libellé accolé (ex. "Afficher les inactifs" dans l'en-tête
+   d'une carte) : la piste garde sa taille fixe, le conteneur s'étire. */
+.form-toggle--labeled {
+    width: auto;
+    height: auto;
+    gap: var(--space-2);
+    margin-left: auto;
+    font-size: var(--text-sm);
+    color: var(--color-text);
+}
+
 .form-toggle__input {
     position: absolute;
     opacity: 0;
@@ -432,30 +452,171 @@ select.form-control {
 }
 
 /* ── Matrice de permissions (rôles) ────────────────── */
-.permission-group {
+.perm-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: var(--space-4);
+}
+
+.perm-card {
+    background: var(--color-surface-alt);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+}
+
+.perm-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
     margin-bottom: var(--space-3);
 }
 
-.permission-group__label {
+.perm-card__title {
+    font-size: var(--text-sm);
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.perm-card__tools {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.perm-card__count {
     font-size: var(--text-xs-2);
     font-weight: 600;
     color: var(--color-text-muted);
-    margin-bottom: var(--space-1);
-    display: block;
+    font-variant-numeric: tabular-nums;
 }
 
-.permission-group__options {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-3);
-}
-
-.permission-option {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-    font-size: var(--text-sm);
+.perm-card__toggle-all {
+    border: none;
+    background: none;
+    color: var(--color-primary);
+    font-size: var(--text-xs-2);
+    font-weight: 600;
     cursor: pointer;
+    padding: 0;
+    font-family: inherit;
+}
+
+.perm-card__toggle-all:hover {
+    text-decoration: underline;
+}
+
+.perm-card__list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* Slider Ok/NG façon Discord : rouge = refusé, vert = accordé — piste et
+   pastille via un sélecteur de fratrie (input:checked + track), pas de
+   classe JS à maintenir pour l'état visuel. */
+.perm-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background var(--duration-fast);
+}
+
+.perm-toggle:hover {
+    background: var(--color-surface);
+}
+
+.perm-toggle__text {
+    font-size: var(--text-xs);
+    font-weight: 500;
+    color: var(--color-text);
+}
+
+.perm-toggle__input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.perm-toggle__track {
+    position: relative;
+    display: block;
+    width: 32px;
+    height: 18px;
+    flex-shrink: 0;
+    border-radius: var(--radius-full);
+    background: var(--color-danger);
+    transition: background var(--duration-fast);
+}
+
+.perm-toggle__track::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: var(--shadow-xs);
+    transition: left var(--duration-fast);
+}
+
+.perm-toggle__input:checked + .perm-toggle__track {
+    background: var(--color-success);
+}
+
+.perm-toggle__input:checked + .perm-toggle__track::after {
+    left: 16px;
+}
+
+.perm-toggle__input:focus-visible + .perm-toggle__track {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+/* ── Formulaire de rôle : grille fixe 20 % / 80 %, colonne de gauche
+   (identité + utilisateurs ayant le rôle, empilés sur 2 lignes) et
+   colonne de droite (permissions, sur toute la hauteur de la gauche).
+   Même technique que .form-section-grid (positions/tailles explicites,
+   align-items: stretch pour que les bords s'alignent toujours) plutôt
+   qu'un auto-placement — voir _form-user.php / _form-store.php. */
+.role-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 4fr;
+    gap: var(--space-4);
+    align-items: stretch;
+}
+
+.role-form-grid > .card {
+    margin-bottom: 0;
+}
+
+.rf-info {
+    grid-column: 1;
+    grid-row: 1;
+}
+
+.rf-holders {
+    grid-column: 1;
+    grid-row: 2;
+}
+
+.rf-permissions {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+}
+
+/* Mode création (pas encore d'utilisateurs) : une seule ligne à gauche,
+   les permissions n'ont donc qu'une ligne à couvrir. */
+.role-form-grid--single .rf-permissions {
+    grid-row: 1;
 }
 
 .role-holders-list {
@@ -465,5 +626,40 @@ select.form-control {
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.role-holder-chip {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-full);
+    background: var(--color-bg-alt);
+}
+
+.role-holder-chip__body {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.25;
+}
+
+.role-holder-chip__name {
+    font-size: var(--text-xs-2);
+    font-weight: 600;
+    color: var(--color-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.role-holder-chip__scope {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
