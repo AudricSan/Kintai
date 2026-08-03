@@ -35,81 +35,76 @@
     }
 }
 
-/* ── Sidebar + Stat grid + Quick nav (768px) ────── */
+/* ── Topbar nav + Stat grid + Quick nav (768px) ─── */
 @media (max-width: 768px) {
-    /* Menu plein écran sur mobile (distinct du tiroir étroit desktop) :
-       plus de place pour des liens et sections plus grands et plus lisibles.
+    /* Panneau plein écran sur mobile (distinct des menus déroulants
+       flottants du desktop) : la nav et ses groupes s'empilent, toujours
+       dépliés — plus besoin de cliquer un déclencheur pour voir les liens.
        Passe au-dessus de la bottom-nav (z-index 100) une fois ouvert. */
-    .sidebar {
-        width: 100%;
-        max-width: 100%;
-        z-index: 150;
-        transform: translateX(-100%);
-    }
-
-    .sidebar.open {
-        transform: translateX(0);
-    }
-
-    .sidebar-header {
-        padding: var(--space-5) var(--space-6);
-    }
-
-    .sidebar-brand__name {
-        font-size: var(--text-2xl);
-    }
-
-    .sidebar-section {
-        padding-top: var(--space-6);
-        font-size: var(--text-xs);
-    }
-
-    .sidebar-link {
-        font-size: var(--text-lg);
-        padding: var(--space-4) var(--space-6);
-        min-height: 52px;
-        gap: var(--space-4);
-    }
-
-    .sidebar-link__icon svg {
-        width: 22px;
-        height: 22px;
-    }
-
-    .sidebar-nav-footer__link {
-        font-size: var(--text-base);
-        padding: var(--space-4) var(--space-6);
-        min-height: 44px;
-        display: flex;
-        align-items: center;
-    }
-
-    .main-content {
-        margin-left: 0;
-    }
-
-    .sidebar-toggle {
+    .topbar-nav-toggle {
         display: block;
     }
 
-    .sidebar-close {
-        display: block;
-        font-size: 1.75rem;
-    }
-
-    /* Fond assombri : n'est visible que pendant la transition d'ouverture,
-       le menu plein écran le recouvre entièrement une fois ouvert. */
-    .sidebar-backdrop {
+    .topbar-nav {
         display: none;
         position: fixed;
-        inset: 0;
-        background: var(--overlay-bg);
-        z-index: 99;
-        cursor: pointer;
+        top: var(--topbar-height);
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 150;
+        background: var(--color-surface);
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+        padding: var(--space-2) var(--space-3);
+        overflow-y: auto;
     }
 
-    .sidebar-backdrop.open {
-        display: block;
+    .topbar-nav.open {
+        display: flex;
+    }
+
+    .topbar-nav-link,
+    .topbar-nav-group__trigger {
+        width: 100%;
+        justify-content: flex-start;
+        border-radius: var(--radius-sm);
+        font-size: var(--text-base);
+        padding: var(--space-3) var(--space-4);
+    }
+
+    .topbar-nav-group__caret {
+        display: none;
+    }
+
+    /* Toujours dépliés sur mobile plutôt qu'en dropdown flottant. */
+    .topbar-nav-group__panel {
+        display: flex !important;
+        position: static;
+        border: none;
+        box-shadow: none;
+        padding: 0 0 var(--space-2) var(--space-4);
+    }
+
+    .topbar-nav-group__link {
+        font-size: var(--text-base);
+        padding: var(--space-3) var(--space-4);
+    }
+
+    .topbar-nav-group__link-icon svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .topbar-brand__subtitle {
+        display: none;
+    }
+
+    /* Widget stats employé : accessible depuis le tableau de bord, pas
+       nécessaire dans une topbar déjà chargée sur petit écran. */
+    .topbar-nav-group--stats {
+        display: none;
     }
 
     .bottom-nav {
@@ -124,8 +119,6 @@
         margin-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
     }
 
-    .topbar-breadcrumb__section { display: none; }
-    .topbar-breadcrumb__sep     { display: none; }
     .user-dropdown__label       { display: none; }
     .user-dropdown__chevron     { display: none; }
 
@@ -528,14 +521,14 @@
 
 /* ── Print styles ───────────────────────────────── */
 @media print {
-    .sidebar, .topbar, .sstat-period-nav,
+    .topbar, .sstat-period-nav,
     .erep-no-print, .erep-print-btn,
     .page-header__actions, .alert,
-    .bottom-nav, .sidebar-toggle {
+    .bottom-nav {
         display: none !important;
     }
 
-    .app-layout, .main-content,
+    .app-layout,
     .page-content {
         display: block !important;
         width: 100% !important;
