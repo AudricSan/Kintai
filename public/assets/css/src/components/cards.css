@@ -130,27 +130,25 @@
 }
 
 /* ── Grille de cartes de section (formulaires longs : store, employé) ──
-   Remplace l'empilement vertical d'un .form-stack par 2 colonnes —
-   plusieurs sections visibles à la fois, moins de scroll. Colonnes CSS
-   plutôt que grid : les cartes ont des hauteurs très inégales (ex. Infos
-   générales vs. Cotisations), et un grid classique laisserait un grand
-   vide sous la carte la plus courte de chaque rangée ; les colonnes CSS
-   équilibrent la hauteur automatiquement entre les deux colonnes.
-   .card--full fait sortir une carte de la grille pour occuper toute la
-   largeur (ex. la section la plus dense). */
+   display:grid, 3 colonnes — chaque carte choisit sa taille via un
+   modificateur (1 à 3 colonnes, 1 ou 2 rangées) plutôt que de s'empiler
+   verticalement : plusieurs sections visibles à la fois, moins de scroll.
+   grid-auto-flow: dense comble les vides laissés par des cartes de
+   tailles différentes en remontant les cartes suivantes qui y tiennent —
+   c'est ce qui remplace l'équilibrage manuel qu'exigerait un grid simple. */
 .form-section-grid {
-    column-count: 2;
-    column-gap: var(--space-4);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-auto-rows: minmax(0, auto);
+    grid-auto-flow: dense;
+    gap: var(--space-4);
+    align-items: start;
 }
 
-.form-section-grid > .card {
-    break-inside: avoid;
-    margin-bottom: var(--space-4);
-}
-
-.form-section-grid > .card--full {
-    column-span: all;
-}
+.card--col-2 { grid-column: span 2; }
+.card--col-3,
+.card--full   { grid-column: span 3; }
+.card--row-2  { grid-row: span 2; }
 
 /* ── Stat Cards ─────────────────────────────────── */
 .stat-grid {

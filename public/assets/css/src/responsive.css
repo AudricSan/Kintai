@@ -18,10 +18,35 @@
     }
 }
 
+/* ── Grille de cartes de section : 3 → 2 colonnes (<1200px) ─────── */
+@media (max-width: 1200px) {
+    .form-section-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .card--col-3,
+    .card--full {
+        grid-column: span 2;
+    }
+}
+
 /* ── Calendar responsive (<900px) ───────────────── */
 @media (max-width: 900px) {
+    /* 1 seule colonne : les modificateurs de colonne n'ont plus de sens,
+       et un grid-row: span 2 sans contrainte de largeur créerait une
+       carte inutilement haute. */
     .form-section-grid {
-        column-count: 1;
+        grid-template-columns: 1fr;
+    }
+
+    .card--col-2,
+    .card--col-3,
+    .card--full {
+        grid-column: span 1;
+    }
+
+    .card--row-2 {
+        grid-row: span 1;
     }
 
     .cal-layout {
