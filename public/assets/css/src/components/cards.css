@@ -130,25 +130,33 @@
 }
 
 /* ── Grille de cartes de section (formulaires longs : store, employé) ──
-   display:grid, 3 colonnes — chaque carte choisit sa taille via un
-   modificateur (1 à 3 colonnes, 1 ou 2 rangées) plutôt que de s'empiler
-   verticalement : plusieurs sections visibles à la fois, moins de scroll.
-   grid-auto-flow: dense comble les vides laissés par des cartes de
-   tailles différentes en remontant les cartes suivantes qui y tiennent —
-   c'est ce qui remplace l'équilibrage manuel qu'exigerait un grid simple. */
+   display:grid, 3 colonnes, grille FIXE : chaque carte reçoit une
+   position explicite (.card--c1/c2/c3 + .card--r1/r2/r3/r4) et une
+   taille explicite (.card--col-2/--full pour 1-3 colonnes, .card--row-2
+   pour 1-2 rangées) plutôt que de laisser l'algorithme d'auto-placement
+   décider — le gabarit est posé une fois pour toutes dans la vue, pas
+   recalculé selon le contenu. */
 .form-section-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    grid-auto-rows: minmax(0, auto);
-    grid-auto-flow: dense;
     gap: var(--space-4);
     align-items: start;
 }
 
-.card--col-2 { grid-column: span 2; }
+/* Position (ligne de départ) */
+.card--c1 { grid-column-start: 1; }
+.card--c2 { grid-column-start: 2; }
+.card--c3 { grid-column-start: 3; }
+.card--r1 { grid-row-start: 1; }
+.card--r2 { grid-row-start: 2; }
+.card--r3 { grid-row-start: 3; }
+.card--r4 { grid-row-start: 4; }
+
+/* Taille (nombre de colonnes/rangées occupées) */
+.card--col-2  { grid-column-end: span 2; }
 .card--col-3,
-.card--full   { grid-column: span 3; }
-.card--row-2  { grid-row: span 2; }
+.card--full   { grid-column-end: span 3; }
+.card--row-2  { grid-row-end: span 2; }
 
 /* ── Stat Cards ─────────────────────────────────── */
 .stat-grid {

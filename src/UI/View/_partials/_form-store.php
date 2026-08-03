@@ -24,7 +24,7 @@ $dedResidentTax = $ded['resident_tax_monthly'] ?? 0;
 ?>
 <div class="form-section-grid">
     <!-- ── Identité ──────────────────────────────────────── -->
-    <div class="card">
+    <div class="card card--c1 card--r1">
         <div class="card-header"><?= __('identity') ?></div>
         <div class="card-body form-stack">
             <div class="form-group">
@@ -58,7 +58,7 @@ $dedResidentTax = $ded['resident_tax_monthly'] ?? 0;
     </div>
 
     <!-- ── Localisation & devise ────────────────────────── -->
-    <div class="card">
+    <div class="card card--c2 card--r1">
         <div class="card-header"><?= __('locale') ?> & <?= __('currency') ?></div>
         <div class="card-body form-stack">
             <div class="form-group">
@@ -94,7 +94,7 @@ $dedResidentTax = $ded['resident_tax_monthly'] ?? 0;
     </div>
 
     <!-- ── Contact ───────────────────────────────────────── -->
-    <div class="card card--row-2">
+    <div class="card card--c3 card--r1 card--row-2">
         <div class="card-header"><?= __('contact') ?></div>
         <div class="card-body form-stack">
             <div class="form-group">
@@ -135,7 +135,7 @@ $dedResidentTax = $ded['resident_tax_monthly'] ?? 0;
     </div>
 
     <!-- ── Cotisations sociales ─────────────────────────── -->
-    <div class="card card--row-2">
+    <div class="card card--c1 card--r2">
         <div class="card-header"><?= __('deduction_settings') ?></div>
         <div class="card-body form-stack">
             <div class="form-group form-group--inline">
@@ -180,7 +180,7 @@ $dedResidentTax = $ded['resident_tax_monthly'] ?? 0;
     </div>
 
     <!-- ── Paramètres de planning ───────────────────────── -->
-    <div class="card card--col-2 card--row-2">
+    <div class="card card--c1 card--r3 card--col-3">
         <div class="card-header"><?= __('shift_settings') ?></div>
         <div class="card-body form-stack">
             <div class="form-row">
@@ -252,7 +252,7 @@ $dedResidentTax = $ded['resident_tax_monthly'] ?? 0;
     </div>
 
     <!-- ── Import Excel ──────────────────────────────────── -->
-    <div class="card card--row-2">
+    <div class="card card--c2 card--r2">
         <div class="card-header">
             <span><?= __('excel_import_settings') ?></span>
             <a href="<?= $BASE_URL ?>/assets/doc/template.xlsm" download
@@ -305,7 +305,7 @@ $dedResidentTax = $ded['resident_tax_monthly'] ?? 0;
     </div>
 
     <!-- ── Fonctionnalités ───────────────────────────────── -->
-    <div class="card card--full">
+    <div class="card card--c1 card--r4 card--full">
         <div class="card-header"><?= __('store_features') ?></div>
         <div class="card-body form-stack">
             <p class="form-hint"><?= __('store_features_hint') ?></p>
