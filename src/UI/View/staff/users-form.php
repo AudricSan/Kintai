@@ -50,17 +50,6 @@ echo Flash::fromQuery('error', [
 <form method="POST" action="<?= htmlspecialchars($action) ?>" id="userEditForm" class="form-stack" novalidate<?= $mode === 'edit' ? ' data-autosave="1"' : '' ?>>
     <?= csrf_field() ?>
     <?php $as_cards = true; include __DIR__ . '/../_partials/_form-user.php'; ?>
-    <p class="form-error" data-required-error hidden><?= __('required_fields_missing') ?></p>
-    <div class="form-actions">
-        <?= Button::make($mode === 'edit' ? __('save') : __('new_user'))->primary()->submit()->render() ?>
-        <a href="<?= route_url('admin.users') ?>" class="btn btn--ghost"><?= __('cancel') ?></a>
-        <?php if ($mode === 'edit'): ?>
-        <span class="autosave-status" data-autosave-status
-              data-saving-label="<?= htmlspecialchars(__('autosave_saving')) ?>"
-              data-saved-label="<?= htmlspecialchars(__('autosave_saved')) ?>"
-              data-error-label="<?= htmlspecialchars(__('autosave_error')) ?>"></span>
-        <?php endif; ?>
-    </div>
 </form>
 <?php if ($mode === 'edit'): ?>
 <form method="POST" action="<?= $BASE_URL ?>/admin/users/<?= (int) $user['id'] ?>/reset-password" id="resetPasswordForm">
@@ -226,6 +215,19 @@ echo Flash::fromQuery('error', [
     </div>
 </div>
 <?php endif; // mode === 'edit' (ligne 57) ?>
+
+<p class="form-error" data-required-error data-required-error-form="userEditForm" hidden><?= __('required_fields_missing') ?></p>
+<div class="form-actions mt-md">
+    <?= Button::make($mode === 'edit' ? __('save') : __('new_user'))->primary()->submit()->attrs(['form' => 'userEditForm'])->render() ?>
+    <a href="<?= route_url('admin.users') ?>" class="btn btn--ghost"><?= __('cancel') ?></a>
+    <?php if ($mode === 'edit'): ?>
+    <span class="autosave-status" data-autosave-status
+          data-saving-label="<?= htmlspecialchars(__('autosave_saving')) ?>"
+          data-saved-label="<?= htmlspecialchars(__('autosave_saved')) ?>"
+          data-error-label="<?= htmlspecialchars(__('autosave_error')) ?>"></span>
+    <?php endif; ?>
+</div>
+
 <script src="<?= $BASE_URL ?>/assets/js/modules/user-form-live-check.js"></script>
 <script src="<?= $BASE_URL ?>/assets/js/modules/furigana-suggest.js"></script>
 <script src="<?= $BASE_URL ?>/assets/js/modules/user-role-select.js"></script>
