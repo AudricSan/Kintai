@@ -62,23 +62,30 @@ echo Flash::fromQuery('error', [
 <?php endif; ?>
 
 <?php if ($mode === 'edit'): ?>
-<!-- Rôles et apparence + Stores + Cotisations sociales + Taux horaires personnalisés :
-     regroupés dans une seule box (demande explicite), séparés par des sous-en-têtes
-     card-header--border-top. Les champs de "roles_appearance" restent rattachés au
-     formulaire principal (id=userEditForm) via l'attribut form= posé dans _form-user.php. -->
+<!-- Stores + Cotisations sociales + Taux horaires personnalisés : regroupés dans une
+     seule box (demande explicite), séparés par des sous-en-têtes card-header--border-top.
+     "Rôle et apparence" (couleur, statut, compte Owner) a été redistribué dans la carte
+     "Informations employé" de la grille du haut, voir _form-user.php. -->
 <div class="card card--mt">
-    <div class="card-header"><span><?= __('roles_appearance') ?></span></div>
-    <div class="card-body">
-        <?= $rolesAppearanceBody ?? '' ?>
+    <div class="card-header card-header--flex">
+        <h3 class="card-title"><?= __('stores_plural') ?></h3>
+        <?php if (!empty($available_stores)): ?>
+        <?= Button::make(__('assign_to_store'))->outline()->sm()->attrs(['type' => 'button', 'onclick' => "openModal('assignStoreModal')"])->render() ?>
+        <?php endif; ?>
     </div>
-
-    <div class="card-header card-header--flex card-header--border-top"><h3 class="card-title"><?= __('stores_plural') ?></h3></div>
     <div class="table-wrap">
         <table class="data-table" data-mob-stack>
-            <thead><tr><th><?= __('store') ?></th><th><?= __('role') ?></th><th><?= __('social_deductions') ?></th><th><?= __('actions') ?></th></tr></thead>
+            <thead><tr>
+                <th><?= __('store') ?></th>
+                <th><?= __('role') ?></th>
+                <th><?= __('social_deductions') ?></th>
+                <th><?= __('shift_types') ?></th>
+                <th><?= __('base_rate') ?></th>
+                <th><?= __('custom_rate') ?></th>
+            </tr></thead>
             <tbody>
                 <?php if (empty($user_memberships)): ?>
-                    <tr><td colspan="4" class="td-center td-muted"><?= __('no_store_assigned') ?></td></tr>
+                    <tr><td colspan="6" class="td-center td-muted"><?= __('no_store_assigned') ?></td></tr>
                 <?php else: ?>
                     <?php foreach ($user_memberships as $m):
                         $sid = (int) $m['store_id'];
@@ -86,8 +93,11 @@ echo Flash::fromQuery('error', [
                         $ov = $m['ded_overrides'] ?? [];
                         $storeDedEnabled = !empty($m['store_ded_settings']['enabled']);
                         $subject = !empty($ov['subject_to_deductions']);
+                        $storeTypes = $shift_types_by_store[$sid] ?? [];
+                        $rowSpan = max(1, count($storeTypes));
                     ?>
-                        <tr>
+                        <?php if (empty($storeTypes)): ?>
+                        <tr class="tr--clickable" data-modal="editMembershipModal<?= $mid ?>">
                             <td data-label="<?= htmlspecialchars(__('store')) ?>"><?= htmlspecialchars($m['store_name'] ?? '') ?></td>
                             <td data-label="<?= htmlspecialchars(__('role')) ?>"><?= Badge::make(htmlspecialchars($m['role_name'] ?? ($m['role'] ?? '—')))->variant(!empty($m['role_is_managing']) ? 'warning' : 'active')->render() ?></td>
                             <td data-label="<?= htmlspecialchars(__('social_deductions')) ?>">
@@ -104,63 +114,104 @@ echo Flash::fromQuery('error', [
                                     <?= Badge::make(__('deductions_disabled'))->variant('muted')->render() ?>
                                 <?php endif; ?>
                             </td>
-                            <td data-label="<?= htmlspecialchars(__('actions')) ?>">
-                                <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= (int)$m['store_id'] ?>/members/<?= (int)$m['id'] ?>/delete" class="form-inline" onsubmit="return confirm('<?= __('confirm_remove_member') ?>')">
+                            <td colspan="3" class="text-sm text-dim">—</td>
+                        </tr>
+                        <?php else: ?>
+                        <?php foreach ($storeTypes as $i => $t):
+                            $tid = (int) $t['id'];
+                            $currentRate = $user_rates[$tid] ?? null;
+                        ?>
+                        <tr class="tr--clickable" data-modal="editMembershipModal<?= $mid ?>">
+                            <?php if ($i === 0): ?>
+                            <td rowspan="<?= $rowSpan ?>" data-label="<?= htmlspecialchars(__('store')) ?>"><?= htmlspecialchars($m['store_name'] ?? '') ?></td>
+                            <td rowspan="<?= $rowSpan ?>" data-label="<?= htmlspecialchars(__('role')) ?>"><?= Badge::make(htmlspecialchars($m['role_name'] ?? ($m['role'] ?? '—')))->variant(!empty($m['role_is_managing']) ? 'warning' : 'active')->render() ?></td>
+                            <td rowspan="<?= $rowSpan ?>" data-label="<?= htmlspecialchars(__('social_deductions')) ?>">
+                                <?php if ($storeDedEnabled): ?>
+                                <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/members/<?= $mid ?>/deductions" class="form-inline">
                                     <?= csrf_field() ?>
-                                    <?= Button::make(__('remove'))->ghost()->sm()->submit()->render() ?>
+                                    <input type="hidden" name="_redirect_to" value="<?= htmlspecialchars($BASE_URL . '/admin/users/' . (int) $user['id'] . '/edit?success=deductions_saved') ?>">
+                                    <label class="form-toggle" title="<?= htmlspecialchars(__('subject_to_deductions')) ?>">
+                                        <input type="checkbox" name="subject_to_deductions" value="1" class="form-toggle__input" <?= $subject ? 'checked' : '' ?> onchange="this.form.submit()">
+                                        <span class="form-toggle__track"></span>
+                                    </label>
+                                </form>
+                                <?php else: ?>
+                                    <?= Badge::make(__('deductions_disabled'))->variant('muted')->render() ?>
+                                <?php endif; ?>
+                            </td>
+                            <?php endif; ?>
+                            <td data-label="<?= htmlspecialchars(__('shift_types')) ?>"><?= htmlspecialchars($t['name'] ?? '') ?> <span class="text-sm-muted">(<?= htmlspecialchars($t['code'] ?? '') ?>)</span></td>
+                            <td data-label="<?= htmlspecialchars(__('base_rate')) ?>" class="text-sm"><?= $t['hourly_rate'] !== null ? number_format((float) $t['hourly_rate'], 2, '.', '') : '—' ?></td>
+                            <td data-label="<?= htmlspecialchars(__('custom_rate')) ?>">
+                                <form method="POST" action="<?= $BASE_URL ?>/admin/users/<?= (int) $user['id'] ?>/rates" class="form-inline">
+                                    <?= csrf_field() ?>
+                                    <input type="hidden" name="shift_type_id" value="<?= $tid ?>">
+                                    <input type="number" name="hourly_rate" class="form-control form-control-sm w-90" min="0" step="0.01"
+                                           value="<?= $currentRate !== null ? number_format((float) $currentRate['hourly_rate'], 2, '.', '') : '' ?>"
+                                           placeholder="<?= htmlspecialchars($t['hourly_rate'] !== null ? number_format((float) $t['hourly_rate'], 2, '.', '') : '0.00') ?>"
+                                           onchange="this.form.submit()">
                                 </form>
                             </td>
                         </tr>
+                        <?php endforeach; ?>
+                        <?php endif; ?>
                     <?php endforeach; ?>
                 <?php endif; ?>
             </tbody>
         </table>
     </div>
-    <?php if (!empty($available_stores)): ?>
-    <div class="card-body card-body--border-top">
-        <?= Button::make(__('assign_to_store'))->outline()->sm()->attrs(['onclick' => "openModal('assignStoreModal')"])->render() ?>
-    </div>
+</div>
+
+<?php
+// Popup d'édition ouverte au clic sur une ligne du tableau Stores (ci-dessus, voir
+// tr--clickable dans layout/app.php) : rôle et cotisations sociales du store concerné.
+// Les taux personnalisés par type de shift s'éditent directement dans le tableau
+// (colonne "Taux personnalisé", auto-enregistrement au changement).
+foreach ($user_memberships as $m):
+    $sid = (int) $m['store_id'];
+    $mid = (int) $m['id'];
+    $ov = $m['ded_overrides'] ?? [];
+    $storeDedEnabled = !empty($m['store_ded_settings']['enabled']);
+    $subject = !empty($ov['subject_to_deductions']);
+    ob_start();
+    ?>
+    <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/members/<?= $mid ?>/role" class="form-inline-flex mb-sm">
+        <?= csrf_field() ?>
+        <div class="form-group">
+            <label class="form-label"><?= __('role') ?></label>
+            <select name="role_id" class="form-control">
+                <?php foreach ($assignable_roles as $r): ?>
+                    <option value="<?= (int) $r['id'] ?>" <?= (int) $r['id'] === (int) ($m['role_id'] ?? 0) ? 'selected' : '' ?>><?= htmlspecialchars($r['name'] ?? '') ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <?= Button::make(__('apply'))->primary()->sm()->submit()->render() ?>
+    </form>
+
+    <?php if ($storeDedEnabled): ?>
+    <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/members/<?= $mid ?>/deductions" class="mb-sm">
+        <?= csrf_field() ?>
+        <input type="hidden" name="_redirect_to" value="<?= htmlspecialchars($BASE_URL . '/admin/users/' . (int) $user['id'] . '/edit?success=deductions_saved') ?>">
+        <label class="form-toggle form-toggle--labeled">
+            <input type="checkbox" name="subject_to_deductions" value="1" class="form-toggle__input" <?= $subject ? 'checked' : '' ?> onchange="this.form.submit()">
+            <span class="form-toggle__track"></span>
+            <span><?= __('subject_to_deductions') ?></span>
+        </label>
+    </form>
     <?php endif; ?>
 
-    <?php if (!empty($user_shift_types)): ?>
-    <div class="card-header card-header--border-top"><span><?= __('custom_hourly_rates') ?><span class="text-sm text-dim"> <?= __('default_rate_hint') ?></span></span></div>
-    <div class="table-wrap">
-        <table class="data-table" data-mob-stack>
-            <thead><tr><th><?= __('shift_types') ?></th><th><?= __('store') ?></th><th><?= __('base_rate') ?></th><th><?= __('custom_rate') ?></th><th><?= __('actions') ?></th></tr></thead>
-            <tbody>
-                <?php foreach ($user_shift_types as $t):
-                    $tid = (int) $t['id'];
-                    $currentRate = $user_rates[$tid] ?? null;
-                ?>
-                <tr>
-                    <td data-label="<?= htmlspecialchars(__('shift_types')) ?>"><strong><?= htmlspecialchars($t['name'] ?? '') ?></strong><span class="text-sm-muted"> (<?= htmlspecialchars($t['code'] ?? '') ?>)</span></td>
-                    <td data-label="<?= htmlspecialchars(__('store')) ?>" class="text-sm td-muted"><?= htmlspecialchars(implode(', ', $type_store_names[$tid] ?? [])) ?: '—' ?></td>
-                    <td data-label="<?= htmlspecialchars(__('base_rate')) ?>" class="text-sm"><?= $t['hourly_rate'] !== null ? number_format((float) $t['hourly_rate'], 2, '.', '') : '—' ?></td>
-                    <td data-label="<?= htmlspecialchars(__('custom_rate')) ?>"><?= $currentRate !== null ? Badge::make(number_format((float) $currentRate['hourly_rate'], 2, '.', ''))->active()->render() : '<span class="text-sm text-muted">—</span>' ?></td>
-                    <td data-label="<?= htmlspecialchars(__('actions')) ?>">
-                        <div class="btn-group">
-                            <form method="POST" action="<?= $BASE_URL ?>/admin/users/<?= (int) $user['id'] ?>/rates" class="form-inline-flex">
-                                <?= csrf_field() ?>
-                                <input type="hidden" name="shift_type_id" value="<?= $tid ?>">
-                                <input type="number" name="hourly_rate" class="form-control form-control-sm w-90" min="0" step="0.01"
-                                       value="<?= $currentRate !== null ? number_format((float) $currentRate['hourly_rate'], 2, '.', '') : '' ?>" placeholder="0.00">
-                                <?= Button::make(__('apply'))->ghost()->sm()->submit()->render() ?>
-                            </form>
-                            <?php if ($currentRate !== null): ?>
-                            <form method="POST" action="<?= $BASE_URL ?>/admin/users/<?= (int) $user['id'] ?>/rates/<?= (int) $currentRate['id'] ?>/delete" class="form-inline">
-                                <?= csrf_field() ?>
-                                <?= Button::make('✕')->ghost()->sm()->attrs(['onclick' => "return confirm('" . __('confirm_delete_custom_rate') . "')", 'title' => __('reset_to_default_rate')])->submit()->render() ?>
-                            </form>
-                            <?php endif; ?>
-                        </div>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    </div>
-    <?php endif; ?>
-</div>
+    <?php
+    $editMembershipFooter = '<form method="POST" action="' . htmlspecialchars($BASE_URL . '/admin/stores/' . $sid . '/members/' . $mid . '/delete') . '" class="form-inline" onsubmit="return confirm(\'' . htmlspecialchars(__('confirm_remove_member'), ENT_QUOTES) . '\')">'
+        . csrf_field()
+        . Button::make(__('remove'))->danger()->sm()->submit()->render()
+        . '</form>';
+    echo Modal::make("editMembershipModal{$mid}")
+        ->title(htmlspecialchars($m['store_name'] ?? ''))
+        ->body(ob_get_clean())
+        ->footer($editMembershipFooter)
+        ->render();
+endforeach;
+?>
 
 <?php if (!empty($available_stores)):
     ob_start();
