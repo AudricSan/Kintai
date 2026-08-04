@@ -5,16 +5,12 @@ use kintai\UI\Components\Table;
 use kintai\UI\Components\Flash;
 
 /** @var array  $shift_types */
-/** @var array  $stores_map       id → name */
-/** @var array  $type_store_names id de type => noms de stores triés (un type peut couvrir plusieurs stores) */
 /** @var array  $type_store_ids   id de type => IDs de stores affectés */
 /** @var array  $all_stores       stores visibles (scope du gestionnaire), pour les colonnes de la matrice */
 /** @var string $sort */
-$sort             ??= 'name_asc';
-$stores_map       ??= [];
-$type_store_names ??= [];
-$type_store_ids   ??= [];
-$all_stores       ??= [];
+$sort           ??= 'name_asc';
+$type_store_ids ??= [];
+$all_stores     ??= [];
 
 echo Flash::fromQuery('success', [
     'created'         => __('shift_type_created'),
@@ -41,7 +37,7 @@ echo Flash::fromQuery('error', [
         <table class="data-table matrix-table">
             <thead>
                 <tr>
-                    <th><?= __('shift_types') ?></th>
+                    <th class="td-center"><?= __('shift_types') ?></th>
                     <?php foreach ($all_stores as $s): ?>
                     <th class="td-center matrix-table__store-col" title="<?= htmlspecialchars($s['name'] ?? '') ?>">
                         <?= htmlspecialchars($s['name'] ?? '') ?>
@@ -56,7 +52,7 @@ echo Flash::fromQuery('error', [
                 <?php foreach ($shift_types as $t): ?>
                 <?php $tid = (int) $t['id']; ?>
                 <tr>
-                    <td class="td-nowrap">
+                    <td class="td-center td-nowrap">
                         <span class="color-swatch" style="background:<?= htmlspecialchars($t['color'] ?? '#ccc') ?>"></span>
                         <?= htmlspecialchars($t['name'] ?? '') ?>
                     </td>
@@ -89,12 +85,6 @@ echo Flash::fromQuery('error', [
     ->currentSort($sort)
     ->rowUrl(fn($t) => $BASE_URL . '/admin/shift-types/' . (int) $t['id'] . '/edit')
     ->column('#', fn($t) => (string) (int) $t['id'])
-    ->sortable(__('stores_plural'), 'store', function ($t) use ($type_store_names) {
-        $names = $type_store_names[(int) $t['id']] ?? [];
-        return $names === []
-            ? '<span class="text-muted">—</span>'
-            : '<span class="text-sm-muted">' . htmlspecialchars(implode(', ', $names)) . '</span>';
-    })
     ->sortable(__('code'), 'code', fn($t) => '<code class="code-sm">' . htmlspecialchars($t['code'] ?? '') . '</code>')
     ->sortable(__('name'), 'name', fn($t) => '<strong>' . htmlspecialchars($t['name'] ?? '') . '</strong>')
     ->column(__('start'), fn($t) => htmlspecialchars($t['start_time'] ?? ''))
