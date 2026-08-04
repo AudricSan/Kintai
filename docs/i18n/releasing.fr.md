@@ -9,33 +9,48 @@ Ce document décrit comment publier une nouvelle version de Kintai sur GitHub, d
 La mise à jour automatique (`GithubUpdateService::checkLatestRelease()`) interroge `GET /repos/{GITHUB_UPDATE_REPO}/releases` (la liste complète, pas seulement la dernière) et télécharge l'archive source (`zipball_url`) générée automatiquement par GitHub pour le tag de la release sélectionnée. Il n'y a donc **rien à construire ni à uploader manuellement** : une Release GitHub taguée `vX.Y.Z` suffit.
 
 Chaque instance suit l'un des trois **canaux de mise à jour**, choisi par l'Owner sur `/admin/update` :
-- **Release** — uniquement les tags stables (`vX.Y.Z`, non marqués prerelease sur GitHub). Construit depuis `main`.
-- **Beta** — les tags stables et les tags `-beta`. Construit depuis la branche `beta`.
-- **Alpha** — tous les tags, y compris `-alpha`. Construit depuis la branche `alpha`.
+- **Release** — uniquement les releases publiées depuis `main`, non marquées prerelease sur GitHub.
+- **Beta** — les releases publiées depuis `main` ou `beta`.
+- **Alpha** — toutes les releases, quel que soit le canal.
 
-Parmi les releases visibles pour son canal, l'instance retient la version la plus haute (comparaison semver, donc `1.0.0-beta.3` < `1.0.0`). `alpha`, `beta` et `main` sont des branches protégées (PR + CI verte obligatoires, plus de push direct) — voir `.github/workflows/release.yml`.
+Le canal d'une release se détermine via son `target_commitish` (la branche source, renseignée par `.github/workflows/release.yml` — voir `GithubUpdateService::selectReleaseForChannel()`), pas en inspectant le tag. Parmi les releases visibles pour son canal, l'instance retient la version la plus haute (comparaison semver). `alpha`, `beta` et `main` sont des branches protégées (PR + CI verte obligatoires, plus de push direct) — voir `.github/workflows/release.yml`.
 
 Conséquences :
 - Seules les **Releases GitHub** comptent (pas les tags seuls, pas les commits). Tant qu'aucune Release ne correspond au canal de l'instance, `checkLatestRelease()` renvoie `null`.
-- Le numéro de version doit suivre [semver](https://semver.org/) (`MAJEUR.MINEUR.CORRECTIF[-alpha|beta.N]`), sans préfixe `v` dans les fichiers de config (le préfixe `v` n'existe que sur le tag Git — `GithubUpdateService` le retire automatiquement pour comparer les versions).
+- Sans préfixe `v` dans les fichiers de config (le préfixe `v` n'existe que sur le tag Git — `GithubUpdateService` le retire automatiquement pour comparer les versions).
 
-## Choisir entre MAJEUR, MINEUR et CORRECTIF
+## Schéma de version : X.Y.Z-\<lettre de semaine>\<sous-version>
 
-- **CORRECTIF** (`0.7.9` → `0.7.10`) : uniquement des corrections de bugs — rien dans le bump n'ajoute ou ne change un comportement visible par l'utilisateur, au-delà de « ça fonctionne maintenant comme prévu ».
-- **MINEUR** (`0.7.9` → `0.8.0`) : toute release qui inclut une nouvelle fonctionnalité, même petite, ou un changement de comportement — bump le MINEUR même si la même release embarque aussi des corrections. Ne faites pas voyager une fonctionnalité sur un bump de CORRECTIF simplement parce qu'un fix est arrivé le même jour.
-- **MAJEUR** : réservé aux changements cassants (improbable dans le cycle de vie normal de cette appli, mais on garde l'option ouverte).
+Le numéro de version a la forme `X.Y.Z` (release stable, sans suffixe) ou `X.Y.Z-LN` pour une prerelease (`L` = lettre, `N` = nombre) :
 
-En cas de doute entre CORRECTIF et MINEUR, bump le MINEUR — ça ne coûte rien et ça garde le numéro de version significatif (un `0.6.0` figé sur `main` comparé à un `0.7.9` sur `beta`, alors que l'essentiel de cet écart est du travail de fonctionnalités, sous-estime à quel point le canal stable est réellement en retard).
+- **X** — compteur cumulé de releases **stables** publiées sur `main`.
+- **Y** — compteur cumulé de releases **beta** publiées sur `beta`.
+- **Z** — compteur cumulé de releases **alpha** publiées sur `alpha`.
+
+Chacun des trois compteurs est bumpé **à la main**, +1, uniquement sur le canal que vous publiez (les deux autres restent inchangés) — voir « Publier une nouvelle version » ci-dessous.
+
+- **L** — lettre de la semaine ISO courante, calculée automatiquement par `.github/workflows/release.yml` (encodage base26 façon colonnes de tableur : `a` = semaine 1, `b` = semaine 2 ... `z` = semaine 26, `aa` = semaine 27...).
+- **N** — sous-version : compteur remis à 1 à chaque nouvelle semaine ISO, incrémenté automatiquement à chaque publication alpha/beta de la semaine courante (tous canaux confondus), dérivé des tags déjà publiés cette semaine-là.
+
+`L` et `N` ne sont **jamais** saisis à la main : ils sont calculés par le workflow au moment de la publication. Seules les releases `alpha`/`beta` portent ce suffixe — une release stable (`main`) reste `vX.Y.Z` sans suffixe.
+
+## Quel compteur bumper (X, Y ou Z)
+
+Le compteur à incrémenter dépend uniquement du **canal que vous publiez**, pas de l'ampleur du changement (contrairement à un semver classique MAJEUR/MINEUR/CORRECTIF) :
+
+- Vous publiez sur `alpha` → bump **Z** (`config/app.php`/`composer.json`).
+- Vous publiez sur `beta` → bump **Y**.
+- Vous publiez sur `main` (release stable) → bump **X**.
 
 ## Publier une nouvelle version (flux recommandé)
 
-Le numéro de version de base (`X.Y.Z` dans `composer.json`/`config/app.php`/`CHANGELOG.md`) reste bumpé **à la main**, exactement comme avant. Ce qui change, c'est *qui crée le tag Git et la Release GitHub* : c'est désormais automatisé par `.github/workflows/release.yml` à chaque bump poussé sur `alpha`, `beta` ou `main` — vous ne taguez plus et n'appelez plus `gh release create` vous-même.
+Le numéro de base (`X.Y.Z` dans `composer.json`/`config/app.php`/`CHANGELOG.md`) reste bumpé **à la main**, exactement comme avant. Ce qui est automatisé par `.github/workflows/release.yml` à chaque bump poussé sur `alpha`, `beta` ou `main`, c'est *la création du tag Git et de la Release GitHub* — vous ne taguez plus et n'appelez plus `gh release create` vous-même.
 
 1. Sur une branche de travail classique, bumpez la version (voir « Procédure manuelle » ci-dessous, ou lancez `scripts/release.ps1 -DryRun` pour prévisualiser les notes du changelog — ses étapes automatisées de tag/push/`gh release create` sont remplacées par la Action et échoueront simplement contre une branche protégée ; ne le lancez donc plus sans `-DryRun`).
 2. Ouvrez une PR ciblant la branche du canal à publier (`alpha`, `beta` ou `main`), et fusionnez-la une fois la CI verte (exigée par la protection de branche).
 3. `.github/workflows/release.yml` se déclenche sur le push résultant et :
    - lit la version de base dans `composer.json` ;
-   - sur `alpha`/`beta`, tague `vX.Y.Z-{canal}` — un **tag glissant** : si ce tag/Release existe déjà (ex. un nouveau push sur la même version `X.Y.Z` toujours en cours), il est supprimé puis recréé sur le nouveau commit, plutôt que de s'accumuler en `vX.Y.Z-{canal}.1`, `.2`, `.3`... Marqué comme prerelease. **Fait échouer le build** si `vX.Y.Z` (sans suffixe) existe déjà en Release stable — publier une prerelease avec la même version de base qu'une stable déjà sortie serait sémantiquement *inférieur* à ce tag stable, donc invisible pour le canal ; bumper la version de base d'abord ;
+   - sur `alpha`/`beta`, calcule la lettre de semaine et la sous-version (voir ci-dessus) et tague `vX.Y.Z-LN`, marqué comme prerelease — chaque publication produit un tag distinct (plus de tag glissant réécrit à chaque push) ;
    - sur `main`, tague `vX.Y.Z` comme Release normale (non-prerelease) — ignoré avec un message de log si ce tag exact existe déjà (c'est-à-dire si aucun bump de version n'a eu lieu depuis la dernière release stable) ;
    - extrait les notes de release depuis `CHANGELOG.md` (la section datée `## [X.Y.Z]` pour `main`, la section `## [Unreleased]` pour `alpha`/`beta`).
 
@@ -43,16 +58,16 @@ Pour faire progresser une version d'un canal au suivant (alpha → beta → rele
 
 ## Procédure manuelle (bump de version)
 
-1. Sur une branche de travail, renommer `## [Unreleased]` en `## [0.1.0-beta] - 2026-07-08` dans `CHANGELOG.md` et ajouter une nouvelle section `## [Unreleased]` vide juste au-dessus.
-2. Mettre à jour la version dans `composer.json` (`"version": "0.1.0-beta"`) et `config/app.php` (`env('APP_VERSION', '0.1.0-beta')`).
+1. Sur une branche de travail, renommer `## [Unreleased]` en `## [0.11.0] - 2026-08-04` dans `CHANGELOG.md` (X.Y.Z de base, sans le suffixe `-LN` qui sera calculé par le workflow) et ajouter une nouvelle section `## [Unreleased]` vide juste au-dessus.
+2. Mettre à jour la version dans `composer.json` (`"version": "0.11.0"`) et `config/app.php` (`env('APP_VERSION', '0.11.0')`) en incrémentant uniquement le compteur du canal ciblé (X pour `main`, Y pour `beta`, Z pour `alpha`).
 3. Committer, pousser la branche, et ouvrir une PR vers `alpha`, `beta` ou `main` selon le cas :
    ```bash
    git add CHANGELOG.md composer.json config/app.php
-   git commit -m "chore(release): v0.1.0-beta"
+   git commit -m "core(release): v0.11.0"
    git push -u origin <votre-branche>
    gh pr create --base beta
    ```
-4. Une fois fusionnée, `.github/workflows/release.yml` crée automatiquement le tag et la Release GitHub — plus rien à faire à la main.
+4. Une fois fusionnée, `.github/workflows/release.yml` crée automatiquement le tag (avec le suffixe `-LN` sur `alpha`/`beta`) et la Release GitHub — plus rien à faire à la main.
 
 ## Après la publication
 
