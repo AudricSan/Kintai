@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Bundles\SalaryReport;
 
 use kintai\Bundles\SalaryReport\Controllers\Web\AdminSalaryReportController;
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Container;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\DailyReportRepositoryInterface;
 use kintai\Core\Repositories\LogRepositoryInterface;
+use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
+use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\SalaryReportRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
@@ -69,6 +72,10 @@ final class AdminSalaryReportControllerTest extends TestCase
             $this->shifts,
             new AuditLogger(),
             $this->storeStatsService,
+            new PermissionService(
+                $this->createMock(RoleAssignmentRepositoryInterface::class),
+                $this->createMock(RoleRepositoryInterface::class),
+            ),
         );
     }
 
