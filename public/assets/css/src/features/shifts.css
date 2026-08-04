@@ -818,42 +818,32 @@
 .sd-create-zone__plus { font-size: var(--text-xs); }
 
 /* ── Types de shift : matrice magasin×type + liste classique ─────
-   Même technique que .role-form-grid / .form-section-grid : grille
-   fixe (pas de flex sans stretch) + align-items: stretch, pour que
-   les deux cartes finissent toujours sur le même bord, quelle que
-   soit la hauteur de leur contenu. */
-.shift-types-layout {
-    display: grid;
-    grid-template-columns: 1fr 4fr;
-    gap: var(--space-4);
-    align-items: stretch;
-}
-
-.shift-types-layout > .card {
-    margin-bottom: 0;
-}
-
-.shift-types-layout__matrix {
-    grid-column: 1;
-}
-
-.shift-types-layout__list {
-    grid-column: 2;
-}
-
+   Carte pleine largeur, empilée au-dessus de la liste classique (pas
+   de colonnes côte à côte ici : une seule carte à la fois, donc pas
+   de problème de hauteurs à aligner). Beaucoup de magasins → défile
+   horizontalement (.table-wrap existant) ; beaucoup de types → la
+   carte plafonne en hauteur et défile verticalement à la place de
+   pousser toute la page, en-tête de colonnes maintenu visible. */
 .matrix-table th,
 .matrix-table td {
     white-space: nowrap;
 }
 
-@media (max-width: 960px) {
-    .shift-types-layout {
-        grid-template-columns: 1fr;
-    }
+.matrix-table__store-col {
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 
-    .shift-types-layout__matrix,
-    .shift-types-layout__list {
-        grid-column: 1;
-    }
+.shift-types-matrix__scroll {
+    max-height: 360px;
+    overflow-y: auto;
+}
+
+.shift-types-matrix__scroll .matrix-table thead th {
+    position: sticky;
+    top: 0;
+    background: var(--color-surface);
+    z-index: 1;
 }
 
