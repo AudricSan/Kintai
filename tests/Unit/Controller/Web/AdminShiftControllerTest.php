@@ -274,9 +274,86 @@ final class AdminShiftControllerTest extends TestCase
         $this->assertSame(302, $response->status());
     }
 
+    /** Un taux/heures actives manuel saisi doit être persisté (null si vide). */
+    public function testStoreShiftPersistsManualOverrides(): void
+    {
+        $_POST = [
+            'store_id'              => '1',
+            'user_id'               => '5',
+            'shift_date'            => '2026-08-02',
+            'start_time'            => '09:00',
+            'end_time'              => '17:00',
+            'hourly_rate_override'  => '1500.5',
+            'net_minutes_override'  => '300',
+        ];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+
+        $this->timeoffRequests->method('findByUser')->willReturn([]);
+        $this->shifts->expects($this->once())->method('save')->with($this->callback(
+            fn(array $d) => $d['hourly_rate_override'] === 1500.5 && $d['net_minutes_override'] === 300
+        ))->willReturnCallback(fn(array $d) => $d + ['id' => 1]);
+
+        $response = $this->controller->storeShift($req);
+
+        $this->assertSame(302, $response->status());
+    }
+
+    /** Champs laissés vides : pas d'ajustement manuel, calcul automatique. */
+    public function testStoreShiftOverridesDefaultToNullWhenEmpty(): void
+    {
+        $_POST = [
+            'store_id'   => '1',
+            'user_id'    => '5',
+            'shift_date' => '2026-08-02',
+            'start_time' => '09:00',
+            'end_time'   => '17:00',
+        ];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+
+        $this->timeoffRequests->method('findByUser')->willReturn([]);
+        $this->shifts->expects($this->once())->method('save')->with($this->callback(
+            fn(array $d) => $d['hourly_rate_override'] === null && $d['net_minutes_override'] === null
+        ))->willReturnCallback(fn(array $d) => $d + ['id' => 1]);
+
+        $response = $this->controller->storeShift($req);
+
+        $this->assertSame(302, $response->status());
+    }
+
     // -------------------------------------------------------------------------
     // updateShift
     // -------------------------------------------------------------------------
+
+    /** Éditer un shift et saisir un ajustement manuel doit le persister. */
+    public function testUpdateShiftPersistsManualOverrides(): void
+    {
+        $existing = [
+            'id' => 10, 'store_id' => 1, 'user_id' => 5, 'shift_date' => '2026-08-02',
+            'start_time' => '09:00', 'end_time' => '17:00', 'is_open' => 0,
+        ];
+        $this->shifts->method('findById')->with(10)->willReturn($existing);
+
+        $_POST = [
+            'store_id'             => '1',
+            'shift_date'           => '2026-08-02',
+            'start_time'           => '09:00',
+            'end_time'             => '17:00',
+            'hourly_rate_override' => '2000',
+        ];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => 10]);
+
+        $this->shifts->expects($this->once())->method('save')->with($this->callback(
+            fn(array $d) => $d['hourly_rate_override'] === 2000.0 && $d['net_minutes_override'] === null
+        ))->willReturnCallback(fn(array $d) => $d + ['id' => 10]);
+
+        $response = $this->controller->updateShift($req);
+
+        $this->assertSame(302, $response->status());
+    }
 
     public function testUpdateShiftRejectsShiftTypeNotEnabledForStore(): void
     {
