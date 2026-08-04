@@ -6,6 +6,7 @@ namespace kintai\Core\Middleware;
 
 use Closure;
 use kintai\Core\Auth\PermissionService;
+use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 
@@ -21,10 +22,13 @@ use kintai\Core\Response;
  */
 final class ApiPermissionMiddleware implements MiddlewareInterface
 {
-    /** @var array<string, string|array{perm: string, self?: string}>|null */
+    /** @var array<string, string|array{perm: string, self?: string, membership?: bool}>|null */
     private static ?array $routeRules = null;
 
-    public function __construct(private readonly PermissionService $permissions) {}
+    public function __construct(
+        private readonly PermissionService $permissions,
+        private readonly StoreUserRepositoryInterface $storeUsers,
+    ) {}
 
     public function handle(Request $request, Closure $next): Response
     {
@@ -36,8 +40,9 @@ final class ApiPermissionMiddleware implements MiddlewareInterface
         $user   = $request->getAttribute('auth_user') ?? [];
         $userId = (int) ($user['id'] ?? 0);
 
-        $permissionKey = is_array($rule) ? (string) $rule['perm'] : $rule;
-        $selfParam     = is_array($rule) ? ($rule['self'] ?? null) : null;
+        $permissionKey     = is_array($rule) ? (string) $rule['perm'] : $rule;
+        $selfParam         = is_array($rule) ? ($rule['self'] ?? null) : null;
+        $requireMembership = is_array($rule) && !empty($rule['membership']);
 
         // Ressource propre : l'id d'utilisateur ciblé (paramètre de route ou
         // query) est celui du porteur du token → pas de permission exigée.
@@ -45,7 +50,18 @@ final class ApiPermissionMiddleware implements MiddlewareInterface
             return $next($request);
         }
 
-        if ($this->permissions->can($user, $permissionKey, $this->targetedStoreId($request))) {
+        $storeId = $this->targetedStoreId($request);
+
+        if ($this->permissions->can($user, $permissionKey, $storeId)) {
+            return $next($request);
+        }
+
+        // Porte d'entrée volontairement grossière pour un accès en libre-service
+        // (ex. bundle DailyReport : tout membre du store peut créer/soumettre son
+        // propre rapport sans permission RBAC dédiée). La logique fine par
+        // ressource (statut, auteur) reste vérifiée par le contrôleur.
+        if ($requireMembership && $storeId !== null
+            && $this->storeUsers->findMembership($storeId, $userId) !== null) {
             return $next($request);
         }
 
