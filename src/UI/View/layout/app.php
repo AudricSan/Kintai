@@ -76,7 +76,7 @@
 
     <script src="<?= $BASE_URL ?>/assets/js/app.js"></script>
     <script src="<?= $BASE_URL ?>/assets/js/modules/notifications.js"></script>
-    <script>document.addEventListener('click',function(e){var t=e.target.closest('.tr--clickable[data-href]');if(t&&!e.target.closest('a,button,input,select,textarea,form')){location.href=t.getAttribute('data-href');}});</script>
+    <script>document.addEventListener('click',function(e){if(e.target.closest('a,button,input,select,textarea,form'))return;var t=e.target.closest('.tr--clickable[data-href]');if(t){location.href=t.getAttribute('data-href');return;}var m=e.target.closest('.tr--clickable[data-modal]');if(m&&window.openModal){window.openModal(m.getAttribute('data-modal'));}});</script>
 
     <?php if ($feedback_enabled ?? true): ?>
         <?php include __DIR__ . '/partials/feedback-modal.php'; ?>

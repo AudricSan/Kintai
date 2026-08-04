@@ -660,6 +660,16 @@ final class AdminUserController
             $typeStoreNames[$tid] = $names;
         }
 
+        // Types de shift groupés par store (tableau Stores fusionné : une ligne par
+        // couple store/type, Store/Rôle/Cotisations en rowspan sur ce groupe).
+        $shiftTypesByStore = [];
+        foreach ($userShiftTypes as $t) {
+            $tid = (int) $t['id'];
+            foreach (array_intersect($this->shiftTypes->getStoreIds($tid), $userStoreIds) as $sid) {
+                $shiftTypesByStore[$sid][] = $t;
+            }
+        }
+
         // Appartenance aux stores (enrichie avec nom du store, rôle, cotisations)
         $roleMap = $this->roleSync->storeRoleMapForUser($userId);
         $userMemberships = [];
@@ -669,6 +679,7 @@ final class AdminUserController
             $userMemberships[] = array_merge($m, [
                 'store_name'         => $storesMap[$sid] ?? '#' . $sid,
                 'role_name'          => $roleMap[$sid]['name'] ?? ($m['role'] ?? '—'),
+                'role_id'            => $roleMap[$sid]['role_id'] ?? null,
                 'role_is_managing'   => !empty($roleMap[$sid]['is_managing']),
                 'store_ded_settings' => $this->stores->getDeductionSettings($sid),
                 'ded_overrides'      => ['subject_to_deductions' => $mid > 0 ? $this->storeUsers->getSubjectToDeductions($mid) : false],
@@ -688,6 +699,7 @@ final class AdminUserController
             'mode'             => 'edit',
             'user'             => $user,
             'user_shift_types' => $userShiftTypes,
+            'shift_types_by_store' => $shiftTypesByStore,
             'user_rates'       => $userRates,
             'stores_map'       => $storesMap,
             'type_store_names' => $typeStoreNames,
