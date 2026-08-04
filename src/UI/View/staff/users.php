@@ -24,6 +24,7 @@ $available_stores ??= [];
 $store_names      ??= [];
 $user_store_ids   ??= [];
 $user_store_map   ??= [];
+$can              = $user_can ?? fn(string $k): bool => true;
 
 $activeFilters = array_filter([
     'store_id' => $filter_store_id ?: null,
@@ -41,7 +42,9 @@ $exportQuery = $filter_store_id !== 0 ? '?store_id=' . $filter_store_id : '';
 <div class="page-header">
     <h2 class="page-header__title"><?= __('users') ?> <span class="page-count">(<?= count($users) ?>)</span></h2>
     <div class="page-header__actions">
+        <?php if ($can('employees.create')): ?>
         <?= Button::make('+ ' . __('new_user'))->primary()->link(route_url('admin.users.create'))->render() ?>
+        <?php endif; ?>
         <?= Button::make('PDF')->ghost()->sm()->link(route_url('admin.users.export_pdf') . $exportQuery)->attrs(['target' => '_blank'])->render() ?>
         <?= Button::make('JSON')->ghost()->sm()->link(route_url('admin.users.export_json') . $exportQuery)->render() ?>
     </div>
@@ -131,14 +134,20 @@ $exportQuery = $filter_store_id !== 0 ? '?store_id=' . $filter_store_id : '';
         return $pay > 0 ? format_currency((float) $pay, $store_currency) : '<span class="text-muted" title="' . __('no_rate_configured') . '">—</span>';
     })
     ->column(__('date'), fn($u) => '<span class="td-date-muted">' . htmlspecialchars(substr($u['created_at'] ?? '', 0, 10)) . '</span>')
-    ->column(__('actions'), function($u) use ($BASE_URL, $user_store_map) {
+    ->column(__('actions'), function($u) use ($BASE_URL, $user_store_map, $can) {
         $uid = (int) $u['id'];
         $html = '<div class="btn-group">';
         if (isset($user_store_map[$uid])) {
             $sId = $user_store_map[$uid];
-            $html .= '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/employee-report/' . $uid . '/stats" class="btn btn--ghost btn--sm" title="' . __('employee_stats') . '">📊</a>';
-            $html .= '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/reports/salary/create?user_id=' . $uid . '" class="btn btn--ghost btn--sm" title="' . __('salary_report') . '">💰</a>';
-            $html .= '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/reports/resignation/create?user_id=' . $uid . '" class="btn btn--danger btn--sm" title="' . __('resign') . '">✕</a>';
+            if ($can('payroll.view')) {
+                $html .= '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/employee-report/' . $uid . '/stats" class="btn btn--ghost btn--sm" title="' . __('employee_stats') . '">📊</a>';
+            }
+            if ($can('payroll.generate')) {
+                $html .= '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/reports/salary/create?user_id=' . $uid . '" class="btn btn--ghost btn--sm" title="' . __('salary_report') . '">💰</a>';
+            }
+            if ($can('documents.create')) {
+                $html .= '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/reports/resignation/create?user_id=' . $uid . '" class="btn btn--danger btn--sm" title="' . __('resign') . '">✕</a>';
+            }
         }
         $html .= '</div>';
         return $html;
