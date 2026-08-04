@@ -47,12 +47,42 @@ final class PermissionMiddlewareTest extends TestCase
 
     public function testUnmappedRoutePassesThrough(): void
     {
-        // 'admin.activity' n'a volontairement pas de permission fine dans config/permissions.php
-        $request = $this->makeRequest('admin.activity', ['id' => 10], [1]);
+        $request = $this->makeRequest('some.route.without.a.permission.entry', ['id' => 10], [1]);
 
         $response = $this->middleware->handle($request, $this->next());
 
         $this->assertSame(200, $response->status());
+    }
+
+    public function testActivityRouteIsScopedByStoresView(): void
+    {
+        // 'admin.activity' → 'stores.view' (config/permissions.php) : un manager
+        // scopé sur un seul store ne doit voir que le journal de ce store.
+        $this->assignments->method('findByUser')->with(10)->willReturn([
+            ['id' => 5, 'user_id' => 10, 'role_id' => 2, 'scope_type' => 'store', 'scope_id' => 3],
+        ]);
+        $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'is_system' => 0]);
+        $this->roles->method('getPermissions')->with(2)->willReturn(['stores.view']);
+
+        $request = $this->makeRequest('admin.activity', ['id' => 10], [1, 3]);
+        $response = $this->middleware->handle($request, function (Request $r) {
+            return Response::json(['managed' => $r->getAttribute('managed_store_ids')]);
+        });
+
+        $this->assertSame(200, $response->status());
+        $this->assertSame([3], json_decode($response->body(), true)['managed']);
+    }
+
+    public function testActivityRouteForbiddenWithoutStoresViewPermission(): void
+    {
+        $this->assignments->method('findByUser')->with(10)->willReturn([
+            ['id' => 5, 'user_id' => 10, 'role_id' => 2, 'scope_type' => 'store', 'scope_id' => 3],
+        ]);
+        $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'is_system' => 0]);
+        $this->roles->method('getPermissions')->with(2)->willReturn(['shifts.view']);
+
+        $this->expectException(ForbiddenException::class);
+        $this->middleware->handle($this->makeRequest('admin.activity', ['id' => 10], [3]), $this->next());
     }
 
     public function testMissingRouteNamePassesThrough(): void

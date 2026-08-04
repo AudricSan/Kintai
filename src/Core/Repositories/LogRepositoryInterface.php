@@ -25,10 +25,15 @@ interface LogRepositoryInterface
     /** Insère une entrée enrichie (action, ressource, contexte requête). */
     public function record(string $level, string $channel, string $message, ?string $action = null, ?string $resourceType = null, ?int $resourceId = null, array $context = [], ?int $userId = null, ?int $storeId = null, ?string $ipAddress = null, ?string $userAgent = null, ?string $requestMethod = null, ?string $requestUri = null, ?int $responseStatus = null, ?int $durationMs = null, ?string $sessionId = null): void;
 
-    /** Retourne les logs paginés avec filtres optionnels. */
+    /**
+     * Retourne les logs paginés avec filtres optionnels.
+     * Filtres reconnus : level, channel, action, resource_type, user_id,
+     * store_id (int), store_ids (int[], portée multi-store — ex. manager
+     * scopé à plusieurs stores via PermissionMiddleware), from, to, query.
+     */
     public function findAll(int $page = 1, int $perPage = 50, array $filters = []): array;
 
-    /** Retourne le nombre total de logs correspondant aux filtres. */
+    /** Retourne le nombre total de logs correspondant aux filtres (voir findAll()). */
     public function countAll(array $filters = []): int;
 
     /** Retourne un log par son ID. */
