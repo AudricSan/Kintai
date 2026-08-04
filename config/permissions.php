@@ -152,6 +152,9 @@ return [
     'admin.stores.salary_reports.delete'   => 'payroll.generate',
     'admin.stores.salary_reports.pdf'      => 'payroll.export',
 
+    // --- Journal d'activité --------------------------------------------------------------
+    'admin.activity'                  => 'stores.view',
+
     // --- Photos de magasin (bundle StorePhoto) → documents.* ---------------------
     'admin.photos.index'              => 'documents.view',
     'admin.photos.show'               => 'documents.view',
