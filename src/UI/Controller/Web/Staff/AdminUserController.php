@@ -660,6 +660,16 @@ final class AdminUserController
             $typeStoreNames[$tid] = $names;
         }
 
+        // Types de shift groupés par store (tableau Stores fusionné : une ligne par
+        // couple store/type, Store/Rôle/Cotisations en rowspan sur ce groupe).
+        $shiftTypesByStore = [];
+        foreach ($userShiftTypes as $t) {
+            $tid = (int) $t['id'];
+            foreach (array_intersect($this->shiftTypes->getStoreIds($tid), $userStoreIds) as $sid) {
+                $shiftTypesByStore[$sid][] = $t;
+            }
+        }
+
         // Appartenance aux stores (enrichie avec nom du store, rôle, cotisations)
         $roleMap = $this->roleSync->storeRoleMapForUser($userId);
         $userMemberships = [];
@@ -669,6 +679,7 @@ final class AdminUserController
             $userMemberships[] = array_merge($m, [
                 'store_name'         => $storesMap[$sid] ?? '#' . $sid,
                 'role_name'          => $roleMap[$sid]['name'] ?? ($m['role'] ?? '—'),
+                'role_id'            => $roleMap[$sid]['role_id'] ?? null,
                 'role_is_managing'   => !empty($roleMap[$sid]['is_managing']),
                 'store_ded_settings' => $this->stores->getDeductionSettings($sid),
                 'ded_overrides'      => ['subject_to_deductions' => $mid > 0 ? $this->storeUsers->getSubjectToDeductions($mid) : false],
@@ -688,6 +699,7 @@ final class AdminUserController
             'mode'             => 'edit',
             'user'             => $user,
             'user_shift_types' => $userShiftTypes,
+            'shift_types_by_store' => $shiftTypesByStore,
             'user_rates'       => $userRates,
             'stores_map'       => $storesMap,
             'type_store_names' => $typeStoreNames,
@@ -711,20 +723,20 @@ final class AdminUserController
         if ($email !== ($user['email'] ?? '')) {
             $existing = $this->users->findByEmail($email);
             if ($existing !== null && (int) $existing['id'] !== (int) $user['id']) {
-                return Response::redirect($this->base() . '/admin/users/' . $user['id'] . '/edit?error=email_taken');
+                return $this->updateUserError($request, $user, 'email_taken');
             }
         }
 
         $lastName  = trim($request->post('last_name', $user['last_name'] ?? ''));
         $firstName = trim($request->post('first_name', $user['first_name'] ?? ''));
         if ($lastName === '' || $firstName === '') {
-            return Response::redirect($this->base() . '/admin/users/' . $user['id'] . '/edit?error=name_required');
+            return $this->updateUserError($request, $user, 'name_required');
         }
 
         $furiganaLastName  = trim($request->post('furigana_last_name', $user['furigana_last_name'] ?? ''));
         $furiganaFirstName = trim($request->post('furigana_first_name', $user['furigana_first_name'] ?? ''));
         if ($furiganaLastName === '' || $furiganaFirstName === '') {
-            return Response::redirect($this->base() . '/admin/users/' . $user['id'] . '/edit?error=furigana_required');
+            return $this->updateUserError($request, $user, 'furigana_required');
         }
 
         $empCode = strtoupper(trim($request->post('employee_code', ''))) ?: null;
@@ -761,7 +773,23 @@ final class AdminUserController
         $this->users->save($data);
         $this->roleSync->syncOwnerRole((int) $user['id'], $request->post('is_admin') === '1');
         $this->auditLogger->logUpdate($request, 'user.updated', 'user', (int) $user['id'], $user, $data, [], null, null);
+
+        // L'auto-save de la page d'édition (voir user-form-autosave.js) soumet ce même
+        // endpoint en AJAX à chaque changement de champ : dans ce cas on répond en JSON
+        // sans rediriger, pour rester sur la page. La soumission classique (bouton
+        // "Enregistrer") continue de rediriger vers la liste comme avant.
+        if ($request->wantsJson()) {
+            return Response::json(['success' => true]);
+        }
         return Response::redirect($this->base() . '/admin/users?success=updated');
+    }
+
+    private function updateUserError(Request $request, array $user, string $error): Response
+    {
+        if ($request->wantsJson()) {
+            return Response::json(['success' => false, 'error' => $error], 422);
+        }
+        return Response::redirect($this->base() . '/admin/users/' . $user['id'] . '/edit?error=' . $error);
     }
 
     public function deleteUser(Request $request): Response
