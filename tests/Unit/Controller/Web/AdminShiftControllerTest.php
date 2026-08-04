@@ -147,6 +147,25 @@ final class AdminShiftControllerTest extends TestCase
         $this->assertSame('Accès refusé.', $data['error']);
     }
 
+    public function testQuickShiftRejectsShiftTypeNotEnabledForStore(): void
+    {
+        $req = $this->makeJsonRequest([
+            'store_id'      => 1,
+            'shift_date'    => '2026-06-01',
+            'start_time'    => '09:00',
+            'end_time'      => '17:00',
+            'shift_type_id' => 7,
+        ]);
+        $req->setAttribute('managed_store_ids', null);
+
+        $this->shiftTypes->method('isEnabledForStore')->with(7, 1)->willReturn(false);
+        $this->shifts->expects($this->never())->method('save');
+
+        $response = $this->controller->quickShift($req);
+
+        $this->assertSame(422, $response->status());
+    }
+
     public function testQuickShiftBlockedWhenUserOnApprovedTimeoff(): void
     {
         $req = $this->makeJsonRequest([
@@ -210,6 +229,78 @@ final class AdminShiftControllerTest extends TestCase
         $this->shifts->expects($this->once())->method('save')->willReturnCallback(fn(array $d) => $d + ['id' => 1]);
 
         $response = $this->controller->storeShift($req);
+
+        $this->assertSame(302, $response->status());
+    }
+
+    /** Un type de shift ne peut désormais être appliqué qu'à un store où il est activé (table pivot). */
+    public function testStoreShiftRejectsShiftTypeNotEnabledForStore(): void
+    {
+        $_POST = [
+            'store_id'      => '1',
+            'shift_date'    => '2026-08-02',
+            'start_time'    => '09:00',
+            'end_time'      => '17:00',
+            'shift_type_id' => '7',
+        ];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+
+        $this->shiftTypes->method('isEnabledForStore')->with(7, 1)->willReturn(false);
+        $this->shifts->expects($this->never())->method('save');
+
+        $response = $this->controller->storeShift($req);
+
+        $this->assertSame(302, $response->status());
+    }
+
+    public function testStoreShiftAllowsShiftTypeEnabledForStore(): void
+    {
+        $_POST = [
+            'store_id'      => '1',
+            'shift_date'    => '2026-08-02',
+            'start_time'    => '09:00',
+            'end_time'      => '17:00',
+            'shift_type_id' => '7',
+        ];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+
+        $this->shiftTypes->method('isEnabledForStore')->with(7, 1)->willReturn(true);
+        $this->shifts->expects($this->once())->method('save')->willReturnCallback(fn(array $d) => $d + ['id' => 1]);
+
+        $response = $this->controller->storeShift($req);
+
+        $this->assertSame(302, $response->status());
+    }
+
+    // -------------------------------------------------------------------------
+    // updateShift
+    // -------------------------------------------------------------------------
+
+    public function testUpdateShiftRejectsShiftTypeNotEnabledForStore(): void
+    {
+        $existing = [
+            'id' => 10, 'store_id' => 1, 'user_id' => 5, 'shift_date' => '2026-08-02',
+            'start_time' => '09:00', 'end_time' => '17:00', 'is_open' => 0,
+        ];
+        $this->shifts->method('findById')->with(10)->willReturn($existing);
+
+        $_POST = [
+            'store_id'      => '1',
+            'shift_date'    => '2026-08-02',
+            'start_time'    => '09:00',
+            'end_time'      => '17:00',
+            'shift_type_id' => '7',
+        ];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => 10]);
+
+        $this->shiftTypes->method('isEnabledForStore')->with(7, 1)->willReturn(false);
+        $this->shifts->expects($this->never())->method('save');
+
+        $response = $this->controller->updateShift($req);
 
         $this->assertSame(302, $response->status());
     }

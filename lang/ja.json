@@ -880,6 +880,7 @@
     "shift_type_created": "シフト種別を作成しました。",
     "shift_type_deleted": "シフト種別を削除しました。",
     "shift_type_placeholder": "例：早番、遅番、夜番",
+    "shift_type_store_mismatch": "このシフト種別はこの店舗では有効になっていません。",
     "shift_type_updated": "シフト種別を更新しました。",
     "shift_types": "シフト種別",
     "shift_updated": "シフトを更新しました。",

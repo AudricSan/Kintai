@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Changed
+- Shift types (`/admin/shift-types`) can now be enabled on more than one store — the create/edit form's single store dropdown is replaced by a checklist (one toggle per store), and the list page shows all the stores a type covers instead of just one. Backed by a new `shift_type_stores` pivot table (migration + backfill from the previous single `store_id` column, which is then dropped); the shift type's `code` field is no longer required to be unique. Creating or editing a shift now rejects a shift type that isn't enabled for the shift's own store (previously unchecked). Custom hourly rates on the staff edit page and the API (`/api/v1/shift-types`, now returning/accepting a `store_ids` array, `store_id` still accepted on create for backward compatibility) are updated accordingly.
+
 ## [0.10.0] - 2026-08-03
 
 ### Changed

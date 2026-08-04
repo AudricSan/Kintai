@@ -41,6 +41,14 @@ final class AdminShiftController
         private readonly TimeoffRequestRepositoryInterface $timeoffRequests,
     ) {}
 
+    /** @return array<int, array> id => type, pour les stores gérés (ou tous si Owner). */
+    private function shiftTypesForManaged(?array $managedIds): array
+    {
+        return $managedIds === null
+            ? $this->shiftTypes->findAll()
+            : $this->shiftTypes->findByStores($managedIds);
+    }
+
     /**
      * Vrai si l'utilisateur a un congé approuvé couvrant la date de shift donnée.
      */
@@ -302,9 +310,12 @@ final class AdminShiftController
         usort($memberIds, fn($a, $b) => strcmp($usersMap[$a] ?? '', $usersMap[$b] ?? ''));
 
         // Types de shifts (tous les stores gérés)
-        $typesMap = [];
-        foreach ($this->filterByStore($this->shiftTypes->findAll(), $managedIds) as $t) {
-            $typesMap[(int) $t['id']] = $t;
+        $typesMap     = [];
+        $typeStoreIds = [];
+        foreach ($this->shiftTypesForManaged($managedIds) as $t) {
+            $tid = (int) $t['id'];
+            $typesMap[$tid]     = $t;
+            $typeStoreIds[$tid] = $this->shiftTypes->getStoreIds($tid);
         }
 
         // Shifts par date et utilisateur
@@ -357,6 +368,7 @@ final class AdminShiftController
             'users_map'           => $usersMap,
             'user_color_map'      => $colorMap,
             'types_map'           => $typesMap,
+            'type_store_ids'      => $typeStoreIds,
             'rates_map'           => $ratesMap,
             'currency_map'        => $currencyMap,
             'currency_symbol_style' => $currencyStyle,
@@ -369,7 +381,7 @@ final class AdminShiftController
             'week_start_day'      => $weekStartDay,
             'all_users'           => $this->users->findAll(),
             'all_stores'          => $availStores,
-            'all_types'           => $this->filterByStore($this->shiftTypes->findAll(), $managedIds),
+            'all_types'           => $this->shiftTypesForManaged($managedIds),
         ], 'layout.app'));
     }
 
@@ -444,7 +456,7 @@ final class AdminShiftController
         usort($memberIds, fn($a, $b) => strcmp($usersMap[$a] ?? '', $usersMap[$b] ?? ''));
 
         $typesMap = [];
-        foreach ($this->filterByStore($this->shiftTypes->findAll(), $managedIds) as $t) {
+        foreach ($this->shiftTypesForManaged($managedIds) as $t) {
             $typesMap[(int) $t['id']] = $t;
         }
 
@@ -498,7 +510,7 @@ final class AdminShiftController
             'shift'       => ['is_open' => $request->query('is_open') === '1' ? 1 : 0],
             'all_users'   => $allUsers,
             'all_stores'  => $availStores,
-            'all_types'   => $this->filterByStore($this->shiftTypes->findAll(), $managedIds),
+            'all_types'   => $this->shiftTypesForManaged($managedIds),
             'redirect_to' => $redirectTo,
         ], 'layout.app'));
     }
@@ -529,10 +541,15 @@ final class AdminShiftController
             return Response::redirect($this->base() . '/admin/shifts/create?error=timeoff_conflict&store_id=' . $storeId);
         }
 
+        $shiftTypeId = $request->post('shift_type_id', '') !== '' ? (int) $request->post('shift_type_id') : null;
+        if ($shiftTypeId !== null && !$this->shiftTypes->isEnabledForStore($shiftTypeId, $storeId)) {
+            return Response::redirect($this->base() . '/admin/shifts/create?error=shift_type_store_mismatch&store_id=' . $storeId);
+        }
+
         $saved = $this->shifts->save([
             'store_id'         => $storeId,
             'user_id'          => ($isOpen || $uid === 0) ? null : $uid,
-            'shift_type_id'    => ($request->post('shift_type_id') !== '' ? (int) $request->post('shift_type_id') : null),
+            'shift_type_id'    => $shiftTypeId,
             'shift_date'       => $shiftDate,
             'start_time'       => $startTime,
             'end_time'         => $endTime,
@@ -595,7 +612,7 @@ final class AdminShiftController
             'shift'       => $shift,
             'all_users'   => $allUsers,
             'all_stores'  => $this->availableStores($managedIds),
-            'all_types'   => $this->filterByStore($this->shiftTypes->findAll(), $managedIds),
+            'all_types'   => $this->shiftTypesForManaged($managedIds),
             'redirect_to' => $redirectTo,
         ], 'layout.app'));
     }
@@ -646,10 +663,15 @@ final class AdminShiftController
             return Response::redirect($this->base() . '/admin/shifts/' . $shift['id'] . '/edit?error=timeoff_conflict');
         }
 
+        $shiftTypeId = $request->post('shift_type_id', '') !== '' ? (int) $request->post('shift_type_id') : null;
+        if ($shiftTypeId !== null && !$this->shiftTypes->isEnabledForStore($shiftTypeId, $newStoreId)) {
+            return Response::redirect($this->base() . '/admin/shifts/' . $shift['id'] . '/edit?error=shift_type_store_mismatch');
+        }
+
         $saved = $this->shifts->save(array_merge($shift, [
             'store_id'         => $newStoreId,
             'user_id'          => $isOpen ? null : $targetUid,
-            'shift_type_id'    => ($request->post('shift_type_id') !== '' ? (int) $request->post('shift_type_id') : null),
+            'shift_type_id'    => $shiftTypeId,
             'shift_date'       => $shiftDate,
             'start_time'       => $startTime,
             'end_time'         => $endTime,
@@ -789,10 +811,15 @@ final class AdminShiftController
             return Response::json(['error' => __('shift_timeoff_conflict')], 409);
         }
 
+        $shiftTypeId = !empty($body['shift_type_id']) ? (int) $body['shift_type_id'] : null;
+        if ($shiftTypeId !== null && !$this->shiftTypes->isEnabledForStore($shiftTypeId, $storeId)) {
+            return Response::json(['error' => __('shift_type_store_mismatch')], 422);
+        }
+
         $saved = $this->shifts->save([
             'store_id'         => $storeId,
             'user_id'          => (int) ($body['user_id'] ?? 0),
-            'shift_type_id'    => !empty($body['shift_type_id']) ? (int) $body['shift_type_id'] : null,
+            'shift_type_id'    => $shiftTypeId,
             'shift_date'       => $shiftDate,
             'start_time'       => $startTime,
             'end_time'         => $endTime,

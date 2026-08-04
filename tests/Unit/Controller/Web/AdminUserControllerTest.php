@@ -859,6 +859,61 @@ final class AdminUserControllerTest extends TestCase
         $this->assertFalse($data['available']);
     }
 
+    // -------------------------------------------------------------------------
+    // setUserRate / deleteUserRate — accès multi-store (un type peut couvrir
+    // plusieurs stores : l'accès est autorisé dès qu'on en gère au moins un)
+    // -------------------------------------------------------------------------
+
+    public function testSetUserRateForbiddenWhenManagingNoneOfTypeStores(): void
+    {
+        $this->users->method('findById')->with(10)->willReturn(['id' => 10]);
+        $this->shiftTypes->method('findById')->with(7)->willReturn(['id' => 7, 'code' => 'MORNING']);
+        $this->shiftTypes->method('getStoreIds')->with(7)->willReturn([2]);
+
+        $req = $this->makePostRequest(['shift_type_id' => '7', 'hourly_rate' => '1500']);
+        $req->setAttribute('managed_store_ids', [1]);
+        $req->setRouteParams(['id' => '10']);
+
+        $this->userRates->expects($this->never())->method('save');
+
+        $this->expectException(\kintai\Core\Exceptions\ForbiddenException::class);
+        $this->controller->setUserRate($req);
+    }
+
+    public function testSetUserRateAllowedWhenManagingOneOfTypeStores(): void
+    {
+        $this->users->method('findById')->with(10)->willReturn(['id' => 10]);
+        $this->shiftTypes->method('findById')->with(7)->willReturn(['id' => 7, 'code' => 'MORNING']);
+        $this->shiftTypes->method('getStoreIds')->with(7)->willReturn([1, 2]);
+        $this->userRates->method('findRate')->willReturn(null);
+
+        $req = $this->makePostRequest(['shift_type_id' => '7', 'hourly_rate' => '1500']);
+        $req->setAttribute('managed_store_ids', [1]);
+        $req->setRouteParams(['id' => '10']);
+
+        $this->userRates->expects($this->once())->method('save')->willReturnCallback(fn (array $d) => $d + ['id' => 1]);
+
+        $response = $this->controller->setUserRate($req);
+
+        $this->assertSame(302, $response->status());
+    }
+
+    public function testDeleteUserRateForbiddenWhenManagingNoneOfTypeStores(): void
+    {
+        $this->userRates->method('findById')->with(3)->willReturn(['id' => 3, 'user_id' => 10, 'shift_type_id' => 7]);
+        $this->shiftTypes->method('findById')->with(7)->willReturn(['id' => 7, 'code' => 'MORNING']);
+        $this->shiftTypes->method('getStoreIds')->with(7)->willReturn([2]);
+
+        $req = $this->makePostRequest([]);
+        $req->setAttribute('managed_store_ids', [1]);
+        $req->setRouteParams(['id' => '10', 'rid' => '3']);
+
+        $this->userRates->expects($this->never())->method('delete');
+
+        $this->expectException(\kintai\Core\Exceptions\ForbiddenException::class);
+        $this->controller->deleteUserRate($req);
+    }
+
     protected function tearDown(): void
     {
         $_GET = [];
