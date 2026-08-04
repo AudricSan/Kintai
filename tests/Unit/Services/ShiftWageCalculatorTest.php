@@ -275,4 +275,84 @@ final class ShiftWageCalculatorTest extends TestCase
         $this->assertSame(0.0, $result['amount']);
         $this->assertSame(480, $result['net_minutes']);
     }
+
+    // -------------------------------------------------------------------------
+    // costOf() — shift à cheval sur plusieurs tranches horaires
+    // -------------------------------------------------------------------------
+
+    public function testCostOfSplitsAcrossMultipleShiftTypes(): void
+    {
+        // 07:00-18:00 traverse le type "Tôt" (05:00-08:00) puis "Jour" (08:00-22:00)
+        $shift = [
+            'start_time'       => '07:00',
+            'end_time'         => '18:00',
+            'duration_minutes' => 660, // 11h
+            'pause_minutes'    => 0,
+        ];
+        $types = $this->typesMap([
+            $this->type(1, 'Tôt',  '05:00', '08:00', 1200.0),
+            $this->type(2, 'Jour', '08:00', '22:00', 1000.0),
+        ]);
+
+        $result = $this->calc->costOf($shift, $types);
+
+        $this->assertCount(2, $result['breakdown']);
+        $breakdown = array_column($result['breakdown'], null, 'shift_type_id');
+        $this->assertSame(60, $breakdown[1]['minutes']);  // 07:00→08:00 = 1h dans "Tôt"
+        $this->assertSame(600, $breakdown[2]['minutes']); // 08:00→18:00 = 10h dans "Jour"
+
+        // 1h × 1200 + 10h × 1000 = 11200
+        $this->assertSame(11200.0, $result['amount']);
+        $this->assertSame(660, $result['net_minutes']);
+        // Type dominant (le plus de minutes) = "Jour" → rate affiché = 1000
+        $this->assertSame(1000.0, $result['rate']);
+    }
+
+    public function testCostOfAppliesPersonalRatePerTrancheOnly(): void
+    {
+        $shift = [
+            'start_time'       => '07:00',
+            'end_time'         => '18:00',
+            'duration_minutes' => 660,
+            'pause_minutes'    => 0,
+        ];
+        $types = $this->typesMap([
+            $this->type(1, 'Tôt',  '05:00', '08:00', 1200.0),
+            $this->type(2, 'Jour', '08:00', '22:00', 1000.0),
+        ]);
+
+        // Taux perso uniquement sur le type "Jour" (id 2)
+        $result = $this->calc->costOf($shift, $types, [2 => 1500.0]);
+
+        $breakdown = array_column($result['breakdown'], null, 'shift_type_id');
+        $this->assertSame(1200.0, $breakdown[1]['rate']); // "Tôt" garde le taux du store
+        $this->assertSame(1500.0, $breakdown[2]['rate']); // "Jour" utilise le taux perso
+
+        // 1h × 1200 + 10h × 1500 = 16200
+        $this->assertSame(16200.0, $result['amount']);
+    }
+
+    public function testCostOfBreakdownSingleEntryWhenHourlyRateOverride(): void
+    {
+        $shift = [
+            'shift_type_id'         => 1,
+            'start_time'            => '07:00',
+            'end_time'              => '18:00',
+            'duration_minutes'      => 660,
+            'pause_minutes'         => 0,
+            'hourly_rate_override'  => 2000.0,
+        ];
+        $types = $this->typesMap([
+            $this->type(1, 'Tôt',  '05:00', '08:00', 1200.0),
+            $this->type(2, 'Jour', '08:00', '22:00', 1000.0),
+        ]);
+
+        $result = $this->calc->costOf($shift, $types);
+
+        // Le taux plat prime sur le découpage par tranche : une seule entrée
+        $this->assertCount(1, $result['breakdown']);
+        $this->assertSame(660, $result['breakdown'][0]['minutes']);
+        $this->assertSame(2000.0, $result['breakdown'][0]['rate']);
+        $this->assertSame(22000.0, $result['amount']); // 11h × 2000
+    }
 }

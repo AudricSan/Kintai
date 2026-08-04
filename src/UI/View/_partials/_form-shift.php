@@ -2,7 +2,6 @@
 /** @var array  $shift        Données du shift (valeurs pré-remplies ou vides) */
 /** @var array  $all_users    Liste des utilisateurs */
 /** @var array  $all_stores   Liste des magasins */
-/** @var array  $all_types    Liste des types de shift */
 /** @var array|null $store_features  Fonctionnalités activées ou null */
 $feat = $feat ?? fn(string $f): bool =>
     !isset($store_features) || $store_features === null
@@ -52,18 +51,6 @@ $feat = $feat ?? fn(string $f): bool =>
             <input type="date" name="shift_date" class="form-control"
                    value="<?= htmlspecialchars($shift['shift_date'] ?? '') ?>" required>
         </div>
-        <div class="form-group">
-            <label class="form-label"><?= __('type') ?></label>
-            <select name="shift_type_id" class="form-control">
-                <option value="">— <?= __('none') ?> —</option>
-                <?php foreach ($all_types as $t): ?>
-                    <option value="<?= (int) $t['id'] ?>"
-                        <?= (int) ($shift['shift_type_id'] ?? 0) === (int) $t['id'] ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($t['name'] ?? '') ?> (<?= htmlspecialchars($t['code'] ?? '') ?>)
-                    </option>
-                <?php endforeach; ?>
-            </select>
-        </div>
     </div>
 
     <!-- ── Horaires (début / fin) ────────────────────────────── -->
@@ -86,6 +73,21 @@ $feat = $feat ?? fn(string $f): bool =>
             <label class="form-label"><?= __('pause') ?> (minutes)</label>
             <input type="number" name="pause_minutes" class="form-control" min="0" max="120"
                    value="<?= (int) ($shift['pause_minutes'] ?? 0) ?>">
+        </div>
+    </div>
+
+    <!-- ── Aperçu du type/taux de shift ──────────────────────────
+         Plus de choix manuel : le type de shift (et le taux appliqué) est
+         déduit automatiquement du chevauchement horaire avec les types actifs
+         du store — un shift peut traverser plusieurs tranches (ex : 7h-18h
+         traverse un type 5h-8h puis un type 8h-22h), chacune facturée à son
+         propre taux. Cet aperçu se recalcule en direct via wage-preview. ── -->
+    <div class="form-group shift-wage-preview" id="shift-wage-preview"
+         data-preview-url="<?= htmlspecialchars($BASE_URL . '/admin/shifts/wage-preview') ?>"
+         data-empty-text="<?= htmlspecialchars(__('shift_type_preview_hint')) ?>">
+        <label class="form-label"><?= __('shift_type_preview_label') ?></label>
+        <div class="shift-wage-preview__body" data-role="body">
+            <span class="form-hint"><?= __('shift_type_preview_hint') ?></span>
         </div>
     </div>
 
