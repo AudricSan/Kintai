@@ -190,6 +190,85 @@ final class AdminShiftTypeControllerTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
+    // toggleShiftTypeStore — matrice magasin×type
+    // -------------------------------------------------------------------------
+
+    public function testToggleShiftTypeStoreNotFound(): void
+    {
+        $this->shiftTypes->method('findById')->with(5)->willReturn(null);
+
+        $req = $this->makePostRequest(['store_id' => '1', 'enabled' => '1']);
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => 5]);
+
+        $this->expectException(\kintai\Core\Exceptions\NotFoundException::class);
+        $this->controller->toggleShiftTypeStore($req);
+    }
+
+    public function testToggleShiftTypeStoreForbiddenWhenStoreNotManaged(): void
+    {
+        $this->shiftTypes->method('findById')->with(5)->willReturn(['id' => 5, 'code' => 'MORNING']);
+
+        $req = $this->makePostRequest(['store_id' => '2', 'enabled' => '1']);
+        $req->setAttribute('managed_store_ids', [1]);
+        $req->setRouteParams(['id' => 5]);
+
+        $this->shiftTypes->expects($this->never())->method('enableForStore');
+
+        $this->expectException(\kintai\Core\Exceptions\ForbiddenException::class);
+        $this->controller->toggleShiftTypeStore($req);
+    }
+
+    public function testToggleShiftTypeStoreEnablesWhenChecked(): void
+    {
+        $this->shiftTypes->method('findById')->with(5)->willReturn(['id' => 5, 'code' => 'MORNING']);
+
+        $req = $this->makePostRequest(['store_id' => '2', 'enabled' => '1']);
+        $req->setAttribute('managed_store_ids', [1, 2]);
+        $req->setRouteParams(['id' => 5]);
+
+        $this->shiftTypes->expects($this->once())->method('enableForStore')->with(5, 2);
+        $this->shiftTypes->expects($this->never())->method('disableForStore');
+
+        $response = $this->controller->toggleShiftTypeStore($req);
+
+        $this->assertSame(302, $response->status());
+    }
+
+    public function testToggleShiftTypeStoreDisablesWhenUnchecked(): void
+    {
+        $this->shiftTypes->method('findById')->with(5)->willReturn(['id' => 5, 'code' => 'MORNING']);
+        $this->shiftTypes->method('getStoreIds')->with(5)->willReturn([1, 2]);
+
+        $req = $this->makePostRequest(['store_id' => '2', 'enabled' => '0']);
+        $req->setAttribute('managed_store_ids', [1, 2]);
+        $req->setRouteParams(['id' => 5]);
+
+        $this->shiftTypes->expects($this->once())->method('disableForStore')->with(5, 2);
+
+        $response = $this->controller->toggleShiftTypeStore($req);
+
+        $this->assertSame(302, $response->status());
+    }
+
+    /** Décocher le dernier store affecté doit être refusé, pas silencieusement orpheliner le type. */
+    public function testToggleShiftTypeStoreRejectsDisablingLastStore(): void
+    {
+        $this->shiftTypes->method('findById')->with(5)->willReturn(['id' => 5, 'code' => 'MORNING']);
+        $this->shiftTypes->method('getStoreIds')->with(5)->willReturn([2]);
+
+        $req = $this->makePostRequest(['store_id' => '2', 'enabled' => '0']);
+        $req->setAttribute('managed_store_ids', [1, 2]);
+        $req->setRouteParams(['id' => 5]);
+
+        $this->shiftTypes->expects($this->never())->method('disableForStore');
+
+        $response = $this->controller->toggleShiftTypeStore($req);
+
+        $this->assertSame(302, $response->status());
+    }
+
+    // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
 
