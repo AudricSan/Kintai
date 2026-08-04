@@ -412,9 +412,12 @@ final class EmployeeController
         }
         usort($memberIds, fn($a, $b) => strcmp($usersMap[$a] ?? '', $usersMap[$b] ?? ''));
 
-        $typesMap = [];
+        $typesMap     = [];
+        $typeStoreIds = [];
         foreach ($this->shiftTypes->findAll() as $t) {
-            $typesMap[(int) $t['id']] = $t;
+            $tid = (int) $t['id'];
+            $typesMap[$tid]     = $t;
+            $typeStoreIds[$tid] = $this->shiftTypes->getStoreIds($tid);
         }
 
         // Shifts de la plage (store affiché uniquement), groupés par date puis user
@@ -464,6 +467,7 @@ final class EmployeeController
             'users_map'           => $usersMap,
             'user_color_map'      => $userColorMap,
             'types_map'           => $typesMap,
+            'type_store_ids'      => $typeStoreIds,
             'my_user_id'          => $userId,
             'today'               => date('Y-m-d'),
             'can_manage'          => $canManage,
