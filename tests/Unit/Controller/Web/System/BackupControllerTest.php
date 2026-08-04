@@ -221,6 +221,7 @@ final class BackupControllerTest extends TestCase
                 'html_url'    => 'https://example.test/releases/v2.0.0',
                 'body'        => 'notes',
                 'published_at' => '2026-01-01T00:00:00Z',
+                'target_commitish' => 'main',
             ]],
             function (string $url, string $dest, string $token): bool {
                 $this->makeReleaseZip($dest, [
@@ -249,6 +250,7 @@ final class BackupControllerTest extends TestCase
             fn(string $repo, string $token): ?array => [[
                 'tag_name'    => 'v2.0.0',
                 'zipball_url' => 'https://example.test/zipball/v2.0.0',
+                'target_commitish' => 'main',
             ]],
             function (string $url, string $dest, string $token) use (&$enabledDuringApply): bool {
                 $enabledDuringApply = $this->settings->maintenanceModeEnabled();
@@ -273,6 +275,7 @@ final class BackupControllerTest extends TestCase
             fn(string $repo, string $token): ?array => [[
                 'tag_name'    => 'v2.0.0',
                 'zipball_url' => 'https://example.test/zipball/v2.0.0',
+                'target_commitish' => 'main',
             ]],
             function (string $url, string $dest, string $token): bool {
                 $this->makeReleaseZip($dest, ['config/app.php' => "<?php return ['version' => '2.0.0'];"]);
