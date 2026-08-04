@@ -4,7 +4,7 @@
 
 **複数店舗を運営する企業向けの、オープンソースなシフト・勤怠・労務管理システム。**
 
-[![Version](https://img.shields.io/badge/version-0.10.0-purple.svg)](CHANGELOG.ja.md)
+[![Version](https://img.shields.io/badge/version-0.10.1-purple.svg)](CHANGELOG.ja.md)
 [![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 [![PHP Version](https://img.shields.io/badge/php-%3E%3D%208.3-8892bf.svg)](https://php.net)
 [![Tests](https://github.com/AudricSan/Kintai/actions/workflows/tests.yml/badge.svg)](https://github.com/AudricSan/Kintai/actions/workflows/tests.yml)
