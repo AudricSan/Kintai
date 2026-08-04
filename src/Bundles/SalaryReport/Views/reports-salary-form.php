@@ -275,5 +275,14 @@ $hoursLabel = fn(string $key) => __($key) . ' (h)';
     'ded_employment_insurance' => __('ded_employment_insurance'),
     'ded_income_tax'        => __('ded_income_tax'),
     'ded_resident_tax'      => __('ded_resident_tax'),
+    'col_day'               => __('col_day'),
+    'date'                  => __('date'),
+    'shift_type'            => __('shift_type'),
+    'schedule'               => __('schedule'),
+    'gross_h_col'           => __('gross_h_col'),
+    'pause'                 => __('pause'),
+    'net_h_col'             => __('net_h_col'),
+    'col_rate_h'            => __('col_rate_h'),
+    'total_row'             => __('total_row'),
 ], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR) ?></script>
 <script src="<?= $BASE_URL ?>/assets/js/modules/salary-report-form.js"></script>

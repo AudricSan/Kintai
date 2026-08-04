@@ -129,6 +129,26 @@
 
     function pad2(n) { return n < 10 ? '0' + n : String(n); }
 
+    /* ── Formatage partagé avec _payslip-helpers.php (payslip_hours/date/dow) ── */
+    function hoursFmt(minutes) {
+        minutes = Number(minutes) || 0;
+        var h = Math.floor(minutes / 60);
+        var m = minutes % 60;
+        return h + 'h' + pad2(m);
+    }
+
+    function dateFmt(dateStr) {
+        var parts = String(dateStr || '').split('-');
+        return parts.length === 3 ? parts[2] + '/' + parts[1] + '/' + parts[0] : (dateStr || '');
+    }
+
+    var DOW_LABELS = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+    function dowFmt(dateStr) {
+        var parts = String(dateStr || '').split('-').map(Number);
+        if (parts.length !== 3) return '';
+        return DOW_LABELS[new Date(parts[0], parts[1] - 1, parts[2]).getDay()];
+    }
+
     /* ── Mode mois / plage personnalisée ─────────────────────────── */
     function monthBounds(monthValue) {
         if (!/^\d{4}-\d{2}$/.test(monthValue)) return null;
@@ -265,11 +285,51 @@
             return html;
         }
 
-        // Mode employé : gross/retenues/net, comme buildPayslipData().
+        // Mode employé : liste des shifts (gross/pause/net/taux/montant), puis
+        // gross/retenues/net, comme buildPayslipData() / reports-salary-show.php.
         if (!detail.shiftRows || !detail.shiftRows.length) {
             return '<p class="form-hint">' + escapeHtml(i18n.payslip_no_shift) + '</p>';
         }
-        var out = '<table class="detail-table sr-calc-detail__table">';
+        var anyRate = !!detail.anyRate;
+        var out = '<table class="detail-table sr-calc-detail__table"><thead><tr>';
+        out += '<th>' + escapeHtml(i18n.col_day) + '</th>';
+        out += '<th>' + escapeHtml(i18n.date) + '</th>';
+        out += '<th>' + escapeHtml(i18n.shift_type) + '</th>';
+        out += '<th>' + escapeHtml(i18n.schedule) + '</th>';
+        out += '<th>' + escapeHtml(i18n.gross_h_col) + '</th>';
+        out += '<th>' + escapeHtml(i18n.pause) + '</th>';
+        out += '<th>' + escapeHtml(i18n.net_h_col) + '</th>';
+        if (anyRate) {
+            out += '<th>' + escapeHtml(i18n.col_rate_h) + '</th>';
+            out += '<th>' + escapeHtml(i18n.amount) + '</th>';
+        }
+        out += '</tr></thead><tbody>';
+        detail.shiftRows.forEach(function (row) {
+            out += '<tr>';
+            out += '<td>' + escapeHtml(dowFmt(row.date)) + '</td>';
+            out += '<td>' + escapeHtml(dateFmt(row.date)) + '</td>';
+            out += '<td>' + escapeHtml(row.type) + '</td>';
+            out += '<td>' + escapeHtml(row.start) + '–' + escapeHtml(row.end) + '</td>';
+            out += '<td class="td-mono">' + hoursFmt(row.gross_min) + '</td>';
+            out += '<td class="td-mono">' + (row.pause_min > 0 ? row.pause_min + ' min' : '—') + '</td>';
+            out += '<td class="td-mono">' + hoursFmt(row.net_min) + '</td>';
+            if (anyRate) {
+                out += '<td class="td-mono">' + (row.has_rate ? Number(row.rate).toFixed(2) : '—') + '</td>';
+                out += '<td class="td-mono">' + (row.has_rate ? formatCurrency(row.cost, currency, currencyStyle) : '—') + '</td>';
+            }
+            out += '</tr>';
+        });
+        out += '</tbody><tfoot><tr>';
+        out += '<th colspan="4">' + escapeHtml(i18n.total_row) + '</th>';
+        out += '<th class="td-mono">' + hoursFmt(detail.totalGrossMin) + '</th>';
+        out += '<th></th>';
+        out += '<th class="td-mono">' + hoursFmt(detail.totalNetMin) + '</th>';
+        if (anyRate) {
+            out += '<th></th><th class="td-mono">' + formatCurrency(detail.totalCost, currency, currencyStyle) + '</th>';
+        }
+        out += '</tr></tfoot></table>';
+
+        out += '<table class="detail-table sr-calc-detail__table">';
         out += '<tr><th>' + escapeHtml(i18n.gross_pay) + '</th><td class="td-mono td-highlight">' + formatCurrency(detail.totalCost, currency, currencyStyle) + '</td></tr>';
         var deductions = detail.deductions || {};
         Object.keys(deductions).forEach(function (key) {
