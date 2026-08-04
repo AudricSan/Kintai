@@ -89,6 +89,30 @@ $feat = $feat ?? fn(string $f): bool =>
         </div>
     </div>
 
+    <!-- ── Ajustement manuel (taux/heures actives) ──────────────
+         Vide = calcul automatique (taux perso/type de shift, durée - pause).
+         Un ajustement ici gagne toujours sur le calcul automatique, y compris
+         après un "Recalculer" du rapport de salaire (qui re-somme les shifts,
+         donc relit cet ajustement plutôt que de l'écraser). ── -->
+    <details class="form-advanced">
+        <summary><?= __('shift_manual_override') ?></summary>
+        <p class="form-hint"><?= __('shift_manual_override_hint') ?></p>
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label"><?= __('shift_hourly_rate_override') ?></label>
+                <input type="number" name="hourly_rate_override" class="form-control" step="0.01" min="0"
+                       placeholder="<?= __('automatic') ?>"
+                       value="<?= ($shift['hourly_rate_override'] ?? null) !== null ? htmlspecialchars((string) $shift['hourly_rate_override']) : '' ?>">
+            </div>
+            <div class="form-group">
+                <label class="form-label"><?= __('shift_net_minutes_override') ?></label>
+                <input type="number" name="net_minutes_override" class="form-control" step="1" min="0"
+                       placeholder="<?= __('automatic') ?>"
+                       value="<?= ($shift['net_minutes_override'] ?? null) !== null ? htmlspecialchars((string) $shift['net_minutes_override']) : '' ?>">
+            </div>
+        </div>
+    </details>
+
     <!-- ── Notes ─────────────────────────────────────────────── -->
     <div class="form-group">
         <label class="form-label"><?= __('notes') ?></label>

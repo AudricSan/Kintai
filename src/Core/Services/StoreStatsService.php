@@ -910,6 +910,7 @@ final class StoreStatsService implements StoreStatsServiceInterface
                 'rate'      => $wage['rate'],
                 'cost'      => $wage['amount'],
                 'has_rate'  => $wage['rate'] > 0,
+                'has_override' => ($s['hourly_rate_override'] ?? null) !== null || ($s['net_minutes_override'] ?? null) !== null,
             ];
         }
 
