@@ -213,6 +213,7 @@ $router->group('/admin', function ($r) {
     $r->get('/shift-types/{id}/edit',     [AdminShiftTypeController::class, 'editShiftType'],      name: 'admin.shift_types.edit');
     $r->post('/shift-types/{id}/edit',    [AdminShiftTypeController::class, 'updateShiftType'],    name: 'admin.shift_types.update');
     $r->post('/shift-types/{id}/delete',  [AdminShiftTypeController::class, 'deleteShiftType'],    name: 'admin.shift_types.delete');
+    $r->post('/shift-types/{id}/toggle-store', [AdminShiftTypeController::class, 'toggleShiftTypeStore'], name: 'admin.shift_types.toggle_store');
 
     // Shifts
     $r->get('/shifts',              [AdminShiftController::class, 'shifts'],               name: 'admin.shifts');

@@ -74,7 +74,13 @@
     vertical-align: top;
 }
 
-.td-center {
+/* .data-table th force text-align:left avec une spécificité (classe +
+   élément) supérieure à .td-center seule (classe) : sans le doublon
+   th.td-center ci-dessous (même spécificité que .data-table th, mais
+   déclaré après donc gagnant), la classe est silencieusement ignorée
+   sur les <th> alors qu'elle fonctionne sur les <td>. */
+.td-center,
+th.td-center {
     text-align: center;
 }
 
