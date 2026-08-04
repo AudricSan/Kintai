@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Added
+- The salary report form's "calculation detail" modal (single-employee reports) now lists every shift in the period — day, date, type, schedule, gross/pause/net hours, rate and amount, with totals — instead of only the gross/deductions/net summary. The data (`buildPayslipData()`'s `shiftRows`) was already returned by the recalculate endpoint but never rendered client-side.
+
 ### Fixed
 - The estimated salary shown for the same employee/month no longer differs between the admin salary report, the staff list, and the employee's own dashboard. Root cause: four independent, drifted implementations of "cost of a shift" — most notably, the salary report's create-form preset (`staff_total_payment`) read `shifts.estimated_salary`, a column only ever populated by the Excel import path, so it silently showed ~0 for any shift created or edited through the normal scheduling UI while the report's own detail page (which recomputes live) showed the correct amount. Also fixed along the way: the staff list's "Est. pay" column wasn't deducting break time at all (gross hours instead of net); the employee dashboard and staff list widgets didn't exclude soft-deleted shifts. All four call sites now share one `ShiftWageCalculator::costOf()` resolution (personal rate → shift type rate, `duration_minutes - pause_minutes`), consistently filtered on non-deleted shifts.
 
