@@ -102,6 +102,22 @@ if (!function_exists('hash_token')) {
     }
 }
 
+if (!function_exists('render_markdown')) {
+    /**
+     * Rend du Markdown en HTML (Parsedown, safe mode) pour l'affichage de
+     * contenu provenant d'une source externe (ex : notes de version GitHub) —
+     * contrairement à WikiContentService::render(), qui désactive le safe mode
+     * car les pages du wiki sont des fichiers locaux de confiance.
+     */
+    function render_markdown(string $markdown): string
+    {
+        $parsedown = new \Parsedown();
+        $parsedown->setSafeMode(true);
+
+        return $parsedown->text($markdown);
+    }
+}
+
 if (!function_exists('base_url')) {
     /**
      * Calcule la base URL à partir de SCRIPT_NAME.
