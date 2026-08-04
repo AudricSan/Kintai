@@ -11,9 +11,11 @@ use kintai\Core\Repositories\DailyReportRepositoryInterface;
 use kintai\Core\Repositories\LogRepositoryInterface;
 use kintai\Core\Repositories\SalaryReportRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
+use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
+use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\Log;
@@ -30,6 +32,8 @@ final class AdminSalaryReportControllerTest extends TestCase
     private StoreUserRepositoryInterface&MockObject $storeUsers;
     private DailyReportRepositoryInterface&MockObject $dailyReports;
     private ShiftRepositoryInterface&MockObject $shifts;
+    private ShiftTypeRepositoryInterface&MockObject $shiftTypes;
+    private UserShiftTypeRateRepositoryInterface&MockObject $userRates;
     private LogRepositoryInterface&MockObject $logRepo;
     private StoreStatsServiceInterface&MockObject $storeStatsService;
     private AdminSalaryReportController $controller;
@@ -52,6 +56,8 @@ final class AdminSalaryReportControllerTest extends TestCase
         $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
         $this->dailyReports = $this->createMock(DailyReportRepositoryInterface::class);
         $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
+        $this->shiftTypes = $this->createMock(ShiftTypeRepositoryInterface::class);
+        $this->userRates = $this->createMock(UserShiftTypeRateRepositoryInterface::class);
         $this->storeStatsService = $this->createMock(StoreStatsServiceInterface::class);
 
         $this->logRepo = $this->createMock(LogRepositoryInterface::class);
@@ -67,6 +73,8 @@ final class AdminSalaryReportControllerTest extends TestCase
             $this->storeUsers,
             $this->dailyReports,
             $this->shifts,
+            $this->shiftTypes,
+            $this->userRates,
             new AuditLogger(),
             $this->storeStatsService,
         );
@@ -403,8 +411,9 @@ final class AdminSalaryReportControllerTest extends TestCase
         $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Store A']);
         $this->dailyReports->method('findByStoreAndDateRange')->willReturn([]);
         $this->shifts->method('findByStore')->with(1)->willReturn([
-            ['shift_date' => '2026-08-05', 'duration_minutes' => 480, 'estimated_salary' => 6000, 'user_id' => 7],
+            ['shift_date' => '2026-08-05', 'duration_minutes' => 480, 'pause_minutes' => 0, 'shift_type_id' => 1, 'user_id' => 7],
         ]);
+        $this->shiftTypes->method('findByStore')->with(1)->willReturn([['id' => 1, 'hourly_rate' => 750.0]]);
         $this->users->method('findById')->with(7)->willReturn(['id' => 7, 'last_name' => 'Dupont', 'first_name' => 'Jean']);
 
         $this->storeStatsService->expects($this->once())->method('buildPayslipData')
@@ -523,9 +532,10 @@ final class AdminSalaryReportControllerTest extends TestCase
 
         $this->dailyReports->method('findByStoreAndDateRange')->willReturn([]);
         $this->shifts->method('findByStore')->willReturn([
-            ['shift_date' => date('Y-m') . '-05', 'duration_minutes' => 480, 'estimated_salary' => 6000, 'user_id' => 7],
-            ['shift_date' => date('Y-m') . '-06', 'duration_minutes' => 240, 'estimated_salary' => 3000, 'user_id' => 9],
+            ['shift_date' => date('Y-m') . '-05', 'duration_minutes' => 480, 'pause_minutes' => 0, 'shift_type_id' => 1, 'user_id' => 7],
+            ['shift_date' => date('Y-m') . '-06', 'duration_minutes' => 240, 'pause_minutes' => 0, 'shift_type_id' => 1, 'user_id' => 9],
         ]);
+        $this->shiftTypes->method('findByStore')->willReturn([['id' => 1, 'hourly_rate' => 750.0]]);
         $this->users->method('findById')->with(7)->willReturn(['id' => 7, 'last_name' => 'Dupont', 'first_name' => 'Jean']);
 
         $preset = $this->invokeCalculateSalaryPreset($store, date('Y-m'), $authUser, 7);
@@ -545,8 +555,9 @@ final class AdminSalaryReportControllerTest extends TestCase
 
         $this->dailyReports->method('findByStoreAndDateRange')->willReturn([]);
         $this->shifts->method('findByStore')->willReturn([
-            ['shift_date' => date('Y-m') . '-05', 'duration_minutes' => 480, 'estimated_salary' => 6000, 'user_id' => 7],
+            ['shift_date' => date('Y-m') . '-05', 'duration_minutes' => 480, 'pause_minutes' => 0, 'shift_type_id' => 1, 'user_id' => 7],
         ]);
+        $this->shiftTypes->method('findByStore')->willReturn([['id' => 1, 'hourly_rate' => 750.0]]);
         $this->users->method('findById')->with(7)->willReturn(['id' => 7, 'last_name' => 'Dupont', 'first_name' => 'Jean']);
         $this->stores->method('getDeductionSettings')->with(1)->willReturn([
             'enabled' => true,
@@ -578,9 +589,10 @@ final class AdminSalaryReportControllerTest extends TestCase
 
         $this->dailyReports->method('findByStoreAndDateRange')->willReturn([]);
         $this->shifts->method('findByStore')->willReturn([
-            ['shift_date' => date('Y-m') . '-05', 'duration_minutes' => 480, 'estimated_salary' => 6000, 'user_id' => 7],
-            ['shift_date' => date('Y-m') . '-06', 'duration_minutes' => 240, 'estimated_salary' => 3000, 'user_id' => 9],
+            ['shift_date' => date('Y-m') . '-05', 'duration_minutes' => 480, 'pause_minutes' => 0, 'shift_type_id' => 1, 'user_id' => 7],
+            ['shift_date' => date('Y-m') . '-06', 'duration_minutes' => 240, 'pause_minutes' => 0, 'shift_type_id' => 1, 'user_id' => 9],
         ]);
+        $this->shiftTypes->method('findByStore')->willReturn([['id' => 1, 'hourly_rate' => 750.0]]);
         $this->users->method('findById')->willReturnMap([
             [7, ['id' => 7, 'last_name' => 'Dupont', 'first_name' => 'Jean']],
             [9, ['id' => 9, 'last_name' => 'Martin', 'first_name' => 'Léa']],
