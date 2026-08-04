@@ -22,6 +22,12 @@ $genderOptions = ['male' => __('male'), 'female' => __('female')];
 $taxOptions = ['kou' => '甲', 'otsu' => '乙'];
 $currentUserId = (int) ($user['id'] ?? 0);
 $baseUrl = rtrim($BASE_URL ?? '', '/');
+// En édition (page complète), la section "Rôles et apparence" est extraite de la grille
+// de cartes pour être fusionnée visuellement avec Stores/Cotisations/Taux horaires
+// (voir users-form.php) : ses champs restent rattachés au formulaire principal via
+// l'attribut form= (même technique que le bouton de réinitialisation de mot de passe).
+$mainFormId = ($mode === 'edit' && $as_cards) ? 'userEditForm' : null;
+$formAttr = $mainFormId !== null ? ' form="' . $mainFormId . '"' : '';
 
 $section = function (string $titleKey, string $body, string $span = '') use ($as_cards): void {
     if ($as_cards) {
@@ -197,7 +203,7 @@ $section = function (string $titleKey, string $body, string $span = '') use ($as
             </button>
         </div>
         <?php endif; ?>
-    <?php $section('employee_info', ob_get_clean(), 'card--c1 card--r3'); ?>
+    <?php $section('employee_info', ob_get_clean(), $mainFormId !== null ? 'card--c1 card--r3 card--full' : 'card--c1 card--r3'); ?>
 
     <?php ob_start(); ?>
         <div class="form-row">
@@ -212,15 +218,16 @@ $section = function (string $titleKey, string $body, string $span = '') use ($as
                 <div class="input-group">
                     <span class="avatar-chip" id="userColorPreview" style="--chip-bg:<?= $userColor ?>"><?= $userInitials ?></span>
                     <input type="color" name="color" class="input-color" id="userColorInput"
-                           value="<?= $userColor ?>"
+                           value="<?= $userColor ?>"<?= $formAttr ?>
                            oninput="document.getElementById('userColorPreview').style.setProperty('--chip-bg', this.value)">
                     <span class="text-sm-muted"><?= __('planning_visible_hint') ?></span>
                 </div>
             </div>
             <?php if (!$hasUnifiedRoleSelect): ?>
             <div class="form-group">
-                <label class="form-check">
-                    <input type="checkbox" name="is_admin" value="1" <?= !empty($user['is_admin']) ? 'checked' : '' ?>>
+                <label class="form-toggle form-toggle--labeled">
+                    <input type="checkbox" name="is_admin" value="1" class="form-toggle__input"<?= $formAttr ?> <?= !empty($user['is_admin']) ? 'checked' : '' ?>>
+                    <span class="form-toggle__track"></span>
                     <span><?= htmlspecialchars($owner_role_name) ?></span>
                 </label>
                 <p class="form-hint"><?= __('owner_account_hint') ?></p>
@@ -231,14 +238,19 @@ $section = function (string $titleKey, string $body, string $span = '') use ($as
         <div class="form-row">
             <div class="form-group">
                 <label class="form-label"><?= __('status') ?></label>
-                <select name="is_active" class="form-control">
+                <select name="is_active" class="form-control"<?= $formAttr ?>>
                     <option value="1" <?= !empty($user['is_active']) ? 'selected' : '' ?>><?= __('active') ?></option>
                     <option value="0" <?= empty($user['is_active']) ? 'selected' : '' ?>><?= __('inactive') ?></option>
                 </select>
             </div>
         </div>
         <?php endif; ?>
-    <?php $section('roles_appearance', ob_get_clean(), 'card--c2 card--r3 card--col-2'); ?>
+    <?php
+    $rolesAppearanceBody = ob_get_clean();
+    if ($mainFormId === null) {
+        $section('roles_appearance', $rolesAppearanceBody, 'card--c2 card--r3 card--col-2');
+    }
+    ?>
 
     <?php if ($mode === 'create'): ?>
     <?php ob_start(); ?>
