@@ -31,14 +31,10 @@ final class AdminShiftTypeController
             ? $this->shiftTypes->findAll()
             : $this->shiftTypes->findByStores($managedIds);
 
-        $storesMap = $this->buildStoresMap($managedIds);
-        $typeStoreNames = $this->buildTypeStoreNames($types, $storesMap);
         $typeStoreIds = $this->buildTypeStoreIds($types);
 
         $sort = $request->query('sort') ?? 'name_asc';
-        usort($types, function ($a, $b) use ($sort, $typeStoreNames) {
-            $storeA  = strtolower(implode(', ', $typeStoreNames[(int) $a['id']] ?? []));
-            $storeB  = strtolower(implode(', ', $typeStoreNames[(int) $b['id']] ?? []));
+        usort($types, function ($a, $b) use ($sort) {
             $codeA   = strtolower($a['code'] ?? '');
             $codeB   = strtolower($b['code'] ?? '');
             $nameA   = strtolower($a['name'] ?? '');
@@ -47,8 +43,6 @@ final class AdminShiftTypeController
             $statB   = (int) !empty($b['is_active']);
             return match ($sort) {
                 'name_desc'    => strcmp($nameB, $nameA),
-                'store_asc'    => strcmp($storeA, $storeB) ?: strcmp($nameA, $nameB),
-                'store_desc'   => strcmp($storeB, $storeA) ?: strcmp($nameA, $nameB),
                 'code_asc'     => strcmp($codeA, $codeB) ?: strcmp($nameA, $nameB),
                 'code_desc'    => strcmp($codeB, $codeA) ?: strcmp($nameA, $nameB),
                 'status_asc'   => $statA <=> $statB ?: strcmp($nameA, $nameB),
@@ -58,13 +52,11 @@ final class AdminShiftTypeController
         });
 
         return Response::html($this->view->render('scheduling.shift-types', [
-            'title'            => 'Types de shifts',
-            'shift_types'      => $types,
-            'stores_map'       => $storesMap,
-            'type_store_names' => $typeStoreNames,
-            'type_store_ids'   => $typeStoreIds,
-            'all_stores'       => $this->availableStores($managedIds),
-            'sort'             => $sort,
+            'title'          => 'Types de shifts',
+            'shift_types'    => $types,
+            'type_store_ids' => $typeStoreIds,
+            'all_stores'     => $this->availableStores($managedIds),
+            'sort'           => $sort,
         ], 'layout.app'));
     }
 
@@ -220,22 +212,6 @@ final class AdminShiftTypeController
             return [];
         }
         return array_values(array_unique(array_map('intval', $ids)));
-    }
-
-    /** @return array<int, string[]> id de type => noms de stores triés */
-    private function buildTypeStoreNames(array $types, array $storesMap): array
-    {
-        $map = [];
-        foreach ($types as $t) {
-            $id = (int) $t['id'];
-            $names = array_values(array_filter(array_map(
-                fn ($sid) => $storesMap[$sid] ?? null,
-                $this->shiftTypes->getStoreIds($id),
-            )));
-            sort($names);
-            $map[$id] = $names;
-        }
-        return $map;
     }
 
     /** @return array<int, int[]> id de type => IDs de stores affectés */
