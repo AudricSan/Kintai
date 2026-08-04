@@ -7,6 +7,7 @@ All notable changes to Kintai are documented here.
 ## [Unreleased]
 
 ### Added
+- The salary report form's "calculation detail" modal (single-employee reports) now lists every shift in the period — day, date, type, schedule, gross/pause/net hours, rate and amount, with totals — instead of only the gross/deductions/net summary. The data (`buildPayslipData()`'s `shiftRows`) was already returned by the recalculate endpoint but never rendered client-side.
 - Shifts can now have a manual hourly rate and/or manual active (net) minutes, entered on the shift form under an optional "Manual adjustment" section — either overrides the usual automatic resolution (personal rate → shift type rate; `duration_minutes - pause_minutes`) wherever the shift's cost is used (salary report, staff list, employee dashboard). A pencil icon marks adjusted shifts in the shifts list and in a salary report's shift detail. Recalculating a salary report can never silently overwrite these — the recalculate button only re-sums shifts, which already carry their own adjustment.
 
 ### Fixed
