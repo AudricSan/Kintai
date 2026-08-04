@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Fixed
+- Several RBAC gaps allowed a non-Owner role to see (and sometimes actually reach) functionality beyond its granted permissions, or to fail silently on save after filling a form it should never have been shown: (1) the legacy `store_user.role` column, never resynced when an Owner edits a role's permissions after assignment, still drove the shift-management button on the employee planning page and the manager picker in HR report forms — both now consult `PermissionService` directly; (2) `/admin/activity` had no permission entry and no store scoping, so any single-store manager could read the whole organization's audit log — now requires `stores.view` and is filtered to the manager's stores; (3) `staff/users.php`, `staff/stores.php`, `staff/stores-form.php` and `staff/users-form.php` rendered links/forms toward actions gated by a stricter permission than the page itself (e.g. the user edit page only needs `employees.view`, but saving needs `employees.update`) without ever checking `$can()` — the edit form now goes read-only with a notice instead of accepting input it can't submit; (4) the DailyReport bundle (web and API) had no declarative permission mapping at all, and its API controller never checked authorization — any token holder could view/edit/delete any store's daily report. Added a new "permission OR store membership" rule to `PermissionMiddleware`/`ApiPermissionMiddleware` so the bundle's self-service model (any store member can manage their own report) is now expressed declaratively instead of being implicit, and wired the missing `DailyReportPermissionService` checks into the API controller.
+
 ## [0.8.1] - 2026-07-18
 
 ### Changed
