@@ -7,13 +7,16 @@ namespace kintai\Bundles\SalaryReport\Controllers\Web;
 use kintai\Core\Repositories\DailyReportRepositoryInterface;
 use kintai\Core\Repositories\SalaryReportRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
+use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
+use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\DailyReportDataNormalizer;
+use kintai\Core\Services\ShiftWageCalculator;
 use kintai\Core\Services\StoreStatsServiceInterface;
 use kintai\UI\Controller\Web\HasAdminAccess;
 use kintai\UI\Controller\Web\Staff\HasStaffReportCrud;
@@ -62,6 +65,8 @@ final class AdminSalaryReportController
         private readonly StoreUserRepositoryInterface $storeUsers,
         private readonly DailyReportRepositoryInterface $dailyReports,
         private readonly ShiftRepositoryInterface $shifts,
+        private readonly ShiftTypeRepositoryInterface $shiftTypes,
+        private readonly UserShiftTypeRateRepositoryInterface $userRates,
         private readonly AuditLogger $auditLogger,
         private readonly StoreStatsServiceInterface $storeStatsService,
     ) {}
@@ -468,29 +473,45 @@ final class AdminSalaryReportController
      * et le détail par employé — factorisé entre calculateSalaryPreset() (montants
      * pré-remplis) et calculateStoreDetail() (détail affiché dans la modale de calcul).
      *
+     * Coût calculé à la volée via ShiftWageCalculator::costOf() (même source que
+     * StoreStatsService::buildPayslipData()/EmployeeStatsService), et non plus lu depuis
+     * shifts.estimated_salary : cette colonne n'est renseignée que par l'import Excel et
+     * reste NULL pour tout shift créé/édité à la main, ce qui faisait ressortir un total
+     * proche de 0 ici alors que le détail du rapport affichait le bon montant.
+     *
      * @return array{0: int, 1: float, 2: array<int, int>, 3: array<int, float>} [totalMinutes, totalCost, employeeMinutes, employeeCost]
      */
     private function aggregateShifts(int $storeId, string $from, string $to, ?int $userId): array
     {
-        $allShifts = $this->shifts->findByStore($storeId);
+        $allShifts = array_filter($this->shifts->findByStore($storeId), fn($s) => empty($s['deleted_at']));
         $rangeShifts = array_filter($allShifts, fn($s) =>
             ($s['shift_date'] ?? '') >= $from && ($s['shift_date'] ?? '') <= $to
             && ($userId === null || (int) ($s['user_id'] ?? 0) === $userId)
         );
+
+        $typesMap = array_column($this->shiftTypes->findByStore($storeId), null, 'id');
+        $wageCalc = new ShiftWageCalculator();
+        $rateCache = [];
 
         $totalMinutes = 0;
         $totalCost = 0.0;
         $employeeMinutes = [];
         $employeeCost = [];
         foreach ($rangeShifts as $s) {
-            $minutes = (int) ($s['duration_minutes'] ?? 0);
-            $cost = (float) ($s['estimated_salary'] ?? 0);
-            $totalMinutes += $minutes;
-            $totalCost += $cost;
             $uid = (int) ($s['user_id'] ?? 0);
+            if ($uid > 0 && !isset($rateCache[$uid])) {
+                $rateCache[$uid] = [];
+                foreach ($this->userRates->findByUser($uid) as $r) {
+                    $rateCache[$uid][(int) $r['shift_type_id']] = (float) $r['hourly_rate'];
+                }
+            }
+
+            $wage = $wageCalc->costOf($s, $typesMap, $rateCache[$uid] ?? []);
+            $totalMinutes += $wage['net_minutes'];
+            $totalCost += $wage['amount'];
             if ($uid > 0) {
-                $employeeMinutes[$uid] = ($employeeMinutes[$uid] ?? 0) + $minutes;
-                $employeeCost[$uid] = ($employeeCost[$uid] ?? 0) + $cost;
+                $employeeMinutes[$uid] = ($employeeMinutes[$uid] ?? 0) + $wage['net_minutes'];
+                $employeeCost[$uid] = ($employeeCost[$uid] ?? 0) + $wage['amount'];
             }
         }
 

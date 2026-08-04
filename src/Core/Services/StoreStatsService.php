@@ -60,6 +60,7 @@ final class StoreStatsService implements StoreStatsServiceInterface
                 $rateCache[$uid][(int) $r['shift_type_id']] = (float) $r['hourly_rate'];
             }
         }
+        $wageCalc = new ShiftWageCalculator();
 
         $durations    = array_map(fn($s) => (int) $s['duration_minutes'], $allShifts);
         $netDurations = array_map(fn($s) => max(0, (int) $s['duration_minutes'] - (int) $s['pause_minutes']), $allShifts);
@@ -201,11 +202,9 @@ final class StoreStatsService implements StoreStatsServiceInterface
         foreach ($allShifts as $s) {
             $uid  = (int) $s['user_id'];
             $tid  = $s['shift_type_id'] ? (int) $s['shift_type_id'] : null;
-            $rate = $tid
-                ? ($rateCache[$uid][$tid] ?? (float) ($storeTypesMap[$tid]['hourly_rate'] ?? 0))
-                : 0.0;
-            $h    = max(0, (int) $s['duration_minutes'] - (int) $s['pause_minutes']) / 60;
-            $cost = $rate * $h;
+            $wage = $wageCalc->costOf($s, $storeTypesMap, $rateCache[$uid] ?? []);
+            $h    = $wage['net_minutes'] / 60;
+            $cost = $wage['amount'];
             $totalCost += $cost;
             $label = ($tid && isset($storeTypesMap[$tid])) ? $storeTypesMap[$tid]['name'] : 'Non défini';
             $costByType[$label]       = ($costByType[$label] ?? 0) + $cost;
@@ -224,13 +223,10 @@ final class StoreStatsService implements StoreStatsServiceInterface
         $hoursByWeek = [];
         foreach ($allShifts as $s) {
             $uid  = (int) $s['user_id'];
-            $tid  = $s['shift_type_id'] ? (int) $s['shift_type_id'] : null;
-            $rate = $tid
-                ? ($rateCache[$uid][$tid] ?? (float) ($storeTypesMap[$tid]['hourly_rate'] ?? 0))
-                : 0.0;
+            $wage = $wageCalc->costOf($s, $storeTypesMap, $rateCache[$uid] ?? []);
             $dow  = (int) date('N', strtotime($s['shift_date']));
-            $h    = max(0, (int) $s['duration_minutes'] - (int) $s['pause_minutes']) / 60;
-            $cost = $rate * $h;
+            $h    = $wage['net_minutes'] / 60;
+            $cost = $wage['amount'];
             $hoursByDow[$dow]  += $h;
             $shiftsByDow[$dow] += 1;
             $costByDow[$dow]   += $cost;
@@ -396,6 +392,7 @@ final class StoreStatsService implements StoreStatsServiceInterface
                 $rateCache[$uid][(int) $r['shift_type_id']] = (float) $r['hourly_rate'];
             }
         }
+        $wageCalc = new ShiftWageCalculator();
 
         $durations       = array_map(fn($s) => (int) $s['duration_minutes'], $allShifts);
         $avgDuration     = $n ? array_sum($durations) / $n / 60 : 0;
@@ -413,9 +410,9 @@ final class StoreStatsService implements StoreStatsServiceInterface
         foreach ($allShifts as $s) {
             $uid   = (int) $s['user_id'];
             $tid   = $s['shift_type_id'] ? (int) $s['shift_type_id'] : null;
-            $rate  = $tid ? ($rateCache[$uid][$tid] ?? (float) ($storeTypesMap[$tid]['hourly_rate'] ?? 0)) : 0.0;
-            $h     = max(0, (int) $s['duration_minutes'] - (int) $s['pause_minutes']) / 60;
-            $cost  = $rate * $h;
+            $wage  = $wageCalc->costOf($s, $storeTypesMap, $rateCache[$uid] ?? []);
+            $h     = $wage['net_minutes'] / 60;
+            $cost  = $wage['amount'];
             $label = ($tid && isset($storeTypesMap[$tid])) ? $storeTypesMap[$tid]['name'] : 'Non défini';
             $month = substr($s['shift_date'], 0, 7);
             $week  = date('Y-W', strtotime($s['shift_date']));
@@ -499,15 +496,15 @@ final class StoreStatsService implements StoreStatsServiceInterface
                 $rateCache[$uid][(int) $r['shift_type_id']] = (float) $r['hourly_rate'];
             }
         }
+        $wageCalc      = new ShiftWageCalculator();
         $payrollByDate = [];
         $hoursByDate   = [];
         foreach ($allShifts as $s) {
             $uid  = (int) $s['user_id'];
-            $tid  = $s['shift_type_id'] ? (int) $s['shift_type_id'] : null;
-            $rate = $tid ? ($rateCache[$uid][$tid] ?? (float) ($storeTypesMap[$tid]['hourly_rate'] ?? 0)) : 0.0;
-            $h    = max(0, (int) $s['duration_minutes'] - (int) $s['pause_minutes']) / 60;
+            $wage = $wageCalc->costOf($s, $storeTypesMap, $rateCache[$uid] ?? []);
+            $h    = $wage['net_minutes'] / 60;
             $date = $s['shift_date'];
-            $payrollByDate[$date] = ($payrollByDate[$date] ?? 0.0) + $rate * $h;
+            $payrollByDate[$date] = ($payrollByDate[$date] ?? 0.0) + $wage['amount'];
             $hoursByDate[$date]   = ($hoursByDate[$date]   ?? 0.0) + $h;
         }
 
@@ -618,6 +615,7 @@ final class StoreStatsService implements StoreStatsServiceInterface
         foreach ($this->userRates->findByUser($userId) as $r) {
             $personalRates[(int) $r['shift_type_id']] = (float) $r['hourly_rate'];
         }
+        $wageCalc = new ShiftWageCalculator();
 
         $grossMin = 0;
         $netMin   = 0;
@@ -626,17 +624,13 @@ final class StoreStatsService implements StoreStatsServiceInterface
         $workDays = [];
 
         foreach ($periodShifts as $s) {
-            $dur  = (int) $s['duration_minutes'];
-            $paus = (int) $s['pause_minutes'];
-            $net  = max(0, $dur - $paus);
-            $grossMin += $dur;
-            $netMin   += $net;
+            $wage = $wageCalc->costOf($s, $storeTypesMap, $personalRates);
+            $grossMin += $wage['gross_minutes'];
+            $netMin   += $wage['net_minutes'];
             $workDays[$s['shift_date']] = true;
 
-            $tid  = $s['shift_type_id'] ? (int) $s['shift_type_id'] : null;
-            $rate = $tid ? ($personalRates[$tid] ?? (float) ($storeTypesMap[$tid]['hourly_rate'] ?? 0)) : 0.0;
-            if ($rate > 0) $anyRate = true;
-            $cost += $rate * ($net / 60);
+            if ($wage['rate'] > 0) $anyRate = true;
+            $cost += $wage['amount'];
         }
 
         $dateKeys  = array_keys($workDays);
@@ -765,6 +759,7 @@ final class StoreStatsService implements StoreStatsServiceInterface
                 $rateCache[$uid][(int) $r['shift_type_id']] = (float) $r['hourly_rate'];
             }
         }
+        $wageCalc = new ShiftWageCalculator();
 
         $shiftsByUser = [];
         foreach ($allShifts as $s) {
@@ -802,21 +797,15 @@ final class StoreStatsService implements StoreStatsServiceInterface
             $days     = [];
 
             foreach ($userShifts as $s) {
-                $dur   = (int) $s['duration_minutes'];
-                $pause = (int) $s['pause_minutes'];
-                $net   = max(0, $dur - $pause);
-                $grossMin += $dur;
-                $netMin   += $net;
+                $wage = $wageCalc->costOf($s, $storeTypesMap, $rateCache[$uid] ?? []);
+                $grossMin += $wage['gross_minutes'];
+                $netMin   += $wage['net_minutes'];
                 $days[$s['shift_date']] = true;
 
-                $tid  = $s['shift_type_id'] ? (int) $s['shift_type_id'] : null;
-                $rate = $tid
-                    ? ($rateCache[$uid][$tid] ?? (float) ($storeTypesMap[$tid]['hourly_rate'] ?? 0))
-                    : 0.0;
-                if ($rate > 0) {
+                if ($wage['rate'] > 0) {
                     $anyRate = true;
                 }
-                $cost += $rate * ($net / 60);
+                $cost += $wage['amount'];
             }
 
             $dateKeys  = array_keys($days);
@@ -894,6 +883,7 @@ final class StoreStatsService implements StoreStatsServiceInterface
         foreach ($this->userRates->findByUser($userId) as $r) {
             $personalRates[(int) $r['shift_type_id']] = (float) $r['hourly_rate'];
         }
+        $wageCalc = new ShiftWageCalculator();
 
         $shiftRows     = [];
         $totalGrossMin = 0;
@@ -902,30 +892,24 @@ final class StoreStatsService implements StoreStatsServiceInterface
         $anyRate       = false;
 
         foreach ($shifts as $s) {
-            $tid      = $s['shift_type_id'] ? (int) $s['shift_type_id'] : null;
-            $rate     = $tid
-                ? ($personalRates[$tid] ?? (float) ($storeTypesMap[$tid]['hourly_rate'] ?? 0))
-                : 0.0;
-            $grossMin = (int) $s['duration_minutes'];
-            $pauseMin = (int) $s['pause_minutes'];
-            $netMin   = max(0, $grossMin - $pauseMin);
-            $cost     = $rate * ($netMin / 60);
-            if ($rate > 0) $anyRate = true;
-            $totalGrossMin += $grossMin;
-            $totalNetMin   += $netMin;
-            $totalCost     += $cost;
+            $tid  = $s['shift_type_id'] ? (int) $s['shift_type_id'] : null;
+            $wage = $wageCalc->costOf($s, $storeTypesMap, $personalRates);
+            if ($wage['rate'] > 0) $anyRate = true;
+            $totalGrossMin += $wage['gross_minutes'];
+            $totalNetMin   += $wage['net_minutes'];
+            $totalCost     += $wage['amount'];
 
             $shiftRows[] = [
                 'date'      => $s['shift_date'],
                 'type'      => $tid ? ($storeTypesMap[$tid]['name'] ?? '—') : '—',
                 'start'     => substr($s['start_time'] ?? '00:00', 0, 5),
                 'end'       => substr($s['end_time'] ?? '00:00', 0, 5),
-                'gross_min' => $grossMin,
-                'pause_min' => $pauseMin,
-                'net_min'   => $netMin,
-                'rate'      => $rate,
-                'cost'      => round($cost, 2),
-                'has_rate'  => $rate > 0,
+                'gross_min' => $wage['gross_minutes'],
+                'pause_min' => $wage['pause_minutes'],
+                'net_min'   => $wage['net_minutes'],
+                'rate'      => $wage['rate'],
+                'cost'      => $wage['amount'],
+                'has_rate'  => $wage['rate'] > 0,
             ];
         }
 

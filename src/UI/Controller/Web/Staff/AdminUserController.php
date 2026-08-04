@@ -16,6 +16,7 @@ use kintai\Core\Repositories\HiringReportRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\EmployeeStatsService;
 use kintai\Core\Services\PdfCjkFontResolver;
 use kintai\Core\Services\RoleAssignmentSyncService;
 use kintai\UI\ViewRenderer;
@@ -55,60 +56,25 @@ final class AdminUserController
             $users = $this->users->findAll();
         }
 
-        // Statistiques du mois en cours
-        $monthStart = date('Y-m-01');
-        $monthEnd   = date('Y-m-t');
-
-        // Nombre de semaines ISO distinctes dans le mois
-        $weekSet = [];
-        $cur = new \DateTime($monthStart);
-        $endDt = new \DateTime($monthEnd);
-        while ($cur <= $endDt) {
-            $weekSet[$cur->format('o-W')] = true;
-            $cur->modify('+1 day');
-        }
-        $numWeeks = max(1, count($weekSet));
-
-        $typesMap = [];
-        foreach ($this->shiftTypes->findAll() as $t) {
-            $typesMap[(int) $t['id']] = $t;
-        }
+        // Statistiques du mois en cours — même source que le dashboard employé et le
+        // rapport de salaire (ShiftWageCalculator::costOf() via EmployeeStatsService),
+        // pour que ce montant "Salaire est." ne diverge plus des autres pages.
+        $employeeStatsService = new EmployeeStatsService(
+            $this->shifts,
+            $this->shiftTypes,
+            $this->userRates,
+            $this->storeUsers,
+            $this->stores,
+        );
 
         $userStats = [];
         foreach ($users as $u) {
             $uid = (int) $u['id'];
-
-            $personalRates = [];
-            foreach ($this->userRates->findByUser($uid) as $r) {
-                $personalRates[(int) $r['shift_type_id']] = (float) $r['hourly_rate'];
-            }
-
-            $totalMinutes = 0;
-            $estimatedPay = 0.0;
-            foreach ($this->shifts->findByUser($uid) as $s) {
-                $d = $s['shift_date'] ?? '';
-                if ($d < $monthStart || $d > $monthEnd) {
-                    continue;
-                }
-                [$sh, $sm] = explode(':', substr($s['start_time'] ?? '00:00', 0, 5));
-                [$eh, $em] = explode(':', substr($s['end_time'] ?? '00:00', 0, 5));
-                $startMin = (int) $sh * 60 + (int) $sm;
-                $endMin   = (int) $eh * 60 + (int) $em;
-                if (!empty($s['cross_midnight']) || $endMin <= $startMin) {
-                    $endMin += 24 * 60;
-                }
-                $minutes       = max(0, $endMin - $startMin);
-                $totalMinutes += $minutes;
-
-                $tid  = (int) ($s['shift_type_id'] ?? 0);
-                $rate = $personalRates[$tid] ?? (float) ($typesMap[$tid]['hourly_rate'] ?? 0);
-                $estimatedPay += ($minutes / 60) * $rate;
-            }
-
+            $stats = $employeeStatsService->calculate($uid);
             $userStats[$uid] = [
-                'hours_month'   => $totalMinutes / 60,
-                'hours_week'    => ($totalMinutes / 60) / $numWeeks,
-                'estimated_pay' => $estimatedPay,
+                'hours_month'   => $stats['hours_month'],
+                'hours_week'    => $stats['hours_week'],
+                'estimated_pay' => $stats['estimated_pay'],
             ];
         }
 

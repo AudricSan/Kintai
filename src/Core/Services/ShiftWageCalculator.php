@@ -108,6 +108,52 @@ final class ShiftWageCalculator
         ];
     }
 
+    /**
+     * Coût d'un shift déjà persisté (duration_minutes/pause_minutes connus, pas de
+     * décomposition par tranche horaire — voir calculate() pour ça). Source unique
+     * utilisée par StoreStatsService, EmployeeStatsService et AdminSalaryReportController,
+     * pour que le même shift produise toujours le même montant partout dans l'app.
+     *
+     * Résolution du taux : hourly_rate_override du shift → taux personnalisé
+     * (user_shift_type_rates, déjà résolu par l'appelant) → shift_types.hourly_rate → 0.
+     * Résolution des minutes actives : net_minutes_override du shift →
+     * duration_minutes - pause_minutes.
+     *
+     * @param array $shift          Ligne de shifts : duration_minutes, pause_minutes,
+     *                               shift_type_id, et si présents (branche overrides manuels)
+     *                               hourly_rate_override, net_minutes_override.
+     * @param array $shiftTypesMap  shift_type_id => ['hourly_rate' => ..., ...]
+     * @param array $personalRates  shift_type_id => taux perso de l'utilisateur du shift
+     * @return array{rate:float, gross_minutes:int, pause_minutes:int, net_minutes:int, amount:float}
+     */
+    public function costOf(array $shift, array $shiftTypesMap, array $personalRates = []): array
+    {
+        $tid = (int) ($shift['shift_type_id'] ?? 0);
+
+        $rateOverride = $shift['hourly_rate_override'] ?? null;
+        $rate = $rateOverride !== null
+            ? (float) $rateOverride
+            : (float) ($personalRates[$tid] ?? ($shiftTypesMap[$tid]['hourly_rate'] ?? 0));
+
+        $grossMinutes = (int) ($shift['duration_minutes'] ?? 0);
+        $pauseMinutes = (int) ($shift['pause_minutes'] ?? 0);
+
+        $netOverride = $shift['net_minutes_override'] ?? null;
+        $netMinutes = $netOverride !== null
+            ? (int) $netOverride
+            : max(0, $grossMinutes - $pauseMinutes);
+
+        $amount = $rate > 0 ? round($rate * $netMinutes / 60, 2) : 0.0;
+
+        return [
+            'rate'          => $rate,
+            'gross_minutes' => $grossMinutes,
+            'pause_minutes' => $pauseMinutes,
+            'net_minutes'   => $netMinutes,
+            'amount'        => $amount,
+        ];
+    }
+
     private function toMinutes(string $time): int
     {
         $parts = explode(':', $time);
