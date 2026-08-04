@@ -5,10 +5,12 @@ use kintai\UI\Components\Table;
 use kintai\UI\Components\Flash;
 
 /** @var array  $shift_types */
-/** @var array  $stores_map   id → name */
+/** @var array  $stores_map       id → name */
+/** @var array  $type_store_names id de type => noms de stores triés (un type peut couvrir plusieurs stores) */
 /** @var string $sort */
-$sort       ??= 'name_asc';
-$stores_map ??= [];
+$sort             ??= 'name_asc';
+$stores_map       ??= [];
+$type_store_names ??= [];
 
 echo Flash::fromQuery('success', [
     'created' => __('shift_type_created'),
@@ -30,7 +32,12 @@ echo Flash::fromQuery('success', [
     ->currentSort($sort)
     ->rowUrl(fn($t) => $BASE_URL . '/admin/shift-types/' . (int) $t['id'] . '/edit')
     ->column('#', fn($t) => (string) (int) $t['id'])
-    ->sortable(__('store'), 'store', fn($t) => '<span class="text-sm-muted">' . htmlspecialchars($stores_map[(int)($t['store_id']??0)] ?? ('#' . (int)($t['store_id']??0))) . '</span>')
+    ->sortable(__('stores_plural'), 'store', function ($t) use ($type_store_names) {
+        $names = $type_store_names[(int) $t['id']] ?? [];
+        return $names === []
+            ? '<span class="text-muted">—</span>'
+            : '<span class="text-sm-muted">' . htmlspecialchars(implode(', ', $names)) . '</span>';
+    })
     ->sortable(__('code'), 'code', fn($t) => '<code class="code-sm">' . htmlspecialchars($t['code'] ?? '') . '</code>')
     ->sortable(__('name'), 'name', fn($t) => '<strong>' . htmlspecialchars($t['name'] ?? '') . '</strong>')
     ->column(__('start'), fn($t) => htmlspecialchars($t['start_time'] ?? ''))

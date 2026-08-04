@@ -666,7 +666,7 @@ final class AdminUserController
 
         $userShiftTypes = empty($userStoreIds)
             ? []
-            : $this->filterByStore($this->shiftTypes->findAll(), $userStoreIds);
+            : $this->shiftTypes->findByStores($userStoreIds);
 
         // Taux actuels indexés par shift_type_id
         $userRates = [];
@@ -678,6 +678,20 @@ final class AdminUserController
         $storesMap = [];
         foreach ($this->stores->findAll() as $s) {
             $storesMap[(int) $s['id']] = $s['name'] ?? '#' . $s['id'];
+        }
+
+        // Un type peut désormais couvrir plusieurs stores : n'afficher, pour
+        // chaque type, que ses stores en commun avec ceux de cet employé
+        // (les autres stores éventuels du type n'ont pas de sens dans ce tableau).
+        $typeStoreNames = [];
+        foreach ($userShiftTypes as $t) {
+            $tid = (int) $t['id'];
+            $names = array_values(array_filter(array_map(
+                fn ($sid) => $storesMap[$sid] ?? null,
+                array_intersect($this->shiftTypes->getStoreIds($tid), $userStoreIds),
+            )));
+            sort($names);
+            $typeStoreNames[$tid] = $names;
         }
 
         // Appartenance aux stores (enrichie avec nom du store, rôle, cotisations)
@@ -710,6 +724,7 @@ final class AdminUserController
             'user_shift_types' => $userShiftTypes,
             'user_rates'       => $userRates,
             'stores_map'       => $storesMap,
+            'type_store_names' => $typeStoreNames,
             'user_memberships' => $userMemberships,
             'available_stores' => $availableStores,
             'all_stores'       => $this->availableStores($this->managedIds($request)),
@@ -823,10 +838,10 @@ final class AdminUserController
         $shiftTypeId = (int) $request->post('shift_type_id', 0);
         $rateRaw     = $request->post('hourly_rate', '');
 
-        // Vérifier que le type de shift est dans un store accessible
+        // Vérifier que le type de shift est activé sur au moins un store accessible
         $type = $this->shiftTypes->findById($shiftTypeId);
         if ($type !== null) {
-            $this->assertStoreAccess($request, (int) $type['store_id']);
+            $this->assertAnyStoreAccess($request, $this->shiftTypes->getStoreIds($shiftTypeId));
         }
 
         $existing = $this->userRates->findRate($userId, $shiftTypeId);
@@ -875,7 +890,7 @@ final class AdminUserController
         if ($rate !== null && (int) $rate['user_id'] === $userId) {
             $type = $this->shiftTypes->findById((int) $rate['shift_type_id']);
             if ($type !== null) {
-                $this->assertStoreAccess($request, (int) $type['store_id']);
+                $this->assertAnyStoreAccess($request, $this->shiftTypes->getStoreIds((int) $type['id']));
             }
             $this->userRates->delete($rid);
             $this->auditLogger->log($request, 'user_rate.deleted', 'user_rate', $rid, [
