@@ -100,6 +100,11 @@ th.td-center {
     color: var(--color-text-muted);
 }
 
+.td-override-badge {
+    font-size: var(--text-xs-2);
+    cursor: help;
+}
+
 .td-reason {
     color: var(--color-text-muted);
     font-size: var(--text-xs-2);
