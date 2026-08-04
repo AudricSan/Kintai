@@ -547,6 +547,7 @@ ob_start();
     ], $all_user_ids),
     'types' => array_values($types_map),
 ], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?></script>
+<script src="<?= $BASE_URL ?>/assets/js/modules/shift-wage-preview.js"></script>
 <script src="<?= $BASE_URL ?>/assets/js/modules/shift-detail-modal.js"></script>
 <?php if ($_canManage): ?>
 <script src="<?= $BASE_URL ?>/assets/js/modules/timeline-diag.js"></script>

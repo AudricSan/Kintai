@@ -497,6 +497,7 @@ final class AdminSalaryReportController
         $totalCost = 0.0;
         $employeeMinutes = [];
         $employeeCost = [];
+        $typeBreakdown = [];
         foreach ($rangeShifts as $s) {
             $uid = (int) ($s['user_id'] ?? 0);
             if ($uid > 0 && !isset($rateCache[$uid])) {
@@ -513,9 +514,20 @@ final class AdminSalaryReportController
                 $employeeMinutes[$uid] = ($employeeMinutes[$uid] ?? 0) + $wage['net_minutes'];
                 $employeeCost[$uid] = ($employeeCost[$uid] ?? 0) + $wage['amount'];
             }
-        }
 
-        return [$totalMinutes, $totalCost, $employeeMinutes, $employeeCost];
+            foreach ($wage['breakdown'] as $b) {
+                $key = $b['shift_type_id'] ?? 0;
+                if (!isset($typeBreakdown[$key])) {
+                    $typeBreakdown[$key] = ['name' => $b['name'] ?: '—', 'minutes' => 0, 'amount' => 0.0];
+                }
+                $typeBreakdown[$key]['minutes'] += $b['minutes'];
+                $typeBreakdown[$key]['amount']  += $b['amount'];
+            }
+        }
+        $typeBreakdown = array_values($typeBreakdown);
+        usort($typeBreakdown, fn($a, $b) => strcmp($a['name'], $b['name']));
+
+        return [$totalMinutes, $totalCost, $employeeMinutes, $employeeCost, $typeBreakdown];
     }
 
     /**
@@ -526,7 +538,7 @@ final class AdminSalaryReportController
      */
     private function calculateStoreDetail(int $storeId, string $from, string $to): array
     {
-        [, , $employeeMinutes, $employeeCost] = $this->aggregateShifts($storeId, $from, $to, null);
+        [, , $employeeMinutes, $employeeCost, $typeBreakdown] = $this->aggregateShifts($storeId, $from, $to, null);
 
         $employees = [];
         foreach ($employeeMinutes as $uid => $minutes) {
@@ -548,6 +560,7 @@ final class AdminSalaryReportController
             'from'               => $from,
             'to'                 => $to,
             'employees'          => $employees,
+            'type_breakdown'     => $typeBreakdown,
             'deduction_settings' => $this->stores->getDeductionSettings($storeId),
         ];
     }
