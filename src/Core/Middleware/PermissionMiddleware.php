@@ -7,6 +7,7 @@ namespace kintai\Core\Middleware;
 use Closure;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ForbiddenException;
+use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\UI\ViewRenderer;
@@ -16,9 +17,13 @@ use kintai\UI\ViewRenderer;
  * Doit être placé après AdminMiddleware (auth_user et managed_store_ids déjà
  * attachés à la requête).
  *
- * La permission requise par route est déclarée dans config/permissions.php
- * (nom de route → clé de PermissionCatalog). Pour un non-Owner :
- * - accès refusé (403) si aucun de ses rôles n'accorde la clé ;
+ * La règle requise par route est déclarée dans config/permissions.php (nom de
+ * route → clé de PermissionCatalog, ou tableau ['perm' => clé, 'membership' =>
+ * true] — voir le format documenté dans ce fichier). Pour un non-Owner :
+ * - accès refusé (403) si aucun de ses rôles n'accorde la clé (et, si la
+ *   règle porte 'membership', si l'utilisateur n'est pas non plus membre du
+ *   store ciblé — porte d'entrée grossière pour un accès en libre-service,
+ *   ex. bundle DailyReport) ;
  * - sinon, managed_store_ids est resserré aux seuls stores où la clé est
  *   accordée — les contrôleurs filtrant déjà toutes leurs données par cet
  *   attribut, la portée de chaque permission s'applique sans les modifier.
@@ -26,12 +31,13 @@ use kintai\UI\ViewRenderer;
  */
 final class PermissionMiddleware implements MiddlewareInterface
 {
-    /** @var array<string, string>|null */
+    /** @var array<string, string|array{perm: string, membership?: bool, store_param?: string}>|null */
     private static ?array $routePermissions = null;
 
     public function __construct(
         private readonly PermissionService $permissions,
         private readonly ViewRenderer $view,
+        private readonly StoreUserRepositoryInterface $storeUsers,
     ) {}
 
     public function handle(Request $request, Closure $next): Response
@@ -43,10 +49,14 @@ final class PermissionMiddleware implements MiddlewareInterface
         // pages authentifiées) pour que la navigation reste identique partout ;
         // ce middleware ne s'occupe plus que du contrôle d'accès et de la
         // portée managed_store_ids.
-        $key = $this->requiredPermission((string) ($request->getAttribute('route_name') ?? ''));
-        if ($key === null || $isOwner) {
+        $rule = $this->rule((string) ($request->getAttribute('route_name') ?? ''));
+        if ($rule === null || $isOwner) {
             return $next($request);
         }
+
+        $key               = is_array($rule) ? (string) $rule['perm'] : $rule;
+        $requireMembership = is_array($rule) && !empty($rule['membership']);
+        $storeParam        = is_array($rule) ? ($rule['store_param'] ?? 'id') : 'id';
 
         $userId = (int) ($user['id'] ?? 0);
         $scoped = $this->permissions->scopedStoreIds($userId, $key);
@@ -61,10 +71,20 @@ final class PermissionMiddleware implements MiddlewareInterface
             return $next($request);
         }
 
+        // Porte d'entrée volontairement grossière pour un accès en libre-service :
+        // n'écrase pas managed_store_ids (la portée fine reste gérée par le
+        // contrôleur, ex. DailyReportPermissionService + findMembership()).
+        if ($requireMembership) {
+            $storeId = (int) ($request->param($storeParam) ?? 0);
+            if ($storeId > 0 && $this->storeUsers->findMembership($storeId, $userId) !== null) {
+                return $next($request);
+            }
+        }
+
         throw new ForbiddenException('Permission requise : ' . $key);
     }
 
-    private function requiredPermission(string $routeName): ?string
+    private function rule(string $routeName): string|array|null
     {
         if ($routeName === '') {
             return null;
