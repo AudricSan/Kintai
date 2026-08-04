@@ -104,4 +104,14 @@ final class DatabaseShiftTypeRepository implements ShiftTypeRepositoryInterface
     {
         return ShiftTypeStore::where('shift_type_id', $shiftTypeId)->where('store_id', $storeId)->exists();
     }
+
+    public function enableForStore(int $shiftTypeId, int $storeId): void
+    {
+        ShiftTypeStore::firstOrCreate(['shift_type_id' => $shiftTypeId, 'store_id' => $storeId]);
+    }
+
+    public function disableForStore(int $shiftTypeId, int $storeId): void
+    {
+        ShiftTypeStore::where('shift_type_id', $shiftTypeId)->where('store_id', $storeId)->delete();
+    }
 }

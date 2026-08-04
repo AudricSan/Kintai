@@ -58,4 +58,14 @@ interface ShiftTypeRepositoryInterface
      * Indique si ce type de shift est activé pour le store donné.
      */
     public function isEnabledForStore(int $shiftTypeId, int $storeId): bool;
+
+    /**
+     * Active ce type de shift pour un store (idempotent).
+     */
+    public function enableForStore(int $shiftTypeId, int $storeId): void;
+
+    /**
+     * Désactive ce type de shift pour un store (idempotent).
+     */
+    public function disableForStore(int $shiftTypeId, int $storeId): void;
 }

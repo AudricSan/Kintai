@@ -146,6 +146,50 @@ final class DatabaseShiftTypeRepositoryTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
+    // enableForStore() / disableForStore()
+    // -------------------------------------------------------------------------
+
+    public function testEnableForStoreAddsAssignmentWithoutTouchingOthers(): void
+    {
+        $t = $this->type();
+        $this->repo->syncStores($t, [1]);
+
+        $this->repo->enableForStore($t, 2);
+
+        $this->assertSame([1, 2], $this->repo->getStoreIds($t));
+    }
+
+    public function testEnableForStoreIsIdempotent(): void
+    {
+        $t = $this->type();
+        $this->repo->syncStores($t, [1]);
+
+        $this->repo->enableForStore($t, 1);
+
+        $this->assertSame([1], $this->repo->getStoreIds($t));
+    }
+
+    public function testDisableForStoreRemovesOnlyThatAssignment(): void
+    {
+        $t = $this->type();
+        $this->repo->syncStores($t, [1, 2]);
+
+        $this->repo->disableForStore($t, 1);
+
+        $this->assertSame([2], $this->repo->getStoreIds($t));
+    }
+
+    public function testDisableForStoreIsIdempotent(): void
+    {
+        $t = $this->type();
+        $this->repo->syncStores($t, [1]);
+
+        $this->repo->disableForStore($t, 2);
+
+        $this->assertSame([1], $this->repo->getStoreIds($t));
+    }
+
+    // -------------------------------------------------------------------------
     // delete()
     // -------------------------------------------------------------------------
 

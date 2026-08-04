@@ -1,6 +1,7 @@
 <?php
 use kintai\UI\Components\Button;
 use kintai\UI\Components\Card;
+use kintai\UI\Components\Flash;
 
 /**
  * @var string $mode 'create'|'edit'
@@ -10,6 +11,10 @@ use kintai\UI\Components\Card;
 $action = $mode === 'edit'
     ? $BASE_URL . '/admin/shift-types/' . (int) $shift_type['id'] . '/edit'
     : route_url('admin.shift_types.create');
+
+echo Flash::fromQuery('error', [
+    'store_required' => __('val_store_required'),
+])->render();
 ?>
 <div class="page-header">
     <h2 class="page-header__title"><?= $mode === 'edit' ? __('edit_shift_type') : __('new_shift_type') ?></h2>

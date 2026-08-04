@@ -817,3 +817,39 @@
 
 .sd-create-zone__plus { font-size: var(--text-xs); }
 
+/* ── Types de shift : matrice magasin×type + liste classique ───── */
+.shift-types-layout {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-4);
+}
+
+.shift-types-layout__matrix {
+    flex: 0 0 20%;
+    max-width: 20%;
+    min-width: 260px;
+}
+
+.shift-types-layout__list {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.matrix-table th,
+.matrix-table td {
+    white-space: nowrap;
+}
+
+@media (max-width: 960px) {
+    .shift-types-layout {
+        flex-direction: column;
+    }
+
+    .shift-types-layout__matrix,
+    .shift-types-layout__list {
+        max-width: 100%;
+        min-width: 0;
+        width: 100%;
+    }
+}
+
