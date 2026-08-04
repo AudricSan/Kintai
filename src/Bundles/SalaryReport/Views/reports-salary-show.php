@@ -135,7 +135,7 @@ if (isset($shiftRows)):
                 <td><?= payslip_dow($row['date']) ?></td>
                 <td><?= payslip_date($row['date']) ?></td>
                 <td><?= htmlspecialchars($row['type']) ?></td>
-                <td><?= htmlspecialchars($row['start']) ?>–<?= htmlspecialchars($row['end']) ?></td>
+                <td><?= htmlspecialchars($row['start']) ?>–<?= htmlspecialchars($row['end']) ?><?php if (!empty($row['has_override'])): ?> <span class="td-override-badge" title="<?= htmlspecialchars(__('shift_manual_override')) ?>">✏️</span><?php endif; ?></td>
                 <td class="td-mono"><?= payslip_hours($row['gross_min']) ?></td>
                 <td class="td-mono"><?= $row['pause_min'] > 0 ? $row['pause_min'] . ' min' : '—' ?></td>
                 <td class="td-mono"><?= payslip_hours($row['net_min']) ?></td>

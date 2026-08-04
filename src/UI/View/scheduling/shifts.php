@@ -178,6 +178,7 @@ foreach ($shifts as $s) {
                         $dur        = (int) ($shift['duration_minutes'] ?? 0);
                         $pause      = (int) ($shift['pause_minutes']    ?? 0);
                         $netMin     = max(0, $dur - $pause);
+                        $hasOverride = ($shift['hourly_rate_override'] ?? null) !== null || ($shift['net_minutes_override'] ?? null) !== null;
                         $newDay     = ($shiftDate !== $prevDate);
                         $prevDate   = $shiftDate;
                     ?>
@@ -208,7 +209,7 @@ foreach ($shifts as $s) {
                             <td class="col-type"><?php if ($typeColor): ?><span class="type-badge" data-color="<?= htmlspecialchars($typeColor) ?>"><?= htmlspecialchars($typeName) ?></span><?php else: ?><?= htmlspecialchars($typeName) ?><?php endif; ?></td>
                             <td class="col-time td-nowrap"><?= htmlspecialchars($shift['start_time'] ?? '') ?></td>
                             <td class="col-time td-nowrap"><?= htmlspecialchars($shift['end_time'] ?? '') ?></td>
-                            <td class="col-duration"><?= $fmtH($dur) ?><?php if ($pause > 0): ?> <span class="td-muted td-sm"> (net <?= $fmtH($netMin) ?>)</span><?php endif; ?></td>
+                            <td class="col-duration"><?= $fmtH($dur) ?><?php if ($pause > 0): ?> <span class="td-muted td-sm"> (net <?= $fmtH($netMin) ?>)</span><?php endif; ?><?php if ($hasOverride): ?> <span class="td-override-badge" title="<?= htmlspecialchars(__('shift_manual_override')) ?>">✏️</span><?php endif; ?></td>
                             <td class="col-pause td-muted"><?= $pause > 0 ? $pause . ' min' : '—' ?></td>
                             <td class="col-night"><?= !empty($shift['cross_midnight']) ? '✓' : '' ?></td>
                             <td class="col-actions">
