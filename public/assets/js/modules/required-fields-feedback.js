@@ -11,7 +11,12 @@
     'use strict';
 
     document.querySelectorAll('form[novalidate]').forEach(function (form) {
-        var errorEl = form.querySelector('[data-required-error]');
+        // Repli document-large : sur la page d'édition employé, le message d'erreur
+        // et les boutons sont rendus après </form> (regroupés en bas de page avec
+        // Enregistrer/Annuler), donc pas un descendant du form — retrouvé via
+        // data-required-error-form="<id du form>" plutôt que form.querySelector().
+        var errorEl = form.querySelector('[data-required-error]')
+            || (form.id && document.querySelector('[data-required-error][data-required-error-form="' + form.id + '"]'));
         if (!errorEl) return;
 
         var requiredFields = form.querySelectorAll('[required]');
