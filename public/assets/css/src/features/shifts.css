@@ -817,22 +817,28 @@
 
 .sd-create-zone__plus { font-size: var(--text-xs); }
 
-/* ── Types de shift : matrice magasin×type + liste classique ───── */
+/* ── Types de shift : matrice magasin×type + liste classique ─────
+   Même technique que .role-form-grid / .form-section-grid : grille
+   fixe (pas de flex sans stretch) + align-items: stretch, pour que
+   les deux cartes finissent toujours sur le même bord, quelle que
+   soit la hauteur de leur contenu. */
 .shift-types-layout {
-    display: flex;
-    align-items: flex-start;
+    display: grid;
+    grid-template-columns: 1fr 4fr;
     gap: var(--space-4);
+    align-items: stretch;
+}
+
+.shift-types-layout > .card {
+    margin-bottom: 0;
 }
 
 .shift-types-layout__matrix {
-    flex: 0 0 20%;
-    max-width: 20%;
-    min-width: 260px;
+    grid-column: 1;
 }
 
 .shift-types-layout__list {
-    flex: 1 1 0;
-    min-width: 0;
+    grid-column: 2;
 }
 
 .matrix-table th,
@@ -842,14 +848,12 @@
 
 @media (max-width: 960px) {
     .shift-types-layout {
-        flex-direction: column;
+        grid-template-columns: 1fr;
     }
 
     .shift-types-layout__matrix,
     .shift-types-layout__list {
-        max-width: 100%;
-        min-width: 0;
-        width: 100%;
+        grid-column: 1;
     }
 }
 

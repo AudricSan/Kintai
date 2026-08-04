@@ -36,57 +36,54 @@ echo Flash::fromQuery('error', [
 </div>
 
 <div class="shift-types-layout">
-    <div class="shift-types-layout__matrix">
-        <div class="card">
-            <div class="card-header"><h3 class="card-title"><?= __('stores_plural') ?></h3></div>
-            <div class="table-wrap">
-                <table class="data-table matrix-table">
-                    <thead>
-                        <tr>
-                            <th><?= __('shift_types') ?></th>
-                            <?php foreach ($all_stores as $s): ?>
-                            <th class="td-center" title="<?= htmlspecialchars($s['name'] ?? '') ?>">
-                                <?= htmlspecialchars($s['code'] ?? $s['name'] ?? '') ?>
-                            </th>
-                            <?php endforeach; ?>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if ($shift_types === [] || $all_stores === []): ?>
-                        <tr><td colspan="<?= count($all_stores) + 1 ?>" class="text-muted"><?= __('no_shift_type_found') ?></td></tr>
-                        <?php endif; ?>
-                        <?php foreach ($shift_types as $t): ?>
-                        <?php $tid = (int) $t['id']; ?>
-                        <tr>
-                            <td class="td-nowrap">
-                                <span class="color-swatch" style="background:<?= htmlspecialchars($t['color'] ?? '#ccc') ?>"></span>
-                                <?= htmlspecialchars($t['name'] ?? '') ?>
-                            </td>
-                            <?php foreach ($all_stores as $s): ?>
-                            <?php $sid = (int) $s['id']; ?>
-                            <td class="td-center">
-                                <form method="POST" action="<?= $BASE_URL ?>/admin/shift-types/<?= $tid ?>/toggle-store" class="form-inline">
-                                    <?= csrf_field() ?>
-                                    <input type="hidden" name="store_id" value="<?= $sid ?>">
-                                    <label class="form-toggle">
-                                        <input type="checkbox" name="enabled" value="1" class="form-toggle__input"
-                                               <?= in_array($sid, $type_store_ids[$tid] ?? [], true) ? 'checked' : '' ?>
-                                               onchange="this.form.submit()">
-                                        <span class="form-toggle__track"></span>
-                                    </label>
-                                </form>
-                            </td>
-                            <?php endforeach; ?>
-                        </tr>
+    <div class="card shift-types-layout__matrix">
+        <div class="card-header"><h3 class="card-title"><?= __('stores_plural') ?></h3></div>
+        <div class="table-wrap">
+            <table class="data-table matrix-table">
+                <thead>
+                    <tr>
+                        <th><?= __('shift_types') ?></th>
+                        <?php foreach ($all_stores as $s): ?>
+                        <th class="td-center" title="<?= htmlspecialchars($s['name'] ?? '') ?>">
+                            <?= htmlspecialchars($s['code'] ?? $s['name'] ?? '') ?>
+                        </th>
                         <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if ($shift_types === [] || $all_stores === []): ?>
+                    <tr><td colspan="<?= count($all_stores) + 1 ?>" class="text-muted"><?= __('no_shift_type_found') ?></td></tr>
+                    <?php endif; ?>
+                    <?php foreach ($shift_types as $t): ?>
+                    <?php $tid = (int) $t['id']; ?>
+                    <tr>
+                        <td class="td-nowrap">
+                            <span class="color-swatch" style="background:<?= htmlspecialchars($t['color'] ?? '#ccc') ?>"></span>
+                            <?= htmlspecialchars($t['name'] ?? '') ?>
+                        </td>
+                        <?php foreach ($all_stores as $s): ?>
+                        <?php $sid = (int) $s['id']; ?>
+                        <td class="td-center">
+                            <form method="POST" action="<?= $BASE_URL ?>/admin/shift-types/<?= $tid ?>/toggle-store" class="form-inline">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="store_id" value="<?= $sid ?>">
+                                <label class="form-toggle">
+                                    <input type="checkbox" name="enabled" value="1" class="form-toggle__input"
+                                           <?= in_array($sid, $type_store_ids[$tid] ?? [], true) ? 'checked' : '' ?>
+                                           onchange="this.form.submit()">
+                                    <span class="form-toggle__track"></span>
+                                </label>
+                            </form>
+                        </td>
+                        <?php endforeach; ?>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
         </div>
     </div>
 
-    <div class="shift-types-layout__list">
-        <div class="card">
+    <div class="card shift-types-layout__list">
         <?= Table::make()
             ->data($shift_types)
             ->emptyMessage(__('no_shift_type_found'))
@@ -122,6 +119,6 @@ echo Flash::fromQuery('error', [
                 return $html;
             })
             ->render()
-        ?></div>
+        ?>
     </div>
 </div>
