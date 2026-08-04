@@ -502,6 +502,44 @@ final class GithubUpdateServiceTest extends TestCase
         $this->assertNotNull($service->getLastCheckError());
     }
 
+    public function testCondenseReleaseNotesKeepsOnlyFirstBulletPerCategory(): void
+    {
+        $service = $this->makeService('v1.0.0', ['README.md' => 'hello']);
+
+        $notes = <<<MD
+            ### Added
+            - first added item
+            - second added item
+
+            ### Fixed
+            - first fixed item
+            - second fixed item
+            - third fixed item
+            MD;
+
+        $condensed = $service->condenseReleaseNotes($notes);
+
+        $this->assertSame(
+            "### Added\n- first added item\n\n### Fixed\n- first fixed item",
+            $condensed
+        );
+    }
+
+    public function testCondenseReleaseNotesReturnsEmptyStringForBlankInput(): void
+    {
+        $service = $this->makeService('v1.0.0', ['README.md' => 'hello']);
+
+        $this->assertSame('', $service->condenseReleaseNotes(''));
+        $this->assertSame('', $service->condenseReleaseNotes("   \n  "));
+    }
+
+    public function testGetRepoReleasesUrlUsesConfiguredRepo(): void
+    {
+        $service = $this->makeService('v1.0.0', ['README.md' => 'hello']);
+
+        $this->assertSame('https://github.com/AudricSan/Kintai/releases', $service->getRepoReleasesUrl());
+    }
+
     #[DataProvider('releaseListValidationProvider')]
     public function testIsValidReleaseListRejectsGithubErrorObjects(mixed $data, bool $expected): void
     {
