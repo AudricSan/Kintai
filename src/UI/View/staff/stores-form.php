@@ -58,7 +58,7 @@ echo Flash::fromQuery('error', [
     <div class="card-header card-header--flex">
         <span><?= __('members') ?> <span class="text-sm text-dim">(<?= count($members) ?>)</span></span>
         <?php if (count(array_filter($members, fn($m) => empty($m['is_active']))) > 0): ?>
-            <label class="form-toggle" style="margin-left:auto;font-size:0.85rem">
+            <label class="form-toggle form-toggle--labeled">
                 <input type="checkbox" id="showInactiveMembers" class="form-toggle__input" onchange="document.querySelectorAll('.member-row--inactive').forEach(el => el.style.display = this.checked ? '' : 'none')">
                 <span class="form-toggle__track"></span>
                 <span><?= __('show_inactive') ?></span>

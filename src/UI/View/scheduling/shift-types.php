@@ -5,21 +5,76 @@ use kintai\UI\Components\Table;
 use kintai\UI\Components\Flash;
 
 /** @var array  $shift_types */
-/** @var array  $stores_map   id → name */
+/** @var array  $type_store_ids   id de type => IDs de stores affectés */
+/** @var array  $all_stores       stores visibles (scope du gestionnaire), pour les colonnes de la matrice */
 /** @var string $sort */
-$sort       ??= 'name_asc';
-$stores_map ??= [];
+$sort           ??= 'name_asc';
+$type_store_ids ??= [];
+$all_stores     ??= [];
 
 echo Flash::fromQuery('success', [
-    'created' => __('shift_type_created'),
-    'updated' => __('shift_type_updated'),
-    'deleted' => __('shift_type_deleted'),
+    'created'         => __('shift_type_created'),
+    'updated'         => __('shift_type_updated'),
+    'deleted'         => __('shift_type_deleted'),
+    'store_enabled'   => __('shift_type_store_enabled'),
+    'store_disabled'  => __('shift_type_store_disabled'),
+])->render();
+
+echo Flash::fromQuery('error', [
+    'store_required' => __('val_store_required'),
 ])->render();
 ?>
 <div class="page-header">
     <h2 class="page-header__title"><?= __('shift_types') ?> <span class="page-count">(<?= count($shift_types) ?>)</span></h2>
     <div class="page-header__actions">
         <?= Button::make('+ ' . __('new_type'))->primary()->link(route_url('admin.shift_types.create'))->render() ?>
+    </div>
+</div>
+
+<div class="card shift-types-matrix">
+    <div class="card-header"><h3 class="card-title"><?= __('stores_plural') ?></h3></div>
+    <div class="table-wrap shift-types-matrix__scroll">
+        <table class="data-table matrix-table">
+            <thead>
+                <tr>
+                    <th class="td-center"><?= __('shift_types') ?></th>
+                    <?php foreach ($all_stores as $s): ?>
+                    <th class="td-center matrix-table__store-col" title="<?= htmlspecialchars($s['name'] ?? '') ?>">
+                        <?= htmlspecialchars($s['name'] ?? '') ?>
+                    </th>
+                    <?php endforeach; ?>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if ($shift_types === [] || $all_stores === []): ?>
+                <tr><td colspan="<?= count($all_stores) + 1 ?>" class="text-muted"><?= __('no_shift_type_found') ?></td></tr>
+                <?php endif; ?>
+                <?php foreach ($shift_types as $t): ?>
+                <?php $tid = (int) $t['id']; ?>
+                <tr>
+                    <td class="td-center td-nowrap">
+                        <span class="color-swatch" style="background:<?= htmlspecialchars($t['color'] ?? '#ccc') ?>"></span>
+                        <?= htmlspecialchars($t['name'] ?? '') ?>
+                    </td>
+                    <?php foreach ($all_stores as $s): ?>
+                    <?php $sid = (int) $s['id']; ?>
+                    <td class="td-center">
+                        <form method="POST" action="<?= $BASE_URL ?>/admin/shift-types/<?= $tid ?>/toggle-store" class="form-inline">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="store_id" value="<?= $sid ?>">
+                            <label class="form-toggle">
+                                <input type="checkbox" name="enabled" value="1" class="form-toggle__input"
+                                       <?= in_array($sid, $type_store_ids[$tid] ?? [], true) ? 'checked' : '' ?>
+                                       onchange="this.form.submit()">
+                                <span class="form-toggle__track"></span>
+                            </label>
+                        </form>
+                    </td>
+                    <?php endforeach; ?>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
     </div>
 </div>
 
@@ -30,7 +85,6 @@ echo Flash::fromQuery('success', [
     ->currentSort($sort)
     ->rowUrl(fn($t) => $BASE_URL . '/admin/shift-types/' . (int) $t['id'] . '/edit')
     ->column('#', fn($t) => (string) (int) $t['id'])
-    ->sortable(__('store'), 'store', fn($t) => '<span class="text-sm-muted">' . htmlspecialchars($stores_map[(int)($t['store_id']??0)] ?? ('#' . (int)($t['store_id']??0))) . '</span>')
     ->sortable(__('code'), 'code', fn($t) => '<code class="code-sm">' . htmlspecialchars($t['code'] ?? '') . '</code>')
     ->sortable(__('name'), 'name', fn($t) => '<strong>' . htmlspecialchars($t['name'] ?? '') . '</strong>')
     ->column(__('start'), fn($t) => htmlspecialchars($t['start_time'] ?? ''))

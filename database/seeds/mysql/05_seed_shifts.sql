@@ -13,11 +13,13 @@ SET @emma_id    = (SELECT `id` FROM `users` WHERE `email` = 'emma.sato@kintai.lo
 SET @mshq_id    = (SELECT `id` FROM `stores` WHERE `code` = 'KTHQ');
 SET @msparis_id = (SELECT `id` FROM `stores` WHERE `code` = 'KTPARIS');
 
-SET @mshq_am    = (SELECT `id` FROM `shift_types` WHERE `code`='MORNING'   AND `store_id`=@mshq_id);
-SET @mshq_pm    = (SELECT `id` FROM `shift_types` WHERE `code`='AFTERNOON' AND `store_id`=@mshq_id);
-SET @mshq_nuit  = (SELECT `id` FROM `shift_types` WHERE `code`='NIGHT'     AND `store_id`=@mshq_id);
-SET @msp_am     = (SELECT `id` FROM `shift_types` WHERE `code`='MORNING'   AND `store_id`=@msparis_id);
-SET @msp_pm     = (SELECT `id` FROM `shift_types` WHERE `code`='AFTERNOON' AND `store_id`=@msparis_id);
+-- Un type de shift est désormais rattaché à ses stores via la table pivot
+-- shift_type_stores (many-to-many) plutôt qu'une colonne store_id.
+SET @mshq_am    = (SELECT `st`.`id` FROM `shift_types` `st` JOIN `shift_type_stores` `sts` ON `sts`.`shift_type_id` = `st`.`id` WHERE `st`.`code`='MORNING'   AND `sts`.`store_id`=@mshq_id);
+SET @mshq_pm    = (SELECT `st`.`id` FROM `shift_types` `st` JOIN `shift_type_stores` `sts` ON `sts`.`shift_type_id` = `st`.`id` WHERE `st`.`code`='AFTERNOON' AND `sts`.`store_id`=@mshq_id);
+SET @mshq_nuit  = (SELECT `st`.`id` FROM `shift_types` `st` JOIN `shift_type_stores` `sts` ON `sts`.`shift_type_id` = `st`.`id` WHERE `st`.`code`='NIGHT'     AND `sts`.`store_id`=@mshq_id);
+SET @msp_am     = (SELECT `st`.`id` FROM `shift_types` `st` JOIN `shift_type_stores` `sts` ON `sts`.`shift_type_id` = `st`.`id` WHERE `st`.`code`='MORNING'   AND `sts`.`store_id`=@msparis_id);
+SET @msp_pm     = (SELECT `st`.`id` FROM `shift_types` `st` JOIN `shift_type_stores` `sts` ON `sts`.`shift_type_id` = `st`.`id` WHERE `st`.`code`='AFTERNOON' AND `sts`.`store_id`=@msparis_id);
 
 INSERT INTO `shifts`
     (`store_id`, `user_id`, `shift_date`, `start_time`, `end_time`, `shift_type_id`,

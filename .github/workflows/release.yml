@@ -3,14 +3,26 @@ name: Release
 # Publie automatiquement une Release GitHub à chaque push/merge sur une
 # branche de canal. Le numéro de base (X.Y.Z) reste bumpé à la main dans
 # composer.json/CHANGELOG.md (voir docs/releasing.md) : ce workflow se
-# contente d'ajouter le suffixe de canal (alpha/beta) ou de tagger tel quel
-# pour une release stable (main).
+# contente de calculer le suffixe et de tagger.
 #
-# - alpha -> vX.Y.Z-alpha (prerelease, tag glissant : réécrit à chaque push
-#            tant que X.Y.Z ne bouge pas, pas d'accumulation de .1/.2/.3...)
-# - beta  -> vX.Y.Z-beta  (prerelease, même principe de tag glissant)
-# - main  -> vX.Y.Z       (release stable ; ignoré si le tag existe déjà,
-#            c'est-à-dire si aucun bump de version n'a eu lieu depuis)
+# Schéma de version : X = compteur cumulé de releases stables publiées,
+# Y = compteur cumulé de releases beta, Z = compteur cumulé de releases
+# alpha (chacun bumpé à la main, +1, uniquement sur le canal concerné).
+#
+# - alpha -> vX.Y.Z-<lettre semaine><sous-version> (prerelease)
+# - beta  -> vX.Y.Z-<lettre semaine><sous-version> (prerelease)
+# - main  -> vX.Y.Z (release stable, sans suffixe ; ignoré si le tag existe
+#            déjà, c'est-à-dire si aucun bump de version n'a eu lieu depuis)
+#
+# <lettre semaine> = semaine ISO courante encodée en base26 façon colonnes
+# de tableur (a = semaine 1, b = semaine 2 ... z = semaine 26, aa = semaine
+# 27...). <sous-version> = compteur remis à 1 chaque nouvelle semaine ISO,
+# incrémenté à chaque publication alpha/beta de la semaine (tous canaux
+# confondus) — dérivé des tags existants portant déjà cette lettre.
+#
+# Le canal (alpha/beta/release) n'est plus déterminé en inspectant le tag
+# (qui ne contient plus les mots "-alpha"/"-beta") mais via le
+# target_commitish de la Release GitHub — voir GithubUpdateService::selectReleaseForChannel().
 
 on:
   push:
@@ -49,7 +61,6 @@ jobs:
             *) echo "Branche non gérée : $BRANCH"; exit 1 ;;
           esac
 
-          ROLLING=false
           if [ "$CHANNEL" = "release" ]; then
             TAG="v${BASE_VERSION}"
             if git rev-parse "refs/tags/${TAG}" >/dev/null 2>&1; then
@@ -58,21 +69,39 @@ jobs:
               exit 0
             fi
           else
-            # Un canal alpha/beta ne doit jamais tagger une base version déjà
-            # publiée en stable : vX.Y.Z-{channel} serait alors sémantiquement
-            # *inférieur* à vX.Y.Z (déjà sur main) et donc invisible pour le
-            # canal, même avec des commits plus récents dessous — échec
-            # explicite plutôt qu'une release silencieusement inatteignable.
-            if git rev-parse "refs/tags/v${BASE_VERSION}" >/dev/null 2>&1; then
-              echo "::error::v${BASE_VERSION} est déjà publiée en stable sur main ; bump la version de base (composer.json/config/app.php/CHANGELOG.md) avant de publier une nouvelle prerelease sur ce canal."
+            # Lettre de semaine ISO courante, encodage base26 façon colonnes
+            # de tableur (a=semaine 1 ... z=semaine 26, aa=semaine 27...).
+            ISO_WEEK=$(date -u +%V)
+            ISO_WEEK=$((10#$ISO_WEEK))
+            n=$ISO_WEEK
+            WEEK_LETTER=""
+            while [ "$n" -gt 0 ]; do
+              n=$((n - 1))
+              rem=$((n % 26))
+              WEEK_LETTER="$(printf "\\$(printf '%03o' $((97 + rem)))")${WEEK_LETTER}"
+              n=$((n / 26))
+            done
+
+            # Sous-version : remise à 1 à chaque nouvelle semaine ISO,
+            # incrémentée à chaque publication alpha/beta de la semaine
+            # courante (tous canaux confondus) — déduite du plus grand
+            # suffixe numérique déjà taggué pour cette lettre.
+            MAX_SUB=0
+            for existing in $(git tag -l "v*-${WEEK_LETTER}[0-9]*"); do
+              sub="${existing##*-${WEEK_LETTER}}"
+              case "$sub" in
+                ''|*[!0-9]*) continue ;;
+              esac
+              if [ "$sub" -gt "$MAX_SUB" ]; then MAX_SUB=$sub; fi
+            done
+            SUB=$((MAX_SUB + 1))
+
+            TAG="v${BASE_VERSION}-${WEEK_LETTER}${SUB}"
+
+            if git rev-parse "refs/tags/${TAG}" >/dev/null 2>&1; then
+              echo "::error::Le tag ${TAG} existe déjà (collision improbable, p.ex. deux publications concurrentes la même semaine) — relancez le workflow."
               exit 1
             fi
-
-            # Tag glissant : un seul vX.Y.Z-{channel} par version en cours,
-            # réécrit à chaque push tant que la version de base ne change pas
-            # (voir l'étape suivante, qui le force-update s'il existe déjà).
-            TAG="v${BASE_VERSION}-${CHANNEL}"
-            ROLLING=true
           fi
 
           echo "skip=false" >> "$GITHUB_OUTPUT"
@@ -80,7 +109,6 @@ jobs:
           echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
           echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
           echo "base_version=$BASE_VERSION" >> "$GITHUB_OUTPUT"
-          echo "rolling=$ROLLING" >> "$GITHUB_OUTPUT"
 
       - name: Extract release notes from CHANGELOG.md
         if: steps.version.outputs.skip != 'true'
@@ -132,15 +160,6 @@ jobs:
           set -euo pipefail
 
           TAG="${{ steps.version.outputs.tag }}"
-
-          if [ "${{ steps.version.outputs.rolling }}" = "true" ]; then
-            # Supprime l'ancienne release + tag du canal (s'ils existent) avant
-            # de republier au commit courant, pour que vX.Y.Z-{channel} reste
-            # unique au lieu de s'accumuler en .1/.2/.3...
-            gh release delete "$TAG" --yes --cleanup-tag || true
-            git tag -d "$TAG" 2>/dev/null || true
-            git push origin ":refs/tags/$TAG" 2>/dev/null || true
-          fi
 
           git tag "$TAG"
           git push origin "$TAG"
