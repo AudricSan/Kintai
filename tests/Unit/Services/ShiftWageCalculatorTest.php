@@ -198,4 +198,81 @@ final class ShiftWageCalculatorTest extends TestCase
         // On vérifie juste que ça ne plante pas
         $this->assertIsFloat($result['estimated_salary']);
     }
+
+    // -------------------------------------------------------------------------
+    // costOf() — source unique pour un shift déjà persisté
+    // -------------------------------------------------------------------------
+
+    private function typesMap(array $types): array
+    {
+        return array_column($types, null, 'id');
+    }
+
+    public function testCostOfUsesShiftTypeRateByDefault(): void
+    {
+        $shift = ['shift_type_id' => 1, 'duration_minutes' => 480, 'pause_minutes' => 60];
+        $types = $this->typesMap([$this->type(1, 'Matin', '08:00', '16:00', 1000.0)]);
+
+        $result = $this->calc->costOf($shift, $types);
+
+        $this->assertSame(1000.0, $result['rate']);
+        $this->assertSame(480, $result['gross_minutes']);
+        $this->assertSame(60, $result['pause_minutes']);
+        $this->assertSame(420, $result['net_minutes']); // 8h - 1h pause = 7h
+        $this->assertSame(7000.0, $result['amount']);   // 7h × 1000
+    }
+
+    public function testCostOfPrefersPersonalRateOverShiftTypeRate(): void
+    {
+        $shift = ['shift_type_id' => 1, 'duration_minutes' => 60, 'pause_minutes' => 0];
+        $types = $this->typesMap([$this->type(1, 'Matin', '08:00', '16:00', 1000.0)]);
+
+        $result = $this->calc->costOf($shift, $types, [1 => 1500.0]);
+
+        $this->assertSame(1500.0, $result['rate']);
+        $this->assertSame(1500.0, $result['amount']);
+    }
+
+    public function testCostOfHourlyRateOverrideWinsOverEverything(): void
+    {
+        $shift = [
+            'shift_type_id'       => 1,
+            'duration_minutes'    => 60,
+            'pause_minutes'       => 0,
+            'hourly_rate_override' => 2000.0,
+        ];
+        $types = $this->typesMap([$this->type(1, 'Matin', '08:00', '16:00', 1000.0)]);
+
+        $result = $this->calc->costOf($shift, $types, [1 => 1500.0]);
+
+        $this->assertSame(2000.0, $result['rate']);
+        $this->assertSame(2000.0, $result['amount']);
+    }
+
+    public function testCostOfNetMinutesOverrideWinsOverDurationMinusPause(): void
+    {
+        $shift = [
+            'shift_type_id'        => 1,
+            'duration_minutes'     => 480,
+            'pause_minutes'        => 60,
+            'net_minutes_override' => 300,
+        ];
+        $types = $this->typesMap([$this->type(1, 'Matin', '08:00', '16:00', 1000.0)]);
+
+        $result = $this->calc->costOf($shift, $types);
+
+        $this->assertSame(300, $result['net_minutes']);
+        $this->assertSame(5000.0, $result['amount']); // 5h × 1000
+    }
+
+    public function testCostOfNoShiftTypeProducesZeroRate(): void
+    {
+        $shift = ['shift_type_id' => 0, 'duration_minutes' => 480, 'pause_minutes' => 0];
+
+        $result = $this->calc->costOf($shift, []);
+
+        $this->assertSame(0.0, $result['rate']);
+        $this->assertSame(0.0, $result['amount']);
+        $this->assertSame(480, $result['net_minutes']);
+    }
 }
