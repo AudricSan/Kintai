@@ -203,46 +203,42 @@ $section = function (string $titleKey, string $body, string $span = '') use ($as
             </button>
         </div>
         <?php endif; ?>
+        <?php if (!$hasUnifiedRoleSelect): ?>
+        <div class="form-group">
+            <label class="form-toggle form-toggle--labeled">
+                <input type="checkbox" name="is_admin" value="1" class="form-toggle__input"<?= $formAttr ?> <?= !empty($user['is_admin']) ? 'checked' : '' ?>>
+                <span class="form-toggle__track"></span>
+                <span><?= htmlspecialchars($owner_role_name) ?></span>
+            </label>
+            <p class="form-hint"><?= __('owner_account_hint') ?></p>
+        </div>
+        <?php endif; ?>
     <?php $section('employee_info', ob_get_clean(), $mainFormId !== null ? 'card--c1 card--r3 card--full' : 'card--c1 card--r3'); ?>
 
     <?php ob_start(); ?>
-        <div class="form-row">
-            <div class="form-group">
-                <label class="form-label"><?= __('identification_color') ?></label>
-                <?php
-                $userColor = htmlspecialchars($user['color'] ?? '#3B82F6');
-                $userInitials = htmlspecialchars(strtoupper(
-                    mb_substr((string) ($user['last_name'] ?? ''), 0, 1) . mb_substr((string) ($user['first_name'] ?? ''), 0, 1)
-                ) ?: '··');
-                ?>
-                <div class="input-group">
-                    <span class="avatar-chip" id="userColorPreview" style="--chip-bg:<?= $userColor ?>"><?= $userInitials ?></span>
-                    <input type="color" name="color" class="input-color" id="userColorInput"
-                           value="<?= $userColor ?>"<?= $formAttr ?>
-                           oninput="document.getElementById('userColorPreview').style.setProperty('--chip-bg', this.value)">
-                    <span class="text-sm-muted"><?= __('planning_visible_hint') ?></span>
-                </div>
+        <div class="form-group">
+            <label class="form-label"><?= __('identification_color') ?></label>
+            <?php
+            $userColor = htmlspecialchars($user['color'] ?? '#3B82F6');
+            $userInitials = htmlspecialchars(strtoupper(
+                mb_substr((string) ($user['last_name'] ?? ''), 0, 1) . mb_substr((string) ($user['first_name'] ?? ''), 0, 1)
+            ) ?: '··');
+            ?>
+            <div class="input-group">
+                <span class="avatar-chip" id="userColorPreview" style="--chip-bg:<?= $userColor ?>"><?= $userInitials ?></span>
+                <input type="color" name="color" class="input-color" id="userColorInput"
+                       value="<?= $userColor ?>"<?= $formAttr ?>
+                       oninput="document.getElementById('userColorPreview').style.setProperty('--chip-bg', this.value)">
+                <span class="text-sm-muted"><?= __('planning_visible_hint') ?></span>
             </div>
-            <?php if (!$hasUnifiedRoleSelect): ?>
-            <div class="form-group">
-                <label class="form-toggle form-toggle--labeled">
-                    <input type="checkbox" name="is_admin" value="1" class="form-toggle__input"<?= $formAttr ?> <?= !empty($user['is_admin']) ? 'checked' : '' ?>>
-                    <span class="form-toggle__track"></span>
-                    <span><?= htmlspecialchars($owner_role_name) ?></span>
-                </label>
-                <p class="form-hint"><?= __('owner_account_hint') ?></p>
-            </div>
-            <?php endif; ?>
         </div>
         <?php if ($mode === 'edit'): ?>
-        <div class="form-row">
-            <div class="form-group">
-                <label class="form-label"><?= __('status') ?></label>
-                <select name="is_active" class="form-control"<?= $formAttr ?>>
-                    <option value="1" <?= !empty($user['is_active']) ? 'selected' : '' ?>><?= __('active') ?></option>
-                    <option value="0" <?= empty($user['is_active']) ? 'selected' : '' ?>><?= __('inactive') ?></option>
-                </select>
-            </div>
+        <div class="form-group">
+            <label class="form-label"><?= __('status') ?></label>
+            <select name="is_active" class="form-control"<?= $formAttr ?>>
+                <option value="1" <?= !empty($user['is_active']) ? 'selected' : '' ?>><?= __('active') ?></option>
+                <option value="0" <?= empty($user['is_active']) ? 'selected' : '' ?>><?= __('inactive') ?></option>
+            </select>
         </div>
         <?php endif; ?>
     <?php
