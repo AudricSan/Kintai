@@ -16,6 +16,7 @@ use kintai\Core\Repositories\HiringReportRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\EmployeeStatsService;
 use kintai\Core\Services\PdfCjkFontResolver;
 use kintai\Core\Services\RoleAssignmentSyncService;
 use kintai\UI\ViewRenderer;
@@ -55,60 +56,25 @@ final class AdminUserController
             $users = $this->users->findAll();
         }
 
-        // Statistiques du mois en cours
-        $monthStart = date('Y-m-01');
-        $monthEnd   = date('Y-m-t');
-
-        // Nombre de semaines ISO distinctes dans le mois
-        $weekSet = [];
-        $cur = new \DateTime($monthStart);
-        $endDt = new \DateTime($monthEnd);
-        while ($cur <= $endDt) {
-            $weekSet[$cur->format('o-W')] = true;
-            $cur->modify('+1 day');
-        }
-        $numWeeks = max(1, count($weekSet));
-
-        $typesMap = [];
-        foreach ($this->shiftTypes->findAll() as $t) {
-            $typesMap[(int) $t['id']] = $t;
-        }
+        // Statistiques du mois en cours — même source que le dashboard employé et le
+        // rapport de salaire (ShiftWageCalculator::costOf() via EmployeeStatsService),
+        // pour que ce montant "Salaire est." ne diverge plus des autres pages.
+        $employeeStatsService = new EmployeeStatsService(
+            $this->shifts,
+            $this->shiftTypes,
+            $this->userRates,
+            $this->storeUsers,
+            $this->stores,
+        );
 
         $userStats = [];
         foreach ($users as $u) {
             $uid = (int) $u['id'];
-
-            $personalRates = [];
-            foreach ($this->userRates->findByUser($uid) as $r) {
-                $personalRates[(int) $r['shift_type_id']] = (float) $r['hourly_rate'];
-            }
-
-            $totalMinutes = 0;
-            $estimatedPay = 0.0;
-            foreach ($this->shifts->findByUser($uid) as $s) {
-                $d = $s['shift_date'] ?? '';
-                if ($d < $monthStart || $d > $monthEnd) {
-                    continue;
-                }
-                [$sh, $sm] = explode(':', substr($s['start_time'] ?? '00:00', 0, 5));
-                [$eh, $em] = explode(':', substr($s['end_time'] ?? '00:00', 0, 5));
-                $startMin = (int) $sh * 60 + (int) $sm;
-                $endMin   = (int) $eh * 60 + (int) $em;
-                if (!empty($s['cross_midnight']) || $endMin <= $startMin) {
-                    $endMin += 24 * 60;
-                }
-                $minutes       = max(0, $endMin - $startMin);
-                $totalMinutes += $minutes;
-
-                $tid  = (int) ($s['shift_type_id'] ?? 0);
-                $rate = $personalRates[$tid] ?? (float) ($typesMap[$tid]['hourly_rate'] ?? 0);
-                $estimatedPay += ($minutes / 60) * $rate;
-            }
-
+            $stats = $employeeStatsService->calculate($uid);
             $userStats[$uid] = [
-                'hours_month'   => $totalMinutes / 60,
-                'hours_week'    => ($totalMinutes / 60) / $numWeeks,
-                'estimated_pay' => $estimatedPay,
+                'hours_month'   => $stats['hours_month'],
+                'hours_week'    => $stats['hours_week'],
+                'estimated_pay' => $stats['estimated_pay'],
             ];
         }
 
@@ -384,7 +350,7 @@ final class AdminUserController
             'mode'                  => 'create',
             'user'                  => [],
             'all_stores'            => $this->availableStores($this->managedIds($request)),
-            'assignable_roles'      => $this->roleSync->assignableStoreRoles(),
+            'all_roles'             => $this->roleSync->allRoles(),
             'default_store_role_id' => (int) ($this->roleSync->defaultStoreRole()['id'] ?? 0),
         ], 'layout.app'));
     }
@@ -414,6 +380,12 @@ final class AdminUserController
             $pw  = preg_replace('/[^a-z0-9]/', '', iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $pw));
             $password = $pw ?: ('User' . $suf);
         }
+
+        // Un seul sélecteur "Rôle" (Owner + rôles par store) remplace l'ancien
+        // couple "Rôle global" (is_admin) / "Rôle dans le store" (store_role_id).
+        $selectedRole = $this->roleSync->findRole((int) $request->post('role_id', 0));
+        $isOwner      = $selectedRole !== null && !empty($selectedRole['is_system']);
+
         $saved    = $this->users->save([
             'display_name'       => $request->post('display_name', ''),
             'first_name'         => $request->post('first_name', ''),
@@ -435,21 +407,21 @@ final class AdminUserController
             'color'              => $request->post('color', '#3B82F6'),
             'employee_code'      => $empCode,
             'password_hash'      => password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]),
-            'is_admin'           => $request->post('is_admin') === '1' ? 1 : 0,
+            'is_admin'           => $isOwner ? 1 : 0,
             'is_active'          => 1,
         ]);
-        $this->roleSync->syncOwnerRole((int) ($saved['id'] ?? 0), $request->post('is_admin') === '1');
+        $this->roleSync->syncOwnerRole((int) ($saved['id'] ?? 0), $isOwner);
 
         // Affecter au magasin si sélectionné
         $storeId = (int) $request->post('store_id', 0);
         if ($storeId > 0 && !empty($saved['id'])) {
             $this->assertStoreAccess($request, $storeId);
-            $role = $this->roleSync->findAssignableRole((int) $request->post('store_role_id', 0))
-                ?? $this->roleSync->defaultStoreRole();
+            // Owner : pas de rôle par store à synchroniser, l'affectation globale suffit.
+            $role = $isOwner ? null : ($selectedRole ?? $this->roleSync->defaultStoreRole());
             $membership = $this->storeUsers->save([
                 'store_id' => $storeId,
                 'user_id'  => (int) $saved['id'],
-                'role'     => $role !== null ? $this->roleSync->legacyRoleFor((int) $role['id']) : 'staff',
+                'role'     => $isOwner ? 'manager' : ($role !== null ? $this->roleSync->legacyRoleFor((int) $role['id']) : 'staff'),
             ]);
             if ($role !== null) {
                 $this->roleSync->syncStoreRoleById((int) $saved['id'], $storeId, (int) $role['id']);
@@ -660,7 +632,7 @@ final class AdminUserController
 
         $userShiftTypes = empty($userStoreIds)
             ? []
-            : $this->filterByStore($this->shiftTypes->findAll(), $userStoreIds);
+            : $this->shiftTypes->findByStores($userStoreIds);
 
         // Taux actuels indexés par shift_type_id
         $userRates = [];
@@ -672,6 +644,20 @@ final class AdminUserController
         $storesMap = [];
         foreach ($this->stores->findAll() as $s) {
             $storesMap[(int) $s['id']] = $s['name'] ?? '#' . $s['id'];
+        }
+
+        // Un type peut désormais couvrir plusieurs stores : n'afficher, pour
+        // chaque type, que ses stores en commun avec ceux de cet employé
+        // (les autres stores éventuels du type n'ont pas de sens dans ce tableau).
+        $typeStoreNames = [];
+        foreach ($userShiftTypes as $t) {
+            $tid = (int) $t['id'];
+            $names = array_values(array_filter(array_map(
+                fn ($sid) => $storesMap[$sid] ?? null,
+                array_intersect($this->shiftTypes->getStoreIds($tid), $userStoreIds),
+            )));
+            sort($names);
+            $typeStoreNames[$tid] = $names;
         }
 
         // Appartenance aux stores (enrichie avec nom du store, rôle, cotisations)
@@ -704,11 +690,13 @@ final class AdminUserController
             'user_shift_types' => $userShiftTypes,
             'user_rates'       => $userRates,
             'stores_map'       => $storesMap,
+            'type_store_names' => $typeStoreNames,
             'user_memberships' => $userMemberships,
             'available_stores' => $availableStores,
             'all_stores'       => $this->availableStores($this->managedIds($request)),
             'assignable_roles'      => $this->roleSync->assignableStoreRoles(),
             'default_store_role_id' => (int) ($this->roleSync->defaultStoreRole()['id'] ?? 0),
+            'owner_role_name'       => (string) ($this->roleSync->ownerRole()['name'] ?? __('admin')),
         ], 'layout.app'));
     }
 
@@ -816,10 +804,10 @@ final class AdminUserController
         $shiftTypeId = (int) $request->post('shift_type_id', 0);
         $rateRaw     = $request->post('hourly_rate', '');
 
-        // Vérifier que le type de shift est dans un store accessible
+        // Vérifier que le type de shift est activé sur au moins un store accessible
         $type = $this->shiftTypes->findById($shiftTypeId);
         if ($type !== null) {
-            $this->assertStoreAccess($request, (int) $type['store_id']);
+            $this->assertAnyStoreAccess($request, $this->shiftTypes->getStoreIds($shiftTypeId));
         }
 
         $existing = $this->userRates->findRate($userId, $shiftTypeId);
@@ -868,7 +856,7 @@ final class AdminUserController
         if ($rate !== null && (int) $rate['user_id'] === $userId) {
             $type = $this->shiftTypes->findById((int) $rate['shift_type_id']);
             if ($type !== null) {
-                $this->assertStoreAccess($request, (int) $type['store_id']);
+                $this->assertAnyStoreAccess($request, $this->shiftTypes->getStoreIds((int) $type['id']));
             }
             $this->userRates->delete($rid);
             $this->auditLogger->log($request, 'user_rate.deleted', 'user_rate', $rid, [

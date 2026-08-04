@@ -27,14 +27,14 @@ final class AdminShiftTypeController
     public function shiftTypes(Request $request): Response
     {
         $managedIds = $this->managedIds($request);
-        $types = $this->filterByStore($this->shiftTypes->findAll(), $managedIds);
+        $types = $managedIds === null
+            ? $this->shiftTypes->findAll()
+            : $this->shiftTypes->findByStores($managedIds);
 
-        $storesMap = $this->buildStoresMap($managedIds);
+        $typeStoreIds = $this->buildTypeStoreIds($types);
 
         $sort = $request->query('sort') ?? 'name_asc';
-        usort($types, function ($a, $b) use ($sort, $storesMap) {
-            $storeA  = strtolower($storesMap[(int)($a['store_id'] ?? 0)] ?? '');
-            $storeB  = strtolower($storesMap[(int)($b['store_id'] ?? 0)] ?? '');
+        usort($types, function ($a, $b) use ($sort) {
             $codeA   = strtolower($a['code'] ?? '');
             $codeB   = strtolower($b['code'] ?? '');
             $nameA   = strtolower($a['name'] ?? '');
@@ -43,8 +43,6 @@ final class AdminShiftTypeController
             $statB   = (int) !empty($b['is_active']);
             return match ($sort) {
                 'name_desc'    => strcmp($nameB, $nameA),
-                'store_asc'    => strcmp($storeA, $storeB) ?: strcmp($nameA, $nameB),
-                'store_desc'   => strcmp($storeB, $storeA) ?: strcmp($nameA, $nameB),
                 'code_asc'     => strcmp($codeA, $codeB) ?: strcmp($nameA, $nameB),
                 'code_desc'    => strcmp($codeB, $codeA) ?: strcmp($nameA, $nameB),
                 'status_asc'   => $statA <=> $statB ?: strcmp($nameA, $nameB),
@@ -54,30 +52,34 @@ final class AdminShiftTypeController
         });
 
         return Response::html($this->view->render('scheduling.shift-types', [
-            'title'       => 'Types de shifts',
-            'shift_types' => $types,
-            'stores_map'  => $storesMap,
-            'sort'        => $sort,
+            'title'          => 'Types de shifts',
+            'shift_types'    => $types,
+            'type_store_ids' => $typeStoreIds,
+            'all_stores'     => $this->availableStores($managedIds),
+            'sort'           => $sort,
         ], 'layout.app'));
     }
 
     public function createShiftType(Request $request): Response
     {
         return Response::html($this->view->render('scheduling.shift-types-form', [
-            'title'      => 'Nouveau type de shift',
-            'mode'       => 'create',
-            'shift_type' => [],
-            'all_stores' => $this->availableStores($this->managedIds($request)),
+            'title'              => 'Nouveau type de shift',
+            'mode'               => 'create',
+            'shift_type'         => [],
+            'all_stores'         => $this->availableStores($this->managedIds($request)),
+            'selected_store_ids' => [],
         ], 'layout.app'));
     }
 
     public function storeShiftType(Request $request): Response
     {
-        $storeId = (int) $request->post('store_id', 0);
-        $this->assertStoreAccess($request, $storeId);
+        $storeIds = $this->postedStoreIds($request);
+        if ($storeIds === []) {
+            return Response::redirect($this->base() . '/admin/shift-types/create?error=store_required');
+        }
+        $this->assertAnyStoreAccess($request, $storeIds);
 
-        $savedType =         $savedType = $this->shiftTypes->save([
-            'store_id'    => $storeId,
+        $savedType = $this->shiftTypes->save([
             'code'        => strtoupper(trim($request->post('code', ''))),
             'name'        => $request->post('name', ''),
             'start_time'  => $request->post('start_time', '08:00'),
@@ -86,8 +88,9 @@ final class AdminShiftTypeController
             'hourly_rate' => $request->post('hourly_rate') !== '' ? (float) $request->post('hourly_rate') : null,
             'is_active'   => 1,
         ]);
+        $this->shiftTypes->syncStores((int) $savedType['id'], $storeIds);
 
-        $this->auditLogger->log($request, 'shift_type.created', 'shift_type', (int) ($savedType['id'] ?? 0), ['code' => $request->post('code', ''), 'name' => $request->post('name', '')], $storeId);
+        $this->auditLogger->log($request, 'shift_type.created', 'shift_type', (int) ($savedType['id'] ?? 0), ['code' => $request->post('code', ''), 'name' => $request->post('name', '')], $storeIds[0]);
 
         return Response::redirect($this->base() . '/admin/shift-types?success=created');
     }
@@ -98,13 +101,15 @@ final class AdminShiftTypeController
         if ($type === null) {
             throw new NotFoundException('Type de shift introuvable.');
         }
-        $this->assertStoreAccess($request, (int) $type['store_id']);
+        $storeIds = $this->shiftTypes->getStoreIds((int) $type['id']);
+        $this->assertAnyStoreAccess($request, $storeIds);
 
         return Response::html($this->view->render('scheduling.shift-types-form', [
-            'title'      => 'Modifier ' . htmlspecialchars($type['name'] ?? ''),
-            'mode'       => 'edit',
-            'shift_type' => $type,
-            'all_stores' => $this->availableStores($this->managedIds($request)),
+            'title'              => 'Modifier ' . htmlspecialchars($type['name'] ?? ''),
+            'mode'               => 'edit',
+            'shift_type'         => $type,
+            'all_stores'         => $this->availableStores($this->managedIds($request)),
+            'selected_store_ids' => $storeIds,
         ], 'layout.app'));
     }
 
@@ -114,10 +119,26 @@ final class AdminShiftTypeController
         if ($type === null) {
             throw new NotFoundException('Type de shift introuvable.');
         }
-        $this->assertStoreAccess($request, (int) $type['store_id']);
+        $existingStoreIds = $this->shiftTypes->getStoreIds((int) $type['id']);
+        $this->assertAnyStoreAccess($request, $existingStoreIds);
+
+        $submittedStoreIds = $this->postedStoreIds($request);
+        if ($submittedStoreIds === []) {
+            return Response::redirect($this->base() . '/admin/shift-types/' . $type['id'] . '/edit?error=store_required');
+        }
+
+        // Un gestionnaire de store ne voit dans son formulaire que les stores qu'il
+        // gère (availableStores) : les affectations existantes à des stores hors de
+        // sa portée ne doivent pas disparaître faute d'avoir pu être re-cochées.
+        $managedIds = $this->managedIds($request);
+        if ($managedIds !== null) {
+            $visibleStoreIds  = array_map(fn($s) => (int) $s['id'], $this->availableStores($managedIds));
+            $submittedStoreIds = array_values(array_intersect($submittedStoreIds, $visibleStoreIds));
+            $outOfScopeStoreIds = array_values(array_diff($existingStoreIds, $visibleStoreIds));
+            $submittedStoreIds = array_values(array_unique(array_merge($submittedStoreIds, $outOfScopeStoreIds)));
+        }
 
         $newData = array_merge($type, [
-            'store_id'    => (int) $request->post('store_id', $type['store_id'] ?? 0),
             'code'        => strtoupper(trim($request->post('code', $type['code'] ?? ''))),
             'name'        => $request->post('name', $type['name'] ?? ''),
             'start_time'  => $request->post('start_time', $type['start_time'] ?? '08:00'),
@@ -128,8 +149,9 @@ final class AdminShiftTypeController
         ]);
 
         $this->shiftTypes->save($newData);
+        $this->shiftTypes->syncStores((int) $type['id'], $submittedStoreIds);
 
-        $this->auditLogger->logUpdate($request, 'shift_type.updated', 'shift_type', (int) $type['id'], $type, $newData, [], (int) ($type['store_id'] ?? 0));
+        $this->auditLogger->logUpdate($request, 'shift_type.updated', 'shift_type', (int) $type['id'], $type, $newData, [], $submittedStoreIds[0] ?? null);
 
         return Response::redirect($this->base() . '/admin/shift-types?success=updated');
     }
@@ -138,13 +160,68 @@ final class AdminShiftTypeController
     {
         $id   = (int) $request->param('id');
         $type = $this->shiftTypes->findById($id);
+        $storeIds = $type !== null ? $this->shiftTypes->getStoreIds($id) : [];
         if ($type !== null) {
-            $this->assertStoreAccess($request, (int) $type['store_id']);
+            $this->assertAnyStoreAccess($request, $storeIds);
         }
         $this->shiftTypes->delete($id);
-        $this->auditLogger->log($request, 'shift_type.deleted', 'shift_type', $id, ['code' => $type['code'] ?? '', 'name' => $type['name'] ?? ''], $type ? (int) $type['store_id'] : null);
+        $this->auditLogger->log($request, 'shift_type.deleted', 'shift_type', $id, ['code' => $type['code'] ?? '', 'name' => $type['name'] ?? ''], $storeIds[0] ?? null);
         return Response::redirect($this->base() . '/admin/shift-types?success=deleted');
     }
 
+    public function toggleShiftTypeStore(Request $request): Response
+    {
+        $id   = (int) $request->param('id');
+        $type = $this->shiftTypes->findById($id);
+        if ($type === null) {
+            throw new NotFoundException('Type de shift introuvable.');
+        }
 
+        $storeId = (int) $request->post('store_id', '0');
+        $this->assertStoreAccess($request, $storeId);
+
+        $enabled = $request->post('enabled', '0') === '1';
+
+        if (!$enabled) {
+            $remaining = array_diff($this->shiftTypes->getStoreIds($id), [$storeId]);
+            if ($remaining === []) {
+                return Response::redirect($this->base() . '/admin/shift-types?error=store_required');
+            }
+            $this->shiftTypes->disableForStore($id, $storeId);
+        } else {
+            $this->shiftTypes->enableForStore($id, $storeId);
+        }
+
+        $this->auditLogger->log(
+            $request,
+            $enabled ? 'shift_type.store_enabled' : 'shift_type.store_disabled',
+            'shift_type',
+            $id,
+            ['store_id' => $storeId],
+            $storeId,
+        );
+
+        return Response::redirect($this->base() . '/admin/shift-types?success=' . ($enabled ? 'store_enabled' : 'store_disabled'));
+    }
+
+    /** @return int[] */
+    private function postedStoreIds(Request $request): array
+    {
+        $ids = $request->post('store_ids', []);
+        if (!is_array($ids)) {
+            return [];
+        }
+        return array_values(array_unique(array_map('intval', $ids)));
+    }
+
+    /** @return array<int, int[]> id de type => IDs de stores affectés */
+    private function buildTypeStoreIds(array $types): array
+    {
+        $map = [];
+        foreach ($types as $t) {
+            $id = (int) $t['id'];
+            $map[$id] = $this->shiftTypes->getStoreIds($id);
+        }
+        return $map;
+    }
 }

@@ -23,7 +23,7 @@ final class AppResetService
     /** Catégories optionnelles du mode "données" : cochées = conservées, décochées (défaut) = vidées. */
     public const OPTIONAL_CATEGORIES = [
         'stores'      => ['stores', 'store_user', 'store_features', 'store_deduction_settings', 'store_import_settings'],
-        'shift_types' => ['shift_types', 'user_shift_type_rates'],
+        'shift_types' => ['shift_types', 'shift_type_stores', 'user_shift_type_rates'],
         'ui_prefs'    => ['user_dashboard_prefs', 'user_nav_prefs'],
     ];
 

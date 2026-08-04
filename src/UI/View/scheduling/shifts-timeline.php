@@ -12,6 +12,7 @@ use kintai\UI\Utils\TimelineHelpers;
 /** @var array                $users_map           id → nom */
 /** @var array                $user_color_map      id → couleur hex|null */
 /** @var array                $types_map           id → shift_type */
+/** @var array                $type_store_ids      id de type => liste de store_id (un type peut couvrir plusieurs stores) */
 /** @var int                  $my_user_id          admin courant */
 /** @var string               $today */
 /** @var string               $prev_start */
@@ -28,6 +29,7 @@ use kintai\UI\Utils\TimelineHelpers;
 /** @var bool                 $show_request_swap   afficher le bouton "demander un échange" (contexte employé) */
 
 $_canManage     = $can_manage ?? true;
+$_typeStoreIds  = $type_store_ids ?? [];
 $_ratesMap      = $rates_map     ?? [];
 $_currencyMap   = $currency_map  ?? [];
 $_currencySymbolStyle = $currency_symbol_style ?? 'kanji';
@@ -361,7 +363,7 @@ ob_start();
                                     $shPay = TimelineHelpers::atPayBreakdown(
                                         $sh['start_time'] ?? '00:00', $sh['end_time'] ?? '00:00',
                                         $shPause, !empty($sh['cross_midnight']),
-                                        $shUid, $shStoreId, $types_map, $_ratesMap, $shCurrency, $_currencySymbolStyle
+                                        $shUid, $shStoreId, $types_map, $_typeStoreIds, $_ratesMap, $shCurrency, $_currencySymbolStyle
                                     );
                                     $shNetMin     = $shPay['net_minutes'];
                                     $shHoursLabel = intdiv($shNetMin, 60) . 'h' . str_pad($shNetMin % 60, 2, '0', STR_PAD_LEFT)

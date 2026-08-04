@@ -22,7 +22,10 @@ if ($redirect_to !== '') {
     $action .= $sep . 'redirect_to=' . urlencode($redirect_to);
 }
 
-echo Flash::fromQuery('error', ['timeoff_conflict' => __('shift_timeoff_conflict')])->render();
+echo Flash::fromQuery('error', [
+    'timeoff_conflict'          => __('shift_timeoff_conflict'),
+    'shift_type_store_mismatch' => __('shift_type_store_mismatch'),
+])->render();
 ?>
 <div class="page-header">
     <h2 class="page-header__title"><?= $mode === 'edit' ? __('edit_shift') : __('new_shift') ?></h2>

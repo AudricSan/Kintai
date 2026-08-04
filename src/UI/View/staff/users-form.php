@@ -17,6 +17,7 @@ use kintai\UI\Components\Flash;
 $user_shift_types      ??= [];
 $user_rates            ??= [];
 $stores_map            ??= [];
+$type_store_names      ??= [];
 $user_memberships      ??= [];
 $available_stores      ??= [];
 $all_stores            ??= [];
@@ -164,7 +165,7 @@ echo Flash::fromQuery('error', [
                 ?>
                 <tr>
                     <td data-label="<?= htmlspecialchars(__('shift_types')) ?>"><strong><?= htmlspecialchars($t['name'] ?? '') ?></strong><span class="text-sm-muted"> (<?= htmlspecialchars($t['code'] ?? '') ?>)</span></td>
-                    <td data-label="<?= htmlspecialchars(__('store')) ?>" class="text-sm td-muted"><?= htmlspecialchars($stores_map[(int) $t['store_id']] ?? '#' . $t['store_id']) ?></td>
+                    <td data-label="<?= htmlspecialchars(__('store')) ?>" class="text-sm td-muted"><?= htmlspecialchars(implode(', ', $type_store_names[$tid] ?? [])) ?: '—' ?></td>
                     <td data-label="<?= htmlspecialchars(__('base_rate')) ?>" class="text-sm"><?= $t['hourly_rate'] !== null ? number_format((float) $t['hourly_rate'], 2, '.', '') : '—' ?></td>
                     <td data-label="<?= htmlspecialchars(__('custom_rate')) ?>"><?= $currentRate !== null ? Badge::make(number_format((float) $currentRate['hourly_rate'], 2, '.', ''))->active()->render() : '<span class="text-sm text-muted">—</span>' ?></td>
                     <td data-label="<?= htmlspecialchars(__('actions')) ?>">
@@ -211,3 +212,4 @@ echo Flash::fromQuery('error', [
 <?php endif; // mode === 'edit' (ligne 57) ?>
 <script src="<?= $BASE_URL ?>/assets/js/modules/user-form-live-check.js"></script>
 <script src="<?= $BASE_URL ?>/assets/js/modules/furigana-suggest.js"></script>
+<script src="<?= $BASE_URL ?>/assets/js/modules/user-role-select.js"></script>

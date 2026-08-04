@@ -2,28 +2,40 @@
 /** @var string $mode                  'create'|'edit' */
 /** @var array  $user                  Données de l'utilisateur */
 /** @var array  $all_stores            Liste des magasins */
-/** @var array  $assignable_roles      Rôles dynamiques assignables par store (table roles) */
+/** @var array  $all_roles             Tous les rôles (Owner + rôles par store, table roles) — sélecteur "Rôle" unifié du formulaire de création principal */
 /** @var int    $default_store_role_id Rôle pré-sélectionné par défaut */
+/** @var string $owner_role_name       Nom du rôle système Owner (édition : libellé de la case "compte Owner") */
 /** @var bool   $as_cards              true : chaque section devient une Card séparée (page d'édition complète) ;
  *                                     false/absent : rendu compact d'origine (modale de création rapide, voir shifts-import-preview.php). */
 $mode ??= 'create';
-$assignable_roles      ??= [];
-$default_store_role_id ??= 0;
+$all_roles              ??= [];
+$default_store_role_id  ??= 0;
+$owner_role_name        ??= __('admin');
 $as_cards ??= false;
+// Le formulaire de création principal (all_roles renseigné) propose un
+// sélecteur "Rôle" unique (Owner + rôles par store) à la place de l'ancienne
+// case "Rôle global" Personnel/Administration, déconnectée du système de
+// rôles dynamique. La modale de création rapide (import Excel) ne fournit
+// pas all_roles : elle garde l'ancienne case, plus simple pour ce contexte.
+$hasUnifiedRoleSelect = $mode === 'create' && !empty($all_roles);
 $genderOptions = ['male' => __('male'), 'female' => __('female')];
 $taxOptions = ['kou' => '甲', 'otsu' => '乙'];
 $currentUserId = (int) ($user['id'] ?? 0);
 $baseUrl = rtrim($BASE_URL ?? '', '/');
 
-$section = function (string $titleKey, string $body) use ($as_cards): void {
+$section = function (string $titleKey, string $body, string $span = '') use ($as_cards): void {
     if ($as_cards) {
-        echo \kintai\UI\Components\Card::make()->header(__($titleKey))->body($body)->render();
+        $card = \kintai\UI\Components\Card::make()->header(__($titleKey))->body($body);
+        if ($span !== '') {
+            $card->attrs(['class' => $span]);
+        }
+        echo $card->render();
         return;
     }
     echo '<div class="section-divider"><h4 class="section-title">' . htmlspecialchars(__($titleKey)) . '</h4>' . $body . '</div>';
 };
 ?>
-<div class="form-stack">
+<div class="<?= $as_cards ? 'form-section-grid' : 'form-stack' ?>">
     <?php ob_start(); ?>
         <div class="form-group">
             <label class="form-label form-label--required"><?= __('display_name') ?></label>
@@ -58,41 +70,38 @@ $section = function (string $titleKey, string $body) use ($as_cards): void {
                        placeholder="カタカナ" required>
             </div>
         </div>
+    <?php $section('identity', ob_get_clean(), 'card--c1 card--r1'); ?>
 
-        <div class="form-row">
-            <div class="form-group">
-                <label class="form-label"><?= __('gender') ?></label>
-                <select name="gender" class="form-control">
-                    <option value="">—</option>
-                    <?php foreach ($genderOptions as $val => $label): ?>
-                        <option value="<?= $val ?>" <?= ($user['gender'] ?? '') === $val ? 'selected' : '' ?>><?= $label ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="form-group">
-                <label class="form-label"><?= __('tax_classification') ?> (甲乙)</label>
-                <select name="tax_classification" class="form-control">
-                    <option value="">—</option>
-                    <?php foreach ($taxOptions as $val => $label): ?>
-                        <option value="<?= $val ?>" <?= ($user['tax_classification'] ?? '') === $val ? 'selected' : '' ?>><?= $label ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+    <?php ob_start(); ?>
+        <div class="form-group">
+            <label class="form-label"><?= __('gender') ?></label>
+            <select name="gender" class="form-control">
+                <option value="">—</option>
+                <?php foreach ($genderOptions as $val => $label): ?>
+                    <option value="<?= $val ?>" <?= ($user['gender'] ?? '') === $val ? 'selected' : '' ?>><?= $label ?></option>
+                <?php endforeach; ?>
+            </select>
         </div>
-
-        <div class="form-row">
-            <div class="form-group">
-                <label class="form-label"><?= __('birth_date') ?></label>
-                <input type="date" name="birth_date" class="form-control"
-                       value="<?= htmlspecialchars($user['birth_date'] ?? '') ?>">
-            </div>
-            <div class="form-group">
-                <label class="form-label"><?= __('education') ?></label>
-                <input type="text" name="education" class="form-control"
-                       value="<?= htmlspecialchars($user['education'] ?? '') ?>">
-            </div>
+        <div class="form-group">
+            <label class="form-label"><?= __('tax_classification') ?> (甲乙)</label>
+            <select name="tax_classification" class="form-control">
+                <option value="">—</option>
+                <?php foreach ($taxOptions as $val => $label): ?>
+                    <option value="<?= $val ?>" <?= ($user['tax_classification'] ?? '') === $val ? 'selected' : '' ?>><?= $label ?></option>
+                <?php endforeach; ?>
+            </select>
         </div>
-    <?php $section('identity', ob_get_clean()); ?>
+        <div class="form-group">
+            <label class="form-label"><?= __('birth_date') ?></label>
+            <input type="date" name="birth_date" class="form-control"
+                   value="<?= htmlspecialchars($user['birth_date'] ?? '') ?>">
+        </div>
+        <div class="form-group">
+            <label class="form-label"><?= __('education') ?></label>
+            <input type="text" name="education" class="form-control"
+                   value="<?= htmlspecialchars($user['education'] ?? '') ?>">
+        </div>
+    <?php $section('personal_details', ob_get_clean(), 'card--c2 card--r1 card--row-2'); ?>
 
     <?php ob_start(); ?>
         <div class="form-row">
@@ -134,7 +143,7 @@ $section = function (string $titleKey, string $body) use ($as_cards): void {
             <label class="form-label"><?= __('address') ?></label>
             <textarea name="address" class="form-control" rows="2"><?= htmlspecialchars($user['address'] ?? '') ?></textarea>
         </div>
-    <?php $section('contact', ob_get_clean()); ?>
+    <?php $section('contact', ob_get_clean(), 'card--c3 card--r1 card--row-2'); ?>
 
     <?php ob_start(); ?>
         <div class="form-row">
@@ -149,7 +158,7 @@ $section = function (string $titleKey, string $body) use ($as_cards): void {
                        value="<?= htmlspecialchars($user['guarantor_phone'] ?? '') ?>">
             </div>
         </div>
-    <?php $section('guarantor', ob_get_clean()); ?>
+    <?php $section('guarantor', ob_get_clean(), 'card--c1 card--r2'); ?>
 
     <?php ob_start(); ?>
         <div class="form-group">
@@ -188,25 +197,35 @@ $section = function (string $titleKey, string $body) use ($as_cards): void {
             </button>
         </div>
         <?php endif; ?>
-    <?php $section('employee_info', ob_get_clean()); ?>
+    <?php $section('employee_info', ob_get_clean(), 'card--c1 card--r3'); ?>
 
     <?php ob_start(); ?>
         <div class="form-row">
             <div class="form-group">
                 <label class="form-label"><?= __('identification_color') ?></label>
+                <?php
+                $userColor = htmlspecialchars($user['color'] ?? '#3B82F6');
+                $userInitials = htmlspecialchars(strtoupper(
+                    mb_substr((string) ($user['last_name'] ?? ''), 0, 1) . mb_substr((string) ($user['first_name'] ?? ''), 0, 1)
+                ) ?: '··');
+                ?>
                 <div class="input-group">
-                    <input type="color" name="color" class="input-color"
-                           value="<?= htmlspecialchars($user['color'] ?? '#3B82F6') ?>">
+                    <span class="avatar-chip" id="userColorPreview" style="--chip-bg:<?= $userColor ?>"><?= $userInitials ?></span>
+                    <input type="color" name="color" class="input-color" id="userColorInput"
+                           value="<?= $userColor ?>"
+                           oninput="document.getElementById('userColorPreview').style.setProperty('--chip-bg', this.value)">
                     <span class="text-sm-muted"><?= __('planning_visible_hint') ?></span>
                 </div>
             </div>
+            <?php if (!$hasUnifiedRoleSelect): ?>
             <div class="form-group">
-                <label class="form-label"><?= __('global_role') ?></label>
-                <select name="is_admin" class="form-control">
-                    <option value="0" <?= empty($user['is_admin']) ? 'selected' : '' ?>><?= __('staff') ?></option>
-                    <option value="1" <?= !empty($user['is_admin']) ? 'selected' : '' ?>><?= __('admin') ?></option>
-                </select>
+                <label class="form-check">
+                    <input type="checkbox" name="is_admin" value="1" <?= !empty($user['is_admin']) ? 'checked' : '' ?>>
+                    <span><?= htmlspecialchars($owner_role_name) ?></span>
+                </label>
+                <p class="form-hint"><?= __('owner_account_hint') ?></p>
             </div>
+            <?php endif; ?>
         </div>
         <?php if ($mode === 'edit'): ?>
         <div class="form-row">
@@ -219,7 +238,7 @@ $section = function (string $titleKey, string $body) use ($as_cards): void {
             </div>
         </div>
         <?php endif; ?>
-    <?php $section('roles_appearance', ob_get_clean()); ?>
+    <?php $section('roles_appearance', ob_get_clean(), 'card--c2 card--r3 card--col-2'); ?>
 
     <?php if ($mode === 'create'): ?>
     <?php ob_start(); ?>
@@ -229,7 +248,7 @@ $section = function (string $titleKey, string $body) use ($as_cards): void {
             <!-- (ex. modale de création rapide depuis l'import : le store est déjà fixé -->
             <!-- via un champ caché du formulaire parent, sinon le nom "store_id" entrerait -->
             <!-- en collision avec ce select et écraserait la valeur transmise) -->
-            <div class="form-group">
+            <div class="form-group" id="userStoreGroup">
                 <label class="form-label"><?= __('store') ?></label>
                 <select name="store_id" class="form-control">
                     <option value="">— <?= __('none') ?> —</option>
@@ -239,17 +258,20 @@ $section = function (string $titleKey, string $body) use ($as_cards): void {
                 </select>
             </div>
             <?php endif; ?>
-            <?php if (!empty($assignable_roles)): ?>
+            <?php if ($hasUnifiedRoleSelect): ?>
             <div class="form-group">
-                <label class="form-label"><?= __('store_role') ?></label>
-                <select name="store_role_id" class="form-control">
-                    <?php foreach ($assignable_roles as $r): ?>
-                        <option value="<?= (int) $r['id'] ?>" <?= (int) $r['id'] === (int) $default_store_role_id ? 'selected' : '' ?>><?= htmlspecialchars($r['name'] ?? '') ?></option>
+                <label class="form-label"><?= __('role') ?></label>
+                <select name="role_id" class="form-control" id="userRoleSelect">
+                    <?php foreach ($all_roles as $r): ?>
+                        <option value="<?= (int) $r['id'] ?>"
+                                data-system="<?= !empty($r['is_system']) ? '1' : '0' ?>"
+                                <?= (int) $r['id'] === (int) $default_store_role_id ? 'selected' : '' ?>><?= htmlspecialchars($r['name'] ?? '') ?></option>
                     <?php endforeach; ?>
                 </select>
+                <p class="form-hint"><?= __('owner_role_no_store_hint') ?></p>
             </div>
             <?php endif; ?>
         </div>
-    <?php $section('assign_to_store', ob_get_clean()); ?>
+    <?php $section('assign_to_store', ob_get_clean(), 'card--c1 card--r4 card--full'); ?>
     <?php endif; ?>
 </div>
