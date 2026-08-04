@@ -3,6 +3,7 @@ use kintai\UI\Components\Badge;
 use kintai\UI\Components\Button;
 use kintai\UI\Components\Card;
 use kintai\UI\Components\Flash;
+use kintai\UI\Components\Modal;
 
 /**
  * @var string $mode
@@ -46,13 +47,19 @@ echo Flash::fromQuery('error', [
     </div>
 </div>
 
-<form method="POST" action="<?= htmlspecialchars($action) ?>" class="form-stack" novalidate>
+<form method="POST" action="<?= htmlspecialchars($action) ?>" id="userEditForm" class="form-stack" novalidate<?= $mode === 'edit' ? ' data-autosave="1"' : '' ?>>
     <?= csrf_field() ?>
     <?php $as_cards = true; include __DIR__ . '/../_partials/_form-user.php'; ?>
     <p class="form-error" data-required-error hidden><?= __('required_fields_missing') ?></p>
     <div class="form-actions">
         <?= Button::make($mode === 'edit' ? __('save') : __('new_user'))->primary()->submit()->render() ?>
         <a href="<?= route_url('admin.users') ?>" class="btn btn--ghost"><?= __('cancel') ?></a>
+        <?php if ($mode === 'edit'): ?>
+        <span class="autosave-status" data-autosave-status
+              data-saving-label="<?= htmlspecialchars(__('autosave_saving')) ?>"
+              data-saved-label="<?= htmlspecialchars(__('autosave_saved')) ?>"
+              data-error-label="<?= htmlspecialchars(__('autosave_error')) ?>"></span>
+        <?php endif; ?>
     </div>
 </form>
 <?php if ($mode === 'edit'): ?>
@@ -61,22 +68,54 @@ echo Flash::fromQuery('error', [
 </form>
 <?php endif; ?>
 <script src="<?= $BASE_URL ?>/assets/js/modules/required-fields-feedback.js"></script>
+<?php if ($mode === 'edit'): ?>
+<script src="<?= $BASE_URL ?>/assets/js/modules/user-form-autosave.js"></script>
+<?php endif; ?>
 
 <?php if ($mode === 'edit'): ?>
+<!-- Rôles et apparence + Stores + Cotisations sociales + Taux horaires personnalisés :
+     regroupés dans une seule box (demande explicite), séparés par des sous-en-têtes
+     card-header--border-top. Les champs de "roles_appearance" restent rattachés au
+     formulaire principal (id=userEditForm) via l'attribut form= posé dans _form-user.php. -->
 <div class="card card--mt">
-    <div class="card-header card-header--flex"><h3 class="card-title"><?= __('stores_plural') ?></h3></div>
+    <div class="card-header"><span><?= __('roles_appearance') ?></span></div>
+    <div class="card-body">
+        <?= $rolesAppearanceBody ?? '' ?>
+    </div>
+
+    <div class="card-header card-header--flex card-header--border-top"><h3 class="card-title"><?= __('stores_plural') ?></h3></div>
     <div class="table-wrap">
         <table class="data-table" data-mob-stack>
-            <thead><tr><th><?= __('store') ?></th><th><?= __('role') ?></th><th></th></tr></thead>
+            <thead><tr><th><?= __('store') ?></th><th><?= __('role') ?></th><th><?= __('social_deductions') ?></th><th><?= __('actions') ?></th></tr></thead>
             <tbody>
                 <?php if (empty($user_memberships)): ?>
-                    <tr><td colspan="3" class="td-center td-muted"><?= __('no_store_assigned') ?></td></tr>
+                    <tr><td colspan="4" class="td-center td-muted"><?= __('no_store_assigned') ?></td></tr>
                 <?php else: ?>
-                    <?php foreach ($user_memberships as $m): ?>
+                    <?php foreach ($user_memberships as $m):
+                        $sid = (int) $m['store_id'];
+                        $mid = (int) $m['id'];
+                        $ov = $m['ded_overrides'] ?? [];
+                        $storeDedEnabled = !empty($m['store_ded_settings']['enabled']);
+                        $subject = !empty($ov['subject_to_deductions']);
+                    ?>
                         <tr>
                             <td data-label="<?= htmlspecialchars(__('store')) ?>"><?= htmlspecialchars($m['store_name'] ?? '') ?></td>
                             <td data-label="<?= htmlspecialchars(__('role')) ?>"><?= Badge::make(htmlspecialchars($m['role_name'] ?? ($m['role'] ?? '—')))->variant(!empty($m['role_is_managing']) ? 'warning' : 'active')->render() ?></td>
-                            <td>
+                            <td data-label="<?= htmlspecialchars(__('social_deductions')) ?>">
+                                <?php if ($storeDedEnabled): ?>
+                                <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/members/<?= $mid ?>/deductions" class="form-inline">
+                                    <?= csrf_field() ?>
+                                    <input type="hidden" name="_redirect_to" value="<?= htmlspecialchars($BASE_URL . '/admin/users/' . (int) $user['id'] . '/edit?success=deductions_saved') ?>">
+                                    <label class="form-toggle" title="<?= htmlspecialchars(__('subject_to_deductions')) ?>">
+                                        <input type="checkbox" name="subject_to_deductions" value="1" class="form-toggle__input" <?= $subject ? 'checked' : '' ?> onchange="this.form.submit()">
+                                        <span class="form-toggle__track"></span>
+                                    </label>
+                                </form>
+                                <?php else: ?>
+                                    <?= Badge::make(__('deductions_disabled'))->variant('muted')->render() ?>
+                                <?php endif; ?>
+                            </td>
+                            <td data-label="<?= htmlspecialchars(__('actions')) ?>">
                                 <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= (int)$m['store_id'] ?>/members/<?= (int)$m['id'] ?>/delete" class="form-inline" onsubmit="return confirm('<?= __('confirm_remove_member') ?>')">
                                     <?= csrf_field() ?>
                                     <?= Button::make(__('remove'))->ghost()->sm()->submit()->render() ?>
@@ -90,71 +129,12 @@ echo Flash::fromQuery('error', [
     </div>
     <?php if (!empty($available_stores)): ?>
     <div class="card-body card-body--border-top">
-        <p class="section-subtitle"><?= __('assign_to_store') ?></p>
-        <form method="POST" action="<?= $BASE_URL ?>/admin/stores/0/members" id="addStoreForm" class="form-flex">
-            <?= csrf_field() ?>
-            <input type="hidden" name="user_id" value="<?= (int)$user['id'] ?>">
-            <input type="hidden" name="redirect_to" value="<?= $BASE_URL ?>/admin/users/<?= (int)$user['id'] ?>/edit?success=member_added">
-            <div class="form-group form-group--200">
-                <label class="form-label"><?= __('store') ?></label>
-                <select name="store_id_select" class="form-control" required onchange="document.getElementById('addStoreForm').action='<?= $BASE_URL ?>/admin/stores/' + this.value + '/members'">
-                    <option value="">— <?= __('select') ?> —</option>
-                    <?php foreach ($available_stores as $s): ?>
-                        <option value="<?= (int)$s['id'] ?>"><?= htmlspecialchars($s['name'] ?? '') ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="form-group form-group--160">
-                <label class="form-label"><?= __('role') ?></label>
-                <select name="role_id" class="form-control">
-                    <?php foreach ($assignable_roles as $r): ?>
-                        <option value="<?= (int) $r['id'] ?>" <?= (int) $r['id'] === (int) $default_store_role_id ? 'selected' : '' ?>><?= htmlspecialchars($r['name'] ?? '') ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <?= Button::make(__('add'))->primary()->sm()->submit()->render() ?>
-        </form>
+        <?= Button::make(__('assign_to_store'))->outline()->sm()->attrs(['onclick' => "openModal('assignStoreModal')"])->render() ?>
     </div>
     <?php endif; ?>
-</div>
 
-<?php if (!empty($user_memberships)): ?>
-<div class="card card--mt">
-    <div class="card-header"><span><?= __('social_deductions') ?></span></div>
-    <?php foreach ($user_memberships as $m):
-        $sid = (int) $m['store_id'];
-        $mid = (int) $m['id'];
-        $ov = $m['ded_overrides'] ?? [];
-        $storeEnabled = !empty($m['store_ded_settings']['enabled']);
-        $subject = !empty($ov['subject_to_deductions']);
-    ?>
-    <div class="ded-store-block">
-        <div class="ded-store-title">
-            <?= htmlspecialchars($m['store_name'] ?? '') ?>
-            <?php if (!$storeEnabled): ?><?= Badge::make(__('deductions_disabled'))->variant('muted')->render() ?><?php endif; ?>
-        </div>
-        <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/members/<?= $mid ?>/deductions">
-            <?= csrf_field() ?>
-            <input type="hidden" name="_redirect_to" value="<?= htmlspecialchars($BASE_URL . '/admin/users/' . (int) $user['id'] . '/edit?success=deductions_saved') ?>">
-            <div class="ded-check-row check-label">
-                <label class="form-toggle">
-                    <input type="checkbox" name="subject_to_deductions" value="1" class="form-toggle__input" <?= $subject ? 'checked' : '' ?> <?= !$storeEnabled ? 'disabled' : '' ?>>
-                    <span class="form-toggle__track"></span>
-                </label>
-                <span><?= __('subject_to_deductions') ?></span>
-            </div>
-            <div class="ded-save-row">
-                <?= Button::make(__('save'))->primary()->sm()->submit()->disabled(!$storeEnabled)->render() ?>
-            </div>
-        </form>
-    </div>
-    <?php endforeach; ?>
-</div>
-<?php endif; ?>
-
-<?php if (!empty($user_shift_types)): ?>
-<div class="card card--mt">
-    <div class="card-header"><span><?= __('custom_hourly_rates') ?><span class="text-sm text-dim"> <?= __('default_rate_hint') ?></span></span></div>
+    <?php if (!empty($user_shift_types)): ?>
+    <div class="card-header card-header--border-top"><span><?= __('custom_hourly_rates') ?><span class="text-sm text-dim"> <?= __('default_rate_hint') ?></span></span></div>
     <div class="table-wrap">
         <table class="data-table" data-mob-stack>
             <thead><tr><th><?= __('shift_types') ?></th><th><?= __('store') ?></th><th><?= __('base_rate') ?></th><th><?= __('custom_rate') ?></th><th><?= __('actions') ?></th></tr></thead>
@@ -190,7 +170,43 @@ echo Flash::fromQuery('error', [
             </tbody>
         </table>
     </div>
+    <?php endif; ?>
 </div>
+
+<?php if (!empty($available_stores)):
+    ob_start();
+    ?>
+    <form method="POST" action="<?= $BASE_URL ?>/admin/stores/0/members" id="addStoreForm" class="form-stack">
+        <?= csrf_field() ?>
+        <input type="hidden" name="user_id" value="<?= (int)$user['id'] ?>">
+        <input type="hidden" name="redirect_to" value="<?= $BASE_URL ?>/admin/users/<?= (int)$user['id'] ?>/edit?success=member_added">
+        <div class="form-group">
+            <label class="form-label"><?= __('store') ?></label>
+            <select name="store_id_select" class="form-control" required onchange="document.getElementById('addStoreForm').action='<?= $BASE_URL ?>/admin/stores/' + this.value + '/members'">
+                <option value="">— <?= __('select') ?> —</option>
+                <?php foreach ($available_stores as $s): ?>
+                    <option value="<?= (int)$s['id'] ?>"><?= htmlspecialchars($s['name'] ?? '') ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div class="form-group">
+            <label class="form-label"><?= __('role') ?></label>
+            <select name="role_id" class="form-control">
+                <?php foreach ($assignable_roles as $r): ?>
+                    <option value="<?= (int) $r['id'] ?>" <?= (int) $r['id'] === (int) $default_store_role_id ? 'selected' : '' ?>><?= htmlspecialchars($r['name'] ?? '') ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+    </form>
+    <?php
+    $assignStoreModalFooter = Button::make(__('add'))->primary()->submit()->attrs(['form' => 'addStoreForm'])->render()
+        . ' ' . Button::make(__('cancel'))->ghost()->attrs(['onclick' => "closeModal('assignStoreModal')"])->render();
+    echo Modal::make('assignStoreModal')
+        ->title(__('assign_to_store'))
+        ->body(ob_get_clean())
+        ->footer($assignStoreModalFooter)
+        ->render();
+    ?>
 <?php endif; ?>
 
 <div class="card card--mt">

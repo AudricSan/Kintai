@@ -36,6 +36,10 @@
     justify-content: space-between;
 }
 
+.card-header--border-top {
+    border-top: 1px solid var(--color-border);
+}
+
 .card-header-link {
     font-size: var(--text-xs);
     font-weight: 500;
