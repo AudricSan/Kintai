@@ -68,10 +68,11 @@ final class AppResetServiceTest extends TestCase
             'name' => 'Store A', 'code' => 'STA', 'created_at' => $now, 'updated_at' => $now,
         ]);
         $this->capsule->table('shift_types')->insert([
-            'store_id' => 1, 'name' => 'Matin', 'code' => 'M',
+            'name' => 'Matin', 'code' => 'M',
             'start_time' => '09:00', 'end_time' => '17:00',
             'created_at' => $now, 'updated_at' => $now,
         ]);
+        $this->capsule->table('shift_type_stores')->insert(['shift_type_id' => 1, 'store_id' => 1]);
         $this->capsule->table('shifts')->insert([
             'user_id' => 1, 'store_id' => 1, 'shift_type_id' => 1,
             'shift_date' => '2026-07-15', 'start_time' => '09:00', 'end_time' => '17:00',
@@ -90,6 +91,7 @@ final class AppResetServiceTest extends TestCase
         $this->assertSame(0, $this->capsule->table('shifts')->count(), 'shifts doit être vidé');
         $this->assertSame(0, $this->capsule->table('stores')->count(), 'stores doit être vidé par défaut (non coché)');
         $this->assertSame(0, $this->capsule->table('shift_types')->count(), 'shift_types doit être vidé par défaut (non coché)');
+        $this->assertSame(0, $this->capsule->table('shift_type_stores')->count(), 'shift_type_stores doit être vidé par défaut (non coché)');
     }
 
     public function testResetDataKeepsOptedInCategories(): void
@@ -98,6 +100,7 @@ final class AppResetServiceTest extends TestCase
 
         $this->assertSame(1, $this->capsule->table('stores')->count(), 'stores doit être conservé si coché');
         $this->assertSame(1, $this->capsule->table('shift_types')->count(), 'shift_types doit être conservé si coché');
+        $this->assertSame(1, $this->capsule->table('shift_type_stores')->count(), 'shift_type_stores (pivot) doit être conservé avec shift_types');
         $this->assertSame(0, $this->capsule->table('shifts')->count(), 'shifts reste vidé (donnée opérationnelle, pas une catégorie optionnelle)');
     }
 

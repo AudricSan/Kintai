@@ -163,22 +163,26 @@ final class GithubUpdateService
     /**
      * Parmi les releases GitHub disponibles, retient celles compatibles avec
      * le canal demandé :
-     * - release : uniquement les tags stables (ni "-alpha"/"-beta", ni prerelease GitHub) ;
-     * - beta    : les tags stables et "-beta" (exclut "-alpha") ;
-     * - alpha   : tous les tags, canal le plus permissif.
+     * - release : uniquement les releases publiées depuis `main`, non prerelease ;
+     * - beta    : les releases publiées depuis `main` ou `beta` (exclut `alpha`) ;
+     * - alpha   : toutes les releases, canal le plus permissif.
+     *
+     * Le canal se détermine via `target_commitish` (la branche source de la
+     * release, renseignée par .github/workflows/release.yml) et non plus en
+     * inspectant le tag : depuis le schéma de version X.Y.Z-<lettre de
+     * semaine><sous-version> (voir docs/releasing.md), le tag ne contient
+     * plus les mots "-alpha"/"-beta".
      */
     private function filterReleasesForChannel(array $releases, string $channel): array
     {
         return array_values(array_filter($releases, function (array $release) use ($channel): bool {
-            $tag = ltrim((string) ($release['tag_name'] ?? ''), 'v');
-            $isAlpha = str_contains($tag, '-alpha');
-            $isBeta = str_contains($tag, '-beta');
+            $branch = (string) ($release['target_commitish'] ?? '');
             $isPrerelease = (bool) ($release['prerelease'] ?? false);
 
             return match ($channel) {
                 'alpha' => true,
-                'beta'  => !$isAlpha,
-                default => !$isAlpha && !$isBeta && !$isPrerelease,
+                'beta'  => $branch !== 'alpha',
+                default => $branch === 'main' && !$isPrerelease,
             };
         }));
     }

@@ -65,16 +65,11 @@
             return $icons[$name] ?? '';
         };
         ?>
-        <?php include __DIR__ . '/partials/_sidebar.php'; ?>
-        <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+        <?php include __DIR__ . '/partials/_topbar.php'; ?>
 
-        <main class="main-content">
-            <?php include __DIR__ . '/partials/_topbar.php'; ?>
-
-            <div class="page-content">
-                <?= $content ?>
-            </div>
-        </main>
+        <div class="page-content">
+            <?= $content ?>
+        </div>
 
         <?php include __DIR__ . '/partials/_bottomnav.php'; ?>
     </div>
