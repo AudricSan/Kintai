@@ -50,6 +50,20 @@ final class AdminShiftController
     }
 
     /**
+     * Champ d'ajustement manuel (taux horaire ou minutes actives) : vide = null
+     * (calcul automatique), sinon la valeur saisie prime sur la résolution
+     * habituelle de ShiftWageCalculator::costOf().
+     */
+    private function postedOverride(Request $request, string $field): int|float|null
+    {
+        $raw = trim($request->post($field, ''));
+        if ($raw === '') {
+            return null;
+        }
+        return $field === 'net_minutes_override' ? (int) $raw : (float) $raw;
+    }
+
+    /**
      * Vrai si l'utilisateur a un congé approuvé couvrant la date de shift donnée.
      */
     private function hasApprovedTimeoffConflict(int $userId, string $shiftDate): bool
@@ -561,6 +575,8 @@ final class AdminShiftController
             'notes'            => $request->post('notes', '') ?: null,
             'is_open'          => $isOpen ? 1 : 0,
             'open_shift_note'  => $request->post('open_shift_note', '') ?: null,
+            'hourly_rate_override' => $this->postedOverride($request, 'hourly_rate_override'),
+            'net_minutes_override' => $this->postedOverride($request, 'net_minutes_override'),
         ]);
 
         $this->auditLogger->log($request, 'shift.created', 'shift', (int) ($saved['id'] ?? 0), [
@@ -683,6 +699,8 @@ final class AdminShiftController
             'notes'            => $request->post('notes', '') ?: null,
             'is_open'          => $isOpen ? 1 : 0,
             'open_shift_note'  => $request->post('open_shift_note', '') ?: null,
+            'hourly_rate_override' => $this->postedOverride($request, 'hourly_rate_override'),
+            'net_minutes_override' => $this->postedOverride($request, 'net_minutes_override'),
         ]));
 
         $this->auditLogger->logUpdate($request, 'shift.updated', 'shift', (int) $shift['id'], $old, $saved, [], $newStoreId);

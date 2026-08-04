@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Added
+- Shifts can now have a manual hourly rate and/or manual active (net) minutes, entered on the shift form under an optional "Manual adjustment" section — either overrides the usual automatic resolution (personal rate → shift type rate; `duration_minutes - pause_minutes`) wherever the shift's cost is used (salary report, staff list, employee dashboard). A pencil icon marks adjusted shifts in the shifts list and in a salary report's shift detail. Recalculating a salary report can never silently overwrite these — the recalculate button only re-sums shifts, which already carry their own adjustment.
+
 ### Fixed
 - The estimated salary shown for the same employee/month no longer differs between the admin salary report, the staff list, and the employee's own dashboard. Root cause: four independent, drifted implementations of "cost of a shift" — most notably, the salary report's create-form preset (`staff_total_payment`) read `shifts.estimated_salary`, a column only ever populated by the Excel import path, so it silently showed ~0 for any shift created or edited through the normal scheduling UI while the report's own detail page (which recomputes live) showed the correct amount. Also fixed along the way: the staff list's "Est. pay" column wasn't deducting break time at all (gross hours instead of net); the employee dashboard and staff list widgets didn't exclude soft-deleted shifts. All four call sites now share one `ShiftWageCalculator::costOf()` resolution (personal rate → shift type rate, `duration_minutes - pause_minutes`), consistently filtered on non-deleted shifts.
 
