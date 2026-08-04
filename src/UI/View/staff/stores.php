@@ -7,7 +7,7 @@ use kintai\UI\Components\Flash;
 /** @var array  $stores */
 /** @var string $sort */
 $sort ??= 'name_asc';
-$isOwner = !empty($auth_user['is_admin']);
+$can = $user_can ?? fn(string $k): bool => true;
 
 echo Flash::fromQuery('success', [
     'created' => __('store_created'),
@@ -18,7 +18,7 @@ echo Flash::fromQuery('success', [
 <div class="page-header">
     <h2 class="page-header__title"><?= __('stores_plural') ?> <span class="page-count">(<?= count($stores) ?>)</span></h2>
     <div class="page-header__actions">
-        <?= $isOwner ? Button::make('+ ' . __('new_store'))->primary()->link(route_url('admin.stores.create'))->render() : '' ?>
+        <?= $can('stores.create') ? Button::make('+ ' . __('new_store'))->primary()->link(route_url('admin.stores.create'))->render() : '' ?>
     </div>
 </div>
 
@@ -39,12 +39,14 @@ echo Flash::fromQuery('success', [
             ? Badge::make(__('active'))->active()->render()
             : Badge::make(__('inactive'))->inactive()->render()
     )
-    ->column(__('actions'), function($s) use ($BASE_URL, $isOwner) {
+    ->column(__('actions'), function($s) use ($BASE_URL, $can) {
         $id = (int) $s['id'];
         $html = '<div class="btn-group">';
-        $html .= Button::make('📊')->ghost()->sm()->link($BASE_URL . '/admin/stores/' . $id . '/stats')->attrs(['title' => __('statistics')])->render();
-        $html .= Button::make('👥')->ghost()->sm()->link($BASE_URL . '/admin/stores/' . $id . '/employee-report')->attrs(['title' => __('employee_report')])->render();
-        if ($isOwner) {
+        if ($can('payroll.view')) {
+            $html .= Button::make('📊')->ghost()->sm()->link($BASE_URL . '/admin/stores/' . $id . '/stats')->attrs(['title' => __('statistics')])->render();
+            $html .= Button::make('👥')->ghost()->sm()->link($BASE_URL . '/admin/stores/' . $id . '/employee-report')->attrs(['title' => __('employee_report')])->render();
+        }
+        if ($can('stores.delete')) {
             $html .= '<form method="POST" action="' . htmlspecialchars($BASE_URL . '/admin/stores/' . $id . '/delete') . '" class="form-inline" onsubmit="return confirm(\'' . __('confirm_delete_store') . '\')">';
             $html .= csrf_field();
             $html .= Button::make(__('delete'))->danger()->sm()->submit()->render();

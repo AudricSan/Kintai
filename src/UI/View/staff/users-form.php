@@ -25,6 +25,12 @@ $default_store_role_id ??= 0;
 $action = $mode === 'edit'
     ? $BASE_URL . '/admin/users/' . (int) $user['id'] . '/edit'
     : route_url('admin.users.create');
+$can = $user_can ?? fn(string $k): bool => true;
+// admin.users.edit n'exige que employees.view, mais la soumission réelle
+// (admin.users.update) exige employees.update : sans ce droit, le formulaire
+// reste consultable mais désactivé plutôt que de laisser l'utilisateur le
+// remplir pour se faire rejeter au clic sur "Enregistrer".
+$canEditUser = $mode !== 'edit' || $can('employees.update');
 
 echo Flash::fromQuery('success', [
     'updated'        => __('user_updated'),
@@ -45,13 +51,19 @@ echo Flash::fromQuery('error', [
     </div>
 </div>
 
+<?php if (!$canEditUser): ?>
+<div class="alert alert--warning"><?= __('readonly_no_permission_notice') ?></div>
+<?php endif; ?>
+
 <form method="POST" action="<?= htmlspecialchars($action) ?>" class="form-stack">
-    <?= csrf_field() ?>
-    <?php $as_cards = true; include __DIR__ . '/../_partials/_form-user.php'; ?>
-    <div class="form-actions">
-        <?= Button::make($mode === 'edit' ? __('save') : __('new_user'))->primary()->submit()->render() ?>
-        <a href="<?= route_url('admin.users') ?>" class="btn btn--ghost"><?= __('cancel') ?></a>
-    </div>
+    <fieldset<?= $canEditUser ? '' : ' disabled' ?> style="border:none;padding:0;margin:0">
+        <?= csrf_field() ?>
+        <?php $as_cards = true; include __DIR__ . '/../_partials/_form-user.php'; ?>
+        <div class="form-actions">
+            <?= Button::make($mode === 'edit' ? __('save') : __('new_user'))->primary()->submit()->render() ?>
+            <a href="<?= route_url('admin.users') ?>" class="btn btn--ghost"><?= __('cancel') ?></a>
+        </div>
+    </fieldset>
 </form>
 
 <?php if ($mode === 'edit'): ?>
@@ -69,10 +81,12 @@ echo Flash::fromQuery('error', [
                             <td data-label="<?= htmlspecialchars(__('store')) ?>"><?= htmlspecialchars($m['store_name'] ?? '') ?></td>
                             <td data-label="<?= htmlspecialchars(__('role')) ?>"><?= Badge::make(htmlspecialchars($m['role_name'] ?? ($m['role'] ?? '—')))->variant(!empty($m['role_is_managing']) ? 'warning' : 'active')->render() ?></td>
                             <td>
+                                <?php if ($can('employees.update')): ?>
                                 <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= (int)$m['store_id'] ?>/members/<?= (int)$m['id'] ?>/delete" class="form-inline" onsubmit="return confirm('<?= __('confirm_remove_member') ?>')">
                                     <?= csrf_field() ?>
                                     <?= Button::make(__('remove'))->ghost()->sm()->submit()->render() ?>
                                 </form>
+                                <?php endif; ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -80,7 +94,7 @@ echo Flash::fromQuery('error', [
             </tbody>
         </table>
     </div>
-    <?php if (!empty($available_stores)): ?>
+    <?php if (!empty($available_stores) && $can('employees.update')): ?>
     <div class="card-body card-body--border-top">
         <p class="section-subtitle"><?= __('assign_to_store') ?></p>
         <form method="POST" action="<?= $BASE_URL ?>/admin/stores/0/members" id="addStoreForm" class="form-flex">
@@ -110,7 +124,7 @@ echo Flash::fromQuery('error', [
     <?php endif; ?>
 </div>
 
-<?php if (!empty($user_memberships)): ?>
+<?php if (!empty($user_memberships) && $can('payroll.generate')): ?>
 <div class="card card--mt">
     <div class="card-header"><span><?= __('social_deductions') ?></span></div>
     <?php foreach ($user_memberships as $m):
@@ -161,6 +175,7 @@ echo Flash::fromQuery('error', [
                     <td data-label="<?= htmlspecialchars(__('base_rate')) ?>" class="text-sm"><?= $t['hourly_rate'] !== null ? number_format((float) $t['hourly_rate'], 2, '.', '') : '—' ?></td>
                     <td data-label="<?= htmlspecialchars(__('custom_rate')) ?>"><?= $currentRate !== null ? Badge::make(number_format((float) $currentRate['hourly_rate'], 2, '.', ''))->active()->render() : '<span class="text-sm text-muted">—</span>' ?></td>
                     <td data-label="<?= htmlspecialchars(__('actions')) ?>">
+                        <?php if ($can('employees.update')): ?>
                         <div class="btn-group">
                             <form method="POST" action="<?= $BASE_URL ?>/admin/users/<?= (int) $user['id'] ?>/rates" class="form-inline-flex">
                                 <?= csrf_field() ?>
@@ -176,6 +191,7 @@ echo Flash::fromQuery('error', [
                             </form>
                             <?php endif; ?>
                         </div>
+                        <?php endif; ?>
                     </td>
                 </tr>
                 <?php endforeach; ?>
@@ -192,8 +208,12 @@ echo Flash::fromQuery('error', [
             <?php foreach ($user_memberships as $m): ?>
                 <?php $sid = (int) $m['store_id']; ?>
                 <div class="btn-group mb-sm">
+                    <?php if ($can('documents.create')): ?>
                     <a href="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/reports/resignation/create?user_id=<?= (int)$user['id'] ?>" class="btn btn--danger btn--sm"><?= __('resign') ?> — <?= htmlspecialchars($m['store_name'] ?? '') ?></a>
+                    <?php endif; ?>
+                    <?php if ($can('payroll.generate')): ?>
                     <a href="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/reports/salary/create?user_id=<?= (int)$user['id'] ?>" class="btn btn--ghost btn--sm"><?= __('salary_report') ?> — <?= htmlspecialchars($m['store_name'] ?? '') ?></a>
+                    <?php endif; ?>
                 </div>
             <?php endforeach; ?>
         <?php else: ?>
