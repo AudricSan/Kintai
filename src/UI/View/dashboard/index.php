@@ -168,8 +168,9 @@ $_qnLinks = array_values(array_filter(
 <?php unset($_qnLinks, $_qn); ?>
 
 <?php
-$store_stats_rows   ??= [];
-$store_stats_period ??= 30;
+$store_stats_rows          ??= [];
+$store_stats_period        ??= 30;
+$store_stats_hours_by_week ??= [];
 ?>
 <?php if (admin_widget_on('store_stats_summary', $enabled_widgets) && $can('payroll.view') && $store_stats_rows !== []): ?>
 <!-- Aperçu statistiques -->
@@ -202,6 +203,18 @@ $store_stats_period ??= 30;
                 </div>
             </div>
         </div>
+        <?php if (count($store_stats_hours_by_week) > 1): ?>
+        <div class="card-body">
+            <div class="sstat-sublabel--strong"><?= __('weekly_hours_trend') ?></div>
+            <div class="sstat-canvas-wrap">
+                <canvas id="chart-weekly-hours"></canvas>
+            </div>
+        </div>
+        <script type="application/json" id="kintai-stats-data"><?= json_encode([
+            'hoursByWeek' => array_map('floatval', $store_stats_hours_by_week),
+        ], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?></script>
+        <script src="<?= $BASE_URL ?>/assets/js/modules/stats-charts.js"></script>
+        <?php endif; ?>
         <div class="card-body">
             <a href="<?= route_url('admin.stores.stats', ['id' => $_row['store_id']]) ?>" class="card-header-link"><?= __('statistics') ?> →</a>
         </div>
