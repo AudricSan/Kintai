@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Removed
+- The `remember_tokens` and `sessions` database tables, and the unused `remember_me` entry in `config/auth.php`: neither ever had any implementation (no Eloquent model, no repository, no read/write anywhere) — sessions are native PHP file-based sessions (see `SessionMiddleware`), and no "remember me" cookie flow was ever built against the config/table that existed for it.
+
 ### Changed
 - "Documentation" moved from a top-level topbar link into the user menu (next to language switcher and logout) to declutter the main nav bar. The redundant "Nav settings" topbar link was dropped — still reachable via Profile → "Nav" tab, unaffected.
 
