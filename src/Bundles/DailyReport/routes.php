@@ -5,6 +5,8 @@ declare(strict_types=1);
 use kintai\Core\Middleware\AuthMiddleware;
 use kintai\Core\Middleware\AdminMiddleware;
 use kintai\Core\Middleware\ApiAuthMiddleware;
+use kintai\Core\Middleware\ApiPermissionMiddleware;
+use kintai\Core\Middleware\PermissionMiddleware;
 use kintai\Bundles\DailyReport\Controllers\Web\DailyReportController;
 use kintai\Bundles\DailyReport\Controllers\Api\DailyReportController as ApiDailyReportController;
 
@@ -15,7 +17,7 @@ use kintai\Bundles\DailyReport\Controllers\Api\DailyReportController as ApiDaily
 // Daily Report — Routes Web (admin)
 // =============================================================================
 
-$router->get('/admin/daily-reports', [DailyReportController::class, 'indexAll'], middleware: [AuthMiddleware::class, AdminMiddleware::class], name: 'admin.daily_reports.all');
+$router->get('/admin/daily-reports', [DailyReportController::class, 'indexAll'], middleware: [AuthMiddleware::class, AdminMiddleware::class, PermissionMiddleware::class], name: 'admin.daily_reports.all');
 
 $router->group('/admin', function ($r) {
     $r->get('/stores/{id}/daily-reports',              [DailyReportController::class, 'index'],        name: 'admin.daily_reports.index');
@@ -32,7 +34,7 @@ $router->group('/admin', function ($r) {
     $r->get('/stores/{id}/daily-reports/{rid}/pdf',          [DailyReportController::class, 'previewPdf'],  name: 'admin.daily_reports.pdf');
     $r->get('/stores/{id}/daily-reports/{rid}/pdf/download', [DailyReportController::class, 'downloadPdf'], name: 'admin.daily_reports.pdf_download');
     $r->post('/stores/{id}/daily-reports/{rid}/delete',      [DailyReportController::class, 'destroy'],     name: 'admin.daily_reports.delete');
-}, middleware: [AuthMiddleware::class]);
+}, middleware: [AuthMiddleware::class, PermissionMiddleware::class]);
 
 // =============================================================================
 // Daily Report — Routes API
@@ -46,4 +48,4 @@ $router->group('/api/v1', function ($r) {
     $r->get('/daily-reports/{id}',           [ApiDailyReportController::class, 'show'],     name: 'api.v1.daily_reports.show');
     $r->put('/daily-reports/{id}',           [ApiDailyReportController::class, 'update'],   name: 'api.v1.daily_reports.update');
     $r->delete('/daily-reports/{id}',        [ApiDailyReportController::class, 'destroy'],  name: 'api.v1.daily_reports.destroy');
-}, middleware: [ApiAuthMiddleware::class]);
+}, middleware: [ApiAuthMiddleware::class, ApiPermissionMiddleware::class]);

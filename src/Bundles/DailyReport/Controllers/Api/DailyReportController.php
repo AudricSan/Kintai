@@ -7,12 +7,20 @@ namespace kintai\Bundles\DailyReport\Controllers\Api;
 use kintai\Core\Api\Paginator;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\DailyReportRepositoryInterface;
+use kintai\Core\Repositories\StoreRepositoryInterface;
+use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\Services\DailyReportPermissionService;
 
 final class DailyReportController
 {
-    public function __construct(private readonly DailyReportRepositoryInterface $reports) {}
+    public function __construct(
+        private readonly DailyReportRepositoryInterface $reports,
+        private readonly StoreRepositoryInterface $stores,
+        private readonly StoreUserRepositoryInterface $storeUsers,
+        private readonly DailyReportPermissionService $permissions,
+    ) {}
 
     /**
      * GET /api/v1/daily-reports
@@ -49,18 +57,32 @@ final class DailyReportController
     /** GET /api/v1/daily-reports/{id} */
     public function show(Request $request): Response
     {
-        $report = $this->reports->findById((int) $request->param('id'));
-        if ($report === null) {
-            throw new NotFoundException('Rapport introuvable.');
+        $report = $this->requireReport($request);
+        [$store, $membership] = $this->storeContext($request, (int) $report['store_id']);
+
+        $authUser = $request->getAttribute('auth_user') ?? [];
+        if (!$this->permissions->canViewReport($authUser, $store, $report, $membership)) {
+            return $this->forbidden();
         }
+
         return Response::json($report);
     }
 
     /** POST /api/v1/daily-reports */
     public function store(Request $request): Response
     {
-        $data = array_merge($request->json() ?? [], [
+        $body    = $request->json() ?? [];
+        $storeId = (int) ($body['store_id'] ?? 0);
+        [$store, $membership] = $this->storeContext($request, $storeId);
+
+        $authUser = $request->getAttribute('auth_user') ?? [];
+        if (!$this->permissions->canCreate($authUser, $store, $membership)) {
+            return $this->forbidden();
+        }
+
+        $data = array_merge($body, [
             'status'     => 'draft',
+            'author_id'  => $body['author_id'] ?? (int) ($authUser['id'] ?? 0),
             'created_at' => date('Y-m-d H:i:s'),
         ]);
         return Response::json($this->reports->save($data), 201);
@@ -69,12 +91,16 @@ final class DailyReportController
     /** PUT /api/v1/daily-reports/{id} */
     public function update(Request $request): Response
     {
-        $id = (int) $request->param('id');
-        if ($this->reports->findById($id) === null) {
-            throw new NotFoundException('Rapport introuvable.');
+        $report = $this->requireReport($request);
+        [$store, $membership] = $this->storeContext($request, (int) $report['store_id']);
+
+        $authUser = $request->getAttribute('auth_user') ?? [];
+        if (!$this->permissions->canEdit($authUser, $store, $report, $membership)) {
+            return $this->forbidden();
         }
+
         return Response::json($this->reports->save(array_merge($request->json() ?? [], [
-            'id'         => $id,
+            'id'         => (int) $report['id'],
             'updated_at' => date('Y-m-d H:i:s'),
         ])));
     }
@@ -82,21 +108,27 @@ final class DailyReportController
     /** DELETE /api/v1/daily-reports/{id} */
     public function destroy(Request $request): Response
     {
-        $id = (int) $request->param('id');
-        if ($this->reports->findById($id) === null) {
-            throw new NotFoundException('Rapport introuvable.');
+        $report = $this->requireReport($request);
+        [$store, $membership] = $this->storeContext($request, (int) $report['store_id']);
+
+        $authUser = $request->getAttribute('auth_user') ?? [];
+        if (!$this->permissions->canDelete($authUser, $store, $report, $membership)) {
+            return $this->forbidden();
         }
-        $this->reports->delete($id);
+
+        $this->reports->delete((int) $report['id']);
         return Response::empty();
     }
 
     /** POST /api/v1/daily-reports/{id}/submit */
     public function submit(Request $request): Response
     {
-        $id     = (int) $request->param('id');
-        $report = $this->reports->findById($id);
-        if ($report === null) {
-            throw new NotFoundException('Rapport introuvable.');
+        $report = $this->requireReport($request);
+        [$store, $membership] = $this->storeContext($request, (int) $report['store_id']);
+
+        $authUser = $request->getAttribute('auth_user') ?? [];
+        if (!$this->permissions->canSubmit($authUser, $store, $report, $membership)) {
+            return $this->forbidden();
         }
 
         return Response::json($this->reports->save(array_merge($report, [
@@ -109,14 +141,15 @@ final class DailyReportController
     /** POST /api/v1/daily-reports/{id}/validate */
     public function validate(Request $request): Response
     {
-        $id     = (int) $request->param('id');
-        $report = $this->reports->findById($id);
-        if ($report === null) {
-            throw new NotFoundException('Rapport introuvable.');
+        $report = $this->requireReport($request);
+        [$store, $membership] = $this->storeContext($request, (int) $report['store_id']);
+
+        $authUser = $request->getAttribute('auth_user') ?? [];
+        if (!$this->permissions->canValidate($authUser, $store, $report, $membership)) {
+            return $this->forbidden();
         }
 
-        $authUser = $request->getAttribute('auth_user');
-        $now      = date('Y-m-d H:i:s');
+        $now = date('Y-m-d H:i:s');
 
         return Response::json($this->reports->save(array_merge($report, [
             'status'       => 'validated',
@@ -124,5 +157,34 @@ final class DailyReportController
             'validated_at' => $now,
             'updated_at'   => $now,
         ])));
+    }
+
+    private function requireReport(Request $request): array
+    {
+        $report = $this->reports->findById((int) $request->param('id'));
+        if ($report === null) {
+            throw new NotFoundException('Rapport introuvable.');
+        }
+        return $report;
+    }
+
+    /** @return array{0: array, 1: array|null} [$store, $membership] */
+    private function storeContext(Request $request, int $storeId): array
+    {
+        $store = $this->stores->findById($storeId);
+        if ($store === null) {
+            throw new NotFoundException('Magasin introuvable.');
+        }
+        $authUser   = $request->getAttribute('auth_user') ?? [];
+        $membership = $this->storeUsers->findMembership($storeId, (int) ($authUser['id'] ?? 0));
+        return [$store, $membership];
+    }
+
+    private function forbidden(): Response
+    {
+        return Response::json([
+            'error' => 'Permission insuffisante pour cette action sur ce rapport.',
+            'code'  => 'FORBIDDEN',
+        ], 403);
     }
 }
