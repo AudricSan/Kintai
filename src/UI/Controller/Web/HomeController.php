@@ -7,6 +7,7 @@ namespace kintai\UI\Controller\Web;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
+use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\TimeclockRepositoryInterface;
 use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
@@ -35,6 +36,7 @@ final class HomeController
         private readonly ShiftSwapRequestRepositoryInterface $swapRequests,
         private readonly UserDashboardPrefsRepositoryInterface $dashboardPrefs,
         private readonly TimeclockRepositoryInterface $timeclocks,
+        private readonly StoreUserRepositoryInterface $storeUsers,
     ) {}
 
     public function index(Request $request): Response
@@ -42,11 +44,27 @@ final class HomeController
         $user  = $request->getAttribute('auth_user');
         $today = date('Y-m-d');
 
-        $allUsers    = $this->users->findAll();
-        $allStores   = $this->stores->findAll();
-        $shiftsToday = $this->shifts->findAllByDate($today);
-        $allTimeoff  = $this->timeoffRequests->findAll();
-        $allSwaps    = $this->swapRequests->findAll();
+        // Manager restreint à un sous-ensemble de stores (AdminMiddleware) : null = admin
+        // global, aucune restriction. Toutes les données du dashboard doivent être
+        // bornées à cette liste pour éviter de divulguer des données d'autres stores.
+        $managedStoreIds = $request->getAttribute('managed_store_ids');
+        $inScope = fn(int $storeId): bool => $managedStoreIds === null || in_array($storeId, $managedStoreIds, true);
+
+        $allUsers = $this->users->findAll();
+        if ($managedStoreIds !== null) {
+            $scopedUserIds = [];
+            foreach ($managedStoreIds as $sid) {
+                foreach ($this->storeUsers->findByStore($sid) as $su) {
+                    $scopedUserIds[(int) $su['user_id']] = true;
+                }
+            }
+            $allUsers = array_values(array_filter($allUsers, fn($u) => isset($scopedUserIds[(int) $u['id']])));
+        }
+
+        $allStores   = array_values(array_filter($this->stores->findAll(), fn($s) => $inScope((int) $s['id'])));
+        $shiftsToday = array_values(array_filter($this->shifts->findAllByDate($today), fn($s) => $inScope((int) ($s['store_id'] ?? 0))));
+        $allTimeoff  = array_values(array_filter($this->timeoffRequests->findAll(), fn($r) => $inScope((int) ($r['store_id'] ?? 0))));
+        $allSwaps    = array_values(array_filter($this->swapRequests->findAll(), fn($r) => $inScope((int) ($r['store_id'] ?? 0))));
 
         $pendingTimeoff = array_values(array_filter($allTimeoff, fn($r) => ($r['status'] ?? '') === 'pending'));
         $pendingSwaps   = array_values(array_filter($allSwaps,   fn($r) => ($r['status'] ?? '') === 'pending'));
@@ -94,7 +112,7 @@ final class HomeController
         });
 
         // Pointages actifs en ce moment
-        $allTimeclocks   = $this->timeclocks->findAll();
+        $allTimeclocks   = array_values(array_filter($this->timeclocks->findAll(), fn($tc) => $inScope((int) ($tc['store_id'] ?? 0))));
         $activeClocksNow = array_values(array_filter(
             $allTimeclocks,
             fn($tc) => ($tc['shift_date'] ?? '') === $today && empty($tc['clock_out_time'])

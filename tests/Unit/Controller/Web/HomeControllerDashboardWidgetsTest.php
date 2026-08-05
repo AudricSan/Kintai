@@ -7,6 +7,7 @@ namespace kintai\Tests\Unit\Controller\Web;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
+use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\TimeclockRepositoryInterface;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
@@ -49,6 +50,7 @@ final class HomeControllerDashboardWidgetsTest extends TestCase
         $swapRequests->method('findAll')->willReturn([]);
         $timeclocks = $this->createMock(TimeclockRepositoryInterface::class);
         $timeclocks->method('findAll')->willReturn([]);
+        $storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
 
         $this->controller = new HomeController(
             new ViewRenderer(sys_get_temp_dir()),
@@ -59,6 +61,7 @@ final class HomeControllerDashboardWidgetsTest extends TestCase
             $swapRequests,
             $this->dashboardPrefs,
             $timeclocks,
+            $storeUsers,
         );
     }
 
