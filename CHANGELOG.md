@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Added
+- The admin dashboard (`/`) now has a "Stats overview" widget (opt-in via "Customize", requires `payroll.view`) summarizing net hours, total cost and stability score over the last 30 days for the manager's own store, or a compact per-store comparison table (one row per managed store, each linking to its full stats page) for an Owner managing several stores — surfacing the existing, otherwise hard-to-find analytics (`StoreStatsService`, reachable before only via Stores → row menu → Statistics) directly where daily work happens. Built on `multiStoreComparison()`, an existing method that had never actually been called anywhere and was broken (it read nested keys like `$stats['planning']['totalShifts']` that don't exist in `storeStats()`'s flat return shape) — now fixed and covered by a test.
+
 ### Fixed
 - The admin dashboard (`/`) ignored `managed_store_ids` entirely: a manager restricted to a subset of stores saw organization-wide totals (all users, all stores, all shifts/timeoff/swaps/timeclocks) instead of just their own store's, and the quick-nav links ("Manage users", "Manage stores"...) were shown regardless of the manager's actual granted permission, leading to a 403 after clicking. `HomeController::index()` now scopes every dataset to `managed_store_ids` when the user isn't a global admin, and the dashboard's quick-nav links and widgets (shifts of the day, pending timeoff/swaps, active timeclocks) are gated by the same permission key their target route requires.
 
