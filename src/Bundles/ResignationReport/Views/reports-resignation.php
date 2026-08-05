@@ -176,8 +176,8 @@ echo $tbl
                 . ' data-delete-url="' . htmlspecialchars($baseStore . '/' . $rid . '/delete-permanently') . '"'
                 . ' data-employee-name="' . htmlspecialchars($r['employee_name'] ?? '') . '">' . __('delete') . '</button>';
         } else {
-            $html .= '<form method="POST" action="' . $baseStore . '/' . $rid . '/delete" class="form-inline">' . csrf_field()
-                . '<button type="submit" class="btn btn--danger btn--sm" onclick="return confirm(\'' . __('confirm_delete_resignation_report') . '\')">' . __('delete') . '</button></form>';
+            $html .= '<form method="POST" action="' . $baseStore . '/' . $rid . '/delete" class="form-inline" data-confirm="' . htmlspecialchars(__('confirm_delete_resignation_report'), ENT_QUOTES) . '">' . csrf_field()
+                . '<button type="submit" class="btn btn--danger btn--sm">' . __('delete') . '</button></form>';
         }
         $html .= Button::make('PDF')->ghost()->sm()->link($baseStore . '/' . $rid . '/pdf')->attrs(['target' => '_blank'])->render();
         $html .= '</div>';

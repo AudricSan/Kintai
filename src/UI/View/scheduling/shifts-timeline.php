@@ -487,7 +487,7 @@ ob_start();
             <?php if ($_canManage): ?>
             <?= Button::make(__('edit'))->primary()->sm()->attrs(['id' => 'sd-edit-link', 'href' => '#'])->render() ?>
             <form id="sd-delete-form" method="POST" action="#" class="form-inline"
-                  onsubmit="return confirm('<?= __('confirm_delete_shift_permanently') ?>')">
+                  data-confirm="<?= htmlspecialchars(__('confirm_delete_shift_permanently'), ENT_QUOTES) ?>">
                 <?= csrf_field() ?>
                 <?= Button::make(__('delete'))->danger()->sm()->attrs(['type' => 'submit'])->render() ?>
             </form>

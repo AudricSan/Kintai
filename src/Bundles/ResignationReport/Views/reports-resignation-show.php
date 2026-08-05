@@ -22,7 +22,7 @@ $base = $BASE_URL . '/admin/stores/' . $storeId . '/reports/resignation';
             data-delete-url="<?= htmlspecialchars($base . '/' . $reportId . '/delete-permanently') ?>"
             data-employee-name="<?= htmlspecialchars($report['employee_name'] ?? '') ?>"><?= __('delete') ?></button>
         <?php else: ?>
-        <form method="POST" action="<?= $base . '/' . $reportId . '/delete' ?>" class="form-inline" onsubmit="return confirm('<?= __('confirm_delete_resignation_report') ?>')">
+        <form method="POST" action="<?= $base . '/' . $reportId . '/delete' ?>" class="form-inline" data-confirm="<?= htmlspecialchars(__('confirm_delete_resignation_report'), ENT_QUOTES) ?>">
             <?= csrf_field() ?>
             <?= Button::make(__('delete'))->danger()->sm()->submit()->render() ?>
         </form>
