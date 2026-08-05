@@ -14,6 +14,7 @@ use kintai\UI\Components\Modal;
  * @var string      $releaseNotesCondensed
  * @var string      $repoReleasesUrl
  * @var string      $BASE_URL
+ * @var array{type: 'success'|'danger', text: string}|null $flash
  */
 
 /** Notes de la dernière release, condensées à 1 point par catégorie côté contrôleur, rendues depuis le Markdown (titres, listes). */
@@ -23,8 +24,8 @@ $action = route_url('admin.update');
 $channelAction = route_url('admin.update.channel');
 $channels = ['release' => __('update_channel_release'), 'beta' => __('update_channel_beta'), 'alpha' => __('update_channel_alpha')];
 ?>
-<?php $flashVal = $flash ?? ''; if ($flashVal !== ''): ?>
-    <div class="alert alert--info mb-sm"><?= htmlspecialchars(urldecode($flashVal)) ?></div>
+<?php if ($flash !== null): ?>
+    <div class="alert alert--<?= $flash['type'] ?> mb-sm"><?= htmlspecialchars($flash['text']) ?></div>
 <?php endif; ?>
 <div class="page-header">
     <h2 class="page-header__title"><?= __('update_title') ?></h2>

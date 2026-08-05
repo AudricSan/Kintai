@@ -76,7 +76,10 @@
             req.onsuccess = function () {
                 var ops = req.result || [];
                 if (ops.length === 0) { db.close(); return; }
-                var tx2 = db.transaction('pending', 'readwrite');
+
+                var remaining  = ops.length;
+                var hadFailure = false;
+
                 ops.forEach(function (op) {
                     fetch(op.url, {
                         method:  'POST',
@@ -87,11 +90,31 @@
                         },
                         credentials: 'same-origin',
                         body:    JSON.stringify(op.body),
+                    }).then(function (r) {
+                        // Une transaction IndexedDB ouverte avant ce fetch (async) aurait déjà
+                        // auto-commit au moment où ce callback s'exécute : une nouvelle transaction
+                        // par suppression, ouverte ici, est la seule façon fiable de la faire aboutir.
+                        // r.ok=false (ex. token CSRF expiré, shift supprimé entre-temps) : on NE
+                        // supprime PAS l'opération, sinon l'action hors ligne serait perdue en
+                        // silence sans jamais avoir été réellement enregistrée côté serveur.
+                        if (r.ok) {
+                            db.transaction('pending', 'readwrite').objectStore('pending').delete(op.id);
+                        } else {
+                            hadFailure = true;
+                        }
+                    }).catch(function () {
+                        hadFailure = true; // réseau à nouveau indisponible : reste en file, nouvel essai plus tard
                     }).then(function () {
-                        tx2.objectStore('pending').delete(op.id);
-                    }).catch(function () {});
+                        remaining -= 1;
+                        if (remaining > 0) return;
+                        db.close();
+                        if (hadFailure) {
+                            showMessage('Une action hors ligne n\'a pas pu être synchronisée. Nouvelle tentative au prochain chargement de la page.', 'danger');
+                        } else {
+                            location.reload();
+                        }
+                    });
                 });
-                tx2.oncomplete = function () { db.close(); location.reload(); };
             };
         });
     }

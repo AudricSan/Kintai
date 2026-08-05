@@ -18,6 +18,7 @@ use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\Log;
 use kintai\UI\ViewRenderer;
 use kintai\UI\Controller\Web\HasAdminAccess;
 use kintai\Core\Services\ShiftServiceInterface;
@@ -586,13 +587,19 @@ final class AdminShiftController
             'end' => $endTime,
         ], $storeId);
 
+        // Le shift est déjà sauvegardé (et audité) à ce stade : un échec de notification
+        // ne doit pas transformer une action réussie en 500 générique côté utilisateur.
         if (!$isOpen && $uid > 0) {
-            $this->notifs->notify(
-                $uid,
-                'shift_assigned',
-                'Un shift a été ajouté à votre planning le ' . $shiftDate . '.',
-                (int) ($saved['id'] ?? 0)
-            );
+            try {
+                $this->notifs->notify(
+                    $uid,
+                    'shift_assigned',
+                    'Un shift a été ajouté à votre planning le ' . $shiftDate . '.',
+                    (int) ($saved['id'] ?? 0)
+                );
+            } catch (\Throwable $e) {
+                Log::warning('shift_notify_failed', ['shift_id' => (int) ($saved['id'] ?? 0), 'user_id' => $uid, 'error' => $e->getMessage()]);
+            }
         }
 
         $redirectTo = trim($request->post('redirect_to', ''));
@@ -708,12 +715,16 @@ final class AdminShiftController
         $newUid    = $isOpen ? 0 : (int) $request->post('user_id', $shift['user_id']);
         $prevUid   = (int) ($shift['user_id'] ?? 0);
         if (!$isOpen && $newUid > 0 && $newUid !== $prevUid) {
-            $this->notifs->notify(
-                $newUid,
-                'shift_assigned',
-                'Un shift a été ajouté à votre planning le ' . $shiftDate . '.',
-                (int) $shift['id']
-            );
+            try {
+                $this->notifs->notify(
+                    $newUid,
+                    'shift_assigned',
+                    'Un shift a été ajouté à votre planning le ' . $shiftDate . '.',
+                    (int) $shift['id']
+                );
+            } catch (\Throwable $e) {
+                Log::warning('shift_notify_failed', ['shift_id' => (int) $shift['id'], 'user_id' => $newUid, 'error' => $e->getMessage()]);
+            }
         }
 
         $redirectTo = trim($request->post('redirect_to', ''));

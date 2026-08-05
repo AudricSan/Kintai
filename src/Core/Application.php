@@ -188,9 +188,11 @@ final class Application
         // Unexpected error
         $this->logError($e);
 
+        $message = __('error_500_message');
+
         return $wantsJson
-            ? Response::json(['error' => 'Internal Server Error'], 500)
-            : $this->renderError(500, 'Internal Server Error', $request);
+            ? Response::json(['error' => $message], 500)
+            : $this->renderError(500, $message, $request);
     }
 
     private function renderError(int $status, string $message, Request $request): Response

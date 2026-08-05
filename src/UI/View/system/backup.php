@@ -4,14 +4,15 @@ use kintai\UI\Components\Card;
 use kintai\UI\Components\Table;
 
 /**
- * @var array       $backups
- * @var string      $BASE_URL
+ * @var array                                        $backups
+ * @var string                                        $BASE_URL
+ * @var array{type: 'success'|'danger', text: string}|null $flash
  */
 
 $action = route_url('admin.backup');
 ?>
-<?php $flashVal = $flash ?? ''; if ($flashVal !== ''): ?>
-    <div class="alert alert--info mb-sm"><?= htmlspecialchars(urldecode($flashVal)) ?></div>
+<?php if ($flash !== null): ?>
+    <div class="alert alert--<?= $flash['type'] ?> mb-sm"><?= htmlspecialchars($flash['text']) ?></div>
 <?php endif; ?>
 <div class="page-header">
     <h2 class="page-header__title"><?= __('backup_title') ?></h2>
