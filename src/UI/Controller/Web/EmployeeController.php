@@ -17,6 +17,7 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserNavPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
@@ -56,6 +57,7 @@ final class EmployeeController
         private readonly UserDashboardPrefsRepositoryInterface $dashboardPrefs,
         private readonly NotificationService $notifs,
         private readonly UserNavPrefsRepositoryInterface $navPrefs,
+        private readonly PermissionService $permissions,
     ) {}
 
     // -------------------------------------------------------------------------
@@ -368,17 +370,6 @@ final class EmployeeController
         $memberships = $this->storeUsers->findByUser($userId);
         $myStoreIds  = array_values(array_unique(array_map(fn($m) => (int) $m['store_id'], $memberships)));
 
-        // Peut gérer les shifts (admin global ou manager/admin d'au moins un store)
-        $canManage = !empty($user['is_admin']);
-        if (!$canManage) {
-            foreach ($memberships as $m) {
-                if (in_array($m['role'] ?? '', ['admin', 'manager'], true)) {
-                    $canManage = true;
-                    break;
-                }
-            }
-        }
-
         $storesList = [];
         $storesMap  = [];
         foreach ($myStoreIds as $sid) {
@@ -394,6 +385,10 @@ final class EmployeeController
         if (!in_array($filterStoreId, $myStoreIds, true)) {
             $filterStoreId = $myStoreIds[0] ?? 0;
         }
+
+        // Peut gérer les shifts du store affiché (Owner, ou RBAC accordant shifts.update sur ce store)
+        $canManage = !empty($user['is_admin'])
+            || $this->permissions->can($user, 'shifts.update', $filterStoreId > 0 ? $filterStoreId : null);
 
         $usersMap      = [];
         $userColorMap  = [];

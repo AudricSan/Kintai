@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\Bundles\ResignationReport\Controllers\Web;
 
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Repositories\ResignationReportRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
@@ -43,6 +44,7 @@ final class AdminResignationReportController
         private readonly ResignationReportRepositoryInterface $resignationReports,
         private readonly StoreUserRepositoryInterface $storeUsers,
         private readonly AuditLogger $auditLogger,
+        private readonly PermissionService $permissions,
     ) {}
 
     public function allResignationReports(Request $request): Response
