@@ -982,17 +982,18 @@ final class StoreStatsService implements StoreStatsServiceInterface
             } catch (\Throwable) {
                 continue;
             }
+            $store = $this->stores->findById($storeId);
             $rows[] = [
                 'store_id'       => $storeId,
-                'store_name'     => $stats['store']['name'] ?? '',
-                'total_shifts'   => $stats['planning']['totalShifts'] ?? 0,
-                'total_hours'    => round(($stats['planning']['totalMinutes'] ?? 0) / 60, 1),
-                'avg_hourly'     => $stats['financial']['avgHourlyCost'] ?? 0,
-                'total_cost'     => $stats['financial']['totalCost'] ?? 0,
-                'employee_count' => $stats['hr']['activeEmployees'] ?? 0,
-                'stability'      => $stats['stability']['stabilityScore'] ?? null,
-                'efficiency'     => $stats['efficiency']['efficiencyScore'] ?? null,
-                'equity'         => $stats['equity']['equityScore'] ?? null,
+                'store_name'     => $store['name'] ?? ('#' . $storeId),
+                'total_shifts'   => $stats['n'] ?? 0,
+                'total_hours'    => $stats['totalNetHours'] ?? 0,
+                'avg_hourly'     => $stats['avgCostPerHour'] ?? 0,
+                'total_cost'     => $stats['totalCost'] ?? 0,
+                'employee_count' => count($stats['memberIds'] ?? []),
+                'stability'      => $stats['stabilityScore'] ?? null,
+                'efficiency'     => $stats['efficiencyScore'] ?? null,
+                'equity'         => $stats['equityScore'] ?? null,
             ];
         }
         return $rows;
