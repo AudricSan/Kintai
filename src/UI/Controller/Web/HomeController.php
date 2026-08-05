@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace kintai\UI\Controller\Web;
 
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
+use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\TimeclockRepositoryInterface;
 use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\Services\StoreStatsServiceInterface;
 use kintai\UI\ViewRenderer;
 
 final class HomeController
@@ -20,11 +23,15 @@ final class HomeController
     public const ADMIN_WIDGETS = [
         'kpi_counters',
         'quick_nav',
+        'store_stats_summary',
         'shifts_today',
         'pending_timeoff',
         'pending_swaps',
         'timeclocks_today',
     ];
+
+    /** Fenêtre glissante (jours) du widget "Aperçu statistiques", alignée sur la période "30 jours" des pages analytics. */
+    private const STATS_WIDGET_PERIOD_DAYS = 30;
 
     public function __construct(
         private readonly ViewRenderer $view,
@@ -35,6 +42,9 @@ final class HomeController
         private readonly ShiftSwapRequestRepositoryInterface $swapRequests,
         private readonly UserDashboardPrefsRepositoryInterface $dashboardPrefs,
         private readonly TimeclockRepositoryInterface $timeclocks,
+        private readonly StoreUserRepositoryInterface $storeUsers,
+        private readonly StoreStatsServiceInterface $storeStats,
+        private readonly PermissionService $permissions,
     ) {}
 
     public function index(Request $request): Response
@@ -42,11 +52,27 @@ final class HomeController
         $user  = $request->getAttribute('auth_user');
         $today = date('Y-m-d');
 
-        $allUsers    = $this->users->findAll();
-        $allStores   = $this->stores->findAll();
-        $shiftsToday = $this->shifts->findAllByDate($today);
-        $allTimeoff  = $this->timeoffRequests->findAll();
-        $allSwaps    = $this->swapRequests->findAll();
+        // Manager restreint à un sous-ensemble de stores (AdminMiddleware) : null = admin
+        // global, aucune restriction. Toutes les données du dashboard doivent être
+        // bornées à cette liste pour éviter de divulguer des données d'autres stores.
+        $managedStoreIds = $request->getAttribute('managed_store_ids');
+        $inScope = fn(int $storeId): bool => $managedStoreIds === null || in_array($storeId, $managedStoreIds, true);
+
+        $allUsers = $this->users->findAll();
+        if ($managedStoreIds !== null) {
+            $scopedUserIds = [];
+            foreach ($managedStoreIds as $sid) {
+                foreach ($this->storeUsers->findByStore($sid) as $su) {
+                    $scopedUserIds[(int) $su['user_id']] = true;
+                }
+            }
+            $allUsers = array_values(array_filter($allUsers, fn($u) => isset($scopedUserIds[(int) $u['id']])));
+        }
+
+        $allStores   = array_values(array_filter($this->stores->findAll(), fn($s) => $inScope((int) $s['id'])));
+        $shiftsToday = array_values(array_filter($this->shifts->findAllByDate($today), fn($s) => $inScope((int) ($s['store_id'] ?? 0))));
+        $allTimeoff  = array_values(array_filter($this->timeoffRequests->findAll(), fn($r) => $inScope((int) ($r['store_id'] ?? 0))));
+        $allSwaps    = array_values(array_filter($this->swapRequests->findAll(), fn($r) => $inScope((int) ($r['store_id'] ?? 0))));
 
         $pendingTimeoff = array_values(array_filter($allTimeoff, fn($r) => ($r['status'] ?? '') === 'pending'));
         $pendingSwaps   = array_values(array_filter($allSwaps,   fn($r) => ($r['status'] ?? '') === 'pending'));
@@ -94,7 +120,7 @@ final class HomeController
         });
 
         // Pointages actifs en ce moment
-        $allTimeclocks   = $this->timeclocks->findAll();
+        $allTimeclocks   = array_values(array_filter($this->timeclocks->findAll(), fn($tc) => $inScope((int) ($tc['store_id'] ?? 0))));
         $activeClocksNow = array_values(array_filter(
             $allTimeclocks,
             fn($tc) => ($tc['shift_date'] ?? '') === $today && empty($tc['clock_out_time'])
@@ -113,6 +139,16 @@ final class HomeController
                 : self::ADMIN_WIDGETS
         ));
 
+        // Aperçu statistiques (heures, coût, scores) : même permission que les pages analytics
+        // complètes (admin.stores.stats), calculé uniquement si le widget est actif pour éviter
+        // le coût de multiStoreComparison() sur chaque chargement du dashboard.
+        $canViewStats = !empty($user['is_admin']) || $this->permissions->can($user, 'payroll.view', null);
+        $storeStatsRows = [];
+        if ($canViewStats && array_key_exists('store_stats_summary', $enabledWidgets)) {
+            $statsStoreIds  = $managedStoreIds ?? array_column($allStores, 'id');
+            $storeStatsRows = $this->storeStats->multiStoreComparison($statsStoreIds, self::STATS_WIDGET_PERIOD_DAYS);
+        }
+
         return Response::html($this->view->render('dashboard.index', [
             'title'              => 'Dashboard',
             'stats'              => [
@@ -127,6 +163,8 @@ final class HomeController
             'users_map'          => $usersMap,
             'sort'               => $sort,
             'active_clocks_now'  => $activeClocksNow,
+            'store_stats_rows'   => $storeStatsRows,
+            'store_stats_period' => self::STATS_WIDGET_PERIOD_DAYS,
 
             'enabled_widgets'    => $enabledWidgets,
             'all_widgets'        => self::ADMIN_WIDGETS,
