@@ -87,7 +87,7 @@ echo Flash::fromQuery('success', [
         }
 
         if ($status === 'accepted') {
-            return '<form method="POST" action="' . htmlspecialchars($BASE_URL . '/admin/swap-requests/' . $id . '/delete') . '" class="form-inline" onsubmit="return confirm(\'' . __('confirm_delete_swap') . '\')">' . csrf_field()
+            return '<form method="POST" action="' . htmlspecialchars($BASE_URL . '/admin/swap-requests/' . $id . '/delete') . '" class="form-inline" data-confirm="' . htmlspecialchars(__('confirm_delete_swap'), ENT_QUOTES) . '">' . csrf_field()
                 . Button::make(__('delete'))->danger()->sm()->submit()->render() . '</form>';
         }
 

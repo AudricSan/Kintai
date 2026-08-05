@@ -1,4 +1,6 @@
 <?php
+use kintai\UI\Components\Badge;
+
 /**
  * @var array  $store
  * @var array  $reports
@@ -17,9 +19,9 @@ $canCreate = $permissions->canCreate($authUser, $store, $membership);
 $currency  = currency_symbol($store['currency'] ?? 'JPY', store_currency_style($store));
 
 $statusLabels = [
-    'draft'     => ['label' => __('dr_status_draft'),     'class' => 'badge--secondary'],
-    'submitted' => ['label' => __('dr_status_submitted'), 'class' => 'badge--warning'],
-    'validated' => ['label' => __('dr_status_validated'), 'class' => 'badge--active'],
+    'draft'     => __('dr_status_draft'),
+    'submitted' => __('dr_status_submitted'),
+    'validated' => __('dr_status_validated'),
 ];
 
 $cumulativeMode = $settings['cumulative_mode'] ?? 'per_day';
@@ -98,7 +100,7 @@ if ($canCreate && ($settings['enabled'] ?? true) && $_currentTime >= $_reminderT
                     <option value=""><?= __('all') ?></option>
                     <?php foreach (['draft','submitted','validated'] as $s): ?>
                         <option value="<?= $s ?>" <?= $status === $s ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($statusLabels[$s]['label']) ?>
+                            <?= htmlspecialchars($statusLabels[$s]) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -152,7 +154,7 @@ if ($canCreate && ($settings['enabled'] ?? true) && $_currentTime >= $_reminderT
                         <?php
                         $rid     = (int) $report['id'];
                         $st      = $report['status'] ?? 'draft';
-                        $badge   = $statusLabels[$st] ?? ['label' => $st, 'class' => 'badge--secondary'];
+                        $badgeHtml = Badge::make($statusLabels[$st] ?? $st)->status($st)->render();
                         $author  = $report['author'] ?? [];
                         $authorName = trim(($author['last_name'] ?? '') . ' ' . ($author['first_name'] ?? ''))
                             ?: ($author['email'] ?? '—');
@@ -168,7 +170,7 @@ if ($canCreate && ($settings['enabled'] ?? true) && $_currentTime >= $_reminderT
                             <td data-label="<?= $drLaborLabel ?>" class="text-right"><?= drFormatNum($cumulativeMode === 'cumulative_system' ? ($cumulativeTotals[$rid]['labor_cost'] ?? $report['labor_cost']) : $report['labor_cost']) ?></td>
                             <td data-label="<?= $drWasteLabel ?>" class="text-right"><?= drFormatNum($cumulativeMode === 'cumulative_system' ? ($cumulativeTotals[$rid]['waste_total'] ?? $report['waste_total']) : $report['waste_total']) ?></td>
                             <td data-label="<?= htmlspecialchars(__('status')) ?>">
-                                <span class="badge <?= $badge['class'] ?>"><?= $badge['label'] ?></span>
+                                <?= $badgeHtml ?>
                             </td>
                             <td data-label="PDF">
                                 <?php if (($report['status'] ?? '') === 'validated'): ?>
@@ -180,7 +182,7 @@ if ($canCreate && ($settings['enabled'] ?? true) && $_currentTime >= $_reminderT
                             </td>
                             <td>
                                 <?php if ($isAdmin): ?>
-                                    <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= $storeId ?>/daily-reports/<?= $rid ?>/delete" class="form-inline" onsubmit="return confirm('<?= __('dr_confirm_delete') ?>')">
+                                    <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= $storeId ?>/daily-reports/<?= $rid ?>/delete" class="form-inline" data-confirm="<?= htmlspecialchars(__('dr_confirm_delete'), ENT_QUOTES) ?>">
                                         <?= csrf_field() ?>
                                         <button type="submit" class="btn btn--danger btn--xs" onclick="event.stopPropagation()"><?= __('delete') ?></button>
                                     </form>

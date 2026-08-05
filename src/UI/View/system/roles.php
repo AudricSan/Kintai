@@ -59,7 +59,7 @@ echo Flash::fromQuery('error', [
                         <a href="<?= route_url('admin.roles.edit', ['id' => $rid]) ?>" class="btn btn--ghost btn--xs"><?= __('edit') ?></a>
                         <?php if (empty($role['is_system'])): ?>
                         <form method="POST" action="<?= route_url('admin.roles.delete', ['id' => $rid]) ?>"
-                              class="d-inline" onsubmit="return confirm('<?= htmlspecialchars(__('role_delete_confirm'), ENT_QUOTES) ?>')">
+                              class="d-inline" data-confirm="<?= htmlspecialchars(__('role_delete_confirm'), ENT_QUOTES) ?>">
                             <?= csrf_field() ?>
                             <?= Button::make(__('delete'))->danger()->xs()->submit()->render() ?>
                         </form>

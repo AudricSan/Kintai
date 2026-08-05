@@ -204,7 +204,7 @@ echo Flash::fromQuery('success', [
             $html = '<div class="btn-group">';
             $html .= Button::make(__('view'))->ghost()->sm()->link($base)->render();
             $html .= Button::make(__('edit'))->ghost()->sm()->link($base . '/edit')->render();
-            $html .= '<form method="POST" action="' . htmlspecialchars($base . '/delete') . '" class="form-inline" onsubmit="return confirm(\'' . __('sr_confirm_delete') . '\')">';
+            $html .= '<form method="POST" action="' . htmlspecialchars($base . '/delete') . '" class="form-inline" data-confirm="' . htmlspecialchars(__('sr_confirm_delete'), ENT_QUOTES) . '">';
             $html .= csrf_field();
             $html .= Button::make(__('delete'))->danger()->sm()->submit()->render();
             $html .= '</form>';
