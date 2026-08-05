@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\UI\Controller\Web;
 
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
@@ -14,6 +15,7 @@ use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\Services\StoreStatsServiceInterface;
 use kintai\UI\ViewRenderer;
 
 final class HomeController
@@ -21,11 +23,15 @@ final class HomeController
     public const ADMIN_WIDGETS = [
         'kpi_counters',
         'quick_nav',
+        'store_stats_summary',
         'shifts_today',
         'pending_timeoff',
         'pending_swaps',
         'timeclocks_today',
     ];
+
+    /** Fenêtre glissante (jours) du widget "Aperçu statistiques", alignée sur la période "30 jours" des pages analytics. */
+    private const STATS_WIDGET_PERIOD_DAYS = 30;
 
     public function __construct(
         private readonly ViewRenderer $view,
@@ -37,6 +43,8 @@ final class HomeController
         private readonly UserDashboardPrefsRepositoryInterface $dashboardPrefs,
         private readonly TimeclockRepositoryInterface $timeclocks,
         private readonly StoreUserRepositoryInterface $storeUsers,
+        private readonly StoreStatsServiceInterface $storeStats,
+        private readonly PermissionService $permissions,
     ) {}
 
     public function index(Request $request): Response
@@ -131,6 +139,16 @@ final class HomeController
                 : self::ADMIN_WIDGETS
         ));
 
+        // Aperçu statistiques (heures, coût, scores) : même permission que les pages analytics
+        // complètes (admin.stores.stats), calculé uniquement si le widget est actif pour éviter
+        // le coût de multiStoreComparison() sur chaque chargement du dashboard.
+        $canViewStats = !empty($user['is_admin']) || $this->permissions->can($user, 'payroll.view', null);
+        $storeStatsRows = [];
+        if ($canViewStats && array_key_exists('store_stats_summary', $enabledWidgets)) {
+            $statsStoreIds  = $managedStoreIds ?? array_column($allStores, 'id');
+            $storeStatsRows = $this->storeStats->multiStoreComparison($statsStoreIds, self::STATS_WIDGET_PERIOD_DAYS);
+        }
+
         return Response::html($this->view->render('dashboard.index', [
             'title'              => 'Dashboard',
             'stats'              => [
@@ -145,6 +163,8 @@ final class HomeController
             'users_map'          => $usersMap,
             'sort'               => $sort,
             'active_clocks_now'  => $activeClocksNow,
+            'store_stats_rows'   => $storeStatsRows,
+            'store_stats_period' => self::STATS_WIDGET_PERIOD_DAYS,
 
             'enabled_widgets'    => $enabledWidgets,
             'all_widgets'        => self::ADMIN_WIDGETS,

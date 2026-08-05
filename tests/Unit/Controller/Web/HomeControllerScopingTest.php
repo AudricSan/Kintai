@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Controller\Web;
 
+use kintai\Core\Auth\PermissionService;
+use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
+use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
@@ -14,6 +17,7 @@ use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\Services\StoreStatsServiceInterface;
 use kintai\UI\Controller\Web\HomeController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\TestCase;
@@ -67,6 +71,20 @@ final class HomeControllerScopingTest extends TestCase
             fn(int $storeId) => $storeMembers[$storeId] ?? []
         );
 
+        $storeStats = $this->createMock(StoreStatsServiceInterface::class);
+        $storeStats->method('multiStoreComparison')->willReturn([]);
+
+        // Rôle non-système accordant payroll.view à n'importe quel store, pour que
+        // canViewStats soit vrai aussi côté manager (is_admin = 0) dans ces tests.
+        $roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
+        $roleAssignments->method('findByUser')->willReturn([
+            ['id' => 1, 'role_id' => 5, 'scope_type' => 'store', 'scope_id' => 1],
+        ]);
+        $roles = $this->createMock(RoleRepositoryInterface::class);
+        $roles->method('findById')->with(5)->willReturn(['id' => 5, 'is_system' => 0]);
+        $roles->method('getPermissions')->with(5)->willReturn(['payroll.view']);
+        $permissions = new PermissionService($roleAssignments, $roles);
+
         return new HomeController(
             new ViewRenderer(sys_get_temp_dir()),
             $usersRepo,
@@ -77,6 +95,8 @@ final class HomeControllerScopingTest extends TestCase
             $dashboardPrefs,
             $timeclocksRepo,
             $storeUsersRepo,
+            $storeStats,
+            $permissions,
         );
     }
 
