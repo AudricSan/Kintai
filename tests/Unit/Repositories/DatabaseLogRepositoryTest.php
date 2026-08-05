@@ -164,4 +164,37 @@ final class DatabaseLogRepositoryTest extends TestCase
         $rows = $this->repo->findAll(1, 10, ['query' => 'hello']);
         $this->assertCount(1, $rows);
     }
+
+    public function testFindAllWithStoreIdsFilterAppliesWhereIn(): void
+    {
+        ActivityEntry::create(['level' => 'info', 'channel' => 'audit', 'message' => 'store1', 'store_id' => 1, 'created_at' => '2025-01-01 00:00:00']);
+        ActivityEntry::create(['level' => 'info', 'channel' => 'audit', 'message' => 'store2', 'store_id' => 2, 'created_at' => '2025-01-02 00:00:00']);
+        ActivityEntry::create(['level' => 'info', 'channel' => 'audit', 'message' => 'store3', 'store_id' => 3, 'created_at' => '2025-01-03 00:00:00']);
+
+        $rows = $this->repo->findAll(1, 10, ['store_ids' => [1, 3]]);
+
+        $this->assertCount(2, $rows);
+        $messages = array_column($rows, 'message');
+        $this->assertContains('store1', $messages);
+        $this->assertContains('store3', $messages);
+        $this->assertNotContains('store2', $messages);
+    }
+
+    public function testFindAllWithEmptyStoreIdsFilterReturnsNoRows(): void
+    {
+        ActivityEntry::create(['level' => 'info', 'channel' => 'audit', 'message' => 'store1', 'store_id' => 1, 'created_at' => '2025-01-01 00:00:00']);
+
+        // Un manager scopé mais n'ayant la permission sur aucun store : store_ids = [].
+        $rows = $this->repo->findAll(1, 10, ['store_ids' => []]);
+
+        $this->assertCount(0, $rows);
+    }
+
+    public function testCountAllWithStoreIdsFilter(): void
+    {
+        ActivityEntry::create(['level' => 'info', 'channel' => 'audit', 'message' => 'store1', 'store_id' => 1, 'created_at' => '2025-01-01 00:00:00']);
+        ActivityEntry::create(['level' => 'info', 'channel' => 'audit', 'message' => 'store2', 'store_id' => 2, 'created_at' => '2025-01-02 00:00:00']);
+
+        $this->assertSame(1, $this->repo->countAll(['store_ids' => [1]]));
+    }
 }
