@@ -14,6 +14,7 @@ use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\NotificationService;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -30,6 +31,7 @@ final class EmployeeSwapControllerTest extends TestCase
     private ShiftSwapRequestRepositoryInterface&MockObject $swapRequests;
     private StoreRepositoryInterface&MockObject $stores;
     private StoreUserRepositoryInterface&MockObject $storeUsers;
+    private NotificationService&MockObject $notifs;
     private EmployeeSwapController $controller;
 
     protected function setUp(): void
@@ -46,6 +48,7 @@ final class EmployeeSwapControllerTest extends TestCase
         $this->swapRequests = $this->createMock(ShiftSwapRequestRepositoryInterface::class);
         $this->stores       = $this->createMock(StoreRepositoryInterface::class);
         $this->storeUsers   = $this->createMock(StoreUserRepositoryInterface::class);
+        $this->notifs       = $this->createMock(NotificationService::class);
 
         $this->controller = new EmployeeSwapController(
             $view,
@@ -56,6 +59,7 @@ final class EmployeeSwapControllerTest extends TestCase
             $this->storeUsers,
             $this->createMock(UserRepositoryInterface::class),
             new AuditLogger(),
+            $this->notifs,
         );
     }
 
@@ -89,6 +93,8 @@ final class EmployeeSwapControllerTest extends TestCase
             $captured = $d;
             return $d + ['id' => 42];
         });
+
+        $this->notifs->expects($this->once())->method('notify')->with(2, 'swap_requested', $this->anything(), 42);
 
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 1]);
@@ -132,6 +138,8 @@ final class EmployeeSwapControllerTest extends TestCase
             return $d;
         });
 
+        $this->notifs->expects($this->once())->method('notify')->with(1, 'swap_peer_accepted', $this->anything(), 5);
+
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 9]);
         $req->setRouteParams(['id' => '5']);
@@ -173,6 +181,8 @@ final class EmployeeSwapControllerTest extends TestCase
             return $d;
         });
 
+        $this->notifs->expects($this->once())->method('notify')->with(1, 'swap_peer_refused', $this->anything(), 5);
+
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 9]);
         $req->setRouteParams(['id' => '5']);
@@ -181,6 +191,26 @@ final class EmployeeSwapControllerTest extends TestCase
 
         $this->assertSame(302, $response->status());
         $this->assertSame('refused', $captured['status']);
+    }
+
+    public function testCancelSwapNotifiesTargetUser(): void
+    {
+        $swap = [
+            'id' => 5, 'store_id' => 3, 'requester_id' => 1,
+            'target_user_id' => 9, 'status' => 'pending', 'accepted_at' => null,
+        ];
+        $this->swapRequests->method('findById')->with(5)->willReturn($swap);
+        $this->swapRequests->expects($this->once())->method('save');
+
+        $this->notifs->expects($this->once())->method('notify')->with(9, 'swap_cancelled', $this->anything(), 5);
+
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1]);
+        $req->setRouteParams(['id' => '5']);
+
+        $response = $this->controller->cancelSwap($req);
+
+        $this->assertSame(302, $response->status());
     }
 
     private function ensureViewFile(string $dir, string $view): void

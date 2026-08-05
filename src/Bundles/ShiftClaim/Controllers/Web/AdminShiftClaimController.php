@@ -9,10 +9,12 @@ use kintai\Core\Repositories\ShiftClaimRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
+use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\NotificationService;
 use kintai\Core\Services\ShiftServiceInterface;
 use kintai\UI\Controller\Web\HasAdminAccess;
 use kintai\UI\ViewRenderer;
@@ -25,11 +27,13 @@ final class AdminShiftClaimController
         private readonly ViewRenderer $view,
         private readonly UserRepositoryInterface $users,
         private readonly StoreRepositoryInterface $stores,
+        private readonly StoreUserRepositoryInterface $storeUsers,
         private readonly ShiftRepositoryInterface $shifts,
         private readonly ShiftTypeRepositoryInterface $shiftTypes,
         private readonly ShiftClaimRepositoryInterface $shiftClaims,
         private readonly ShiftServiceInterface $shiftService,
         private readonly AuditLogger $auditLogger,
+        private readonly NotificationService $notifs,
     ) {}
 
     public function openShifts(Request $request): Response
@@ -109,6 +113,14 @@ final class AdminShiftClaimController
         $old = $shift;
         $saved = $this->shifts->save(array_merge($shift, ['is_open' => 1]));
         $this->auditLogger->logUpdate($request, 'shift.published', 'shift', (int) $shift['id'], $old, $saved, [], (int) ($shift['store_id'] ?? 0) ?: null);
+
+        $storeId = (int) ($shift['store_id'] ?? 0);
+        $holderId = (int) ($shift['user_id'] ?? 0);
+        $eligible = array_values(array_diff($this->memberUserIds([$storeId]), [$holderId]));
+        if ($eligible !== []) {
+            $this->notifs->notifyMany($eligible, 'open_shift_published', 'Un shift est disponible à la bourse aux shifts.', (int) $shift['id']);
+        }
+
         return Response::redirect($this->base() . '/admin/open-shifts?success=published');
     }
 
@@ -126,6 +138,7 @@ final class AdminShiftClaimController
             if (($claim['status'] ?? '') === 'pending') {
                 $this->shiftClaims->save(array_merge($claim, ['status' => 'withdrawn']));
                 $withdrawn++;
+                $this->notifs->notify((int) ($claim['user_id'] ?? 0), 'shift_claim_withdrawn', 'Le shift auquel vous aviez postulé n\'est plus disponible.', (int) $shift['id']);
             }
         }
         $this->auditLogger->logUpdate($request, 'shift.unpublished', 'shift', (int) $shift['id'], $old, $saved, ['withdrawn' => $withdrawn], (int) ($shift['store_id'] ?? 0) ?: null);
@@ -178,10 +191,13 @@ final class AdminShiftClaimController
                     'resolved_at' => $now,
                     'resolved_by' => $resolver,
                 ]));
+                $this->notifs->notify((int) $other['user_id'], 'shift_claim_rejected', 'Votre candidature n\'a pas été retenue.', (int) $shift['id']);
             }
         }
 
         $this->auditLogger->logUpdate($request, 'shift_claim.approved', 'shift_claim', (int) $claim['id'], $oldClaim, $savedClaim, [], (int) ($shift['store_id'] ?? 0) ?: null);
+
+        $this->notifs->notify((int) $claim['user_id'], 'shift_claim_approved', 'Votre candidature a été approuvée, le shift vous est attribué.', (int) $shift['id']);
 
         return Response::redirect($this->base() . '/admin/open-shifts?success=claim_approved');
     }
@@ -213,6 +229,8 @@ final class AdminShiftClaimController
             'resolved_by' => $resolver,
         ]));
         $this->auditLogger->logUpdate($request, 'shift_claim.rejected', 'shift_claim', (int) $claim['id'], $oldClaim, $savedClaim, [], (int) ($shift['store_id'] ?? 0) ?: null);
+
+        $this->notifs->notify((int) $claim['user_id'], 'shift_claim_rejected', 'Votre candidature n\'a pas été retenue.', (int) $shift['id']);
 
         return Response::redirect($this->base() . '/admin/open-shifts?success=claim_rejected');
     }
