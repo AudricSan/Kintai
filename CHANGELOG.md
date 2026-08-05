@@ -6,6 +6,15 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Added
+- A single generic confirmation modal (`layout/partials/_confirm-modal.php` + `confirm-modal.js`) now replaces the browser's native `confirm()` dialog for every delete action in the app (~20 forms across stores, timeclocks, roles, languages, backups, messages, swaps, shifts, store photos, HR reports...) — consistent styling instead of some deletes using a native popup and others (only the resignation-report flow) a custom-styled one. The resignation report's own two-choice modal (reactivate vs. permanently delete) is unchanged, since it isn't a simple yes/no confirmation.
+
+### Fixed
+- `DailyReport`'s report list/detail views (`daily-reports.php`, `daily-reports-all.php`, `daily-report-show.php`) reimplemented their own status → CSS class mapping instead of using the shared `Badge` component, which didn't recognize `draft`/`submitted`/`validated` — `Badge::status()` now maps them (visually identical to the previous hardcoded classes).
+- The open-shifts board (`ShiftClaim\Views\open-shifts.php`) rendered a shift type's color via an inline `style="background:...;color:..."` (against the project's no-inline-style rule) instead of the shared `.type-badge[data-color]` component already used on the main shifts list — now consistent, and picks up any future styling change to that component automatically.
+
+⚠️ **Note on this branch's history**: an earlier version of the confirm-modal intercepted the form's `submit` event, which didn't reliably prevent submission in real usage — this caused one live delete to go through without showing the confirmation during testing. The mechanism was rewritten to intercept the submit button's `click` event instead (more robust), and has been re-verified end-to-end (cancel and confirm paths) in a real browser session.
+
 ## [0.10.6] - 2026-08-05
 
 ### Added
