@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Bundles\ResignationReport;
 
 use kintai\Bundles\ResignationReport\Controllers\Web\AdminResignationReportController;
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Container;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\LogRepositoryInterface;
 use kintai\Core\Repositories\ResignationReportRepositoryInterface;
+use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
+use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
@@ -26,6 +29,8 @@ final class AdminResignationReportControllerTest extends TestCase
     private UserRepositoryInterface&MockObject $users;
     private StoreUserRepositoryInterface&MockObject $storeUsers;
     private LogRepositoryInterface&MockObject $logRepo;
+    private RoleAssignmentRepositoryInterface&MockObject $assignments;
+    private RoleRepositoryInterface&MockObject $roles;
     private AdminResignationReportController $controller;
 
     protected function setUp(): void
@@ -50,6 +55,9 @@ final class AdminResignationReportControllerTest extends TestCase
         $container->instance(LogRepositoryInterface::class, $this->logRepo);
         Log::setContainer($container);
 
+        $this->assignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
+        $this->roles = $this->createMock(RoleRepositoryInterface::class);
+
         $this->controller = new AdminResignationReportController(
             $view,
             $this->stores,
@@ -57,6 +65,7 @@ final class AdminResignationReportControllerTest extends TestCase
             $this->resignationReports,
             $this->storeUsers,
             new AuditLogger(),
+            new PermissionService($this->assignments, $this->roles),
         );
     }
 
@@ -187,6 +196,12 @@ final class AdminResignationReportControllerTest extends TestCase
         $this->users->method('findById')->willReturnMap([
             [10, ['id' => 10, 'first_name' => 'Jean', 'last_name' => 'Dupont', 'employee_code' => 'EMP010']],
         ]);
+        // Le rôle RBAC affecté à l'utilisateur 10 accorde employees.update sur le store 1.
+        $this->assignments->method('findByUser')->with(10)->willReturn([
+            ['id' => 1, 'user_id' => 10, 'role_id' => 2, 'scope_type' => 'store', 'scope_id' => 1],
+        ]);
+        $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'is_system' => 0]);
+        $this->roles->method('getPermissions')->with(2)->willReturn(['employees.update']);
 
         $method = new \ReflectionMethod($this->controller, 'getManagersForReportForm');
         $method->setAccessible(true);
@@ -194,7 +209,32 @@ final class AdminResignationReportControllerTest extends TestCase
 
         $ids = array_column($managers, 'id');
         $this->assertContains(99, $ids, 'Owner (is_admin) doit apparaître même sans adhésion au store');
-        $this->assertContains(10, $ids, 'manager du store doit toujours apparaître');
+        $this->assertContains(10, $ids, 'membre avec employees.update sur ce store doit apparaître');
+    }
+
+    public function testGetManagersForReportFormExcludesMemberWithoutEmployeesUpdatePermission(): void
+    {
+        // Un membre du store sans la permission RBAC employees.update ne doit plus
+        // apparaître, même si sa colonne legacy store_user.role vaut 'manager'
+        // (colonne jamais resynchronisée quand les permissions d'un rôle changent).
+        $this->storeUsers->method('findByStore')->with(1)->willReturn([
+            ['user_id' => 10, 'store_id' => 1, 'role' => 'manager'],
+        ]);
+        $this->users->method('findAll')->willReturn([]);
+        $this->users->method('findById')->willReturnMap([
+            [10, ['id' => 10, 'first_name' => 'Jean', 'last_name' => 'Dupont', 'employee_code' => 'EMP010']],
+        ]);
+        $this->assignments->method('findByUser')->with(10)->willReturn([
+            ['id' => 1, 'user_id' => 10, 'role_id' => 2, 'scope_type' => 'store', 'scope_id' => 1],
+        ]);
+        $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'is_system' => 0]);
+        $this->roles->method('getPermissions')->with(2)->willReturn(['shifts.view']);
+
+        $method = new \ReflectionMethod($this->controller, 'getManagersForReportForm');
+        $method->setAccessible(true);
+        $managers = $method->invoke($this->controller, 1);
+
+        $this->assertNotContains(10, array_column($managers, 'id'));
     }
 
     public function testCreateResignationReportKeepsPresetUserEvenIfNotAStoreMember(): void
