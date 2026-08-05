@@ -109,32 +109,32 @@ final class ShiftWageCalculator
     }
 
     /**
-     * Coût d'un shift déjà persisté (duration_minutes/pause_minutes connus, pas de
-     * décomposition par tranche horaire — voir calculate() pour ça). Source unique
+     * Coût d'un shift déjà persisté, décomposé par tranche horaire (un shift peut
+     * chevaucher plusieurs shift_types, ex : 7h-18h traverse un type 5h-8h puis un
+     * type 8h-22h — chaque tranche est facturée à son propre taux). Source unique
      * utilisée par StoreStatsService, EmployeeStatsService et AdminSalaryReportController,
      * pour que le même shift produise toujours le même montant partout dans l'app.
      *
-     * Résolution du taux : hourly_rate_override du shift → taux personnalisé
-     * (user_shift_type_rates, déjà résolu par l'appelant) → shift_types.hourly_rate → 0.
+     * Résolution du taux : hourly_rate_override du shift (taux plat, prioritaire) →
+     * sinon décomposition par tranche via calculate(), taux perso
+     * (user_shift_type_rates, déjà résolu par l'appelant) prioritaire sur
+     * shift_types.hourly_rate pour chaque tranche.
      * Résolution des minutes actives : net_minutes_override du shift →
      * duration_minutes - pause_minutes.
      *
-     * @param array $shift          Ligne de shifts : duration_minutes, pause_minutes,
-     *                               shift_type_id, et si présents (branche overrides manuels)
+     * @param array $shift          Ligne de shifts : start_time, end_time,
+     *                               duration_minutes, pause_minutes, shift_type_id,
+     *                               et si présents (branche overrides manuels)
      *                               hourly_rate_override, net_minutes_override.
-     * @param array $shiftTypesMap  shift_type_id => ['hourly_rate' => ..., ...]
+     * @param array $shiftTypesMap  shift_type_id => ['id', 'name', 'start_time', 'end_time', 'hourly_rate']
      * @param array $personalRates  shift_type_id => taux perso de l'utilisateur du shift
-     * @return array{rate:float, gross_minutes:int, pause_minutes:int, net_minutes:int, amount:float}
+     * @return array{
+     *     rate:float, gross_minutes:int, pause_minutes:int, net_minutes:int, amount:float,
+     *     breakdown: list<array{shift_type_id:int|null, name:string, minutes:int, rate:float, amount:float}>
+     * }
      */
     public function costOf(array $shift, array $shiftTypesMap, array $personalRates = []): array
     {
-        $tid = (int) ($shift['shift_type_id'] ?? 0);
-
-        $rateOverride = $shift['hourly_rate_override'] ?? null;
-        $rate = $rateOverride !== null
-            ? (float) $rateOverride
-            : (float) ($personalRates[$tid] ?? ($shiftTypesMap[$tid]['hourly_rate'] ?? 0));
-
         $grossMinutes = (int) ($shift['duration_minutes'] ?? 0);
         $pauseMinutes = (int) ($shift['pause_minutes'] ?? 0);
 
@@ -143,15 +143,71 @@ final class ShiftWageCalculator
             ? (int) $netOverride
             : max(0, $grossMinutes - $pauseMinutes);
 
-        $amount = $rate > 0 ? round($rate * $netMinutes / 60, 2) : 0.0;
+        $rateOverride = $shift['hourly_rate_override'] ?? null;
+        if ($rateOverride !== null) {
+            $rate   = (float) $rateOverride;
+            $amount = $rate > 0 ? round($rate * $netMinutes / 60, 2) : 0.0;
+            $tid    = (int) ($shift['shift_type_id'] ?? 0);
+
+            return [
+                'rate'          => $rate,
+                'gross_minutes' => $grossMinutes,
+                'pause_minutes' => $pauseMinutes,
+                'net_minutes'   => $netMinutes,
+                'amount'        => $amount,
+                'breakdown'     => [[
+                    'shift_type_id' => $tid ?: null,
+                    'name'          => (string) ($shiftTypesMap[$tid]['name'] ?? ''),
+                    'minutes'       => $netMinutes,
+                    'rate'          => $rate,
+                    'amount'        => $amount,
+                ]],
+            ];
+        }
+
+        $effectiveTypes = $this->withPersonalRates($shiftTypesMap, $personalRates);
+        $startTime = (string) ($shift['start_time'] ?? '00:00');
+        $endTime   = (string) ($shift['end_time']   ?? '00:00');
+
+        $result = $this->calculate($startTime, $endTime, $effectiveTypes, $netMinutes);
+
+        $dominantId = $result['dominant_type_id'];
+        $rate = 0.0;
+        foreach ($result['breakdown'] as $b) {
+            if ($b['shift_type_id'] === $dominantId) {
+                $rate = $b['rate'];
+                break;
+            }
+        }
 
         return [
             'rate'          => $rate,
             'gross_minutes' => $grossMinutes,
             'pause_minutes' => $pauseMinutes,
             'net_minutes'   => $netMinutes,
-            'amount'        => $amount,
+            'amount'        => $result['estimated_salary'],
+            'breakdown'     => $result['breakdown'],
         ];
+    }
+
+    /**
+     * Remplace hourly_rate par le taux personnalisé de l'utilisateur quand il existe,
+     * pour chaque type de la map — utilisé par costOf() et par l'aperçu AJAX du
+     * formulaire de shift (mêmes règles de résolution des taux).
+     *
+     * @param array $shiftTypesMap shift_type_id => ['id', 'name', 'start_time', 'end_time', 'hourly_rate']
+     * @param array $personalRates shift_type_id => taux perso
+     * @return list<array>
+     */
+    public function withPersonalRates(array $shiftTypesMap, array $personalRates): array
+    {
+        return array_map(function (array $type) use ($personalRates) {
+            $id = (int) $type['id'];
+            if (isset($personalRates[$id])) {
+                $type['hourly_rate'] = $personalRates[$id];
+            }
+            return $type;
+        }, array_values($shiftTypesMap));
     }
 
     private function toMinutes(string $time): int

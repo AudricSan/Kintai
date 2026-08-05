@@ -19,6 +19,7 @@ use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\Log;
+use kintai\Core\Services\ShiftWageCalculator;
 use kintai\UI\ViewRenderer;
 use kintai\UI\Controller\Web\HasAdminAccess;
 use kintai\Core\Services\ShiftServiceInterface;
@@ -79,6 +80,24 @@ final class AdminShiftController
             }
         }
         return false;
+    }
+
+    /**
+     * Type de shift dominant (le plus de minutes) calculé automatiquement depuis
+     * le chevauchement horaire entre start_time/end_time et les types actifs du
+     * store — remplace l'ancien choix manuel unique. Utilisé uniquement pour
+     * l'affichage (couleur/étiquette) ; la facturation réelle est recalculée par
+     * tranche à la lecture des rapports via ShiftWageCalculator::costOf().
+     */
+    private function dominantShiftTypeId(int $storeId, string $startTime, string $endTime, int $netMinutes): ?int
+    {
+        $result = (new ShiftWageCalculator())->calculate(
+            $startTime,
+            $endTime,
+            $this->shiftTypes->findActive($storeId),
+            $netMinutes
+        );
+        return $result['dominant_type_id'];
     }
 
     public function shifts(Request $request): Response
@@ -530,6 +549,50 @@ final class AdminShiftController
         ], 'layout.app'));
     }
 
+    /**
+     * GET /admin/shifts/wage-preview — aperçu en direct de la décomposition par
+     * tranche horaire pendant la saisie du formulaire (remplace l'ancien select
+     * manuel de shift_type_id, supprimé car un shift peut chevaucher plusieurs
+     * types). Mêmes règles de résolution des taux que ShiftWageCalculator::costOf().
+     */
+    public function wagePreview(Request $request): Response
+    {
+        $storeId = (int) $request->query('store_id', 0);
+        $this->assertStoreAccess($request, $storeId);
+
+        $startTime = (string) $request->query('start_time', '');
+        $endTime   = (string) $request->query('end_time', '');
+        if ($startTime === '' || $endTime === '') {
+            return Response::json(['breakdown' => [], 'estimated_salary' => 0.0, 'dominant_type_id' => null]);
+        }
+
+        $start = strtotime($startTime);
+        $end   = strtotime($endTime);
+        $duration = (int) (($end - $start) / 60);
+        if ($duration < 0) {
+            $duration += 24 * 60;
+        }
+        $pauseMinutes = (int) $request->query('pause_minutes', 0);
+        $netMinutes = max(0, $duration - $pauseMinutes);
+
+        $userId = (int) $request->query('user_id', 0);
+        $personalRates = [];
+        if ($userId > 0) {
+            foreach ($this->userRates->findByUser($userId) as $r) {
+                $personalRates[(int) $r['shift_type_id']] = (float) $r['hourly_rate'];
+            }
+        }
+
+        $wageCalc = new ShiftWageCalculator();
+        $types    = $wageCalc->withPersonalRates(
+            array_column($this->shiftTypes->findActive($storeId), null, 'id'),
+            $personalRates
+        );
+        $result = $wageCalc->calculate($startTime, $endTime, $types, $netMinutes);
+
+        return Response::json($result);
+    }
+
     public function storeShift(Request $request): Response
     {
         $storeId = (int) $request->post('store_id', 0);
@@ -556,10 +619,8 @@ final class AdminShiftController
             return Response::redirect($this->base() . '/admin/shifts/create?error=timeoff_conflict&store_id=' . $storeId);
         }
 
-        $shiftTypeId = $request->post('shift_type_id', '') !== '' ? (int) $request->post('shift_type_id') : null;
-        if ($shiftTypeId !== null && !$this->shiftTypes->isEnabledForStore($shiftTypeId, $storeId)) {
-            return Response::redirect($this->base() . '/admin/shifts/create?error=shift_type_store_mismatch&store_id=' . $storeId);
-        }
+        $pauseMinutes = (int) $request->post('pause_minutes', 0);
+        $shiftTypeId  = $this->dominantShiftTypeId($storeId, $startTime, $endTime, max(0, $duration - $pauseMinutes));
 
         $saved = $this->shifts->save([
             'store_id'         => $storeId,
@@ -569,7 +630,7 @@ final class AdminShiftController
             'start_time'       => $startTime,
             'end_time'         => $endTime,
             'duration_minutes' => $duration,
-            'pause_minutes'    => (int) $request->post('pause_minutes', 0),
+            'pause_minutes'    => $pauseMinutes,
             'cross_midnight'   => $crossMidnight,
             'starts_at'        => $shiftDate . ' ' . $startTime . ':00',
             'ends_at'          => $endsDate  . ' ' . $endTime   . ':00',
@@ -686,10 +747,8 @@ final class AdminShiftController
             return Response::redirect($this->base() . '/admin/shifts/' . $shift['id'] . '/edit?error=timeoff_conflict');
         }
 
-        $shiftTypeId = $request->post('shift_type_id', '') !== '' ? (int) $request->post('shift_type_id') : null;
-        if ($shiftTypeId !== null && !$this->shiftTypes->isEnabledForStore($shiftTypeId, $newStoreId)) {
-            return Response::redirect($this->base() . '/admin/shifts/' . $shift['id'] . '/edit?error=shift_type_store_mismatch');
-        }
+        $pauseMinutes = (int) $request->post('pause_minutes', $shift['pause_minutes'] ?? 0);
+        $shiftTypeId  = $this->dominantShiftTypeId($newStoreId, $startTime, $endTime, max(0, $duration - $pauseMinutes));
 
         $saved = $this->shifts->save(array_merge($shift, [
             'store_id'         => $newStoreId,
@@ -699,7 +758,7 @@ final class AdminShiftController
             'start_time'       => $startTime,
             'end_time'         => $endTime,
             'duration_minutes' => $duration,
-            'pause_minutes'    => (int) $request->post('pause_minutes', $shift['pause_minutes'] ?? 0),
+            'pause_minutes'    => $pauseMinutes,
             'cross_midnight'   => $crossMidnight,
             'starts_at'        => $shiftDate . ' ' . $startTime . ':00',
             'ends_at'          => $endsDate  . ' ' . $endTime   . ':00',
@@ -840,10 +899,7 @@ final class AdminShiftController
             return Response::json(['error' => __('shift_timeoff_conflict')], 409);
         }
 
-        $shiftTypeId = !empty($body['shift_type_id']) ? (int) $body['shift_type_id'] : null;
-        if ($shiftTypeId !== null && !$this->shiftTypes->isEnabledForStore($shiftTypeId, $storeId)) {
-            return Response::json(['error' => __('shift_type_store_mismatch')], 422);
-        }
+        $shiftTypeId = $this->dominantShiftTypeId($storeId, $startTime, $endTime, max(0, $duration - $pauseMin));
 
         $saved = $this->shifts->save([
             'store_id'         => $storeId,
