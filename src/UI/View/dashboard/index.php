@@ -23,6 +23,9 @@ $feat = static fn(?string $f): bool =>
         $f === null || ($store_features ?? null) === null || in_array($f, (array) ($store_features ?? []), true)
     );
 
+// Permission-gating des liens de navigation rapide (même pattern que _topbar.php)
+$can = $user_can ?? fn(string $k): bool => true;
+
 // Widgets désactivés si la feature associée est indisponible
 $_widgetFeatMap = [
     'pending_timeoff'  => 'timeoff',
@@ -127,40 +130,32 @@ $widgetLabels = [
 </div>
 <?php endif; ?>
 
-<?php if (admin_widget_on('quick_nav', $enabled_widgets)): ?>
+<?php
+$_qnLinks = [
+    ['route' => 'admin.users',        'perm' => 'employees.view', 'icon' => '👤',  'label' => 'manage_users',      'feat' => null],
+    ['route' => 'admin.stores',       'perm' => 'stores.view',    'icon' => '🏬',  'label' => 'manage_stores',     'feat' => null],
+    ['route' => 'admin.shifts',       'perm' => 'shifts.view',    'icon' => '📋',  'label' => 'manage_shifts',     'feat' => null],
+    ['route' => 'admin.shift_types',  'perm' => 'shifts.view',    'icon' => '🏷️', 'label' => 'shift_types',       'feat' => null],
+    ['route' => 'admin.timeoff',      'perm' => 'timeoff.view',   'icon' => '🌴',  'label' => 'timeoff_requests',  'feat' => 'timeoff'],
+    ['route' => 'admin.swap_requests','perm' => 'swaps.view',     'icon' => '🔄',  'label' => 'swap_requests',     'feat' => 'swaps'],
+];
+$_qnLinks = array_values(array_filter(
+    $_qnLinks,
+    fn(array $l) => ($l['feat'] === null || $feat($l['feat'])) && $can($l['perm'])
+));
+?>
+<?php if (admin_widget_on('quick_nav', $enabled_widgets) && $_qnLinks !== []): ?>
 <!-- Navigation rapide -->
-<?php $_qnCount = 4 + ($feat('timeoff') ? 1 : 0) + ($feat('swaps') ? 1 : 0); ?>
-<div class="quick-nav" style="--qn-cols:<?= $_qnCount ?>"><?php unset($_qnCount); ?>
-    <a href="<?= route_url('admin.users') ?>" class="quick-nav-card">
-        <span class="quick-nav-card__icon">👤</span>
-        <span class="quick-nav-card__label"><?= __('manage_users') ?></span>
+<div class="quick-nav" style="--qn-cols:<?= count($_qnLinks) ?>">
+    <?php foreach ($_qnLinks as $_qn): ?>
+    <a href="<?= route_url($_qn['route']) ?>" class="quick-nav-card">
+        <span class="quick-nav-card__icon"><?= $_qn['icon'] ?></span>
+        <span class="quick-nav-card__label"><?= __($_qn['label']) ?></span>
     </a>
-    <a href="<?= route_url('admin.stores') ?>" class="quick-nav-card">
-        <span class="quick-nav-card__icon">🏬</span>
-        <span class="quick-nav-card__label"><?= __('manage_stores') ?></span>
-    </a>
-    <a href="<?= route_url('admin.shifts') ?>" class="quick-nav-card">
-        <span class="quick-nav-card__icon">📋</span>
-        <span class="quick-nav-card__label"><?= __('manage_shifts') ?></span>
-    </a>
-    <a href="<?= route_url('admin.shift_types') ?>" class="quick-nav-card">
-        <span class="quick-nav-card__icon">🏷️</span>
-        <span class="quick-nav-card__label"><?= __('shift_types') ?></span>
-    </a>
-    <?php if ($feat('timeoff')): ?>
-    <a href="<?= route_url('admin.timeoff') ?>" class="quick-nav-card">
-        <span class="quick-nav-card__icon">🌴</span>
-        <span class="quick-nav-card__label"><?= __('timeoff_requests') ?></span>
-    </a>
-    <?php endif; ?>
-    <?php if ($feat('swaps')): ?>
-    <a href="<?= route_url('admin.swap_requests') ?>" class="quick-nav-card">
-        <span class="quick-nav-card__icon">🔄</span>
-        <span class="quick-nav-card__label"><?= __('swap_requests') ?></span>
-    </a>
-    <?php endif; ?>
+    <?php endforeach; ?>
 </div>
 <?php endif; ?>
+<?php unset($_qnLinks, $_qn); ?>
 
 <?php
 $sort       ??= 'start_asc';
@@ -177,7 +172,7 @@ $_href = function (string $field) use ($sort, $_qs): string {
 };
 ?>
 
-<?php if (admin_widget_on('shifts_today', $enabled_widgets)): ?>
+<?php if (admin_widget_on('shifts_today', $enabled_widgets) && $can('shifts.view')): ?>
 <!-- Shifts du jour -->
 <?php
 // Regrouper par magasin
@@ -318,11 +313,14 @@ $hasMultipleStores = count($shiftsByStore) > 1;
 </div>
 <?php endif; ?>
 
-<?php if (admin_widget_on('pending_timeoff', $enabled_widgets) || admin_widget_on('pending_swaps', $enabled_widgets)): ?>
+<?php if (
+    (admin_widget_on('pending_timeoff', $enabled_widgets) && $can('timeoff.view'))
+    || (admin_widget_on('pending_swaps', $enabled_widgets) && $can('swaps.view'))
+): ?>
 <!-- Demandes en attente -->
 <div class="dash-two-col card--mt">
 
-    <?php if (admin_widget_on('pending_timeoff', $enabled_widgets) && $feat('timeoff')): ?>
+    <?php if (admin_widget_on('pending_timeoff', $enabled_widgets) && $feat('timeoff') && $can('timeoff.view')): ?>
     <div class="card">
         <div class="card-header">
             <span><?= __('pending_timeoff') ?></span>
@@ -353,7 +351,7 @@ $hasMultipleStores = count($shiftsByStore) > 1;
     </div>
     <?php endif; ?>
 
-    <?php if (admin_widget_on('pending_swaps', $enabled_widgets) && $feat('swaps')): ?>
+    <?php if (admin_widget_on('pending_swaps', $enabled_widgets) && $feat('swaps') && $can('swaps.view')): ?>
     <div class="card">
         <div class="card-header">
             <span><?= __('pending_swaps') ?></span>
@@ -386,7 +384,7 @@ $hasMultipleStores = count($shiftsByStore) > 1;
 </div>
 <?php endif; ?>
 
-<?php if (admin_widget_on('timeclocks_today', $enabled_widgets) && $feat('timeclock')): ?>
+<?php if (admin_widget_on('timeclocks_today', $enabled_widgets) && $feat('timeclock') && $can('timeclock.view')): ?>
 <!-- Pointages actifs en ce moment -->
 <div class="card card--mt">
     <div class="card-header">
