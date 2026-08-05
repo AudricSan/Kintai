@@ -29,6 +29,7 @@ final class AdminShiftControllerTest extends TestCase
     private StoreRepositoryInterface&MockObject $stores;
     private TimeoffRequestRepositoryInterface&MockObject $timeoffRequests;
     private ShiftServiceInterface&MockObject $shiftService;
+    private NotificationService&MockObject $notifs;
     private AdminShiftController $controller;
 
     protected function setUp(): void
@@ -41,6 +42,7 @@ final class AdminShiftControllerTest extends TestCase
         $this->stores = $this->createMock(StoreRepositoryInterface::class);
         $this->timeoffRequests = $this->createMock(TimeoffRequestRepositoryInterface::class);
         $this->shiftService = $this->createMock(ShiftServiceInterface::class);
+        $this->notifs = $this->createMock(NotificationService::class);
         $auditLogger = new AuditLogger();
 
         $this->controller = new AdminShiftController(
@@ -52,7 +54,7 @@ final class AdminShiftControllerTest extends TestCase
             $this->createMock(StoreUserRepositoryInterface::class),
             $this->createMock(UserShiftTypeRateRepositoryInterface::class),
             $auditLogger,
-            $this->createMock(NotificationService::class),
+            $this->notifs,
             $this->createMock(ImportAliasRepositoryInterface::class),
             $this->shiftService,
             $this->timeoffRequests,
@@ -285,6 +287,68 @@ final class AdminShiftControllerTest extends TestCase
         $this->assertSame(4, $captured['shift_type_id']);
     }
 
+    /**
+     * Régression : le shift est déjà sauvegardé à ce stade. Si NotificationService::notify()
+     * échoue (ex. panne DB transitoire), l'exception ne doit pas remonter en 500 générique
+     * pour une action qui a en réalité pleinement réussi — voir CHANGELOG.
+     */
+    public function testStoreShiftSucceedsEvenWhenNotifyThrows(): void
+    {
+        $_POST = [
+            'store_id'   => '1',
+            'user_id'    => '5',
+            'shift_date' => '2026-08-02',
+            'start_time' => '09:00',
+            'end_time'   => '17:00',
+        ];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+
+        $this->timeoffRequests->method('findByUser')->willReturn([]);
+        $this->shifts->method('save')->willReturnCallback(fn(array $d) => $d + ['id' => 1]);
+        $this->notifs->method('notify')->willThrowException(new \RuntimeException('notif DB down'));
+
+        $response = $this->controller->storeShift($req);
+
+        $this->assertSame(302, $response->status());
+        $headersRef = new \ReflectionProperty($response, 'headers');
+        $headersRef->setAccessible(true);
+        $this->assertStringContainsString('success=created', $headersRef->getValue($response)['Location'] ?? '');
+    }
+
+    /** Un type de shift ne peut désormais être appliqué qu'à un store où il est activé (table pivot). */
+    public function testStoreShiftRejectsShiftTypeNotEnabledForStore(): void
+    {
+        $_POST = [
+            'store_id'   => '1',
+            'user_id'    => '5',
+            'shift_date' => '2026-08-02',
+            'start_time' => '09:00',
+            'end_time'   => '17:00',
+        ];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+
+        $this->shiftTypes->method('findActive')->with(1)->willReturn([
+            ['id' => 3, 'name' => 'Matin', 'start_time' => '08:00', 'end_time' => '12:00', 'hourly_rate' => 1000.0],
+            ['id' => 4, 'name' => 'Aprem', 'start_time' => '12:00', 'end_time' => '20:00', 'hourly_rate' => 1200.0],
+        ]);
+        $this->timeoffRequests->method('findByUser')->willReturn([]);
+        $captured = null;
+        $this->shifts->expects($this->once())->method('save')->with($this->callback(
+            function (array $d) use (&$captured) {
+                $captured = $d;
+                return true;
+            }
+        ))->willReturnCallback(fn(array $d) => $d + ['id' => 1]);
+
+        $response = $this->controller->storeShift($req);
+
+        $this->assertSame(302, $response->status());
+        // 09:00→12:00 = 180min (Matin) ; 12:00→17:00 = 300min (Aprem) → Aprem dominant
+        $this->assertSame(4, $captured['shift_type_id']);
+    }
+
     /** Un taux/heures actives manuel saisi doit être persisté (null si vide). */
     public function testStoreShiftPersistsManualOverrides(): void
     {
@@ -368,6 +432,77 @@ final class AdminShiftControllerTest extends TestCase
 
     /** Même auto-calcul du type dominant que storeShift(), lors d'une édition. */
     public function testUpdateShiftAutoComputesDominantShiftType(): void
+    {
+        $existing = [
+            'id' => 10, 'store_id' => 1, 'user_id' => 5, 'shift_date' => '2026-08-02',
+            'start_time' => '09:00', 'end_time' => '17:00', 'is_open' => 0,
+        ];
+        $this->shifts->method('findById')->with(10)->willReturn($existing);
+
+        $_POST = [
+            'store_id'   => '1',
+            'shift_date' => '2026-08-02',
+            'start_time' => '09:00',
+            'end_time'   => '17:00',
+        ];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => 10]);
+
+        $this->shiftTypes->method('findActive')->with(1)->willReturn([
+            ['id' => 3, 'name' => 'Matin', 'start_time' => '08:00', 'end_time' => '12:00', 'hourly_rate' => 1000.0],
+            ['id' => 4, 'name' => 'Aprem', 'start_time' => '12:00', 'end_time' => '20:00', 'hourly_rate' => 1200.0],
+        ]);
+        $captured = null;
+        $this->shifts->expects($this->once())->method('save')->with($this->callback(
+            function (array $d) use (&$captured) {
+                $captured = $d;
+                return true;
+            }
+        ))->willReturnCallback(fn(array $d) => $d + ['id' => 10]);
+
+        $response = $this->controller->updateShift($req);
+
+        $this->assertSame(302, $response->status());
+        $this->assertSame(4, $captured['shift_type_id']);
+    }
+
+    /**
+     * Régression : même chose que testStoreShiftSucceedsEvenWhenNotifyThrows, côté update —
+     * le shift est déjà sauvegardé avant l'appel à notify() (déclenché ici par un changement
+     * d'utilisateur assigné, 5 → 6).
+     */
+    public function testUpdateShiftSucceedsEvenWhenNotifyThrows(): void
+    {
+        $existing = [
+            'id' => 10, 'store_id' => 1, 'user_id' => 5, 'shift_date' => '2026-08-02',
+            'start_time' => '09:00', 'end_time' => '17:00', 'is_open' => 0,
+        ];
+        $this->shifts->method('findById')->with(10)->willReturn($existing);
+
+        $_POST = [
+            'store_id'   => '1',
+            'user_id'    => '6',
+            'shift_date' => '2026-08-02',
+            'start_time' => '09:00',
+            'end_time'   => '17:00',
+        ];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => 10]);
+
+        $this->shifts->method('save')->willReturnCallback(fn(array $d) => $d + ['id' => 10]);
+        $this->notifs->method('notify')->willThrowException(new \RuntimeException('notif DB down'));
+
+        $response = $this->controller->updateShift($req);
+
+        $this->assertSame(302, $response->status());
+        $headersRef = new \ReflectionProperty($response, 'headers');
+        $headersRef->setAccessible(true);
+        $this->assertStringContainsString('success=updated', $headersRef->getValue($response)['Location'] ?? '');
+    }
+
+    public function testUpdateShiftRejectsShiftTypeNotEnabledForStore(): void
     {
         $existing = [
             'id' => 10, 'store_id' => 1, 'user_id' => 5, 'shift_date' => '2026-08-02',

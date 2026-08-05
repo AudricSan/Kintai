@@ -63,7 +63,7 @@ echo Flash::fromQuery('success', [
             $html .= '<form method="POST" action="' . htmlspecialchars($BASE_URL . '/admin/timeoff/' . $id . '/refuse') . '" class="form-inline">' . csrf_field()
                 . Button::make(__('reject'))->danger()->sm()->submit()->render() . '</form>';
         }
-        $html .= '<form method="POST" action="' . htmlspecialchars($BASE_URL . '/admin/timeoff/' . $id . '/delete') . '" class="form-inline" onsubmit="return confirm(\'' . __('confirm_delete_timeoff') . '\')">' . csrf_field()
+        $html .= '<form method="POST" action="' . htmlspecialchars($BASE_URL . '/admin/timeoff/' . $id . '/delete') . '" class="form-inline" data-confirm="' . htmlspecialchars(__('confirm_delete_timeoff'), ENT_QUOTES) . '">' . csrf_field()
             . Button::make(__('delete'))->danger()->sm()->submit()->render() . '</form>';
         $html .= '</div>';
         return $html;

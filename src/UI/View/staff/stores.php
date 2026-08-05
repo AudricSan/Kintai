@@ -7,7 +7,7 @@ use kintai\UI\Components\Flash;
 /** @var array  $stores */
 /** @var string $sort */
 $sort ??= 'name_asc';
-$isOwner = !empty($auth_user['is_admin']);
+$can = $user_can ?? fn(string $k): bool => true;
 
 echo Flash::fromQuery('success', [
     'created' => __('store_created'),
@@ -26,7 +26,7 @@ $storeChipColor = function (string $seed): string {
 <div class="page-header">
     <h2 class="page-header__title"><?= __('stores_plural') ?> <span class="page-count">(<?= count($stores) ?>)</span></h2>
     <div class="page-header__actions">
-        <?= $isOwner ? Button::make('+ ' . __('new_store'))->primary()->link(route_url('admin.stores.create'))->render() : '' ?>
+        <?= $can('stores.create') ? Button::make('+ ' . __('new_store'))->primary()->link(route_url('admin.stores.create'))->render() : '' ?>
     </div>
 </div>
 
@@ -55,15 +55,21 @@ $storeChipColor = function (string $seed): string {
             ? Badge::make(__('active'))->active()->render()
             : Badge::make(__('inactive'))->inactive()->render()
     )
-    ->column(__('actions'), function($s) use ($BASE_URL, $isOwner) {
+    ->column(__('actions'), function($s) use ($BASE_URL, $can) {
         $id = (int) $s['id'];
-        $panel = '<a href="' . $BASE_URL . '/admin/stores/' . $id . '/stats" class="row-actions__link">📊 ' . htmlspecialchars(__('statistics')) . '</a>'
-            . '<a href="' . $BASE_URL . '/admin/stores/' . $id . '/employee-report" class="row-actions__link">👥 ' . htmlspecialchars(__('employee_report')) . '</a>';
-        if ($isOwner) {
-            $panel .= '<form method="POST" action="' . htmlspecialchars($BASE_URL . '/admin/stores/' . $id . '/delete') . '" onsubmit="return confirm(\'' . __('confirm_delete_store') . '\')">'
+        $panel = '';
+        if ($can('payroll.view')) {
+            $panel .= '<a href="' . $BASE_URL . '/admin/stores/' . $id . '/stats" class="row-actions__link">📊 ' . htmlspecialchars(__('statistics')) . '</a>'
+                . '<a href="' . $BASE_URL . '/admin/stores/' . $id . '/employee-report" class="row-actions__link">👥 ' . htmlspecialchars(__('employee_report')) . '</a>';
+        }
+        if ($can('stores.delete')) {
+            $panel .= '<form method="POST" action="' . htmlspecialchars($BASE_URL . '/admin/stores/' . $id . '/delete') . '" data-confirm="' . htmlspecialchars(__('confirm_delete_store'), ENT_QUOTES) . '">'
                 . csrf_field()
                 . '<button type="submit" class="row-actions__link row-actions__link--danger">🗑 ' . htmlspecialchars(__('delete')) . '</button>'
                 . '</form>';
+        }
+        if ($panel === '') {
+            return '';
         }
         return '<div class="row-actions">'
             . '<button type="button" class="row-actions__trigger" aria-haspopup="true" aria-label="' . htmlspecialchars(__('actions')) . '">⋮</button>'
