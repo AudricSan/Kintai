@@ -144,9 +144,16 @@ final class HomeController
         // le coût de multiStoreComparison() sur chaque chargement du dashboard.
         $canViewStats = !empty($user['is_admin']) || $this->permissions->can($user, 'payroll.view', null);
         $storeStatsRows = [];
+        $storeStatsHoursByWeek = [];
         if ($canViewStats && array_key_exists('store_stats_summary', $enabledWidgets)) {
             $statsStoreIds  = $managedStoreIds ?? array_column($allStores, 'id');
             $storeStatsRows = $this->storeStats->multiStoreComparison($statsStoreIds, self::STATS_WIDGET_PERIOD_DAYS);
+            // Tendance hebdomadaire : uniquement pour un seul store géré, sinon "heures par
+            // semaine" mélangerait plusieurs stores sans les distinguer (peu lisible en graphique).
+            if (count($storeStatsRows) === 1) {
+                $storeStatsHoursByWeek = $this->storeStats
+                    ->storeStats((int) $storeStatsRows[0]['store_id'], self::STATS_WIDGET_PERIOD_DAYS)['hoursByWeek'] ?? [];
+            }
         }
 
         return Response::html($this->view->render('dashboard.index', [
@@ -165,6 +172,7 @@ final class HomeController
             'active_clocks_now'  => $activeClocksNow,
             'store_stats_rows'   => $storeStatsRows,
             'store_stats_period' => self::STATS_WIDGET_PERIOD_DAYS,
+            'store_stats_hours_by_week' => $storeStatsHoursByWeek,
 
             'enabled_widgets'    => $enabledWidgets,
             'all_widgets'        => self::ADMIN_WIDGETS,
