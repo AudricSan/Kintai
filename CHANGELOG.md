@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Changed
+- "Documentation" moved from a top-level topbar link into the user menu (next to language switcher and logout) to declutter the main nav bar. The redundant "Nav settings" topbar link was dropped — still reachable via Profile → "Nav" tab, unaffected.
+
 ## [0.10.7] - 2026-08-05
 
 ### Added
