@@ -6,6 +6,13 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Fixed
+- `NotificationService::notify()` crashed with a SQL error on every call: it wrote `body`/`reference_id`/`is_read`, three columns that don't exist on the `notifications` table (real columns: `data` JSON, `read_at`). Nothing caught the exception, so it bubbled up to a 500 page for the user even though the triggering action (approving time off, assigning a shift, resolving a swap...) had already been saved successfully just before the notification call. `DatabaseNotificationRepository` is now the single translation point between the real schema and the `body`/`reference_id`/`is_read` shape every caller (views, the polling endpoint, the API) already expects, so no other file needed to change. Also fixed the notification list/dropdown themselves, which read `is_read`/`body` directly and would have shown every notification as permanently unread with an empty body even after the write path was fixed. Added `DatabaseNotificationRepositoryTest`/`NotificationServiceTest`, which insert against a real schema instead of mocking the repository away — exactly the coverage that was missing.
+- Several store workflows never notified anyone, unlike their close equivalents which already did: claiming/publishing/resolving an open shift (the whole `ShiftClaim` module had zero notifications), a daily report being submitted for validation or validated, a peer-to-peer shift swap request/acceptance/refusal/cancellation (only the admin-driven swap flow notified before), and a new feedback submission.
+
+### Changed
+- New in-app notification types (published shift, shift claim submitted/approved/rejected/withdrawn, daily report submitted/validated, feedback submitted, peer swap requested/accepted/refused/cancelled), each with its own label/icon in the notification bell and `/notifications` page, translated in FR/EN/JA.
+
 ## [0.10.6] - 2026-08-05
 
 ### Added
