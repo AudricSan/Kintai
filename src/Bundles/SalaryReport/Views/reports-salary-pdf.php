@@ -215,6 +215,23 @@ th { background: #f0f0f0; font-weight: 600; }
         <?php endif; ?>
     </tr>
 </table>
+<?php if (!empty($type_breakdown)): ?>
+<h2><?= __('sr_type_breakdown') ?></h2>
+<table>
+    <tr>
+        <th><?= __('shift_type') ?></th>
+        <th><?= __('hours') ?></th>
+        <th><?= __('amount') ?></th>
+    </tr>
+    <?php foreach ($type_breakdown as $tb): ?>
+    <tr>
+        <td><?= htmlspecialchars($tb['name']) ?></td>
+        <td class="tr td-mono"><?= payslip_hours($tb['minutes']) ?></td>
+        <td class="tr td-mono"><?= format_currency($tb['amount'], $currency, $currencyStyle) ?></td>
+    </tr>
+    <?php endforeach; ?>
+</table>
+<?php endif; ?>
 <?php if ($deductionsEnabled && !empty($deductions)): ?>
 <h2><?= __('payslip_summary') ?></h2>
 <table>

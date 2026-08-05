@@ -890,6 +890,7 @@ final class StoreStatsService implements StoreStatsServiceInterface
         $totalNetMin   = 0;
         $totalCost     = 0.0;
         $anyRate       = false;
+        $typeBreakdown = [];
 
         foreach ($shifts as $s) {
             $tid  = $s['shift_type_id'] ? (int) $s['shift_type_id'] : null;
@@ -912,7 +913,18 @@ final class StoreStatsService implements StoreStatsServiceInterface
                 'has_rate'  => $wage['rate'] > 0,
                 'has_override' => ($s['hourly_rate_override'] ?? null) !== null || ($s['net_minutes_override'] ?? null) !== null,
             ];
+
+            foreach ($wage['breakdown'] as $b) {
+                $key = $b['shift_type_id'] ?? 0;
+                if (!isset($typeBreakdown[$key])) {
+                    $typeBreakdown[$key] = ['name' => $b['name'] ?: '—', 'minutes' => 0, 'amount' => 0.0];
+                }
+                $typeBreakdown[$key]['minutes'] += $b['minutes'];
+                $typeBreakdown[$key]['amount']  += $b['amount'];
+            }
         }
+        $typeBreakdown = array_values($typeBreakdown);
+        usort($typeBreakdown, fn($a, $b) => strcmp($a['name'], $b['name']));
 
         $deductionSettings  = $this->stores->getDeductionSettings($storeId);
         $membership         = $this->storeUsers->findMembership($storeId, $userId);
@@ -966,6 +978,7 @@ final class StoreStatsService implements StoreStatsServiceInterface
             'totalNetMin'       => $totalNetMin,
             'totalCost'         => round($totalCost, 2),
             'anyRate'           => $anyRate,
+            'type_breakdown'    => $typeBreakdown,
             'deductions'        => $deductions,
             'totalDeductions'   => $totalDeductions,
             'netPay'            => $netPay,

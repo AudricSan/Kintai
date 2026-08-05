@@ -159,6 +159,23 @@ if (isset($shiftRows)):
             </tr>
         </tfoot>
     </table>
+    <?php if (!empty($type_breakdown)): ?>
+    <h4 class="detail-subtitle"><?= __('sr_type_breakdown') ?></h4>
+    <table class="detail-table">
+        <thead>
+            <tr><th><?= __('shift_type') ?></th><th><?= __('hours') ?></th><th><?= __('amount') ?></th></tr>
+        </thead>
+        <tbody>
+            <?php foreach ($type_breakdown as $tb): ?>
+            <tr>
+                <td><?= htmlspecialchars($tb['name']) ?></td>
+                <td class="td-mono"><?= payslip_hours($tb['minutes']) ?></td>
+                <td class="td-mono"><?= format_currency($tb['amount'], $currency, $currencyStyle) ?></td>
+            </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+    <?php endif; ?>
     <?php if ($deductionsEnabled && !empty($deductions)): ?>
     <h4 class="detail-subtitle"><?= __('payslip_summary') ?></h4>
     <table class="detail-table">

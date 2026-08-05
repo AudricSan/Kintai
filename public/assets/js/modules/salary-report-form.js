@@ -248,6 +248,22 @@
         return '<tr><th>' + escapeHtml(label) + ' (' + rate.toFixed(2) + '%)</th></tr>';
     }
 
+    /* Répartition des heures/du coût par type d'horaire (un shift peut être
+       facturé sur plusieurs types à la fois, voir ShiftWageCalculator::costOf()). */
+    function renderTypeBreakdown(typeBreakdown) {
+        if (!typeBreakdown || !typeBreakdown.length) return '';
+        var html = '<h4 class="detail-subtitle">' + escapeHtml(i18n.sr_type_breakdown) + '</h4>';
+        html += '<table class="detail-table sr-calc-detail__table"><thead><tr><th>'
+            + escapeHtml(i18n.shift_type) + '</th><th>' + escapeHtml(i18n.hours) + '</th><th>'
+            + escapeHtml(i18n.amount) + '</th></tr></thead><tbody>';
+        typeBreakdown.forEach(function (t) {
+            html += '<tr><td>' + escapeHtml(t.name) + '</td><td class="td-mono">' + hoursFmt(t.minutes) + '</td><td class="td-mono">'
+                + formatCurrency(t.amount, currency, currencyStyle) + '</td></tr>';
+        });
+        html += '</tbody></table>';
+        return html;
+    }
+
     function renderDetail(detail) {
         if (!detail) return '';
 
@@ -265,6 +281,8 @@
                 });
                 html += '</tbody></table>';
             }
+
+            html += renderTypeBreakdown(detail.type_breakdown);
 
             var ds = detail.deduction_settings || {};
             if (ds.enabled) {
@@ -328,6 +346,8 @@
             out += '<th></th><th class="td-mono">' + formatCurrency(detail.totalCost, currency, currencyStyle) + '</th>';
         }
         out += '</tr></tfoot></table>';
+
+        out += renderTypeBreakdown(detail.type_breakdown);
 
         out += '<table class="detail-table sr-calc-detail__table">';
         out += '<tr><th>' + escapeHtml(i18n.gross_pay) + '</th><td class="td-mono td-highlight">' + formatCurrency(detail.totalCost, currency, currencyStyle) + '</td></tr>';

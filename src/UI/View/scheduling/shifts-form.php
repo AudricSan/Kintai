@@ -23,8 +23,7 @@ if ($redirect_to !== '') {
 }
 
 echo Flash::fromQuery('error', [
-    'timeoff_conflict'          => __('shift_timeoff_conflict'),
-    'shift_type_store_mismatch' => __('shift_type_store_mismatch'),
+    'timeoff_conflict' => __('shift_timeoff_conflict'),
 ])->render();
 ?>
 <div class="page-header">
@@ -71,3 +70,4 @@ ob_start();
 <?php
 echo Card::make()->body(ob_get_clean())->render();
 ?>
+<script src="<?= $BASE_URL ?>/assets/js/modules/shift-wage-preview.js"></script>

@@ -71,6 +71,7 @@
     "sr_title": "Salary Report",
     "sr_total_deductions": "Total Deductions",
     "sr_total_payment": "Total Payment",
+    "sr_type_breakdown": "Breakdown by shift type",
     "sr_updated": "Salary report updated.",
     "sr_withholding_tax": "Withholding Tax",
     "year": "Year"

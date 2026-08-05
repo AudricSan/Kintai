@@ -284,5 +284,6 @@ $hoursLabel = fn(string $key) => __($key) . ' (h)';
     'net_h_col'             => __('net_h_col'),
     'col_rate_h'            => __('col_rate_h'),
     'total_row'             => __('total_row'),
+    'sr_type_breakdown'     => __('sr_type_breakdown'),
 ], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR) ?></script>
 <script src="<?= $BASE_URL ?>/assets/js/modules/salary-report-form.js"></script>
