@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Added
+- The admin dashboard's "Stats overview" widget now shows a weekly hours trend chart (line chart, same rendering as the full store-statistics page) below the 30-day summary, when exactly one store is in scope — giving a manager/Owner of a single store an at-a-glance view of whether staffing hours are trending up or down, without having to open the full analytics page. Not shown for a multi-store comparison view, since a single "hours per week" line would blend several stores together.
+
 ### Removed
 - The `remember_tokens` and `sessions` database tables, and the unused `remember_me` entry in `config/auth.php`: neither ever had any implementation (no Eloquent model, no repository, no read/write anywhere) — sessions are native PHP file-based sessions (see `SessionMiddleware`), and no "remember me" cookie flow was ever built against the config/table that existed for it.
 
