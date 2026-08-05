@@ -14,6 +14,7 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\NotificationService;
 use kintai\UI\Controller\Web\HasBaseUrl;
 use kintai\UI\Controller\Web\HasStoreFeatureCheck;
 use kintai\UI\ViewRenderer;
@@ -32,6 +33,7 @@ final class EmployeeSwapController
         private readonly StoreUserRepositoryInterface $storeUsers,
         private readonly UserRepositoryInterface $users,
         private readonly AuditLogger $auditLogger,
+        private readonly NotificationService $notifs,
     ) {}
 
     public function swaps(Request $request): Response
@@ -152,6 +154,9 @@ final class EmployeeSwapController
         $this->auditLogger->log($request, 'swap.created', 'shift_swap_request', (int) ($savedSwap['id'] ?? 0), [
             'target_id' => $targetId,
         ], (int) $myShift['store_id']);
+
+        $this->notifs->notify($targetId, 'swap_requested', 'Un collègue vous propose un échange de shift.', (int) ($savedSwap['id'] ?? 0));
+
         return Response::redirect($this->base() . '/employee/swaps?success=created');
     }
 
@@ -176,6 +181,9 @@ final class EmployeeSwapController
         $this->auditLogger->logUpdate($request, 'swap.peer_accepted', 'shift_swap_request', (int) $swap['id'], $swap, $newSwap, [
             'requester_id' => $swap['requester_id'] ?? null,
         ], (int) ($swap['store_id'] ?? 0) ?: null);
+
+        $this->notifs->notify((int) ($swap['requester_id'] ?? 0), 'swap_peer_accepted', 'Votre collègue a accepté l\'échange (en attente de validation).', (int) $swap['id']);
+
         return Response::redirect($this->base() . '/employee/swaps?success=accepted');
     }
 
@@ -197,6 +205,9 @@ final class EmployeeSwapController
         $this->auditLogger->logUpdate($request, 'swap.peer_refused', 'shift_swap_request', (int) $swap['id'], $swap, $refusedSwap, [
             'requester_id' => $swap['requester_id'] ?? null,
         ], (int) ($swap['store_id'] ?? 0) ?: null);
+
+        $this->notifs->notify((int) ($swap['requester_id'] ?? 0), 'swap_peer_refused', 'Votre collègue a refusé l\'échange.', (int) $swap['id']);
+
         return Response::redirect($this->base() . '/employee/swaps?success=refused');
     }
 
@@ -216,6 +227,9 @@ final class EmployeeSwapController
         $cancelledSwap = array_merge($swap, ['status' => 'cancelled']);
         $this->swapRequests->save($cancelledSwap);
         $this->auditLogger->logUpdate($request, 'swap.cancelled', 'shift_swap_request', (int) $swap['id'], $swap, $cancelledSwap, []);
+
+        $this->notifs->notify((int) ($swap['target_user_id'] ?? 0), 'swap_cancelled', 'La demande d\'échange a été annulée.', (int) $swap['id']);
+
         return Response::redirect($this->base() . '/employee/swaps?success=cancelled');
     }
 
