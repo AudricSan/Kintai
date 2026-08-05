@@ -32,24 +32,34 @@ $_widgetFeatMap = [
     'pending_swaps'    => 'swaps',
     'timeclocks_today' => 'timeclock',
 ];
-// Filtrer all_widgets par features pour le panneau de personnalisation
+// Widgets masqués (panneau de personnalisation + affichage) si la permission requise manque
+$_widgetPermMap = [
+    'store_stats_summary' => 'payroll.view',
+];
+// Filtrer all_widgets par features/permissions pour le panneau de personnalisation
 $all_widgets = array_values(array_filter(
     $all_widgets,
-    fn(string $wk) => $feat($_widgetFeatMap[$wk] ?? null)
+    fn(string $wk) => $feat($_widgetFeatMap[$wk] ?? null) && (!isset($_widgetPermMap[$wk]) || $can($_widgetPermMap[$wk]))
 ));
-// Retirer des enabled_widgets les widgets dont la feature est désactivée
+// Retirer des enabled_widgets les widgets dont la feature/permission est indisponible
 foreach ($_widgetFeatMap as $_wk => $_wf) {
     if (!$feat($_wf)) {
         unset($enabled_widgets[$_wk]);
     }
 }
+foreach ($_widgetPermMap as $_wk => $_wp) {
+    if (!$can($_wp)) {
+        unset($enabled_widgets[$_wk]);
+    }
+}
 
 $widgetLabels = [
-    'kpi_counters'     => __('widget_kpi_counters'),
-    'quick_nav'        => __('widget_quick_nav'),
-    'shifts_today'     => __('widget_shifts_today'),
-    'pending_timeoff'  => __('widget_pending_timeoff'),
-    'pending_swaps'    => __('widget_pending_swaps'),
+    'kpi_counters'         => __('widget_kpi_counters'),
+    'quick_nav'            => __('widget_quick_nav'),
+    'store_stats_summary'  => __('widget_store_stats_summary'),
+    'shifts_today'         => __('widget_shifts_today'),
+    'pending_timeoff'      => __('widget_pending_timeoff'),
+    'pending_swaps'        => __('widget_pending_swaps'),
     'timeclocks_today' => __('widget_timeclocks_today'),
 ];
 ?>
@@ -156,6 +166,75 @@ $_qnLinks = array_values(array_filter(
 </div>
 <?php endif; ?>
 <?php unset($_qnLinks, $_qn); ?>
+
+<?php
+$store_stats_rows   ??= [];
+$store_stats_period ??= 30;
+?>
+<?php if (admin_widget_on('store_stats_summary', $enabled_widgets) && $can('payroll.view') && $store_stats_rows !== []): ?>
+<!-- Aperçu statistiques -->
+<div class="card card--mt">
+    <div class="card-header">
+        <span><?= __('widget_store_stats_summary') ?> — <?= (int) $store_stats_period ?>j</span>
+    </div>
+    <?php if (count($store_stats_rows) === 1): ?>
+        <?php $_row = $store_stats_rows[0]; ?>
+        <div class="stat-grid" style="--stat-cols:3">
+            <div class="stat-card">
+                <div class="stat-card__icon stat-card__icon--primary">⏱️</div>
+                <div class="stat-card__body">
+                    <div class="stat-card__value"><?= number_format((float) $_row['total_hours'], 1) ?>h</div>
+                    <div class="stat-card__label"><?= __('net_hours') ?></div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card__icon stat-card__icon--success">💰</div>
+                <div class="stat-card__body">
+                    <div class="stat-card__value"><?= format_currency((float) $_row['total_cost'], (string) $_row['currency'], (string) $_row['currency_symbol_style']) ?></div>
+                    <div class="stat-card__label"><?= __('total_cost') ?></div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card__icon stat-card__icon--warning">📈</div>
+                <div class="stat-card__body">
+                    <div class="stat-card__value"><?= $_row['stability'] !== null ? (int) $_row['stability'] : '—' ?></div>
+                    <div class="stat-card__label"><?= __('score_stability') ?></div>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <a href="<?= route_url('admin.stores.stats', ['id' => $_row['store_id']]) ?>" class="card-header-link"><?= __('statistics') ?> →</a>
+        </div>
+        <?php unset($_row); ?>
+    <?php else: ?>
+        <div class="table-wrap">
+            <table class="data-table" data-mob-stack>
+                <thead>
+                    <tr>
+                        <th><?= __('store') ?></th>
+                        <th><?= __('net_hours') ?></th>
+                        <th><?= __('total_cost') ?></th>
+                        <th><?= __('score_stability') ?></th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($store_stats_rows as $_row): ?>
+                        <tr class="tr--clickable" onclick="location.href='<?= route_url('admin.stores.stats', ['id' => $_row['store_id']]) ?>'">
+                            <td data-label="<?= htmlspecialchars(__('store')) ?>"><?= htmlspecialchars((string) $_row['store_name']) ?></td>
+                            <td data-label="<?= htmlspecialchars(__('net_hours')) ?>"><?= number_format((float) $_row['total_hours'], 1) ?>h</td>
+                            <td data-label="<?= htmlspecialchars(__('total_cost')) ?>"><?= format_currency((float) $_row['total_cost'], (string) $_row['currency'], (string) $_row['currency_symbol_style']) ?></td>
+                            <td data-label="<?= htmlspecialchars(__('score_stability')) ?>"><?= $_row['stability'] !== null ? (int) $_row['stability'] : '—' ?></td>
+                            <td><a href="<?= route_url('admin.stores.stats', ['id' => $_row['store_id']]) ?>" class="card-header-link"><?= __('statistics') ?> →</a></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <?php unset($_row); ?>
+    <?php endif; ?>
+</div>
+<?php endif; ?>
 
 <?php
 $sort       ??= 'start_asc';

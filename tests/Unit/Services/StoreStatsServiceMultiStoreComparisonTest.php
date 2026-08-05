@@ -56,7 +56,7 @@ final class StoreStatsServiceMultiStoreComparisonTest extends TestCase
     public function testReturnsFlatMetricsPerStoreWithNames(): void
     {
         $this->stores->method('findById')->willReturnMap([
-            [1, ['id' => 1, 'name' => 'Store A']],
+            [1, ['id' => 1, 'name' => 'Store A', 'currency' => 'JPY', 'currency_symbol_style' => 'kanji']],
             [2, ['id' => 2, 'name' => 'Store B']],
         ]);
         $this->storeUsers->method('findByStore')->willReturnMap([
@@ -78,11 +78,13 @@ final class StoreStatsServiceMultiStoreComparisonTest extends TestCase
 
         $this->assertCount(2, $rows);
         $this->assertSame('Store A', $rows[0]['store_name']);
+        $this->assertSame('JPY', $rows[0]['currency']);
         $this->assertSame(1, $rows[0]['total_shifts']);
         $this->assertSame(2, $rows[0]['employee_count']);
         $this->assertGreaterThan(0, $rows[0]['total_hours']);
 
         $this->assertSame('Store B', $rows[1]['store_name']);
+        $this->assertSame('EUR', $rows[1]['currency'], 'store sans devise configurée retombe sur EUR par défaut');
         $this->assertSame(0, $rows[1]['total_shifts']);
         $this->assertSame(0, $rows[1]['employee_count']);
     }
