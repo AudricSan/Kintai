@@ -101,8 +101,8 @@ else:
                 $html .= '<a href="' . $BASE_URL . '/admin/stores/' . (int) $store['id'] . '/members/' . $mid . '/deductions" class="btn btn--ghost btn--sm" title="' . __('deduction_overrides') . '">💰</a>';
             }
             if ($can('employees.update')) {
-                $html .= '<form method="POST" action="' . $BASE_URL . '/admin/stores/' . $storeId . '/members/' . $mid . '/delete" class="form-inline">' . csrf_field()
-                    . '<button type="submit" class="btn btn--danger btn--sm" onclick="return confirm(\'' . __('confirm_remove_member') . '\')">' . __('remove') . '</button></form>';
+                $html .= '<form method="POST" action="' . $BASE_URL . '/admin/stores/' . $storeId . '/members/' . $mid . '/delete" class="form-inline" data-confirm="' . htmlspecialchars(__('confirm_remove_member'), ENT_QUOTES) . '">' . csrf_field()
+                    . '<button type="submit" class="btn btn--danger btn--sm">' . __('remove') . '</button></form>';
             }
             $html .= '</div>';
             return $html;
