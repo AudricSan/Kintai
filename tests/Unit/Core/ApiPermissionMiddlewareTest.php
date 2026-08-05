@@ -8,6 +8,7 @@ use kintai\Core\Auth\PermissionService;
 use kintai\Core\Middleware\ApiPermissionMiddleware;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
+use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -17,14 +18,17 @@ final class ApiPermissionMiddlewareTest extends TestCase
 {
     private RoleRepositoryInterface&MockObject $roles;
     private RoleAssignmentRepositoryInterface&MockObject $assignments;
+    private StoreUserRepositoryInterface&MockObject $storeUsers;
     private ApiPermissionMiddleware $middleware;
 
     protected function setUp(): void
     {
         $this->roles       = $this->createMock(RoleRepositoryInterface::class);
         $this->assignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
+        $this->storeUsers  = $this->createMock(StoreUserRepositoryInterface::class);
         $this->middleware  = new ApiPermissionMiddleware(
             new PermissionService($this->assignments, $this->roles),
+            $this->storeUsers,
         );
     }
 
@@ -179,6 +183,57 @@ final class ApiPermissionMiddlewareTest extends TestCase
         $this->roles->method('findById')->with(1)->willReturn(['id' => 1, 'is_system' => 1]);
 
         $request = $this->makeRequest('api.v1.stores.destroy', 1, ['id' => '3']);
+
+        $this->assertSame(200, $this->middleware->handle($request, $this->next())->status());
+    }
+
+    // -------------------------------------------------------------------------
+    // Règle 'membership' (bundle DailyReport) : accès en libre-service pour
+    // tout membre du store ciblé, sans permission RBAC dédiée.
+    // -------------------------------------------------------------------------
+
+    public function testMembershipRuleAllowsAnyStoreMemberWithoutPermission(): void
+    {
+        $this->assignments->method('findByUser')->willReturn([]);
+        $this->storeUsers->method('findMembership')->with(1, 10)->willReturn(['store_id' => 1, 'user_id' => 10]);
+
+        $request = $this->makeRequest('api.v1.daily_reports.store', 10, [], ['store_id' => '1']);
+
+        $this->assertSame(200, $this->middleware->handle($request, $this->next())->status());
+    }
+
+    public function testMembershipRuleRejectsNonMemberWithoutPermission(): void
+    {
+        $this->assignments->method('findByUser')->willReturn([]);
+        $this->storeUsers->method('findMembership')->with(1, 10)->willReturn(null);
+
+        $request  = $this->makeRequest('api.v1.daily_reports.store', 10, [], ['store_id' => '1']);
+        $response = $this->middleware->handle($request, $this->next());
+
+        $this->assertSame(403, $response->status());
+    }
+
+    public function testMembershipRuleRejectsWithoutStoreIdEvenForAMember(): void
+    {
+        // Sans store_id ciblé, la portée 'membership' ne peut pas s'appliquer :
+        // seule une permission RBAC globale peut passer.
+        $this->assignments->method('findByUser')->willReturn([]);
+        $this->storeUsers->expects($this->never())->method('findMembership');
+
+        $request  = $this->makeRequest('api.v1.daily_reports.store', 10);
+        $response = $this->middleware->handle($request, $this->next());
+
+        $this->assertSame(403, $response->status());
+    }
+
+    public function testMembershipRuleStillGrantsViaPermission(): void
+    {
+        // Un gestionnaire avec daily_reports.create sur le store passe par la
+        // clé RBAC normale, sans même consulter l'adhésion.
+        $this->grantStoreRole(10, 2, 1, ['daily_reports.create']);
+        $this->storeUsers->expects($this->never())->method('findMembership');
+
+        $request = $this->makeRequest('api.v1.daily_reports.store', 10, [], ['store_id' => '1']);
 
         $this->assertSame(200, $this->middleware->handle($request, $this->next())->status());
     }

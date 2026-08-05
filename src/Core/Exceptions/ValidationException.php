@@ -8,8 +8,8 @@ final class ValidationException extends HttpException
 {
     public function __construct(
         public readonly array $errors,
-        string $message = 'Validation failed',
+        ?string $message = null,
     ) {
-        parent::__construct(422, $message);
+        parent::__construct(422, $message ?? __('error_422_message'));
     }
 }
