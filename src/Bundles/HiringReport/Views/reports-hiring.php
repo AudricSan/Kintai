@@ -149,7 +149,7 @@ echo Flash::fromQuery('success', [
             $html .= Button::make(__('view'))->ghost()->sm()->link($base)->render();
             $html .= Button::make(__('edit'))->ghost()->sm()->link($base . '/edit')->render();
             if (!empty($auth_user['is_admin'])) {
-                $html .= '<form method="POST" action="' . htmlspecialchars($base . '/delete') . '" class="form-inline" onsubmit="return confirm(\'' . __('confirm_delete_hiring_report') . '\')">';
+                $html .= '<form method="POST" action="' . htmlspecialchars($base . '/delete') . '" class="form-inline" data-confirm="' . htmlspecialchars(__('confirm_delete_hiring_report'), ENT_QUOTES) . '">';
                 $html .= csrf_field();
                 $html .= Button::make(__('delete'))->danger()->sm()->submit()->render();
                 $html .= '</form>';

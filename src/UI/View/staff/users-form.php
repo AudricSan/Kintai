@@ -27,6 +27,13 @@ $default_store_role_id ??= 0;
 $action = $mode === 'edit'
     ? $BASE_URL . '/admin/users/' . (int) $user['id'] . '/edit'
     : route_url('admin.users.create');
+$can = $user_can ?? fn(string $k): bool => true;
+// admin.users.edit n'exige que employees.view, mais la soumission réelle
+// (admin.users.update) exige employees.update : sans ce droit, le formulaire
+// reste consultable mais désactivé plutôt que de laisser l'utilisateur le
+// remplir pour se faire rejeter au clic sur "Enregistrer" (ou pire, perdre
+// silencieusement une modification via l'autosave, voir user-form-autosave.js).
+$canEditUser = $mode !== 'edit' || $can('employees.update');
 
 echo Flash::fromQuery('success', [
     'updated'        => __('user_updated'),
@@ -47,9 +54,15 @@ echo Flash::fromQuery('error', [
     </div>
 </div>
 
-<form method="POST" action="<?= htmlspecialchars($action) ?>" id="userEditForm" class="form-stack" novalidate<?= $mode === 'edit' ? ' data-autosave="1"' : '' ?>>
-    <?= csrf_field() ?>
-    <?php $as_cards = true; include __DIR__ . '/../_partials/_form-user.php'; ?>
+<?php if (!$canEditUser): ?>
+<div class="alert alert--warning"><?= __('readonly_no_permission_notice') ?></div>
+<?php endif; ?>
+
+<form method="POST" action="<?= htmlspecialchars($action) ?>" id="userEditForm" class="form-stack" novalidate<?= ($mode === 'edit' && $canEditUser) ? ' data-autosave="1"' : '' ?>>
+    <fieldset<?= $canEditUser ? '' : ' disabled' ?> style="border:none;padding:0;margin:0">
+        <?= csrf_field() ?>
+        <?php $as_cards = true; include __DIR__ . '/../_partials/_form-user.php'; ?>
+    </fieldset>
 </form>
 <?php if ($mode === 'edit'): ?>
 <form method="POST" action="<?= $BASE_URL ?>/admin/users/<?= (int) $user['id'] ?>/reset-password" id="resetPasswordForm">
@@ -69,7 +82,7 @@ echo Flash::fromQuery('error', [
 <div class="card card--mt">
     <div class="card-header card-header--flex">
         <h3 class="card-title"><?= __('stores_plural') ?></h3>
-        <?php if (!empty($available_stores)): ?>
+        <?php if (!empty($available_stores) && $can('employees.update')): ?>
         <?= Button::make(__('assign_to_store'))->outline()->sm()->attrs(['type' => 'button', 'onclick' => "openModal('assignStoreModal')"])->render() ?>
         <?php endif; ?>
     </div>
@@ -101,7 +114,7 @@ echo Flash::fromQuery('error', [
                             <td data-label="<?= htmlspecialchars(__('store')) ?>"><?= htmlspecialchars($m['store_name'] ?? '') ?></td>
                             <td data-label="<?= htmlspecialchars(__('role')) ?>"><?= Badge::make(htmlspecialchars($m['role_name'] ?? ($m['role'] ?? '—')))->variant(!empty($m['role_is_managing']) ? 'warning' : 'active')->render() ?></td>
                             <td data-label="<?= htmlspecialchars(__('social_deductions')) ?>">
-                                <?php if ($storeDedEnabled): ?>
+                                <?php if ($storeDedEnabled && $can('payroll.generate')): ?>
                                 <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/members/<?= $mid ?>/deductions" class="form-inline">
                                     <?= csrf_field() ?>
                                     <input type="hidden" name="_redirect_to" value="<?= htmlspecialchars($BASE_URL . '/admin/users/' . (int) $user['id'] . '/edit?success=deductions_saved') ?>">
@@ -126,7 +139,7 @@ echo Flash::fromQuery('error', [
                             <td rowspan="<?= $rowSpan ?>" data-label="<?= htmlspecialchars(__('store')) ?>"><?= htmlspecialchars($m['store_name'] ?? '') ?></td>
                             <td rowspan="<?= $rowSpan ?>" data-label="<?= htmlspecialchars(__('role')) ?>"><?= Badge::make(htmlspecialchars($m['role_name'] ?? ($m['role'] ?? '—')))->variant(!empty($m['role_is_managing']) ? 'warning' : 'active')->render() ?></td>
                             <td rowspan="<?= $rowSpan ?>" data-label="<?= htmlspecialchars(__('social_deductions')) ?>">
-                                <?php if ($storeDedEnabled): ?>
+                                <?php if ($storeDedEnabled && $can('payroll.generate')): ?>
                                 <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/members/<?= $mid ?>/deductions" class="form-inline">
                                     <?= csrf_field() ?>
                                     <input type="hidden" name="_redirect_to" value="<?= htmlspecialchars($BASE_URL . '/admin/users/' . (int) $user['id'] . '/edit?success=deductions_saved') ?>">
@@ -143,6 +156,7 @@ echo Flash::fromQuery('error', [
                             <td data-label="<?= htmlspecialchars(__('shift_types')) ?>"><?= htmlspecialchars($t['name'] ?? '') ?> <span class="text-sm-muted">(<?= htmlspecialchars($t['code'] ?? '') ?>)</span></td>
                             <td data-label="<?= htmlspecialchars(__('base_rate')) ?>" class="text-sm"><?= $t['hourly_rate'] !== null ? number_format((float) $t['hourly_rate'], 2, '.', '') : '—' ?></td>
                             <td data-label="<?= htmlspecialchars(__('custom_rate')) ?>">
+                                <?php if ($can('employees.update')): ?>
                                 <form method="POST" action="<?= $BASE_URL ?>/admin/users/<?= (int) $user['id'] ?>/rates" class="form-inline">
                                     <?= csrf_field() ?>
                                     <input type="hidden" name="shift_type_id" value="<?= $tid ?>">
@@ -151,6 +165,9 @@ echo Flash::fromQuery('error', [
                                            placeholder="<?= htmlspecialchars($t['hourly_rate'] !== null ? number_format((float) $t['hourly_rate'], 2, '.', '') : '0.00') ?>"
                                            onchange="this.form.submit()">
                                 </form>
+                                <?php else: ?>
+                                    <?= $currentRate !== null ? Badge::make(number_format((float) $currentRate['hourly_rate'], 2, '.', ''))->active()->render() : '<span class="text-sm text-muted">—</span>' ?>
+                                <?php endif; ?>
                             </td>
                         </tr>
                         <?php endforeach; ?>
@@ -174,6 +191,7 @@ foreach ($user_memberships as $m):
     $storeDedEnabled = !empty($m['store_ded_settings']['enabled']);
     $subject = !empty($ov['subject_to_deductions']);
     ob_start();
+    if ($can('employees.update')):
     ?>
     <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/members/<?= $mid ?>/role" class="form-inline-flex mb-sm">
         <?= csrf_field() ?>
@@ -187,8 +205,9 @@ foreach ($user_memberships as $m):
         </div>
         <?= Button::make(__('apply'))->primary()->sm()->submit()->render() ?>
     </form>
+    <?php endif; ?>
 
-    <?php if ($storeDedEnabled): ?>
+    <?php if ($storeDedEnabled && $can('payroll.generate')): ?>
     <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/members/<?= $mid ?>/deductions" class="mb-sm">
         <?= csrf_field() ?>
         <input type="hidden" name="_redirect_to" value="<?= htmlspecialchars($BASE_URL . '/admin/users/' . (int) $user['id'] . '/edit?success=deductions_saved') ?>">
@@ -201,10 +220,13 @@ foreach ($user_memberships as $m):
     <?php endif; ?>
 
     <?php
-    $editMembershipFooter = '<form method="POST" action="' . htmlspecialchars($BASE_URL . '/admin/stores/' . $sid . '/members/' . $mid . '/delete') . '" class="form-inline" onsubmit="return confirm(\'' . htmlspecialchars(__('confirm_remove_member'), ENT_QUOTES) . '\')">'
-        . csrf_field()
-        . Button::make(__('remove'))->danger()->sm()->submit()->render()
-        . '</form>';
+    $editMembershipFooter = '';
+    if ($can('employees.update')) {
+        $editMembershipFooter = '<form method="POST" action="' . htmlspecialchars($BASE_URL . '/admin/stores/' . $sid . '/members/' . $mid . '/delete') . '" class="form-inline" data-confirm="' . htmlspecialchars(__('confirm_remove_member'), ENT_QUOTES) . '">'
+            . csrf_field()
+            . Button::make(__('remove'))->danger()->sm()->submit()->render()
+            . '</form>';
+    }
     echo Modal::make("editMembershipModal{$mid}")
         ->title(htmlspecialchars($m['store_name'] ?? ''))
         ->body(ob_get_clean())
@@ -213,7 +235,7 @@ foreach ($user_memberships as $m):
 endforeach;
 ?>
 
-<?php if (!empty($available_stores)):
+<?php if (!empty($available_stores) && $can('employees.update')):
     ob_start();
     ?>
     <form method="POST" action="<?= $BASE_URL ?>/admin/stores/0/members" id="addStoreForm" class="form-stack">
@@ -256,8 +278,12 @@ endforeach;
             <?php foreach ($user_memberships as $m): ?>
                 <?php $sid = (int) $m['store_id']; ?>
                 <div class="btn-group mb-sm">
+                    <?php if ($can('documents.create')): ?>
                     <a href="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/reports/resignation/create?user_id=<?= (int)$user['id'] ?>" class="btn btn--danger btn--sm"><?= __('resign') ?> — <?= htmlspecialchars($m['store_name'] ?? '') ?></a>
+                    <?php endif; ?>
+                    <?php if ($can('payroll.generate')): ?>
                     <a href="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/reports/salary/create?user_id=<?= (int)$user['id'] ?>" class="btn btn--ghost btn--sm"><?= __('salary_report') ?> — <?= htmlspecialchars($m['store_name'] ?? '') ?></a>
+                    <?php endif; ?>
                 </div>
             <?php endforeach; ?>
         <?php else: ?>
@@ -269,9 +295,11 @@ endforeach;
 
 <p class="form-error" data-required-error data-required-error-form="userEditForm" hidden><?= __('required_fields_missing') ?></p>
 <div class="form-actions mt-md">
+    <?php if ($canEditUser): ?>
     <?= Button::make($mode === 'edit' ? __('save') : __('new_user'))->primary()->submit()->attrs(['form' => 'userEditForm'])->render() ?>
+    <?php endif; ?>
     <a href="<?= route_url('admin.users') ?>" class="btn btn--ghost"><?= __('cancel') ?></a>
-    <?php if ($mode === 'edit'): ?>
+    <?php if ($mode === 'edit' && $canEditUser): ?>
     <span class="autosave-status" data-autosave-status
           data-saving-label="<?= htmlspecialchars(__('autosave_saving')) ?>"
           data-saved-label="<?= htmlspecialchars(__('autosave_saved')) ?>"

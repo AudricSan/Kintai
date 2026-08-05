@@ -65,7 +65,7 @@ if ($_canManage) {
     ->column(__('type'), function($s) use ($types_map) {
         $t = $types_map[(int)($s['shift_type_id'] ?? 0)] ?? null;
         if (!$t) return '—';
-        return '<span class="badge" style="background:' . htmlspecialchars($t['color'] ?? '#888') . '20;color:' . htmlspecialchars($t['color'] ?? '#888') . '">'
+        return '<span class="type-badge" data-color="' . htmlspecialchars($t['color'] ?? '#888') . '">'
             . htmlspecialchars($t['name'] ?? '') . '</span>';
     })
     ->column(__('note'), fn($s) => htmlspecialchars($s['open_shift_note'] ?? ''))
@@ -137,3 +137,5 @@ if ($_canManage) {
     ->render()
 ?></div>
 <?php endif; ?>
+
+<script src="<?= $BASE_URL ?>/assets/js/modules/type-badges.js"></script>
