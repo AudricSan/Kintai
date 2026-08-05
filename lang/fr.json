@@ -778,6 +778,7 @@
     "quick_period": "Période rapide",
     "rate_h": "Taux/h",
     "rate_info": "Taux utilisés : taux individuel employé/type (prioritaire) → taux du type de shift (fallback).",
+    "readonly_no_permission_notice": "Vous pouvez consulter cette fiche mais vous n'avez pas la permission de la modifier.",
     "reason": "Motif",
     "reassign_shift_b": "Réassigner le shift B à un autre employé",
     "recent_shifts": "Shifts récents",

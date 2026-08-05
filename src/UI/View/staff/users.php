@@ -25,6 +25,7 @@ $available_stores ??= [];
 $store_names      ??= [];
 $user_store_ids   ??= [];
 $user_store_map   ??= [];
+$can              = $user_can ?? fn(string $k): bool => true;
 
 $activeFilters = array_filter([
     'store_id' => $filter_store_id ?: null,
@@ -42,7 +43,9 @@ $exportQuery = $filter_store_id !== 0 ? '?store_id=' . $filter_store_id : '';
 <div class="page-header">
     <h2 class="page-header__title"><?= __('users') ?> <span class="page-count">(<?= count($users) ?>)</span></h2>
     <div class="page-header__actions">
+        <?php if ($can('employees.create')): ?>
         <?= Button::make('+ ' . __('new_user'))->primary()->link(route_url('admin.users.create'))->render() ?>
+        <?php endif; ?>
         <?= Button::make('PDF')->ghost()->sm()->link(route_url('admin.users.export_pdf') . $exportQuery)->attrs(['target' => '_blank'])->render() ?>
         <?= Button::make('JSON')->ghost()->sm()->link(route_url('admin.users.export_json') . $exportQuery)->render() ?>
     </div>
@@ -142,19 +145,28 @@ $exportQuery = $filter_store_id !== 0 ? '?store_id=' . $filter_store_id : '';
         return $pay > 0 ? format_currency((float) $pay, $store_currency, $store_currency_symbol_style) : '<span class="text-muted" title="' . __('no_rate_configured') . '">—</span>';
     })
     ->column(__('date'), fn($u) => '<span class="td-date-muted">' . htmlspecialchars(substr($u['created_at'] ?? '', 0, 10)) . '</span>')
-    ->column(__('actions'), function($u) use ($BASE_URL, $user_store_map) {
+    ->column(__('actions'), function($u) use ($BASE_URL, $user_store_map, $can) {
         $uid = (int) $u['id'];
         if (!isset($user_store_map[$uid])) {
             return '';
         }
         $sId = $user_store_map[$uid];
+        $panel = '';
+        if ($can('payroll.view')) {
+            $panel .= '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/employee-report/' . $uid . '/stats" class="row-actions__link">📊 ' . htmlspecialchars(__('employee_stats')) . '</a>';
+        }
+        if ($can('payroll.generate')) {
+            $panel .= '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/reports/salary/create?user_id=' . $uid . '" class="row-actions__link">💰 ' . htmlspecialchars(__('salary_report')) . '</a>';
+        }
+        if ($can('documents.create')) {
+            $panel .= '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/reports/resignation/create?user_id=' . $uid . '" class="row-actions__link row-actions__link--danger">✕ ' . htmlspecialchars(__('resign')) . '</a>';
+        }
+        if ($panel === '') {
+            return '';
+        }
         return '<div class="row-actions">'
             . '<button type="button" class="row-actions__trigger" aria-haspopup="true" aria-label="' . htmlspecialchars(__('actions')) . '">⋮</button>'
-            . '<div class="row-actions__panel">'
-            . '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/employee-report/' . $uid . '/stats" class="row-actions__link">📊 ' . htmlspecialchars(__('employee_stats')) . '</a>'
-            . '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/reports/salary/create?user_id=' . $uid . '" class="row-actions__link">💰 ' . htmlspecialchars(__('salary_report')) . '</a>'
-            . '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/reports/resignation/create?user_id=' . $uid . '" class="row-actions__link row-actions__link--danger">✕ ' . htmlspecialchars(__('resign')) . '</a>'
-            . '</div>'
+            . '<div class="row-actions__panel">' . $panel . '</div>'
             . '</div>';
     })
     ->render()

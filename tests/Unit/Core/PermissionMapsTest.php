@@ -27,8 +27,17 @@ final class PermissionMapsTest extends TestCase
 
     public function testWebMapOnlyReferencesCatalogKeys(): void
     {
-        foreach ($this->webMap() as $route => $key) {
-            $this->assertIsString($key, "La règle web de $route doit être une clé simple.");
+        foreach ($this->webMap() as $route => $rule) {
+            if (is_array($rule)) {
+                $this->assertArrayHasKey('perm', $rule, "Route $route : une règle tableau doit avoir une entrée 'perm'.");
+                $key = $rule['perm'];
+                foreach (array_keys($rule) as $option) {
+                    $this->assertContains($option, ['perm', 'membership', 'store_param'], "Route $route : option de règle inconnue '$option'.");
+                }
+            } else {
+                $this->assertIsString($rule);
+                $key = $rule;
+            }
             $this->assertTrue(
                 PermissionCatalog::exists($key),
                 "Route $route : la clé '$key' n'existe pas dans PermissionCatalog."
@@ -43,7 +52,7 @@ final class PermissionMapsTest extends TestCase
                 $this->assertArrayHasKey('perm', $rule, "Route $route : une règle tableau doit avoir une entrée 'perm'.");
                 $key = $rule['perm'];
                 foreach (array_keys($rule) as $option) {
-                    $this->assertContains($option, ['perm', 'self'], "Route $route : option de règle inconnue '$option'.");
+                    $this->assertContains($option, ['perm', 'self', 'membership'], "Route $route : option de règle inconnue '$option'.");
                 }
             } else {
                 $this->assertIsString($rule);
