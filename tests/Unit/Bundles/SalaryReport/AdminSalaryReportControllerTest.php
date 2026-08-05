@@ -407,6 +407,51 @@ final class AdminSalaryReportControllerTest extends TestCase
         $this->assertSame('Dupont Jean', $data['detail']['employees'][0]['name']);
     }
 
+    /**
+     * Un shift à cheval sur deux types d'horaire (ex : 07:00-18:00 traverse un
+     * type 05:00-08:00 puis un type 08:00-22:00) doit être facturé par tranche,
+     * pas au taux unique d'un seul type — c'est le bug corrigé par
+     * ShiftWageCalculator::costOf(). Le rapport magasin doit aussi exposer la
+     * répartition des heures par type.
+     */
+    public function testCalculateSalaryReportSplitsMultiTypeShiftAcrossTranches(): void
+    {
+        $_GET = ['from' => '2026-08-01', 'to' => '2026-08-31'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setAttribute('auth_user', ['id' => 1, 'display_name' => 'Manager X']);
+        $req->setRouteParams(['id' => '1']);
+
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Store A']);
+        $this->dailyReports->method('findByStoreAndDateRange')->willReturn([]);
+        $this->shifts->method('findByStore')->with(1)->willReturn([
+            [
+                'shift_date' => '2026-08-05', 'start_time' => '07:00', 'end_time' => '18:00',
+                'duration_minutes' => 660, 'pause_minutes' => 0, 'user_id' => 7,
+            ],
+        ]);
+        $this->shiftTypes->method('findByStore')->with(1)->willReturn([
+            ['id' => 1, 'name' => 'Tôt',  'start_time' => '05:00', 'end_time' => '08:00', 'hourly_rate' => 1200.0],
+            ['id' => 2, 'name' => 'Jour', 'start_time' => '08:00', 'end_time' => '22:00', 'hourly_rate' => 1000.0],
+        ]);
+        $this->users->method('findById')->with(7)->willReturn(['id' => 7, 'last_name' => 'Dupont', 'first_name' => 'Jean']);
+
+        $response = $this->controller->calculateSalaryReport($req);
+
+        $this->assertSame(200, $response->status());
+        $data = json_decode($response->body(), true);
+
+        // 1h × 1200 (Tôt) + 10h × 1000 (Jour) = 11200, pas 11h × un seul taux.
+        $this->assertEquals(11200.0, $data['preset']['staff_total_payment']);
+        $this->assertEquals(11200.0, $data['detail']['employees'][0]['cost']);
+
+        $breakdown = array_column($data['detail']['type_breakdown'], null, 'name');
+        $this->assertEquals(60, $breakdown['Tôt']['minutes']);
+        $this->assertEquals(600, $breakdown['Jour']['minutes']);
+        $this->assertEquals(1200.0, $breakdown['Tôt']['amount']);
+        $this->assertEquals(10000.0, $breakdown['Jour']['amount']);
+    }
+
     public function testCalculateSalaryReportUsesPayslipDataForEmployeeScopedRange(): void
     {
         $_GET = ['from' => '2026-08-01', 'to' => '2026-08-15', 'user_id' => '7'];
