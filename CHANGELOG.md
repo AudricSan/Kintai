@@ -11,6 +11,7 @@ All notable changes to Kintai are documented here.
 
 ### Fixed
 - The "⋮" row-actions dropdown menu (users, stores, feedbacks, timeoff, HR reports...) had no visual separation between a destructive action ("Delete", "Resign"...) and the safe actions above it — just a color change, same 2px spacing as everything else. Added a divider line before the danger item, consistent with the same treatment the user menu's "Log out" already had.
+- The employee dashboard's "estimated salary" widget (`monthly_stats`) could silently disappear forever for any employee who had customized their dashboard before a widget-key rename (older dashboard redesigns retired keys like `timeclocks`/`timeoff`/`open_shifts` and `kpi_counters`/`quick_nav`/`timeclocks_today` for the employee view). `getEnabledWidgets()` treats the saved list as a strict whitelist, so a row saved under an old schema hid every current widget, including the salary estimate — with no visible way for the employee to know it still existed. A one-time migration resets any `user_dashboard_prefs` row containing a key outside the current widget catalog, so those users fall back to the default set (salary widget included) instead of a permanently stuck, partially-blank dashboard.
 
 ## [0.10.7] - 2026-08-05
 
