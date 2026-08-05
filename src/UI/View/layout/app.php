@@ -81,6 +81,8 @@
     <?php if ($feedback_enabled ?? true): ?>
         <?php include __DIR__ . '/partials/feedback-modal.php'; ?>
     <?php endif; ?>
+
+    <?php include __DIR__ . '/partials/_confirm-modal.php'; ?>
 </body>
 
 </html>

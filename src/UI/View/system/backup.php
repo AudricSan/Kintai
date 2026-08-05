@@ -38,7 +38,7 @@ ob_start();
     <p class="text-muted"><?= __('backup_none') ?></p>
 <?php else:
     echo '<div class="mb-sm">'
-        . '<form method="POST" action="' . htmlspecialchars($action) . '/delete-all" class="d-inline" onsubmit="return confirm(\'' . sprintf(__('backup_delete_all_confirm'), count($backups)) . '\')">'
+        . '<form method="POST" action="' . htmlspecialchars($action) . '/delete-all" class="d-inline" data-confirm="' . htmlspecialchars(sprintf(__('backup_delete_all_confirm'), count($backups)), ENT_QUOTES) . '">'
         . csrf_field()
         . Button::make(sprintf(__('backup_delete_all_btn'), count($backups)))->danger()->sm()->submit()->render()
         . '</form></div>';
@@ -53,9 +53,9 @@ ob_start();
                 . '<input type="hidden" name="filename" value="' . htmlspecialchars($b['filename']) . '">'
                 . Button::make(__('backup_restore_btn'))->sm()->warning()->attrs(['onclick' => "return confirm('" . __('backup_restore_confirm') . "')"])->submit()->render()
                 . '</form>'
-                . '<form method="POST" action="' . htmlspecialchars($action) . '/delete" class="d-inline">' . csrf_field()
+                . '<form method="POST" action="' . htmlspecialchars($action) . '/delete" class="d-inline" data-confirm="' . htmlspecialchars(__('backup_delete_confirm'), ENT_QUOTES) . '">' . csrf_field()
                 . '<input type="hidden" name="filename" value="' . htmlspecialchars($b['filename']) . '">'
-                . Button::make(__('backup_delete_btn'))->sm()->danger()->attrs(['onclick' => "return confirm('" . __('backup_delete_confirm') . "')"])->submit()->render()
+                . Button::make(__('backup_delete_btn'))->sm()->danger()->submit()->render()
                 . '</form>';
         })
         ->render();

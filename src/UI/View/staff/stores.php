@@ -63,7 +63,7 @@ $storeChipColor = function (string $seed): string {
                 . '<a href="' . $BASE_URL . '/admin/stores/' . $id . '/employee-report" class="row-actions__link">👥 ' . htmlspecialchars(__('employee_report')) . '</a>';
         }
         if ($can('stores.delete')) {
-            $panel .= '<form method="POST" action="' . htmlspecialchars($BASE_URL . '/admin/stores/' . $id . '/delete') . '" onsubmit="return confirm(\'' . __('confirm_delete_store') . '\')">'
+            $panel .= '<form method="POST" action="' . htmlspecialchars($BASE_URL . '/admin/stores/' . $id . '/delete') . '" data-confirm="' . htmlspecialchars(__('confirm_delete_store'), ENT_QUOTES) . '">'
                 . csrf_field()
                 . '<button type="submit" class="row-actions__link row-actions__link--danger">🗑 ' . htmlspecialchars(__('delete')) . '</button>'
                 . '</form>';

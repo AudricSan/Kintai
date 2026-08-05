@@ -17,7 +17,7 @@ $isOwner   = !empty($auth_user['is_admin']);
         <a href="<?= $BASE_URL ?>/admin/photos" class="btn btn--ghost btn--sm">← <?= __('back') ?></a>
         <?php if ($isOwner): ?>
             <form method="POST" action="<?= $BASE_URL ?>/admin/photos/<?= (int) ($submission['store_id'] ?? 0) ?>/<?= $sid ?>/delete"
-                  class="form-inline" onsubmit="return confirm('<?= __('photo_confirm_delete') ?>')">
+                  class="form-inline" data-confirm="<?= htmlspecialchars(__('photo_confirm_delete'), ENT_QUOTES) ?>">
                 <?= csrf_field() ?>
                 <button type="submit" class="btn btn--danger btn--sm"><?= __('delete') ?></button>
             </form>

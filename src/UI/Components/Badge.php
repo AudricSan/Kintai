@@ -41,9 +41,9 @@ final class Badge implements ComponentInterface
     public function status(string $status): self
     {
         $this->variant = match ($status) {
-            'active', 'approved', 'accepted', 'ok', 'success' => 'success',
+            'active', 'approved', 'accepted', 'validated', 'ok', 'success' => 'success',
             'inactive', 'cancelled', 'disabled', 'no'          => 'inactive',
-            'pending', 'waiting'                                => 'pending',
+            'pending', 'waiting', 'submitted'                   => 'pending',
             'refused', 'rejected', 'error', 'fail', 'danger'   => 'danger',
             'warning'                                           => 'warning',
             'info', 'manager'                                   => 'info',

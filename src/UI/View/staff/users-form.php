@@ -222,7 +222,7 @@ foreach ($user_memberships as $m):
     <?php
     $editMembershipFooter = '';
     if ($can('employees.update')) {
-        $editMembershipFooter = '<form method="POST" action="' . htmlspecialchars($BASE_URL . '/admin/stores/' . $sid . '/members/' . $mid . '/delete') . '" class="form-inline" onsubmit="return confirm(\'' . htmlspecialchars(__('confirm_remove_member'), ENT_QUOTES) . '\')">'
+        $editMembershipFooter = '<form method="POST" action="' . htmlspecialchars($BASE_URL . '/admin/stores/' . $sid . '/members/' . $mid . '/delete') . '" class="form-inline" data-confirm="' . htmlspecialchars(__('confirm_remove_member'), ENT_QUOTES) . '">'
             . csrf_field()
             . Button::make(__('remove'))->danger()->sm()->submit()->render()
             . '</form>';

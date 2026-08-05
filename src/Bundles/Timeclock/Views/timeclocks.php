@@ -67,7 +67,7 @@ echo Flash::fromQuery('success', [
             . ' data-clock-out="' . htmlspecialchars(substr($e['clock_out_time'] ?? '', 0, 16)) . '">'
             . __('edit') . '</button>';
         $html .= '<form method="POST" action="' . htmlspecialchars($BASE_URL . '/admin/timeclocks/' . $id . '/delete?date=' . urlencode($filter_date)) . '"'
-            . ' onsubmit="return confirm(\'' . htmlspecialchars(__('confirm_delete_timeclock'), ENT_QUOTES) . '\')">'
+            . ' data-confirm="' . htmlspecialchars(__('confirm_delete_timeclock'), ENT_QUOTES) . '">'
             . csrf_field() . Button::make(__('delete'))->danger()->sm()->submit()->render() . '</form>';
         $html .= '</div>';
         return $html;
