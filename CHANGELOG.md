@@ -6,6 +6,8 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+## [0.10.6] - 2026-08-05
+
 ### Added
 - The update page (`/admin/update`) now shows a summary of the latest compatible release's notes fetched from GitHub — one bullet per category (Added/Changed/Fixed), rendered from Markdown (headings, bullet lists) instead of a raw truncated text block — with a "View details" button opening an in-app modal showing that same release's version, date and per-release GitHub link, plus a "View on GitHub" button to the repository's releases page.
 - The salary report form's "calculation detail" modal (single-employee reports) now lists every shift in the period — day, date, type, schedule, gross/pause/net hours, rate and amount, with totals — instead of only the gross/deductions/net summary. The data (`buildPayslipData()`'s `shiftRows`) was already returned by the recalculate endpoint but never rendered client-side.
