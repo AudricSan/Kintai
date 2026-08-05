@@ -9,6 +9,9 @@ All notable changes to Kintai are documented here.
 ### Changed
 - "Documentation" moved from a top-level topbar link into the user menu (next to language switcher and logout) to declutter the main nav bar. The redundant "Nav settings" topbar link was dropped — still reachable via Profile → "Nav" tab, unaffected.
 
+### Fixed
+- The "⋮" row-actions dropdown menu (users, stores, feedbacks, timeoff, HR reports...) had no visual separation between a destructive action ("Delete", "Resign"...) and the safe actions above it — just a color change, same 2px spacing as everything else. Added a divider line before the danger item, consistent with the same treatment the user menu's "Log out" already had.
+
 ## [0.10.7] - 2026-08-05
 
 ### Added
