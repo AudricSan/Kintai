@@ -17,10 +17,12 @@ use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\TranslationRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
+use kintai\Core\Request;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\DailyReportMailService;
 use kintai\Core\Services\DailyReportPdfService;
 use kintai\Core\Services\DailyReportPermissionService;
+use kintai\Core\Services\NotificationService;
 use kintai\Core\Services\TranslationService;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -38,6 +40,11 @@ final class DailyReportControllerTest extends TestCase
     private ShiftTypeRepositoryInterface&MockObject $shiftTypes;
     private UserRepositoryInterface&MockObject $users;
     private StoreUserRepositoryInterface&MockObject $storeUsers;
+    private StoreRepositoryInterface&MockObject $stores;
+    private DailyReportRepositoryInterface&MockObject $reports;
+    private RoleAssignmentRepositoryInterface&MockObject $assignments;
+    private RoleRepositoryInterface&MockObject $roles;
+    private NotificationService&MockObject $notifs;
     private DailyReportController $controller;
 
     protected function setUp(): void
@@ -46,15 +53,16 @@ final class DailyReportControllerTest extends TestCase
         $this->shiftTypes = $this->createMock(ShiftTypeRepositoryInterface::class);
         $this->users      = $this->createMock(UserRepositoryInterface::class);
         $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
+        $this->notifs     = $this->createMock(NotificationService::class);
 
         $translations = new TranslationService(
             $this->createStub(TranslationRepositoryInterface::class),
             $this->createStub(LanguageRepositoryInterface::class),
         );
-        $permissions = new DailyReportPermissionService(new PermissionService(
-            $this->createStub(RoleAssignmentRepositoryInterface::class),
-            $this->createStub(RoleRepositoryInterface::class),
-        ));
+        $this->assignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
+        $this->roles = $this->createMock(RoleRepositoryInterface::class);
+        $permissionService = new PermissionService($this->assignments, $this->roles);
+        $permissions = new DailyReportPermissionService($permissionService);
         $pdfService = new DailyReportPdfService(
             new ViewRenderer(sys_get_temp_dir()),
             $translations,
@@ -68,10 +76,13 @@ final class DailyReportControllerTest extends TestCase
             $translations,
         );
 
+        $this->reports = $this->createMock(DailyReportRepositoryInterface::class);
+        $this->stores = $this->createMock(StoreRepositoryInterface::class);
+
         $this->controller = new DailyReportController(
             new ViewRenderer(sys_get_temp_dir()),
-            $this->createMock(DailyReportRepositoryInterface::class),
-            $this->createMock(StoreRepositoryInterface::class),
+            $this->reports,
+            $this->stores,
             $this->storeUsers,
             $this->users,
             $permissions,
@@ -81,6 +92,8 @@ final class DailyReportControllerTest extends TestCase
             $translations,
             $this->shifts,
             $this->shiftTypes,
+            $this->notifs,
+            $permissionService,
         );
     }
 
@@ -112,5 +125,88 @@ final class DailyReportControllerTest extends TestCase
 
         $this->assertCount(1, $rows, 'le shift du user #20 (non membre du magasin) doit être exclu');
         $this->assertSame('Dupont Jean', $rows[0]['employee']);
+    }
+
+    public function testSubmitNotifiesManagersWithApprovePermission(): void
+    {
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Store A']);
+        $this->reports->method('findById')->with(10)->willReturn([
+            'id' => 10, 'store_id' => 1, 'status' => 'draft', 'author_id' => 9, 'report_date' => '2026-08-05',
+        ]);
+        $this->reports->method('save')->willReturnCallback(fn(array $d) => $d);
+        $this->storeUsers->method('findMembership')->with(1, 9)->willReturn(['store_id' => 1, 'user_id' => 9]);
+        $this->storeUsers->method('findByStore')->with(1)->willReturn([
+            ['user_id' => 9],  // l'auteur lui-même, sans droit de validation
+            ['user_id' => 20], // manager avec daily_reports.approve
+        ]);
+        $this->users->method('findById')->willReturnMap([
+            [9, ['id' => 9]],
+            [20, ['id' => 20]],
+        ]);
+        $this->assignments->method('findByUser')->willReturnMap([
+            [9, []],
+            [20, [['id' => 1, 'user_id' => 20, 'role_id' => 2, 'scope_type' => 'store', 'scope_id' => 1]]],
+        ]);
+        $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'is_system' => 0]);
+        $this->roles->method('getPermissions')->with(2)->willReturn(['daily_reports.submit', 'daily_reports.approve']);
+
+        $this->notifs->expects($this->once())->method('notifyMany')
+            ->with([20], 'daily_report_submitted', $this->anything(), 10);
+
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 9]);
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '1', 'rid' => '10']);
+
+        $this->controller->submit($req);
+    }
+
+    public function testValidateNotifiesAuthorButNotSelf(): void
+    {
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Store A']);
+        $this->reports->method('findById')->with(10)->willReturn([
+            'id' => 10, 'store_id' => 1, 'status' => 'submitted', 'author_id' => 9, 'report_date' => '2026-08-05',
+        ]);
+        $this->reports->method('save')->willReturnCallback(fn(array $d) => $d);
+        $this->storeUsers->method('findMembership')->with(1, 20)->willReturn(['store_id' => 1, 'user_id' => 20]);
+        $this->assignments->method('findByUser')->with(20)->willReturn([
+            ['id' => 1, 'user_id' => 20, 'role_id' => 2, 'scope_type' => 'store', 'scope_id' => 1],
+        ]);
+        $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'is_system' => 0]);
+        $this->roles->method('getPermissions')->with(2)->willReturn(['daily_reports.approve']);
+
+        $this->notifs->expects($this->once())->method('notify')
+            ->with(9, 'daily_report_validated', $this->anything(), 10);
+
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 20]);
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '1', 'rid' => '10']);
+
+        $this->controller->validate($req);
+    }
+
+    public function testValidateBySelfDoesNotSelfNotify(): void
+    {
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Store A']);
+        $this->reports->method('findById')->with(10)->willReturn([
+            'id' => 10, 'store_id' => 1, 'status' => 'submitted', 'author_id' => 9, 'report_date' => '2026-08-05',
+        ]);
+        $this->reports->method('save')->willReturnCallback(fn(array $d) => $d);
+        $this->storeUsers->method('findMembership')->with(1, 9)->willReturn(['store_id' => 1, 'user_id' => 9]);
+        $this->assignments->method('findByUser')->with(9)->willReturn([
+            ['id' => 1, 'user_id' => 9, 'role_id' => 2, 'scope_type' => 'store', 'scope_id' => 1],
+        ]);
+        $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'is_system' => 0]);
+        $this->roles->method('getPermissions')->with(2)->willReturn(['daily_reports.approve']);
+
+        $this->notifs->expects($this->never())->method('notify');
+
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 9]);
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '1', 'rid' => '10']);
+
+        $this->controller->validate($req);
     }
 }
