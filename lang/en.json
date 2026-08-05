@@ -778,6 +778,7 @@
     "quick_period": "Quick period",
     "rate_h": "Rate/h",
     "rate_info": "Rates used: individual employee/type rate (priority) → shift type rate (fallback).",
+    "readonly_no_permission_notice": "You can view this record but you don't have permission to edit it.",
     "reason": "Reason",
     "reassign_shift_b": "Reassign shift B to another employee",
     "recent_shifts": "Recent shifts",

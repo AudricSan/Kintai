@@ -778,6 +778,7 @@
     "quick_period": "クイック期間",
     "rate_h": "時給",
     "rate_info": "使用レート：従業員/種別の個別レート（優先）→ シフト種別のレート（フォールバック）。",
+    "readonly_no_permission_notice": "このデータを閲覧できますが、編集する権限がありません。",
     "reason": "退職理由",
     "reassign_shift_b": "シフト B を別の従業員に再割り当て",
     "recent_shifts": "最近のシフト",

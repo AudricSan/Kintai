@@ -19,6 +19,7 @@ use kintai\Core\Services\PdfCjkFontResolver;
  *
  * Nécessite sur la classe utilisatrice : $this->view (ViewRenderer),
  * $this->stores (StoreRepositoryInterface), $this->auditLogger (AuditLogger),
+ * $this->permissions (PermissionService, pour getManagersForReportForm()),
  * et le trait HasAdminAccess (base(), assertStoreAccess()).
  */
 trait HasStaffReportCrud
@@ -325,15 +326,17 @@ trait HasStaffReportCrud
         foreach ($storeIds as $sid) {
             $members = $this->storeUsers->findByStore($sid);
             foreach ($members as $m) {
-                if (in_array($m['role'] ?? '', ['admin', 'manager'], true)) {
-                    $uid = (int) $m['user_id'];
-                    if (!in_array($uid, $seenIds, true)) {
-                        $seenIds[] = $uid;
-                        $user = $this->users->findById($uid);
-                        if ($user !== null) {
-                            $managers[] = $user;
-                        }
-                    }
+                $uid = (int) $m['user_id'];
+                if (in_array($uid, $seenIds, true)) {
+                    continue;
+                }
+                $candidate = $this->users->findById($uid);
+                if ($candidate === null) {
+                    continue;
+                }
+                if ($this->permissions->can($candidate, 'employees.update', $sid)) {
+                    $seenIds[] = $uid;
+                    $managers[] = $candidate;
                 }
             }
         }

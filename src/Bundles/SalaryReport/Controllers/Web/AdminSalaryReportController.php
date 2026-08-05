@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\Bundles\SalaryReport\Controllers\Web;
 
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Repositories\DailyReportRepositoryInterface;
 use kintai\Core\Repositories\SalaryReportRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
@@ -69,6 +70,7 @@ final class AdminSalaryReportController
         private readonly UserShiftTypeRateRepositoryInterface $userRates,
         private readonly AuditLogger $auditLogger,
         private readonly StoreStatsServiceInterface $storeStatsService,
+        private readonly PermissionService $permissions,
     ) {}
 
     public function allSalaryReports(Request $request): Response
