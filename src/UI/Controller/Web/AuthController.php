@@ -315,13 +315,13 @@ final class AuthController
         $dbUser = $this->users->findById($userId);
         if ($dbUser) {
             $oldUser = $dbUser;
-            try {
-                $dbUser['language'] = $language;
-                $this->users->save($dbUser);
-                $_SESSION['auth_user'] = $dbUser;
-            } catch (\Throwable) {
-                // Colonne language absente (migration non exécutée) — session suffit
-            }
+            // Pas de catch ici : la colonne "language" existe depuis la toute première
+            // migration de création de users (elle ne peut pas manquer si la table existe),
+            // et avaler l'échec masquerait un vrai problème derrière un "?success=1" trompeur
+            // — l'utilisateur croirait sa préférence enregistrée alors qu'elle ne l'est pas.
+            $dbUser['language'] = $language;
+            $this->users->save($dbUser);
+            $_SESSION['auth_user'] = $dbUser;
 
             $_SESSION['locale'] = $language;
             $this->auditLogger->logUpdate($request, 'user.update_profile', 'user', $userId, $oldUser, $dbUser, [], null, $userId);
