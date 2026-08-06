@@ -9,14 +9,13 @@ use kintai\Core\Auth\PermissionService;
 /**
  * Contrôle d'accès pour les rapports journaliers.
  *
- * S'appuie sur le RBAC dynamique (PermissionCatalog::CATEGORIES['daily_reports'],
- * portée par store via role_assignments) pour les actions de gestion
- * (voir/éditer/supprimer n'importe quel rapport, valider, paramétrer le
- * store). Créer et soumettre son propre brouillon restent en libre-service
- * (tout membre du store peut le faire sans permission dédiée), pour ne pas
- * priver un employé sans rôle géré de la possibilité de faire son rapport —
- * exactement comme un employé peut pointer ou poser un congé pour lui-même
- * sans permission particulière ailleurs dans l'application.
+ * S'appuie entièrement sur le RBAC dynamique (PermissionCatalog::CATEGORIES['daily_reports'],
+ * portée par store via role_assignments) — y compris pour créer/soumettre un rapport, réservé
+ * par défaut aux managers (daily_reports.create/submit font partie de MANAGER_DEFAULTS).
+ * Un Owner peut accorder explicitement daily_reports.create (seul, sans .submit ni .approve)
+ * à un rôle custom assigné à un employé spécifique sur son store, pour l'autoriser à créer
+ * (et éditer son propre brouillon) sans pouvoir le soumettre ni le valider — voir CHANGELOG,
+ * le libre-service "tout membre du store" a été retiré à la demande explicite du client.
  *
  * Les paramètres non liés aux droits (activation, destinataires mail, envoi
  * automatique, colonnes affichées, mode cumulatif) restent configurables par
@@ -55,20 +54,18 @@ final class DailyReportPermissionService
     }
 
     /**
-     * Vérifie si l'utilisateur peut créer un rapport pour ce store.
-     * - Détenteur de `daily_reports.create` (portée store ou globale) : toujours autorisé.
-     * - Sinon, tout membre du store peut créer son propre rapport (libre-service),
-     *   si la fonctionnalité est activée.
+     * Vérifie si l'utilisateur peut créer un rapport pour ce store : seul le détenteur de
+     * `daily_reports.create` (portée store ou globale — managers/Owner par défaut, ou tout
+     * rôle custom auquel un Owner a explicitement accordé cette clé) est autorisé. $membership
+     * n'intervient plus ici (gardé pour la même signature que les méthodes sœurs) : il n'y a
+     * plus de libre-service "tout membre du store".
      */
     public function canCreate(array $user, array $store, ?array $membership): bool
     {
         if (!$this->isEnabled($store)) {
             return false;
         }
-        if ($this->can($user, 'daily_reports.create', $store)) {
-            return true;
-        }
-        return $membership !== null;
+        return $this->can($user, 'daily_reports.create', $store);
     }
 
     /**
@@ -87,15 +84,17 @@ final class DailyReportPermissionService
         return $report['status'] === 'draft' && (int) $report['author_id'] === (int) $user['id'];
     }
 
+    /**
+     * Réservé au détenteur de `daily_reports.submit` : un employé autorisé uniquement à
+     * créer (daily_reports.create sans .submit) peut rédiger et éditer son propre brouillon,
+     * mais pas le soumettre lui-même — voir CHANGELOG.
+     */
     public function canSubmit(array $user, array $store, array $report, ?array $membership): bool
     {
         if ($report['status'] !== 'draft') {
             return false;
         }
-        if ($this->can($user, 'daily_reports.submit', $store)) {
-            return true;
-        }
-        return $membership !== null && (int) $report['author_id'] === (int) $user['id'];
+        return $this->can($user, 'daily_reports.submit', $store);
     }
 
     public function canValidate(array $user, array $store, array $report, ?array $membership): bool

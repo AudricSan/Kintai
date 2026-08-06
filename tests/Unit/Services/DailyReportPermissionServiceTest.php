@@ -94,10 +94,23 @@ final class DailyReportPermissionServiceTest extends TestCase
         $this->assertTrue($service->canCreate($this->user(10), $this->store(), null));
     }
 
-    public function testStoreMemberCanCreateAsSelfServiceWhenEnabled(): void
+    /**
+     * Régression : le libre-service "tout membre du store peut créer" a été retiré à la
+     * demande explicite du client — la création est désormais réservée par défaut aux
+     * managers (daily_reports.create fait partie de MANAGER_DEFAULTS), avec possibilité
+     * pour l'Owner d'accorder cette clé seule à un employé spécifique. Voir CHANGELOG.
+     */
+    public function testStoreMemberCannotCreateWithoutExplicitPermission(): void
     {
         $service = $this->serviceWithoutPermissions();
-        $this->assertTrue($service->canCreate($this->user(), $this->store(['enabled' => true]), $this->membership()));
+        $this->assertFalse($service->canCreate($this->user(), $this->store(['enabled' => true]), $this->membership()));
+    }
+
+    /** Une clé daily_reports.create accordée seule (sans .submit ni .approve) suffit à créer. */
+    public function testRoleGrantingOnlyCreatePermissionCanCreate(): void
+    {
+        $service = $this->serviceGranting(['daily_reports.create'], storeId: 1);
+        $this->assertTrue($service->canCreate($this->user(10), $this->store(['enabled' => true]), $this->membership()));
     }
 
     public function testCannotCreateWithoutMembershipOrPermission(): void
@@ -162,10 +175,28 @@ final class DailyReportPermissionServiceTest extends TestCase
     // canSubmit
     // -------------------------------------------------------------------------
 
-    public function testAuthorCanSubmitOwnDraftAsSelfService(): void
+    /**
+     * Régression : idem canCreate, le libre-service "l'auteur peut soumettre son propre
+     * brouillon" a été retiré — un employé autorisé seulement à créer (daily_reports.create
+     * sans .submit) ne peut pas soumettre lui-même son rapport. Voir CHANGELOG.
+     */
+    public function testAuthorCannotSubmitOwnDraftWithoutSubmitPermission(): void
     {
         $service = $this->serviceWithoutPermissions();
-        $this->assertTrue($service->canSubmit($this->user(10), $this->store(), $this->report('draft', 10), $this->membership()));
+        $this->assertFalse($service->canSubmit($this->user(10), $this->store(), $this->report('draft', 10), $this->membership()));
+    }
+
+    /** Le détenteur de daily_reports.create (sans .submit) peut créer et éditer, mais pas soumettre. */
+    public function testCreateOnlyRoleCanCreateAndEditButNotSubmit(): void
+    {
+        $service = $this->serviceGranting(['daily_reports.create'], storeId: 1);
+        $user    = $this->user(10);
+        $store   = $this->store(['enabled' => true]);
+
+        $this->assertTrue($service->canCreate($user, $store, $this->membership()));
+        $this->assertTrue($service->canEdit($user, $store, $this->report('draft', 10), $this->membership()));
+        $this->assertFalse($service->canSubmit($user, $store, $this->report('draft', 10), $this->membership()));
+        $this->assertFalse($service->canValidate($user, $store, $this->report('submitted', 10), $this->membership()));
     }
 
     public function testCannotSubmitOthersDraftWithoutPermission(): void
