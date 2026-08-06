@@ -239,7 +239,7 @@ final class DailyReportControllerTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
-    // store() — libre-service pour tout membre du store, refusé sinon
+    // store() — réservé au détenteur de daily_reports.create, plus de libre-service membre
     // -------------------------------------------------------------------------
 
     public function testNonMemberCannotCreateReport(): void
@@ -254,9 +254,27 @@ final class DailyReportControllerTest extends TestCase
         $this->assertSame(403, $response->status());
     }
 
-    public function testStoreMemberCanCreateOwnReport(): void
+    /**
+     * Régression : le libre-service "tout membre du store peut créer son propre rapport" a
+     * été retiré à la demande explicite du client — la création requiert désormais
+     * daily_reports.create, même pour un simple membre du store. Voir CHANGELOG.
+     */
+    public function testStoreMemberWithoutCreatePermissionCannotCreateReport(): void
     {
         $this->noPermissions();
+        $this->storeUsers->method('findMembership')->with(1, 20)->willReturn(['store_id' => 1, 'user_id' => 20]);
+        $this->reports->expects($this->never())->method('save');
+
+        $req = $this->requestWithJson(['store_id' => 1, 'report_date' => '2026-08-05']);
+        $response = $this->controller->store($req);
+
+        $this->assertSame(403, $response->status());
+    }
+
+    /** daily_reports.create accordé seul (ex. à un employé spécifique) suffit à créer. */
+    public function testMemberWithCreatePermissionCanCreateOwnReport(): void
+    {
+        $this->grant('daily_reports.create');
         $this->storeUsers->method('findMembership')->with(1, 20)->willReturn(['store_id' => 1, 'user_id' => 20]);
         $this->reports->expects($this->once())->method('save')->willReturnCallback(fn(array $d) => $d + ['id' => 55]);
 
