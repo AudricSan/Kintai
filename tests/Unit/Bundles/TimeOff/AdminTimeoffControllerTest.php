@@ -22,6 +22,7 @@ final class AdminTimeoffControllerTest extends TestCase
     private TimeoffRequestRepositoryInterface&MockObject $timeoffRequests;
     private UserRepositoryInterface&MockObject $users;
     private StoreUserRepositoryInterface&MockObject $storeUsers;
+    private StoreRepositoryInterface&MockObject $stores;
     private NotificationService&MockObject $notifs;
     private AdminTimeoffController $controller;
 
@@ -37,6 +38,7 @@ final class AdminTimeoffControllerTest extends TestCase
         $this->timeoffRequests = $this->createMock(TimeoffRequestRepositoryInterface::class);
         $this->users = $this->createMock(UserRepositoryInterface::class);
         $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
+        $this->stores = $this->createMock(StoreRepositoryInterface::class);
         $this->notifs = $this->createMock(NotificationService::class);
 
         $this->controller = new AdminTimeoffController(
@@ -44,7 +46,7 @@ final class AdminTimeoffControllerTest extends TestCase
             $this->timeoffRequests,
             new AuditLogger(),
             $this->notifs,
-            $this->createMock(StoreRepositoryInterface::class),
+            $this->stores,
             $this->users,
             $this->storeUsers,
         );
@@ -182,6 +184,32 @@ final class AdminTimeoffControllerTest extends TestCase
         $ids = json_decode($response->body(), true);
 
         $this->assertCount(2, $ids);
+    }
+
+    public function testTimeoffSortsByStoreName(): void
+    {
+        $viewDir = sys_get_temp_dir() . '/kintai-timeoff-views';
+        $this->writeViewContent($viewDir, 'timeoff', "<?php echo json_encode(array_map(fn(\$r) => \$r['id'], \$requests));");
+        $this->writeViewContent(sys_get_temp_dir(), 'layout.app', "<?php echo \$content ?? '';");
+
+        $this->stores->method('findAll')->willReturn([
+            ['id' => 1, 'name' => 'Zoo Store'],
+            ['id' => 2, 'name' => 'Alpha Store'],
+        ]);
+        $this->timeoffRequests->method('findAll')->willReturn([
+            ['id' => 1, 'store_id' => 1, 'user_id' => 1, 'type' => 'vacation', 'status' => 'pending', 'start_date' => '2026-08-01'],
+            ['id' => 2, 'store_id' => 2, 'user_id' => 1, 'type' => 'vacation', 'status' => 'pending', 'start_date' => '2026-08-02'],
+        ]);
+
+        $_GET = ['sort' => 'store_asc'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+
+        $response = $this->controller->timeoff($req);
+        $ids = json_decode($response->body(), true);
+
+        // "Alpha Store" (id 2) doit passer avant "Zoo Store" (id 1) en tri croissant par nom de store.
+        $this->assertSame([2, 1], $ids);
     }
 
     private function ensureViewFile(string $dir, string $view): void
