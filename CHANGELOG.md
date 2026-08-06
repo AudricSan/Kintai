@@ -6,6 +6,8 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+## [0.10.8] - 2026-08-06
+
 ### Security
 - Any role granting even a single `.view`-only permission for a store (in particular the default "employee" role, which only grants `shifts.view` so employees can see their own schedule) was treated as "manages this store" by `AuthService::managedStoreIds()`/`isManager()`, letting a plain employee straight through `AdminMiddleware` into the entire `/admin/*` section scoped to their store — reachable pages included staff management, shift-type management, and the full shift timeline with its "Import Excel"/"New shift" actions. `managedStoreIds()` now requires at least one non-`.view` permission to count a role as managing a store; a view-only role now correctly lands on the employee dashboard instead.
 - Independently of the above, the shift timeline (`scheduling/shifts-timeline.php`, shared between the admin and employee views) never actually computed `can_manage` from the viewer's real permission — the view silently defaulted to `true` for anyone reaching the page, exposing the pay-rate breakdown in the shift-detail modal (and, via `title`/`data-*` attributes on every shift bar, in the raw page HTML — bypassing the modal's own JS-side guard entirely) to any viewer, plus write-only affordances (import, quick-create, drag-and-drop) with no server-side permission behind the button. `AdminShiftController::shiftsTimeline()` now computes `can_manage` from `shifts.update`, matching the same pattern already used for the employee's own shift-day view; the view's fallback for a missing `can_manage` now defaults to `false` instead of `true`.
