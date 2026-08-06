@@ -17,6 +17,7 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\Log;
 use kintai\Core\Services\ShiftWageCalculator;
@@ -41,6 +42,7 @@ final class AdminShiftController
         private readonly ImportAliasRepositoryInterface $importAliases,
         private readonly ShiftServiceInterface $shiftService,
         private readonly TimeoffRequestRepositoryInterface $timeoffRequests,
+        private readonly PermissionService $permissions,
     ) {}
 
     /** @return array<int, array> id => type, pour les stores gérés (ou tous si Owner). */
@@ -382,6 +384,13 @@ final class AdminShiftController
         $authUser = $request->getAttribute('auth_user');
         $myUserId = (int) ($authUser['id'] ?? 0);
 
+        // Peut gérer les shifts du store affiché (Owner, ou RBAC accordant shifts.update sur ce
+        // store) — la vue défaut à true si cette clé n'est pas fournie (usage historique en dehors
+        // de ce contrôleur), donc omettre ce calcul exposait le bouton import/création et le détail
+        // des taux horaires à n'importe quel viewer, y compris un simple employé (shifts.view seul).
+        $canManage = !empty($authUser['is_admin'])
+            || $this->permissions->can($authUser, 'shifts.update', $filterStoreId > 0 ? $filterStoreId : null);
+
         // Paramètres de planification du store (pour les alertes timeline)
         $storeSettings = [
             'min_staff_per_day'    => (int) ($storeObj['min_staff_per_day']    ?? 0),
@@ -411,6 +420,7 @@ final class AdminShiftController
             'available_stores'    => $availStores,
             'today'               => $today,
             'my_user_id'          => $myUserId,
+            'can_manage'          => $canManage,
             'store_settings'      => $storeSettings,
             'week_start_day'      => $weekStartDay,
             'all_users'           => $this->users->findAll(),
