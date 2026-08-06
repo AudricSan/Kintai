@@ -136,19 +136,28 @@ final class DailyReportControllerTest extends TestCase
         $this->reports->method('save')->willReturnCallback(fn(array $d) => $d);
         $this->storeUsers->method('findMembership')->with(1, 9)->willReturn(['store_id' => 1, 'user_id' => 9]);
         $this->storeUsers->method('findByStore')->with(1)->willReturn([
-            ['user_id' => 9],  // l'auteur lui-même, sans droit de validation
+            ['user_id' => 9],  // l'auteur, avec seulement le droit de soumettre (pas de valider)
             ['user_id' => 20], // manager avec daily_reports.approve
         ]);
         $this->users->method('findById')->willReturnMap([
             [9, ['id' => 9]],
             [20, ['id' => 20]],
         ]);
+        // Régression : soumettre son propre rapport n'est plus du libre-service, l'auteur a
+        // donc ici besoin de daily_reports.submit (accordée seule, sans .approve) — voir
+        // CHANGELOG.
         $this->assignments->method('findByUser')->willReturnMap([
-            [9, []],
+            [9, [['id' => 2, 'user_id' => 9, 'role_id' => 3, 'scope_type' => 'store', 'scope_id' => 1]]],
             [20, [['id' => 1, 'user_id' => 20, 'role_id' => 2, 'scope_type' => 'store', 'scope_id' => 1]]],
         ]);
-        $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'is_system' => 0]);
-        $this->roles->method('getPermissions')->with(2)->willReturn(['daily_reports.submit', 'daily_reports.approve']);
+        $this->roles->method('findById')->willReturnMap([
+            [2, ['id' => 2, 'is_system' => 0]],
+            [3, ['id' => 3, 'is_system' => 0]],
+        ]);
+        $this->roles->method('getPermissions')->willReturnMap([
+            [2, ['daily_reports.submit', 'daily_reports.approve']],
+            [3, ['daily_reports.submit']],
+        ]);
 
         $this->notifs->expects($this->once())->method('notifyMany')
             ->with([20], 'daily_report_submitted', $this->anything(), 10);
