@@ -29,6 +29,7 @@ final class StorePhotoControllerTest extends TestCase
         $this->ensureViewFile($viewDir, 'store-photos');
         $this->ensureViewFile($viewDir, 'store-photos-settings');
         $this->ensureViewFile($viewDir, 'store-photos-form');
+        $this->ensureViewFile($viewDir, 'store-photos-detail');
         $this->ensureViewFile(sys_get_temp_dir(), 'layout.app');
 
         $view = new ViewRenderer(sys_get_temp_dir());
@@ -72,6 +73,84 @@ final class StorePhotoControllerTest extends TestCase
         $req->setAttribute('managed_store_ids', null);
 
         $response = $this->controller->index($req);
+
+        $this->assertSame(200, $response->status());
+    }
+
+    /**
+     * Régression IDOR : index() appelait findAllSubmissions(null, ...) sans jamais tenir
+     * compte de managed_store_ids, remontant les envois de TOUS les stores à un manager
+     * restreint. Voir CHANGELOG.
+     */
+    public function testIndexScopesSubmissionsToManagedStoresOnly(): void
+    {
+        $this->stores->method('findAll')->willReturn([
+            ['id' => 1, 'name' => 'Store A'],
+            ['id' => 2, 'name' => 'Store B'],
+        ]);
+        $this->photos->expects($this->once())->method('findAllSubmissions')
+            ->with([1], 100)
+            ->willReturn([['id' => 10, 'store_id' => 1]]);
+        $this->photos->method('findImagesBySubmission')->willReturn([]);
+
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', [1]);
+
+        $response = $this->controller->index($req);
+
+        $this->assertSame(200, $response->status());
+    }
+
+    /** Un ?store_id= hors du périmètre géré est ignoré plutôt que d'être appliqué tel quel. */
+    public function testIndexIgnoresStoreIdFilterOutsideManagedScope(): void
+    {
+        $this->stores->method('findAll')->willReturn([['id' => 1, 'name' => 'Store A']]);
+        $this->photos->method('findAllSubmissions')->with([1], 100)->willReturn([
+            ['id' => 10, 'store_id' => 1],
+        ]);
+        $this->photos->method('findImagesBySubmission')->willReturn([]);
+
+        $_GET['store_id'] = '2'; // store non géré par ce manager
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', [1]);
+
+        $response = $this->controller->index($req);
+
+        $this->assertSame(200, $response->status());
+    }
+
+    // -------------------------------------------------------------------------
+    // show()
+    // -------------------------------------------------------------------------
+
+    /**
+     * Régression IDOR : show() ne vérifiait jamais l'appartenance au store, un manager
+     * pouvait consulter le détail d'un envoi de n'importe quel autre store en changeant
+     * l'id dans l'URL. Voir CHANGELOG.
+     */
+    public function testShowForbiddenForSubmissionOutsideManagedScope(): void
+    {
+        $this->photos->method('findSubmissionById')->with(10)->willReturn(['id' => 10, 'store_id' => 2]);
+
+        $req = new Request();
+        $req->setRouteParams(['id' => '10']);
+        $req->setAttribute('managed_store_ids', [1]);
+
+        $this->expectException(ForbiddenException::class);
+        $this->controller->show($req);
+    }
+
+    public function testShowSucceedsForSubmissionWithinManagedScope(): void
+    {
+        $this->photos->method('findSubmissionById')->with(10)->willReturn(['id' => 10, 'store_id' => 1]);
+        $this->photos->method('findImagesBySubmission')->with(10)->willReturn([]);
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Store A']);
+
+        $req = new Request();
+        $req->setRouteParams(['id' => '10']);
+        $req->setAttribute('managed_store_ids', [1]);
+
+        $response = $this->controller->show($req);
 
         $this->assertSame(200, $response->status());
     }
