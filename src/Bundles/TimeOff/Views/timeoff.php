@@ -60,7 +60,7 @@ echo Flash::fromQuery('success', [
     ->currentSort($sort)
     ->filters(['type' => $type_filter, 'status' => $status_filter])
     ->column('#', fn($r) => (string) (int) $r['id'])
-    ->column(__('store'), fn($r) => htmlspecialchars($stores_map[(int)($r['store_id'] ?? 0)] ?? ('ID ' . (int)($r['store_id'] ?? 0))))
+    ->sortable(__('store'), 'store', fn($r) => htmlspecialchars($stores_map[(int)($r['store_id'] ?? 0)] ?? ('ID ' . (int)($r['store_id'] ?? 0))))
     ->sortable(__('user'), 'user', fn($r) =>
         '<a href="' . htmlspecialchars($BASE_URL . '/admin/users/' . (int)($r['user_id'] ?? 0) . '/edit') . '">'
         . htmlspecialchars($users_map[(int)($r['user_id'] ?? 0)] ?? ('ID ' . (int)($r['user_id'] ?? 0))) . '</a>'
