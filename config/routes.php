@@ -14,6 +14,7 @@ use kintai\UI\Controller\Web\PrivacyController;
 use kintai\UI\Controller\Web\PwaController;
 use kintai\UI\Controller\Web\StorageFileController;
 
+use kintai\UI\Controller\Web\Requests\AdminRequestsController;
 use kintai\UI\Controller\Web\Scheduling\AdminShiftController;
 use kintai\UI\Controller\Web\Scheduling\AdminShiftImportController;
 use kintai\UI\Controller\Web\Scheduling\AdminShiftTypeController;
@@ -163,6 +164,9 @@ $router->group('/admin', function ($r) {
     // Navigation
     $r->get('/nav-settings',  [AdminController::class, 'navSettings'],     name: 'admin.nav_settings');
     $r->post('/nav-settings', [AdminController::class, 'saveNavSettings'], name: 'admin.nav_settings.save');
+
+    // Demandes (résumé) : agrège congés, échanges de shifts et bourse aux shifts
+    $r->get('/requests', [AdminRequestsController::class, 'index'], name: 'admin.requests');
 
     // Utilisateurs
     $r->get('/users',                     [AdminUserController::class, 'users'],               name: 'admin.users');

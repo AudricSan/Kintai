@@ -181,6 +181,11 @@ final class AdminSwapController
         $storesMap = $this->buildStoresMap($managedIds);
         $swaps     = $this->filterByStore($this->swapRequests->findAll(), $managedIds);
 
+        $statusFilter = (string) ($request->query('status') ?? '');
+        if ($statusFilter !== '') {
+            $swaps = array_values(array_filter($swaps, fn($s) => ($s['status'] ?? 'pending') === $statusFilter));
+        }
+
         $sort = $request->query('sort') ?? 'date_desc';
         usort($swaps, function ($a, $b) use ($sort, $usersMap) {
             $dateA  = ($a['created_at'] ?? '');
@@ -211,12 +216,13 @@ final class AdminSwapController
         }
 
         return Response::html($this->view->render('shift-swap::swap-requests', [
-            'title'      => 'Échanges de shifts',
-            'swaps'      => $swaps,
-            'users_map'  => $usersMap,
-            'stores_map' => $storesMap,
-            'shifts_map' => $shiftsMap,
-            'sort'       => $sort,
+            'title'         => 'Échanges de shifts',
+            'swaps'         => $swaps,
+            'users_map'     => $usersMap,
+            'stores_map'    => $storesMap,
+            'shifts_map'    => $shiftsMap,
+            'sort'          => $sort,
+            'status_filter' => $statusFilter,
         ], 'layout.app'));
     }
 
