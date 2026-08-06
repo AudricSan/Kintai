@@ -32,7 +32,13 @@ final class StorePhotoController
     {
         $managedIds = $this->managedIds($request);
         $storeId    = (int) ($request->query('store_id') ?: 0);
-        $submissions = $this->photos->findAllSubmissions(null, 100);
+        // Un manager restreint ne doit jamais voir les envois d'un store hors de son périmètre,
+        // ni via la liste complète (findAllSubmissions(null, ...) remontait tous les stores),
+        // ni via ?store_id= pointant sur un store qu'il ne gère pas.
+        if ($storeId > 0 && $managedIds !== null && !in_array($storeId, $managedIds, true)) {
+            $storeId = 0;
+        }
+        $submissions = $this->photos->findAllSubmissions($managedIds, 100);
 
         if ($storeId > 0) {
             $submissions = array_values(array_filter($submissions, fn($s) => (int) ($s['store_id'] ?? 0) === $storeId));
@@ -247,6 +253,7 @@ final class StorePhotoController
         if (!$submission) {
             return Response::html($this->view->render('errors.404', ['title' => '404'], 'layout.app'), 404);
         }
+        $this->assertStoreAccess($request, (int) $submission['store_id']);
 
         $images = $this->photos->findImagesBySubmission($id);
         $store  = $this->stores->findById((int) $submission['store_id']);
