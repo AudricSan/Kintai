@@ -38,6 +38,15 @@ final class AdminTimeoffController
         $storesMap = $this->buildStoresMap($managedIds);
         $requests  = $this->filterByStore($this->timeoffRequests->findAll(), $managedIds);
 
+        $typeFilter   = (string) ($request->query('type') ?? '');
+        $statusFilter = (string) ($request->query('status') ?? '');
+        if ($typeFilter !== '') {
+            $requests = array_values(array_filter($requests, fn($r) => ($r['type'] ?? '') === $typeFilter));
+        }
+        if ($statusFilter !== '') {
+            $requests = array_values(array_filter($requests, fn($r) => ($r['status'] ?? 'pending') === $statusFilter));
+        }
+
         $sort = $request->query('sort') ?? 'date_desc';
         usort($requests, function ($a, $b) use ($sort, $usersMap) {
             $dateA  = ($a['start_date'] ?? '');
@@ -61,11 +70,13 @@ final class AdminTimeoffController
         });
 
         return Response::html($this->view->render('timeoff::timeoff', [
-            'title'      => 'Congés',
-            'requests'   => $requests,
-            'users_map'  => $usersMap,
-            'stores_map' => $storesMap,
-            'sort'       => $sort,
+            'title'         => 'Congés',
+            'requests'      => $requests,
+            'users_map'     => $usersMap,
+            'stores_map'    => $storesMap,
+            'sort'          => $sort,
+            'type_filter'   => $typeFilter,
+            'status_filter' => $statusFilter,
         ], 'layout.app'));
     }
 

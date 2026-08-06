@@ -67,12 +67,37 @@ final class AdminShiftClaimController
 
         usort($shiftsWithClaims, fn($a, $b) => strcmp($a['shift_date'] ?? '', $b['shift_date'] ?? ''));
 
+        // Candidatures : agrégées depuis tous les shifts ouverts (avant filtrage par type,
+        // pour que le filtre "type" du tableau des shifts n'affecte pas celui des candidatures).
+        $claimStatusFilter = (string) ($request->query('claim_status') ?? '');
+        $claims = [];
+        foreach ($shiftsWithClaims as $shift) {
+            foreach ($shift['_claims'] ?? [] as $claim) {
+                if ($claimStatusFilter !== '' && ($claim['status'] ?? 'pending') !== $claimStatusFilter) {
+                    continue;
+                }
+                $claims[] = array_merge($claim, ['_shift' => $shift]);
+            }
+        }
+        usort($claims, fn($a, $b) => strcmp($a['claimed_at'] ?? '', $b['claimed_at'] ?? ''));
+
+        $typeFilter = (string) ($request->query('type') ?? '');
+        if ($typeFilter !== '') {
+            $shiftsWithClaims = array_values(array_filter(
+                $shiftsWithClaims,
+                fn($s) => (string) ($s['shift_type_id'] ?? '') === $typeFilter
+            ));
+        }
+
         return Response::html($this->view->render('shift-claim::open-shifts', [
-            'title'       => __('open_shifts'),
-            'shifts'      => $shiftsWithClaims,
-            'users_map'   => $usersMap,
-            'types_map'   => $typesMap,
-            'stores_map'  => $storesMap,
+            'title'              => __('open_shifts'),
+            'shifts'             => $shiftsWithClaims,
+            'claims'             => $claims,
+            'users_map'          => $usersMap,
+            'types_map'          => $typesMap,
+            'stores_map'         => $storesMap,
+            'type_filter'        => $typeFilter,
+            'claim_status_filter'=> $claimStatusFilter,
         ], 'layout.app'));
     }
 
