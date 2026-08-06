@@ -19,6 +19,7 @@ All notable changes to Kintai are documented here.
 - The `remember_tokens` and `sessions` database tables, and the unused `remember_me` entry in `config/auth.php`: neither ever had any implementation (no Eloquent model, no repository, no read/write anywhere) — sessions are native PHP file-based sessions (see `SessionMiddleware`), and no "remember me" cookie flow was ever built against the config/table that existed for it.
 
 ### Changed
+- **Breaking**: creating or submitting a daily report is no longer self-service for every store member — both now require the dedicated `daily_reports.create`/`daily_reports.submit` permission (already part of the default manager role). An Owner can still authorize a specific employee to create (and edit their own draft) without being able to submit or validate, by granting a custom role only `daily_reports.create` for that store — the "create" button, the web form, and the API endpoint all now go through the same permission check, with no membership-based fallback left anywhere in the chain.
 - "Documentation" moved from a top-level topbar link into the user menu (next to language switcher and logout) to declutter the main nav bar. The redundant "Nav settings" topbar link was dropped — still reachable via Profile → "Nav" tab, unaffected.
 
 ### Fixed
