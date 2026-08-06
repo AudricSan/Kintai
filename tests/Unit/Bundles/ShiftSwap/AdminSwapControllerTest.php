@@ -290,6 +290,29 @@ final class AdminSwapControllerTest extends TestCase
         $this->assertSame(302, $response->status());
     }
 
+    public function testSwapRequestsFiltersByStatus(): void
+    {
+        $viewDir = sys_get_temp_dir() . '/kintai-shift-swap-views';
+        $this->writeViewContent($viewDir, 'swap-requests', "<?php echo json_encode(array_map(fn(\$s) => \$s['id'], \$swaps));");
+        $this->writeViewContent(sys_get_temp_dir(), 'layout.app', "<?php echo \$content ?? '';");
+
+        $this->swapRequests->method('findAll')->willReturn([
+            ['id' => 1, 'store_id' => 5, 'requester_id' => 1, 'target_user_id' => 2, 'status' => 'pending'],
+            ['id' => 2, 'store_id' => 5, 'requester_id' => 1, 'target_user_id' => 2, 'status' => 'accepted'],
+            ['id' => 3, 'store_id' => 5, 'requester_id' => 1, 'target_user_id' => 2, 'status' => 'refused'],
+        ]);
+        $this->users->method('findAll')->willReturn([]);
+
+        $_GET = ['status' => 'accepted'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+
+        $response = $this->controller->swapRequests($req);
+        $ids = json_decode($response->body(), true);
+
+        $this->assertSame([2], $ids);
+    }
+
     private function ensureViewFile(string $dir, string $view): void
     {
         $file = $dir . DIRECTORY_SEPARATOR . str_replace('.', DIRECTORY_SEPARATOR, $view) . '.php';
@@ -298,5 +321,15 @@ final class AdminSwapControllerTest extends TestCase
             mkdir($parent, 0777, true);
         }
         touch($file);
+    }
+
+    private function writeViewContent(string $dir, string $view, string $content): void
+    {
+        $file = $dir . DIRECTORY_SEPARATOR . str_replace('.', DIRECTORY_SEPARATOR, $view) . '.php';
+        $parent = dirname($file);
+        if (!is_dir($parent)) {
+            mkdir($parent, 0777, true);
+        }
+        file_put_contents($file, $content);
     }
 }

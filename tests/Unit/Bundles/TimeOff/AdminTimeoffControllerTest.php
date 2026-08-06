@@ -142,6 +142,48 @@ final class AdminTimeoffControllerTest extends TestCase
         $this->assertSame(302, $response->status());
     }
 
+    public function testTimeoffFiltersByTypeAndStatus(): void
+    {
+        $viewDir = sys_get_temp_dir() . '/kintai-timeoff-views';
+        $this->writeViewContent($viewDir, 'timeoff', "<?php echo json_encode(array_map(fn(\$r) => \$r['id'], \$requests));");
+        $this->writeViewContent(sys_get_temp_dir(), 'layout.app', "<?php echo \$content ?? '';");
+
+        $this->timeoffRequests->method('findAll')->willReturn([
+            ['id' => 1, 'store_id' => 1, 'user_id' => 1, 'type' => 'vacation', 'status' => 'pending', 'start_date' => '2026-08-01'],
+            ['id' => 2, 'store_id' => 1, 'user_id' => 1, 'type' => 'sick', 'status' => 'approved', 'start_date' => '2026-08-02'],
+            ['id' => 3, 'store_id' => 1, 'user_id' => 1, 'type' => 'vacation', 'status' => 'approved', 'start_date' => '2026-08-03'],
+        ]);
+
+        $_GET = ['type' => 'vacation', 'status' => 'approved'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+
+        $response = $this->controller->timeoff($req);
+        $ids = json_decode($response->body(), true);
+
+        $this->assertSame([3], $ids);
+    }
+
+    public function testTimeoffWithoutFiltersShowsAllStatuses(): void
+    {
+        $viewDir = sys_get_temp_dir() . '/kintai-timeoff-views';
+        $this->writeViewContent($viewDir, 'timeoff', "<?php echo json_encode(array_map(fn(\$r) => \$r['id'], \$requests));");
+        $this->writeViewContent(sys_get_temp_dir(), 'layout.app', "<?php echo \$content ?? '';");
+
+        $this->timeoffRequests->method('findAll')->willReturn([
+            ['id' => 1, 'store_id' => 1, 'user_id' => 1, 'type' => 'vacation', 'status' => 'pending', 'start_date' => '2026-08-01'],
+            ['id' => 2, 'store_id' => 1, 'user_id' => 1, 'type' => 'sick', 'status' => 'approved', 'start_date' => '2026-08-02'],
+        ]);
+
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+
+        $response = $this->controller->timeoff($req);
+        $ids = json_decode($response->body(), true);
+
+        $this->assertCount(2, $ids);
+    }
+
     private function ensureViewFile(string $dir, string $view): void
     {
         $file = $dir . DIRECTORY_SEPARATOR . str_replace('.', DIRECTORY_SEPARATOR, $view) . '.php';
@@ -150,5 +192,15 @@ final class AdminTimeoffControllerTest extends TestCase
             mkdir($parent, 0777, true);
         }
         touch($file);
+    }
+
+    private function writeViewContent(string $dir, string $view, string $content): void
+    {
+        $file = $dir . DIRECTORY_SEPARATOR . str_replace('.', DIRECTORY_SEPARATOR, $view) . '.php';
+        $parent = dirname($file);
+        if (!is_dir($parent)) {
+            mkdir($parent, 0777, true);
+        }
+        file_put_contents($file, $content);
     }
 }

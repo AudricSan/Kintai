@@ -1,6 +1,7 @@
 <?php
 use kintai\UI\Components\Badge;
 use kintai\UI\Components\Button;
+use kintai\UI\Components\FilterBar;
 use kintai\UI\Components\Flash;
 use kintai\UI\Components\Table;
 
@@ -8,10 +9,22 @@ use kintai\UI\Components\Table;
 /** @var array  $users_map */
 /** @var array  $stores_map */
 /** @var string $sort */
+/** @var string $type_filter */
+/** @var string $status_filter */
 
-$users_map  ??= [];
-$stores_map ??= [];
-$sort       ??= 'date_desc';
+$users_map     ??= [];
+$stores_map    ??= [];
+$sort          ??= 'date_desc';
+$type_filter   ??= '';
+$status_filter ??= '';
+
+$typeLabels = [
+    'vacation' => __('vacation'),
+    'sick'     => __('sick'),
+    'personal' => __('personal'),
+    'unpaid'   => __('unpaid'),
+    'other'    => __('other'),
+];
 
 $statusLabels = [
     'pending'   => __('pending'),
@@ -34,11 +47,18 @@ echo Flash::fromQuery('success', [
     </div>
 </div>
 
+<?= FilterBar::make()
+    ->select('type', __('type'), $typeLabels, $type_filter, __('all'))
+    ->select('status', __('status'), $statusLabels, $status_filter, __('all'))
+    ->render()
+?>
+
 <div class="card card--filters mb-sm">
 <?= Table::make()
     ->data($requests)
     ->emptyMessage(__('no_timeoff_found'))
     ->currentSort($sort)
+    ->filters(['type' => $type_filter, 'status' => $status_filter])
     ->column('#', fn($r) => (string) (int) $r['id'])
     ->column(__('store'), fn($r) => htmlspecialchars($stores_map[(int)($r['store_id'] ?? 0)] ?? ('ID ' . (int)($r['store_id'] ?? 0))))
     ->sortable(__('user'), 'user', fn($r) =>
