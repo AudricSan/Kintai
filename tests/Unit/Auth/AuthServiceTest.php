@@ -296,11 +296,11 @@ final class AuthServiceTest extends TestCase
         $this->assertSame([], $this->auth->managedStoreIds());
     }
 
-    public function testManagedStoreIdsForRoleGrantingPermissions(): void
+    public function testManagedStoreIdsForRoleGrantingManagementPermission(): void
     {
         $_SESSION['auth_user_id'] = 10;
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
-        $this->grantStoreRole(10, 1, 2, ['employees.view']);
+        $this->grantStoreRole(10, 1, 2, ['employees.view', 'employees.create']);
 
         $ids = $this->auth->managedStoreIds();
         $this->assertSame([1], $ids);
@@ -311,6 +311,22 @@ final class AuthServiceTest extends TestCase
         $_SESSION['auth_user_id'] = 10;
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
         $this->grantStoreRole(10, 1, 3, []); // rôle sans aucune permission (ex. Employé)
+
+        $this->assertSame([], $this->auth->managedStoreIds());
+    }
+
+    /**
+     * Régression : un rôle qui n'accorde QUE des permissions .view (ex. le rôle "employee"
+     * par défaut, avec seulement shifts.view pour consulter son planning) ne doit PAS compter
+     * comme gestionnaire de ce store — sinon un simple employé accède à /admin/* (shifts,
+     * types de shifts, personnel...) alors qu'il ne devrait avoir qu'un accès en lecture à
+     * son propre planning. Voir CHANGELOG.
+     */
+    public function testManagedStoreIdsEmptyForRoleGrantingOnlyViewPermissions(): void
+    {
+        $_SESSION['auth_user_id'] = 10;
+        $this->users->method('findById')->willReturn($this->activeUser(10, false));
+        $this->grantStoreRole(10, 1, 3, ['shifts.view']);
 
         $this->assertSame([], $this->auth->managedStoreIds());
     }
@@ -327,11 +343,11 @@ final class AuthServiceTest extends TestCase
         $this->assertTrue($this->auth->isManager());
     }
 
-    public function testIsManagerTrueForRoleGrantingPermissions(): void
+    public function testIsManagerTrueForRoleGrantingManagementPermission(): void
     {
         $_SESSION['auth_user_id'] = 10;
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
-        $this->grantStoreRole(10, 1, 2, ['employees.view']);
+        $this->grantStoreRole(10, 1, 2, ['employees.view', 'employees.create']);
         $this->assertTrue($this->auth->isManager());
     }
 
@@ -340,6 +356,15 @@ final class AuthServiceTest extends TestCase
         $_SESSION['auth_user_id'] = 10;
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
         $this->grantStoreRole(10, 1, 3, []);
+        $this->assertFalse($this->auth->isManager());
+    }
+
+    /** Régression : voir testManagedStoreIdsEmptyForRoleGrantingOnlyViewPermissions. */
+    public function testIsManagerFalseForRoleGrantingOnlyViewPermissions(): void
+    {
+        $_SESSION['auth_user_id'] = 10;
+        $this->users->method('findById')->willReturn($this->activeUser(10, false));
+        $this->grantStoreRole(10, 1, 3, ['shifts.view']);
         $this->assertFalse($this->auth->isManager());
     }
 }
