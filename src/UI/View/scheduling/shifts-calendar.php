@@ -27,7 +27,11 @@ use kintai\UI\Components\Button;
  * @var array|null  $ical_links    store_id → url (employé uniquement)
  */
 
-$_isManagerView = $is_manager_view ?? true;
+// Défaut à false (pas à true) : les deux appelants (AdminShiftController, EmployeeController)
+// passent toujours cette valeur explicitement, mais un futur appelant qui l'oublierait ne doit
+// pas basculer accidentellement sur la vue manager (filtres multi-utilisateurs, congés de
+// l'équipe) — voir CHANGELOG (même principe que shifts-timeline.php can_manage).
+$_isManagerView = $is_manager_view ?? false;
 
 // Construire la grille calendrier selon le jour de début de semaine configuré
 $firstDay    = new \DateTimeImmutable($month_start);

@@ -236,7 +236,10 @@ else: ?>
 <?php elseif ($tab === 'nav'): ?>
 
 <?php
-$_isManagerView = $is_manager_view ?? true;
+// Défaut à false (pas à true) : AuthController passe toujours cette valeur explicitement
+// (depuis AuthService::isManager(), déjà corrigé — voir CHANGELOG), gardé par cohérence
+// défensive avec le même principe appliqué à shifts-timeline.php/shifts-calendar.php.
+$_isManagerView = $is_manager_view ?? false;
 
 if ($_isManagerView) {
     $_navFeatMap = [
