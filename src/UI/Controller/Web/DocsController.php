@@ -40,6 +40,7 @@ final class DocsController
         $user = $request->getAttribute('auth_user');
 
         return Response::html($this->view->render('docs.unavailable', [
+            'title'         => __('docs'),
             'locale'        => $locale,
             'githubWikiUrl' => $this->wikiContent->githubWikiUrl($locale),
             'isOwner'       => !empty($user['is_admin']),
@@ -80,6 +81,7 @@ final class DocsController
         $user = $request->getAttribute('auth_user');
 
         return Response::html($this->view->render('docs.show', [
+            'title'          => $currentIndex !== null ? $flatItems[$currentIndex]['title'] : __('docs'),
             'lang'           => $lang,
             'page'           => $page,
             'toc'            => $toc,
