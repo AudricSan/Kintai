@@ -17,6 +17,8 @@ use kintai\UI\Components\Flash;
  * @var bool|null  $can_manage           null = contexte admin (toujours vrai)
  * @var string     $type_filter          filtre "type de shift" du tableau des shifts (admin uniquement)
  * @var string     $claim_status_filter  filtre "statut" du tableau des candidatures (admin uniquement)
+ * @var string     $sort                 tri du tableau des shifts (admin uniquement)
+ * @var string     $claim_sort           tri du tableau des candidatures (admin uniquement)
  */
 
 $_canManage          = $can_manage ?? true;
@@ -26,6 +28,8 @@ $stores_map          ??= [];
 $claims              ??= [];
 $type_filter         ??= '';
 $claim_status_filter ??= '';
+$sort                ??= 'date_asc';
+$claim_sort          ??= 'date_asc';
 
 $claimStatusLabels = [
     'pending'   => __('pending'),
@@ -71,12 +75,19 @@ if ($_canManage) {
 endif; ?>
 
 <div class="card card--mb">
-<?= Table::make()
+<?php
+$shiftsTable = Table::make()
     ->data($shifts)
     ->emptyMessage(__('no_open_shift'))
     ->column(__('date'), fn($s) => htmlspecialchars($s['shift_date'] ?? ''))
-    ->column(__('schedule'), fn($s) => '<span class="td-mono">' . htmlspecialchars(substr($s['start_time'] ?? '', 0, 5)) . '–' . htmlspecialchars(substr($s['end_time'] ?? '', 0, 5)) . '</span>')
-    ->column(__('store'), fn($s) => htmlspecialchars($stores_map[(int)($s['store_id'] ?? 0)] ?? ('ID ' . (int)($s['store_id'] ?? 0))))
+    ->column(__('schedule'), fn($s) => '<span class="td-mono">' . htmlspecialchars(substr($s['start_time'] ?? '', 0, 5)) . '–' . htmlspecialchars(substr($s['end_time'] ?? '', 0, 5)) . '</span>');
+if ($_canManage) {
+    $shiftsTable->currentSort($sort)->filters(['type' => $type_filter])
+        ->sortable(__('store'), 'store', fn($s) => htmlspecialchars($stores_map[(int)($s['store_id'] ?? 0)] ?? ('ID ' . (int)($s['store_id'] ?? 0))));
+} else {
+    $shiftsTable->column(__('store'), fn($s) => htmlspecialchars($stores_map[(int)($s['store_id'] ?? 0)] ?? ('ID ' . (int)($s['store_id'] ?? 0))));
+}
+echo $shiftsTable
     ->column(__('type'), function($s) use ($types_map) {
         $t = $types_map[(int)($s['shift_type_id'] ?? 0)] ?? null;
         if (!$t) return '—';
@@ -136,9 +147,12 @@ endif; ?>
 <?= Table::make()
     ->data($claims)
     ->emptyMessage(__('no_pending_claims'))
+    ->currentSort($claim_sort)
+    ->filters(['claim_status' => $claim_status_filter])
+    ->sortParam('claim_sort')
     ->column(__('date'), fn($c) => htmlspecialchars($c['_shift']['shift_date'] ?? ''))
     ->column(__('schedule'), fn($c) => '<span class="td-mono">' . htmlspecialchars(substr($c['_shift']['start_time'] ?? '', 0, 5)) . '–' . htmlspecialchars(substr($c['_shift']['end_time'] ?? '', 0, 5)) . '</span>')
-    ->column(__('store'), fn($c) => htmlspecialchars($stores_map[(int)($c['_shift']['store_id'] ?? 0)] ?? '—'))
+    ->sortable(__('store'), 'store', fn($c) => htmlspecialchars($stores_map[(int)($c['_shift']['store_id'] ?? 0)] ?? '—'))
     ->column(__('employee'), fn($c) => htmlspecialchars($c['_user_name'] ?? '—'))
     ->column(__('note'), fn($c) => htmlspecialchars($c['note'] ?? ''))
     ->column(__('status'), function($c) use ($claimStatusLabels) {

@@ -311,6 +311,68 @@ final class AdminShiftClaimControllerTest extends TestCase
         $this->assertSame([1, 2], $data['shift_ids']);
     }
 
+    public function testOpenShiftsSortsShiftsByStoreNameIndependentlyFromClaims(): void
+    {
+        $this->writeOpenShiftsViewStub();
+
+        $this->shifts->method('findOpen')->willReturn([
+            ['id' => 1, 'shift_date' => '2026-08-01', 'store_id' => 1],
+            ['id' => 2, 'shift_date' => '2026-08-02', 'store_id' => 2],
+        ]);
+        $this->shiftTypes->method('findAll')->willReturn([]);
+        $this->stores->method('findAll')->willReturn([
+            ['id' => 1, 'name' => 'Zoo Store'],
+            ['id' => 2, 'name' => 'Alpha Store'],
+        ]);
+        $this->shiftClaims->method('findByShift')->willReturnMap([
+            [1, [['id' => 100, 'user_id' => 9, 'status' => 'pending', 'claimed_at' => '2026-08-01 10:00:00']]],
+            [2, [['id' => 200, 'user_id' => 9, 'status' => 'pending', 'claimed_at' => '2026-08-02 10:00:00']]],
+        ]);
+
+        $_GET = ['sort' => 'store_asc'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+
+        $response = $this->controller->openShifts($req);
+        $data = json_decode($response->body(), true);
+
+        // "Alpha Store" (store 2 → shift 2) doit passer avant "Zoo Store" (store 1 → shift 1).
+        $this->assertSame([2, 1], $data['shift_ids']);
+        // Le tri du tableau des shifts ne doit pas affecter l'ordre des candidatures.
+        $this->assertSame([100, 200], $data['claim_ids']);
+    }
+
+    public function testOpenShiftsSortsClaimsByStoreNameIndependentlyFromShifts(): void
+    {
+        $this->writeOpenShiftsViewStub();
+
+        $this->shifts->method('findOpen')->willReturn([
+            ['id' => 1, 'shift_date' => '2026-08-01', 'store_id' => 1],
+            ['id' => 2, 'shift_date' => '2026-08-02', 'store_id' => 2],
+        ]);
+        $this->shiftTypes->method('findAll')->willReturn([]);
+        $this->stores->method('findAll')->willReturn([
+            ['id' => 1, 'name' => 'Zoo Store'],
+            ['id' => 2, 'name' => 'Alpha Store'],
+        ]);
+        $this->shiftClaims->method('findByShift')->willReturnMap([
+            [1, [['id' => 100, 'user_id' => 9, 'status' => 'pending', 'claimed_at' => '2026-08-01 10:00:00']]],
+            [2, [['id' => 200, 'user_id' => 9, 'status' => 'pending', 'claimed_at' => '2026-08-02 10:00:00']]],
+        ]);
+
+        $_GET = ['claim_sort' => 'store_asc'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+
+        $response = $this->controller->openShifts($req);
+        $data = json_decode($response->body(), true);
+
+        // Candidature #200 (store 2 → "Alpha Store") doit passer avant #100 (store 1 → "Zoo Store").
+        $this->assertSame([200, 100], $data['claim_ids']);
+        // Le tri des candidatures ne doit pas affecter l'ordre du tableau des shifts (date par défaut).
+        $this->assertSame([1, 2], $data['shift_ids']);
+    }
+
     private function writeOpenShiftsViewStub(): void
     {
         $viewDir = sys_get_temp_dir() . '/kintai-shift-claim-views';
