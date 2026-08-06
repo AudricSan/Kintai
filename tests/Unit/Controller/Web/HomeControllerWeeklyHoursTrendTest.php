@@ -9,6 +9,7 @@ use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
+use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\TimeclockRepositoryInterface;
@@ -17,6 +18,7 @@ use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\Services\DashboardAlertService;
 use kintai\Core\Services\StoreStatsServiceInterface;
 use kintai\UI\Controller\Web\HomeController;
 use kintai\UI\ViewRenderer;
@@ -59,10 +61,15 @@ final class HomeControllerWeeklyHoursTrendTest extends TestCase
         $timeclocksRepo->method('findAll')->willReturn([]);
 
         $dashboardPrefs = $this->createMock(UserDashboardPrefsRepositoryInterface::class);
-        $dashboardPrefs->method('getEnabledWidgets')->willReturn(null);
+        // Widget "store_stats_summary" uniquement : ce test porte sur la tendance
+        // hebdomadaire de ce widget précis, pas sur financial_overview/hr_absenteeism
+        // (storeStats() n'est pas mocké pour couvrir leurs appels ici).
+        $dashboardPrefs->method('getEnabledWidgets')->willReturn(['store_stats_summary']);
 
         $storeUsersRepo = $this->createMock(StoreUserRepositoryInterface::class);
         $storeUsersRepo->method('findByStore')->willReturn([]);
+
+        $shiftTypesRepo = $this->createMock(ShiftTypeRepositoryInterface::class);
 
         $roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
         $roleAssignments->method('findByUser')->willReturn([
@@ -73,17 +80,28 @@ final class HomeControllerWeeklyHoursTrendTest extends TestCase
         $roles->method('getPermissions')->with(5)->willReturn(['payroll.view']);
         $permissions = new PermissionService($roleAssignments, $roles);
 
+        $dashboardAlerts = new DashboardAlertService(
+            $shiftsRepo,
+            $usersRepo,
+            $storeUsersRepo,
+            $timeoffRepo,
+            $swapsRepo,
+            $timeclocksRepo,
+        );
+
         return new HomeController(
             new ViewRenderer(sys_get_temp_dir()),
             $usersRepo,
             $storesRepo,
             $shiftsRepo,
+            $shiftTypesRepo,
             $timeoffRepo,
             $swapsRepo,
             $dashboardPrefs,
             $timeclocksRepo,
             $storeUsersRepo,
             $storeStats,
+            $dashboardAlerts,
             $permissions,
         );
     }

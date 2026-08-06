@@ -8,6 +8,7 @@ All notable changes to Kintai are documented here.
 
 ### Added
 - `scripts/seed-demo-data.php`: generates realistic demo data across every bundle (timeoff requests, shift swaps, open-shift claims, timeclocks — including a few intentionally late or forgotten ones —, messaging threads, store photo submissions, employee feedback, resignation reports, salary reports) on top of an existing instance, for local testing ahead of the 1.0 release. Idempotent by default (tracked via an `app_settings` marker), re-runnable with `--force`.
+- Three new admin dashboard widgets (toggleable from "Customize", like every other dashboard widget): **Alerts** (upcoming unfilled shifts, active employees with no shift scheduled this week, timeoff/swap requests pending for more than 3 days, clock-ins still open after 12 hours), **Financial Overview** (current vs. previous month payroll cost, 6-month trend chart reusing the existing stats-charts.js line chart), and **HR & Absenteeism** (absentee rate, time off taken and its breakdown by type, late clock-ins vs. the shift's scheduled start time, weeks over 40 net hours) — all scoped to the viewer's managed stores, the latter two gated behind `payroll.view` like the existing "Stats overview" widget. Backed by a new `DashboardAlertService`.
 
 ## [0.10.8] - 2026-08-06
 
