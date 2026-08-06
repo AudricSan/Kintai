@@ -147,7 +147,7 @@ final class AuthService
             if ($assignment['scope_type'] !== 'store' || $assignment['scope_id'] === null) {
                 continue;
             }
-            if ($this->roleGrantsAnyPermission((int) $assignment['role_id'])) {
+            if ($this->roleGrantsManagementAccess((int) $assignment['role_id'])) {
                 $storeIds[] = (int) $assignment['scope_id'];
             }
         }
@@ -183,7 +183,18 @@ final class AuthService
         return false;
     }
 
-    private function roleGrantsAnyPermission(int $roleId): bool
+    /**
+     * Vrai si ce rôle accorde au moins une permission de *gestion* (au-delà d'un simple
+     * ".view") sur ce store — c'est le critère utilisé pour décider si un utilisateur passe
+     * AdminMiddleware et accède à /admin/*. Un rôle qui n'accorde QUE des permissions .view
+     * (ex. le rôle "employee" par défaut, avec seulement shifts.view pour consulter son
+     * planning) ne doit jamais compter comme gestionnaire : sinon un simple employé se
+     * retrouve avec accès aux pages de gestion (shifts, types de shifts, personnel...) de
+     * tout /admin/*, avec seule la permission fine (PermissionMiddleware) pour limiter les
+     * actions d'écriture — mais pas l'affichage des boutons/données sensibles côté vue, qui
+     * suppose généralement "je suis dans /admin, donc je gère". Voir CHANGELOG.
+     */
+    private function roleGrantsManagementAccess(int $roleId): bool
     {
         $role = $this->roles->findById($roleId);
         if ($role === null) {
@@ -192,6 +203,11 @@ final class AuthService
         if (!empty($role['is_system'])) {
             return true;
         }
-        return $this->roles->getPermissions($roleId) !== [];
+        foreach ($this->roles->getPermissions($roleId) as $permission) {
+            if (!str_ends_with($permission, '.view')) {
+                return true;
+            }
+        }
+        return false;
     }
 }
