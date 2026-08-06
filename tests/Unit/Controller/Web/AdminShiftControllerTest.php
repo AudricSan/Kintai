@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Controller\Web;
 
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Repositories\ImportAliasRepositoryInterface;
+use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
+use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
@@ -30,6 +33,10 @@ final class AdminShiftControllerTest extends TestCase
     private TimeoffRequestRepositoryInterface&MockObject $timeoffRequests;
     private ShiftServiceInterface&MockObject $shiftService;
     private NotificationService&MockObject $notifs;
+    private RoleAssignmentRepositoryInterface&MockObject $roleAssignments;
+    private RoleRepositoryInterface&MockObject $roles;
+    private UserRepositoryInterface&MockObject $users;
+    private StoreUserRepositoryInterface&MockObject $storeUsers;
     private AdminShiftController $controller;
 
     protected function setUp(): void
@@ -43,21 +50,27 @@ final class AdminShiftControllerTest extends TestCase
         $this->timeoffRequests = $this->createMock(TimeoffRequestRepositoryInterface::class);
         $this->shiftService = $this->createMock(ShiftServiceInterface::class);
         $this->notifs = $this->createMock(NotificationService::class);
+        $this->roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
+        $this->roles = $this->createMock(RoleRepositoryInterface::class);
+        $this->users = $this->createMock(UserRepositoryInterface::class);
+        $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
         $auditLogger = new AuditLogger();
+        $permissions = new PermissionService($this->roleAssignments, $this->roles);
 
         $this->controller = new AdminShiftController(
             $view,
-            $this->createMock(UserRepositoryInterface::class),
+            $this->users,
             $this->stores,
             $this->shifts,
             $this->shiftTypes,
-            $this->createMock(StoreUserRepositoryInterface::class),
+            $this->storeUsers,
             $this->createMock(UserShiftTypeRateRepositoryInterface::class),
             $auditLogger,
             $this->notifs,
             $this->createMock(ImportAliasRepositoryInterface::class),
             $this->shiftService,
             $this->timeoffRequests,
+            $permissions,
         );
     }
 
@@ -541,6 +554,85 @@ final class AdminShiftControllerTest extends TestCase
     // -------------------------------------------------------------------------
     // selectShiftToPublish
     // -------------------------------------------------------------------------
+
+    // -------------------------------------------------------------------------
+    // shiftsTimeline — can_manage
+    // -------------------------------------------------------------------------
+
+    /**
+     * Régression sévère : shiftsTimeline() ne calculait jamais can_manage, et la vue
+     * (scheduling.shifts-timeline) défautait alors à true — exposant le bouton import
+     * Excel, la création rapide de shift, le glisser-déposer et le détail des taux
+     * horaires dans la modale de shift à N'IMPORTE QUEL viewer capable d'atteindre cette
+     * page, y compris un simple employé (rôle "employee", uniquement shifts.view — voir
+     * CHANGELOG). Ce test vérifie que can_manage reflète désormais shifts.update.
+     */
+    public function testShiftsTimelinePassesCanManageTrueForOwner(): void
+    {
+        $canManage = $this->renderTimelineAndCaptureCanManage(['id' => 1, 'is_admin' => true]);
+
+        $this->assertTrue($canManage);
+    }
+
+    public function testShiftsTimelinePassesCanManageTrueForRoleGrantingShiftsUpdate(): void
+    {
+        $this->roleAssignments->method('findByUser')->with(9)->willReturn([
+            ['id' => 1, 'user_id' => 9, 'role_id' => 2, 'scope_type' => 'store', 'scope_id' => 1],
+        ]);
+        $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'slug' => 'manager', 'is_system' => 0]);
+        $this->roles->method('getPermissions')->with(2)->willReturn(['shifts.view', 'shifts.update']);
+
+        $canManage = $this->renderTimelineAndCaptureCanManage(['id' => 9, 'is_admin' => false], [1]);
+
+        $this->assertTrue($canManage);
+    }
+
+    /** Le cas exact du bug rapporté : rôle "employee" avec shifts.view seul. */
+    public function testShiftsTimelinePassesCanManageFalseForViewOnlyRole(): void
+    {
+        $this->roleAssignments->method('findByUser')->with(14)->willReturn([
+            ['id' => 1, 'user_id' => 14, 'role_id' => 3, 'scope_type' => 'store', 'scope_id' => 1],
+        ]);
+        $this->roles->method('findById')->with(3)->willReturn(['id' => 3, 'slug' => 'employee', 'is_system' => 0]);
+        $this->roles->method('getPermissions')->with(3)->willReturn(['shifts.view']);
+
+        $canManage = $this->renderTimelineAndCaptureCanManage(['id' => 14, 'is_admin' => false], [1]);
+
+        $this->assertFalse($canManage);
+    }
+
+    private function renderTimelineAndCaptureCanManage(array $authUser, ?array $managedStoreIds = null): bool
+    {
+        $this->writeViewFile('scheduling.shifts-timeline', "<?php echo json_encode(['can_manage' => \$can_manage ?? null]);");
+        $this->writeViewFile('layout.app', "<?php echo \$content ?? '';");
+
+        $this->stores->method('findAll')->willReturn([['id' => 1, 'name' => 'Store 1']]);
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Store 1']);
+        $this->shifts->method('findByStore')->willReturn([]);
+        $this->shiftTypes->method('findByStores')->willReturn([]);
+        $this->shiftTypes->method('findAll')->willReturn([]);
+        $this->storeUsers->method('findByStore')->willReturn([]);
+        $this->users->method('findAll')->willReturn([]);
+
+        $req = new Request();
+        $req->setAttribute('auth_user', $authUser);
+        $req->setAttribute('managed_store_ids', $managedStoreIds);
+
+        $response = $this->controller->shiftsTimeline($req);
+        $data     = json_decode($response->body(), true);
+
+        return $data['can_manage'];
+    }
+
+    private function writeViewFile(string $view, string $content): void
+    {
+        $file = sys_get_temp_dir() . DIRECTORY_SEPARATOR . str_replace('.', DIRECTORY_SEPARATOR, $view) . '.php';
+        $dir  = dirname($file);
+        if (!is_dir($dir)) {
+            mkdir($dir, 0777, true);
+        }
+        file_put_contents($file, $content);
+    }
 
     protected function tearDown(): void
     {
