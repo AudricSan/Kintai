@@ -89,7 +89,7 @@ $section = function (string $titleKey, string $body, string $span = '') use ($as
             </select>
         </div>
         <div class="form-group">
-            <label class="form-label"><?= __('tax_classification') ?> (甲乙)</label>
+            <label class="form-label"><?= __('tax_classification') ?></label>
             <select name="tax_classification" class="form-control">
                 <option value="">—</option>
                 <?php foreach ($taxOptions as $val => $label): ?>
