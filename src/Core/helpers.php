@@ -34,6 +34,60 @@ if (!function_exists('env')) {
     }
 }
 
+if (!function_exists('kintai_installed_via_database')) {
+    /**
+     * Fallback à storage/installed.lock : ce marqueur vit hors Git (gitignored) et peut
+     * disparaître pour des raisons externes à l'application (jamais reproduit via un simple
+     * git checkout — voir CHANGELOG) ; le prendre pour argent comptant force alors un
+     * réinstall destructeur alors que la base de données est en réalité intacte. Interroge
+     * directement la DB (config présente, connexion OK, au moins un utilisateur) avant de
+     * conclure que l'app n'est pas installée. Utilise du PDO natif plutôt qu'Eloquent : ce
+     * garde-fou tourne avant le boot complet du framework, dans public/index.php et
+     * public/install.php.
+     */
+    function kintai_installed_via_database(string $basePath): bool
+    {
+        $dbConfigFile = $basePath . '/config/database.local.php';
+        if (!file_exists($dbConfigFile)) {
+            return false;
+        }
+
+        try {
+            $config = require $dbConfigFile;
+            $driver = $config['driver'] ?? null;
+
+            if ($driver === 'sqlite') {
+                $sqlitePath = $basePath . '/storage/app/database.sqlite';
+                if (!file_exists($sqlitePath)) {
+                    return false;
+                }
+                $pdo = new PDO('sqlite:' . $sqlitePath);
+            } elseif ($driver === 'mysql') {
+                $cfg = $config['connections']['mysql'] ?? null;
+                if ($cfg === null) {
+                    return false;
+                }
+                $dsn = sprintf(
+                    'mysql:host=%s;port=%d;dbname=%s;charset=%s',
+                    $cfg['host'] ?? '127.0.0.1',
+                    (int) ($cfg['port'] ?? 3306),
+                    $cfg['database'] ?? '',
+                    $cfg['charset'] ?? 'utf8mb4'
+                );
+                $pdo = new PDO($dsn, $cfg['username'] ?? '', $cfg['password'] ?? '');
+            } else {
+                return false;
+            }
+
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $count = (int) $pdo->query('SELECT COUNT(*) FROM users')->fetchColumn();
+            return $count > 0;
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+}
+
 if (!function_exists('storage_path')) {
     /**
      * Get the path to the storage folder.
