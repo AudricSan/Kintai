@@ -66,6 +66,14 @@ final class AdminShiftClaimControllerTest extends TestCase
     {
         $_GET = [];
         $_POST = [];
+
+        // La vue "open-shifts" est partagée avec EmployeeShiftClaimControllerTest (même
+        // namespace de bundle) : on la remet à un stub vide pour ne pas polluer les tests
+        // qui s'exécutent après ceux-ci dans le même process PHPUnit.
+        $file = sys_get_temp_dir() . '/kintai-shift-claim-views/open-shifts.php';
+        if (file_exists($file)) {
+            file_put_contents($file, '');
+        }
     }
 
     public function testOpenShiftsEnrichesEachShiftWithItsClaims(): void
@@ -247,6 +255,131 @@ final class AdminShiftClaimControllerTest extends TestCase
         $this->assertSame('rejected', $captured['status']);
     }
 
+    public function testOpenShiftsFiltersShiftsByTypeWithoutAffectingClaimsList(): void
+    {
+        $this->writeOpenShiftsViewStub();
+
+        $this->shifts->method('findOpen')->willReturn([
+            ['id' => 1, 'shift_date' => '2026-08-01', 'store_id' => 5, 'shift_type_id' => 10],
+            ['id' => 2, 'shift_date' => '2026-08-02', 'store_id' => 5, 'shift_type_id' => 20],
+        ]);
+        $this->shiftTypes->method('findAll')->willReturn([
+            ['id' => 10, 'name' => 'Matin'],
+            ['id' => 20, 'name' => 'Soir'],
+        ]);
+        $this->stores->method('findAll')->willReturn([['id' => 5, 'name' => 'Store A']]);
+        $this->shiftClaims->method('findByShift')->willReturnMap([
+            [1, [['id' => 100, 'user_id' => 9, 'status' => 'pending']]],
+            [2, [['id' => 200, 'user_id' => 9, 'status' => 'approved']]],
+        ]);
+
+        $_GET = ['type' => '10'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+
+        $response = $this->controller->openShifts($req);
+        $data = json_decode($response->body(), true);
+
+        $this->assertSame([1], $data['shift_ids']);
+        // Le filtre "type" du tableau des shifts ne doit pas restreindre le tableau des candidatures.
+        $this->assertSame([100, 200], $data['claim_ids']);
+    }
+
+    public function testOpenShiftsFiltersClaimsByStatusWithoutAffectingShiftsList(): void
+    {
+        $this->writeOpenShiftsViewStub();
+
+        $this->shifts->method('findOpen')->willReturn([
+            ['id' => 1, 'shift_date' => '2026-08-01', 'store_id' => 5, 'shift_type_id' => 10],
+            ['id' => 2, 'shift_date' => '2026-08-02', 'store_id' => 5, 'shift_type_id' => 20],
+        ]);
+        $this->shiftTypes->method('findAll')->willReturn([]);
+        $this->stores->method('findAll')->willReturn([['id' => 5, 'name' => 'Store A']]);
+        $this->shiftClaims->method('findByShift')->willReturnMap([
+            [1, [['id' => 100, 'user_id' => 9, 'status' => 'pending']]],
+            [2, [['id' => 200, 'user_id' => 9, 'status' => 'approved']]],
+        ]);
+
+        $_GET = ['claim_status' => 'approved'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+
+        $response = $this->controller->openShifts($req);
+        $data = json_decode($response->body(), true);
+
+        $this->assertSame([200], $data['claim_ids']);
+        $this->assertSame([1, 2], $data['shift_ids']);
+    }
+
+    public function testOpenShiftsSortsShiftsByStoreNameIndependentlyFromClaims(): void
+    {
+        $this->writeOpenShiftsViewStub();
+
+        $this->shifts->method('findOpen')->willReturn([
+            ['id' => 1, 'shift_date' => '2026-08-01', 'store_id' => 1],
+            ['id' => 2, 'shift_date' => '2026-08-02', 'store_id' => 2],
+        ]);
+        $this->shiftTypes->method('findAll')->willReturn([]);
+        $this->stores->method('findAll')->willReturn([
+            ['id' => 1, 'name' => 'Zoo Store'],
+            ['id' => 2, 'name' => 'Alpha Store'],
+        ]);
+        $this->shiftClaims->method('findByShift')->willReturnMap([
+            [1, [['id' => 100, 'user_id' => 9, 'status' => 'pending', 'claimed_at' => '2026-08-01 10:00:00']]],
+            [2, [['id' => 200, 'user_id' => 9, 'status' => 'pending', 'claimed_at' => '2026-08-02 10:00:00']]],
+        ]);
+
+        $_GET = ['sort' => 'store_asc'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+
+        $response = $this->controller->openShifts($req);
+        $data = json_decode($response->body(), true);
+
+        // "Alpha Store" (store 2 → shift 2) doit passer avant "Zoo Store" (store 1 → shift 1).
+        $this->assertSame([2, 1], $data['shift_ids']);
+        // Le tri du tableau des shifts ne doit pas affecter l'ordre des candidatures.
+        $this->assertSame([100, 200], $data['claim_ids']);
+    }
+
+    public function testOpenShiftsSortsClaimsByStoreNameIndependentlyFromShifts(): void
+    {
+        $this->writeOpenShiftsViewStub();
+
+        $this->shifts->method('findOpen')->willReturn([
+            ['id' => 1, 'shift_date' => '2026-08-01', 'store_id' => 1],
+            ['id' => 2, 'shift_date' => '2026-08-02', 'store_id' => 2],
+        ]);
+        $this->shiftTypes->method('findAll')->willReturn([]);
+        $this->stores->method('findAll')->willReturn([
+            ['id' => 1, 'name' => 'Zoo Store'],
+            ['id' => 2, 'name' => 'Alpha Store'],
+        ]);
+        $this->shiftClaims->method('findByShift')->willReturnMap([
+            [1, [['id' => 100, 'user_id' => 9, 'status' => 'pending', 'claimed_at' => '2026-08-01 10:00:00']]],
+            [2, [['id' => 200, 'user_id' => 9, 'status' => 'pending', 'claimed_at' => '2026-08-02 10:00:00']]],
+        ]);
+
+        $_GET = ['claim_sort' => 'store_asc'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+
+        $response = $this->controller->openShifts($req);
+        $data = json_decode($response->body(), true);
+
+        // Candidature #200 (store 2 → "Alpha Store") doit passer avant #100 (store 1 → "Zoo Store").
+        $this->assertSame([200, 100], $data['claim_ids']);
+        // Le tri des candidatures ne doit pas affecter l'ordre du tableau des shifts (date par défaut).
+        $this->assertSame([1, 2], $data['shift_ids']);
+    }
+
+    private function writeOpenShiftsViewStub(): void
+    {
+        $viewDir = sys_get_temp_dir() . '/kintai-shift-claim-views';
+        $this->writeViewContent($viewDir, 'open-shifts', "<?php echo json_encode(['shift_ids' => array_map(fn(\$s) => \$s['id'], \$shifts), 'claim_ids' => array_map(fn(\$c) => \$c['id'], \$claims)]);");
+        $this->writeViewContent(sys_get_temp_dir(), 'layout.app', "<?php echo \$content ?? '';");
+    }
+
     private function ensureViewFile(string $dir, string $view): void
     {
         $file = $dir . DIRECTORY_SEPARATOR . str_replace('.', DIRECTORY_SEPARATOR, $view) . '.php';
@@ -255,5 +388,15 @@ final class AdminShiftClaimControllerTest extends TestCase
             mkdir($parent, 0777, true);
         }
         touch($file);
+    }
+
+    private function writeViewContent(string $dir, string $view, string $content): void
+    {
+        $file = $dir . DIRECTORY_SEPARATOR . str_replace('.', DIRECTORY_SEPARATOR, $view) . '.php';
+        $parent = dirname($file);
+        if (!is_dir($parent)) {
+            mkdir($parent, 0777, true);
+        }
+        file_put_contents($file, $content);
     }
 }

@@ -1,6 +1,7 @@
 <?php
 use kintai\UI\Components\Button;
 use kintai\UI\Components\Badge;
+use kintai\UI\Components\FilterBar;
 use kintai\UI\Components\Table;
 use kintai\UI\Components\Flash;
 
@@ -9,10 +10,12 @@ use kintai\UI\Components\Flash;
 /** @var array  $stores_map */
 /** @var array  $shifts_map  id → shift */
 /** @var string $sort */
-$users_map  ??= [];
-$stores_map ??= [];
-$shifts_map ??= [];
-$sort       ??= 'date_desc';
+/** @var string $status_filter */
+$users_map     ??= [];
+$stores_map    ??= [];
+$shifts_map    ??= [];
+$sort          ??= 'date_desc';
+$status_filter ??= '';
 
 $statusLabels = [
     'pending'   => __('pending'),
@@ -49,13 +52,19 @@ echo Flash::fromQuery('success', [
     </div>
 </div>
 
+<?= FilterBar::make()
+    ->select('status', __('status'), $statusLabels, $status_filter, __('all'))
+    ->render()
+?>
+
 <div class="card">
 <?= Table::make()
     ->data($swaps)
     ->emptyMessage(__('no_swap_found'))
     ->currentSort($sort)
+    ->filters(['status' => $status_filter])
     ->column('#', fn($s) => (string) (int) $s['id'])
-    ->column(__('store'), fn($s) => htmlspecialchars($stores_map[(int)($s['store_id'] ?? 0)] ?? ('ID ' . (int)($s['store_id'] ?? 0))))
+    ->sortable(__('store'), 'store', fn($s) => htmlspecialchars($stores_map[(int)($s['store_id'] ?? 0)] ?? ('ID ' . (int)($s['store_id'] ?? 0))))
     ->sortable(__('requester'), 'requester', fn($s) =>
         '<a href="' . htmlspecialchars($BASE_URL . '/admin/users/' . (int)($s['requester_id'] ?? 0) . '/edit') . '">'
         . htmlspecialchars($users_map[(int)($s['requester_id'] ?? 0)] ?? ('ID ' . (int)($s['requester_id'] ?? 0))) . '</a>'

@@ -197,7 +197,23 @@
     margin-bottom: var(--space-6);
 }
 
+/* Variante nichée directement dans une .card (sans .card-body autour) :
+   il lui faut son propre padding pour ne pas coller aux bords de la carte. */
+.stat-grid--in-card {
+    padding: var(--space-4);
+    margin-bottom: 0;
+}
+
+/* Sans ça, les mini-cartes ont exactement le même fond que la .card qui les
+   contient (toutes deux en --color-surface) et se fondent dedans : fond
+   légèrement décalé + ombre pour les faire ressortir. */
+.stat-grid--in-card .stat-card {
+    background: var(--color-surface-alt);
+    box-shadow: var(--shadow-xs);
+}
+
 .stat-card {
+    position: relative;
     background: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: var(--radius);
@@ -212,6 +228,54 @@
 .stat-card:hover {
     box-shadow: var(--shadow-md);
     transform: translateY(-2px);
+}
+
+.stat-card--link {
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+}
+
+.stat-card--link:hover {
+    text-decoration: none;
+    border-color: var(--color-primary);
+}
+
+/* Carte avec lien "étiré" (couvre toute la carte) + petit bouton d'action superposé */
+.stat-card--has-action:hover {
+    border-color: var(--color-primary);
+}
+
+.stat-card__stretched-link {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    cursor: pointer;
+}
+
+.stat-card__action-btn {
+    position: absolute;
+    top: var(--space-2);
+    right: var(--space-2);
+    z-index: 2;
+    width: 1.75rem;
+    height: 1.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-alt);
+    border: 1px solid var(--color-border);
+    font-size: 0.9rem;
+    line-height: 1;
+    text-decoration: none;
+    color: inherit;
+    transition: background var(--duration-fast), border-color var(--duration-fast);
+}
+
+.stat-card__action-btn:hover {
+    border-color: var(--color-primary);
+    background: var(--color-primary-light);
 }
 
 .stat-card__icon {

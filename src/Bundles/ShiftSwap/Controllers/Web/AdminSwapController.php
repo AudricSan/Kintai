@@ -181,20 +181,29 @@ final class AdminSwapController
         $storesMap = $this->buildStoresMap($managedIds);
         $swaps     = $this->filterByStore($this->swapRequests->findAll(), $managedIds);
 
+        $statusFilter = (string) ($request->query('status') ?? '');
+        if ($statusFilter !== '') {
+            $swaps = array_values(array_filter($swaps, fn($s) => ($s['status'] ?? 'pending') === $statusFilter));
+        }
+
         $sort = $request->query('sort') ?? 'date_desc';
-        usort($swaps, function ($a, $b) use ($sort, $usersMap) {
+        usort($swaps, function ($a, $b) use ($sort, $usersMap, $storesMap) {
             $dateA  = ($a['created_at'] ?? '');
             $dateB  = ($b['created_at'] ?? '');
             $reqA   = strtolower($usersMap[(int)($a['requester_id'] ?? 0)] ?? '');
             $reqB   = strtolower($usersMap[(int)($b['requester_id'] ?? 0)] ?? '');
             $statA  = $a['status'] ?? '';
             $statB  = $b['status'] ?? '';
+            $storeA = strtolower($storesMap[(int)($a['store_id'] ?? 0)] ?? '');
+            $storeB = strtolower($storesMap[(int)($b['store_id'] ?? 0)] ?? '');
             return match ($sort) {
                 'date_asc'        => strcmp($dateA, $dateB),
                 'requester_asc'   => strcmp($reqA, $reqB) ?: strcmp($dateA, $dateB),
                 'requester_desc'  => strcmp($reqB, $reqA) ?: strcmp($dateA, $dateB),
                 'status_asc'      => strcmp($statA, $statB) ?: strcmp($dateA, $dateB),
                 'status_desc'     => strcmp($statB, $statA) ?: strcmp($dateA, $dateB),
+                'store_asc'       => strcmp($storeA, $storeB) ?: strcmp($dateA, $dateB),
+                'store_desc'      => strcmp($storeB, $storeA) ?: strcmp($dateA, $dateB),
                 default           => strcmp($dateB, $dateA),
             };
         });
@@ -211,12 +220,13 @@ final class AdminSwapController
         }
 
         return Response::html($this->view->render('shift-swap::swap-requests', [
-            'title'      => 'Échanges de shifts',
-            'swaps'      => $swaps,
-            'users_map'  => $usersMap,
-            'stores_map' => $storesMap,
-            'shifts_map' => $shiftsMap,
-            'sort'       => $sort,
+            'title'         => 'Échanges de shifts',
+            'swaps'         => $swaps,
+            'users_map'     => $usersMap,
+            'stores_map'    => $storesMap,
+            'shifts_map'    => $shiftsMap,
+            'sort'          => $sort,
+            'status_filter' => $statusFilter,
         ], 'layout.app'));
     }
 
