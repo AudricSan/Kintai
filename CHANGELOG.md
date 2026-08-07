@@ -18,6 +18,9 @@ All notable changes to Kintai are documented here.
 - Root cause found for `storage/installed.lock` mysteriously disappearing on local dev setups (forcing the full web installer back on every request even though the database was completely intact): `tests/Unit/Core/Services/AppResetServiceTest.php` called `AppResetService::resetFactory()` — which deletes `storage_path('installed.lock')` as part of a factory reset — without isolating `KINTAI_STORAGE_PATH` to a temp directory first, unlike every other test that exercises this service. Running the full PHPUnit suite (part of the project's normal pre-commit workflow) was silently deleting the real project's lock file every time. Now isolated the same way as `tests/Integration/AppResetServiceTest.php` already was.
 - Defense in depth for the same symptom, regardless of cause: `storage/installed.lock` lives outside Git and outside the database, so any future way it could go missing would still force a reinstall. Both `public/index.php` and `public/install.php` now fall back to asking the database directly (`kintai_installed_via_database()`: DB config present, connection works, at least one `users` row) before concluding the app isn't installed, and silently regenerate the missing lock file instead of demanding a destructive reinstall.
 
+### Security
+- Updated `phpoffice/phpspreadsheet` from 5.8.0 to 5.9.0, fixing 3 high-severity advisories (GHSA-6hq5-7373-42rg, GHSA-2mrg-gjxq-2gvr, GHSA-xh5m-36r6-47m3): an SSRF bypass in `WEBSERVICE()`'s domain whitelist via HTTP redirect, and two memory-exhaustion DoS vectors when parsing untrusted `.gnumeric` or `.xls` files (unbounded gzip expansion, self-referencing OLE sector chain) — relevant here since `ExcelShiftImportService` accepts user-uploaded spreadsheet files.
+
 ## [0.10.8] - 2026-08-06
 
 ### Security
