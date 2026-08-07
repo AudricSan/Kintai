@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Added
+- `scripts/seed-demo-data.php`: generates realistic demo data across every bundle (timeoff requests, shift swaps, open-shift claims, timeclocks — including a few intentionally late or forgotten ones —, messaging threads, store photo submissions, employee feedback, resignation reports, salary reports) on top of an existing instance, for local testing ahead of the 1.0 release. Idempotent by default (tracked via an `app_settings` marker), re-runnable with `--force`.
+
 ## [0.10.8] - 2026-08-06
 
 ### Security
