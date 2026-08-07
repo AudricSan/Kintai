@@ -344,17 +344,6 @@ $hr_stats           ??= null;
                 </div>
             </div>
         </div>
-        <!-- <?php if ($hr_stats['timeoff_by_type'] !== []): ?>
-        <div class="card-body">
-            <div class="sstat-sublabel--strong"><?= __('timeoff_by_type') ?></div>
-            <ul class="dash-alert-list">
-                <?php foreach ($hr_stats['timeoff_by_type'] as $_type => $_count): ?>
-                    <li><?= htmlspecialchars((string) $_type) ?> — <?= $_count ?></li>
-                <?php endforeach; ?>
-            </ul>
-        </div> -->
-        <?php unset($_type, $_count); ?>
-        <?php endif; ?>
     </div>
     <?php endif; ?>
 
