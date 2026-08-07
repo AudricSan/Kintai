@@ -65,14 +65,66 @@ final class AdminShiftClaimController
             $shiftsWithClaims[] = array_merge($shift, ['_claims' => $claims]);
         }
 
-        usort($shiftsWithClaims, fn($a, $b) => strcmp($a['shift_date'] ?? '', $b['shift_date'] ?? ''));
+        $sort = (string) ($request->query('sort') ?? 'date_asc');
+        usort($shiftsWithClaims, function ($a, $b) use ($sort, $storesMap) {
+            $dateA  = $a['shift_date'] ?? '';
+            $dateB  = $b['shift_date'] ?? '';
+            $storeA = strtolower($storesMap[(int) ($a['store_id'] ?? 0)] ?? '');
+            $storeB = strtolower($storesMap[(int) ($b['store_id'] ?? 0)] ?? '');
+            return match ($sort) {
+                'date_desc'  => strcmp($dateB, $dateA),
+                'store_asc'  => strcmp($storeA, $storeB) ?: strcmp($dateA, $dateB),
+                'store_desc' => strcmp($storeB, $storeA) ?: strcmp($dateA, $dateB),
+                default      => strcmp($dateA, $dateB),
+            };
+        });
+
+        // Candidatures : agrégées depuis tous les shifts ouverts (avant filtrage par type,
+        // pour que le filtre "type" du tableau des shifts n'affecte pas celui des candidatures).
+        $claimStatusFilter = (string) ($request->query('claim_status') ?? '');
+        $claims = [];
+        foreach ($shiftsWithClaims as $shift) {
+            foreach ($shift['_claims'] ?? [] as $claim) {
+                if ($claimStatusFilter !== '' && ($claim['status'] ?? 'pending') !== $claimStatusFilter) {
+                    continue;
+                }
+                $claims[] = array_merge($claim, ['_shift' => $shift]);
+            }
+        }
+
+        $claimSort = (string) ($request->query('claim_sort') ?? 'date_asc');
+        usort($claims, function ($a, $b) use ($claimSort, $storesMap) {
+            $dateA  = $a['claimed_at'] ?? '';
+            $dateB  = $b['claimed_at'] ?? '';
+            $storeA = strtolower($storesMap[(int) ($a['_shift']['store_id'] ?? 0)] ?? '');
+            $storeB = strtolower($storesMap[(int) ($b['_shift']['store_id'] ?? 0)] ?? '');
+            return match ($claimSort) {
+                'date_desc'  => strcmp($dateB, $dateA),
+                'store_asc'  => strcmp($storeA, $storeB) ?: strcmp($dateA, $dateB),
+                'store_desc' => strcmp($storeB, $storeA) ?: strcmp($dateA, $dateB),
+                default      => strcmp($dateA, $dateB),
+            };
+        });
+
+        $typeFilter = (string) ($request->query('type') ?? '');
+        if ($typeFilter !== '') {
+            $shiftsWithClaims = array_values(array_filter(
+                $shiftsWithClaims,
+                fn($s) => (string) ($s['shift_type_id'] ?? '') === $typeFilter
+            ));
+        }
 
         return Response::html($this->view->render('shift-claim::open-shifts', [
-            'title'       => __('open_shifts'),
-            'shifts'      => $shiftsWithClaims,
-            'users_map'   => $usersMap,
-            'types_map'   => $typesMap,
-            'stores_map'  => $storesMap,
+            'title'              => __('open_shifts'),
+            'shifts'             => $shiftsWithClaims,
+            'claims'             => $claims,
+            'users_map'          => $usersMap,
+            'types_map'          => $typesMap,
+            'stores_map'         => $storesMap,
+            'type_filter'        => $typeFilter,
+            'claim_status_filter'=> $claimStatusFilter,
+            'sort'               => $sort,
+            'claim_sort'         => $claimSort,
         ], 'layout.app'));
     }
 

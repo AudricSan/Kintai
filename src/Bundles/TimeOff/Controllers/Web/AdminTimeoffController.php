@@ -38,8 +38,17 @@ final class AdminTimeoffController
         $storesMap = $this->buildStoresMap($managedIds);
         $requests  = $this->filterByStore($this->timeoffRequests->findAll(), $managedIds);
 
+        $typeFilter   = (string) ($request->query('type') ?? '');
+        $statusFilter = (string) ($request->query('status') ?? '');
+        if ($typeFilter !== '') {
+            $requests = array_values(array_filter($requests, fn($r) => ($r['type'] ?? '') === $typeFilter));
+        }
+        if ($statusFilter !== '') {
+            $requests = array_values(array_filter($requests, fn($r) => ($r['status'] ?? 'pending') === $statusFilter));
+        }
+
         $sort = $request->query('sort') ?? 'date_desc';
-        usort($requests, function ($a, $b) use ($sort, $usersMap) {
+        usort($requests, function ($a, $b) use ($sort, $usersMap, $storesMap) {
             $dateA  = ($a['start_date'] ?? '');
             $dateB  = ($b['start_date'] ?? '');
             $userA  = strtolower($usersMap[(int)($a['user_id'] ?? 0)] ?? '');
@@ -48,6 +57,8 @@ final class AdminTimeoffController
             $typeB  = $b['type'] ?? '';
             $statA  = $a['status'] ?? '';
             $statB  = $b['status'] ?? '';
+            $storeA = strtolower($storesMap[(int)($a['store_id'] ?? 0)] ?? '');
+            $storeB = strtolower($storesMap[(int)($b['store_id'] ?? 0)] ?? '');
             return match ($sort) {
                 'date_asc'    => strcmp($dateA, $dateB),
                 'user_asc'    => strcmp($userA, $userB) ?: strcmp($dateA, $dateB),
@@ -56,16 +67,20 @@ final class AdminTimeoffController
                 'type_desc'   => strcmp($typeB, $typeA) ?: strcmp($dateA, $dateB),
                 'status_asc'  => strcmp($statA, $statB) ?: strcmp($dateA, $dateB),
                 'status_desc' => strcmp($statB, $statA) ?: strcmp($dateA, $dateB),
+                'store_asc'   => strcmp($storeA, $storeB) ?: strcmp($dateA, $dateB),
+                'store_desc'  => strcmp($storeB, $storeA) ?: strcmp($dateA, $dateB),
                 default       => strcmp($dateB, $dateA),
             };
         });
 
         return Response::html($this->view->render('timeoff::timeoff', [
-            'title'      => 'Congés',
-            'requests'   => $requests,
-            'users_map'  => $usersMap,
-            'stores_map' => $storesMap,
-            'sort'       => $sort,
+            'title'         => 'Congés',
+            'requests'      => $requests,
+            'users_map'     => $usersMap,
+            'stores_map'    => $storesMap,
+            'sort'          => $sort,
+            'type_filter'   => $typeFilter,
+            'status_filter' => $statusFilter,
         ], 'layout.app'));
     }
 

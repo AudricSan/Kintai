@@ -22,6 +22,7 @@ final class AdminSwapControllerTest extends TestCase
     private ShiftSwapRequestRepositoryInterface&MockObject $swapRequests;
     private ShiftRepositoryInterface&MockObject $shifts;
     private UserRepositoryInterface&MockObject $users;
+    private StoreRepositoryInterface&MockObject $stores;
     private NotificationService&MockObject $notifs;
     private AdminSwapController $controller;
 
@@ -38,6 +39,7 @@ final class AdminSwapControllerTest extends TestCase
         $this->swapRequests = $this->createMock(ShiftSwapRequestRepositoryInterface::class);
         $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
         $this->users = $this->createMock(UserRepositoryInterface::class);
+        $this->stores = $this->createMock(StoreRepositoryInterface::class);
         $this->notifs = $this->createMock(NotificationService::class);
 
         $this->controller = new AdminSwapController(
@@ -46,7 +48,7 @@ final class AdminSwapControllerTest extends TestCase
             $this->shifts,
             new AuditLogger(),
             $this->notifs,
-            $this->createMock(StoreRepositoryInterface::class),
+            $this->stores,
             $this->users,
         );
     }
@@ -290,6 +292,55 @@ final class AdminSwapControllerTest extends TestCase
         $this->assertSame(302, $response->status());
     }
 
+    public function testSwapRequestsFiltersByStatus(): void
+    {
+        $viewDir = sys_get_temp_dir() . '/kintai-shift-swap-views';
+        $this->writeViewContent($viewDir, 'swap-requests', "<?php echo json_encode(array_map(fn(\$s) => \$s['id'], \$swaps));");
+        $this->writeViewContent(sys_get_temp_dir(), 'layout.app', "<?php echo \$content ?? '';");
+
+        $this->swapRequests->method('findAll')->willReturn([
+            ['id' => 1, 'store_id' => 5, 'requester_id' => 1, 'target_user_id' => 2, 'status' => 'pending'],
+            ['id' => 2, 'store_id' => 5, 'requester_id' => 1, 'target_user_id' => 2, 'status' => 'accepted'],
+            ['id' => 3, 'store_id' => 5, 'requester_id' => 1, 'target_user_id' => 2, 'status' => 'refused'],
+        ]);
+        $this->users->method('findAll')->willReturn([]);
+
+        $_GET = ['status' => 'accepted'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+
+        $response = $this->controller->swapRequests($req);
+        $ids = json_decode($response->body(), true);
+
+        $this->assertSame([2], $ids);
+    }
+
+    public function testSwapRequestsSortsByStoreName(): void
+    {
+        $viewDir = sys_get_temp_dir() . '/kintai-shift-swap-views';
+        $this->writeViewContent($viewDir, 'swap-requests', "<?php echo json_encode(array_map(fn(\$s) => \$s['id'], \$swaps));");
+        $this->writeViewContent(sys_get_temp_dir(), 'layout.app', "<?php echo \$content ?? '';");
+
+        $this->stores->method('findAll')->willReturn([
+            ['id' => 1, 'name' => 'Zoo Store'],
+            ['id' => 2, 'name' => 'Alpha Store'],
+        ]);
+        $this->swapRequests->method('findAll')->willReturn([
+            ['id' => 1, 'store_id' => 1, 'requester_id' => 1, 'target_user_id' => 2, 'status' => 'pending'],
+            ['id' => 2, 'store_id' => 2, 'requester_id' => 1, 'target_user_id' => 2, 'status' => 'pending'],
+        ]);
+        $this->users->method('findAll')->willReturn([]);
+
+        $_GET = ['sort' => 'store_asc'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+
+        $response = $this->controller->swapRequests($req);
+        $ids = json_decode($response->body(), true);
+
+        $this->assertSame([2, 1], $ids);
+    }
+
     private function ensureViewFile(string $dir, string $view): void
     {
         $file = $dir . DIRECTORY_SEPARATOR . str_replace('.', DIRECTORY_SEPARATOR, $view) . '.php';
@@ -298,5 +349,15 @@ final class AdminSwapControllerTest extends TestCase
             mkdir($parent, 0777, true);
         }
         touch($file);
+    }
+
+    private function writeViewContent(string $dir, string $view, string $content): void
+    {
+        $file = $dir . DIRECTORY_SEPARATOR . str_replace('.', DIRECTORY_SEPARATOR, $view) . '.php';
+        $parent = dirname($file);
+        if (!is_dir($parent)) {
+            mkdir($parent, 0777, true);
+        }
+        file_put_contents($file, $content);
     }
 }

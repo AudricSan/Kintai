@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace kintai\UI\Controller\Web;
 
 use kintai\Core\Auth\PermissionService;
+use kintai\Core\Container;
+use kintai\Core\Repositories\ShiftClaimRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
@@ -93,6 +95,23 @@ final class HomeController
 
         $pendingTimeoff = array_values(array_filter($allTimeoff, fn($r) => ($r['status'] ?? '') === 'pending'));
         $pendingSwaps   = array_values(array_filter($allSwaps,   fn($r) => ($r['status'] ?? '') === 'pending'));
+
+        // Candidatures bourse aux shifts en attente, comptées dans le KPI "Demandes en
+        // attente" au même titre que congés et échanges (page de résumé admin.requests).
+        // ShiftClaimRepositoryInterface n'est lié au container que si le bundle
+        // "shift-claim" est actif (voir ShiftClaimBundle) : résolution différée et
+        // gardée par feat_bundle(), jamais en dépendance de constructeur ici.
+        $pendingClaims = [];
+        if (feat_bundle('open_shifts')) {
+            $container = Container::getInstance();
+            if ($container->has(ShiftClaimRepositoryInterface::class)) {
+                $shiftClaims   = $container->make(ShiftClaimRepositoryInterface::class);
+                $pendingClaims = array_values(array_filter(
+                    $shiftClaims->findAll(),
+                    fn($c) => ($c['status'] ?? '') === 'pending' && $inScope((int) ($c['store_id'] ?? 0))
+                ));
+            }
+        }
 
         $storesMap = [];
         foreach ($allStores as $s) {
@@ -200,11 +219,12 @@ final class HomeController
                 'users'            => count($allUsers),
                 'stores'           => count($allStores),
                 'shifts_today'     => count($shiftsToday),
-                'pending_requests' => count($pendingTimeoff) + count($pendingSwaps),
+                'pending_requests' => count($pendingTimeoff) + count($pendingSwaps) + count($pendingClaims),
             ],
             'shifts_today'       => $shiftsToday,
             'pending_timeoff'    => $pendingTimeoff,
             'pending_swaps'      => $pendingSwaps,
+            'pending_claims'     => $pendingClaims,
             'users_map'          => $usersMap,
             'sort'               => $sort,
             'active_clocks_now'  => $activeClocksNow,
