@@ -78,6 +78,11 @@ endif; ?>
             </div>
         </div>
 
+        <label class="form-check">
+            <input type="checkbox" name="remember" value="1">
+            <?= __('remember_me_30_days') ?>
+        </label>
+
         <?= Button::make(__('connect'))->primary()->full()->submit()->render() ?>
 
     </div>
