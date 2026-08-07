@@ -11,6 +11,7 @@ use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
+use kintai\Core\Repositories\RememberTokenRepositoryInterface;
 
 final class AuthServiceProvider extends ServiceProvider
 {
@@ -24,6 +25,7 @@ final class AuthServiceProvider extends ServiceProvider
                 $c->make(StoreRepositoryInterface::class),
                 $c->make(RoleRepositoryInterface::class),
                 $c->make(RoleAssignmentRepositoryInterface::class),
+                $c->make(RememberTokenRepositoryInterface::class),
             )
         );
 
