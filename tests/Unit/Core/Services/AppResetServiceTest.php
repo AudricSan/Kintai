@@ -12,11 +12,19 @@ use PHPUnit\Framework\TestCase;
 final class AppResetServiceTest extends TestCase
 {
     private string $migrationsPath;
+    private string $storageDir;
 
     protected function setUp(): void
     {
         $this->migrationsPath = sys_get_temp_dir() . '/kintai_reset_migrations_test_' . uniqid();
         mkdir($this->migrationsPath, 0775, true);
+
+        // AppResetService::resetFactory() supprime storage_path('installed.lock') — sans cet
+        // isolement, elle supprimait le vrai storage/installed.lock du projet à chaque
+        // exécution de la suite de tests (bug découvert le 2026-08-07, voir CHANGELOG).
+        $this->storageDir = sys_get_temp_dir() . '/kintai_reset_storage_test_' . uniqid();
+        mkdir($this->storageDir, 0775, true);
+        putenv('KINTAI_STORAGE_PATH=' . $this->storageDir);
     }
 
     protected function tearDown(): void
@@ -25,6 +33,12 @@ final class AppResetServiceTest extends TestCase
             unlink($file);
         }
         rmdir($this->migrationsPath);
+
+        putenv('KINTAI_STORAGE_PATH');
+        foreach (glob($this->storageDir . '/*') as $file) {
+            unlink($file);
+        }
+        rmdir($this->storageDir);
     }
 
     private function writeMigration(string $name, string $body): void
