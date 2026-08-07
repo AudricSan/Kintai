@@ -53,7 +53,7 @@ a {
 }
 
 a:hover {
-    text-decoration: underline;
+    text-decoration: none;
 }
 
 img {
@@ -64,180 +64,200 @@ img {
 /* ── App Layout ─────────────────────────────────── */
 .app-layout {
     display: flex;
+    flex-direction: column;
     min-height: 100vh;
 }
 
-.sidebar {
-    width: var(--sidebar-width);
-    background: var(--color-sidebar-bg);
-    color: #fff;
-    display: flex;
-    flex-direction: column;
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    z-index: 100;
-    transition: transform var(--duration-fast) ease;
-}
-
-.sidebar-header {
-    padding: var(--space-4) var(--space-5);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-}
-
-.sidebar-brand {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.sidebar-close {
-    display: none;
-    background: none;
-    border: none;
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 1.5rem;
-    line-height: 1;
-    cursor: pointer;
-    padding: var(--space-1);
-}
-
-.sidebar-brand__name {
-    font-size: var(--text-xl);
-    font-weight: 700;
-    letter-spacing: -0.02em;
-}
-
-.sidebar-brand__subtitle {
-    font-size: var(--text-xs);
-    font-weight: 500;
-    opacity: 0.7;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.sidebar-nav {
-    list-style: none;
-    padding: var(--space-2) 0;
-    flex: 1;
-    overflow-y: auto;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    /* Fond de la sidebar toujours sombre (clair ou sombre côté app) : on
-       reprend des tons blancs translucides plutôt que les variables de
-       thème, qui donneraient une scrollbar claire sur fond sombre. */
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
-}
-
-.sidebar-nav::-webkit-scrollbar {
-    width: 6px;
-}
-
-.sidebar-nav::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.sidebar-nav::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.25);
-    border-radius: var(--radius-full);
-}
-
-.sidebar-nav::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.4);
-}
-
-.sidebar-link {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-3) var(--space-5);
-    color: rgba(255, 255, 255, 0.7);
-    text-decoration: none;
-    font-size: var(--text-sm);
-    transition: background var(--duration-fast), color var(--duration-fast);
-}
-
-.sidebar-link__icon {
-    flex-shrink: 0;
-    display: inline-flex;
-    opacity: 0.85;
-}
-
-.sidebar-link__icon svg {
-    width: 18px;
-    height: 18px;
-    display: block;
-}
-
-.sidebar-link:hover,
-.sidebar-link.active {
-    background: rgba(255, 255, 255, 0.08);
-    color: #fff;
-    text-decoration: none;
-}
-
-.sidebar-section {
-    padding: var(--space-4) var(--space-5) var(--space-1);
-    font-size: var(--text-2xs);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    color: rgba(255, 255, 255, 0.35);
-    list-style: none;
-}
-
-.sidebar-nav-footer {
-    flex-shrink: 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.sidebar-nav-footer__link {
-    font-size: 0.75rem;
-    opacity: 0.65;
-    transition: opacity var(--duration-fast), background var(--duration-fast), color var(--duration-fast);
-}
-
-.sidebar-nav-footer__link:hover,
-.sidebar-nav-footer__link.active {
-    opacity: 1;
-}
-
-.main-content {
-    flex: 1;
-    min-width: 0;
-    margin-left: var(--sidebar-width);
-    display: flex;
-    flex-direction: column;
-}
-
-/* ── Topbar ─────────────────────────────────────── */
+/* ── Topbar : marque + navigation + actions ───────
+   Remplace l'ancien duo sidebar fixe + topbar : une seule barre
+   horizontale, toute la largeur de l'écran reste au contenu. */
 .topbar {
     height: var(--topbar-height);
     background: var(--color-surface);
     border-bottom: 1px solid var(--color-border);
     display: flex;
     align-items: center;
+    gap: var(--space-2);
     padding: 0 var(--space-6);
     position: sticky;
     top: 0;
-    z-index: 50;
+    z-index: 200;
 }
 
-.sidebar-toggle {
+.topbar-brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-weight: 800;
+    font-size: var(--text-lg);
+    letter-spacing: -0.01em;
+    color: var(--color-primary);
+    text-decoration: none;
+    margin-right: var(--space-5);
+    flex-shrink: 0;
+}
+
+.topbar-brand:hover {
+    text-decoration: none;
+}
+
+.topbar-brand__dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    flex-shrink: 0;
+}
+
+.topbar-brand__subtitle {
+    font-size: var(--text-xs);
+    font-weight: 500;
+    opacity: 0.6;
+    margin-left: var(--space-1);
+}
+
+.topbar-nav-toggle {
     display: none;
     background: none;
     border: none;
     font-size: var(--text-xl);
     cursor: pointer;
     padding: var(--space-1);
-    margin-right: var(--space-3);
+    color: var(--color-text);
+}
+
+.topbar-nav {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    flex-wrap: wrap;
+}
+
+.topbar-nav-link {
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-full);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background var(--duration-fast), color var(--duration-fast);
+}
+
+.topbar-nav-link:hover {
+    background: var(--color-surface-alt);
+    color: var(--color-text);
+    text-decoration: none;
+}
+
+.topbar-nav-link--active {
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+}
+
+/* ── Groupes déroulants (sections de l'ancienne sidebar, repliées) ── */
+.topbar-nav-group {
+    position: relative;
+}
+
+.topbar-nav-group__trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-full);
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    font-family: inherit;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+    transition: background var(--duration-fast), color var(--duration-fast);
+}
+
+.topbar-nav-group__trigger:hover {
+    background: var(--color-surface-alt);
+    color: var(--color-text);
+}
+
+.topbar-nav-group--active > .topbar-nav-group__trigger {
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+}
+
+.topbar-nav-group__caret {
+    font-size: 0.6rem;
+    opacity: 0.6;
+}
+
+.topbar-nav-group__panel {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    min-width: 190px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    padding: var(--space-2);
+    z-index: 20;
+}
+
+.topbar-nav-group.is-open > .topbar-nav-group__panel {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.topbar-nav-group__link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-text);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.topbar-nav-group__link:hover {
+    background: var(--color-surface-alt);
+    text-decoration: none;
+}
+
+.topbar-nav-group__link--active {
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+.topbar-nav-group__link-icon {
+    flex-shrink: 0;
+    display: inline-flex;
+    opacity: 0.75;
+}
+
+.topbar-nav-group__link-icon svg {
+    width: 17px;
+    height: 17px;
+    display: block;
+}
+
+/* Widget stats employé (mois en cours), replié en menu déroulant plutôt
+   qu'affiché en permanence dans une sidebar qui n'existe plus. */
+.topbar-nav-group__trigger--stats {
+    font-variant-numeric: tabular-nums;
+}
+
+.topbar-nav-group__panel--stats {
+    min-width: 240px;
+    padding: var(--space-3);
+    gap: var(--space-2);
 }
 
 /* ── Page Content ───────────────────────────────── */

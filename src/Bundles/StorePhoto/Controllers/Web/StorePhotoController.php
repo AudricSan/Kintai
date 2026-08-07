@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace kintai\Bundles\StorePhoto\Controllers\Web;
 
 use kintai\UI\Controller\Web\HasAdminAccess;
+use kintai\Bundles\StorePhoto\Services\ImageCompressionService;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Repositories\StorePhotoRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
@@ -24,13 +25,20 @@ final class StorePhotoController
         private readonly StoreRepositoryInterface $stores,
         private readonly AppSettingsRepositoryInterface $appSettings,
         private readonly AuditLogger $auditLogger,
+        private readonly ImageCompressionService $imageCompressor,
     ) {}
 
     public function index(Request $request): Response
     {
         $managedIds = $this->managedIds($request);
         $storeId    = (int) ($request->query('store_id') ?: 0);
-        $submissions = $this->photos->findAllSubmissions(null, 100);
+        // Un manager restreint ne doit jamais voir les envois d'un store hors de son périmètre,
+        // ni via la liste complète (findAllSubmissions(null, ...) remontait tous les stores),
+        // ni via ?store_id= pointant sur un store qu'il ne gère pas.
+        if ($storeId > 0 && $managedIds !== null && !in_array($storeId, $managedIds, true)) {
+            $storeId = 0;
+        }
+        $submissions = $this->photos->findAllSubmissions($managedIds, 100);
 
         if ($storeId > 0) {
             $submissions = array_values(array_filter($submissions, fn($s) => (int) ($s['store_id'] ?? 0) === $storeId));
@@ -57,7 +65,10 @@ final class StorePhotoController
     {
         $managedIds = $this->managedIds($request);
         $storeId    = (int) ($request->query('store_id') ?: 0);
-        $myStores   = $this->availableStores($managedIds);
+        $myStores   = array_values(array_filter(
+            $this->availableStores($managedIds),
+            fn($s) => $this->isPhotosFeatureEnabled((int) $s['id'])
+        ));
         $storeNames = $this->buildStoresMap($managedIds);
 
         if ($managedIds !== null && $storeId > 0) {
@@ -144,19 +155,18 @@ final class StorePhotoController
         $subDir    = $storeDir . $submissionId . '/';
         if (!is_dir($subDir)) { mkdir($subDir, 0775, true); }
 
-        $safe = 'photo_' . ($index + 1) . '.' . $ext;
-        $dest = $subDir . $safe;
-
-        if (!move_uploaded_file($file['tmp_name'], $dest)) {
-            return Response::json(['error' => 'Failed to save file'], 500);
+        $compressed = $this->imageCompressor->compress($file['tmp_name'], $subDir . 'photo_' . ($index + 1));
+        if ($compressed === null) {
+            return Response::json(['error' => 'File type not allowed'], 422);
         }
+        $safe = basename($compressed['path']);
 
         $this->photos->saveImage([
             'submission_id' => $submissionId,
             'filename'      => $file['name'],
             'filepath'      => 'storage/img/' . $storeId . '/' . $submissionId . '/' . $safe,
-            'filesize'      => filesize($dest),
-            'mime_type'     => $file['type'] ?? mime_content_type($dest) ?: 'image/jpeg',
+            'filesize'      => $compressed['size'],
+            'mime_type'     => $compressed['mime'],
             'sort_order'    => $index,
         ]);
 
@@ -176,10 +186,15 @@ final class StorePhotoController
      */
     private function assertPhotosFeatureEnabled(int $storeId): void
     {
-        $features = $this->stores->getFeatures($storeId);
-        if ($features !== [] && !in_array('photos', $features, true)) {
+        if (!$this->isPhotosFeatureEnabled($storeId)) {
             throw new ForbiddenException("La fonctionnalité Photos n'est pas activée pour ce magasin.");
         }
+    }
+
+    private function isPhotosFeatureEnabled(int $storeId): bool
+    {
+        $features = $this->stores->getFeatures($storeId);
+        return $features === [] || in_array('photos', $features, true);
     }
 
     /**
@@ -209,19 +224,19 @@ final class StorePhotoController
             if (!empty($errs[$i]) || !is_uploaded_file($tmp)) continue;
             $ext = $this->safeImageExtension($names[$i] ?? '');
             if ($ext === null) continue;
-            $safe = 'photo_' . ($count + 1) . '.' . $ext;
-            $dest = $subDir . $safe;
-            if (move_uploaded_file($tmp, $dest)) {
-                $this->photos->saveImage([
-                    'submission_id' => $submissionId,
-                    'filename'      => $names[$i],
-                    'filepath'      => 'storage/img/' . $storeId . '/' . $submissionId . '/' . $safe,
-                    'filesize'      => filesize($dest),
-                    'mime_type'     => $types[$i] ?? mime_content_type($dest) ?: 'image/jpeg',
-                    'sort_order'    => $count,
-                ]);
-                $count++;
-            }
+
+            $compressed = $this->imageCompressor->compress($tmp, $subDir . 'photo_' . ($count + 1));
+            if ($compressed === null) continue;
+
+            $this->photos->saveImage([
+                'submission_id' => $submissionId,
+                'filename'      => $names[$i],
+                'filepath'      => 'storage/img/' . $storeId . '/' . $submissionId . '/' . basename($compressed['path']),
+                'filesize'      => $compressed['size'],
+                'mime_type'     => $compressed['mime'],
+                'sort_order'    => $count,
+            ]);
+            $count++;
         }
 
         $this->photos->saveSubmission([
@@ -238,6 +253,7 @@ final class StorePhotoController
         if (!$submission) {
             return Response::html($this->view->render('errors.404', ['title' => '404'], 'layout.app'), 404);
         }
+        $this->assertStoreAccess($request, (int) $submission['store_id']);
 
         $images = $this->photos->findImagesBySubmission($id);
         $store  = $this->stores->findById((int) $submission['store_id']);

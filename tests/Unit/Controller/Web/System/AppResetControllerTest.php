@@ -8,6 +8,7 @@ use Illuminate\Database\Capsule\Manager as Capsule;
 use kintai\Core\Auth\AuthService;
 use kintai\Core\Database\MigrationRunner;
 use kintai\Core\Exceptions\ForbiddenException;
+use kintai\Core\Repositories\RememberTokenRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
@@ -71,6 +72,7 @@ final class AppResetControllerTest extends TestCase
             $this->createStub(StoreRepositoryInterface::class),
             $this->createStub(RoleRepositoryInterface::class),
             $this->createStub(RoleAssignmentRepositoryInterface::class),
+            $this->createStub(RememberTokenRepositoryInterface::class),
         );
 
         $view = new ViewRenderer(sys_get_temp_dir());

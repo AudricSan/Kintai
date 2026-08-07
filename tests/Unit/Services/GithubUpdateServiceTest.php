@@ -106,16 +106,17 @@ final class GithubUpdateServiceTest extends TestCase
         return new AppSettingsService($repo);
     }
 
-    private function makeService(string $tag, array $files, ?string $currentVersion = '0.0.0', string $channel = 'release', bool $prerelease = false): GithubUpdateService
+    private function makeService(string $tag, array $files, ?string $currentVersion = '0.0.0', string $channel = 'release', bool $prerelease = false, string $targetCommitish = 'main'): GithubUpdateService
     {
         return $this->makeServiceWithReleases([
             [
-                'tag_name'     => $tag,
-                'zipball_url'  => 'https://example.test/zipball/' . $tag,
-                'html_url'     => 'https://example.test/releases/' . $tag,
-                'body'         => 'notes for ' . $tag,
-                'published_at' => '2026-01-01T00:00:00Z',
-                'prerelease'   => $prerelease,
+                'tag_name'         => $tag,
+                'zipball_url'      => 'https://example.test/zipball/' . $tag,
+                'html_url'         => 'https://example.test/releases/' . $tag,
+                'body'             => 'notes for ' . $tag,
+                'published_at'     => '2026-01-01T00:00:00Z',
+                'prerelease'       => $prerelease,
+                'target_commitish' => $targetCommitish,
             ],
         ], $files, $currentVersion, $channel);
     }
@@ -182,9 +183,9 @@ final class GithubUpdateServiceTest extends TestCase
     public function testReleaseChannelIgnoresAlphaAndBetaTags(): void
     {
         $service = $this->makeServiceWithReleases([
-            ['tag_name' => 'v2.0.0-alpha.3', 'zipball_url' => 'z', 'prerelease' => true],
-            ['tag_name' => 'v1.5.0-beta.2', 'zipball_url' => 'z', 'prerelease' => true],
-            ['tag_name' => 'v1.0.0', 'zipball_url' => 'z', 'prerelease' => false],
+            ['tag_name' => 'v2.0.0-c3', 'zipball_url' => 'z', 'prerelease' => true, 'target_commitish' => 'alpha'],
+            ['tag_name' => 'v1.5.0-c2', 'zipball_url' => 'z', 'prerelease' => true, 'target_commitish' => 'beta'],
+            ['tag_name' => 'v1.0.0', 'zipball_url' => 'z', 'prerelease' => false, 'target_commitish' => 'main'],
         ], ['README.md' => 'hello'], currentVersion: '0.0.0', channel: 'release');
 
         $info = $service->checkLatestRelease();
@@ -196,35 +197,35 @@ final class GithubUpdateServiceTest extends TestCase
     public function testBetaChannelPrefersHighestStableOrBetaTag(): void
     {
         $service = $this->makeServiceWithReleases([
-            ['tag_name' => 'v2.0.0-alpha.1', 'zipball_url' => 'z', 'prerelease' => true],
-            ['tag_name' => 'v1.5.0-beta.2', 'zipball_url' => 'z', 'prerelease' => true],
-            ['tag_name' => 'v1.0.0', 'zipball_url' => 'z', 'prerelease' => false],
+            ['tag_name' => 'v2.0.0-c1', 'zipball_url' => 'z', 'prerelease' => true, 'target_commitish' => 'alpha'],
+            ['tag_name' => 'v1.5.0-c2', 'zipball_url' => 'z', 'prerelease' => true, 'target_commitish' => 'beta'],
+            ['tag_name' => 'v1.0.0', 'zipball_url' => 'z', 'prerelease' => false, 'target_commitish' => 'main'],
         ], ['README.md' => 'hello'], currentVersion: '0.0.0', channel: 'beta');
 
         $info = $service->checkLatestRelease();
 
         $this->assertNotNull($info);
-        $this->assertSame('1.5.0-beta.2', $info['latest_version']);
+        $this->assertSame('1.5.0-c2', $info['latest_version']);
     }
 
     public function testAlphaChannelPrefersHighestTagOverall(): void
     {
         $service = $this->makeServiceWithReleases([
-            ['tag_name' => 'v2.0.0-alpha.1', 'zipball_url' => 'z', 'prerelease' => true],
-            ['tag_name' => 'v1.5.0-beta.2', 'zipball_url' => 'z', 'prerelease' => true],
-            ['tag_name' => 'v1.0.0', 'zipball_url' => 'z', 'prerelease' => false],
+            ['tag_name' => 'v2.0.0-c1', 'zipball_url' => 'z', 'prerelease' => true, 'target_commitish' => 'alpha'],
+            ['tag_name' => 'v1.5.0-c2', 'zipball_url' => 'z', 'prerelease' => true, 'target_commitish' => 'beta'],
+            ['tag_name' => 'v1.0.0', 'zipball_url' => 'z', 'prerelease' => false, 'target_commitish' => 'main'],
         ], ['README.md' => 'hello'], currentVersion: '0.0.0', channel: 'alpha');
 
         $info = $service->checkLatestRelease();
 
         $this->assertNotNull($info);
-        $this->assertSame('2.0.0-alpha.1', $info['latest_version']);
+        $this->assertSame('2.0.0-c1', $info['latest_version']);
     }
 
     public function testReleaseChannelReturnsNullWhenOnlyPrereleasesExist(): void
     {
         $service = $this->makeServiceWithReleases([
-            ['tag_name' => 'v1.0.0-beta.1', 'zipball_url' => 'z', 'prerelease' => true],
+            ['tag_name' => 'v1.0.0-c1', 'zipball_url' => 'z', 'prerelease' => true, 'target_commitish' => 'beta'],
         ], ['README.md' => 'hello'], currentVersion: '0.0.0', channel: 'release');
 
         $this->assertNull($service->checkLatestRelease());
@@ -236,11 +237,11 @@ final class GithubUpdateServiceTest extends TestCase
         // stable : la release stable ne doit pas être perdue simplement
         // parce qu'elle se trouve sur une page suivante de l'API GitHub.
         $prereleasePage = array_map(
-            fn(int $i): array => ['tag_name' => "v9.{$i}.0-beta.1", 'zipball_url' => 'z', 'prerelease' => true],
+            fn(int $i): array => ['tag_name' => "v9.{$i}.0-c1", 'zipball_url' => 'z', 'prerelease' => true, 'target_commitish' => 'beta'],
             range(1, 100)
         );
         $stablePage = [
-            ['tag_name' => 'v1.0.0', 'zipball_url' => 'z', 'prerelease' => false],
+            ['tag_name' => 'v1.0.0', 'zipball_url' => 'z', 'prerelease' => false, 'target_commitish' => 'main'],
         ];
 
         $this->writeAppVersion('0.0.0');
@@ -290,8 +291,9 @@ final class GithubUpdateServiceTest extends TestCase
             $this->tmpDir,
             fn(string $repo, string $token): ?array => [
                 [
-                    'tag_name'    => 'v1.0.0',
-                    'zipball_url' => 'https://example.test/zipball/v1.0.0',
+                    'tag_name'         => 'v1.0.0',
+                    'zipball_url'      => 'https://example.test/zipball/v1.0.0',
+                    'target_commitish' => 'main',
                 ],
             ],
             fn(string $url, string $dest, string $token): bool => false,
@@ -460,7 +462,7 @@ final class GithubUpdateServiceTest extends TestCase
         // Aucune release ne correspond au canal : ce n'est pas un échec technique,
         // juste l'absence de release compatible — ne doit pas remonter d'erreur.
         $service = $this->makeServiceWithReleases([
-            ['tag_name' => 'v1.0.0-beta.1', 'zipball_url' => 'z', 'prerelease' => true],
+            ['tag_name' => 'v1.0.0-c1', 'zipball_url' => 'z', 'prerelease' => true, 'target_commitish' => 'beta'],
         ], ['README.md' => 'hello'], currentVersion: '0.0.0', channel: 'release');
 
         $service->checkLatestRelease();
@@ -498,6 +500,44 @@ final class GithubUpdateServiceTest extends TestCase
 
         $this->assertNull($service->checkLatestRelease());
         $this->assertNotNull($service->getLastCheckError());
+    }
+
+    public function testCondenseReleaseNotesKeepsOnlyFirstBulletPerCategory(): void
+    {
+        $service = $this->makeService('v1.0.0', ['README.md' => 'hello']);
+
+        $notes = <<<MD
+            ### Added
+            - first added item
+            - second added item
+
+            ### Fixed
+            - first fixed item
+            - second fixed item
+            - third fixed item
+            MD;
+
+        $condensed = $service->condenseReleaseNotes($notes);
+
+        $this->assertSame(
+            "### Added\n- first added item\n\n### Fixed\n- first fixed item",
+            $condensed
+        );
+    }
+
+    public function testCondenseReleaseNotesReturnsEmptyStringForBlankInput(): void
+    {
+        $service = $this->makeService('v1.0.0', ['README.md' => 'hello']);
+
+        $this->assertSame('', $service->condenseReleaseNotes(''));
+        $this->assertSame('', $service->condenseReleaseNotes("   \n  "));
+    }
+
+    public function testGetRepoReleasesUrlUsesConfiguredRepo(): void
+    {
+        $service = $this->makeService('v1.0.0', ['README.md' => 'hello']);
+
+        $this->assertSame('https://github.com/AudricSan/Kintai/releases', $service->getRepoReleasesUrl());
     }
 
     #[DataProvider('releaseListValidationProvider')]

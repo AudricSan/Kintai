@@ -31,6 +31,25 @@ trait HasAdminAccess
         }
     }
 
+    /**
+     * Variante multi-store d'assertStoreAccess : autorise l'accès dès que
+     * l'utilisateur gère au moins un des stores donnés (ex. un type de shift
+     * activé sur plusieurs stores, une ressource rattachée à plusieurs stores).
+     */
+    protected function assertAnyStoreAccess(Request $request, array $storeIds): void
+    {
+        $managedIds = $request->getAttribute('managed_store_ids');
+        if ($managedIds === null) {
+            return;
+        }
+        foreach ($storeIds as $storeId) {
+            if (in_array((int) $storeId, $managedIds, true)) {
+                return;
+            }
+        }
+        throw new ForbiddenException('Vous n\'êtes pas gestionnaire d\'un store associé à cette ressource.');
+    }
+
     protected function memberUserIds(array $managedIds): array
     {
         $ids = [];

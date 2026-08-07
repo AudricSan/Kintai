@@ -204,6 +204,69 @@ final class RoleAssignmentSyncServiceTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
+    // allRoles() / findRole() / ownerRole() — sélecteur "Rôle" unifié du
+    // formulaire de création d'utilisateur (Owner + rôles par store)
+    // -------------------------------------------------------------------------
+
+    public function testAllRolesIncludesSystemRolesAndFlagsManaging(): void
+    {
+        $this->roles->method('findAll')->willReturn([
+            ['id' => 1, 'name' => 'Owner', 'is_system' => 1],
+            ['id' => 2, 'name' => 'Manager', 'is_system' => 0],
+            ['id' => 3, 'name' => 'Employé', 'is_system' => 0],
+        ]);
+        $this->roles->method('getPermissions')->willReturnMap([
+            [2, ['employees.view']],
+            [3, []],
+        ]);
+
+        $roles = $this->service->allRoles();
+
+        $this->assertCount(3, $roles);
+        $this->assertSame([1, 2, 3], array_map(fn($r) => $r['id'], $roles));
+        // Owner : is_managing forcé à true sans appeler getPermissions (rôle système).
+        $this->assertTrue($roles[0]['is_managing']);
+        $this->assertTrue($roles[1]['is_managing']);
+        $this->assertFalse($roles[2]['is_managing']);
+    }
+
+    public function testFindRoleReturnsSystemRole(): void
+    {
+        $this->roles->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Owner', 'is_system' => 1]);
+
+        $role = $this->service->findRole(1);
+
+        $this->assertSame('Owner', $role['name']);
+        $this->assertTrue($role['is_managing']);
+    }
+
+    public function testFindRoleReturnsNonSystemRole(): void
+    {
+        $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'name' => 'Manager', 'is_system' => 0]);
+        $this->roles->method('getPermissions')->with(2)->willReturn(['employees.view']);
+
+        $role = $this->service->findRole(2);
+
+        $this->assertSame('Manager', $role['name']);
+        $this->assertTrue($role['is_managing']);
+    }
+
+    public function testFindRoleReturnsNullForUnknownOrInvalidId(): void
+    {
+        $this->roles->method('findById')->willReturn(null);
+
+        $this->assertNull($this->service->findRole(99));
+        $this->assertNull($this->service->findRole(0));
+    }
+
+    public function testOwnerRoleDelegatesToFindBySlug(): void
+    {
+        $this->roles->method('findBySlug')->with('owner')->willReturn(['id' => 1, 'name' => 'Owner']);
+
+        $this->assertSame(['id' => 1, 'name' => 'Owner'], $this->service->ownerRole());
+    }
+
+    // -------------------------------------------------------------------------
     // storeRoleMapForStore() / storeRoleMapForUser()
     // -------------------------------------------------------------------------
 

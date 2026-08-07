@@ -5,13 +5,17 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Controller\Web\System;
 
 use Illuminate\Database\Capsule\Manager as Capsule;
+use kintai\Core\Container;
 use kintai\Core\Database\MigrationRunner;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
+use kintai\Core\Repositories\JsonLanguageRepository;
+use kintai\Core\Repositories\JsonTranslationRepository;
 use kintai\Core\Request;
 use kintai\Core\Services\AppSettingsService;
 use kintai\Core\Services\BackupService;
 use kintai\Core\Services\GithubUpdateService;
+use kintai\Core\Services\TranslationService;
 use kintai\Core\Services\UpdateService;
 use kintai\UI\Controller\Web\System\BackupController;
 use kintai\UI\ViewRenderer;
@@ -58,6 +62,18 @@ final class BackupControllerTest extends TestCase
         $this->settings = new AppSettingsService($settingsRepo);
 
         $this->view = new ViewRenderer(sys_get_temp_dir());
+
+        // describeFlash() traduit via __() : sans ça, __() (voir helpers.php) retombe
+        // silencieusement sur la clé brute faute de TranslationService dans le container,
+        // ce qui masquerait exactement le bug que ce test vérifie (interpolation :filename
+        // etc. jamais appliquée si __() ne fait que renvoyer la clé).
+        $langPath = dirname(__DIR__, 5) . '/lang';
+        $translationService = new TranslationService(
+            new JsonTranslationRepository($langPath),
+            new JsonLanguageRepository($langPath),
+        );
+        $translationService->setLocale('fr');
+        Container::getInstance()->instance(TranslationService::class, $translationService);
     }
 
     protected function tearDown(): void
@@ -65,6 +81,12 @@ final class BackupControllerTest extends TestCase
         $this->removeDir($this->tmpDir);
         putenv('KINTAI_STORAGE_PATH');
         $_GET = [];
+
+        $instancesProp = new \ReflectionProperty(Container::class, 'instances');
+        $instancesProp->setAccessible(true);
+        $instances = $instancesProp->getValue(Container::getInstance());
+        unset($instances[TranslationService::class]);
+        $instancesProp->setValue(Container::getInstance(), $instances);
     }
 
     private function setPrivate(object $obj, string $prop, mixed $value): void
@@ -138,6 +160,14 @@ final class BackupControllerTest extends TestCase
         return $ref->getValue($response)['Location'] ?? '';
     }
 
+    /** @return array{type: 'success'|'danger', text: string}|null */
+    private function describeFlash(BackupController $controller, string $raw): ?array
+    {
+        $method = new \ReflectionMethod($controller, 'describeFlash');
+        $method->setAccessible(true);
+        return $method->invoke($controller, $raw);
+    }
+
     public function testCreateRejectsNonOwner(): void
     {
         $controller = $this->makeController();
@@ -172,7 +202,7 @@ final class BackupControllerTest extends TestCase
         $response = $controller->download($this->requestAs(true));
 
         $this->assertSame(302, $response->status());
-        $this->assertStringContainsString('error=not_found', $this->locationOf($response));
+        $this->assertStringContainsString('success=error_not_found', $this->locationOf($response));
     }
 
     public function testDownloadStreamsExistingBackup(): void
@@ -221,6 +251,7 @@ final class BackupControllerTest extends TestCase
                 'html_url'    => 'https://example.test/releases/v2.0.0',
                 'body'        => 'notes',
                 'published_at' => '2026-01-01T00:00:00Z',
+                'target_commitish' => 'main',
             ]],
             function (string $url, string $dest, string $token): bool {
                 $this->makeReleaseZip($dest, [
@@ -249,6 +280,7 @@ final class BackupControllerTest extends TestCase
             fn(string $repo, string $token): ?array => [[
                 'tag_name'    => 'v2.0.0',
                 'zipball_url' => 'https://example.test/zipball/v2.0.0',
+                'target_commitish' => 'main',
             ]],
             function (string $url, string $dest, string $token) use (&$enabledDuringApply): bool {
                 $enabledDuringApply = $this->settings->maintenanceModeEnabled();
@@ -273,6 +305,7 @@ final class BackupControllerTest extends TestCase
             fn(string $repo, string $token): ?array => [[
                 'tag_name'    => 'v2.0.0',
                 'zipball_url' => 'https://example.test/zipball/v2.0.0',
+                'target_commitish' => 'main',
             ]],
             function (string $url, string $dest, string $token): bool {
                 $this->makeReleaseZip($dest, ['config/app.php' => "<?php return ['version' => '2.0.0'];"]);
@@ -335,5 +368,73 @@ final class BackupControllerTest extends TestCase
 
         $this->assertStringContainsString('success=channel_release', $this->locationOf($response));
         $this->assertSame('release', $this->settings->updateChannel());
+    }
+
+    public function testDescribeFlashReturnsNullForEmptyValue(): void
+    {
+        $flash = $this->describeFlash($this->makeController(), '');
+
+        $this->assertNull($flash);
+    }
+
+    /**
+     * Régression : avant ce correctif, le code brut (?success=error_...) était affiché
+     * tel quel dans une boîte stylée "info" (neutre), y compris le message d'exception
+     * brut pour les échecs génériques — voir CHANGELOG. describeFlash() doit maintenant
+     * toujours renvoyer 'danger' pour tout code préfixé "error_", et ne jamais laisser
+     * le préfixe "error_" lui-même apparaître dans le texte affiché.
+     */
+    public function testDescribeFlashMarksEveryErrorCodeAsDanger(): void
+    {
+        $controller = $this->makeController();
+
+        foreach (['error_no_file', 'error_not_found', 'error_no_update_available', 'error_download_failed', 'error_extract_failed', 'error_' . urlencode('SQLSTATE[HY000]: disk I/O error')] as $code) {
+            $flash = $this->describeFlash($controller, $code);
+            $this->assertNotNull($flash, $code);
+            $this->assertSame('danger', $flash['type'], $code);
+            $this->assertStringNotContainsStringIgnoringCase('error_', $flash['text'], $code);
+        }
+    }
+
+    public function testDescribeFlashKeepsExceptionDetailForUnknownErrorCode(): void
+    {
+        $flash = $this->describeFlash($this->makeController(), 'error_' . urlencode('disk I/O error'));
+
+        $this->assertSame('danger', $flash['type']);
+        $this->assertStringContainsString('disk I/O error', $flash['text']);
+    }
+
+    public function testDescribeFlashMarksKnownSuccessCodesAsSuccess(): void
+    {
+        $controller = $this->makeController();
+
+        foreach (['restored', 'deleted', 'migrated', 'created_backup-2026-08-05.zip', 'deleted_all_3', 'channel_alpha'] as $code) {
+            $flash = $this->describeFlash($controller, $code);
+            $this->assertNotNull($flash, $code);
+            $this->assertSame('success', $flash['type'], $code);
+        }
+    }
+
+    public function testDescribeFlashInterpolatesDynamicValues(): void
+    {
+        $controller = $this->makeController();
+
+        $this->assertStringContainsString('backup-2026-08-05.zip', $this->describeFlash($controller, 'created_backup-2026-08-05.zip')['text']);
+        $this->assertStringContainsString('3', $this->describeFlash($controller, 'deleted_all_3')['text']);
+        $this->assertStringContainsString('alpha', $this->describeFlash($controller, 'channel_alpha')['text']);
+    }
+
+    public function testDescribeFlashParsesUpdateSummary(): void
+    {
+        $flash = $this->describeFlash(
+            $this->makeController(),
+            'updated_2.0.0_files-42_deleted-3_migrations-5_composer-ok'
+        );
+
+        $this->assertSame('success', $flash['type']);
+        $this->assertStringContainsString('2.0.0', $flash['text']);
+        $this->assertStringContainsString('42', $flash['text']);
+        $this->assertStringContainsString('3', $flash['text']);
+        $this->assertStringContainsString('5', $flash['text']);
     }
 }

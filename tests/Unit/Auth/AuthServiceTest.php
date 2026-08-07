@@ -12,6 +12,7 @@ use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
+use kintai\Core\Repositories\RememberTokenRepositoryInterface;
 
 final class AuthServiceTest extends TestCase
 {
@@ -20,6 +21,7 @@ final class AuthServiceTest extends TestCase
     private StoreRepositoryInterface&MockObject $stores;
     private RoleRepositoryInterface&MockObject $roles;
     private RoleAssignmentRepositoryInterface&MockObject $roleAssignments;
+    private RememberTokenRepositoryInterface&MockObject $rememberTokens;
     private AuthService $auth;
 
     protected function setUp(): void
@@ -28,14 +30,16 @@ final class AuthServiceTest extends TestCase
             @session_start();
         }
         unset($_SESSION['auth_user_id']);
+        unset($_COOKIE['kintai_remember']);
 
         $this->users           = $this->createMock(UserRepositoryInterface::class);
         $this->storeUsers      = $this->createMock(StoreUserRepositoryInterface::class);
         $this->stores          = $this->createMock(StoreRepositoryInterface::class);
         $this->roles           = $this->createMock(RoleRepositoryInterface::class);
         $this->roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
+        $this->rememberTokens  = $this->createMock(RememberTokenRepositoryInterface::class);
 
-        $this->auth = new AuthService($this->users, $this->storeUsers, $this->stores, $this->roles, $this->roleAssignments);
+        $this->auth = new AuthService($this->users, $this->storeUsers, $this->stores, $this->roles, $this->roleAssignments, $this->rememberTokens);
     }
 
     /** Simule une affectation Owner (portée globale, rôle système) pour cet utilisateur. */
@@ -64,6 +68,7 @@ final class AuthServiceTest extends TestCase
     protected function tearDown(): void
     {
         unset($_SESSION['auth_user_id']);
+        unset($_COOKIE['kintai_remember']);
     }
 
     // -------------------------------------------------------------------------
@@ -296,11 +301,11 @@ final class AuthServiceTest extends TestCase
         $this->assertSame([], $this->auth->managedStoreIds());
     }
 
-    public function testManagedStoreIdsForRoleGrantingPermissions(): void
+    public function testManagedStoreIdsForRoleGrantingManagementPermission(): void
     {
         $_SESSION['auth_user_id'] = 10;
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
-        $this->grantStoreRole(10, 1, 2, ['employees.view']);
+        $this->grantStoreRole(10, 1, 2, ['employees.view', 'employees.create']);
 
         $ids = $this->auth->managedStoreIds();
         $this->assertSame([1], $ids);
@@ -311,6 +316,22 @@ final class AuthServiceTest extends TestCase
         $_SESSION['auth_user_id'] = 10;
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
         $this->grantStoreRole(10, 1, 3, []); // rôle sans aucune permission (ex. Employé)
+
+        $this->assertSame([], $this->auth->managedStoreIds());
+    }
+
+    /**
+     * Régression : un rôle qui n'accorde QUE des permissions .view (ex. le rôle "employee"
+     * par défaut, avec seulement shifts.view pour consulter son planning) ne doit PAS compter
+     * comme gestionnaire de ce store — sinon un simple employé accède à /admin/* (shifts,
+     * types de shifts, personnel...) alors qu'il ne devrait avoir qu'un accès en lecture à
+     * son propre planning. Voir CHANGELOG.
+     */
+    public function testManagedStoreIdsEmptyForRoleGrantingOnlyViewPermissions(): void
+    {
+        $_SESSION['auth_user_id'] = 10;
+        $this->users->method('findById')->willReturn($this->activeUser(10, false));
+        $this->grantStoreRole(10, 1, 3, ['shifts.view']);
 
         $this->assertSame([], $this->auth->managedStoreIds());
     }
@@ -327,11 +348,11 @@ final class AuthServiceTest extends TestCase
         $this->assertTrue($this->auth->isManager());
     }
 
-    public function testIsManagerTrueForRoleGrantingPermissions(): void
+    public function testIsManagerTrueForRoleGrantingManagementPermission(): void
     {
         $_SESSION['auth_user_id'] = 10;
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
-        $this->grantStoreRole(10, 1, 2, ['employees.view']);
+        $this->grantStoreRole(10, 1, 2, ['employees.view', 'employees.create']);
         $this->assertTrue($this->auth->isManager());
     }
 
@@ -341,5 +362,147 @@ final class AuthServiceTest extends TestCase
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
         $this->grantStoreRole(10, 1, 3, []);
         $this->assertFalse($this->auth->isManager());
+    }
+
+    /** Régression : voir testManagedStoreIdsEmptyForRoleGrantingOnlyViewPermissions. */
+    public function testIsManagerFalseForRoleGrantingOnlyViewPermissions(): void
+    {
+        $_SESSION['auth_user_id'] = 10;
+        $this->users->method('findById')->willReturn($this->activeUser(10, false));
+        $this->grantStoreRole(10, 1, 3, ['shifts.view']);
+        $this->assertFalse($this->auth->isManager());
+    }
+
+    // -------------------------------------------------------------------------
+    // "Rester connecté" (remember me, 30 jours)
+    // -------------------------------------------------------------------------
+
+    public function testAttemptWithRememberIssuesToken(): void
+    {
+        $user = $this->activeUser();
+        $this->users->method('findByEmail')->willReturn($user);
+        $this->rememberTokens->expects($this->once())
+            ->method('create')
+            ->with($this->callback(fn(array $data) => $data['user_id'] === 10
+                && isset($data['selector'], $data['validator_hash'], $data['expires_at'])))
+            ->willReturn([]);
+
+        $result = $this->auth->attempt('user@test.com', 'secret123', remember: true);
+
+        $this->assertTrue($result);
+    }
+
+    public function testAttemptWithoutRememberDoesNotIssueToken(): void
+    {
+        $user = $this->activeUser();
+        $this->users->method('findByEmail')->willReturn($user);
+        $this->rememberTokens->expects($this->never())->method('create');
+
+        $this->auth->attempt('user@test.com', 'secret123');
+    }
+
+    public function testAttemptByCodeWithRememberIssuesToken(): void
+    {
+        $store = ['id' => 5, 'code' => 'STORE01'];
+        $user  = array_merge($this->activeUser(), ['employee_code' => 'EMP001']);
+        $this->stores->method('findByCode')->willReturn($store);
+        $this->users->method('findByEmployeeCode')->willReturn($user);
+        $this->storeUsers->method('findMembership')->willReturn(['role' => 'staff']);
+        $this->rememberTokens->expects($this->once())->method('create')->willReturn([]);
+
+        $result = $this->auth->attemptByCode('EMP001', 'STORE01', 'secret123', remember: true);
+
+        $this->assertTrue($result);
+    }
+
+    public function testAttemptViaRememberCookieFailsWithMalformedCookie(): void
+    {
+        $this->rememberTokens->expects($this->never())->method('findBySelector');
+        $this->assertFalse($this->auth->attemptViaRememberCookie('not-a-valid-cookie'));
+    }
+
+    public function testAttemptViaRememberCookieFailsWithUnknownSelector(): void
+    {
+        $this->rememberTokens->method('findBySelector')->willReturn(null);
+        $this->assertFalse($this->auth->attemptViaRememberCookie('selector123.validator456'));
+    }
+
+    public function testAttemptViaRememberCookieFailsWithExpiredToken(): void
+    {
+        $this->rememberTokens->method('findBySelector')->willReturn([
+            'user_id'        => 10,
+            'selector'       => 'selector123',
+            'validator_hash' => hash('sha256', 'validator456'),
+            'expires_at'     => date('Y-m-d H:i:s', time() - 3600),
+        ]);
+        $this->rememberTokens->expects($this->once())->method('deleteBySelector')->with('selector123');
+
+        $this->assertFalse($this->auth->attemptViaRememberCookie('selector123.validator456'));
+        $this->assertArrayNotHasKey('auth_user_id', $_SESSION);
+    }
+
+    public function testAttemptViaRememberCookieFailsWithWrongValidator(): void
+    {
+        $this->rememberTokens->method('findBySelector')->willReturn([
+            'user_id'        => 10,
+            'selector'       => 'selector123',
+            'validator_hash' => hash('sha256', 'the-real-validator'),
+            'expires_at'     => date('Y-m-d H:i:s', time() + 3600),
+        ]);
+        $this->rememberTokens->expects($this->once())->method('deleteBySelector')->with('selector123');
+
+        $this->assertFalse($this->auth->attemptViaRememberCookie('selector123.wrong-validator'));
+        $this->assertArrayNotHasKey('auth_user_id', $_SESSION);
+    }
+
+    public function testAttemptViaRememberCookieFailsForInactiveUser(): void
+    {
+        $this->rememberTokens->method('findBySelector')->willReturn([
+            'user_id'        => 10,
+            'selector'       => 'selector123',
+            'validator_hash' => hash('sha256', 'validator456'),
+            'expires_at'     => date('Y-m-d H:i:s', time() + 3600),
+        ]);
+        $user              = $this->activeUser();
+        $user['is_active'] = 0;
+        $this->users->method('findById')->with(10)->willReturn($user);
+        $this->rememberTokens->expects($this->once())->method('deleteBySelector')->with('selector123');
+
+        $this->assertFalse($this->auth->attemptViaRememberCookie('selector123.validator456'));
+    }
+
+    public function testAttemptViaRememberCookieSucceedsAndRotatesToken(): void
+    {
+        $this->rememberTokens->method('findBySelector')->willReturn([
+            'user_id'        => 10,
+            'selector'       => 'selector123',
+            'validator_hash' => hash('sha256', 'validator456'),
+            'expires_at'     => date('Y-m-d H:i:s', time() + 3600),
+        ]);
+        $this->users->method('findById')->with(10)->willReturn($this->activeUser());
+        // Rotation : l'ancien sélecteur est supprimé, un nouveau token est émis.
+        $this->rememberTokens->expects($this->once())->method('deleteBySelector')->with('selector123');
+        $this->rememberTokens->expects($this->once())->method('create')->willReturn([]);
+
+        $result = $this->auth->attemptViaRememberCookie('selector123.validator456');
+
+        $this->assertTrue($result);
+        $this->assertSame(10, $_SESSION['auth_user_id']);
+    }
+
+    public function testLogoutRevokesMatchingRememberToken(): void
+    {
+        $_COOKIE['kintai_remember'] = 'selector123.validator456';
+        $this->rememberTokens->expects($this->once())->method('deleteBySelector')->with('selector123');
+
+        $this->auth->logout();
+    }
+
+    public function testLogoutWithoutRememberCookieDoesNotCallRepository(): void
+    {
+        unset($_COOKIE['kintai_remember']);
+        $this->rememberTokens->expects($this->never())->method('deleteBySelector');
+
+        $this->auth->logout();
     }
 }

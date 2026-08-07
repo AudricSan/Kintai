@@ -55,10 +55,16 @@ final class StoreValidator implements ValidatorInterface
             $errors[] = __('val_invalid_phone');
         }
 
-        $validCurrencies = ['EUR', 'USD', 'JPY', 'GBP', 'CHF'];
+        $validCurrencies = ['EUR', 'USD', 'JPY', 'GBP', 'CHF', 'KRW'];
         $currency = strtoupper(trim($data['currency'] ?? ''));
         if ($currency !== '' && !in_array($currency, $validCurrencies, true)) {
             $errors[] = __('val_invalid_currency');
+        }
+
+        $validSymbolStyles = ['kanji', 'international'];
+        $symbolStyle = $data['currency_symbol_style'] ?? 'kanji';
+        if (!in_array($symbolStyle, $validSymbolStyles, true)) {
+            $errors[] = __('val_invalid_currency_symbol_style');
         }
 
         return new ValidationResult($errors === [], $errors);

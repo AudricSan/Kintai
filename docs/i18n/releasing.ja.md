@@ -9,33 +9,48 @@
 自動アップデート機能（`GithubUpdateService::checkLatestRelease()`）は `GET /repos/{GITHUB_UPDATE_REPO}/releases`（最新の1件だけでなく全リリースの一覧）を呼び出し、GitHubが選択されたリリースのタグ向けに自動生成するソースアーカイブ（`zipball_url`）をダウンロードします。**手動でビルドやアップロードを行う必要は一切ありません** — `vX.Y.Z` というタグ付きのGitHub Releaseが存在すれば十分です。
 
 各インスタンスは、オーナーが `/admin/update` で選択する3つの**アップデートチャンネル**のいずれかに従います：
-- **Release** — 安定版タグのみ（`vX.Y.Z`、GitHub上でprereleaseとしてマークされていないもの）。`main` からビルドされます。
-- **Beta** — 安定版タグと `-beta` タグ。`beta` ブランチからビルドされます。
-- **Alpha** — `-alpha` を含むすべてのタグ。`alpha` ブランチからビルドされます。
+- **Release** — `main` から公開され、GitHub上でprereleaseとしてマークされていないリリースのみ。
+- **Beta** — `main` または `beta` から公開されたリリース。
+- **Alpha** — チャンネルを問わず、すべてのリリース。
 
-そのチャンネルで見えるリリースの中から、インスタンスは最も新しいバージョンを選択します（semverに準拠した比較なので、`1.0.0-beta.3` は `1.0.0` より前とみなされます）。`alpha`、`beta`、`main` は保護されたブランチです（PR + CIグリーンが必須、直接pushは不可） — `.github/workflows/release.yml` を参照してください。
+リリースのチャンネルは、タグの内容ではなく `target_commitish`（公開元ブランチ。`.github/workflows/release.yml` が設定 — `GithubUpdateService::selectReleaseForChannel()` を参照）で判定されます。そのチャンネルで見えるリリースの中から、インスタンスは最も新しいバージョンを選択します（semverに準拠した比較）。`alpha`、`beta`、`main` は保護されたブランチです（PR + CIグリーンが必須、直接pushは不可） — `.github/workflows/release.yml` を参照してください。
 
 留意点：
 - カウントされるのは **GitHub Release** のみです（単なるタグやコミットは対象外）。インスタンスのチャンネルに合致するReleaseが存在しない限り、`checkLatestRelease()` は `null` を返します。
-- バージョン番号は [semver](https://semver.org/)（`メジャー.マイナー.パッチ[-alpha|beta.N]`）に従い、設定ファイル内では `v` プレフィックスを付けません（`v` プレフィックスはGitタグにのみ存在し、`GithubUpdateService` がバージョン比較の前に自動で取り除きます）。
+- 設定ファイル内では `v` プレフィックスを付けません（`v` プレフィックスはGitタグにのみ存在し、`GithubUpdateService` がバージョン比較の前に自動で取り除きます）。
 
-## メジャー・マイナー・パッチの使い分け
+## バージョン形式：X.Y.Z-<週の文字><サブバージョン>
 
-- **パッチ**（`0.7.9` → `0.7.10`）：バグ修正のみ。「意図どおりに動くようになった」以上のユーザー向けの挙動変更・追加が一切含まれない場合。
-- **マイナー**（`0.7.9` → `0.8.0`）：小さなものであっても新機能や挙動の変更を含むリリースは、たとえ同じリリースに修正も混ざっていてもマイナーを上げる。たまたま同じ日に修正が入ったからといって、機能追加をパッチに便乗させない。
-- **メジャー**：破壊的変更専用（このアプリの通常のライフサイクルでは起こりにくいが、選択肢として残しておく）。
+バージョン番号は、安定版リリースでは `X.Y.Z`（サフィックスなし）、prereleaseでは `X.Y.Z-LN`（`L` = 文字、`N` = 数字）という形式になります：
 
-パッチかマイナーか迷ったらマイナーを上げる — コストはかからず、バージョン番号の意味を保てる（`main` 上で止まっている `0.6.0` を `beta` の `0.7.9` と比較したとき、その差の大半が機能追加によるものだと、安定版チャンネルが実際にはどれだけ遅れているかを過小評価してしまう）。
+- **X** — `main` で公開された**安定版**リリースの累計カウント。
+- **Y** — `beta` で公開された**betaリリース**の累計カウント。
+- **Z** — `alpha` で公開された**alphaリリース**の累計カウント。
+
+3つのカウンタはそれぞれ**手動で**、公開先のチャンネルに対応するものだけを +1 します（他の2つはそのまま）— 詳細は下記「新バージョンの公開」を参照。
+
+- **L** — 現在のISO週に対応する文字。`.github/workflows/release.yml` が自動計算します（表計算ソフトの列名方式のbase26エンコード：`a` = 第1週、`b` = 第2週 ... `z` = 第26週、`aa` = 第27週...）。
+- **N** — サブバージョン：新しいISO週が始まるたびに1にリセットされ、その週にalpha/betaが公開されるたびに（両チャンネル合算で）自動的に増分されるカウンタ。その週にすでに公開済みのタグから算出されます。
+
+`L` と `N` は**手動では入力しません** — 公開時にワークフローが計算します。このサフィックスが付くのは `alpha`/`beta` のリリースのみで、安定版（`main`）リリースはサフィックスなしの `vX.Y.Z` のままです。
+
+## X・Y・Zのどれを上げるか
+
+どのカウンタを上げるかは、（従来のsemverのMAJOR/MINOR/PATCHとは異なり）変更の大きさではなく、**公開先のチャンネル**だけで決まります：
+
+- `alpha` に公開する場合 → **Z** を上げる（`config/app.php`/`composer.json`）。
+- `beta` に公開する場合 → **Y** を上げる。
+- `main`（安定版リリース）に公開する場合 → **X** を上げる。
 
 ## 新バージョンの公開（推奨フロー）
 
-ベースのバージョン番号（`composer.json`/`config/app.php`/`CHANGELOG.md` 内の `X.Y.Z`）は、これまでどおり**手動で**更新します。変わったのは *Gitタグと GitHub Release を誰が作成するか* という点です — `alpha`、`beta`、`main` のいずれかにバージョン更新がpushされると、`.github/workflows/release.yml` が自動的にそれを行うようになりました。タグ付けや `gh release create` を自分で実行する必要はもうありません。
+ベースのバージョン番号（`composer.json`/`config/app.php`/`CHANGELOG.md` 内の `X.Y.Z`）は、これまでどおり**手動で**更新します。`alpha`、`beta`、`main` のいずれかにバージョン更新がpushされると `.github/workflows/release.yml` が自動的に行うのは *Gitタグと GitHub Release の作成* です — タグ付けや `gh release create` を自分で実行する必要はもうありません。
 
 1. 通常の作業ブランチ上でバージョンを更新します（下記の「手動での手順」を参照。または `scripts/release.ps1 -DryRun` を実行してCHANGELOGのノートをプレビューできます — このスクリプトの自動タグ付け/push/`gh release create` の各ステップは今回のActionに置き換えられ、保護されたブランチに対しては単純に失敗するため、`-DryRun` なしでは実行しないでください）。
 2. 公開したいチャンネルのブランチ（`alpha`、`beta`、`main`）を対象にPRを作成し、CIがグリーンになったらマージします（ブランチ保護により必須）。
 3. マージによって発生したpushで `.github/workflows/release.yml` が実行され、以下を行います：
    - `composer.json` からベースバージョンを読み取る
-   - `alpha`/`beta` では `vX.Y.Z-{チャンネル}` という**ローリングタグ**を付ける — 同じ `X.Y.Z` に対する後続のpushなど、このタグ／Releaseがすでに存在する場合は、いったん削除してから新しいコミットに向けて再作成する（`vX.Y.Z-{チャンネル}.1`、`.2`、`.3`... のように蓄積させない）。GitHub Releaseはprereleaseとしてマークする。`vX.Y.Z`（サフィックスなし）がすでに安定版Releaseとして存在する場合は**ビルドを失敗させる** — すでに公開済みの安定版と同じベースバージョンでprereleaseを公開すると、semver的にその安定版タグより*下位*になり、チャンネルから見えなくなってしまうため。先にベースバージョンを上げること
+   - `alpha`/`beta` では、週の文字とサブバージョン（上記参照）を計算して `vX.Y.Z-LN` としてタグ付けし、prereleaseとしてマークする — 公開のたびに別個のタグが作られます（push毎に書き換わるローリングタグはもう使いません）
    - `main` では `vX.Y.Z` を通常の（prereleaseではない）Releaseとしてタグ付けする — このタグがすでに存在する場合（前回の安定版リリース以降バージョン更新がなかった場合）は、ログメッセージを出して何もしない
    - `CHANGELOG.md` からリリースノートを抽出する（`main` の場合は日付付きの `## [X.Y.Z]` セクション、`alpha`/`beta` の場合は `## [Unreleased]` セクション）
 
@@ -43,16 +58,16 @@
 
 ## 手動での手順（バージョン更新）
 
-1. 作業ブランチ上で、`CHANGELOG.md` 内の `## [Unreleased]` を `## [0.1.0-beta] - 2026-07-08` に変更し、その直上に新しい空の `## [Unreleased]` セクションを追加する。
-2. `composer.json`（`"version": "0.1.0-beta"`）と `config/app.php`（`env('APP_VERSION', '0.1.0-beta')`）のバージョンを更新する。
+1. 作業ブランチ上で、`CHANGELOG.md` 内の `## [Unreleased]` を `## [0.11.0] - 2026-08-04` に変更し（ワークフローが計算する `-LN` サフィックスを除いたベースの `X.Y.Z`）、その直上に新しい空の `## [Unreleased]` セクションを追加する。
+2. `composer.json`（`"version": "0.11.0"`）と `config/app.php`（`env('APP_VERSION', '0.11.0')`）のバージョンを、公開先チャンネルに対応するカウンタだけを増分して更新する（`main` ならX、`beta` ならY、`alpha` ならZ）。
 3. コミットしてブランチをpushし、`alpha`、`beta`、`main` のいずれか適切なブランチへPRを作成する：
    ```bash
    git add CHANGELOG.md composer.json config/app.php
-   git commit -m "chore(release): v0.1.0-beta"
+   git commit -m "core(release): v0.11.0"
    git push -u origin <あなたのブランチ>
    gh pr create --base beta
    ```
-4. マージされると、`.github/workflows/release.yml` が自動的にタグとGitHub Releaseを作成します — 手動で行うことはもう残っていません。
+4. マージされると、`.github/workflows/release.yml` が自動的にタグ（`alpha`/`beta` では `-LN` サフィックス付き）とGitHub Releaseを作成します — 手動で行うことはもう残っていません。
 
 ## 公開後
 

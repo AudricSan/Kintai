@@ -15,10 +15,11 @@ use kintai\UI\Components\Card;
 $storeId = (int) $store['id'];
 $reportId = (int) $report['id'];
 $currency = $store['currency'] ?? 'JPY';
+$currencyStyle = store_currency_style($store);
 $base = $BASE_URL . '/admin/stores/' . $storeId . '/reports/salary/' . $reportId;
 
 $fmt = fn(mixed $v, string $def = '—') => $v !== null && $v !== '' ? htmlspecialchars((string) $v) : $def;
-$cur = fn(mixed $v) => $v !== null && $v !== '' ? format_currency((float) $v, $currency) : '—';
+$cur = fn(mixed $v) => $v !== null && $v !== '' ? format_currency((float) $v, $currency, $currencyStyle) : '—';
 $num = fn(mixed $v) => $v !== null && $v !== '' ? htmlspecialchars((string) $v) : '—';
 // Un rapport lié à un employé n'a pas de sens pour ces deux champs, propres au magasin entier.
 $isEmployeeScoped = !empty($report['user_id']);
@@ -32,7 +33,7 @@ $isEmployeeScoped = !empty($report['user_id']);
         <?= Button::make('← ' . __('back'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . $storeId . '/reports/salary')->render() ?>
         <?= Button::make(__('edit'))->primary()->sm()->link($base . '/edit')->render() ?>
         <?= Button::make(__('sr_pdf'))->ghost()->sm()->link($base . '/pdf')->attrs(['target' => '_blank'])->render() ?>
-        <form method="POST" action="<?= htmlspecialchars($base . '/delete') ?>" class="form-inline" onsubmit="return confirm('<?= __('sr_confirm_delete') ?>')">
+        <form method="POST" action="<?= htmlspecialchars($base . '/delete') ?>" class="form-inline" data-confirm="<?= htmlspecialchars(__('sr_confirm_delete'), ENT_QUOTES) ?>">
             <?= csrf_field() ?>
             <?= Button::make(__('delete'))->danger()->sm()->submit()->render() ?>
         </form>
@@ -59,7 +60,9 @@ ob_start();
 ob_start();
 ?>
 <table class="detail-table">
+    <?php if (!$isEmployeeScoped): ?>
     <tr><th><?= __('sr_total_payment') ?></th><td class="td-mono"><?= $cur($report['total_payment'] ?? null) ?></td></tr>
+    <?php endif; ?>
     <tr><th><?= __('sr_total_deductions') ?></th><td class="td-mono"><?= $cur($report['total_deductions'] ?? null) ?></td></tr>
     <tr><th><?= __('sr_income_tax_base') ?></th><td class="td-mono"><?= $cur($report['income_tax_base'] ?? null) ?></td></tr>
     <tr><th><?= __('sr_withholding_tax') ?></th><td class="td-mono"><?= $cur($report['withholding_tax'] ?? null) ?></td></tr>
@@ -80,7 +83,7 @@ ob_start();
 <table class="detail-table">
     <tr><th><?= __('sr_staff_man_hours') ?></th><td class="td-mono"><?= $num($report['staff_man_hours'] ?? null) ?> h</td></tr>
     <tr><th><?= __('sr_staff_total_payment') ?></th><td class="td-mono"><?= $cur($report['staff_total_payment'] ?? null) ?></td></tr>
-    <tr><th><?= __('sr_staff_avg_hourly_wage') ?></th><td class="td-mono"><?= $cur($report['staff_avg_hourly_wage'] ?? null) ?><?= $report['staff_avg_hourly_wage'] !== null && $report['staff_avg_hourly_wage'] !== '' ? '/h' : '' ?></td></tr>
+    <tr><th><?= __('sr_staff_avg_hourly_wage') ?></th><td class="td-mono"><?= $cur($report['staff_avg_hourly_wage'] ?? null) ?><?= ($report['staff_avg_hourly_wage'] ?? null) !== null && ($report['staff_avg_hourly_wage'] ?? '') !== '' ? '/h' : '' ?></td></tr>
     <?php if (!$isEmployeeScoped): ?>
     <tr><th><?= __('sr_new_hires') ?></th><td class="td-mono"><?= $num($report['new_hires'] ?? null) ?></td></tr>
     <?php endif; ?>
@@ -132,13 +135,13 @@ if (isset($shiftRows)):
                 <td><?= payslip_dow($row['date']) ?></td>
                 <td><?= payslip_date($row['date']) ?></td>
                 <td><?= htmlspecialchars($row['type']) ?></td>
-                <td><?= htmlspecialchars($row['start']) ?>–<?= htmlspecialchars($row['end']) ?></td>
+                <td><?= htmlspecialchars($row['start']) ?>–<?= htmlspecialchars($row['end']) ?><?php if (!empty($row['has_override'])): ?> <span class="td-override-badge" title="<?= htmlspecialchars(__('shift_manual_override')) ?>">✏️</span><?php endif; ?></td>
                 <td class="td-mono"><?= payslip_hours($row['gross_min']) ?></td>
                 <td class="td-mono"><?= $row['pause_min'] > 0 ? $row['pause_min'] . ' min' : '—' ?></td>
                 <td class="td-mono"><?= payslip_hours($row['net_min']) ?></td>
                 <?php if ($anyRate): ?>
-                <td class="td-mono"><?= $row['has_rate'] ? number_format($row['rate'], 2) . ' ' . $currency : '—' ?></td>
-                <td class="td-mono"><?= $row['has_rate'] ? format_currency($row['cost'], $currency) : '—' ?></td>
+                <td class="td-mono"><?= $row['has_rate'] ? number_format($row['rate'], 2) . ' ' . currency_symbol($currency, $currencyStyle) : '—' ?></td>
+                <td class="td-mono"><?= $row['has_rate'] ? format_currency($row['cost'], $currency, $currencyStyle) : '—' ?></td>
                 <?php endif; ?>
             </tr>
             <?php endforeach; ?>
@@ -151,26 +154,43 @@ if (isset($shiftRows)):
                 <th class="td-mono"><?= payslip_hours($totalNetMin) ?></th>
                 <?php if ($anyRate): ?>
                 <th></th>
-                <th class="td-mono"><?= format_currency($totalCost, $currency) ?></th>
+                <th class="td-mono"><?= format_currency($totalCost, $currency, $currencyStyle) ?></th>
                 <?php endif; ?>
             </tr>
         </tfoot>
     </table>
+    <?php if (!empty($type_breakdown)): ?>
+    <h4 class="detail-subtitle"><?= __('sr_type_breakdown') ?></h4>
+    <table class="detail-table">
+        <thead>
+            <tr><th><?= __('shift_type') ?></th><th><?= __('hours') ?></th><th><?= __('amount') ?></th></tr>
+        </thead>
+        <tbody>
+            <?php foreach ($type_breakdown as $tb): ?>
+            <tr>
+                <td><?= htmlspecialchars($tb['name']) ?></td>
+                <td class="td-mono"><?= payslip_hours($tb['minutes']) ?></td>
+                <td class="td-mono"><?= format_currency($tb['amount'], $currency, $currencyStyle) ?></td>
+            </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+    <?php endif; ?>
     <?php if ($deductionsEnabled && !empty($deductions)): ?>
     <h4 class="detail-subtitle"><?= __('payslip_summary') ?></h4>
     <table class="detail-table">
-        <tr><th><?= __('gross_pay') ?></th><td class="td-mono td-highlight"><?= format_currency($totalCost, $currency) ?></td></tr>
+        <tr><th><?= __('gross_pay') ?></th><td class="td-mono td-highlight"><?= format_currency($totalCost, $currency, $currencyStyle) ?></td></tr>
         <?php foreach ($deductions as $ded): ?>
         <tr>
             <th>
                 <?= isset($ded['label_key']) ? __($ded['label_key']) : htmlspecialchars($ded['label'] ?? '') ?>
                 <?php if (!empty($ded['is_flat'])): ?> (<?= __('monthly_fixed') ?>)<?php elseif (isset($ded['rate'])): ?> (<?= number_format((float) $ded['rate'], 2) ?>%)<?php endif; ?>
             </th>
-            <td class="td-mono">−<?= format_currency($ded['amount'], $currency) ?></td>
+            <td class="td-mono">−<?= format_currency($ded['amount'], $currency, $currencyStyle) ?></td>
         </tr>
         <?php endforeach; ?>
-        <tr><th><?= __('total_deductions') ?></th><td class="td-mono">−<?= format_currency($totalDeductions, $currency) ?></td></tr>
-        <tr><th><?= __('net_pay') ?></th><td class="td-mono td-highlight"><?= format_currency($netPay, $currency) ?></td></tr>
+        <tr><th><?= __('total_deductions') ?></th><td class="td-mono">−<?= format_currency($totalDeductions, $currency, $currencyStyle) ?></td></tr>
+        <tr><th><?= __('net_pay') ?></th><td class="td-mono td-highlight"><?= format_currency($netPay, $currency, $currencyStyle) ?></td></tr>
     </table>
     <?php endif; ?>
     <?php endif; ?>

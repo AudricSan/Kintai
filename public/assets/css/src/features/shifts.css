@@ -817,3 +817,33 @@
 
 .sd-create-zone__plus { font-size: var(--text-xs); }
 
+/* ── Types de shift : matrice magasin×type + liste classique ─────
+   Carte pleine largeur, empilée au-dessus de la liste classique (pas
+   de colonnes côte à côte ici : une seule carte à la fois, donc pas
+   de problème de hauteurs à aligner). Beaucoup de magasins → défile
+   horizontalement (.table-wrap existant) ; beaucoup de types → la
+   carte plafonne en hauteur et défile verticalement à la place de
+   pousser toute la page, en-tête de colonnes maintenu visible. */
+.matrix-table th,
+.matrix-table td {
+    white-space: nowrap;
+}
+
+.matrix-table__store-col {
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.shift-types-matrix__scroll {
+    max-height: 360px;
+    overflow-y: auto;
+}
+
+.shift-types-matrix__scroll .matrix-table thead th {
+    position: sticky;
+    top: 0;
+    background: var(--color-surface);
+    z-index: 1;
+}
+

@@ -27,7 +27,11 @@ use kintai\UI\Components\Button;
  * @var array|null  $ical_links    store_id → url (employé uniquement)
  */
 
-$_isManagerView = $is_manager_view ?? true;
+// Défaut à false (pas à true) : les deux appelants (AdminShiftController, EmployeeController)
+// passent toujours cette valeur explicitement, mais un futur appelant qui l'oublierait ne doit
+// pas basculer accidentellement sur la vue manager (filtres multi-utilisateurs, congés de
+// l'équipe) — voir CHANGELOG (même principe que shifts-timeline.php can_manage).
+$_isManagerView = $is_manager_view ?? false;
 
 // Construire la grille calendrier selon le jour de début de semaine configuré
 $firstDay    = new \DateTimeImmutable($month_start);
@@ -268,7 +272,7 @@ endif;
     <div class="page-header__actions">
         <a href="<?= route_url('employee.shifts.week') ?>" class="btn btn--ghost btn--sm">☰ <?= __('table_view') ?></a>
         <a href="<?= route_url('employee.shifts.day') ?>?start=<?= $today ?>&view=3days" class="btn btn--ghost btn--sm"><svg class="gantt-icon icon-inline" width="16" height="16" viewBox="0 0 24 24"><rect x="4" y="2" width="2" height="20" fill="#555"/><rect x="10" y="6" width="2" height="16" fill="#555"/><rect x="16" y="10" width="2" height="12" fill="#555"/></svg> <?= __('gantt_view') ?></a>
-        <?php if (feat_bundle('shift-swap')): ?>
+        <?php if (feat_bundle('swaps')): ?>
         <?= Button::make('⇄ ' . __('request_swap'))->primary()->sm()->link(route_url('employee.swaps.create'))->render() ?>
         <?php endif; ?>
     </div>
