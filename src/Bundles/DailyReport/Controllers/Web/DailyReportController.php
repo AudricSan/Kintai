@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\Bundles\DailyReport\Controllers\Web;
 
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\DailyReportRepositoryInterface;
@@ -18,6 +19,7 @@ use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\DailyReportMailService;
 use kintai\Core\Services\DailyReportPdfService;
 use kintai\Core\Services\DailyReportPermissionService;
+use kintai\Core\Services\NotificationService;
 use kintai\Core\Services\TranslationService;
 use kintai\UI\ViewRenderer;
 
@@ -36,6 +38,8 @@ final class DailyReportController
         private readonly TranslationService $translations,
         private readonly ShiftRepositoryInterface $shifts,
         private readonly ShiftTypeRepositoryInterface $shiftTypes,
+        private readonly NotificationService $notifs,
+        private readonly PermissionService $permissionService,
     ) {}
 
     // -------------------------------------------------------------------------
@@ -535,6 +539,8 @@ final class DailyReportController
             'report_date' => $report['report_date'],
         ], $storeId);
 
+        $this->notifyManagers($storeId, 'daily_reports.approve', 'daily_report_submitted', 'Un rapport journalier attend votre validation.', $reportId);
+
         return Response::redirect($this->base() . '/admin/stores/' . $storeId . '/daily-reports/' . $reportId);
     }
 
@@ -571,6 +577,11 @@ final class DailyReportController
             'store_id'    => $report['store_id'],
             'report_date' => $report['report_date'],
         ], $storeId);
+
+        $authorId = (int) ($report['author_id'] ?? 0);
+        if ($authorId > 0 && $authorId !== (int) $authUser['id']) {
+            $this->notifs->notify($authorId, 'daily_report_validated', 'Votre rapport journalier a été validé.', $reportId);
+        }
 
         // Envoi automatique si configuré
         $settings = $this->permissions->getSettings($store);
@@ -817,9 +828,15 @@ final class DailyReportController
 
     private function getFormShiftRows(int $storeId, string $date): array
     {
+        // On ne garde que les shifts dont l'utilisateur est réellement membre de ce
+        // magasin : un shift mal assigné (ex. import Excel ayant matché le mauvais
+        // utilisateur à cause d'un nom de famille en doublon dans un autre magasin)
+        // ne doit jamais faire apparaître un staff d'un autre magasin dans le rapport.
         $rawShifts = array_filter(
             $this->shifts->findByDate($storeId, $date),
-            fn($s) => empty($s['deleted_at']) && !empty($s['user_id'])
+            fn($s) => empty($s['deleted_at'])
+                && !empty($s['user_id'])
+                && $this->storeUsers->findMembership($storeId, (int) $s['user_id']) !== null
         );
 
         $typesMap  = array_column($this->shiftTypes->findByStore($storeId), null, 'id');
@@ -869,6 +886,22 @@ final class DailyReportController
             throw new NotFoundException('Rapport introuvable.');
         }
         return $report;
+    }
+
+    /** Notifie les membres du store détenant $permissionKey (ex. les managers pouvant valider). */
+    private function notifyManagers(int $storeId, string $permissionKey, string $type, string $body, int $referenceId): void
+    {
+        $recipients = [];
+        foreach ($this->storeUsers->findByStore($storeId) as $m) {
+            $uid = (int) $m['user_id'];
+            $candidate = $this->users->findById($uid);
+            if ($candidate !== null && $this->permissionService->can($candidate, $permissionKey, $storeId)) {
+                $recipients[] = $uid;
+            }
+        }
+        if ($recipients !== []) {
+            $this->notifs->notifyMany($recipients, $type, $body, $referenceId);
+        }
     }
 
     private function assertStoreAccess(Request $request, int $storeId): void

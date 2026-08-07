@@ -38,7 +38,7 @@
 
 .data-table th {
     text-align: left;
-    padding: var(--space-2) var(--space-4);
+    padding: var(--space-3) var(--space-4);
     font-size: var(--text-xs);
     font-weight: 600;
     text-transform: uppercase;
@@ -49,7 +49,7 @@
 }
 
 .data-table td {
-    padding: var(--space-2) var(--space-4);
+    padding: var(--space-3) var(--space-4);
     border-bottom: 1px solid var(--color-border);
     color: var(--color-text);
 }
@@ -74,7 +74,13 @@
     vertical-align: top;
 }
 
-.td-center {
+/* .data-table th force text-align:left avec une spécificité (classe +
+   élément) supérieure à .td-center seule (classe) : sans le doublon
+   th.td-center ci-dessous (même spécificité que .data-table th, mais
+   déclaré après donc gagnant), la classe est silencieusement ignorée
+   sur les <th> alors qu'elle fonctionne sur les <td>. */
+.td-center,
+th.td-center {
     text-align: center;
 }
 
@@ -92,6 +98,11 @@
 
 .td-muted {
     color: var(--color-text-muted);
+}
+
+.td-override-badge {
+    font-size: var(--text-xs-2);
+    cursor: help;
 }
 
 .td-reason {
@@ -233,5 +244,113 @@
     flex-direction: column;
     gap: var(--space-1);
     align-items: flex-start;
+}
+
+/* Puce d'initiales colorée (ex. cellule employé d'un tableau) — la couleur
+   vient de --color-x custom property posée par la vue (ex. style="--chip-bg:#...").
+   Fond par défaut si la vue n'en fournit pas. */
+.avatar-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: var(--radius-sm);
+    background: var(--chip-bg, var(--color-primary));
+    color: #fff;
+    font-size: var(--text-2xs);
+    font-weight: 800;
+    flex-shrink: 0;
+}
+
+/* ── Menu d'actions de ligne (remplace une rangée de boutons par un
+   déclencheur unique + panneau) — ex. colonne Actions du tableau
+   employés. Le panneau est en position:fixed (positionné par JS,
+   voir app.js) pour ne pas être rogné par l'overflow-x:auto du
+   .table-wrap qui l'entoure. ────────────────────────────────────── */
+.row-actions {
+    position: relative;
+    display: inline-flex;
+}
+
+.row-actions__trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    transition: background var(--duration-fast), color var(--duration-fast);
+}
+
+.row-actions__trigger:hover,
+.row-actions.is-open .row-actions__trigger {
+    background: var(--color-surface-alt);
+    color: var(--color-text);
+}
+
+.row-actions__panel {
+    display: none;
+    position: fixed;
+    min-width: 190px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    padding: var(--space-2);
+    z-index: 500;
+}
+
+.row-actions.is-open .row-actions__panel {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.row-actions__link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-text);
+    text-decoration: none;
+    white-space: nowrap;
+    background: none;
+    border: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.row-actions__link:hover {
+    background: var(--color-surface-alt);
+    text-decoration: none;
+}
+
+.row-actions__link--danger {
+    color: var(--color-danger);
+    margin-top: var(--space-1);
+    padding-top: calc(var(--space-2) + var(--space-1));
+    border-top: 1px solid var(--color-border);
+}
+
+.row-actions__link--danger:hover {
+    background: var(--color-danger-light);
+}
+
+.avatar-chip-cell {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
 }
 

@@ -33,7 +33,7 @@ final class BackupController
         $filename = (string) $request->query('filename', '');
         $path = $this->backup->getPath($filename);
         if ($filename === '' || !file_exists($path)) {
-            return Response::redirect('/admin/backup?error=not_found');
+            return Response::redirect('/admin/backup?success=error_not_found');
         }
 
         return Response::fileStream($path, 'application/zip', basename($path));
@@ -44,7 +44,7 @@ final class BackupController
         $this->requireOwner($request);
 
         $backups = $this->backup->list();
-        $flash = $request->query('success', '');
+        $flash = $this->describeFlash((string) $request->query('success', ''));
 
         return Response::html($this->view->render('system.backup', [
             'title'   => 'Sauvegardes',
@@ -57,9 +57,12 @@ final class BackupController
     {
         $this->requireOwner($request);
 
-        $flash = $request->query('success', '');
+        $flash = $this->describeFlash((string) $request->query('success', ''));
 
         $updateInfo = $this->githubUpdate->checkLatestRelease();
+        $releaseNotesCondensed = $updateInfo !== null
+            ? $this->githubUpdate->condenseReleaseNotes((string) $updateInfo['release_notes'])
+            : '';
 
         return Response::html($this->view->render('system.update', [
             'title'                     => 'Mises à jour',
@@ -69,6 +72,8 @@ final class BackupController
             'updateChannel'             => $this->settings->updateChannel(),
             'pendingMigs'               => $this->update->getPendingMigrations(),
             'lastUpdateDurationSeconds' => $this->update->getLastUpdateDuration(),
+            'releaseNotesCondensed'     => $releaseNotesCondensed,
+            'repoReleasesUrl'           => $this->githubUpdate->getRepoReleasesUrl(),
             'flash'                     => $flash,
         ], 'layout.app'));
     }
@@ -264,6 +269,55 @@ final class BackupController
 
         $count = $this->backup->deleteAll();
         return Response::redirect('/admin/backup?success=deleted_all_' . $count);
+    }
+
+    /**
+     * Traduit le code brut de ?success=... (voir les redirections de ce contrôleur)
+     * en message affichable, stylé succès/erreur. Sans ça, la vue affichait le code
+     * tel quel (ex. "error_SQLSTATE[...]...") dans une boîte neutre non stylée en
+     * erreur — voir CHANGELOG. Les tests existants continuent d'asserter sur le code
+     * brut dans l'URL de redirection : seul ce parsing, côté affichage, change.
+     *
+     * @return array{type: 'success'|'danger', text: string}|null
+     */
+    private function describeFlash(string $raw): ?array
+    {
+        if ($raw === '') {
+            return null;
+        }
+        $decoded = urldecode($raw);
+
+        return match (true) {
+            $decoded === 'restored' => ['type' => 'success', 'text' => __('backup_flash_restored')],
+            $decoded === 'deleted'  => ['type' => 'success', 'text' => __('backup_flash_deleted')],
+            $decoded === 'migrated' => ['type' => 'success', 'text' => __('backup_flash_migrated')],
+            str_starts_with($decoded, 'created_') => ['type' => 'success', 'text' => __('backup_flash_created', [
+                'filename' => substr($decoded, strlen('created_')),
+            ])],
+            str_starts_with($decoded, 'deleted_all_') => ['type' => 'success', 'text' => __('backup_flash_deleted_all', [
+                'count' => substr($decoded, strlen('deleted_all_')),
+            ])],
+            str_starts_with($decoded, 'channel_') => ['type' => 'success', 'text' => __('backup_flash_channel', [
+                'channel' => substr($decoded, strlen('channel_')),
+            ])],
+            str_starts_with($decoded, 'updated_') && preg_match(
+                '/^updated_(?<version>.+)_files-(?<copied>\d+)_deleted-(?<deleted>\d+)_migrations-(?<migrations>\d+)_composer-/',
+                $decoded,
+                $m
+            ) === 1 => ['type' => 'success', 'text' => strtr(__('backup_update_done_summary'), [
+                '{version}'    => $m['version'],
+                '{copied}'     => $m['copied'],
+                '{deleted}'    => $m['deleted'],
+                '{migrations}' => $m['migrations'],
+            ])],
+            $decoded === 'error_no_file'            => ['type' => 'danger', 'text' => __('backup_flash_error_no_file')],
+            $decoded === 'error_not_found'           => ['type' => 'danger', 'text' => __('backup_flash_error_not_found')],
+            $decoded === 'error_no_update_available' => ['type' => 'danger', 'text' => __('backup_flash_error_no_update_available')],
+            $decoded === 'error_download_failed'     => ['type' => 'danger', 'text' => __('backup_flash_error_download_failed')],
+            $decoded === 'error_extract_failed'      => ['type' => 'danger', 'text' => __('backup_flash_error_extract_failed')],
+            str_starts_with($decoded, 'error_') => ['type' => 'danger', 'text' => __('error_prefix') . substr($decoded, strlen('error_'))],
+            default => ['type' => 'success', 'text' => $decoded],
+        };
     }
 
     private function requireOwner(Request $request): void

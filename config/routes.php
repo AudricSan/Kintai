@@ -14,6 +14,7 @@ use kintai\UI\Controller\Web\PrivacyController;
 use kintai\UI\Controller\Web\PwaController;
 use kintai\UI\Controller\Web\StorageFileController;
 
+use kintai\UI\Controller\Web\Requests\AdminRequestsController;
 use kintai\UI\Controller\Web\Scheduling\AdminShiftController;
 use kintai\UI\Controller\Web\Scheduling\AdminShiftImportController;
 use kintai\UI\Controller\Web\Scheduling\AdminShiftTypeController;
@@ -164,6 +165,9 @@ $router->group('/admin', function ($r) {
     $r->get('/nav-settings',  [AdminController::class, 'navSettings'],     name: 'admin.nav_settings');
     $r->post('/nav-settings', [AdminController::class, 'saveNavSettings'], name: 'admin.nav_settings.save');
 
+    // Demandes (résumé) : agrège congés, échanges de shifts et bourse aux shifts
+    $r->get('/requests', [AdminRequestsController::class, 'index'], name: 'admin.requests');
+
     // Utilisateurs
     $r->get('/users',                     [AdminUserController::class, 'users'],               name: 'admin.users');
     $r->get('/users/export/pdf',          [AdminUserController::class, 'exportUsersPdf'],      name: 'admin.users.export_pdf');
@@ -213,6 +217,7 @@ $router->group('/admin', function ($r) {
     $r->get('/shift-types/{id}/edit',     [AdminShiftTypeController::class, 'editShiftType'],      name: 'admin.shift_types.edit');
     $r->post('/shift-types/{id}/edit',    [AdminShiftTypeController::class, 'updateShiftType'],    name: 'admin.shift_types.update');
     $r->post('/shift-types/{id}/delete',  [AdminShiftTypeController::class, 'deleteShiftType'],    name: 'admin.shift_types.delete');
+    $r->post('/shift-types/{id}/toggle-store', [AdminShiftTypeController::class, 'toggleShiftTypeStore'], name: 'admin.shift_types.toggle_store');
 
     // Shifts
     $r->get('/shifts',              [AdminShiftController::class, 'shifts'],               name: 'admin.shifts');
@@ -226,6 +231,7 @@ $router->group('/admin', function ($r) {
     $r->post('/shifts/import',      [AdminShiftImportController::class, 'processImport'],        name: 'admin.shifts.import.process');
     $r->post('/shifts/import/confirm', [AdminShiftImportController::class, 'confirmImport'],     name: 'admin.shifts.import.confirm');
     $r->get('/shifts/create',       [AdminShiftController::class, 'createShift'],          name: 'admin.shifts.create');
+    $r->get('/shifts/wage-preview', [AdminShiftController::class, 'wagePreview'],          name: 'admin.shifts.wage_preview');
     $r->post('/shifts/create',      [AdminShiftController::class, 'storeShift'],           name: 'admin.shifts.store');
     $r->post('/shifts/quick',       [AdminShiftController::class, 'quickShift'],           name: 'admin.shifts.quick');
     $r->post('/shifts/bulk-delete', [AdminShiftController::class, 'bulkDeleteShifts'],     name: 'admin.shifts.bulk_delete');

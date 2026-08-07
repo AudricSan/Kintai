@@ -4,16 +4,20 @@ declare(strict_types=1);
 
 namespace kintai\Bundles\SalaryReport\Controllers\Web;
 
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Repositories\DailyReportRepositoryInterface;
 use kintai\Core\Repositories\SalaryReportRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
+use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
+use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\DailyReportDataNormalizer;
+use kintai\Core\Services\ShiftWageCalculator;
 use kintai\Core\Services\StoreStatsServiceInterface;
 use kintai\UI\Controller\Web\HasAdminAccess;
 use kintai\UI\Controller\Web\Staff\HasStaffReportCrud;
@@ -62,8 +66,11 @@ final class AdminSalaryReportController
         private readonly StoreUserRepositoryInterface $storeUsers,
         private readonly DailyReportRepositoryInterface $dailyReports,
         private readonly ShiftRepositoryInterface $shifts,
+        private readonly ShiftTypeRepositoryInterface $shiftTypes,
+        private readonly UserShiftTypeRateRepositoryInterface $userRates,
         private readonly AuditLogger $auditLogger,
         private readonly StoreStatsServiceInterface $storeStatsService,
+        private readonly PermissionService $permissions,
     ) {}
 
     public function allSalaryReports(Request $request): Response
@@ -215,7 +222,10 @@ final class AdminSalaryReportController
             $userId = 0;
         }
 
-        $preset = $this->calculateSalaryPreset($store, $targetMonth, $authUser, $userId ?: null);
+        $from = $targetMonth . '-01';
+        $to = date('Y-m-t', strtotime($from));
+        $preset = $this->calculateSalaryPreset($store, $from, $to, $authUser, $userId ?: null);
+        $preset['target_month'] = $targetMonth;
         if ($employee !== null) {
             $preset['user_id'] = $userId;
             $preset['employee_name'] = trim(($employee['last_name'] ?? '') . ' ' . ($employee['first_name'] ?? ''))
@@ -236,6 +246,36 @@ final class AdminSalaryReportController
             'report'  => $preset,
             'managers' => $managers,
         ], 'layout.app'));
+    }
+
+    /**
+     * Recalcule à la volée le résumé financier pour une plage de dates donnée
+     * (appelé en AJAX depuis le formulaire quand le mois/la plage change —
+     * voir public/assets/js/modules/salary-report-form.js). Ne persiste rien.
+     */
+    public function calculateSalaryReport(Request $request): Response
+    {
+        $storeId = (int) $request->param('id');
+        $store = $this->findStoreOrFail($storeId);
+        $this->assertStoreAccess($request, $storeId);
+
+        $from = (string) $request->query('from', '');
+        $to = (string) $request->query('to', '');
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $from) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $to) || $from > $to) {
+            return Response::json(['error' => 'invalid_range'], 422);
+        }
+
+        $userId = (int) ($request->query('user_id') ?? 0) ?: null;
+        $authUser = $request->getAttribute('auth_user');
+
+        $preset = $this->calculateSalaryPreset($store, $from, $to, $authUser, $userId);
+        $preset['target_month'] = substr($from, 0, 7);
+
+        $detail = $userId !== null
+            ? $this->storeStatsService->buildPayslipData($storeId, $userId, $from, $to)
+            : $this->calculateStoreDetail($storeId, $from, $to);
+
+        return Response::json(['preset' => $preset, 'detail' => $detail]);
     }
 
     public function storeSalaryReport(Request $request): Response
@@ -365,16 +405,12 @@ final class AdminSalaryReportController
      *                         total des ventes du magasin (sans rapport avec un seul employé)
      *                         n'est pas pré-rempli.
      */
-    private function calculateSalaryPreset(array $store, string $targetMonth, array $authUser, ?int $userId = null): array
+    private function calculateSalaryPreset(array $store, string $from, string $to, array $authUser, ?int $userId = null): array
     {
         $storeId = (int) $store['id'];
         $preset = [
-            'target_month'      => $targetMonth,
             'person_in_charge'  => $authUser['display_name'] ?? '',
         ];
-
-        $from = $targetMonth . '-01';
-        $to = date('Y-m-t', strtotime($from));
 
         $totalPayment = 0;
         if ($userId === null) {
@@ -399,27 +435,8 @@ final class AdminSalaryReportController
         }
 
         // Heures et salaires depuis les shifts (du seul employé si $userId est fourni)
-        $allShifts = $this->shifts->findByStore($storeId);
-        $monthShifts = array_filter($allShifts, fn($s) =>
-            ($s['shift_date'] ?? '') >= $from && ($s['shift_date'] ?? '') <= $to
-            && ($userId === null || (int) ($s['user_id'] ?? 0) === $userId)
-        );
-
-        $totalMinutes = 0;
-        $totalShiftSalary = 0;
-        $employeeMinutes = [];
-        $employeeCost = [];
-        foreach ($monthShifts as $s) {
-            $minutes = (int) ($s['duration_minutes'] ?? 0);
-            $cost = (float) ($s['estimated_salary'] ?? 0);
-            $totalMinutes += $minutes;
-            $totalShiftSalary += $cost;
-            $uid = (int) ($s['user_id'] ?? 0);
-            if ($uid > 0) {
-                $employeeMinutes[$uid] = ($employeeMinutes[$uid] ?? 0) + $minutes;
-                $employeeCost[$uid] = ($employeeCost[$uid] ?? 0) + $cost;
-            }
-        }
+        [$totalMinutes, $totalShiftSalary, $employeeMinutes, $employeeCost] =
+            $this->aggregateShifts($storeId, $from, $to, $userId);
 
         $staffManHours = $totalMinutes > 0 ? round($totalMinutes / 60, 2) : 0;
         $activeEmployees = count($employeeMinutes);
@@ -451,6 +468,103 @@ final class AdminSalaryReportController
         ));
 
         return $preset;
+    }
+
+    /**
+     * Agrège les shifts d'un store sur une plage de dates : minutes/coût total,
+     * et le détail par employé — factorisé entre calculateSalaryPreset() (montants
+     * pré-remplis) et calculateStoreDetail() (détail affiché dans la modale de calcul).
+     *
+     * Coût calculé à la volée via ShiftWageCalculator::costOf() (même source que
+     * StoreStatsService::buildPayslipData()/EmployeeStatsService), et non plus lu depuis
+     * shifts.estimated_salary : cette colonne n'est renseignée que par l'import Excel et
+     * reste NULL pour tout shift créé/édité à la main, ce qui faisait ressortir un total
+     * proche de 0 ici alors que le détail du rapport affichait le bon montant.
+     *
+     * @return array{0: int, 1: float, 2: array<int, int>, 3: array<int, float>} [totalMinutes, totalCost, employeeMinutes, employeeCost]
+     */
+    private function aggregateShifts(int $storeId, string $from, string $to, ?int $userId): array
+    {
+        $allShifts = array_filter($this->shifts->findByStore($storeId), fn($s) => empty($s['deleted_at']));
+        $rangeShifts = array_filter($allShifts, fn($s) =>
+            ($s['shift_date'] ?? '') >= $from && ($s['shift_date'] ?? '') <= $to
+            && ($userId === null || (int) ($s['user_id'] ?? 0) === $userId)
+        );
+
+        $typesMap = array_column($this->shiftTypes->findByStore($storeId), null, 'id');
+        $wageCalc = new ShiftWageCalculator();
+        $rateCache = [];
+
+        $totalMinutes = 0;
+        $totalCost = 0.0;
+        $employeeMinutes = [];
+        $employeeCost = [];
+        $typeBreakdown = [];
+        foreach ($rangeShifts as $s) {
+            $uid = (int) ($s['user_id'] ?? 0);
+            if ($uid > 0 && !isset($rateCache[$uid])) {
+                $rateCache[$uid] = [];
+                foreach ($this->userRates->findByUser($uid) as $r) {
+                    $rateCache[$uid][(int) $r['shift_type_id']] = (float) $r['hourly_rate'];
+                }
+            }
+
+            $wage = $wageCalc->costOf($s, $typesMap, $rateCache[$uid] ?? []);
+            $totalMinutes += $wage['net_minutes'];
+            $totalCost += $wage['amount'];
+            if ($uid > 0) {
+                $employeeMinutes[$uid] = ($employeeMinutes[$uid] ?? 0) + $wage['net_minutes'];
+                $employeeCost[$uid] = ($employeeCost[$uid] ?? 0) + $wage['amount'];
+            }
+
+            foreach ($wage['breakdown'] as $b) {
+                $key = $b['shift_type_id'] ?? 0;
+                if (!isset($typeBreakdown[$key])) {
+                    $typeBreakdown[$key] = ['name' => $b['name'] ?: '—', 'minutes' => 0, 'amount' => 0.0];
+                }
+                $typeBreakdown[$key]['minutes'] += $b['minutes'];
+                $typeBreakdown[$key]['amount']  += $b['amount'];
+            }
+        }
+        $typeBreakdown = array_values($typeBreakdown);
+        usort($typeBreakdown, fn($a, $b) => strcmp($a['name'], $b['name']));
+
+        return [$totalMinutes, $totalCost, $employeeMinutes, $employeeCost, $typeBreakdown];
+    }
+
+    /**
+     * Détail affiché dans la modale "voir le détail des calculs" pour un rapport
+     * magasin entier (pas de $userId) : heures/coût par employé + taux de
+     * retenues appliqués — l'équivalent de StoreStatsService::buildPayslipData()
+     * mais agrégé sur plusieurs employés au lieu d'un seul.
+     */
+    private function calculateStoreDetail(int $storeId, string $from, string $to): array
+    {
+        [, , $employeeMinutes, $employeeCost, $typeBreakdown] = $this->aggregateShifts($storeId, $from, $to, null);
+
+        $employees = [];
+        foreach ($employeeMinutes as $uid => $minutes) {
+            $user = $this->users->findById($uid);
+            $name = $user !== null
+                ? (trim(($user['last_name'] ?? '') . ' ' . ($user['first_name'] ?? '')) ?: ($user['display_name'] ?? '#' . $uid))
+                : '#' . $uid;
+            $employees[] = [
+                'user_id' => $uid,
+                'name'    => $name,
+                'hours'   => round($minutes / 60, 2),
+                'cost'    => round($employeeCost[$uid] ?? 0, 2),
+            ];
+        }
+        usort($employees, fn($a, $b) => strcmp($a['name'], $b['name']));
+
+        return [
+            'mode'               => 'store',
+            'from'               => $from,
+            'to'                 => $to,
+            'employees'          => $employees,
+            'type_breakdown'     => $typeBreakdown,
+            'deduction_settings' => $this->stores->getDeductionSettings($storeId),
+        ];
     }
 
     /**

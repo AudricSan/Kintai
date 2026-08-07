@@ -17,6 +17,7 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserNavPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
@@ -56,6 +57,7 @@ final class EmployeeController
         private readonly UserDashboardPrefsRepositoryInterface $dashboardPrefs,
         private readonly NotificationService $notifs,
         private readonly UserNavPrefsRepositoryInterface $navPrefs,
+        private readonly PermissionService $permissions,
     ) {}
 
     // -------------------------------------------------------------------------
@@ -368,17 +370,6 @@ final class EmployeeController
         $memberships = $this->storeUsers->findByUser($userId);
         $myStoreIds  = array_values(array_unique(array_map(fn($m) => (int) $m['store_id'], $memberships)));
 
-        // Peut gérer les shifts (admin global ou manager/admin d'au moins un store)
-        $canManage = !empty($user['is_admin']);
-        if (!$canManage) {
-            foreach ($memberships as $m) {
-                if (in_array($m['role'] ?? '', ['admin', 'manager'], true)) {
-                    $canManage = true;
-                    break;
-                }
-            }
-        }
-
         $storesList = [];
         $storesMap  = [];
         foreach ($myStoreIds as $sid) {
@@ -394,6 +385,10 @@ final class EmployeeController
         if (!in_array($filterStoreId, $myStoreIds, true)) {
             $filterStoreId = $myStoreIds[0] ?? 0;
         }
+
+        // Peut gérer les shifts du store affiché (Owner, ou RBAC accordant shifts.update sur ce store)
+        $canManage = !empty($user['is_admin'])
+            || $this->permissions->can($user, 'shifts.update', $filterStoreId > 0 ? $filterStoreId : null);
 
         $usersMap      = [];
         $userColorMap  = [];
@@ -412,9 +407,12 @@ final class EmployeeController
         }
         usort($memberIds, fn($a, $b) => strcmp($usersMap[$a] ?? '', $usersMap[$b] ?? ''));
 
-        $typesMap = [];
+        $typesMap     = [];
+        $typeStoreIds = [];
         foreach ($this->shiftTypes->findAll() as $t) {
-            $typesMap[(int) $t['id']] = $t;
+            $tid = (int) $t['id'];
+            $typesMap[$tid]     = $t;
+            $typeStoreIds[$tid] = $this->shiftTypes->getStoreIds($tid);
         }
 
         // Shifts de la plage (store affiché uniquement), groupés par date puis user
@@ -432,7 +430,8 @@ final class EmployeeController
         $ratesMap    = []; // uid → shift_type_id → hourly_rate
         $currencyMap = []; // uid → currency string
         $storeObj    = $filterStoreId > 0 ? $this->stores->findById($filterStoreId) : null;
-        $currency    = strtoupper(trim($storeObj['currency'] ?? 'JPY'));
+        $currency      = strtoupper(trim($storeObj['currency'] ?? 'JPY'));
+        $currencyStyle = store_currency_style($storeObj);
         foreach ($memberIds as $uid) {
             $currencyMap[$uid] = $currency;
             foreach ($this->userRates->findByUser($uid) as $r) {
@@ -463,11 +462,13 @@ final class EmployeeController
             'users_map'           => $usersMap,
             'user_color_map'      => $userColorMap,
             'types_map'           => $typesMap,
+            'type_store_ids'      => $typeStoreIds,
             'my_user_id'          => $userId,
             'today'               => date('Y-m-d'),
             'can_manage'          => $canManage,
             'rates_map'           => $ratesMap,
             'currency_map'        => $currencyMap,
+            'currency_symbol_style' => $currencyStyle,
             'filter_store_id'     => $filterStoreId,
             'stores_map'          => $storesMap,
             'available_stores'    => $storesList,

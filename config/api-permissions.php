@@ -4,12 +4,18 @@ declare(strict_types=1);
 
 /**
  * Autorisation de l'API v1 (nom de route → règle), consommé par
- * ApiPermissionMiddleware. Deux formats de règle :
+ * ApiPermissionMiddleware. Trois formats de règle :
  *
- *   'cle.permission'                               → la clé est exigée
- *   ['perm' => 'cle.permission', 'self' => 'param'] → accès direct si le
+ *   'cle.permission'                                     → la clé est exigée
+ *   ['perm' => 'cle.permission', 'self' => 'param']       → accès direct si le
  *       paramètre de route/query nommé correspond à l'utilisateur du token
  *       (ses propres ressources), sinon la clé est exigée
+ *   ['perm' => 'cle.permission', 'membership' => true]    → accès direct si
+ *       l'utilisateur est membre du store ciblé (paramètre/query/body
+ *       `store_id`), sinon la clé est exigée. Porte d'entrée volontairement
+ *       grossière pour un accès en libre-service (ex. bundle DailyReport) —
+ *       la logique fine par ressource (statut, auteur) reste vérifiée par le
+ *       contrôleur, jamais dupliquée ici.
  *
  * La portée : si la requête cible un store (paramètre de route ou query/body
  * `store_id`), la permission doit être accordée pour CE store (ou via une
@@ -19,8 +25,15 @@ declare(strict_types=1);
  * Routes absentes de cette map : simple authentification par token (routes
  * auth.* — opérations du porteur du token — et notifications.* et messages.*,
  * strictement limitées à l'utilisateur du token par leur contrôleur).
- * Les endpoints du bundle DailyReport seront mappés lors de la refonte de
- * DailyReportPermissionService (permissions par store).
+ *
+ * Bundle DailyReport : les routes show/update/destroy/submit/validate portent
+ * l'id du RAPPORT dans le paramètre de route {id}, pas l'id du store — le
+ * client doit donc passer `store_id` explicitement en query/body pour que la
+ * portée 'membership' ci-dessus (et le scoping RBAC) puissent s'appliquer
+ * (voir .wiki/API.md). Sans `store_id`, la requête est refusée (aucun store
+ * ciblé = portée globale requise). Ces routes sont en outre protégées en
+ * profondeur par des vérifications DailyReportPermissionService directement
+ * dans ApiDailyReportController (auteur, statut du rapport).
  */
 
 return [
@@ -123,4 +136,13 @@ return [
     'api.v1.feedbacks.store'   => ['perm' => 'feedbacks.update', 'self' => 'user_id'],
     'api.v1.feedbacks.update'  => 'feedbacks.update',
     'api.v1.feedbacks.destroy' => 'feedbacks.delete',
+
+    // --- Rapports journaliers (bundle DailyReport) — libre-service par store ----
+    'api.v1.daily_reports.index'    => ['perm' => 'daily_reports.view',   'membership' => true],
+    'api.v1.daily_reports.store'    => ['perm' => 'daily_reports.create', 'membership' => true],
+    'api.v1.daily_reports.show'     => ['perm' => 'daily_reports.view',   'membership' => true],
+    'api.v1.daily_reports.update'   => ['perm' => 'daily_reports.update', 'membership' => true],
+    'api.v1.daily_reports.submit'   => ['perm' => 'daily_reports.submit', 'membership' => true],
+    'api.v1.daily_reports.validate' => 'daily_reports.approve',
+    'api.v1.daily_reports.destroy'  => 'daily_reports.delete',
 ];

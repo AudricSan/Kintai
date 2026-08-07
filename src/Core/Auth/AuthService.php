@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\Core\Auth;
 
+use kintai\Core\Repositories\RememberTokenRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
@@ -25,6 +26,8 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 final class AuthService
 {
     private const SESSION_KEY = 'auth_user_id';
+    private const REMEMBER_COOKIE = 'kintai_remember';
+    private const REMEMBER_LIFETIME_DAYS = 30;
 
     public function __construct(
         private readonly UserRepositoryInterface $users,
@@ -32,13 +35,14 @@ final class AuthService
         private readonly StoreRepositoryInterface $stores,
         private readonly RoleRepositoryInterface $roles,
         private readonly RoleAssignmentRepositoryInterface $roleAssignments,
+        private readonly RememberTokenRepositoryInterface $rememberTokens,
     ) {}
 
     /**
      * Tente de connecter un utilisateur avec email + mot de passe.
      * Retourne true si les identifiants sont valides et l'utilisateur actif.
      */
-    public function attempt(string $email, string $password): bool
+    public function attempt(string $email, string $password, bool $remember = false): bool
     {
         $user = $this->users->findByEmail($email);
 
@@ -56,6 +60,9 @@ final class AuthService
 
         session_regenerate_id(true);
         $_SESSION[self::SESSION_KEY] = $user['id'];
+        if ($remember) {
+            $this->issueRememberToken((int) $user['id']);
+        }
         return true;
     }
 
@@ -63,7 +70,7 @@ final class AuthService
      * Tente de connecter un employé avec code_employé + code_magasin + mot de passe.
      * Le mot de passe par défaut est "0000".
      */
-    public function attemptByCode(string $employeeCode, string $storeCode, string $password): bool
+    public function attemptByCode(string $employeeCode, string $storeCode, string $password, bool $remember = false): bool
     {
         $store = $this->stores->findByCode(strtoupper(trim($storeCode)));
         if ($store === null) {
@@ -91,6 +98,58 @@ final class AuthService
 
         session_regenerate_id(true);
         $_SESSION[self::SESSION_KEY] = $user['id'];
+        if ($remember) {
+            $this->issueRememberToken((int) $user['id']);
+        }
+        return true;
+    }
+
+    /**
+     * Relit le cookie "rester connecté" (posé par issueRememberToken) et reconnecte
+     * l'utilisateur s'il est valide. Fait tourner le token à chaque utilisation réussie
+     * (ancien sélecteur supprimé, nouveau émis) : limite la fenêtre de rejeu si le cookie
+     * a fuité, sans jamais forcer l'utilisateur à se reconnecter tant qu'il revient avant
+     * expiration. $cookieValue permet de s'affranchir de $_COOKIE dans les tests.
+     */
+    public function attemptViaRememberCookie(?string $cookieValue = null): bool
+    {
+        $cookieValue ??= $_COOKIE[self::REMEMBER_COOKIE] ?? null;
+        if (!$cookieValue || !str_contains($cookieValue, '.')) {
+            return false;
+        }
+
+        [$selector, $validator] = explode('.', $cookieValue, 2);
+        $token = $this->rememberTokens->findBySelector($selector);
+        if ($token === null) {
+            $this->clearRememberCookie();
+            return false;
+        }
+
+        // Sélecteur valide mais mauvais validateur, ou token expiré : le cookie est
+        // potentiellement volé/rejoué — on révoque par précaution plutôt que d'échouer
+        // silencieusement en le laissant réutilisable.
+        if (
+            strtotime((string) $token['expires_at']) < time()
+            || !hash_equals((string) $token['validator_hash'], hash('sha256', $validator))
+        ) {
+            $this->rememberTokens->deleteBySelector($selector);
+            $this->clearRememberCookie();
+            return false;
+        }
+
+        $user = $this->users->findById((int) $token['user_id']);
+        if ($user === null || empty($user['is_active']) || !empty($user['deleted_at'])) {
+            $this->rememberTokens->deleteBySelector($selector);
+            $this->clearRememberCookie();
+            return false;
+        }
+
+        $this->rememberTokens->deleteBySelector($selector);
+
+        session_regenerate_id(true);
+        $_SESSION[self::SESSION_KEY] = $user['id'];
+        $this->issueRememberToken((int) $user['id']);
+
         return true;
     }
 
@@ -147,7 +206,7 @@ final class AuthService
             if ($assignment['scope_type'] !== 'store' || $assignment['scope_id'] === null) {
                 continue;
             }
-            if ($this->roleGrantsAnyPermission((int) $assignment['role_id'])) {
+            if ($this->roleGrantsManagementAccess((int) $assignment['role_id'])) {
                 $storeIds[] = (int) $assignment['scope_id'];
             }
         }
@@ -163,10 +222,67 @@ final class AuthService
         return !empty($this->managedStoreIds());
     }
 
-    /** Déconnecte l'utilisateur courant. */
+    /** Déconnecte l'utilisateur courant (et révoque le "rester connecté" s'il y en a un). */
     public function logout(): void
     {
         unset($_SESSION[self::SESSION_KEY]);
+        $this->revokeRememberCookie();
+    }
+
+    /**
+     * Émet un nouveau token "rester connecté" (30 jours) : sélecteur en clair (indexé,
+     * sert à la recherche) + hash SHA-256 du validateur (jamais stocké en clair) — schéma
+     * repris de celui déjà utilisé pour api_tokens, adapté en sélecteur/validateur pour
+     * qu'une lecture de la table seule ne permette pas de rejouer un cookie volé côté DB.
+     */
+    private function issueRememberToken(int $userId): void
+    {
+        $selector  = bin2hex(random_bytes(12));
+        $validator = bin2hex(random_bytes(32));
+        $expires   = time() + self::REMEMBER_LIFETIME_DAYS * 86400;
+
+        $this->rememberTokens->create([
+            'user_id'        => $userId,
+            'selector'       => $selector,
+            'validator_hash' => hash('sha256', $validator),
+            'expires_at'     => date('Y-m-d H:i:s', $expires),
+        ]);
+
+        $this->setRememberCookie($selector . '.' . $validator, $expires);
+    }
+
+    /** Révoque le token en base associé au cookie courant (s'il existe) et efface le cookie. */
+    private function revokeRememberCookie(): void
+    {
+        $cookieValue = $_COOKIE[self::REMEMBER_COOKIE] ?? null;
+        if ($cookieValue && str_contains($cookieValue, '.')) {
+            [$selector] = explode('.', $cookieValue, 2);
+            $this->rememberTokens->deleteBySelector($selector);
+        }
+        $this->clearRememberCookie();
+    }
+
+    private function setRememberCookie(string $value, int $expires): void
+    {
+        setcookie(self::REMEMBER_COOKIE, $value, [
+            'expires'  => $expires,
+            'path'     => '/',
+            'secure'   => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
+    }
+
+    private function clearRememberCookie(): void
+    {
+        setcookie(self::REMEMBER_COOKIE, '', [
+            'expires'  => time() - 3600,
+            'path'     => '/',
+            'secure'   => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
+        unset($_COOKIE[self::REMEMBER_COOKIE]);
     }
 
     private function hasOwnerRole(int $userId): bool
@@ -183,7 +299,18 @@ final class AuthService
         return false;
     }
 
-    private function roleGrantsAnyPermission(int $roleId): bool
+    /**
+     * Vrai si ce rôle accorde au moins une permission de *gestion* (au-delà d'un simple
+     * ".view") sur ce store — c'est le critère utilisé pour décider si un utilisateur passe
+     * AdminMiddleware et accède à /admin/*. Un rôle qui n'accorde QUE des permissions .view
+     * (ex. le rôle "employee" par défaut, avec seulement shifts.view pour consulter son
+     * planning) ne doit jamais compter comme gestionnaire : sinon un simple employé se
+     * retrouve avec accès aux pages de gestion (shifts, types de shifts, personnel...) de
+     * tout /admin/*, avec seule la permission fine (PermissionMiddleware) pour limiter les
+     * actions d'écriture — mais pas l'affichage des boutons/données sensibles côté vue, qui
+     * suppose généralement "je suis dans /admin, donc je gère". Voir CHANGELOG.
+     */
+    private function roleGrantsManagementAccess(int $roleId): bool
     {
         $role = $this->roles->findById($roleId);
         if ($role === null) {
@@ -192,6 +319,11 @@ final class AuthService
         if (!empty($role['is_system'])) {
             return true;
         }
-        return $this->roles->getPermissions($roleId) !== [];
+        foreach ($this->roles->getPermissions($roleId) as $permission) {
+            if (!str_ends_with($permission, '.view')) {
+                return true;
+            }
+        }
+        return false;
     }
 }

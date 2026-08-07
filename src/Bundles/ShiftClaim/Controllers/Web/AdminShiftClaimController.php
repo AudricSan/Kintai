@@ -9,10 +9,12 @@ use kintai\Core\Repositories\ShiftClaimRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
+use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\NotificationService;
 use kintai\Core\Services\ShiftServiceInterface;
 use kintai\UI\Controller\Web\HasAdminAccess;
 use kintai\UI\ViewRenderer;
@@ -25,11 +27,13 @@ final class AdminShiftClaimController
         private readonly ViewRenderer $view,
         private readonly UserRepositoryInterface $users,
         private readonly StoreRepositoryInterface $stores,
+        private readonly StoreUserRepositoryInterface $storeUsers,
         private readonly ShiftRepositoryInterface $shifts,
         private readonly ShiftTypeRepositoryInterface $shiftTypes,
         private readonly ShiftClaimRepositoryInterface $shiftClaims,
         private readonly ShiftServiceInterface $shiftService,
         private readonly AuditLogger $auditLogger,
+        private readonly NotificationService $notifs,
     ) {}
 
     public function openShifts(Request $request): Response
@@ -61,14 +65,66 @@ final class AdminShiftClaimController
             $shiftsWithClaims[] = array_merge($shift, ['_claims' => $claims]);
         }
 
-        usort($shiftsWithClaims, fn($a, $b) => strcmp($a['shift_date'] ?? '', $b['shift_date'] ?? ''));
+        $sort = (string) ($request->query('sort') ?? 'date_asc');
+        usort($shiftsWithClaims, function ($a, $b) use ($sort, $storesMap) {
+            $dateA  = $a['shift_date'] ?? '';
+            $dateB  = $b['shift_date'] ?? '';
+            $storeA = strtolower($storesMap[(int) ($a['store_id'] ?? 0)] ?? '');
+            $storeB = strtolower($storesMap[(int) ($b['store_id'] ?? 0)] ?? '');
+            return match ($sort) {
+                'date_desc'  => strcmp($dateB, $dateA),
+                'store_asc'  => strcmp($storeA, $storeB) ?: strcmp($dateA, $dateB),
+                'store_desc' => strcmp($storeB, $storeA) ?: strcmp($dateA, $dateB),
+                default      => strcmp($dateA, $dateB),
+            };
+        });
+
+        // Candidatures : agrégées depuis tous les shifts ouverts (avant filtrage par type,
+        // pour que le filtre "type" du tableau des shifts n'affecte pas celui des candidatures).
+        $claimStatusFilter = (string) ($request->query('claim_status') ?? '');
+        $claims = [];
+        foreach ($shiftsWithClaims as $shift) {
+            foreach ($shift['_claims'] ?? [] as $claim) {
+                if ($claimStatusFilter !== '' && ($claim['status'] ?? 'pending') !== $claimStatusFilter) {
+                    continue;
+                }
+                $claims[] = array_merge($claim, ['_shift' => $shift]);
+            }
+        }
+
+        $claimSort = (string) ($request->query('claim_sort') ?? 'date_asc');
+        usort($claims, function ($a, $b) use ($claimSort, $storesMap) {
+            $dateA  = $a['claimed_at'] ?? '';
+            $dateB  = $b['claimed_at'] ?? '';
+            $storeA = strtolower($storesMap[(int) ($a['_shift']['store_id'] ?? 0)] ?? '');
+            $storeB = strtolower($storesMap[(int) ($b['_shift']['store_id'] ?? 0)] ?? '');
+            return match ($claimSort) {
+                'date_desc'  => strcmp($dateB, $dateA),
+                'store_asc'  => strcmp($storeA, $storeB) ?: strcmp($dateA, $dateB),
+                'store_desc' => strcmp($storeB, $storeA) ?: strcmp($dateA, $dateB),
+                default      => strcmp($dateA, $dateB),
+            };
+        });
+
+        $typeFilter = (string) ($request->query('type') ?? '');
+        if ($typeFilter !== '') {
+            $shiftsWithClaims = array_values(array_filter(
+                $shiftsWithClaims,
+                fn($s) => (string) ($s['shift_type_id'] ?? '') === $typeFilter
+            ));
+        }
 
         return Response::html($this->view->render('shift-claim::open-shifts', [
-            'title'       => __('open_shifts'),
-            'shifts'      => $shiftsWithClaims,
-            'users_map'   => $usersMap,
-            'types_map'   => $typesMap,
-            'stores_map'  => $storesMap,
+            'title'              => __('open_shifts'),
+            'shifts'             => $shiftsWithClaims,
+            'claims'             => $claims,
+            'users_map'          => $usersMap,
+            'types_map'          => $typesMap,
+            'stores_map'         => $storesMap,
+            'type_filter'        => $typeFilter,
+            'claim_status_filter'=> $claimStatusFilter,
+            'sort'               => $sort,
+            'claim_sort'         => $claimSort,
         ], 'layout.app'));
     }
 
@@ -109,6 +165,14 @@ final class AdminShiftClaimController
         $old = $shift;
         $saved = $this->shifts->save(array_merge($shift, ['is_open' => 1]));
         $this->auditLogger->logUpdate($request, 'shift.published', 'shift', (int) $shift['id'], $old, $saved, [], (int) ($shift['store_id'] ?? 0) ?: null);
+
+        $storeId = (int) ($shift['store_id'] ?? 0);
+        $holderId = (int) ($shift['user_id'] ?? 0);
+        $eligible = array_values(array_diff($this->memberUserIds([$storeId]), [$holderId]));
+        if ($eligible !== []) {
+            $this->notifs->notifyMany($eligible, 'open_shift_published', 'Un shift est disponible à la bourse aux shifts.', (int) $shift['id']);
+        }
+
         return Response::redirect($this->base() . '/admin/open-shifts?success=published');
     }
 
@@ -126,6 +190,7 @@ final class AdminShiftClaimController
             if (($claim['status'] ?? '') === 'pending') {
                 $this->shiftClaims->save(array_merge($claim, ['status' => 'withdrawn']));
                 $withdrawn++;
+                $this->notifs->notify((int) ($claim['user_id'] ?? 0), 'shift_claim_withdrawn', 'Le shift auquel vous aviez postulé n\'est plus disponible.', (int) $shift['id']);
             }
         }
         $this->auditLogger->logUpdate($request, 'shift.unpublished', 'shift', (int) $shift['id'], $old, $saved, ['withdrawn' => $withdrawn], (int) ($shift['store_id'] ?? 0) ?: null);
@@ -178,10 +243,13 @@ final class AdminShiftClaimController
                     'resolved_at' => $now,
                     'resolved_by' => $resolver,
                 ]));
+                $this->notifs->notify((int) $other['user_id'], 'shift_claim_rejected', 'Votre candidature n\'a pas été retenue.', (int) $shift['id']);
             }
         }
 
         $this->auditLogger->logUpdate($request, 'shift_claim.approved', 'shift_claim', (int) $claim['id'], $oldClaim, $savedClaim, [], (int) ($shift['store_id'] ?? 0) ?: null);
+
+        $this->notifs->notify((int) $claim['user_id'], 'shift_claim_approved', 'Votre candidature a été approuvée, le shift vous est attribué.', (int) $shift['id']);
 
         return Response::redirect($this->base() . '/admin/open-shifts?success=claim_approved');
     }
@@ -213,6 +281,8 @@ final class AdminShiftClaimController
             'resolved_by' => $resolver,
         ]));
         $this->auditLogger->logUpdate($request, 'shift_claim.rejected', 'shift_claim', (int) $claim['id'], $oldClaim, $savedClaim, [], (int) ($shift['store_id'] ?? 0) ?: null);
+
+        $this->notifs->notify((int) $claim['user_id'], 'shift_claim_rejected', 'Votre candidature n\'a pas été retenue.', (int) $shift['id']);
 
         return Response::redirect($this->base() . '/admin/open-shifts?success=claim_rejected');
     }

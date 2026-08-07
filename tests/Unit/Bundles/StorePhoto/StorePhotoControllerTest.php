@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Bundles\StorePhoto;
 
 use kintai\Bundles\StorePhoto\Controllers\Web\StorePhotoController;
+use kintai\Bundles\StorePhoto\Services\ImageCompressionService;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Repositories\StorePhotoRepositoryInterface;
@@ -27,6 +28,8 @@ final class StorePhotoControllerTest extends TestCase
         $viewDir = sys_get_temp_dir() . '/kintai-store-photos-views';
         $this->ensureViewFile($viewDir, 'store-photos');
         $this->ensureViewFile($viewDir, 'store-photos-settings');
+        $this->ensureViewFile($viewDir, 'store-photos-form');
+        $this->ensureViewFile($viewDir, 'store-photos-detail');
         $this->ensureViewFile(sys_get_temp_dir(), 'layout.app');
 
         $view = new ViewRenderer(sys_get_temp_dir());
@@ -42,6 +45,7 @@ final class StorePhotoControllerTest extends TestCase
             $this->stores,
             $this->appSettings,
             new AuditLogger(),
+            new ImageCompressionService(),
         );
     }
 
@@ -73,6 +77,84 @@ final class StorePhotoControllerTest extends TestCase
         $this->assertSame(200, $response->status());
     }
 
+    /**
+     * Régression IDOR : index() appelait findAllSubmissions(null, ...) sans jamais tenir
+     * compte de managed_store_ids, remontant les envois de TOUS les stores à un manager
+     * restreint. Voir CHANGELOG.
+     */
+    public function testIndexScopesSubmissionsToManagedStoresOnly(): void
+    {
+        $this->stores->method('findAll')->willReturn([
+            ['id' => 1, 'name' => 'Store A'],
+            ['id' => 2, 'name' => 'Store B'],
+        ]);
+        $this->photos->expects($this->once())->method('findAllSubmissions')
+            ->with([1], 100)
+            ->willReturn([['id' => 10, 'store_id' => 1]]);
+        $this->photos->method('findImagesBySubmission')->willReturn([]);
+
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', [1]);
+
+        $response = $this->controller->index($req);
+
+        $this->assertSame(200, $response->status());
+    }
+
+    /** Un ?store_id= hors du périmètre géré est ignoré plutôt que d'être appliqué tel quel. */
+    public function testIndexIgnoresStoreIdFilterOutsideManagedScope(): void
+    {
+        $this->stores->method('findAll')->willReturn([['id' => 1, 'name' => 'Store A']]);
+        $this->photos->method('findAllSubmissions')->with([1], 100)->willReturn([
+            ['id' => 10, 'store_id' => 1],
+        ]);
+        $this->photos->method('findImagesBySubmission')->willReturn([]);
+
+        $_GET['store_id'] = '2'; // store non géré par ce manager
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', [1]);
+
+        $response = $this->controller->index($req);
+
+        $this->assertSame(200, $response->status());
+    }
+
+    // -------------------------------------------------------------------------
+    // show()
+    // -------------------------------------------------------------------------
+
+    /**
+     * Régression IDOR : show() ne vérifiait jamais l'appartenance au store, un manager
+     * pouvait consulter le détail d'un envoi de n'importe quel autre store en changeant
+     * l'id dans l'URL. Voir CHANGELOG.
+     */
+    public function testShowForbiddenForSubmissionOutsideManagedScope(): void
+    {
+        $this->photos->method('findSubmissionById')->with(10)->willReturn(['id' => 10, 'store_id' => 2]);
+
+        $req = new Request();
+        $req->setRouteParams(['id' => '10']);
+        $req->setAttribute('managed_store_ids', [1]);
+
+        $this->expectException(ForbiddenException::class);
+        $this->controller->show($req);
+    }
+
+    public function testShowSucceedsForSubmissionWithinManagedScope(): void
+    {
+        $this->photos->method('findSubmissionById')->with(10)->willReturn(['id' => 10, 'store_id' => 1]);
+        $this->photos->method('findImagesBySubmission')->with(10)->willReturn([]);
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Store A']);
+
+        $req = new Request();
+        $req->setRouteParams(['id' => '10']);
+        $req->setAttribute('managed_store_ids', [1]);
+
+        $response = $this->controller->show($req);
+
+        $this->assertSame(200, $response->status());
+    }
+
     public function testStoreForbiddenWhenPhotosDisabledForStore(): void
     {
         $_POST = ['store_id' => '1'];
@@ -97,6 +179,32 @@ final class StorePhotoControllerTest extends TestCase
 
         $this->expectException(ForbiddenException::class);
         $this->controller->create($req);
+    }
+
+    public function testCreateDropdownOnlyListsStoresWithPhotosFeatureEnabled(): void
+    {
+        // Le dropdown ne doit pas proposer un store où l'envoi serait ensuite
+        // refusé (403) par store() faute de fonctionnalité "photos" activée.
+        $viewDir = sys_get_temp_dir() . '/kintai-store-photos-views';
+        file_put_contents($viewDir . DIRECTORY_SEPARATOR . 'store-photos-form.php', '<?php echo json_encode($myStores);');
+        file_put_contents(sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'layout' . DIRECTORY_SEPARATOR . 'app.php', '<?php echo $content;');
+
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+
+        $this->stores->method('findAll')->willReturn([
+            ['id' => 1, 'name' => 'Store A'],
+            ['id' => 2, 'name' => 'Store B'],
+        ]);
+        $this->stores->method('getFeatures')->willReturnMap([
+            [1, ['photos']],
+            [2, ['shifts']],
+        ]);
+
+        $response = $this->controller->create($req);
+
+        $listed = json_decode($response->body(), true);
+        $this->assertSame([1], array_column($listed, 'id'));
     }
 
     public function testStoreWithoutStoreIdRedirectsToCreate(): void

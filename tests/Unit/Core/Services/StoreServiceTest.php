@@ -21,11 +21,14 @@ final class StoreServiceTest extends TestCase
     {
         $this->stores = $this->createMock(StoreRepositoryInterface::class);
 
+        $languages = $this->createMock(LanguageRepositoryInterface::class);
+        $languages->method('findAllActive')->willReturn([['code' => 'en']]);
+
         $this->service = new StoreService(
             $this->stores,
             $this->createMock(StoreUserRepositoryInterface::class),
             $this->createMock(UserRepositoryInterface::class),
-            $this->createMock(LanguageRepositoryInterface::class),
+            $languages,
         );
     }
 
@@ -57,6 +60,36 @@ final class StoreServiceTest extends TestCase
 
         $this->stores->expects($this->never())->method('saveFeatures');
         $this->stores->expects($this->once())->method('save')->willReturn($existingStore);
+
+        $this->service->updateStore(1, ['name' => 'Store A renamed']);
+    }
+
+    public function testCreateStoreDefaultsCurrencySymbolStyleToKanji(): void
+    {
+        $this->stores->expects($this->once())->method('save')->with(
+            $this->callback(fn (array $data) => $data['currency_symbol_style'] === 'kanji'),
+        )->willReturn(['id' => 1]);
+
+        $this->service->createStore(['code' => 'ST01', 'name' => 'Store A']);
+    }
+
+    public function testCreateStorePersistsInternationalCurrencySymbolStyle(): void
+    {
+        $this->stores->expects($this->once())->method('save')->with(
+            $this->callback(fn (array $data) => $data['currency_symbol_style'] === 'international'),
+        )->willReturn(['id' => 1]);
+
+        $this->service->createStore(['code' => 'ST01', 'name' => 'Store A', 'currency_symbol_style' => 'international']);
+    }
+
+    public function testUpdateStoreKeepsExistingCurrencySymbolStyleWhenNotProvided(): void
+    {
+        $existingStore = ['id' => 1, 'code' => 'A', 'name' => 'Store A', 'currency_symbol_style' => 'international'];
+        $this->stores->method('findById')->with(1)->willReturn($existingStore);
+
+        $this->stores->expects($this->once())->method('save')->with(
+            $this->callback(fn (array $data) => $data['currency_symbol_style'] === 'international'),
+        )->willReturn($existingStore);
 
         $this->service->updateStore(1, ['name' => 'Store A renamed']);
     }

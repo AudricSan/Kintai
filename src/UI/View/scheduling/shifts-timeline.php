@@ -12,23 +12,31 @@ use kintai\UI\Utils\TimelineHelpers;
 /** @var array                $users_map           id → nom */
 /** @var array                $user_color_map      id → couleur hex|null */
 /** @var array                $types_map           id → shift_type */
+/** @var array                $type_store_ids      id de type => liste de store_id (un type peut couvrir plusieurs stores) */
 /** @var int                  $my_user_id          admin courant */
 /** @var string               $today */
 /** @var string               $prev_start */
 /** @var string               $next_start */
 /** @var array                $rates_map           uid → type_id → rate */
 /** @var array                $currency_map        uid → currency */
+/** @var string               $currency_symbol_style  'kanji'|'international' */
 /** @var int                  $filter_store_id */
 /** @var array                $stores_map          id → nom */
 /** @var array                $available_stores    [{id, name, ...}] */
 /** @var array                $store_settings      {min_staff_per_day, min_shift_minutes, max_shift_minutes} */
-/** @var bool|null            $can_manage          null = contexte admin (toujours vrai) */
+/** @var bool|null            $can_manage          true = affiche import/création/taux horaires/drag-drop (Owner ou RBAC shifts.update sur le store affiché) */
 /** @var string|null          $page_heading        titre de page (défaut : "Planning") */
 /** @var bool                 $show_request_swap   afficher le bouton "demander un échange" (contexte employé) */
 
-$_canManage     = $can_manage ?? true;
+// Défaut à false (pas à true) : cette vue est partagée entre AdminShiftController et
+// EmployeeController, tous deux passent désormais explicitement can_manage — un futur appelant
+// qui oublierait de le faire ne doit pas exposer accidentellement les taux horaires ni les
+// actions d'écriture (import/création/glisser-déposer) à un simple employé.
+$_canManage     = $can_manage ?? false;
+$_typeStoreIds  = $type_store_ids ?? [];
 $_ratesMap      = $rates_map     ?? [];
 $_currencyMap   = $currency_map  ?? [];
+$_currencySymbolStyle = $currency_symbol_style ?? 'kanji';
 $_minStaffDay   = (int) ($store_settings['min_staff_per_day']    ?? 0);
 $_minShiftMin   = (int) ($store_settings['min_shift_minutes']    ?? 0);
 $_maxShiftMin   = (int) ($store_settings['max_shift_minutes']    ?? 0);
@@ -81,7 +89,7 @@ $periodLabel = $period_mode === 'week'
         <div class="page-header__actions">
             <a href="<?= route_url('employee.shifts.week') ?>" class="btn btn--ghost btn--sm">☰ <?= __('table_view') ?></a>
             <a href="<?= route_url('employee.shifts.calendar') ?>" class="btn btn--ghost btn--sm">📅 <?= __('calendar_view') ?></a>
-            <?php if (($show_request_swap ?? false) && feat_bundle('shift-swap')): ?>
+            <?php if (($show_request_swap ?? false) && feat_bundle('swaps')): ?>
                 <?= Button::make('⇄ ' . __('request_swap'))->primary()->sm()->link(route_url('employee.swaps.create'))->render() ?>
             <?php endif; ?>
         </div>
@@ -359,13 +367,17 @@ ob_start();
                                     $shPay = TimelineHelpers::atPayBreakdown(
                                         $sh['start_time'] ?? '00:00', $sh['end_time'] ?? '00:00',
                                         $shPause, !empty($sh['cross_midnight']),
-                                        $shUid, $shStoreId, $types_map, $_ratesMap, $shCurrency
+                                        $shUid, $shStoreId, $types_map, $_typeStoreIds, $_ratesMap, $shCurrency, $_currencySymbolStyle
                                     );
                                     $shNetMin     = $shPay['net_minutes'];
                                     $shHoursLabel = intdiv($shNetMin, 60) . 'h' . str_pad($shNetMin % 60, 2, '0', STR_PAD_LEFT)
                                         . ($shPause > 0 ? ' (pause ' . $shPause . ' min)' : '');
-                                    $shPayLabel   = $shPay['has_rate'] ? format_currency($shPay['total'], $shCurrency) : '';
-                                    $shRateDetail = htmlspecialchars(json_encode($shPay['items'], JSON_UNESCAPED_UNICODE), ENT_QUOTES);
+                                    // Le taux horaire/montant ne doit atteindre le HTML que si $_canManage : sinon
+                                    // il resterait lisible via le title="" (tooltip navigateur) ou les attributs
+                                    // data-pay/data-rate-detail même quand shift-detail-modal.js masque la modale
+                                    // (CAN_MANAGE côté JS ne fait que cacher l'affichage, pas retirer la donnée du DOM).
+                                    $shPayLabel   = ($_canManage && $shPay['has_rate']) ? format_currency($shPay['total'], $shCurrency, $_currencySymbolStyle) : '';
+                                    $shRateDetail = htmlspecialchars(json_encode($_canManage ? $shPay['items'] : [], JSON_UNESCAPED_UNICODE), ENT_QUOTES);
 
                                     $tooltip = htmlspecialchars(
                                         $sh['_name'] . ' · ' . TimelineHelpers::atFmt($sh['_sm']) . '–' . TimelineHelpers::atFmt($sh['_em'])
@@ -483,7 +495,7 @@ ob_start();
             <?php if ($_canManage): ?>
             <?= Button::make(__('edit'))->primary()->sm()->attrs(['id' => 'sd-edit-link', 'href' => '#'])->render() ?>
             <form id="sd-delete-form" method="POST" action="#" class="form-inline"
-                  onsubmit="return confirm('<?= __('confirm_delete_shift_permanently') ?>')">
+                  data-confirm="<?= htmlspecialchars(__('confirm_delete_shift_permanently'), ENT_QUOTES) ?>">
                 <?= csrf_field() ?>
                 <?= Button::make(__('delete'))->danger()->sm()->attrs(['type' => 'submit'])->render() ?>
             </form>
@@ -543,6 +555,7 @@ ob_start();
     ], $all_user_ids),
     'types' => array_values($types_map),
 ], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?></script>
+<script src="<?= $BASE_URL ?>/assets/js/modules/shift-wage-preview.js"></script>
 <script src="<?= $BASE_URL ?>/assets/js/modules/shift-detail-modal.js"></script>
 <?php if ($_canManage): ?>
 <script src="<?= $BASE_URL ?>/assets/js/modules/timeline-diag.js"></script>

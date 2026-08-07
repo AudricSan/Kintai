@@ -17,7 +17,10 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\Log;
+use kintai\Core\Services\ShiftWageCalculator;
 use kintai\UI\ViewRenderer;
 use kintai\UI\Controller\Web\HasAdminAccess;
 use kintai\Core\Services\ShiftServiceInterface;
@@ -39,7 +42,30 @@ final class AdminShiftController
         private readonly ImportAliasRepositoryInterface $importAliases,
         private readonly ShiftServiceInterface $shiftService,
         private readonly TimeoffRequestRepositoryInterface $timeoffRequests,
+        private readonly PermissionService $permissions,
     ) {}
+
+    /** @return array<int, array> id => type, pour les stores gérés (ou tous si Owner). */
+    private function shiftTypesForManaged(?array $managedIds): array
+    {
+        return $managedIds === null
+            ? $this->shiftTypes->findAll()
+            : $this->shiftTypes->findByStores($managedIds);
+    }
+
+    /**
+     * Champ d'ajustement manuel (taux horaire ou minutes actives) : vide = null
+     * (calcul automatique), sinon la valeur saisie prime sur la résolution
+     * habituelle de ShiftWageCalculator::costOf().
+     */
+    private function postedOverride(Request $request, string $field): int|float|null
+    {
+        $raw = trim($request->post($field, ''));
+        if ($raw === '') {
+            return null;
+        }
+        return $field === 'net_minutes_override' ? (int) $raw : (float) $raw;
+    }
 
     /**
      * Vrai si l'utilisateur a un congé approuvé couvrant la date de shift donnée.
@@ -56,6 +82,24 @@ final class AdminShiftController
             }
         }
         return false;
+    }
+
+    /**
+     * Type de shift dominant (le plus de minutes) calculé automatiquement depuis
+     * le chevauchement horaire entre start_time/end_time et les types actifs du
+     * store — remplace l'ancien choix manuel unique. Utilisé uniquement pour
+     * l'affichage (couleur/étiquette) ; la facturation réelle est recalculée par
+     * tranche à la lecture des rapports via ShiftWageCalculator::costOf().
+     */
+    private function dominantShiftTypeId(int $storeId, string $startTime, string $endTime, int $netMinutes): ?int
+    {
+        $result = (new ShiftWageCalculator())->calculate(
+            $startTime,
+            $endTime,
+            $this->shiftTypes->findActive($storeId),
+            $netMinutes
+        );
+        return $result['dominant_type_id'];
     }
 
     public function shifts(Request $request): Response
@@ -302,9 +346,12 @@ final class AdminShiftController
         usort($memberIds, fn($a, $b) => strcmp($usersMap[$a] ?? '', $usersMap[$b] ?? ''));
 
         // Types de shifts (tous les stores gérés)
-        $typesMap = [];
-        foreach ($this->filterByStore($this->shiftTypes->findAll(), $managedIds) as $t) {
-            $typesMap[(int) $t['id']] = $t;
+        $typesMap     = [];
+        $typeStoreIds = [];
+        foreach ($this->shiftTypesForManaged($managedIds) as $t) {
+            $tid = (int) $t['id'];
+            $typesMap[$tid]     = $t;
+            $typeStoreIds[$tid] = $this->shiftTypes->getStoreIds($tid);
         }
 
         // Shifts par date et utilisateur
@@ -324,7 +371,8 @@ final class AdminShiftController
         $ratesMap    = [];
         $currencyMap = [];
         $storeObj    = $filterStoreId > 0 ? $this->stores->findById($filterStoreId) : null;
-        $currency    = strtoupper(trim($storeObj['currency'] ?? 'JPY'));
+        $currency      = strtoupper(trim($storeObj['currency'] ?? 'JPY'));
+        $currencyStyle = store_currency_style($storeObj);
         foreach ($memberIds as $uid) {
             $currencyMap[$uid] = $currency;
             foreach ($this->userRates->findByUser($uid) as $r) {
@@ -335,6 +383,13 @@ final class AdminShiftController
         // ID de l'utilisateur courant (pour highlight éventuel)
         $authUser = $request->getAttribute('auth_user');
         $myUserId = (int) ($authUser['id'] ?? 0);
+
+        // Peut gérer les shifts du store affiché (Owner, ou RBAC accordant shifts.update sur ce
+        // store) — la vue défaut à true si cette clé n'est pas fournie (usage historique en dehors
+        // de ce contrôleur), donc omettre ce calcul exposait le bouton import/création et le détail
+        // des taux horaires à n'importe quel viewer, y compris un simple employé (shifts.view seul).
+        $canManage = !empty($authUser['is_admin'])
+            || $this->permissions->can($authUser, 'shifts.update', $filterStoreId > 0 ? $filterStoreId : null);
 
         // Paramètres de planification du store (pour les alertes timeline)
         $storeSettings = [
@@ -356,18 +411,21 @@ final class AdminShiftController
             'users_map'           => $usersMap,
             'user_color_map'      => $colorMap,
             'types_map'           => $typesMap,
+            'type_store_ids'      => $typeStoreIds,
             'rates_map'           => $ratesMap,
             'currency_map'        => $currencyMap,
+            'currency_symbol_style' => $currencyStyle,
             'filter_store_id'     => $filterStoreId,
             'stores_map'          => $storesMap,
             'available_stores'    => $availStores,
             'today'               => $today,
             'my_user_id'          => $myUserId,
+            'can_manage'          => $canManage,
             'store_settings'      => $storeSettings,
             'week_start_day'      => $weekStartDay,
             'all_users'           => $this->users->findAll(),
             'all_stores'          => $availStores,
-            'all_types'           => $this->filterByStore($this->shiftTypes->findAll(), $managedIds),
+            'all_types'           => $this->shiftTypesForManaged($managedIds),
         ], 'layout.app'));
     }
 
@@ -442,7 +500,7 @@ final class AdminShiftController
         usort($memberIds, fn($a, $b) => strcmp($usersMap[$a] ?? '', $usersMap[$b] ?? ''));
 
         $typesMap = [];
-        foreach ($this->filterByStore($this->shiftTypes->findAll(), $managedIds) as $t) {
+        foreach ($this->shiftTypesForManaged($managedIds) as $t) {
             $typesMap[(int) $t['id']] = $t;
         }
 
@@ -496,9 +554,53 @@ final class AdminShiftController
             'shift'       => ['is_open' => $request->query('is_open') === '1' ? 1 : 0],
             'all_users'   => $allUsers,
             'all_stores'  => $availStores,
-            'all_types'   => $this->filterByStore($this->shiftTypes->findAll(), $managedIds),
+            'all_types'   => $this->shiftTypesForManaged($managedIds),
             'redirect_to' => $redirectTo,
         ], 'layout.app'));
+    }
+
+    /**
+     * GET /admin/shifts/wage-preview — aperçu en direct de la décomposition par
+     * tranche horaire pendant la saisie du formulaire (remplace l'ancien select
+     * manuel de shift_type_id, supprimé car un shift peut chevaucher plusieurs
+     * types). Mêmes règles de résolution des taux que ShiftWageCalculator::costOf().
+     */
+    public function wagePreview(Request $request): Response
+    {
+        $storeId = (int) $request->query('store_id', 0);
+        $this->assertStoreAccess($request, $storeId);
+
+        $startTime = (string) $request->query('start_time', '');
+        $endTime   = (string) $request->query('end_time', '');
+        if ($startTime === '' || $endTime === '') {
+            return Response::json(['breakdown' => [], 'estimated_salary' => 0.0, 'dominant_type_id' => null]);
+        }
+
+        $start = strtotime($startTime);
+        $end   = strtotime($endTime);
+        $duration = (int) (($end - $start) / 60);
+        if ($duration < 0) {
+            $duration += 24 * 60;
+        }
+        $pauseMinutes = (int) $request->query('pause_minutes', 0);
+        $netMinutes = max(0, $duration - $pauseMinutes);
+
+        $userId = (int) $request->query('user_id', 0);
+        $personalRates = [];
+        if ($userId > 0) {
+            foreach ($this->userRates->findByUser($userId) as $r) {
+                $personalRates[(int) $r['shift_type_id']] = (float) $r['hourly_rate'];
+            }
+        }
+
+        $wageCalc = new ShiftWageCalculator();
+        $types    = $wageCalc->withPersonalRates(
+            array_column($this->shiftTypes->findActive($storeId), null, 'id'),
+            $personalRates
+        );
+        $result = $wageCalc->calculate($startTime, $endTime, $types, $netMinutes);
+
+        return Response::json($result);
     }
 
     public function storeShift(Request $request): Response
@@ -527,21 +629,26 @@ final class AdminShiftController
             return Response::redirect($this->base() . '/admin/shifts/create?error=timeoff_conflict&store_id=' . $storeId);
         }
 
+        $pauseMinutes = (int) $request->post('pause_minutes', 0);
+        $shiftTypeId  = $this->dominantShiftTypeId($storeId, $startTime, $endTime, max(0, $duration - $pauseMinutes));
+
         $saved = $this->shifts->save([
             'store_id'         => $storeId,
             'user_id'          => ($isOpen || $uid === 0) ? null : $uid,
-            'shift_type_id'    => ($request->post('shift_type_id') !== '' ? (int) $request->post('shift_type_id') : null),
+            'shift_type_id'    => $shiftTypeId,
             'shift_date'       => $shiftDate,
             'start_time'       => $startTime,
             'end_time'         => $endTime,
             'duration_minutes' => $duration,
-            'pause_minutes'    => (int) $request->post('pause_minutes', 0),
+            'pause_minutes'    => $pauseMinutes,
             'cross_midnight'   => $crossMidnight,
             'starts_at'        => $shiftDate . ' ' . $startTime . ':00',
             'ends_at'          => $endsDate  . ' ' . $endTime   . ':00',
             'notes'            => $request->post('notes', '') ?: null,
             'is_open'          => $isOpen ? 1 : 0,
             'open_shift_note'  => $request->post('open_shift_note', '') ?: null,
+            'hourly_rate_override' => $this->postedOverride($request, 'hourly_rate_override'),
+            'net_minutes_override' => $this->postedOverride($request, 'net_minutes_override'),
         ]);
 
         $this->auditLogger->log($request, 'shift.created', 'shift', (int) ($saved['id'] ?? 0), [
@@ -551,13 +658,19 @@ final class AdminShiftController
             'end' => $endTime,
         ], $storeId);
 
+        // Le shift est déjà sauvegardé (et audité) à ce stade : un échec de notification
+        // ne doit pas transformer une action réussie en 500 générique côté utilisateur.
         if (!$isOpen && $uid > 0) {
-            $this->notifs->notify(
-                $uid,
-                'shift_assigned',
-                'Un shift a été ajouté à votre planning le ' . $shiftDate . '.',
-                (int) ($saved['id'] ?? 0)
-            );
+            try {
+                $this->notifs->notify(
+                    $uid,
+                    'shift_assigned',
+                    'Un shift a été ajouté à votre planning le ' . $shiftDate . '.',
+                    (int) ($saved['id'] ?? 0)
+                );
+            } catch (\Throwable $e) {
+                Log::warning('shift_notify_failed', ['shift_id' => (int) ($saved['id'] ?? 0), 'user_id' => $uid, 'error' => $e->getMessage()]);
+            }
         }
 
         $redirectTo = trim($request->post('redirect_to', ''));
@@ -593,7 +706,7 @@ final class AdminShiftController
             'shift'       => $shift,
             'all_users'   => $allUsers,
             'all_stores'  => $this->availableStores($managedIds),
-            'all_types'   => $this->filterByStore($this->shiftTypes->findAll(), $managedIds),
+            'all_types'   => $this->shiftTypesForManaged($managedIds),
             'redirect_to' => $redirectTo,
         ], 'layout.app'));
     }
@@ -644,21 +757,26 @@ final class AdminShiftController
             return Response::redirect($this->base() . '/admin/shifts/' . $shift['id'] . '/edit?error=timeoff_conflict');
         }
 
+        $pauseMinutes = (int) $request->post('pause_minutes', $shift['pause_minutes'] ?? 0);
+        $shiftTypeId  = $this->dominantShiftTypeId($newStoreId, $startTime, $endTime, max(0, $duration - $pauseMinutes));
+
         $saved = $this->shifts->save(array_merge($shift, [
             'store_id'         => $newStoreId,
             'user_id'          => $isOpen ? null : $targetUid,
-            'shift_type_id'    => ($request->post('shift_type_id') !== '' ? (int) $request->post('shift_type_id') : null),
+            'shift_type_id'    => $shiftTypeId,
             'shift_date'       => $shiftDate,
             'start_time'       => $startTime,
             'end_time'         => $endTime,
             'duration_minutes' => $duration,
-            'pause_minutes'    => (int) $request->post('pause_minutes', $shift['pause_minutes'] ?? 0),
+            'pause_minutes'    => $pauseMinutes,
             'cross_midnight'   => $crossMidnight,
             'starts_at'        => $shiftDate . ' ' . $startTime . ':00',
             'ends_at'          => $endsDate  . ' ' . $endTime   . ':00',
             'notes'            => $request->post('notes', '') ?: null,
             'is_open'          => $isOpen ? 1 : 0,
             'open_shift_note'  => $request->post('open_shift_note', '') ?: null,
+            'hourly_rate_override' => $this->postedOverride($request, 'hourly_rate_override'),
+            'net_minutes_override' => $this->postedOverride($request, 'net_minutes_override'),
         ]));
 
         $this->auditLogger->logUpdate($request, 'shift.updated', 'shift', (int) $shift['id'], $old, $saved, [], $newStoreId);
@@ -666,12 +784,16 @@ final class AdminShiftController
         $newUid    = $isOpen ? 0 : (int) $request->post('user_id', $shift['user_id']);
         $prevUid   = (int) ($shift['user_id'] ?? 0);
         if (!$isOpen && $newUid > 0 && $newUid !== $prevUid) {
-            $this->notifs->notify(
-                $newUid,
-                'shift_assigned',
-                'Un shift a été ajouté à votre planning le ' . $shiftDate . '.',
-                (int) $shift['id']
-            );
+            try {
+                $this->notifs->notify(
+                    $newUid,
+                    'shift_assigned',
+                    'Un shift a été ajouté à votre planning le ' . $shiftDate . '.',
+                    (int) $shift['id']
+                );
+            } catch (\Throwable $e) {
+                Log::warning('shift_notify_failed', ['shift_id' => (int) $shift['id'], 'user_id' => $newUid, 'error' => $e->getMessage()]);
+            }
         }
 
         $redirectTo = trim($request->post('redirect_to', ''));
@@ -787,10 +909,12 @@ final class AdminShiftController
             return Response::json(['error' => __('shift_timeoff_conflict')], 409);
         }
 
+        $shiftTypeId = $this->dominantShiftTypeId($storeId, $startTime, $endTime, max(0, $duration - $pauseMin));
+
         $saved = $this->shifts->save([
             'store_id'         => $storeId,
             'user_id'          => (int) ($body['user_id'] ?? 0),
-            'shift_type_id'    => !empty($body['shift_type_id']) ? (int) $body['shift_type_id'] : null,
+            'shift_type_id'    => $shiftTypeId,
             'shift_date'       => $shiftDate,
             'start_time'       => $startTime,
             'end_time'         => $endTime,

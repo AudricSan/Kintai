@@ -37,9 +37,14 @@ final class TimelineHelpers
         return $lanes;
     }
 
+    /**
+     * @param array $typeStoreIds id de type de shift => liste des store_id où il est activé
+     *                            (un type peut désormais couvrir plusieurs stores).
+     */
     public static function atPayBreakdown(
         string $startTime, string $endTime, int $pauseMin, bool $crossMidnight,
-        int $uid, int $storeId, array $typesMap, array $ratesMap, string $currency
+        int $uid, int $storeId, array $typesMap, array $typeStoreIds, array $ratesMap, string $currency,
+        string $currencySymbolStyle = 'kanji'
     ): array {
         $sm = self::atMin($startTime); $em = self::atMin($endTime);
         if ($crossMidnight || $em <= $sm) $em += 1440;
@@ -50,7 +55,7 @@ final class TimelineHelpers
             $segments = [[$sm, $ps], [$ps + $pauseMin, $em]];
         } else { $segments = [[$sm, $em]]; }
         $netMin = array_sum(array_map(fn($s) => $s[1] - $s[0], $segments));
-        $storeTypes = array_filter($typesMap, fn($t) => (int) ($t['store_id'] ?? 0) === $storeId);
+        $storeTypes = array_filter($typesMap, fn($t) => in_array($storeId, $typeStoreIds[(int) $t['id']] ?? [], true));
         $minByType  = [];
         foreach ($storeTypes as $tid => $type) {
             $ts = self::atMin($type['start_time']); $te = self::atMin($type['end_time']);
@@ -74,8 +79,8 @@ final class TimelineHelpers
             if ($rate > 0) $hasRate = true;
             $items[] = [
                 'type_name' => $type['name'] ?? '?', 'minutes' => $minutes,
-                'rate' => $rate, 'rate_fmt' => $rate > 0 ? format_currency($rate, $currency) . '/h' : '',
-                'pay_fmt' => $rate > 0 ? format_currency($pay, $currency) : '', 'has_rate' => $rate > 0,
+                'rate' => $rate, 'rate_fmt' => $rate > 0 ? format_currency($rate, $currency, $currencySymbolStyle) . '/h' : '',
+                'pay_fmt' => $rate > 0 ? format_currency($pay, $currency, $currencySymbolStyle) : '', 'has_rate' => $rate > 0,
             ];
         }
         return ['total' => $totalPay, 'has_rate' => $hasRate, 'net_minutes' => $netMin, 'items' => $items];
