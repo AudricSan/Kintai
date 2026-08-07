@@ -14,6 +14,8 @@ All notable changes to Kintai are documented here.
 
 ### Fixed
 - Dashboard polish: the mini stat-cards nested inside the "Financial overview"/"HR & Absenteeism" cards were flush against their parent card's edges (no padding) and blended into it visually (identical background, so they never stood out) — they now get their own padding, a slightly lighter background (`--color-surface-alt`), and a subtle shadow. Also fixed inconsistent vertical spacing between dashboard sections: a `.dash-two-col` grid (used to lay out those two cards, and the pending-timeoff/pending-swaps pair, side by side) doesn't let its children's `margin-bottom` collapse with the next section's `margin-top` the way stacked `.card`s normally do, so the gap after a two-column row was silently ~20px larger than everywhere else on the page — neutralized with the same `> .card { margin-bottom: 0 }` reset already used for `.form-section-grid`.
+- `storage/installed.lock` (the marker `public/index.php`/`public/install.php` use to decide whether the app is installed) lives outside Git and outside the database — on at least one local setup it was observed to disappear for reasons unrelated to the app itself (not reproduced via a plain `git checkout`/branch switch), which then forced the full web installer back onto every request even though the database was completely intact. Both entry points now fall back to asking the database directly (`kintai_installed_via_database()`: DB config present, connection works, at least one `users` row) before concluding the app isn't installed, and silently regenerate the missing lock file instead of demanding a destructive reinstall.
+>>>>>>> 46c1c4f (fix(install): fall back to the database when installed.lock is missing)
 
 ## [0.10.8] - 2026-08-06
 
