@@ -6,6 +6,7 @@ return [
     // Applied to every request
     'global' => [
         \kintai\Core\Middleware\SessionMiddleware::class,
+        \kintai\Core\Middleware\RememberMeMiddleware::class,
         \kintai\Core\Middleware\SecurityHeadersMiddleware::class,
         \kintai\Core\Middleware\CsrfMiddleware::class,
         \kintai\Core\Middleware\I18nMiddleware::class,

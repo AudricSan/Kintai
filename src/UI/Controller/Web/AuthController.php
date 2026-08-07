@@ -78,19 +78,20 @@ final class AuthController
     /** Traite la soumission du formulaire de connexion. */
     public function login(Request $request): Response
     {
-        $mode = $request->post('login_mode', 'email');
+        $mode     = $request->post('login_mode', 'email');
+        $remember = $request->post('remember') === '1';
 
         if ($mode === 'code') {
             // Connexion par code employé + code magasin + mot de passe
             $employeeCode = trim($request->post('employee_code', ''));
             $storeCode    = trim($request->post('store_code', ''));
             $password     = $request->post('password', '0000');
-            $ok = $this->auth->attemptByCode($employeeCode, $storeCode, $password);
+            $ok = $this->auth->attemptByCode($employeeCode, $storeCode, $password, $remember);
         } else {
             // Connexion classique email + mot de passe
             $email    = trim($request->post('email', ''));
             $password = $password = $request->post('password', '');
-            $ok = $this->auth->attempt($email, $password);
+            $ok = $this->auth->attempt($email, $password, $remember);
         }
 
         if ($ok) {
