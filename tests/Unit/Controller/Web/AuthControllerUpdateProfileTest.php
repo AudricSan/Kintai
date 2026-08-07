@@ -8,6 +8,7 @@ use kintai\Core\Auth\AuthService;
 use kintai\Core\Repositories\AvailabilityRepositoryInterface;
 use kintai\Core\Repositories\IcalTokenRepositoryInterface;
 use kintai\Core\Repositories\LanguageRepositoryInterface;
+use kintai\Core\Repositories\RememberTokenRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
@@ -59,7 +60,9 @@ final class AuthControllerUpdateProfileTest extends TestCase
         $roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
         $roleAssignments->method('findByUser')->willReturn([]);
 
-        $auth = new AuthService($users, $storeUsers, $stores, $roles, $roleAssignments);
+        $rememberTokens = $this->createStub(RememberTokenRepositoryInterface::class);
+
+        $auth = new AuthService($users, $storeUsers, $stores, $roles, $roleAssignments, $rememberTokens);
 
         $languages = $this->createMock(LanguageRepositoryInterface::class);
         $languages->method('findAllActive')->willReturn([['code' => 'fr'], ['code' => 'en']]);
