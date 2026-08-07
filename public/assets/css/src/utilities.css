@@ -32,6 +32,16 @@
     gap: var(--space-6);
 }
 
+/* Comme .form-section-grid > .card (cards.css) : le margin-bottom global de
+   .card s'ajoute au gap de la grille et à la marge du bloc suivant (les
+   marges ne se collapsent pas à travers une grille), ce qui rendait
+   l'espacement après un .dash-two-col plus grand qu'entre deux .card
+   empilées ailleurs sur le dashboard. Neutralisé ici : seul .card--mt sur
+   le bloc suivant régit l'espacement, de façon uniforme. */
+.dash-two-col > .card {
+    margin-bottom: 0;
+}
+
 .mob-only { display: none; }
 
 /* ── Typography ─────────────────────────────────── */
