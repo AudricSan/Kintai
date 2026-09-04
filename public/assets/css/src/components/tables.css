@@ -354,3 +354,43 @@ th.td-center {
     gap: var(--space-2);
 }
 
+/* ── Pagination (src/UI/Components/Pagination.php) ─
+   N'avait jamais eu de style : liens <a> nus, non wrappés, qui débordaient
+   hors de l'écran sur mobile dès qu'il y avait assez de pages (ex. journal
+   d'activité). */
+.table-footer {
+    display: flex;
+    justify-content: center;
+    padding: var(--space-4) 0;
+}
+
+.pagination {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-1);
+}
+
+.pagination__item {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+    padding: 0 var(--space-2);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-text-muted);
+}
+
+a.pagination__item:hover {
+    background: var(--color-surface-alt);
+    text-decoration: none;
+}
+
+.pagination__item--active {
+    background: var(--color-primary);
+    color: #fff;
+}
+
