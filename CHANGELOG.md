@@ -9,6 +9,9 @@ All notable changes to Kintai are documented here.
 ### Added
 - Update page — the "Mises à jour" page now shows a collapsible changelog history (last 5 releases per channel) for the channels the Owner isn't currently on, so switching channel isn't a leap in the dark. Backed by a new `GithubUpdateService::getReleaseHistory()`.
 
+### Fixed
+- Shift conflicts page — the bulk "resolve all" button carried a stray `ml-sm` (margin-left) utility class instead of the vertical spacing it actually needed above the first conflict group; moved the spacing to `.conflict-group`'s own `margin-top` in `shifts.css`.
+
 ## [0.11.8] - 2026-09-05
 
 ### Added
