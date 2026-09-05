@@ -398,6 +398,16 @@
         touch-action: auto;
     }
 
+    /* Création par glisser désactivée sur mobile : .sd-create-zone pose
+       touch-action: none (shifts.css) pour capter le drag souris, ce qui
+       bloque aussi le scroll tactile horizontal du timeline-wrap dès qu'on
+       touche la zone — un simple geste de scroll y déclenchait/empêchait
+       la création. Pas d'équivalent tactile fiable pour "glisser pour
+       créer", donc masquée plutôt que rendue tactile. */
+    .sd-create-zone {
+        display: none;
+    }
+
     .week-grid {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
