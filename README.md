@@ -4,7 +4,7 @@
 
 **Open-source shift, attendance and workforce management for multi-store businesses.**
 
-[![Version](https://img.shields.io/badge/version-0.10.8-purple.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.11.8-purple.svg)](CHANGELOG.md)
 [![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 [![PHP Version](https://img.shields.io/badge/php-%3E%3D%208.3-8892bf.svg)](https://php.net)
 [![Tests](https://github.com/AudricSan/Kintai/actions/workflows/tests.yml/badge.svg)](https://github.com/AudricSan/Kintai/actions/workflows/tests.yml)
