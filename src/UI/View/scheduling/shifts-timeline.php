@@ -100,9 +100,9 @@ $periodLabel = $period_mode === 'week'
 <div class="shifts-toolbar">
     <div class="btn-group btn-group--switcher" style="--segments:3">
         <span class="btn-group__thumb" style="--pos:2" aria-hidden="true"></span>
-        <a href="<?= route_url('admin.shifts') . ($filter_store_id ? '?store_id=' . $filter_store_id : '') ?>" class="btn btn--ghost btn--sm">☰ <?= __('list_view') ?></a>
-        <a href="<?= route_url('admin.shifts.calendar') . ($filter_store_id ? '?store_id=' . $filter_store_id : '') ?>" class="btn btn--ghost btn--sm">📅 <?= __('calendar_view') ?></a>
-        <a href="<?= route_url('admin.shifts.timeline') . ($filter_store_id ? '?store_id=' . $filter_store_id : '') ?>" class="btn btn--ghost btn--sm btn--active"><svg class="gantt-icon icon-inline" width="16" height="16" viewBox="0 0 24 24"><rect x="4" y="2" width="2" height="20" fill="currentColor"/><rect x="10" y="6" width="2" height="16" fill="currentColor"/><rect x="16" y="10" width="2" height="12" fill="currentColor"/></svg> <?= __('timeline_view') ?></a>
+        <a href="<?= route_url('admin.shifts') . ($filter_store_id ? '?store_id=' . $filter_store_id : '') ?>" class="btn btn--ghost btn--sm" aria-label="<?= htmlspecialchars(__('list_view')) ?>">☰ <span class="switcher-label"><?= __('list_view') ?></span></a>
+        <a href="<?= route_url('admin.shifts.calendar') . ($filter_store_id ? '?store_id=' . $filter_store_id : '') ?>" class="btn btn--ghost btn--sm" aria-label="<?= htmlspecialchars(__('calendar_view')) ?>">📅 <span class="switcher-label"><?= __('calendar_view') ?></span></a>
+        <a href="<?= route_url('admin.shifts.timeline') . ($filter_store_id ? '?store_id=' . $filter_store_id : '') ?>" class="btn btn--ghost btn--sm btn--active" aria-label="<?= htmlspecialchars(__('timeline_view')) ?>"><svg class="gantt-icon icon-inline" width="16" height="16" viewBox="0 0 24 24"><rect x="4" y="2" width="2" height="20" fill="currentColor"/><rect x="10" y="6" width="2" height="16" fill="currentColor"/><rect x="16" y="10" width="2" height="12" fill="currentColor"/></svg> <span class="switcher-label"><?= __('timeline_view') ?></span></a>
     </div>
     <div class="btn-group">
         <?= Button::make('⚡ ' . __('conflict_view'))->ghost()->sm()->link(route_url('admin.shifts.conflicts') . ($filter_store_id ? '?store_id=' . $filter_store_id : ''))->render() ?>
