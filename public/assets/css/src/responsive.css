@@ -9,12 +9,18 @@
 
 /* ── Stat grid + Quick nav (1100px) ─────────────── */
 @media (max-width: 1100px) {
+    /* minmax(0, 1fr) et non 1fr seul, ici et dans toutes les règles de ce
+       fichier qui redéfinissent .stat-grid/.quick-nav/.sstat-two : sinon
+       cette redéfinition mobile écrase la version minmax(0, 1fr) posée en
+       base (cards.css/statistics.css) et fait réapparaître le débordement
+       qu'elle corrigeait — une carte/graphique ne rétrécit jamais sous son
+       min-content sur une piste 1fr seule. */
     .stat-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .quick-nav {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 }
 
@@ -24,8 +30,11 @@
    flux naturel plutôt que de maintenir un second gabarit fixe à 2
    colonnes (complexité non justifiée pour une largeur transitoire). */
 @media (max-width: 1200px) {
+    /* minmax(0, 1fr) ici et dans la redéfinition à 900px : sinon cette
+       redéfinition mobile écrase la version minmax(0, 1fr) posée en base
+       (cards.css) et fait réapparaître le débordement qu'elle corrigeait. */
     .form-section-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .card--c1, .card--c2, .card--c3,
@@ -46,7 +55,7 @@
        et un grid-row: span 2 sans contrainte de largeur créerait une
        carte inutilement haute. */
     .form-section-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
     }
 
     .card--col-2,
@@ -126,9 +135,16 @@
         display: none;
     }
 
-    /* Toujours dépliés sur mobile plutôt qu'en dropdown flottant. */
+    /* Toujours dépliés sur mobile plutôt qu'en dropdown flottant. flex-direction:
+       column doit être répété ici : la règle desktop qui le pose (base.css) est
+       scopée à .topbar-nav-group.is-open, jamais vraie sur mobile puisque le
+       panneau est forcé visible par ce bloc sans passer par .is-open — sans ce
+       rappel, display:flex retombe sur son row par défaut et alignait tous les
+       liens (Shifts, Utilisateurs, Rapports d'embauche...) côte à côte au lieu
+       de les empiler, poussant le panneau à plus de 1000px de large. */
     .topbar-nav-group__panel {
         display: flex !important;
+        flex-direction: column;
         position: static;
         border: none;
         box-shadow: none;
@@ -183,19 +199,19 @@
     }
 
     .stat-grid {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .quick-nav {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .sstat-two {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
     }
 
     .dash-two-col {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
     }
 }
 
@@ -230,6 +246,20 @@
         grid-template-columns: 1fr;
     }
 
+    /* Grille interne "Informations employé" (2 colonnes desktop) : sur
+       mobile, code employé/couleur/mot de passe/statut/Owner tiennent mal
+       côte à côte (champs + libellés d'aide tronqués) — repasse en 1
+       colonne, la position explicite de .employee-info-grid__owner n'a
+       alors plus de sens (voir cards.css). */
+    .employee-info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .employee-info-grid__owner {
+        grid-column-start: auto;
+        grid-row-start: auto;
+    }
+
     .form-grid,
     .form-grid-2 {
         grid-template-columns: 1fr !important;
@@ -255,7 +285,10 @@
         justify-content: center;
     }
 
-    .btn-group {
+    /* :not(.btn-group--switcher) : sinon ce wrap (même spécificité, importé
+       après components.css) écrase le flex-wrap:nowrap du switcher et casse
+       la piste + pilule sur 2 lignes — voir .btn-group--switcher plus bas. */
+    .btn-group:not(.btn-group--switcher) {
         flex-wrap: wrap;
         gap: var(--space-2);
     }
@@ -266,7 +299,7 @@
     }
 
     .btn-group form .btn,
-    .btn-group > .btn {
+    .btn-group:not(.btn-group--switcher) > .btn {
         width: 100%;
         justify-content: center;
     }
@@ -281,6 +314,22 @@
        voir .btn-group--switcher dans components.css. */
     .btn-group--switcher {
         width: 100%;
+    }
+
+    /* Switcher liste/calendrier/timeline (3 segments icône + libellé) :
+       sur mobile les libellés complets ("Vue calendrier"...) ne tiennent
+       pas sur une ligne dans une piste pleine largeur, ce qui forçait un
+       retour à la ligne et désalignait la pilule. On masque le texte
+       (.switcher-label) et on garde l'icône seule ; le libellé complet
+       reste disponible via aria-label sur le lien pour les lecteurs
+       d'écran. */
+    .btn-group--switcher .switcher-label {
+        display: none;
+    }
+
+    .btn-group--switcher > .btn {
+        padding-left: var(--space-2);
+        padding-right: var(--space-2);
     }
 
     .page-header__actions {
@@ -383,6 +432,16 @@
        scroll tactile natif fonctionner par-dessus les barres. */
     .tl-bar {
         touch-action: auto;
+    }
+
+    /* Création par glisser désactivée sur mobile : .sd-create-zone pose
+       touch-action: none (shifts.css) pour capter le drag souris, ce qui
+       bloque aussi le scroll tactile horizontal du timeline-wrap dès qu'on
+       touche la zone — un simple geste de scroll y déclenchait/empêchait
+       la création. Pas d'équivalent tactile fiable pour "glisser pour
+       créer", donc masquée plutôt que rendue tactile. */
+    .sd-create-zone {
+        display: none;
     }
 
     .week-grid {
