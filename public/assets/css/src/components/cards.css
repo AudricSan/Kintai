@@ -9,6 +9,44 @@
     border-radius: var(--radius);
     box-shadow: var(--shadow);
     margin-bottom: var(--space-5);
+    padding: var(--space-4);
+}
+
+/* .card a désormais son propre padding (utile aux cartes sans wrapper
+   interne : un .table-wrap ou un formulaire posés à même la carte se
+   retrouvaient collés à ses bords). Mais .card-header/.card-body/etc.
+   avaient déjà chacun leur propre padding, pensé pour une .card à 0 padding
+   — les deux s'additionnaient et doublaient l'espacement. Marge négative
+   égale au padding de .card sur les enfants concernés : elle annule
+   exactement ce nouveau padding parent sans toucher au padding propre de
+   l'enfant, qui redevient donc le seul espacement effectif (identique à
+   avant ce changement). Horizontalement toujours (aucun effet de bord vu
+   qu'une marge gauche/droite ne s'accumule pas entre lignes empilées) ;
+   verticalement seulement en haut du premier enfant / bas du dernier — une
+   annulation systématique en haut ET en bas de chaque enfant se
+   chevaucherait et écraserait l'espacement entre deux enfants adjacents
+   (ex. card-header et card-body), qui lui ne doit pas changer. */
+.card-header,
+.card-body,
+.card-body--add,
+.card-body--timeclock,
+.card-footer--muted {
+    margin-left: calc(-1 * var(--space-4));
+    margin-right: calc(-1 * var(--space-4));
+}
+
+.card-header:first-child,
+.card-body:first-child,
+.card-body--add:first-child,
+.card-body--timeclock:first-child {
+    margin-top: calc(-1 * var(--space-4));
+}
+
+.card-body:last-child,
+.card-body--add:last-child,
+.card-body--timeclock:last-child,
+.card-footer--muted:last-child {
+    margin-bottom: calc(-1 * var(--space-4));
 }
 
 .card-header {
@@ -202,10 +240,24 @@
 }
 
 /* Variante nichée directement dans une .card (sans .card-body autour) :
-   il lui faut son propre padding pour ne pas coller aux bords de la carte. */
+   il lui faut son propre padding pour ne pas coller aux bords de la carte.
+   margin left/right/top/bottom négatifs : même annulation du padding de
+   .card que .card-header/.card-body ci-dessus (voir leur commentaire),
+   .stat-grid--in-card ayant le même besoin puisqu'elle a son propre
+   padding complet. */
 .stat-grid--in-card {
     padding: var(--space-4);
     margin-bottom: 0;
+    margin-left: calc(-1 * var(--space-4));
+    margin-right: calc(-1 * var(--space-4));
+}
+
+.stat-grid--in-card:first-child {
+    margin-top: calc(-1 * var(--space-4));
+}
+
+.stat-grid--in-card:last-child {
+    margin-bottom: calc(-1 * var(--space-4));
 }
 
 /* Sans ça, les mini-cartes ont exactement le même fond que la .card qui les
