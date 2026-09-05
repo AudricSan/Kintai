@@ -190,11 +190,15 @@ final class GithubUpdateService
     /** Retient, parmi les releases compatibles avec le canal, la plus récente au sens de version_compare(). */
     private function selectReleaseForChannel(array $releases, string $channel): ?array
     {
-        $candidates = $this->filterReleasesForChannel($releases, $channel);
+        $candidates = $this->sortedCandidatesForChannel($releases, $channel);
 
-        if ($candidates === []) {
-            return null;
-        }
+        return $candidates[0] ?? null;
+    }
+
+    /** Releases compatibles avec le canal, triées de la plus récente à la plus ancienne (version_compare()). */
+    private function sortedCandidatesForChannel(array $releases, string $channel): array
+    {
+        $candidates = $this->filterReleasesForChannel($releases, $channel);
 
         usort($candidates, function (array $a, array $b): int {
             $va = ltrim((string) ($a['tag_name'] ?? ''), 'v');
@@ -202,7 +206,32 @@ final class GithubUpdateService
             return version_compare($vb, $va);
         });
 
-        return $candidates[0];
+        return $candidates;
+    }
+
+    /**
+     * Historique des dernières releases compatibles avec $channel (la plus
+     * récente en premier), condensées pour affichage — utilisé sur la page de
+     * mise à jour pour donner un aperçu du changelog des canaux sur lesquels
+     * l'Owner ne se trouve pas actuellement, avant de basculer.
+     *
+     * @return array<int, array{version:string, notes:string, release_url:?string, published_at:?string}>
+     */
+    public function getReleaseHistory(string $channel, int $limit = 5): array
+    {
+        $releases = $this->fetchReleaseListData($channel);
+        if ($releases === null) {
+            return [];
+        }
+
+        $candidates = array_slice($this->sortedCandidatesForChannel($releases, $channel), 0, $limit);
+
+        return array_map(fn(array $release): array => [
+            'version'      => ltrim((string) ($release['tag_name'] ?? ''), 'v'),
+            'notes'        => $this->condenseReleaseNotes((string) ($release['body'] ?? '')),
+            'release_url'  => $release['html_url'] ?? null,
+            'published_at' => $release['published_at'] ?? null,
+        ], $candidates);
     }
 
     /**

@@ -1032,6 +1032,8 @@
     "update": "アップデート",
     "update_channel_alpha": "アルファ",
     "update_channel_beta": "ベータ",
+    "update_channel_history_count": "最近のリリース %d 件",
+    "update_channel_history_title": "他チャンネルの変更履歴",
     "update_channel_label": "アップデートチャンネル:",
     "update_channel_release": "リリース",
     "update_channel_switch_confirm": "アルファおよびベータチャンネルはテスト中のバージョンであり、不安定な場合があります。続行しますか？",
