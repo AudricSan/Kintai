@@ -137,6 +137,12 @@ ob_start();
     <?php
     ob_start();
     ?>
+    <div class="update-notes-item-header">
+        <span class="update-notes-item-version">v<?= htmlspecialchars($updateInfo['latest_version']) ?></span>
+        <?php if ($updateInfo['published_at']): ?>
+            <span class="update-notes-item-date"><?= htmlspecialchars(date('d/m/Y', strtotime($updateInfo['published_at']))) ?></span>
+        <?php endif; ?>
+    </div>
     <?php if ($notesSummary !== ''): ?>
         <div class="update-notes-content update-notes-summary"><?= render_markdown($notesSummary) ?></div>
     <?php else: ?>
