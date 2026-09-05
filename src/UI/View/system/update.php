@@ -12,6 +12,7 @@ use kintai\UI\Components\Modal;
  * @var array       $pendingMigs
  * @var int|null    $lastUpdateDurationSeconds
  * @var string      $releaseNotesCondensed
+ * @var array<string, array<int, array{version:string, notes:string, release_url:?string, published_at:?string}>> $otherChannelsHistory
  * @var string      $repoReleasesUrl
  * @var string      $BASE_URL
  * @var array{type: 'success'|'danger', text: string}|null $flash
@@ -95,6 +96,42 @@ ob_start();
     <p class="text-muted mt-sm"><?= __('backup_no_update_server') ?></p>
 <?php endif; ?>
 <?php echo Card::make()->header(__('backup_instance_version'))->body(ob_get_clean())->render(); ?>
+
+<?php if (array_filter($otherChannelsHistory) !== []): ?>
+    <?php
+    ob_start();
+    ?>
+    <?php foreach ($otherChannelsHistory as $channel => $releases): ?>
+        <?php if ($releases === []): continue; endif; ?>
+        <details class="update-channel-history">
+            <summary>
+                <?= Badge::make($channels[$channel] ?? $channel)->{$channel === 'alpha' ? 'danger' : 'warning'}()->render() ?>
+                <?= sprintf(__('update_channel_history_count'), count($releases)) ?>
+            </summary>
+            <?php foreach ($releases as $release): ?>
+                <div class="update-notes-item">
+                    <div class="update-notes-item-header">
+                        <span class="update-notes-item-version">v<?= htmlspecialchars($release['version']) ?></span>
+                        <?php if ($release['published_at']): ?>
+                            <span class="update-notes-item-date"><?= htmlspecialchars(date('d/m/Y', strtotime($release['published_at']))) ?></span>
+                        <?php endif; ?>
+                    </div>
+                    <?php if ($release['notes'] !== ''): ?>
+                        <div class="update-notes-content update-notes-item-body"><?= render_markdown($release['notes']) ?></div>
+                    <?php else: ?>
+                        <p class="text-muted text-sm"><?= __('update_notes_empty') ?></p>
+                    <?php endif; ?>
+                    <?php if ($release['release_url']): ?>
+                        <a href="<?= htmlspecialchars($release['release_url']) ?>" target="_blank" rel="noopener"><?= __('backup_release_notes') ?></a>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+        </details>
+    <?php endforeach; ?>
+    <?php
+    echo Card::make()->header(__('update_channel_history_title'))->body(ob_get_clean())->render();
+    ?>
+<?php endif; ?>
 
 <?php if ($updateInfo !== null): ?>
     <?php

@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Added
+- Update page — the "Mises à jour" page now shows a collapsible changelog history (last 5 releases per channel) for the channels the Owner isn't currently on, so switching channel isn't a leap in the dark. Backed by a new `GithubUpdateService::getReleaseHistory()`.
+
 ## [0.11.8] - 2026-09-05
 
 ### Added
