@@ -182,9 +182,14 @@
    remplit toute la hauteur de sa/ses cellule(s) au lieu de s'arrêter à
    son propre contenu — ainsi le bas d'une carte tombe toujours pile sur
    le bas/haut d'une autre, jamais dans le vide, quelle que soit sa forme. */
+/* minmax(0, 1fr) et non 1fr seul : même en 1 seule colonne (<900px, voir
+   responsive.css), une piste 1fr partagée par plusieurs cartes empilées ne
+   rétrécit jamais sous le min-content de la plus large d'entre elles — une
+   seule carte au contenu non compressible (ex. .employee-info-grid) forçait
+   alors TOUTES les cartes, et le formulaire entier, à déborder sur mobile. */
 .form-section-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--space-4);
     align-items: stretch;
 }
@@ -218,7 +223,7 @@
    (rangée 3, colonne 2), la case du bas-gauche restant vide. */
 .employee-info-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-4);
 }
 
