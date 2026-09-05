@@ -126,9 +126,16 @@
         display: none;
     }
 
-    /* Toujours dépliés sur mobile plutôt qu'en dropdown flottant. */
+    /* Toujours dépliés sur mobile plutôt qu'en dropdown flottant. flex-direction:
+       column doit être répété ici : la règle desktop qui le pose (base.css) est
+       scopée à .topbar-nav-group.is-open, jamais vraie sur mobile puisque le
+       panneau est forcé visible par ce bloc sans passer par .is-open — sans ce
+       rappel, display:flex retombe sur son row par défaut et alignait tous les
+       liens (Shifts, Utilisateurs, Rapports d'embauche...) côte à côte au lieu
+       de les empiler, poussant le panneau à plus de 1000px de large. */
     .topbar-nav-group__panel {
         display: flex !important;
+        flex-direction: column;
         position: static;
         border: none;
         box-shadow: none;
@@ -195,7 +202,7 @@
     }
 
     .dash-two-col {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
     }
 }
 
