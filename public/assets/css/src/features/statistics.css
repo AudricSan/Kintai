@@ -164,7 +164,11 @@
 
 .sstat-two {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    /* minmax(0, 1fr) : ce bloc contient des .card avec un canvas Chart.js
+       (sstat-canvas-wrap) qui, sur une piste 1fr seule, ne rétrécit jamais
+       sous sa largeur mesurée au premier rendu et force le débordement de
+       la grille — même bug que .stat-grid (cards.css). */
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-4);
 }
 
