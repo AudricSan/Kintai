@@ -192,7 +192,11 @@
 /* ── Stat Cards ─────────────────────────────────── */
 .stat-grid {
     display: grid;
-    grid-template-columns: repeat(var(--stat-cols, 4), 1fr);
+    /* minmax(0, 1fr) et non 1fr seul : une piste 1fr ne rétrécit jamais sous
+       le min-content de son contenu (ex. un gros montant, le canvas d'un
+       graphique) et forçait toute la grille — donc la .card et la page — à
+       déborder sur mobile plutôt que de laisser le contenu s'adapter. */
+    grid-template-columns: repeat(var(--stat-cols, 4), minmax(0, 1fr));
     gap: var(--space-4);
     margin-bottom: var(--space-6);
 }
@@ -305,11 +309,23 @@
     background: var(--color-danger-light);
 }
 
+/* min-width: 0 : sans ça, ce flex item (comme tout flex item par défaut)
+   ne rétrécit jamais sous le max-content de la valeur/du libellé, ce qui
+   forçait .stat-card — et la grille au-dessus — à déborder plutôt que de
+   laisser le texte passer à la ligne. */
+.stat-card__body {
+    min-width: 0;
+}
+
 .stat-card__value {
     font-size: 1.75rem;
     font-weight: 700;
     line-height: 1;
     color: var(--color-text);
+    /* Un montant/nombre formaté n'a aucune espace où le navigateur pourrait
+       couper la ligne : sans ça, min-width: 0 sur le parent ne suffit pas à
+       le faire rétrécir, il continue de forcer la largeur de la carte. */
+    overflow-wrap: anywhere;
 }
 
 .stat-card__label {
