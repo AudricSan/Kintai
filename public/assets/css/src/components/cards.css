@@ -9,6 +9,44 @@
     border-radius: var(--radius);
     box-shadow: var(--shadow);
     margin-bottom: var(--space-5);
+    padding: var(--space-4);
+}
+
+/* .card a désormais son propre padding (utile aux cartes sans wrapper
+   interne : un .table-wrap ou un formulaire posés à même la carte se
+   retrouvaient collés à ses bords). Mais .card-header/.card-body/etc.
+   avaient déjà chacun leur propre padding, pensé pour une .card à 0 padding
+   — les deux s'additionnaient et doublaient l'espacement. Marge négative
+   égale au padding de .card sur les enfants concernés : elle annule
+   exactement ce nouveau padding parent sans toucher au padding propre de
+   l'enfant, qui redevient donc le seul espacement effectif (identique à
+   avant ce changement). Horizontalement toujours (aucun effet de bord vu
+   qu'une marge gauche/droite ne s'accumule pas entre lignes empilées) ;
+   verticalement seulement en haut du premier enfant / bas du dernier — une
+   annulation systématique en haut ET en bas de chaque enfant se
+   chevaucherait et écraserait l'espacement entre deux enfants adjacents
+   (ex. card-header et card-body), qui lui ne doit pas changer. */
+.card-header,
+.card-body,
+.card-body--add,
+.card-body--timeclock,
+.card-footer--muted {
+    margin-left: calc(-1 * var(--space-4));
+    margin-right: calc(-1 * var(--space-4));
+}
+
+.card-header:first-child,
+.card-body:first-child,
+.card-body--add:first-child,
+.card-body--timeclock:first-child {
+    margin-top: calc(-1 * var(--space-4));
+}
+
+.card-body:last-child,
+.card-body--add:last-child,
+.card-body--timeclock:last-child,
+.card-footer--muted:last-child {
+    margin-bottom: calc(-1 * var(--space-4));
 }
 
 .card-header {
@@ -144,9 +182,14 @@
    remplit toute la hauteur de sa/ses cellule(s) au lieu de s'arrêter à
    son propre contenu — ainsi le bas d'une carte tombe toujours pile sur
    le bas/haut d'une autre, jamais dans le vide, quelle que soit sa forme. */
+/* minmax(0, 1fr) et non 1fr seul : même en 1 seule colonne (<900px, voir
+   responsive.css), une piste 1fr partagée par plusieurs cartes empilées ne
+   rétrécit jamais sous le min-content de la plus large d'entre elles — une
+   seule carte au contenu non compressible (ex. .employee-info-grid) forçait
+   alors TOUTES les cartes, et le formulaire entier, à déborder sur mobile. */
 .form-section-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--space-4);
     align-items: stretch;
 }
@@ -180,7 +223,7 @@
    (rangée 3, colonne 2), la case du bas-gauche restant vide. */
 .employee-info-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-4);
 }
 
@@ -192,16 +235,34 @@
 /* ── Stat Cards ─────────────────────────────────── */
 .stat-grid {
     display: grid;
-    grid-template-columns: repeat(var(--stat-cols, 4), 1fr);
+    /* minmax(0, 1fr) et non 1fr seul : une piste 1fr ne rétrécit jamais sous
+       le min-content de son contenu (ex. un gros montant, le canvas d'un
+       graphique) et forçait toute la grille — donc la .card et la page — à
+       déborder sur mobile plutôt que de laisser le contenu s'adapter. */
+    grid-template-columns: repeat(var(--stat-cols, 4), minmax(0, 1fr));
     gap: var(--space-4);
     margin-bottom: var(--space-6);
 }
 
 /* Variante nichée directement dans une .card (sans .card-body autour) :
-   il lui faut son propre padding pour ne pas coller aux bords de la carte. */
+   il lui faut son propre padding pour ne pas coller aux bords de la carte.
+   margin left/right/top/bottom négatifs : même annulation du padding de
+   .card que .card-header/.card-body ci-dessus (voir leur commentaire),
+   .stat-grid--in-card ayant le même besoin puisqu'elle a son propre
+   padding complet. */
 .stat-grid--in-card {
     padding: var(--space-4);
     margin-bottom: 0;
+    margin-left: calc(-1 * var(--space-4));
+    margin-right: calc(-1 * var(--space-4));
+}
+
+.stat-grid--in-card:first-child {
+    margin-top: calc(-1 * var(--space-4));
+}
+
+.stat-grid--in-card:last-child {
+    margin-bottom: calc(-1 * var(--space-4));
 }
 
 /* Sans ça, les mini-cartes ont exactement le même fond que la .card qui les
@@ -305,11 +366,23 @@
     background: var(--color-danger-light);
 }
 
+/* min-width: 0 : sans ça, ce flex item (comme tout flex item par défaut)
+   ne rétrécit jamais sous le max-content de la valeur/du libellé, ce qui
+   forçait .stat-card — et la grille au-dessus — à déborder plutôt que de
+   laisser le texte passer à la ligne. */
+.stat-card__body {
+    min-width: 0;
+}
+
 .stat-card__value {
     font-size: 1.75rem;
     font-weight: 700;
     line-height: 1;
     color: var(--color-text);
+    /* Un montant/nombre formaté n'a aucune espace où le navigateur pourrait
+       couper la ligne : sans ça, min-width: 0 sur le parent ne suffit pas à
+       le faire rétrécir, il continue de forcer la largeur de la carte. */
+    overflow-wrap: anywhere;
 }
 
 .stat-card__label {
@@ -321,7 +394,10 @@
 /* ── Quick Nav ──────────────────────────────────── */
 .quick-nav {
     display: grid;
-    grid-template-columns: repeat(var(--qn-cols, 6), 1fr);
+    /* minmax(0, 1fr) comme .stat-grid ci-dessus : sans ça une carte au
+       libellé un peu long refuse de rétrécir sous son min-content et
+       force toute la grille à déborder. */
+    grid-template-columns: repeat(var(--qn-cols, 6), minmax(0, 1fr));
     gap: var(--space-3);
     margin-bottom: 0;
 }

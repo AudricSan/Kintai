@@ -20,6 +20,16 @@ html {
     /* Scrollbar aux couleurs de l'app plutôt que celle, par défaut, du système. */
     scrollbar-width: thin;
     scrollbar-color: var(--color-border) var(--color-bg);
+    /* Filet de sécurité : un élément qui déborde (grille mal contrainte,
+       canvas de graphique, etc.) rendait toute la page — topbar comprise,
+       simple élément en flux normal, pas fixed — scrollable horizontalement
+       sur mobile, donnant l'impression que le menu "disparaissait" une fois
+       la page glissée sur le côté. En mode standards, c'est le scroll du
+       viewport (propagé depuis <html>, pas <body>) qu'il faut bloquer ici ;
+       les conteneurs qui doivent défiler horizontalement (tableaux,
+       timeline...) gèrent déjà leur propre overflow-x: auto en interne,
+       indépendamment de celui-ci. */
+    overflow-x: hidden;
 }
 
 html::-webkit-scrollbar {
