@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Changed
+- Update page — the "Notes de version" summary card now shows the release's version number and publication date above the notes, matching what the "view more" modal and the other-channels history already display.
+
 ## [0.11.9] - 2026-09-05
 
 ### Added
