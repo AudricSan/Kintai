@@ -1032,6 +1032,8 @@
     "update": "Updates",
     "update_channel_alpha": "Alpha",
     "update_channel_beta": "Beta",
+    "update_channel_history_count": "%d recent release(s)",
+    "update_channel_history_title": "Other channels' changelog",
     "update_channel_label": "Update channel:",
     "update_channel_release": "Release",
     "update_channel_switch_confirm": "Alpha and Beta channels contain builds that are still being tested and may be unstable. Continue?",
