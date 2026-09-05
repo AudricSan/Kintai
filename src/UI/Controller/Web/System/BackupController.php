@@ -64,12 +64,22 @@ final class BackupController
             ? $this->githubUpdate->condenseReleaseNotes((string) $updateInfo['release_notes'])
             : '';
 
+        $currentChannel = $this->settings->updateChannel();
+        $otherChannelsHistory = [];
+        foreach (['release', 'beta', 'alpha'] as $channel) {
+            if ($channel === $currentChannel) {
+                continue;
+            }
+            $otherChannelsHistory[$channel] = $this->githubUpdate->getReleaseHistory($channel);
+        }
+
         return Response::html($this->view->render('system.update', [
             'title'                     => 'Mises à jour',
             'currentVersion'            => $this->update->getCurrentVersion(),
             'updateInfo'                => $updateInfo,
             'updateCheckError'          => $this->githubUpdate->getLastCheckError(),
-            'updateChannel'             => $this->settings->updateChannel(),
+            'updateChannel'             => $currentChannel,
+            'otherChannelsHistory'      => $otherChannelsHistory,
             'pendingMigs'               => $this->update->getPendingMigrations(),
             'lastUpdateDurationSeconds' => $this->update->getLastUpdateDuration(),
             'releaseNotesCondensed'     => $releaseNotesCondensed,
