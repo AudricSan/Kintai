@@ -1032,6 +1032,8 @@
     "update": "Mises à jour",
     "update_channel_alpha": "Alpha",
     "update_channel_beta": "Bêta",
+    "update_channel_history_count": "%d version(s) récente(s)",
+    "update_channel_history_title": "Changelog des autres canaux",
     "update_channel_label": "Canal de mise à jour :",
     "update_channel_release": "Release",
     "update_channel_switch_confirm": "Les canaux Alpha et Bêta contiennent des versions en cours de test, potentiellement instables. Continuer ?",
