@@ -49,6 +49,7 @@ use kintai\UI\Controller\Api\V1\UserShiftRateController as ApiUserShiftRateContr
 use kintai\UI\Controller\Api\V1\ActivityController as ApiActivityController;
 use kintai\UI\Controller\Api\V1\IcalTokenController as ApiIcalTokenController;
 use kintai\UI\Controller\Api\V1\UserPrefsController as ApiUserPrefsController;
+use kintai\UI\Controller\Api\V1\PushTokenController as ApiPushTokenController;
 
 
 /** @var \kintai\Core\Router $router */
@@ -336,6 +337,10 @@ $router->group('/api/v1', function ($r) {
     $r->get('/users/{user_id}/rates/{id}',                            [ApiUserShiftRateController::class, 'show'],           name: 'api.v1.users.rates.show');
     $r->put('/users/{user_id}/rates/{id}',                            [ApiUserShiftRateController::class, 'update'],         name: 'api.v1.users.rates.update');
     $r->delete('/users/{user_id}/rates/{id}',                         [ApiUserShiftRateController::class, 'destroy'],        name: 'api.v1.users.rates.destroy');
+    // Users — jetons d'appareil push (notifications mobiles, FCM)
+    $r->post('/users/{user_id}/push-tokens',                          [ApiPushTokenController::class, 'store'],              name: 'api.v1.users.push_tokens.store');
+    $r->delete('/users/{user_id}/push-tokens',                        [ApiPushTokenController::class, 'destroy'],            name: 'api.v1.users.push_tokens.destroy');
+
     $r->get('/users/{user_id}/ical-tokens',                           [ApiIcalTokenController::class, 'index'],              name: 'api.v1.users.ical_tokens.index');
     $r->post('/users/{user_id}/ical-tokens',                          [ApiIcalTokenController::class, 'store'],              name: 'api.v1.users.ical_tokens.store');
     $r->post('/users/{user_id}/ical-tokens/{store_id}/regenerate',    [ApiIcalTokenController::class, 'regenerate'],         name: 'api.v1.users.ical_tokens.regenerate');
