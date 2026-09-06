@@ -55,6 +55,8 @@ return [
     'api.v1.users.rates.store'          => 'employees.update',
     'api.v1.users.rates.update'         => 'employees.update',
     'api.v1.users.rates.destroy'        => 'employees.update',
+    'api.v1.users.push_tokens.store'      => ['perm' => 'employees.update', 'self' => 'user_id'],
+    'api.v1.users.push_tokens.destroy'    => ['perm' => 'employees.update', 'self' => 'user_id'],
     'api.v1.users.ical_tokens.index'      => ['perm' => 'employees.view',   'self' => 'user_id'],
     'api.v1.users.ical_tokens.show'       => ['perm' => 'employees.view',   'self' => 'user_id'],
     'api.v1.users.ical_tokens.store'      => ['perm' => 'employees.update', 'self' => 'user_id'],
