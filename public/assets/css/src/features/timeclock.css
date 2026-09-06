@@ -35,3 +35,15 @@
     margin-top: var(--space-3);
 }
 
+.timeclock-pending {
+    display: none;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-warning-dark);
+    background: var(--color-warning-light);
+    border: 1px solid var(--color-warning-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-2) var(--space-3);
+    margin: 0 0 var(--space-4);
+}
+

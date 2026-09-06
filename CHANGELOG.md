@@ -6,6 +6,14 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Added
+- Kintai is now a properly installable PWA with partial offline support. `sw.js` (previously written but never registered) is now registered on every page and precaches the app shell; navigation requests fall back to the last cached page (or a new dedicated `public/offline.html`) when the network is unreachable. The manifest gained real PNG icons (192/512 + a 512 maskable variant, generated from the existing brand mark) alongside the SVG.
+- Timeclock: clock-in/clock-out actions queued while offline (already stored client-side via IndexedDB) are now actually replayed — the queue is flushed on reconnect and once on page load, sequentially and in order (a clock-out queued after a clock-in could previously race ahead of it once both fired in parallel on reconnect, failing with "no active clock"). A small "pending sync" indicator shows how many actions are still queued.
+- Timeclock: an offline punch now records the real time of the tap (sent as `client_time`, bounded to a 2-minute-future/24-hour-past trust window) instead of the time the request happens to reach the server once connectivity returns — the previous behavior silently shifted payroll-relevant timestamps by however long the device stayed offline. Off-window or missing values fall back to server time as before; a synced-late punch is flagged in the audit log context (`offline_sync`, `client_time`, `synced_at`).
+
+### Fixed
+- `PwaController::manifest()` (`/manifest.json`) was calling `new Response(...)` — `Response` has no public constructor, only static factories (`Response::json()`, `::html()`, ...) — so the call silently produced an empty body instead of the manifest JSON. The PWA manifest has never actually served any content until now, which meant the app was never really installable despite the existing `<link rel="manifest">` tag.
+
 ### Changed
 - Update page — the "Notes de version" summary card now shows the release's version number and publication date above the notes, matching what the "view more" modal and the other-channels history already display.
 
