@@ -992,6 +992,8 @@
     "thu_abbr": "Thu",
     "thursday": "Thursday",
     "timeclock": "Time Clock",
+    "timeclock_pending_many": "%d clock entries pending sync",
+    "timeclock_pending_one": "1 clock entry pending sync",
     "timeclocks": "Time Clocks",
     "timeline": "Timeline",
     "timeline_legend_hint": "06:00 → 06:00 · Click for details · Drag to move · + Zone to create",

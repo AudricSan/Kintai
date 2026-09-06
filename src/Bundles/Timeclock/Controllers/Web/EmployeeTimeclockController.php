@@ -82,18 +82,25 @@ final class EmployeeTimeclockController
         $memberships = $this->storeUsers->findByUser($userId);
         $storeId     = $memberships ? (int) $memberships[0]['store_id'] : 0;
 
-        $now    = date('Y-m-d H:i:s');
-        $record = $this->timeclocks->save([
+        $now       = date('Y-m-d H:i:s');
+        $effective = $this->resolveClientTime($request->input('client_time'), $now);
+        $record    = $this->timeclocks->save([
             'user_id'        => $userId,
             'store_id'       => $storeId,
-            'shift_date'     => date('Y-m-d'),
-            'clock_in_time'  => $now,
+            'shift_date'     => substr($effective, 0, 10),
+            'clock_in_time'  => $effective,
             'clock_out_time' => null,
             'created_at'     => $now,
             'updated_at'     => $now,
         ]);
 
-        $this->auditLogger->log($request, 'timeclock.clock_in', 'timeclock', (int) ($record['id'] ?? 0) ?: null, ['user_id' => $userId], $storeId ?: null);
+        $context = ['user_id' => $userId];
+        if ($effective !== $now) {
+            $context['offline_sync'] = true;
+            $context['client_time']  = $effective;
+            $context['synced_at']    = $now;
+        }
+        $this->auditLogger->log($request, 'timeclock.clock_in', 'timeclock', (int) ($record['id'] ?? 0) ?: null, $context, $storeId ?: null);
         return Response::json($record, 201);
     }
 
@@ -112,18 +119,58 @@ final class EmployeeTimeclockController
         }
 
         $now          = date('Y-m-d H:i:s');
+        $effective    = $this->resolveClientTime($request->input('client_time'), $now);
         $clockInTime  = new \DateTimeImmutable($active['clock_in_time']);
-        $clockOutTime = new \DateTimeImmutable($now);
-        $duration     = (int) round(($clockOutTime->getTimestamp() - $clockInTime->getTimestamp()) / 60);
+        $clockOutTime = new \DateTimeImmutable($effective);
+        // Un pointage de sortie différé peut se resynchroniser avant l'entrée si les deux actions
+        // ont été mises en file hors-ligne et rejouées hors ordre : on retombe alors sur l'heure
+        // serveur plutôt que de produire une durée négative.
+        if ($clockOutTime < $clockInTime) {
+            $effective    = $now;
+            $clockOutTime = new \DateTimeImmutable($now);
+        }
+        $duration = (int) round(($clockOutTime->getTimestamp() - $clockInTime->getTimestamp()) / 60);
 
         $record = $this->timeclocks->save(array_merge($active, [
-            'clock_out_time'   => $now,
+            'clock_out_time'   => $effective,
             'duration_minutes' => $duration,
             'updated_at'       => $now,
         ]));
 
+        $context = ['user_id' => $userId];
+        if ($effective !== $now) {
+            $context['offline_sync'] = true;
+            $context['client_time']  = $effective;
+            $context['synced_at']    = $now;
+        }
         $storeId = isset($active['store_id']) ? (int) $active['store_id'] : null;
-        $this->auditLogger->logUpdate($request, 'timeclock.clock_out', 'timeclock', (int) ($record['id'] ?? 0) ?: null, $active, $record, ['user_id' => $userId], $storeId);
+        $this->auditLogger->logUpdate($request, 'timeclock.clock_out', 'timeclock', (int) ($record['id'] ?? 0) ?: null, $active, $record, $context, $storeId);
         return Response::json($record);
+    }
+
+    /**
+     * Un pointage effectué hors-ligne transmet l'heure réelle du clic (client_time, ISO 8601)
+     * plutôt que l'heure de resynchronisation — indispensable pour la justesse du calcul de paie.
+     * Bornée à une fenêtre de confiance raisonnable (jusqu'à 24h dans le passé, 2 min dans le futur
+     * pour la dérive d'horloge) : au-delà, l'heure serveur est utilisée à la place.
+     */
+    private function resolveClientTime(mixed $clientTime, string $serverNow): string
+    {
+        if (!is_string($clientTime) || $clientTime === '') {
+            return $serverNow;
+        }
+
+        try {
+            $parsed = new \DateTimeImmutable($clientTime);
+        } catch (\Exception) {
+            return $serverNow;
+        }
+
+        $diffSeconds = (new \DateTimeImmutable($serverNow))->getTimestamp() - $parsed->getTimestamp();
+        if ($diffSeconds < -120 || $diffSeconds > 86400) {
+            return $serverNow;
+        }
+
+        return $parsed->format('Y-m-d H:i:s');
     }
 }

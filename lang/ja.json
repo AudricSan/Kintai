@@ -992,6 +992,8 @@
     "thu_abbr": "木",
     "thursday": "木曜日",
     "timeclock": "打刻",
+    "timeclock_pending_many": "同期待ちの打刻が%d件あります",
+    "timeclock_pending_one": "同期待ちの打刻が1件あります",
     "timeclocks": "打刻一覧",
     "timeline": "タイムライン",
     "timeline_legend_hint": "06:00 → 06:00 · クリックで詳細 · ドラッグで移動 · ゾーンで作成",
