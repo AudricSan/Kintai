@@ -15,6 +15,9 @@ All notable changes to Kintai are documented here.
 ### Fixed
 - `PwaController::manifest()` (`/manifest.json`) was calling `new Response(...)` — `Response` has no public constructor, only static factories (`Response::json()`, `::html()`, ...) — so the call silently produced an empty body instead of the manifest JSON. The PWA manifest has never actually served any content until now, which meant the app was never really installable despite the existing `<link rel="manifest">` tag.
 
+### Security
+- `POST /api/v1/auth/login` had no rate limiting, unlike the equivalent web `/login` and `/forgot-password` forms — a gap tolerable while the API was a token-management surface for trusted integrations, but worth closing now that a native mobile app (`mobile/`, Expo/React Native, in scaffolding) is about to make this endpoint the public-facing entry point for end-user credentials. Now guarded by the same `RateLimiterMiddleware` (5 attempts / 5 min per IP, `429` past that). The `device_push_tokens` endpoints above were also missing from the API reference wiki (EN/FR/JA) — now documented.
+
 ### Changed
 - Update page — the "Notes de version" summary card now shows the release's version number and publication date above the notes, matching what the "view more" modal and the other-channels history already display.
 
