@@ -6,6 +6,8 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+## [0.11.10] - 2026-09-08
+
 ### Added
 - Store photo reports — the global list now groups submissions under a header per calendar day (with a photo-count badge) instead of one flat grid, and a new "Day" filter (alongside the existing store filter) narrows the list to a single day, for readability when many stores submit reports.
 - Store photo reports — each photo in the detail view now has left/right rotate buttons (Owner only) to fix a sideways photo in place, backed by a new `ImageCompressionService::rotateInPlace()` and `POST /admin/photos/image/{image_id}/rotate`. Uploaded JPEGs are also auto-corrected for their camera's EXIF orientation before compression (GD ignores that tag and never re-writes it, so without this a sideways photo stayed sideways permanently).
