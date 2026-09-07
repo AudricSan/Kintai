@@ -93,4 +93,28 @@ final class UpdateServiceTest extends TestCase
         $this->service->recordUpdateDuration(15);
         $this->assertNotNull($this->service->getUpdatedAt());
     }
+
+    /**
+     * Régression : après application d'une prerelease "-LN", config/app.php
+     * ne conserve que la base X.Y.Z (voir docs/releasing.md) — sans mémoire
+     * du tag exact appliqué, l'instance se croirait perpétuellement en retard
+     * sur cette même prerelease.
+     */
+    public function testGetCurrentVersionPrefersAppliedVersionWhenBaseMatches(): void
+    {
+        $this->writeAppVersion('0.11.10');
+        $this->service->recordAppliedVersion('0.11.10-ak5');
+
+        $this->assertSame('0.11.10-ak5', $this->service->getCurrentVersion());
+    }
+
+    public function testGetCurrentVersionIgnoresStaleAppliedVersionWhenBaseChanged(): void
+    {
+        $this->writeAppVersion('0.11.10');
+        $this->service->recordAppliedVersion('0.11.10-ak5');
+
+        $this->writeAppVersion('0.11.11');
+
+        $this->assertSame('0.11.11', $this->service->getCurrentVersion());
+    }
 }

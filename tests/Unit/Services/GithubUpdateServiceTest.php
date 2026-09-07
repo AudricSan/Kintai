@@ -396,6 +396,30 @@ final class GithubUpdateServiceTest extends TestCase
     }
 
     /**
+     * Régression : appliquer une prerelease "-LN" ne doit pas laisser
+     * l'instance se croire perpétuellement en retard sur cette même release
+     * (config/app.php ne conserve que la base X.Y.Z une fois synchronisé —
+     * voir UpdateService::recordAppliedVersion()).
+     */
+    public function testCheckLatestReleaseIsUpToDateRightAfterApplyingASuffixedRelease(): void
+    {
+        $service = $this->makeService(
+            'v0.11.10-ak5',
+            ['README.md' => 'hello', 'config/app.php' => "<?php return ['version' => '0.11.10'];"],
+            currentVersion: '0.11.9',
+            channel: 'alpha',
+            prerelease: true,
+            targetCommitish: 'alpha',
+        );
+
+        $this->assertTrue($service->applyUpdate()['ok']);
+
+        $info = $service->checkLatestRelease();
+        $this->assertFalse($info['has_update']);
+        $this->assertSame('0.11.10-ak5', $info['current_version']);
+    }
+
+    /**
      * Rattrapage ponctuel : les envois de photos déjà en base qui datent du même
      * jour pour un même magasin (accumulés avant l'introduction du regroupement
      * dans StorePhotoController::store()) sont fusionnés à chaque mise à jour

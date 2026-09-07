@@ -6,6 +6,10 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Fixed
+- Update check — the previous fix for prerelease `-LN` suffixes (see below) made `checkLatestRelease()` report an update as available even right after applying it, whenever the latest tag still had a suffix: `config/app.php` never retains it after syncing, so the installed base alone always looked "behind" a same-base suffixed tag. `GithubUpdateService::applyUpdate()` now records the exact applied tag via a new `UpdateService::recordAppliedVersion()` (persisted in `storage/app/version.json`), and `getCurrentVersion()` returns it — instead of the bare base — as long as its base still matches `config/app.php`.
+- Extracted the `X.Y.Z[-LN]` comparison logic shared by both fixes into a new `VersionScheme` service.
+
 ## [0.11.10] - 2026-09-08
 
 ### Added
