@@ -1,22 +1,31 @@
 <?php
-/** @var string $mode       'create'|'edit' */
-/** @var array  $shift_type Données du type de shift */
-/** @var array  $all_stores Liste des magasins */
+/** @var string $mode               'create'|'edit' */
+/** @var array  $shift_type         Données du type de shift */
+/** @var array  $all_stores         Liste des magasins */
+/** @var array  $selected_store_ids Stores auxquels ce type est actuellement activé */
 $mode ??= 'create';
+$selected_store_ids ??= [];
 ?>
 <div class="form-stack">
-    <!-- ── Store ────────────────────────────────── -->
+    <!-- ── Stores (un type peut être activé sur plusieurs magasins) ── -->
     <div class="form-group">
-        <label class="form-label form-label--required"><?= __('store') ?></label>
-        <select name="store_id" class="form-control" required>
-            <option value="">— <?= __('select') ?> —</option>
+        <label class="form-label form-label--required"><?= __('stores_plural') ?></label>
+        <?php if (empty($all_stores)): ?>
+            <p class="form-hint"><?= __('no_store_assigned') ?></p>
+        <?php else: ?>
+        <div class="store-toggle-list">
             <?php foreach ($all_stores as $s): ?>
-                <option value="<?= (int) $s['id'] ?>"
-                    <?= (int) ($shift_type['store_id'] ?? 0) === (int) $s['id'] ? 'selected' : '' ?>>
-                    <?= htmlspecialchars($s['name'] ?? '') ?> (<?= htmlspecialchars($s['code'] ?? '') ?>)
-                </option>
+            <div class="store-toggle-list__item check-label">
+                <label class="form-toggle">
+                    <input type="checkbox" name="store_ids[]" value="<?= (int) $s['id'] ?>" class="form-toggle__input"
+                           <?= in_array((int) $s['id'], $selected_store_ids, true) ? 'checked' : '' ?>>
+                    <span class="form-toggle__track"></span>
+                </label>
+                <span><?= htmlspecialchars($s['name'] ?? '') ?> (<?= htmlspecialchars($s['code'] ?? '') ?>)</span>
+            </div>
             <?php endforeach; ?>
-        </select>
+        </div>
+        <?php endif; ?>
     </div>
 
     <!-- ── Code & nom ───────────────────────────── -->

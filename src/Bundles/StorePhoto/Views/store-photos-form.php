@@ -142,7 +142,12 @@ uploadBtn.addEventListener('click', function() {
     xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
     xhr.onload = function() {
         if (xhr.status !== 200) {
-            progressList.innerHTML = '<p class="text-danger">Erreur cr&eacute;ation soumission (code ' + xhr.status + ').</p>';
+            var msg = 'Erreur cr&eacute;ation soumission (code ' + xhr.status + ').';
+            try {
+                var body = JSON.parse(xhr.responseText);
+                if (body && body.error) { msg = htmlEscape(body.error); }
+            } catch (e) {}
+            progressList.innerHTML = '<p class="text-danger">' + msg + '</p>';
             uploadBtn.textContent = '<?= __('photo_submit') ?>';
             return;
         }

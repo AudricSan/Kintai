@@ -33,44 +33,72 @@
     };
 }());
 
-// --- Sidebar toggle (mobile) ---
+// --- Topbar nav toggle (mobile) ---
 document.addEventListener('DOMContentLoaded', () => {
-    const toggle = document.getElementById('sidebarToggle');
-    const sidebar = document.getElementById('sidebar');
-    const backdrop = document.getElementById('sidebarBackdrop');
-    const closeBtn = document.getElementById('sidebarClose');
+    const toggle = document.getElementById('topbarNavToggle');
+    const nav = document.getElementById('topbarNav');
 
-    if (!toggle || !sidebar || !backdrop) return;
+    if (!toggle || !nav) return;
 
-    function closeSidebar() {
-        sidebar.classList.remove('open');
-        backdrop.classList.remove('open');
+    function closeNav() {
+        nav.classList.remove('open');
+        toggle.setAttribute('aria-expanded', 'false');
         document.body.style.overflow = '';
     }
 
     toggle.addEventListener('click', () => {
-        const opening = !sidebar.classList.contains('open');
-        sidebar.classList.toggle('open', opening);
-        backdrop.classList.toggle('open', opening);
+        const opening = !nav.classList.contains('open');
+        nav.classList.toggle('open', opening);
+        toggle.setAttribute('aria-expanded', opening ? 'true' : 'false');
         document.body.style.overflow = opening ? 'hidden' : '';
     });
 
-    backdrop.addEventListener('click', closeSidebar);
-    if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
-
     // Ferme le menu après un tap sur un lien (couvre le retour arrière du
     // navigateur qui peut restaurer la page avec le menu resté ouvert).
-    sidebar.querySelectorAll('a').forEach((link) => {
-        link.addEventListener('click', closeSidebar);
+    nav.querySelectorAll('a').forEach((link) => {
+        link.addEventListener('click', closeNav);
     });
 
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closeSidebar();
+        if (e.key === 'Escape') closeNav();
     });
 
     // Restaure un état propre si la page est resservie depuis le bfcache.
     window.addEventListener('pageshow', (e) => {
-        if (e.persisted) closeSidebar();
+        if (e.persisted) closeNav();
+    });
+});
+
+// --- Menus déroulants de la topbar (Planning, RH, Rapports...) ---
+document.addEventListener('DOMContentLoaded', () => {
+    const groups = document.querySelectorAll('.topbar-nav-group');
+    if (!groups.length) return;
+
+    groups.forEach((group) => {
+        const trigger = group.querySelector('.topbar-nav-group__trigger');
+        if (!trigger) return;
+        trigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const opening = !group.classList.contains('is-open');
+            groups.forEach((g) => g.classList.remove('is-open'));
+            group.classList.toggle('is-open', opening);
+            // Ferme les autres menus déroulants de la topbar (notifs, utilisateur)
+            // qui gèrent leur propre stopPropagation et ne se fermeraient pas sinon.
+            document.getElementById('user-dropdown')?.classList.remove('user-dropdown--open');
+            document.getElementById('notif-dropdown')?.classList.remove('notif-dropdown--open');
+        });
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.topbar-nav-group')) {
+            groups.forEach((g) => g.classList.remove('is-open'));
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            groups.forEach((g) => g.classList.remove('is-open'));
+        }
     });
 });
 
@@ -168,6 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     toggle.addEventListener('click', function (e) {
         e.stopPropagation();
+        document.querySelectorAll('.topbar-nav-group.is-open').forEach(function (g) { g.classList.remove('is-open'); });
         var open = dropdown.classList.toggle('user-dropdown--open');
         toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
     });
@@ -205,6 +234,46 @@ document.addEventListener('keydown', function (e) {
         m.classList.remove('open');
     });
 });
+
+// ── Menus d'actions de ligne (colonne "Actions" des tableaux) ────────
+// Délégué au document (pas un listener par ligne) : fonctionne pour
+// n'importe quel nombre de lignes. Le panneau est en position:fixed,
+// positionné ici en JS pour échapper à l'overflow-x:auto du .table-wrap
+// qui l'entoure (sinon rogné dès qu'il dépasse la table).
+document.addEventListener('click', function (e) {
+    var trigger = e.target.closest('.row-actions__trigger');
+    var openMenus = document.querySelectorAll('.row-actions.is-open');
+
+    if (!trigger) {
+        openMenus.forEach(function (m) { m.classList.remove('is-open'); });
+        return;
+    }
+
+    e.stopPropagation();
+    var menu = trigger.closest('.row-actions');
+    var wasOpen = menu.classList.contains('is-open');
+    openMenus.forEach(function (m) { m.classList.remove('is-open'); });
+    if (wasOpen) return;
+
+    var panel = menu.querySelector('.row-actions__panel');
+    var rect = trigger.getBoundingClientRect();
+    panel.style.top = (rect.bottom + 4) + 'px';
+    panel.style.right = (window.innerWidth - rect.right) + 'px';
+    panel.style.left = 'auto';
+    menu.classList.add('is-open');
+});
+
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.row-actions.is-open').forEach(function (m) { m.classList.remove('is-open'); });
+    }
+});
+
+// Position fixe non réancrée en continu : on ferme plutôt que de laisser
+// le panneau se détacher de son déclencheur pendant un scroll.
+document.addEventListener('scroll', function () {
+    document.querySelectorAll('.row-actions.is-open').forEach(function (m) { m.classList.remove('is-open'); });
+}, true);
 
 // ── Filtres instantanés (texte : debounce, date/select restants : au change) ──
 document.addEventListener('DOMContentLoaded', () => {

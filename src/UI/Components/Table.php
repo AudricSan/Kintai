@@ -15,6 +15,7 @@ final class Table implements ComponentInterface
     private string $emptyMessage = '';
     private string $currentSort = '';
     private array $filters = [];
+    private string $sortParam = 'sort';
     private ?string $before = null;
     private ?string $after = null;
     private ?string $beforeBody = null;
@@ -69,6 +70,16 @@ final class Table implements ComponentInterface
     public function filters(array $filters): self
     {
         $this->filters = $filters;
+        return $this;
+    }
+
+    /**
+     * Nom du paramètre de requête utilisé pour le tri (par défaut "sort").
+     * Utile quand plusieurs tableaux triables cohabitent sur la même page.
+     */
+    public function sortParam(string $name): self
+    {
+        $this->sortParam = $name;
         return $this;
     }
 
@@ -149,7 +160,7 @@ final class Table implements ComponentInterface
 
         foreach ($this->columns as $col) {
             if ($col['type'] === 'sortable') {
-                $th = Sort::th($col['label'], $col['key'], $this->currentSort, $this->filters);
+                $th = Sort::th($col['label'], $col['key'], $this->currentSort, $this->filters, $this->sortParam);
                 if ($col['class'] !== '') {
                     $th = str_replace('<th', '<th class="' . htmlspecialchars($col['class']) . '"', $th);
                 }

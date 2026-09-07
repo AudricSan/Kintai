@@ -7,5 +7,10 @@
 @import url('./src/base.css');
 @import url('./src/components.css');
 @import url('./src/features.css');
-@import url('./src/responsive.css');
 @import url('./src/utilities.css');
+/* Doit rester le dernier import : à spécificité égale, une règle non
+   conditionnelle chargée après une media query dans responsive.css
+   l'emporterait sur elle (ex. .dash-two-col dans utilities.css cassait
+   le passage à 1 colonne en mobile tant que ce fichier était importé
+   après responsive.css). */
+@import url('./src/responsive.css');

@@ -68,6 +68,8 @@ function repHoursFormat(float $hours): string {
     $m = (int) round($hours * 60) % 60;
     return $h . 'h' . str_pad((string) $m, 2, '0', STR_PAD_LEFT);
 }
+
+$currencyStyle = store_currency_style($store);
 ?>
 
 <div class="page-header">
@@ -119,14 +121,14 @@ function repHoursFormat(float $hours): string {
         <?php if ($anyHasRate): ?>
         <?= repStatCard(
             __('total_cost'),
-            format_currency($totalCost, $currency),
+            format_currency($totalCost, $currency, $currencyStyle),
             __('on_period'),
             'var(--color-success)'
         ) ?>
         <?php if ($activeCount > 0): ?>
         <?= repStatCard(
             __('avg_per_active_emp'),
-            format_currency(round($totalCost / $activeCount, 2), $currency),
+            format_currency(round($totalCost / $activeCount, 2), $currency, $currencyStyle),
             __('on_period')
         ) ?>
         <?php endif; ?>
@@ -173,13 +175,13 @@ function repHoursFormat(float $hours): string {
             ->column(__('gross_h_col'), fn($stat) => '<span class="td-right td-mono">' . repHoursFormat($stat['gross_hours'] ?? 0) . '</span>', 'td-right')
             ->column(__('net_h_col'), fn($stat) => '<span class="td-right td-mono ' . (($stat['net_hours'] ?? 0) > 0 ? 'erep-val--highlight' : '') . '">' . repHoursFormat($stat['net_hours'] ?? 0) . '</span>', 'td-right');
         if ($anyHasRate) {
-            $t->column(__('estimated_cost_col'), function($stat) use ($currency) {
+            $t->column(__('estimated_cost_col'), function($stat) use ($currency, $currencyStyle) {
                 $html = '<span class="td-right td-mono ' . (($stat['cost'] ?? 0) > 0 ? 'erep-val--cost' : 'td-muted') . '">';
-                $html .= ($stat['has_rate'] ?? false) ? format_currency($stat['cost'] ?? 0, $currency) : '<span title="' . htmlspecialchars(__('no_rate_set')) . '">—</span>';
+                $html .= ($stat['has_rate'] ?? false) ? format_currency($stat['cost'] ?? 0, $currency, $currencyStyle) : '<span title="' . htmlspecialchars(__('no_rate_set')) . '">—</span>';
                 return $html . '</span>';
             }, 'td-right');
-            $t->column(__('avg_cost_h'), function($stat) use ($currency) {
-                $avg = (($stat['net_hours'] ?? 0) > 0 && ($stat['has_rate'] ?? false)) ? format_currency(round(($stat['cost'] ?? 0) / $stat['net_hours'], 2), $currency) : '—';
+            $t->column(__('avg_cost_h'), function($stat) use ($currency, $currencyStyle) {
+                $avg = (($stat['net_hours'] ?? 0) > 0 && ($stat['has_rate'] ?? false)) ? format_currency(round(($stat['cost'] ?? 0) / $stat['net_hours'], 2), $currency, $currencyStyle) : '—';
                 return '<span class="td-right td-muted td-mono">' . $avg . '</span>';
             }, 'td-right');
         }
@@ -193,14 +195,14 @@ function repHoursFormat(float $hours): string {
                 return Button::make('📊 ' . __('view_stats'))->ghost()->sm()->link($statsUrl)->render()
                     . Button::make('💰 ' . __('salary_report'))->ghost()->sm()->link($salaryUrl)->render();
             })
-            ->footer(function($data) use ($totalShifts, $totalGrossHours, $totalNetHours, $anyHasRate, $totalCost, $totalAbsDays, $currency) {
+            ->footer(function($data) use ($totalShifts, $totalGrossHours, $totalNetHours, $anyHasRate, $totalCost, $totalAbsDays, $currency, $currencyStyle) {
                 $html = '<tr class="erep-total-row"><td colspan="2"><strong>' . __('total_row') . '</strong></td>';
                 $html .= '<td class="td-right td-mono"><strong>' . $totalShifts . '</strong></td>';
                 $html .= '<td class="td-right">—</td>';
                 $html .= '<td class="td-right td-mono"><strong>' . repHoursFormat($totalGrossHours) . '</strong></td>';
                 $html .= '<td class="td-right td-mono"><strong>' . repHoursFormat($totalNetHours) . '</strong></td>';
                 if ($anyHasRate) {
-                    $html .= '<td class="td-right td-mono erep-val--cost"><strong>' . format_currency($totalCost, $currency) . '</strong></td>';
+                    $html .= '<td class="td-right td-mono erep-val--cost"><strong>' . format_currency($totalCost, $currency, $currencyStyle) . '</strong></td>';
                     $html .= '<td class="td-right">—</td>';
                 }
                 $html .= '<td class="td-right td-mono"><strong>' . ($totalAbsDays > 0 ? $totalAbsDays : '—') . '</strong></td>';

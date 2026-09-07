@@ -42,6 +42,36 @@ final class RoleAssignmentSyncService
         return $out;
     }
 
+    /**
+     * Tous les rôles (système inclus) enrichis du même flag `is_managing` —
+     * pour le sélecteur "Rôle" unifié du formulaire de création d'utilisateur
+     * (Owner + rôles par store dans une seule liste, au lieu d'un bascule
+     * is_admin séparée du système de rôles dynamique).
+     */
+    public function allRoles(): array
+    {
+        $out = [];
+        foreach ($this->roles->findAll() as $role) {
+            $role['is_managing'] = !empty($role['is_system']) || $this->roles->getPermissions((int) $role['id']) !== [];
+            $out[] = $role;
+        }
+        return $out;
+    }
+
+    /** Retourne un rôle par id, système inclus (contrairement à findAssignableRole), enrichi de `is_managing`. */
+    public function findRole(int $roleId): ?array
+    {
+        if ($roleId <= 0) {
+            return null;
+        }
+        $role = $this->roles->findById($roleId);
+        if ($role === null) {
+            return null;
+        }
+        $role['is_managing'] = !empty($role['is_system']) || $this->roles->getPermissions($roleId) !== [];
+        return $role;
+    }
+
     /** Retourne le rôle s'il existe et est assignable par store (non système), null sinon. */
     public function findAssignableRole(int $roleId): ?array
     {
@@ -164,6 +194,12 @@ final class RoleAssignmentSyncService
             }
         }
         return $map;
+    }
+
+    /** Le rôle système Owner (slug 'owner'), pour afficher son vrai nom dans les formulaires plutôt qu'un libellé codé en dur. */
+    public function ownerRole(): ?array
+    {
+        return $this->roles->findBySlug('owner');
     }
 
     /** Assigne ou retire le rôle Owner (portée globale) selon le flag users.is_admin posté. */

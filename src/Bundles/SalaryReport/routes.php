@@ -23,6 +23,7 @@ $router->group('/admin', function ($r) {
     $r->get('/stores/{id}/reports/salary',              [AdminSalaryReportController::class, 'salaryReports'],      name: 'admin.stores.salary_reports');
     $r->get('/stores/{id}/reports/salary/create',       [AdminSalaryReportController::class, 'createSalaryReport'], name: 'admin.stores.salary_reports.create');
     $r->post('/stores/{id}/reports/salary/create',      [AdminSalaryReportController::class, 'storeSalaryReport'],  name: 'admin.stores.salary_reports.store');
+    $r->get('/stores/{id}/reports/salary/calculate',    [AdminSalaryReportController::class, 'calculateSalaryReport'], name: 'admin.stores.salary_reports.calculate');
     $r->get('/stores/{id}/reports/salary/{rid}',        [AdminSalaryReportController::class, 'showSalaryReport'],   name: 'admin.stores.salary_reports.show');
     $r->get('/stores/{id}/reports/salary/{rid}/edit',   [AdminSalaryReportController::class, 'editSalaryReport'],   name: 'admin.stores.salary_reports.edit');
     $r->post('/stores/{id}/reports/salary/{rid}/edit',  [AdminSalaryReportController::class, 'updateSalaryReport'], name: 'admin.stores.salary_reports.update');

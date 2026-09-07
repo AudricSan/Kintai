@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Controller\Web;
 
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Repositories\AvailabilityRepositoryInterface;
 use kintai\Core\Repositories\IcalTokenRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
@@ -18,6 +19,8 @@ use kintai\Core\Repositories\UserNavPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Repositories\NotificationRepositoryInterface;
+use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
+use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\NotificationService;
@@ -52,6 +55,10 @@ final class EmployeeControllerNavSettingsTest extends TestCase
             $this->createMock(UserDashboardPrefsRepositoryInterface::class),
             new NotificationService($this->createMock(NotificationRepositoryInterface::class)),
             $this->navPrefs,
+            new PermissionService(
+                $this->createMock(RoleAssignmentRepositoryInterface::class),
+                $this->createMock(RoleRepositoryInterface::class),
+            ),
         );
     }
 

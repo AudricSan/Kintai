@@ -4,11 +4,22 @@ declare(strict_types=1);
 
 /**
  * Permission requise par route (nom de route → clé de PermissionCatalog).
+ * Deux formats de règle :
+ *
+ *   'cle.permission'                                    → la clé est exigée
+ *   ['perm' => 'cle.permission', 'membership' => true]   → accès direct si
+ *       l'utilisateur est membre du store ciblé (paramètre de route 'id' par
+ *       défaut, ou 'store_param' pour un autre nom), sinon la clé est exigée.
+ *       Porte d'entrée volontairement grossière pour un accès en libre-service
+ *       (ex. bundle DailyReport : tout membre du store peut créer/soumettre
+ *       son propre rapport) — la logique fine par ressource (statut, auteur)
+ *       reste vérifiée par le contrôleur, jamais dupliquée ici.
  *
  * Consommé par PermissionMiddleware : pour un non-Owner, la route n'est
- * accessible que si l'un de ses rôles accorde la clé, et la liste des stores
- * visibles (managed_store_ids) est resserrée aux stores où cette clé précise
- * est accordée. Une route absente de cette map reste soumise au seul filtre
+ * accessible que si l'un de ses rôles accorde la clé (ou, avec 'membership',
+ * si l'utilisateur est membre du store), et la liste des stores visibles
+ * (managed_store_ids) est resserrée aux stores où cette clé précise est
+ * accordée. Une route absente de cette map reste soumise au seul filtre
  * grossier d'AdminMiddleware (être gestionnaire d'au moins un store).
  *
  * Les pages réservées à l'Owner (owner-settings, langues, bundles, rôles,
@@ -151,6 +162,26 @@ return [
     'admin.stores.salary_reports.update'   => 'payroll.generate',
     'admin.stores.salary_reports.delete'   => 'payroll.generate',
     'admin.stores.salary_reports.pdf'      => 'payroll.export',
+
+    // --- Journal d'activité --------------------------------------------------------------
+    'admin.activity'                  => 'stores.view',
+
+    // --- Rapports journaliers (bundle DailyReport) → daily_reports.* -------------
+    'admin.daily_reports.all'           => 'daily_reports.view',
+    'admin.daily_reports.index'         => ['perm' => 'daily_reports.view',   'membership' => true],
+    'admin.daily_reports.create'        => ['perm' => 'daily_reports.create', 'membership' => true],
+    'admin.daily_reports.store'         => ['perm' => 'daily_reports.create', 'membership' => true],
+    'admin.daily_reports.show'          => ['perm' => 'daily_reports.view',   'membership' => true],
+    'admin.daily_reports.edit'          => ['perm' => 'daily_reports.update', 'membership' => true],
+    'admin.daily_reports.update'        => ['perm' => 'daily_reports.update', 'membership' => true],
+    'admin.daily_reports.submit'        => ['perm' => 'daily_reports.submit', 'membership' => true],
+    'admin.daily_reports.pdf'           => ['perm' => 'daily_reports.view',   'membership' => true],
+    'admin.daily_reports.pdf_download'  => ['perm' => 'daily_reports.view',   'membership' => true],
+    'admin.daily_reports.validate'      => 'daily_reports.approve',
+    'admin.daily_reports.send_mail'     => 'daily_reports.approve',
+    'admin.daily_reports.delete'        => 'daily_reports.delete',
+    'admin.daily_reports.settings'      => 'daily_reports.update',
+    'admin.daily_reports.settings.save' => 'daily_reports.update',
 
     // --- Photos de magasin (bundle StorePhoto) → documents.* ---------------------
     'admin.photos.index'              => 'documents.view',

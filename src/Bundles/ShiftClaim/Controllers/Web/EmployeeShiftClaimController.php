@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace kintai\Bundles\ShiftClaim\Controllers\Web;
 
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Repositories\ShiftClaimRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
+use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\NotificationService;
 use kintai\UI\Controller\Web\HasBaseUrl;
 use kintai\UI\Controller\Web\HasStoreFeatureCheck;
 use kintai\UI\ViewRenderer;
@@ -27,8 +30,11 @@ final class EmployeeShiftClaimController
         private readonly ShiftTypeRepositoryInterface $shiftTypes,
         private readonly StoreRepositoryInterface $stores,
         private readonly StoreUserRepositoryInterface $storeUsers,
+        private readonly UserRepositoryInterface $users,
         private readonly ShiftClaimRepositoryInterface $shiftClaims,
         private readonly AuditLogger $auditLogger,
+        private readonly NotificationService $notifs,
+        private readonly PermissionService $permissions,
     ) {}
 
     public function openShifts(Request $request): Response
@@ -128,6 +134,8 @@ final class EmployeeShiftClaimController
             'store_id' => $shift['store_id'] ?? null,
         ], (int) ($shift['store_id'] ?? 0) ?: null);
 
+        $this->notifyManagers((int) ($shift['store_id'] ?? 0), 'shift_claim_submitted', 'Une candidature attend votre décision à la bourse aux shifts.', $shiftId);
+
         return Response::redirect($this->base() . '/employee/open-shifts?success=claimed');
     }
 
@@ -148,5 +156,21 @@ final class EmployeeShiftClaimController
         ], (int) ($claim['store_id'] ?? 0) ?: null);
 
         return Response::redirect($this->base() . '/employee/open-shifts?success=withdrawn');
+    }
+
+    /** Notifie les membres du store détenant open_shifts.approve (candidats à une décision). */
+    private function notifyManagers(int $storeId, string $type, string $body, int $referenceId): void
+    {
+        $recipients = [];
+        foreach ($this->storeUsers->findByStore($storeId) as $m) {
+            $uid = (int) $m['user_id'];
+            $candidate = $this->users->findById($uid);
+            if ($candidate !== null && $this->permissions->can($candidate, 'open_shifts.approve', $storeId)) {
+                $recipients[] = $uid;
+            }
+        }
+        if ($recipients !== []) {
+            $this->notifs->notifyMany($recipients, $type, $body, $referenceId);
+        }
     }
 }

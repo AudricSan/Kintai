@@ -26,6 +26,8 @@ final class ActivityController
             return $this->errorLogTab($request);
         }
 
+        $managedIds = $request->getAttribute('managed_store_ids');
+
         $filters = [
             'level'         => $request->query('level'),
             'channel'       => $request->query('channel'),
@@ -35,6 +37,7 @@ final class ActivityController
             'from'          => $request->query('from'),
             'to'            => $request->query('to'),
             'query'         => $request->query('query'),
+            'store_ids'     => $managedIds,
         ];
         $filters = array_filter($filters, fn($v) => $v !== null && $v !== '');
 

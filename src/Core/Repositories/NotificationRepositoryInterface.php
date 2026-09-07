@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace kintai\Core\Repositories;
 
+/**
+ * Champs attendus en lecture/écriture : id, user_id, type, body, reference_id
+ * (nullable), is_read (dérivé, 0|1), created_at, read_at. L'implémentation DB
+ * traduit ce modèle vers/depuis le schéma réel de la table `notifications`
+ * (data JSON + read_at) — voir DatabaseNotificationRepository.
+ */
 interface NotificationRepositoryInterface
 {
     public function findById(int $id): ?array;

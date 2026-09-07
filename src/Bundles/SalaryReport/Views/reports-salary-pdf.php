@@ -14,9 +14,10 @@ declare(strict_types=1);
  */
 
 $currency = $store['currency'] ?? 'JPY';
+$currencyStyle = store_currency_style($store);
 
 $fmt = fn(mixed $v, string $def = '—') => $v !== null && $v !== '' ? htmlspecialchars((string) $v) : $def;
-$cur = fn(mixed $v) => $v !== null && $v !== '' ? format_currency((float) $v, $currency) : '—';
+$cur = fn(mixed $v) => $v !== null && $v !== '' ? format_currency((float) $v, $currency, $currencyStyle) : '—';
 $isEmployeeScoped = !empty($report['user_id']);
 ?>
 <!DOCTYPE html>
@@ -82,10 +83,12 @@ th { background: #f0f0f0; font-weight: 600; }
 <!-.- Résumé financier -->
 <h2><?= __('sr_section_financial') ?></h2>
 <table>
+    <?php if (!$isEmployeeScoped): ?>
     <tr>
         <th style="width:50%"><?= __('sr_total_payment') ?></th>
         <td class="tr td-mono"><?= $cur($report['total_payment'] ?? null) ?></td>
     </tr>
+    <?php endif; ?>
     <tr>
         <th><?= __('sr_total_deductions') ?></th>
         <td class="tr td-mono"><?= $cur($report['total_deductions'] ?? null) ?></td>
@@ -196,8 +199,8 @@ th { background: #f0f0f0; font-weight: 600; }
         <td class="tr td-mono"><?= $row['pause_min'] > 0 ? $row['pause_min'] . ' min' : '—' ?></td>
         <td class="tr td-mono"><?= payslip_hours($row['net_min']) ?></td>
         <?php if ($anyRate): ?>
-        <td class="tr td-mono"><?= $row['has_rate'] ? number_format($row['rate'], 2) . ' ' . $currency : '—' ?></td>
-        <td class="tr td-mono"><?= $row['has_rate'] ? format_currency($row['cost'], $currency) : '—' ?></td>
+        <td class="tr td-mono"><?= $row['has_rate'] ? number_format($row['rate'], 2) . ' ' . currency_symbol($currency, $currencyStyle) : '—' ?></td>
+        <td class="tr td-mono"><?= $row['has_rate'] ? format_currency($row['cost'], $currency, $currencyStyle) : '—' ?></td>
         <?php endif; ?>
     </tr>
     <?php endforeach; ?>
@@ -208,16 +211,33 @@ th { background: #f0f0f0; font-weight: 600; }
         <td class="tr td-mono"><?= payslip_hours($totalNetMin) ?></td>
         <?php if ($anyRate): ?>
         <td></td>
-        <td class="tr td-mono"><?= format_currency($totalCost, $currency) ?></td>
+        <td class="tr td-mono"><?= format_currency($totalCost, $currency, $currencyStyle) ?></td>
         <?php endif; ?>
     </tr>
 </table>
+<?php if (!empty($type_breakdown)): ?>
+<h2><?= __('sr_type_breakdown') ?></h2>
+<table>
+    <tr>
+        <th><?= __('shift_type') ?></th>
+        <th><?= __('hours') ?></th>
+        <th><?= __('amount') ?></th>
+    </tr>
+    <?php foreach ($type_breakdown as $tb): ?>
+    <tr>
+        <td><?= htmlspecialchars($tb['name']) ?></td>
+        <td class="tr td-mono"><?= payslip_hours($tb['minutes']) ?></td>
+        <td class="tr td-mono"><?= format_currency($tb['amount'], $currency, $currencyStyle) ?></td>
+    </tr>
+    <?php endforeach; ?>
+</table>
+<?php endif; ?>
 <?php if ($deductionsEnabled && !empty($deductions)): ?>
 <h2><?= __('payslip_summary') ?></h2>
 <table>
     <tr>
         <th style="width:70%"><?= __('gross_pay') ?></th>
-        <td class="tr td-mono"><?= format_currency($totalCost, $currency) ?></td>
+        <td class="tr td-mono"><?= format_currency($totalCost, $currency, $currencyStyle) ?></td>
     </tr>
     <?php foreach ($deductions as $ded): ?>
     <tr>
@@ -225,16 +245,16 @@ th { background: #f0f0f0; font-weight: 600; }
             <?= isset($ded['label_key']) ? __($ded['label_key']) : htmlspecialchars($ded['label'] ?? '') ?>
             <?php if (!empty($ded['is_flat'])): ?> (<?= __('monthly_fixed') ?>)<?php elseif (isset($ded['rate'])): ?> (<?= number_format((float) $ded['rate'], 2) ?>%)<?php endif; ?>
         </th>
-        <td class="tr td-mono">−<?= format_currency($ded['amount'], $currency) ?></td>
+        <td class="tr td-mono">−<?= format_currency($ded['amount'], $currency, $currencyStyle) ?></td>
     </tr>
     <?php endforeach; ?>
     <tr style="font-weight:bold">
         <th><?= __('total_deductions') ?></th>
-        <td class="tr td-mono">−<?= format_currency($totalDeductions, $currency) ?></td>
+        <td class="tr td-mono">−<?= format_currency($totalDeductions, $currency, $currencyStyle) ?></td>
     </tr>
     <tr style="font-weight:bold; background:#f5f5f5">
         <th><?= __('net_pay') ?></th>
-        <td class="tr td-mono"><?= format_currency($netPay, $currency) ?></td>
+        <td class="tr td-mono"><?= format_currency($netPay, $currency, $currencyStyle) ?></td>
     </tr>
 </table>
 <?php endif; ?>

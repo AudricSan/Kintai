@@ -24,6 +24,7 @@ final class NotificationController
         $notifications = $this->repo->findByUser($userId, 50);
 
         return Response::html($this->view->render('notifications.index', [
+            'title'         => __('notifications'),
             'notifications' => $notifications,
         ], 'layout.app'));
     }

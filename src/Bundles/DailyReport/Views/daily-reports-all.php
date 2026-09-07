@@ -1,4 +1,6 @@
 <?php
+use kintai\UI\Components\Badge;
+
 /**
  * @var array  $grouped        [ storeId => ['store' => [...], 'reports' => [...]] ]  (V1 – filtré complet)
  * @var array  $reportsV2      Rapports V2 – filtrés uniquement par année, tous stores
@@ -13,9 +15,9 @@
  */
 
 $statusLabels = [
-    'draft'     => ['label' => __('dr_status_draft'),     'class' => 'badge--secondary'],
-    'submitted' => ['label' => __('dr_status_submitted'), 'class' => 'badge--warning'],
-    'validated' => ['label' => __('dr_status_validated'), 'class' => 'badge--active'],
+    'draft'     => __('dr_status_draft'),
+    'submitted' => __('dr_status_submitted'),
+    'validated' => __('dr_status_validated'),
 ];
 
 $monthNames = [
@@ -42,6 +44,7 @@ foreach ($reportsV2 as $report) {
 
     $store    = $report['store_obj'] ?? [];
     $currency = $store['currency'] ?? 'JPY';
+    $currencyStyle = store_currency_style($store);
 
     if (!isset($byYearMonth[$year])) {
         $byYearMonth[$year] = [];
@@ -55,6 +58,7 @@ foreach ($reportsV2 as $report) {
             'stores'   => [],
             'totals'   => ['sales_total' => 0.0, 'customer_count' => 0, 'labor_cost' => 0.0, 'waste_total' => 0.0],
             'currency' => $currency,
+            'currency_style' => $currencyStyle,
         ];
     }
 
@@ -109,7 +113,7 @@ unset($months, $days);
                     <option value=""><?= __('all') ?></option>
                     <?php foreach (['draft', 'submitted', 'validated'] as $s): ?>
                         <option value="<?= $s ?>" <?= $filterStatus === $s ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($statusLabels[$s]['label']) ?>
+                            <?= htmlspecialchars($statusLabels[$s]) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -175,7 +179,7 @@ unset($months, $days);
         $storeSettings = json_decode($store['daily_report_settings'] ?? '{}', true);
         $cumulativeMode = $storeSettings['cumulative_mode'] ?? 'per_day';
         $reports  = array_slice($group['reports'], 0, 5);
-        $currency = currency_symbol($store['currency'] ?? 'JPY');
+        $currency = currency_symbol($store['currency'] ?? 'JPY', store_currency_style($store));
 
         // Cumuls pour ce store (mode système)
         $cumulativeTotals = [];
@@ -233,10 +237,10 @@ unset($months, $days);
                     <tbody>
                         <?php foreach ($reports as $report): ?>
                             <?php
-                            $rid    = (int) $report['id'];
-                            $st     = $report['status'] ?? 'draft';
-                            $badge  = $statusLabels[$st] ?? ['label' => $st, 'class' => 'badge--secondary'];
-                            $author = $report['author'] ?? [];
+                            $rid       = (int) $report['id'];
+                            $st        = $report['status'] ?? 'draft';
+                            $badgeHtml = Badge::make($statusLabels[$st] ?? $st)->status($st)->render();
+                            $author    = $report['author'] ?? [];
                             $authorName = trim(($author['last_name'] ?? '') . ' ' . ($author['first_name'] ?? ''))
                                 ?: ($author['email'] ?? '—');
                             ?>
@@ -248,7 +252,7 @@ unset($months, $days);
                                 <td data-label="<?= htmlspecialchars(__('dr_labor') . ' (' . $currency . ')') ?>" class="text-right"><?= drAllFormatNum($cumulativeMode === 'cumulative_system' ? ($cumulativeTotals[$rid]['labor_cost'] ?? $report['labor_cost']) : $report['labor_cost']) ?></td>
                                 <td data-label="<?= htmlspecialchars(__('dr_waste') . ' (' . $currency . ')') ?>" class="text-right"><?= drAllFormatNum($cumulativeMode === 'cumulative_system' ? ($cumulativeTotals[$rid]['waste_total'] ?? $report['waste_total']) : $report['waste_total']) ?></td>
                                 <td data-label="<?= htmlspecialchars(__('status')) ?>">
-                                    <span class="badge <?= $badge['class'] ?>"><?= $badge['label'] ?></span>
+                                    <?= $badgeHtml ?>
                                     <?php if (!empty($report['mail_sent_at'])): ?>
                                         <span class="badge badge--active" title="<?= __('dr_mail_sent_at') ?> <?= htmlspecialchars($report['mail_sent_at']) ?>">✉</span>
                                     <?php endif; ?>
@@ -259,7 +263,7 @@ unset($months, $days);
                                            class="btn btn--ghost btn--xs" target="_blank" onclick="event.stopPropagation()">PDF</a>
                                     <?php endif; ?>
                                     <?php if (!empty($authUser['is_admin'])): ?>
-                                        <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/daily-reports/<?= $rid ?>/delete" class="form-inline" onsubmit="return confirm('<?= __('dr_confirm_delete') ?>')">
+                                        <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/daily-reports/<?= $rid ?>/delete" class="form-inline" data-confirm="<?= htmlspecialchars(__('dr_confirm_delete'), ENT_QUOTES) ?>">
                                             <?= csrf_field() ?>
                                             <button type="submit" class="btn btn--danger btn--xs" onclick="event.stopPropagation()"><?= __('delete') ?></button>
                                         </form>
@@ -301,7 +305,8 @@ unset($months, $days);
                         $yearTotals['waste_total']    += $dayData['totals']['waste_total'];
                     }
                 }
-                $firstCurrency = currency_symbol(reset($months)[array_key_first(reset($months))]['currency'] ?? 'JPY');
+                $firstDayData  = reset($months)[array_key_first(reset($months))];
+                $firstCurrency = currency_symbol($firstDayData['currency'] ?? 'JPY', $firstDayData['currency_style'] ?? 'kanji');
                 ?>
                 <div class="dr-v2-year-totals text-muted">
                     <?= __('dr_sales') ?> <strong><?= drAllFormatNum($yearTotals['sales_total']) ?></strong>
@@ -354,7 +359,7 @@ unset($months, $days);
                                         <?php
                                         $totals     = $dayData['totals'];
                                         $storeCount = count($dayData['stores']);
-                                        $sym        = currency_symbol($dayData['currency']);
+                                        $sym        = currency_symbol($dayData['currency'], $dayData['currency_style'] ?? 'kanji');
 
                                         // Données modal (JSON)
                                         $modalStores = [];
@@ -364,8 +369,7 @@ unset($months, $days);
                                             $author = $r['author'] ?? [];
                                             $authorName = trim(($author['last_name'] ?? '') . ' ' . ($author['first_name'] ?? ''))
                                                 ?: ($author['email'] ?? '—');
-                                            $st    = $r['status'] ?? 'draft';
-                                            $badge = $statusLabels[$st] ?? ['label' => $st, 'class' => 'badge--secondary'];
+                                            $st = $r['status'] ?? 'draft';
                                             $modalStores[] = [
                                                 'store_name'     => $s['name'] ?? '—',
                                                 'store_id'       => (int) ($s['id'] ?? 0),
@@ -375,9 +379,8 @@ unset($months, $days);
                                                 'customer_count' => (int)   ($r['customer_count'] ?? 0),
                                                 'labor_cost'     => (float) ($r['labor_cost']     ?? 0),
                                                 'waste_total'    => (float) ($r['waste_total']    ?? 0),
-                                                'status_label'   => $badge['label'],
-                                                'status_class'   => $badge['class'],
-                                                'currency_sym'   => currency_symbol($s['currency'] ?? 'JPY'),
+                                                'badge_html'     => Badge::make($statusLabels[$st] ?? $st)->status($st)->render(),
+                                                'currency_sym'   => currency_symbol($s['currency'] ?? 'JPY', store_currency_style($s)),
                                                 'notes'          => $r['notes'] ?? '',
                                             ];
                                         }
@@ -559,7 +562,7 @@ unset($months, $days);
                 '<td class="text-right">' + fmt(s.customer_count) + '</td>' +
                 '<td class="text-right">' + fmt(s.labor_cost) + ' <small>' + esc(s.currency_sym) + '</small></td>' +
                 '<td class="text-right">' + fmt(s.waste_total) + ' <small>' + esc(s.currency_sym) + '</small></td>' +
-                '<td><span class="badge ' + esc(s.status_class) + '">' + esc(s.status_label) + '</span></td>' +
+                '<td>' + s.badge_html + '</td>' +
                 '<td><a href="' + esc(data.base_url) + '/admin/stores/' + s.store_id + '/daily-reports/' + s.report_id + '" class="btn btn--ghost btn--xs"><?= __('view') ?></a></td>';
             tbody.appendChild(tr);
         });

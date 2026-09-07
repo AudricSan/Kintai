@@ -3,14 +3,22 @@
     "all_years": "Toutes les années",
     "bundle_resignation_report": "Rapport de démission",
     "bundle_resignation_report_desc": "Rapports de démission par employé, avec réactivation du compte.",
+    "confirm_delete_employee_permanently": "Supprimer définitivement cet employé et son rapport de démission ? Cette action est irréversible.",
     "confirm_delete_resignation_report": "Supprimer définitivement ce rapport de démission ?",
     "confirm_reactivate": "Réactiver cet employé ? Il pourra à nouveau se connecter.",
+    "delete_employee_and_report_permanently": "Supprimer définitivement l'employé et le rapport",
+    "delete_employee_and_report_permanently_hint": "Le compte de l'employé et ce rapport seront supprimés définitivement. Action irréversible.",
+    "delete_resignation_report_intro": "Que souhaitez-vous faire pour",
+    "delete_resignation_report_title": "Supprimer le rapport de démission",
     "edit_resignation_report": "Modifier le rapport de démission",
     "new_resignation_report": "Nouveau rapport de démission",
     "person_in_charge": "Responsable",
     "reactivate": "Réactiver",
+    "reactivate_and_delete_report": "Réactiver l'employé et supprimer le rapport",
+    "reactivate_and_delete_report_hint": "L'employé retrouve son compte actif ; seul le rapport est supprimé.",
     "resignation_date": "Date de démission",
     "resignation_notice": "Préavis de démission",
     "resignation_report_pdf_title": "Rapport de démission (退職報告書)",
-    "resignation_reports": "Rapports de démission"
+    "resignation_reports": "Rapports de démission",
+    "user_deleted_permanently": "L'employé et le rapport ont été supprimés définitivement."
 }

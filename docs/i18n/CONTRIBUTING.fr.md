@@ -29,7 +29,7 @@ Ouvrez une issue avec le template **Feature Request**. Expliquez le cas d'usage 
 2. Créez une branche : `git checkout -b feat/ma-fonctionnalite` ou `fix/mon-bug`
 3. Faites vos changements en suivant les conventions ci-dessous
 4. Lancez les tests : `./vendor/bin/phpunit`
-5. Ouvrez une pull request contre la branche `develop` (`main`, `alpha` et `beta` sont des branches de canal de release protégées — les fusionner y publie automatiquement une Release GitHub, voir [releasing.fr.md](releasing.fr.md))
+5. Ouvrez une pull request contre la branche `alpha` (le canal le plus actif — `main`, `alpha` et `beta` sont des branches de canal de release protégées, les fusionner y publie automatiquement une Release GitHub, voir [releasing.fr.md](releasing.fr.md))
 
 ## Conventions de code
 
