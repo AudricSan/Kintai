@@ -62,21 +62,21 @@ echo Flash::fromQuery('success', [
                         <img src="<?= $BASE_URL ?>/<?= htmlspecialchars($preview['filepath']) ?>"
                              alt="<?= htmlspecialchars($preview['filename']) ?>"
                              loading="lazy"
-                             style="width:100%;height:160px;object-fit:scale-down;background:#e9ecef;border-radius:var(--radius) var(--radius) 0 0">
+                             class="photo-card__preview-img">
                     <?php else: ?>
-                        <div class="empty-state" style="height:160px;display:flex;align-items:center;justify-content:center"><?= __('photo_no_images') ?></div>
+                        <div class="empty-state photo-card__preview-empty"><?= __('photo_no_images') ?></div>
                     <?php endif; ?>
                 </div>
-                <div class="card-body" style="padding:var(--space-3)">
+                <div class="card-body photo-card__body">
                     <div class="photo-card__meta">
                         <strong><?= htmlspecialchars($storeName) ?></strong>
                         <span class="badge badge--secondary badge--sm"><?= $count ?> <?= __('photos_count') ?></span>
                     </div>
                     <div class="text-muted text-sm"><?= htmlspecialchars($sub['week_label'] ?? '') ?></div>
                     <?php if (!empty($sub['notes'])): ?>
-                        <div class="text-muted text-xs" style="margin-top:var(--space-1)"><?= htmlspecialchars(mb_substr($sub['notes'], 0, 80)) ?></div>
+                        <div class="text-muted text-xs photo-card__notes"><?= htmlspecialchars(mb_substr($sub['notes'], 0, 80)) ?></div>
                     <?php endif; ?>
-                    <div class="text-xs text-muted" style="margin-top:var(--space-1)">
+                    <div class="text-xs text-muted photo-card__date">
                         <?= date('d/m/Y', strtotime($sub['created_at'] ?? 'now')) ?>
                     </div>
                 </div>
