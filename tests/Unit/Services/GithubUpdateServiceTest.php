@@ -187,6 +187,64 @@ final class GithubUpdateServiceTest extends TestCase
         $this->assertFalse($info['has_update']);
     }
 
+    /**
+     * Régression : le suffixe -LN (voir docs/releasing.md) n'est jamais
+     * conservé dans config/app.php, donc la version installée après une
+     * précédente prerelease redevient une base nue "X.Y.Z" identique à celle
+     * de la nouvelle prerelease "X.Y.Z-LN". version_compare() natif classerait
+     * à tort "ak3" en dessous d'une chaîne sans suffixe et masquerait la mise
+     * à jour.
+     */
+    public function testCheckLatestReleaseDetectsUpdateWhenLatestHasSuffixOfSameBase(): void
+    {
+        $service = $this->makeService(
+            'v0.11.9-ak3',
+            ['README.md' => 'hello'],
+            currentVersion: '0.11.9',
+            channel: 'alpha',
+            prerelease: true,
+            targetCommitish: 'alpha',
+        );
+
+        $info = $service->checkLatestRelease();
+
+        $this->assertNotNull($info);
+        $this->assertTrue($info['has_update']);
+        $this->assertSame('0.11.9-ak3', $info['latest_version']);
+    }
+
+    public function testCheckLatestReleaseNoUpdateWhenAlreadyOnSameSuffixedVersion(): void
+    {
+        $service = $this->makeService(
+            'v0.11.9-ak3',
+            ['README.md' => 'hello'],
+            currentVersion: '0.11.9-ak3',
+            channel: 'alpha',
+            prerelease: true,
+            targetCommitish: 'alpha',
+        );
+
+        $info = $service->checkLatestRelease();
+
+        $this->assertFalse($info['has_update']);
+    }
+
+    public function testCheckLatestReleaseDetectsUpdateBetweenTwoSuffixesOfSameBase(): void
+    {
+        $service = $this->makeService(
+            'v0.11.9-ak3',
+            ['README.md' => 'hello'],
+            currentVersion: '0.11.9-ak2',
+            channel: 'alpha',
+            prerelease: true,
+            targetCommitish: 'alpha',
+        );
+
+        $info = $service->checkLatestRelease();
+
+        $this->assertTrue($info['has_update']);
+    }
+
     public function testReleaseChannelIgnoresAlphaAndBetaTags(): void
     {
         $service = $this->makeServiceWithReleases([
