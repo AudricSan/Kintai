@@ -9,10 +9,10 @@ final class Sort
     /**
      * Generate sort URL preserving current filters.
      */
-    public static function url(string $key, string $current, array $filters = []): string
+    public static function url(string $key, string $current, array $filters = [], string $param = 'sort'): string
     {
         $next = ($current === $key . '_asc') ? $key . '_desc' : $key . '_asc';
-        $params = array_filter([...$filters, 'sort' => $next], fn($v) => $v !== null && $v !== 0 && $v !== '');
+        $params = array_filter([...$filters, $param => $next], fn($v) => $v !== null && $v !== 0 && $v !== '');
         return '?' . http_build_query($params);
     }
 
@@ -47,10 +47,10 @@ final class Sort
     /**
      * Render a full sortable <th> with link.
      */
-    public static function th(string $label, string $key, string $current, array $filters = []): string
+    public static function th(string $label, string $key, string $current, array $filters = [], string $param = 'sort'): string
     {
         $icon  = self::icon($key, $current);
-        $url   = self::url($key, $current, $filters);
+        $url   = self::url($key, $current, $filters, $param);
         $active = self::isActive($key, $current) ? ' sort-link--active' : '';
         $aria  = self::ariaSort($key, $current);
 

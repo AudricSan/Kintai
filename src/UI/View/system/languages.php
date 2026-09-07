@@ -84,7 +84,7 @@ echo Flash::fromQuery('error', [
                         <a href="<?= $BASE_URL ?>/admin/languages/<?= htmlspecialchars($code) ?>/edit" class="btn btn--ghost btn--xs"><?= __('edit_translations') ?></a>
                         <?php if ($canDelete): ?>
                         <form method="POST" action="<?= $BASE_URL ?>/admin/languages/<?= htmlspecialchars($code) ?>/delete" class="form-inline"
-                              onsubmit="return confirm('<?= __('language_confirm_delete') ?>')">
+                              data-confirm="<?= htmlspecialchars(__('language_confirm_delete'), ENT_QUOTES) ?>">
                             <?= csrf_field() ?>
                             <button type="submit" class="btn btn--danger btn--xs"><?= __('delete') ?></button>
                         </form>

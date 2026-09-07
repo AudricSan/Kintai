@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\Bundles\Feedback\Controllers\Web;
 
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Repositories\FeedbackRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
@@ -13,6 +14,7 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\NotificationService;
 use kintai\Core\Services\UpdateService;
 use kintai\UI\Controller\Web\HasBaseUrl;
 use kintai\UI\ViewRenderer;
@@ -35,6 +37,8 @@ final class FeedbackController
         private readonly UserRepositoryInterface $users,
         private readonly AuditLogger $auditLogger,
         private readonly UpdateService $updateService,
+        private readonly NotificationService $notifs,
+        private readonly PermissionService $permissions,
     ) {}
 
     /**
@@ -113,7 +117,27 @@ final class FeedbackController
             $anonymous ? null : $userId
         );
 
+        if ($storeId !== null) {
+            $this->notifyManagers($storeId, 'Un nouveau feedback a été soumis.', (int) ($saved['id'] ?? 0));
+        }
+
         return Response::redirect($returnTo . '?fb_success=sent');
+    }
+
+    /** Notifie les membres du store détenant feedbacks.view qu'un nouveau feedback existe. */
+    private function notifyManagers(int $storeId, string $body, int $referenceId): void
+    {
+        $recipients = [];
+        foreach ($this->storeUsers->findByStore($storeId) as $m) {
+            $uid = (int) $m['user_id'];
+            $candidate = $this->users->findById($uid);
+            if ($candidate !== null && $this->permissions->can($candidate, 'feedbacks.view', $storeId)) {
+                $recipients[] = $uid;
+            }
+        }
+        if ($recipients !== []) {
+            $this->notifs->notifyMany($recipients, 'feedback_submitted', $body, $referenceId);
+        }
     }
 
     private function detectDeviceType(?string $userAgent): string

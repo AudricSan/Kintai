@@ -10,6 +10,7 @@ use kintai\Core\Container;
 use kintai\Core\FeatureManager;
 use kintai\Core\Middleware\AuthMiddleware;
 use kintai\Core\Repositories\LanguageRepositoryInterface;
+use kintai\Core\Repositories\RememberTokenRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
@@ -102,6 +103,7 @@ final class AuthMiddlewareTest extends TestCase
 
         $this->container->instance(AuthService::class, new AuthService(
             $users, $storeUsers, $stores, $roles, $assignments,
+            $this->createStub(RememberTokenRepositoryInterface::class),
         ));
         $this->container->instance(PermissionService::class, new PermissionService($assignments, $roles));
         $this->container->instance(StoreUserRepositoryInterface::class, $storeUsers);
@@ -149,6 +151,7 @@ final class AuthMiddlewareTest extends TestCase
             $this->createStub(StoreRepositoryInterface::class),
             $this->createStub(RoleRepositoryInterface::class),
             $this->createStub(RoleAssignmentRepositoryInterface::class),
+            $this->createStub(RememberTokenRepositoryInterface::class),
         ));
 
         $response = $this->handle();

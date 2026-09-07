@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace kintai\Bundles\StorePhoto\Controllers\Web;
 
 use kintai\UI\Controller\Web\HasAdminAccess;
+use kintai\Bundles\StorePhoto\Services\ImageCompressionService;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Repositories\StorePhotoRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
@@ -24,13 +25,20 @@ final class StorePhotoController
         private readonly StoreRepositoryInterface $stores,
         private readonly AppSettingsRepositoryInterface $appSettings,
         private readonly AuditLogger $auditLogger,
+        private readonly ImageCompressionService $imageCompressor,
     ) {}
 
     public function index(Request $request): Response
     {
         $managedIds = $this->managedIds($request);
         $storeId    = (int) ($request->query('store_id') ?: 0);
-        $submissions = $this->photos->findAllSubmissions(null, 100);
+        // Un manager restreint ne doit jamais voir les envois d'un store hors de son périmètre,
+        // ni via la liste complète (findAllSubmissions(null, ...) remontait tous les stores),
+        // ni via ?store_id= pointant sur un store qu'il ne gère pas.
+        if ($storeId > 0 && $managedIds !== null && !in_array($storeId, $managedIds, true)) {
+            $storeId = 0;
+        }
+        $submissions = $this->photos->findAllSubmissions($managedIds, 100);
 
         if ($storeId > 0) {
             $submissions = array_values(array_filter($submissions, fn($s) => (int) ($s['store_id'] ?? 0) === $storeId));
@@ -57,7 +65,10 @@ final class StorePhotoController
     {
         $managedIds = $this->managedIds($request);
         $storeId    = (int) ($request->query('store_id') ?: 0);
-        $myStores   = $this->availableStores($managedIds);
+        $myStores   = array_values(array_filter(
+            $this->availableStores($managedIds),
+            fn($s) => $this->isPhotosFeatureEnabled((int) $s['id'])
+        ));
         $storeNames = $this->buildStoresMap($managedIds);
 
         if ($managedIds !== null && $storeId > 0) {
@@ -92,23 +103,50 @@ final class StorePhotoController
         $notes     = $request->post('notes') ?? '';
         $createdBy = (int) ($request->getAttribute('auth_user')['id'] ?? 0);
 
-        $submission = $this->photos->saveSubmission([
-            'store_id'       => $storeId,
-            'week_label'     => $weekLabel,
-            'notes'          => $notes,
-            'image_count'    => 0,
-            'retention_days' => max(1, (int) $this->appSettings->get('photo_retention_days', '14')),
-            'created_by'     => $createdBy,
-            'updated_at'     => date('Y-m-d H:i:s'),
-        ]);
-        $submissionId = (int) $submission['id'];
+        // Plusieurs envois pour le même magasin le même jour doivent former un seul
+        // rapport : on rattache à l'envoi du jour déjà existant plutôt que d'en
+        // recréer un (photos + notes s'accumulent dans la même soumission).
+        $today   = date('Y-m-d');
+        $existing = $this->photos->findTodaySubmission($storeId, $today);
+        $isMerge  = $existing !== null;
+
+        if ($isMerge) {
+            $mergedNotes = trim($existing['notes'] ?? '');
+            if ($notes !== '') {
+                $mergedNotes = $mergedNotes !== '' ? $mergedNotes . "\n" . $notes : $notes;
+            }
+            $submission   = $this->photos->saveSubmission([
+                'id'         => $existing['id'],
+                'notes'      => $mergedNotes,
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+            $submissionId = (int) $submission['id'];
+        } else {
+            $submission = $this->photos->saveSubmission([
+                'store_id'       => $storeId,
+                'week_label'     => $weekLabel,
+                'notes'          => $notes,
+                'image_count'    => 0,
+                'retention_days' => max(1, (int) $this->appSettings->get('photo_retention_days', '14')),
+                'created_by'     => $createdBy,
+                'updated_at'     => date('Y-m-d H:i:s'),
+            ]);
+            $submissionId = (int) $submission['id'];
+        }
 
         $files = $request->file('photos');
         if ($files !== null && !empty($files['tmp_name'][0])) {
-            $this->saveUploadedFiles($request, $storeId, $submissionId, $files);
+            $this->saveUploadedFiles($request, $storeId, $submissionId, $files, (int) ($submission['image_count'] ?? 0));
         }
 
-        $this->auditLogger->log($request, 'photo.submission_created', 'store_photo_submission', $submissionId, $submission, $storeId);
+        $this->auditLogger->log(
+            $request,
+            $isMerge ? 'photo.submission_merged' : 'photo.submission_created',
+            'store_photo_submission',
+            $submissionId,
+            $submission,
+            $storeId
+        );
 
         if ($request->isAjax()) {
             return Response::json(['id' => $submissionId]);
@@ -144,19 +182,18 @@ final class StorePhotoController
         $subDir    = $storeDir . $submissionId . '/';
         if (!is_dir($subDir)) { mkdir($subDir, 0775, true); }
 
-        $safe = 'photo_' . ($index + 1) . '.' . $ext;
-        $dest = $subDir . $safe;
-
-        if (!move_uploaded_file($file['tmp_name'], $dest)) {
-            return Response::json(['error' => 'Failed to save file'], 500);
+        $compressed = $this->imageCompressor->compress($file['tmp_name'], $subDir . 'photo_' . ($index + 1));
+        if ($compressed === null) {
+            return Response::json(['error' => 'File type not allowed'], 422);
         }
+        $safe = basename($compressed['path']);
 
         $this->photos->saveImage([
             'submission_id' => $submissionId,
             'filename'      => $file['name'],
             'filepath'      => 'storage/img/' . $storeId . '/' . $submissionId . '/' . $safe,
-            'filesize'      => filesize($dest),
-            'mime_type'     => $file['type'] ?? mime_content_type($dest) ?: 'image/jpeg',
+            'filesize'      => $compressed['size'],
+            'mime_type'     => $compressed['mime'],
             'sort_order'    => $index,
         ]);
 
@@ -176,10 +213,28 @@ final class StorePhotoController
      */
     private function assertPhotosFeatureEnabled(int $storeId): void
     {
-        $features = $this->stores->getFeatures($storeId);
-        if ($features !== [] && !in_array('photos', $features, true)) {
+        if (!$this->isPhotosFeatureEnabled($storeId)) {
             throw new ForbiddenException("La fonctionnalité Photos n'est pas activée pour ce magasin.");
         }
+    }
+
+    private function isPhotosFeatureEnabled(int $storeId): bool
+    {
+        $features = $this->stores->getFeatures($storeId);
+        return $features === [] || in_array('photos', $features, true);
+    }
+
+    /**
+     * Détermine vers quelle vue liste revenir (tous les stores, ou un store filtré)
+     * une fois l'envoi consulté/supprimé — d'après le filtre actif au moment où
+     * l'utilisateur a cliqué sur l'envoi (porté par ?origin_store_id=, y compris
+     * la valeur 0 pour "tous les stores"). Sans ce paramètre (lien direct/ancien),
+     * on retombe sur le store de l'envoi lui-même, comme avant.
+     */
+    private function resolveBackStoreId(Request $request, int $fallbackStoreId): int
+    {
+        $origin = $request->query('origin_store_id');
+        return ($origin === null || $origin === '') ? $fallbackStoreId : (int) $origin;
     }
 
     /**
@@ -191,7 +246,7 @@ final class StorePhotoController
         return in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true) ? $ext : null;
     }
 
-    private function saveUploadedFiles(Request $request, int $storeId, int $submissionId, array $files): void
+    private function saveUploadedFiles(Request $request, int $storeId, int $submissionId, array $files, int $startIndex = 0): void
     {
         $uploadDir = dirname(__DIR__, 5) . '/storage/uploads/img/';
         $storeDir  = $uploadDir . $storeId . '/';
@@ -199,7 +254,7 @@ final class StorePhotoController
         if (!is_dir($storeDir)) { mkdir($storeDir, 0775, true); }
         if (!is_dir($subDir))  { mkdir($subDir, 0775, true); }
 
-        $count    = 0;
+        $count    = $startIndex;
         $tmpNames = is_array($files['tmp_name']) ? $files['tmp_name'] : [$files['tmp_name']];
         $names    = is_array($files['name'])      ? $files['name']      : [$files['name']];
         $types    = is_array($files['type'])      ? $files['type']      : [$files['type']];
@@ -209,19 +264,19 @@ final class StorePhotoController
             if (!empty($errs[$i]) || !is_uploaded_file($tmp)) continue;
             $ext = $this->safeImageExtension($names[$i] ?? '');
             if ($ext === null) continue;
-            $safe = 'photo_' . ($count + 1) . '.' . $ext;
-            $dest = $subDir . $safe;
-            if (move_uploaded_file($tmp, $dest)) {
-                $this->photos->saveImage([
-                    'submission_id' => $submissionId,
-                    'filename'      => $names[$i],
-                    'filepath'      => 'storage/img/' . $storeId . '/' . $submissionId . '/' . $safe,
-                    'filesize'      => filesize($dest),
-                    'mime_type'     => $types[$i] ?? mime_content_type($dest) ?: 'image/jpeg',
-                    'sort_order'    => $count,
-                ]);
-                $count++;
-            }
+
+            $compressed = $this->imageCompressor->compress($tmp, $subDir . 'photo_' . ($count + 1));
+            if ($compressed === null) continue;
+
+            $this->photos->saveImage([
+                'submission_id' => $submissionId,
+                'filename'      => $names[$i],
+                'filepath'      => 'storage/img/' . $storeId . '/' . $submissionId . '/' . basename($compressed['path']),
+                'filesize'      => $compressed['size'],
+                'mime_type'     => $compressed['mime'],
+                'sort_order'    => $count,
+            ]);
+            $count++;
         }
 
         $this->photos->saveSubmission([
@@ -238,15 +293,17 @@ final class StorePhotoController
         if (!$submission) {
             return Response::html($this->view->render('errors.404', ['title' => '404'], 'layout.app'), 404);
         }
+        $this->assertStoreAccess($request, (int) $submission['store_id']);
 
         $images = $this->photos->findImagesBySubmission($id);
         $store  = $this->stores->findById((int) $submission['store_id']);
 
         return Response::html($this->view->render('store-photos::store-photos-detail', [
-            'title'      => __('photo_submission') . ' #' . $id,
-            'submission' => $submission,
-            'images'     => $images,
-            'store'      => $store,
+            'title'        => __('photo_submission') . ' #' . $id,
+            'submission'   => $submission,
+            'images'       => $images,
+            'store'        => $store,
+            'backStoreId'  => $this->resolveBackStoreId($request, (int) $submission['store_id']),
         ], 'layout.app'));
     }
 
@@ -263,7 +320,8 @@ final class StorePhotoController
             return Response::redirect($this->base() . '/admin/photos');
         }
 
-        $storeId = (int) $submission['store_id'];
+        $storeId    = (int) $submission['store_id'];
+        $backStoreId = $this->resolveBackStoreId($request, $storeId);
 
         $uploadDir = dirname(__DIR__, 5) . '/storage/uploads/img/' . $storeId . '/' . $id . '/';
         if (is_dir($uploadDir)) {
@@ -278,7 +336,11 @@ final class StorePhotoController
         $this->photos->deleteSubmission($id);
         $this->auditLogger->log($request, 'photo.submission_deleted', 'store_photo_submission', $id, $submission, $storeId);
 
-        return Response::redirect($this->base() . '/admin/photos?store_id=' . $storeId);
+        // Revenir là où l'utilisateur se trouvait (tous les stores, ou un store
+        // filtré) plutôt que de forcer un filtre sur le store de l'élément
+        // supprimé — sinon un envoi supprimé depuis la vue "tous les stores"
+        // ramenait à tort sur le store de cet envoi.
+        return Response::redirect($this->base() . '/admin/photos' . ($backStoreId > 0 ? '?store_id=' . $backStoreId : ''));
     }
 
     public function settings(Request $request): Response

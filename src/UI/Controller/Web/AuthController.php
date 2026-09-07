@@ -78,19 +78,20 @@ final class AuthController
     /** Traite la soumission du formulaire de connexion. */
     public function login(Request $request): Response
     {
-        $mode = $request->post('login_mode', 'email');
+        $mode     = $request->post('login_mode', 'email');
+        $remember = $request->post('remember') === '1';
 
         if ($mode === 'code') {
             // Connexion par code employé + code magasin + mot de passe
             $employeeCode = trim($request->post('employee_code', ''));
             $storeCode    = trim($request->post('store_code', ''));
             $password     = $request->post('password', '0000');
-            $ok = $this->auth->attemptByCode($employeeCode, $storeCode, $password);
+            $ok = $this->auth->attemptByCode($employeeCode, $storeCode, $password, $remember);
         } else {
             // Connexion classique email + mot de passe
             $email    = trim($request->post('email', ''));
             $password = $password = $request->post('password', '');
-            $ok = $this->auth->attempt($email, $password);
+            $ok = $this->auth->attempt($email, $password, $remember);
         }
 
         if ($ok) {
@@ -315,13 +316,13 @@ final class AuthController
         $dbUser = $this->users->findById($userId);
         if ($dbUser) {
             $oldUser = $dbUser;
-            try {
-                $dbUser['language'] = $language;
-                $this->users->save($dbUser);
-                $_SESSION['auth_user'] = $dbUser;
-            } catch (\Throwable) {
-                // Colonne language absente (migration non exécutée) — session suffit
-            }
+            // Pas de catch ici : la colonne "language" existe depuis la toute première
+            // migration de création de users (elle ne peut pas manquer si la table existe),
+            // et avaler l'échec masquerait un vrai problème derrière un "?success=1" trompeur
+            // — l'utilisateur croirait sa préférence enregistrée alors qu'elle ne l'est pas.
+            $dbUser['language'] = $language;
+            $this->users->save($dbUser);
+            $_SESSION['auth_user'] = $dbUser;
 
             $_SESSION['locale'] = $language;
             $this->auditLogger->logUpdate($request, 'user.update_profile', 'user', $userId, $oldUser, $dbUser, [], null, $userId);

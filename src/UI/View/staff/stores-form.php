@@ -18,6 +18,7 @@ $members          ??= [];
 $available        ??= [];
 $assignable_roles ??= [];
 $default_role_id  ??= 0;
+$can              = $user_can ?? fn(string $k): bool => true;
 $action  = $mode === 'edit'
     ? $BASE_URL . '/admin/stores/' . (int) $store['id'] . '/edit'
     : route_url('admin.stores.create');
@@ -58,7 +59,7 @@ echo Flash::fromQuery('error', [
     <div class="card-header card-header--flex">
         <span><?= __('members') ?> <span class="text-sm text-dim">(<?= count($members) ?>)</span></span>
         <?php if (count(array_filter($members, fn($m) => empty($m['is_active']))) > 0): ?>
-            <label class="form-toggle" style="margin-left:auto;font-size:0.85rem">
+            <label class="form-toggle form-toggle--labeled">
                 <input type="checkbox" id="showInactiveMembers" class="form-toggle__input" onchange="document.querySelectorAll('.member-row--inactive').forEach(el => el.style.display = this.checked ? '' : 'none')">
                 <span class="form-toggle__track"></span>
                 <span><?= __('show_inactive') ?></span>
@@ -83,27 +84,33 @@ else:
                 ->render();
         })
         ->column(__('status'), fn($m) => !empty($m['is_active']) ? Badge::make(__('active'))->active()->render() : Badge::make(__('inactive'))->inactive()->render())
-        ->column(__('actions'), function($m) use ($BASE_URL, $storeId, $store, $assignable_roles) {
+        ->column(__('actions'), function($m) use ($BASE_URL, $storeId, $store, $assignable_roles, $can) {
             $mid = (int) $m['id'];
             $currentRoleId = (int) ($m['role_id'] ?? 0);
             $html = '<div class="btn-group">';
-            $html .= '<form method="POST" action="' . htmlspecialchars($BASE_URL . '/admin/stores/' . $storeId . '/members/' . $mid . '/role') . '" class="form-inline-flex">' . csrf_field()
-                . '<select name="role_id" class="form-control form-control-sm w-180">';
-            foreach ($assignable_roles as $r) {
-                $sel = (int) $r['id'] === $currentRoleId ? ' selected' : '';
-                $html .= '<option value="' . (int) $r['id'] . '"' . $sel . '>' . htmlspecialchars($r['name'] ?? '') . '</option>';
+            if ($can('employees.update')) {
+                $html .= '<form method="POST" action="' . htmlspecialchars($BASE_URL . '/admin/stores/' . $storeId . '/members/' . $mid . '/role') . '" class="form-inline-flex">' . csrf_field()
+                    . '<select name="role_id" class="form-control form-control-sm w-180">';
+                foreach ($assignable_roles as $r) {
+                    $sel = (int) $r['id'] === $currentRoleId ? ' selected' : '';
+                    $html .= '<option value="' . (int) $r['id'] . '"' . $sel . '>' . htmlspecialchars($r['name'] ?? '') . '</option>';
+                }
+                $html .= '</select>' . Button::make(__('apply'))->ghost()->sm()->submit()->render() . '</form>';
             }
-            $html .= '</select>' . Button::make(__('apply'))->ghost()->sm()->submit()->render() . '</form>';
-            $html .= '<a href="' . $BASE_URL . '/admin/stores/' . (int) $store['id'] . '/members/' . $mid . '/deductions" class="btn btn--ghost btn--sm" title="' . __('deduction_overrides') . '">💰</a>';
-            $html .= '<form method="POST" action="' . $BASE_URL . '/admin/stores/' . $storeId . '/members/' . $mid . '/delete" class="form-inline">' . csrf_field()
-                . '<button type="submit" class="btn btn--danger btn--sm" onclick="return confirm(\'' . __('confirm_remove_member') . '\')">' . __('remove') . '</button></form>';
+            if ($can('payroll.view')) {
+                $html .= '<a href="' . $BASE_URL . '/admin/stores/' . (int) $store['id'] . '/members/' . $mid . '/deductions" class="btn btn--ghost btn--sm" title="' . __('deduction_overrides') . '">💰</a>';
+            }
+            if ($can('employees.update')) {
+                $html .= '<form method="POST" action="' . $BASE_URL . '/admin/stores/' . $storeId . '/members/' . $mid . '/delete" class="form-inline" data-confirm="' . htmlspecialchars(__('confirm_remove_member'), ENT_QUOTES) . '">' . csrf_field()
+                    . '<button type="submit" class="btn btn--danger btn--sm">' . __('remove') . '</button></form>';
+            }
             $html .= '</div>';
             return $html;
         })
         ->render();
 endif;
 ?>
-    <?php if (!empty($available)): ?>
+    <?php if (!empty($available) && $can('employees.update')): ?>
         <div class="card-body--add">
             <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= $storeId ?>/members" class="form-flex--add">
                 <?= csrf_field() ?>

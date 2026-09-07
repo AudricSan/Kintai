@@ -72,9 +72,9 @@ foreach ($shifts as $s) {
 <div class="shifts-toolbar">
     <div class="btn-group btn-group--switcher" style="--segments:3">
         <span class="btn-group__thumb" style="--pos:0" aria-hidden="true"></span>
-        <a href="<?= route_url('admin.shifts') ?><?= $filter_store_id ? '?store_id=' . $filter_store_id : '' ?>" class="btn btn--ghost btn--sm btn--active">☰ <?= __('list_view') ?></a>
-        <a href="<?= route_url('admin.shifts.calendar') ?><?= $filter_store_id ? '?store_id=' . $filter_store_id : '' ?>" class="btn btn--ghost btn--sm">📅 <?= __('calendar_view') ?></a>
-        <a href="<?= route_url('admin.shifts.timeline') ?><?= $filter_store_id ? '?store_id=' . $filter_store_id : '' ?>" class="btn btn--ghost btn--sm"><svg class="gantt-icon icon-inline" width="16" height="16" viewBox="0 0 24 24"><rect x="4" y="2" width="2" height="20" fill="currentColor"/><rect x="10" y="6" width="2" height="16" fill="currentColor"/><rect x="16" y="10" width="2" height="12" fill="currentColor"/></svg> <?= __('timeline_view') ?></a>
+        <a href="<?= route_url('admin.shifts') ?><?= $filter_store_id ? '?store_id=' . $filter_store_id : '' ?>" class="btn btn--ghost btn--sm btn--active" aria-label="<?= htmlspecialchars(__('list_view')) ?>">☰ <span class="switcher-label"><?= __('list_view') ?></span></a>
+        <a href="<?= route_url('admin.shifts.calendar') ?><?= $filter_store_id ? '?store_id=' . $filter_store_id : '' ?>" class="btn btn--ghost btn--sm" aria-label="<?= htmlspecialchars(__('calendar_view')) ?>">📅 <span class="switcher-label"><?= __('calendar_view') ?></span></a>
+        <a href="<?= route_url('admin.shifts.timeline') ?><?= $filter_store_id ? '?store_id=' . $filter_store_id : '' ?>" class="btn btn--ghost btn--sm" aria-label="<?= htmlspecialchars(__('timeline_view')) ?>"><svg class="gantt-icon icon-inline" width="16" height="16" viewBox="0 0 24 24"><rect x="4" y="2" width="2" height="20" fill="currentColor"/><rect x="10" y="6" width="2" height="16" fill="currentColor"/><rect x="16" y="10" width="2" height="12" fill="currentColor"/></svg> <span class="switcher-label"><?= __('timeline_view') ?></span></a>
     </div>
     <div class="btn-group">
         <a href="<?= route_url('admin.shifts.conflicts') ?><?= $filter_store_id ? '?store_id=' . $filter_store_id : '' ?><?= $filter_month ? ($filter_store_id ? '&' : '?') . 'month=' . $filter_month : '' ?>" class="btn btn--ghost btn--sm">⚡ <?= __('conflict_view') ?></a>
@@ -178,6 +178,7 @@ foreach ($shifts as $s) {
                         $dur        = (int) ($shift['duration_minutes'] ?? 0);
                         $pause      = (int) ($shift['pause_minutes']    ?? 0);
                         $netMin     = max(0, $dur - $pause);
+                        $hasOverride = ($shift['hourly_rate_override'] ?? null) !== null || ($shift['net_minutes_override'] ?? null) !== null;
                         $newDay     = ($shiftDate !== $prevDate);
                         $prevDate   = $shiftDate;
                     ?>
@@ -208,7 +209,7 @@ foreach ($shifts as $s) {
                             <td class="col-type"><?php if ($typeColor): ?><span class="type-badge" data-color="<?= htmlspecialchars($typeColor) ?>"><?= htmlspecialchars($typeName) ?></span><?php else: ?><?= htmlspecialchars($typeName) ?><?php endif; ?></td>
                             <td class="col-time td-nowrap"><?= htmlspecialchars($shift['start_time'] ?? '') ?></td>
                             <td class="col-time td-nowrap"><?= htmlspecialchars($shift['end_time'] ?? '') ?></td>
-                            <td class="col-duration"><?= $fmtH($dur) ?><?php if ($pause > 0): ?> <span class="td-muted td-sm"> (net <?= $fmtH($netMin) ?>)</span><?php endif; ?></td>
+                            <td class="col-duration"><?= $fmtH($dur) ?><?php if ($pause > 0): ?> <span class="td-muted td-sm"> (net <?= $fmtH($netMin) ?>)</span><?php endif; ?><?php if ($hasOverride): ?> <span class="td-override-badge" title="<?= htmlspecialchars(__('shift_manual_override')) ?>">✏️</span><?php endif; ?></td>
                             <td class="col-pause td-muted"><?= $pause > 0 ? $pause . ' min' : '—' ?></td>
                             <td class="col-night"><?= !empty($shift['cross_midnight']) ? '✓' : '' ?></td>
                             <td class="col-actions">

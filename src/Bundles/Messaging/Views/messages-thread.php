@@ -22,7 +22,7 @@ $_canManage = $can_manage ?? true;
     <div class="page-header__actions">
         <a href="<?= $BASE_URL . $base_path ?>" class="btn btn--ghost">← <?= __('back') ?></a>
         <form method="POST" action="<?= $BASE_URL . $base_path ?>/<?= (int) $thread['id'] ?>/delete"
-              onsubmit="return confirm('<?= __('confirm_delete_thread') ?>')">
+              data-confirm="<?= htmlspecialchars(__('confirm_delete_thread'), ENT_QUOTES) ?>">
             <?= csrf_field() ?>
             <button type="submit" class="btn btn--danger btn--sm"><?= __('delete_thread') ?></button>
         </form>
@@ -54,7 +54,7 @@ $_canManage = $can_manage ?? true;
                     <form method="POST"
                           action="<?= $BASE_URL . $base_path ?>/<?= (int) $thread['id'] ?>/message/<?= (int) $msg['id'] ?>/delete"
                           class="msg-delete-form"
-                          onsubmit="return confirm('<?= __('confirm_delete_message') ?>')">
+                          data-confirm="<?= htmlspecialchars(__('confirm_delete_message'), ENT_QUOTES) ?>">
                         <?= csrf_field() ?>
                         <button type="submit" class="btn-msg-delete" title="<?= __('delete_message') ?>">✕</button>
                     </form>

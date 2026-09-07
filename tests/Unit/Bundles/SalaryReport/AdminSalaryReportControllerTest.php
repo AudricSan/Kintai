@@ -5,15 +5,20 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Bundles\SalaryReport;
 
 use kintai\Bundles\SalaryReport\Controllers\Web\AdminSalaryReportController;
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Container;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\DailyReportRepositoryInterface;
 use kintai\Core\Repositories\LogRepositoryInterface;
+use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
+use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\SalaryReportRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
+use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
+use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\Log;
@@ -30,6 +35,8 @@ final class AdminSalaryReportControllerTest extends TestCase
     private StoreUserRepositoryInterface&MockObject $storeUsers;
     private DailyReportRepositoryInterface&MockObject $dailyReports;
     private ShiftRepositoryInterface&MockObject $shifts;
+    private ShiftTypeRepositoryInterface&MockObject $shiftTypes;
+    private UserShiftTypeRateRepositoryInterface&MockObject $userRates;
     private LogRepositoryInterface&MockObject $logRepo;
     private StoreStatsServiceInterface&MockObject $storeStatsService;
     private AdminSalaryReportController $controller;
@@ -52,6 +59,8 @@ final class AdminSalaryReportControllerTest extends TestCase
         $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
         $this->dailyReports = $this->createMock(DailyReportRepositoryInterface::class);
         $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
+        $this->shiftTypes = $this->createMock(ShiftTypeRepositoryInterface::class);
+        $this->userRates = $this->createMock(UserShiftTypeRateRepositoryInterface::class);
         $this->storeStatsService = $this->createMock(StoreStatsServiceInterface::class);
 
         $this->logRepo = $this->createMock(LogRepositoryInterface::class);
@@ -67,8 +76,14 @@ final class AdminSalaryReportControllerTest extends TestCase
             $this->storeUsers,
             $this->dailyReports,
             $this->shifts,
+            $this->shiftTypes,
+            $this->userRates,
             new AuditLogger(),
             $this->storeStatsService,
+            new PermissionService(
+                $this->createMock(RoleAssignmentRepositoryInterface::class),
+                $this->createMock(RoleRepositoryInterface::class),
+            ),
         );
     }
 
@@ -359,6 +374,146 @@ final class AdminSalaryReportControllerTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
+    // calculateSalaryReport — recalcul AJAX pour le sélecteur de période
+    // -------------------------------------------------------------------------
+
+    public function testCalculateSalaryReportReturnsRecalculatedPresetForStoreWideRange(): void
+    {
+        $_GET = ['from' => '2026-08-01', 'to' => '2026-08-31'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setAttribute('auth_user', ['id' => 1, 'display_name' => 'Manager X']);
+        $req->setRouteParams(['id' => '1']);
+
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Store A']);
+        $this->dailyReports->method('findByStoreAndDateRange')->willReturn([
+            ['report_date' => '2026-08-01', 'status' => 'validated', 'sales_total' => 10000],
+        ]);
+        $this->shifts->method('findByStore')->with(1)->willReturn([
+            ['shift_date' => '2026-08-05', 'duration_minutes' => 480, 'estimated_salary' => 6000, 'user_id' => 7],
+        ]);
+        $this->users->method('findById')->with(7)->willReturn(['id' => 7, 'last_name' => 'Dupont', 'first_name' => 'Jean']);
+
+        $response = $this->controller->calculateSalaryReport($req);
+
+        $this->assertSame(200, $response->status());
+        $data = json_decode($response->body(), true);
+        // json_decode() renvoie un int pour les flottants sans décimales (10000.0 -> 10000).
+        $this->assertEquals(10000.0, $data['preset']['total_payment']);
+        $this->assertEquals(8.0, $data['preset']['staff_man_hours']);
+        $this->assertSame('2026-08', $data['preset']['target_month']);
+        $this->assertSame('store', $data['detail']['mode']);
+        $this->assertCount(1, $data['detail']['employees']);
+        $this->assertSame('Dupont Jean', $data['detail']['employees'][0]['name']);
+    }
+
+    /**
+     * Un shift à cheval sur deux types d'horaire (ex : 07:00-18:00 traverse un
+     * type 05:00-08:00 puis un type 08:00-22:00) doit être facturé par tranche,
+     * pas au taux unique d'un seul type — c'est le bug corrigé par
+     * ShiftWageCalculator::costOf(). Le rapport magasin doit aussi exposer la
+     * répartition des heures par type.
+     */
+    public function testCalculateSalaryReportSplitsMultiTypeShiftAcrossTranches(): void
+    {
+        $_GET = ['from' => '2026-08-01', 'to' => '2026-08-31'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setAttribute('auth_user', ['id' => 1, 'display_name' => 'Manager X']);
+        $req->setRouteParams(['id' => '1']);
+
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Store A']);
+        $this->dailyReports->method('findByStoreAndDateRange')->willReturn([]);
+        $this->shifts->method('findByStore')->with(1)->willReturn([
+            [
+                'shift_date' => '2026-08-05', 'start_time' => '07:00', 'end_time' => '18:00',
+                'duration_minutes' => 660, 'pause_minutes' => 0, 'user_id' => 7,
+            ],
+        ]);
+        $this->shiftTypes->method('findByStore')->with(1)->willReturn([
+            ['id' => 1, 'name' => 'Tôt',  'start_time' => '05:00', 'end_time' => '08:00', 'hourly_rate' => 1200.0],
+            ['id' => 2, 'name' => 'Jour', 'start_time' => '08:00', 'end_time' => '22:00', 'hourly_rate' => 1000.0],
+        ]);
+        $this->users->method('findById')->with(7)->willReturn(['id' => 7, 'last_name' => 'Dupont', 'first_name' => 'Jean']);
+
+        $response = $this->controller->calculateSalaryReport($req);
+
+        $this->assertSame(200, $response->status());
+        $data = json_decode($response->body(), true);
+
+        // 1h × 1200 (Tôt) + 10h × 1000 (Jour) = 11200, pas 11h × un seul taux.
+        $this->assertEquals(11200.0, $data['preset']['staff_total_payment']);
+        $this->assertEquals(11200.0, $data['detail']['employees'][0]['cost']);
+
+        $breakdown = array_column($data['detail']['type_breakdown'], null, 'name');
+        $this->assertEquals(60, $breakdown['Tôt']['minutes']);
+        $this->assertEquals(600, $breakdown['Jour']['minutes']);
+        $this->assertEquals(1200.0, $breakdown['Tôt']['amount']);
+        $this->assertEquals(10000.0, $breakdown['Jour']['amount']);
+    }
+
+    public function testCalculateSalaryReportUsesPayslipDataForEmployeeScopedRange(): void
+    {
+        $_GET = ['from' => '2026-08-01', 'to' => '2026-08-15', 'user_id' => '7'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setAttribute('auth_user', ['id' => 1, 'display_name' => 'Manager X']);
+        $req->setRouteParams(['id' => '1']);
+
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Store A']);
+        $this->dailyReports->method('findByStoreAndDateRange')->willReturn([]);
+        $this->shifts->method('findByStore')->with(1)->willReturn([
+            ['shift_date' => '2026-08-05', 'duration_minutes' => 480, 'pause_minutes' => 0, 'shift_type_id' => 1, 'user_id' => 7],
+        ]);
+        $this->shiftTypes->method('findByStore')->with(1)->willReturn([['id' => 1, 'hourly_rate' => 750.0]]);
+        $this->users->method('findById')->with(7)->willReturn(['id' => 7, 'last_name' => 'Dupont', 'first_name' => 'Jean']);
+
+        $this->storeStatsService->expects($this->once())->method('buildPayslipData')
+            ->with(1, 7, '2026-08-01', '2026-08-15')
+            ->willReturn([
+                'shiftRows' => [], 'totalGrossMin' => 0, 'totalNetMin' => 0, 'totalCost' => 0.0,
+                'anyRate' => false, 'deductions' => [], 'totalDeductions' => 0.0, 'netPay' => 0.0,
+                'deductionsEnabled' => false,
+            ]);
+
+        $response = $this->controller->calculateSalaryReport($req);
+
+        $this->assertSame(200, $response->status());
+        $data = json_decode($response->body(), true);
+        // Seul l'employé 7 est comptabilisé dans le preset (8h à 6000).
+        $this->assertEquals(6000.0, $data['preset']['staff_total_payment']);
+        $this->assertArrayHasKey('shiftRows', $data['detail']);
+    }
+
+    public function testCalculateSalaryReportRejectsInvalidRange(): void
+    {
+        $_GET = ['from' => '2026-08-31', 'to' => '2026-08-01'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '1']);
+
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Store A']);
+
+        $response = $this->controller->calculateSalaryReport($req);
+
+        $this->assertSame(422, $response->status());
+    }
+
+    public function testCalculateSalaryReportRejectsMalformedDates(): void
+    {
+        $_GET = ['from' => 'not-a-date', 'to' => '2026-08-01'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '1']);
+
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Store A']);
+
+        $response = $this->controller->calculateSalaryReport($req);
+
+        $this->assertSame(422, $response->status());
+    }
+
+    // -------------------------------------------------------------------------
     // calculateSalaryPreset — mode de saisie cumulatif du rapport journalier (item 4)
     // -------------------------------------------------------------------------
 
@@ -429,9 +584,10 @@ final class AdminSalaryReportControllerTest extends TestCase
 
         $this->dailyReports->method('findByStoreAndDateRange')->willReturn([]);
         $this->shifts->method('findByStore')->willReturn([
-            ['shift_date' => date('Y-m') . '-05', 'duration_minutes' => 480, 'estimated_salary' => 6000, 'user_id' => 7],
-            ['shift_date' => date('Y-m') . '-06', 'duration_minutes' => 240, 'estimated_salary' => 3000, 'user_id' => 9],
+            ['shift_date' => date('Y-m') . '-05', 'duration_minutes' => 480, 'pause_minutes' => 0, 'shift_type_id' => 1, 'user_id' => 7],
+            ['shift_date' => date('Y-m') . '-06', 'duration_minutes' => 240, 'pause_minutes' => 0, 'shift_type_id' => 1, 'user_id' => 9],
         ]);
+        $this->shiftTypes->method('findByStore')->willReturn([['id' => 1, 'hourly_rate' => 750.0]]);
         $this->users->method('findById')->with(7)->willReturn(['id' => 7, 'last_name' => 'Dupont', 'first_name' => 'Jean']);
 
         $preset = $this->invokeCalculateSalaryPreset($store, date('Y-m'), $authUser, 7);
@@ -451,8 +607,9 @@ final class AdminSalaryReportControllerTest extends TestCase
 
         $this->dailyReports->method('findByStoreAndDateRange')->willReturn([]);
         $this->shifts->method('findByStore')->willReturn([
-            ['shift_date' => date('Y-m') . '-05', 'duration_minutes' => 480, 'estimated_salary' => 6000, 'user_id' => 7],
+            ['shift_date' => date('Y-m') . '-05', 'duration_minutes' => 480, 'pause_minutes' => 0, 'shift_type_id' => 1, 'user_id' => 7],
         ]);
+        $this->shiftTypes->method('findByStore')->willReturn([['id' => 1, 'hourly_rate' => 750.0]]);
         $this->users->method('findById')->with(7)->willReturn(['id' => 7, 'last_name' => 'Dupont', 'first_name' => 'Jean']);
         $this->stores->method('getDeductionSettings')->with(1)->willReturn([
             'enabled' => true,
@@ -484,9 +641,10 @@ final class AdminSalaryReportControllerTest extends TestCase
 
         $this->dailyReports->method('findByStoreAndDateRange')->willReturn([]);
         $this->shifts->method('findByStore')->willReturn([
-            ['shift_date' => date('Y-m') . '-05', 'duration_minutes' => 480, 'estimated_salary' => 6000, 'user_id' => 7],
-            ['shift_date' => date('Y-m') . '-06', 'duration_minutes' => 240, 'estimated_salary' => 3000, 'user_id' => 9],
+            ['shift_date' => date('Y-m') . '-05', 'duration_minutes' => 480, 'pause_minutes' => 0, 'shift_type_id' => 1, 'user_id' => 7],
+            ['shift_date' => date('Y-m') . '-06', 'duration_minutes' => 240, 'pause_minutes' => 0, 'shift_type_id' => 1, 'user_id' => 9],
         ]);
+        $this->shiftTypes->method('findByStore')->willReturn([['id' => 1, 'hourly_rate' => 750.0]]);
         $this->users->method('findById')->willReturnMap([
             [7, ['id' => 7, 'last_name' => 'Dupont', 'first_name' => 'Jean']],
             [9, ['id' => 9, 'last_name' => 'Martin', 'first_name' => 'Léa']],
@@ -602,9 +760,12 @@ final class AdminSalaryReportControllerTest extends TestCase
 
     private function invokeCalculateSalaryPreset(array $store, string $targetMonth, array $authUser, ?int $userId = null): array
     {
+        $from = $targetMonth . '-01';
+        $to = date('Y-m-t', strtotime($from));
+
         $method = new \ReflectionMethod($this->controller, 'calculateSalaryPreset');
         $method->setAccessible(true);
-        return $method->invoke($this->controller, $store, $targetMonth, $authUser, $userId);
+        return $method->invoke($this->controller, $store, $from, $to, $authUser, $userId);
     }
 
     private function ensureViewFile(string $dir, string $view): void

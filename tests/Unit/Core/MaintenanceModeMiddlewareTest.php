@@ -9,6 +9,7 @@ use kintai\Core\Container;
 use kintai\Core\Exceptions\ServiceUnavailableException;
 use kintai\Core\Middleware\MaintenanceModeMiddleware;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
+use kintai\Core\Repositories\RememberTokenRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
@@ -76,7 +77,7 @@ final class MaintenanceModeMiddlewareTest extends TestCase
             $roleAssignments->method('findByUser')->willReturn([]);
         }
 
-        $this->container->instance(AuthService::class, new AuthService($users, $storeUsers, $stores, $roles, $roleAssignments));
+        $this->container->instance(AuthService::class, new AuthService($users, $storeUsers, $stores, $roles, $roleAssignments, $this->createStub(RememberTokenRepositoryInterface::class)));
 
         if ($user !== null) {
             $_SESSION['auth_user_id'] = $user['id'];

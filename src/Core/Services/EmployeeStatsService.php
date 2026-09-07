@@ -56,37 +56,36 @@ final class EmployeeStatsService
             $personalRates[(int) $r['shift_type_id']] = (float) $r['hourly_rate'];
         }
 
-        $memberships = $this->storeUsers->findByUser($userId);
-        $currency    = 'JPY';
+        $memberships  = $this->storeUsers->findByUser($userId);
+        $currency     = 'JPY';
+        $currencyStyle = 'kanji';
         if (!empty($memberships)) {
-            $store    = $this->stores->findById((int) $memberships[0]['store_id']);
-            $currency = strtoupper(trim($store['currency'] ?? 'JPY'));
+            $store         = $this->stores->findById((int) $memberships[0]['store_id']);
+            $currency      = strtoupper(trim($store['currency'] ?? 'JPY'));
+            $currencyStyle = store_currency_style($store);
         }
 
         $monthMinutes = 0;
         $estimatedPay = 0.0;
         $hasRate      = false;
         $shiftDetails = [];
+        $wageCalc     = new ShiftWageCalculator();
 
         foreach ($this->shifts->findByUser($userId) as $s) {
+            if (!empty($s['deleted_at'])) {
+                continue;
+            }
             $d = $s['shift_date'] ?? '';
             if ($d < $monthStart || $d > $monthEnd) {
                 continue;
             }
-            [$sh, $sm] = explode(':', substr($s['start_time'] ?? '00:00', 0, 5));
-            [$eh, $em] = explode(':', substr($s['end_time']   ?? '00:00', 0, 5));
-            $startMin  = (int) $sh * 60 + (int) $sm;
-            $endMin    = (int) $eh * 60 + (int) $em;
-            if (!empty($s['cross_midnight']) || $endMin <= $startMin) {
-                $endMin += 24 * 60;
-            }
-            $pauseMin      = (int) ($s['pause_minutes'] ?? 0);
-            $netMin        = max(0, $endMin - $startMin - $pauseMin);
-            $monthMinutes += $netMin;
 
             $tid  = (int) ($s['shift_type_id'] ?? 0);
-            $rate = $personalRates[$tid] ?? (float) ($typesMap[$tid]['hourly_rate'] ?? 0);
-            $pay  = ($netMin / 60) * $rate;
+            $wage = $wageCalc->costOf($s, $typesMap, $personalRates);
+            $netMin = $wage['net_minutes'];
+            $rate   = $wage['rate'];
+            $pay    = $wage['amount'];
+            $monthMinutes += $netMin;
             if ($rate > 0) {
                 $hasRate = true;
             }
@@ -106,10 +105,10 @@ final class EmployeeStatsService
                 'type_name'     => $typesMap[$tid]['name'] ?? '—',
                 'net_min'       => $netMin,
                 'net_hours_fmt' => $h . 'h' . str_pad((string)$m, 2, '0', STR_PAD_LEFT),
-                'pause_min'     => $pauseMin,
+                'pause_min'     => $wage['pause_minutes'],
                 'rate'          => $rate,
-                'rate_fmt'      => $rate > 0 ? format_currency($rate, $currency) . '/h' : '—',
-                'pay_fmt'       => $rate > 0 ? format_currency($pay, $currency) : '—',
+                'rate_fmt'      => $rate > 0 ? format_currency($rate, $currency, $currencyStyle) . '/h' : '—',
+                'pay_fmt'       => $rate > 0 ? format_currency($pay, $currency, $currencyStyle) : '—',
                 'has_rate'      => $rate > 0,
             ];
         }
@@ -129,8 +128,9 @@ final class EmployeeStatsService
             'prev_month'    => $prevMonth,
             'next_month'    => $nextMonth,
             'is_current'    => ($month === date('Y-m')),
-            'currency'      => $currency,
-            'shift_details' => $shiftDetails,
+            'currency'               => $currency,
+            'currency_symbol_style'  => $currencyStyle,
+            'shift_details'          => $shiftDetails,
         ];
     }
 }

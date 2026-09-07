@@ -40,6 +40,9 @@ final class GithubUpdateService
     private string $token;
     private ?string $lastError = null;
 
+    /** Cache mémoire (durée de la requête) des listes de releases déjà récupérées, indexées par canal — évite de refaire un appel GitHub à chaque méthode publique appelée dans la même requête (checkLatestRelease() + getReleaseHistory()). */
+    private array $releaseListCache = [];
+
     /**
      * @param \Closure|null $releaseFetcher fn(string $repo, string $token, int $page): ?array — une page de releases GitHub, ou null pour signaler un échec (surchargeable pour les tests)
      * @param \Closure|null $zipDownloader  fn(string $url, string $dest, string $token): bool — surchargeable pour les tests
@@ -117,30 +120,85 @@ final class GithubUpdateService
     }
 
     /**
-     * Parmi les releases GitHub disponibles, retient celles compatibles avec
-     * le canal demandé puis la plus récente au sens de version_compare() :
-     * - release : uniquement les tags stables (ni "-alpha"/"-beta", ni prerelease GitHub) ;
-     * - beta    : les tags stables et "-beta" (exclut "-alpha") ;
-     * - alpha   : tous les tags, canal le plus permissif.
+     * Condense des notes de version au format Keep a Changelog ("### Catégorie"
+     * suivi de puces "- ...") à une seule puce par catégorie, pour un résumé
+     * rapide sur la page de mise à jour — le lien "Voir sur GitHub" reste
+     * disponible pour le détail complet.
      */
-    private function selectReleaseForChannel(array $releases, string $channel): ?array
+    public function condenseReleaseNotes(string $notes): string
     {
-        $candidates = array_values(array_filter($releases, function (array $release) use ($channel): bool {
-            $tag = ltrim((string) ($release['tag_name'] ?? ''), 'v');
-            $isAlpha = str_contains($tag, '-alpha');
-            $isBeta = str_contains($tag, '-beta');
+        if (trim($notes) === '') {
+            return '';
+        }
+
+        $lines = preg_split('/\r\n|\r|\n/', trim($notes)) ?: [];
+        $out = [];
+        $skippingBullets = false;
+        foreach ($lines as $line) {
+            if (preg_match('/^#{1,6}\s/', $line) === 1) {
+                $out[] = $line;
+                $skippingBullets = false;
+                continue;
+            }
+            if (preg_match('/^[-*]\s/', $line) === 1) {
+                if ($skippingBullets) {
+                    continue;
+                }
+                $out[] = $line;
+                $skippingBullets = true;
+                continue;
+            }
+            $out[] = $line;
+        }
+
+        return trim(implode("\n", $out));
+    }
+
+    /** URL de la page des releases GitHub du dépôt suivi (lien "voir sur GitHub"). */
+    public function getRepoReleasesUrl(): string
+    {
+        return "https://github.com/{$this->repo}/releases";
+    }
+
+    /**
+     * Parmi les releases GitHub disponibles, retient celles compatibles avec
+     * le canal demandé :
+     * - release : uniquement les releases publiées depuis `main`, non prerelease ;
+     * - beta    : les releases publiées depuis `main` ou `beta` (exclut `alpha`) ;
+     * - alpha   : toutes les releases, canal le plus permissif.
+     *
+     * Le canal se détermine via `target_commitish` (la branche source de la
+     * release, renseignée par .github/workflows/release.yml) et non plus en
+     * inspectant le tag : depuis le schéma de version X.Y.Z-<lettre de
+     * semaine><sous-version> (voir docs/releasing.md), le tag ne contient
+     * plus les mots "-alpha"/"-beta".
+     */
+    private function filterReleasesForChannel(array $releases, string $channel): array
+    {
+        return array_values(array_filter($releases, function (array $release) use ($channel): bool {
+            $branch = (string) ($release['target_commitish'] ?? '');
             $isPrerelease = (bool) ($release['prerelease'] ?? false);
 
             return match ($channel) {
                 'alpha' => true,
-                'beta'  => !$isAlpha,
-                default => !$isAlpha && !$isBeta && !$isPrerelease,
+                'beta'  => $branch !== 'alpha',
+                default => $branch === 'main' && !$isPrerelease,
             };
         }));
+    }
 
-        if ($candidates === []) {
-            return null;
-        }
+    /** Retient, parmi les releases compatibles avec le canal, la plus récente au sens de version_compare(). */
+    private function selectReleaseForChannel(array $releases, string $channel): ?array
+    {
+        $candidates = $this->sortedCandidatesForChannel($releases, $channel);
+
+        return $candidates[0] ?? null;
+    }
+
+    /** Releases compatibles avec le canal, triées de la plus récente à la plus ancienne (version_compare()). */
+    private function sortedCandidatesForChannel(array $releases, string $channel): array
+    {
+        $candidates = $this->filterReleasesForChannel($releases, $channel);
 
         usort($candidates, function (array $a, array $b): int {
             $va = ltrim((string) ($a['tag_name'] ?? ''), 'v');
@@ -148,7 +206,32 @@ final class GithubUpdateService
             return version_compare($vb, $va);
         });
 
-        return $candidates[0];
+        return $candidates;
+    }
+
+    /**
+     * Historique des dernières releases compatibles avec $channel (la plus
+     * récente en premier), condensées pour affichage — utilisé sur la page de
+     * mise à jour pour donner un aperçu du changelog des canaux sur lesquels
+     * l'Owner ne se trouve pas actuellement, avant de basculer.
+     *
+     * @return array<int, array{version:string, notes:string, release_url:?string, published_at:?string}>
+     */
+    public function getReleaseHistory(string $channel, int $limit = 5): array
+    {
+        $releases = $this->fetchReleaseListData($channel);
+        if ($releases === null) {
+            return [];
+        }
+
+        $candidates = array_slice($this->sortedCandidatesForChannel($releases, $channel), 0, $limit);
+
+        return array_map(fn(array $release): array => [
+            'version'      => ltrim((string) ($release['tag_name'] ?? ''), 'v'),
+            'notes'        => $this->condenseReleaseNotes((string) ($release['body'] ?? '')),
+            'release_url'  => $release['html_url'] ?? null,
+            'published_at' => $release['published_at'] ?? null,
+        ], $candidates);
     }
 
     /**
@@ -423,6 +506,15 @@ final class GithubUpdateService
      * @return array|null Liste des releases GitHub (voir GET /repos/{repo}/releases), ou null si la première page échoue.
      */
     private function fetchReleaseListData(string $channel): ?array
+    {
+        if (array_key_exists($channel, $this->releaseListCache)) {
+            return $this->releaseListCache[$channel];
+        }
+
+        return $this->releaseListCache[$channel] = $this->fetchReleaseListDataUncached($channel);
+    }
+
+    private function fetchReleaseListDataUncached(string $channel): ?array
     {
         $headers = [
             'User-Agent: Kintai-UpdateCheck/1.0',

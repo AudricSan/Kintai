@@ -560,6 +560,78 @@ final class AdminUserControllerTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
+    // storeUser — sélecteur "Rôle" unifié (Owner + rôles par store, remplace
+    // l'ancien couple is_admin / store_role_id)
+    // -------------------------------------------------------------------------
+
+    /** Rôle Owner sélectionné : compte admin global, pas de rôle par store à synchroniser même avec un store choisi. */
+    public function testStoreUserSyncsOwnerRoleAndSkipsStoreRoleWhenOwnerSelected(): void
+    {
+        $req = $this->makePostRequest([
+            'display_name' => 'Jane',
+            'last_name'    => 'Doe',
+            'first_name'   => 'Jane',
+            'email'        => 'jane@example.com',
+            'furigana_last_name'  => 'ドウ',
+            'furigana_first_name' => 'ジェーン',
+            'role_id'      => '1',
+            'store_id'     => '3',
+        ]);
+        $req->setAttribute('managed_store_ids', null);
+
+        $this->roles->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Owner', 'is_system' => 1]);
+        $this->roles->method('findBySlug')->with('owner')->willReturn(['id' => 1]);
+        $this->roleAssignments->method('findByUser')->willReturn([]);
+        $this->roleAssignments->expects($this->once())->method('assign')->with(20, 1, 'global', null);
+
+        $captured = null;
+        $this->users->method('save')->willReturnCallback(function (array $d) use (&$captured) {
+            $captured = $d;
+            return $d + ['id' => 20];
+        });
+        // Aucun rôle par store à écrire : la synchronisation store-scope (findAssignableRole
+        // rejette les rôles système) ne doit pas être sollicitée pour ce cas.
+        $this->storeUsers->expects($this->once())->method('save')->willReturnCallback(fn(array $d) => $d);
+
+        $this->controller->storeUser($req);
+
+        $this->assertSame(1, $captured['is_admin']);
+    }
+
+    /** Rôle par store sélectionné (Manager) : comportement inchangé, juste renommé store_role_id -> role_id. */
+    public function testStoreUserSyncsStoreRoleWhenStoreRoleSelected(): void
+    {
+        $req = $this->makePostRequest([
+            'display_name' => 'John',
+            'last_name'    => 'Doe',
+            'first_name'   => 'John',
+            'email'        => 'john@example.com',
+            'furigana_last_name'  => 'ジョン',
+            'furigana_first_name' => 'ジョン',
+            'role_id'      => '2',
+            'store_id'     => '3',
+        ]);
+        $req->setAttribute('managed_store_ids', null);
+
+        $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'name' => 'Manager', 'is_system' => 0]);
+        $this->roles->method('getPermissions')->with(2)->willReturn(['employees.view']);
+        $this->roleAssignments->method('findByUser')->willReturn([]);
+        $this->roleAssignments->expects($this->once())->method('assign')->with(21, 2, 'store', 3);
+
+        $this->users->method('save')->willReturn(['id' => 21, 'display_name' => 'John']);
+
+        $capturedStoreUser = null;
+        $this->storeUsers->method('save')->willReturnCallback(function (array $d) use (&$capturedStoreUser) {
+            $capturedStoreUser = $d;
+            return $d;
+        });
+
+        $this->controller->storeUser($req);
+
+        $this->assertSame('manager', $capturedStoreUser['role']);
+    }
+
+    // -------------------------------------------------------------------------
     // storeUser / updateUser — conflit d'email
     // -------------------------------------------------------------------------
 
@@ -785,6 +857,61 @@ final class AdminUserControllerTest extends TestCase
 
         $data = json_decode($response->body(), true);
         $this->assertFalse($data['available']);
+    }
+
+    // -------------------------------------------------------------------------
+    // setUserRate / deleteUserRate — accès multi-store (un type peut couvrir
+    // plusieurs stores : l'accès est autorisé dès qu'on en gère au moins un)
+    // -------------------------------------------------------------------------
+
+    public function testSetUserRateForbiddenWhenManagingNoneOfTypeStores(): void
+    {
+        $this->users->method('findById')->with(10)->willReturn(['id' => 10]);
+        $this->shiftTypes->method('findById')->with(7)->willReturn(['id' => 7, 'code' => 'MORNING']);
+        $this->shiftTypes->method('getStoreIds')->with(7)->willReturn([2]);
+
+        $req = $this->makePostRequest(['shift_type_id' => '7', 'hourly_rate' => '1500']);
+        $req->setAttribute('managed_store_ids', [1]);
+        $req->setRouteParams(['id' => '10']);
+
+        $this->userRates->expects($this->never())->method('save');
+
+        $this->expectException(\kintai\Core\Exceptions\ForbiddenException::class);
+        $this->controller->setUserRate($req);
+    }
+
+    public function testSetUserRateAllowedWhenManagingOneOfTypeStores(): void
+    {
+        $this->users->method('findById')->with(10)->willReturn(['id' => 10]);
+        $this->shiftTypes->method('findById')->with(7)->willReturn(['id' => 7, 'code' => 'MORNING']);
+        $this->shiftTypes->method('getStoreIds')->with(7)->willReturn([1, 2]);
+        $this->userRates->method('findRate')->willReturn(null);
+
+        $req = $this->makePostRequest(['shift_type_id' => '7', 'hourly_rate' => '1500']);
+        $req->setAttribute('managed_store_ids', [1]);
+        $req->setRouteParams(['id' => '10']);
+
+        $this->userRates->expects($this->once())->method('save')->willReturnCallback(fn (array $d) => $d + ['id' => 1]);
+
+        $response = $this->controller->setUserRate($req);
+
+        $this->assertSame(302, $response->status());
+    }
+
+    public function testDeleteUserRateForbiddenWhenManagingNoneOfTypeStores(): void
+    {
+        $this->userRates->method('findById')->with(3)->willReturn(['id' => 3, 'user_id' => 10, 'shift_type_id' => 7]);
+        $this->shiftTypes->method('findById')->with(7)->willReturn(['id' => 7, 'code' => 'MORNING']);
+        $this->shiftTypes->method('getStoreIds')->with(7)->willReturn([2]);
+
+        $req = $this->makePostRequest([]);
+        $req->setAttribute('managed_store_ids', [1]);
+        $req->setRouteParams(['id' => '10', 'rid' => '3']);
+
+        $this->userRates->expects($this->never())->method('delete');
+
+        $this->expectException(\kintai\Core\Exceptions\ForbiddenException::class);
+        $this->controller->deleteUserRate($req);
     }
 
     protected function tearDown(): void

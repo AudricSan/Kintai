@@ -22,7 +22,9 @@ if ($redirect_to !== '') {
     $action .= $sep . 'redirect_to=' . urlencode($redirect_to);
 }
 
-echo Flash::fromQuery('error', ['timeoff_conflict' => __('shift_timeoff_conflict')])->render();
+echo Flash::fromQuery('error', [
+    'timeoff_conflict' => __('shift_timeoff_conflict'),
+])->render();
 ?>
 <div class="page-header">
     <h2 class="page-header__title"><?= $mode === 'edit' ? __('edit_shift') : __('new_shift') ?></h2>
@@ -68,3 +70,4 @@ ob_start();
 <?php
 echo Card::make()->body(ob_get_clean())->render();
 ?>
+<script src="<?= $BASE_URL ?>/assets/js/modules/shift-wage-preview.js"></script>
