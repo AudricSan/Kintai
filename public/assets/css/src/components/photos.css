@@ -3,10 +3,29 @@
    ================================================ */
 
 /* ── Liste des envois ───────────────────────────── */
+.photo-day-group__header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+    padding-bottom: var(--space-1);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.photo-day-group__header:not(:first-child) {
+    margin-top: var(--space-5);
+}
+
+.photo-day-group__title {
+    margin: 0;
+    font-size: var(--text-base);
+}
+
 .photo-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     gap: var(--space-4);
+    margin-bottom: var(--space-4);
 }
 
 a.photo-card {
