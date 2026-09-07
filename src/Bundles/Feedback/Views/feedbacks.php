@@ -114,7 +114,7 @@ echo FilterBar::make()
     ->column('', function($fb) use ($BASE_URL) {
         $id = (int) ($fb['id'] ?? 0);
         return '<form method="POST" action="' . htmlspecialchars($BASE_URL . '/admin/feedbacks/' . $id . '/delete') . '"'
-            . ' onsubmit="return confirm(\'' . __('feedback_delete_confirm') . '\')">'
+            . ' data-confirm="' . htmlspecialchars(__('feedback_delete_confirm'), ENT_QUOTES) . '">'
             . csrf_field() . Button::make(__('delete'))->danger()->sm()->submit()->render() . '</form>';
     })
     ->render()

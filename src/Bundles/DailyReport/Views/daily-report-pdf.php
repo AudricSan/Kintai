@@ -30,7 +30,7 @@ function drPdfH(int $minutes): string {
 }
 
 $storeName   = $store['name'] ?? 'Kintai';
-$currency    = currency_symbol($store['currency'] ?? 'JPY');
+$currency    = currency_symbol($store['currency'] ?? 'JPY', store_currency_style($store));
 $reportDate  = $report['report_date'] ?? '';
 $authorName  = trim(($author['last_name'] ?? '') . ' ' . ($author['first_name'] ?? ''))
                ?: ($author['display_name'] ?? ($author['email'] ?? '—'));

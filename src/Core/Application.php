@@ -141,25 +141,33 @@ final class Application
         $response->send();
     }
 
+    /**
+     * Le routage se fait DANS le "core" du pipeline global (et non avant), pour que les
+     * middlewares globaux (session, i18n...) s'exécutent même quand aucune route ne
+     * correspond — sinon Router::dispatch() lève NotFoundException/MethodNotAllowedException
+     * avant que I18nMiddleware n'ait jamais tourné, et la page 404/405 affiche les clés de
+     * traduction brutes (__() retombe sur la clé faute de locale définie). Voir CHANGELOG.
+     */
     private function dispatch(Request $request): Response
     {
-        [$route, $params] = $this->router->dispatch($request->method(), $request->uri());
+        $resolveAndRun = function (Request $request): Response {
+            [$route, $params] = $this->router->dispatch($request->method(), $request->uri());
 
-        $request->setRouteParams($params);
-        // Nom de la route matchée, exploité par PermissionMiddleware (config/permissions.php)
-        $request->setAttribute('route_name', $route->name);
+            $request->setRouteParams($params);
+            // Nom de la route matchée, exploité par PermissionMiddleware (config/permissions.php)
+            $request->setAttribute('route_name', $route->name);
 
-        // Merge global + route-specific middleware
-        $allMiddleware = array_merge($this->globalMiddleware, $route->middleware);
+            // Core handler: resolve controller, call method
+            $core = function (Request $request) use ($route) {
+                [$controllerClass, $method] = $route->handler;
+                $controller = $this->container->make($controllerClass);
+                return $controller->$method($request);
+            };
 
-        // Core handler: resolve controller, call method
-        $core = function (Request $request) use ($route) {
-            [$controllerClass, $method] = $route->handler;
-            $controller = $this->container->make($controllerClass);
-            return $controller->$method($request);
+            return $this->pipeline->run($request, $route->middleware, $core);
         };
 
-        return $this->pipeline->run($request, $allMiddleware, $core);
+        return $this->pipeline->run($request, $this->globalMiddleware, $resolveAndRun);
     }
 
     private function handleException(Throwable $e, Request $request): Response
@@ -188,9 +196,11 @@ final class Application
         // Unexpected error
         $this->logError($e);
 
+        $message = __('error_500_message');
+
         return $wantsJson
-            ? Response::json(['error' => 'Internal Server Error'], 500)
-            : $this->renderError(500, 'Internal Server Error', $request);
+            ? Response::json(['error' => $message], 500)
+            : $this->renderError(500, $message, $request);
     }
 
     private function renderError(int $status, string $message, Request $request): Response

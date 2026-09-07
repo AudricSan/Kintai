@@ -144,7 +144,7 @@ echo Card::make()
 <?php endif; ?>
 
 <?php if (widget_on('monthly_stats', $widgets) && $stats !== null): ?>
-<?php $cur = $stats['currency'] ?? 'JPY'; ?>
+<?php $cur = $stats['currency'] ?? 'JPY'; $curStyle = $stats['currency_symbol_style'] ?? 'kanji'; ?>
 <?php
 $navPrev = Button::make('←')->ghost()->sm()->attrs(['onclick' => "dashMonthNav('" . htmlspecialchars($stats['prev_month']) . "')", 'class' => 'dash-month-btn'])->render();
 $navNext = Button::make('→')->ghost()->sm()->attrs([
@@ -171,7 +171,7 @@ ob_start();
 </div>
 <div class="dash-stat dash-stat--wide">
     <?php if ($stats['has_rate']): ?>
-        <div class="dash-stat__value dash-stat__value--success"><?= format_currency((float) $stats['estimated_pay'], $cur) ?></div>
+        <div class="dash-stat__value dash-stat__value--success"><?= format_currency((float) $stats['estimated_pay'], $cur, $curStyle) ?></div>
     <?php else: ?>
         <div class="dash-stat__value--muted">—</div>
     <?php endif; ?>
@@ -207,14 +207,14 @@ if (!empty($stats['shift_details'])) {
                return '<span class="' . ($r['has_rate'] ? 'pay-ok' : 'pay-none') . '">' . htmlspecialchars($r['pay_fmt'] ?? '') . '</span>';
            }, 'td-right');
     }
-    $dt->footer(function($data) use ($totalNet, $stats, $cur) {
+    $dt->footer(function($data) use ($totalNet, $stats, $cur, $curStyle) {
         $netTotal = 0;
         foreach ($data as $r) { $netTotal += (int) ($r['net_min'] ?? 0); }
         $th = intdiv($netTotal, 60); $tm = $netTotal % 60;
         $html = '<tr class="tr-total"><td colspan="3" class="td-muted">' . __('total') . '</td>';
         $html .= '<td class="td-nowrap">' . $th . 'h' . str_pad((string)$tm, 2, '0', STR_PAD_LEFT) . '</td>';
         if ($stats['has_rate']) {
-            $html .= '<td></td><td class="pay-ok">' . format_currency((float)$stats['estimated_pay'], $cur) . '</td>';
+            $html .= '<td></td><td class="pay-ok">' . format_currency((float)$stats['estimated_pay'], $cur, $curStyle) . '</td>';
         }
         $html .= '</tr>';
         return $html;

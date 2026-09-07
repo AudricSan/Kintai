@@ -27,6 +27,7 @@ $router->group('/admin', function ($r) {
     $r->get('/stores/{id}/reports/resignation/{rid}/edit',         [AdminResignationReportController::class, 'editResignationReport'],   name: 'admin.stores.resignation_reports.edit');
     $r->post('/stores/{id}/reports/resignation/{rid}/edit',        [AdminResignationReportController::class, 'updateResignationReport'], name: 'admin.stores.resignation_reports.update');
     $r->post('/stores/{id}/reports/resignation/{rid}/delete',      [AdminResignationReportController::class, 'deleteResignationReport'], name: 'admin.stores.resignation_reports.delete');
+    $r->post('/stores/{id}/reports/resignation/{rid}/delete-permanently', [AdminResignationReportController::class, 'deleteResignationReportPermanently'], name: 'admin.stores.resignation_reports.delete_permanently');
     $r->get('/stores/{id}/reports/resignation/{rid}/pdf',          [AdminResignationReportController::class, 'resignationReportPdf'],    name: 'admin.stores.resignation_reports.pdf');
     $r->get('/stores/{id}/reports/resignation/{rid}/pdf/download', [AdminResignationReportController::class, 'resignationReportPdfDownload'], name: 'admin.stores.resignation_reports.pdf_download');
     $r->post('/stores/{id}/reports/resignation/{rid}/reactivate',  [AdminResignationReportController::class, 'reactivateUser'],          name: 'admin.stores.resignation_reports.reactivate');

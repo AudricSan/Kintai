@@ -14,6 +14,8 @@ use kintai\UI\Components\Card;
  * @var int[]  $memberIds
  */
 
+$currencyStyle = store_currency_style($store);
+
 function statCard(string $label, string $value, string $sub = '', string $color = 'var(--color-primary)'): string {
     return '<div class="sstat-card">'
         . '<div class="sstat-card__value" style="color:' . $color . '">' . htmlspecialchars($value) . '</div>'
@@ -314,9 +316,9 @@ function deltaChip(mixed $val, bool $invertColor = false, string $suffix = '%'):
 <div class="sstat-section">
     <div class="sstat-section-title"><?= __('section_financial') ?></div>
     <div class="sstat-grid">
-        <?= statCard(__('total_cost'), number_format($totalCost, 2) . ' ' . $currency, __('on_period'), '#10b981') ?>
-        <?= statCard(__('avg_cost_per_shift'), number_format($avgCostPerShift, 2) . ' ' . $currency) ?>
-        <?= statCard(__('avg_cost_per_hour'), number_format($avgCostPerHour, 2) . ' ' . $currency . '/h') ?>
+        <?= statCard(__('total_cost'), format_currency($totalCost, $currency, $currencyStyle), __('on_period'), '#10b981') ?>
+        <?= statCard(__('avg_cost_per_shift'), format_currency($avgCostPerShift, $currency, $currencyStyle)) ?>
+        <?= statCard(__('avg_cost_per_hour'), format_currency($avgCostPerHour, $currency, $currencyStyle) . '/h') ?>
     </div>
     <?php if ($totalCost == 0): ?>
         <?= Alert::make(__('no_rate_cost_hint'))->warning()->render() ?>
@@ -344,7 +346,7 @@ function deltaChip(mixed $val, bool $invertColor = false, string $suffix = '%'):
                         <td><?= htmlspecialchars($label) ?></td>
                         <td><?= number_format($h, 1) ?>h</td>
                         <?php if ($totalCost > 0): ?>
-                            <td><?= number_format($costByType[$label] ?? 0, 2) ?> <?= $currency ?></td>
+                            <td><?= format_currency($costByType[$label] ?? 0, $currency, $currencyStyle) ?></td>
                         <?php endif; ?>
                     </tr>
                 <?php endforeach; ?>
@@ -364,9 +366,9 @@ function deltaChip(mixed $val, bool $invertColor = false, string $suffix = '%'):
             <?php arsort($costByUser); foreach ($costByUser as $uid => $cost): ?>
                 <tr>
                     <td><a href="<?= $BASE_URL ?>/admin/users/<?= (int) $uid ?>/edit"><?= htmlspecialchars(userName($usersMap, (int) $uid)) ?></a></td>
-                    <td><?= number_format($cost, 2) ?> <?= $currency ?></td>
+                    <td><?= format_currency($cost, $currency, $currencyStyle) ?></td>
                     <td><?= number_format($hoursByUser[$uid] ?? 0, 1) ?>h</td>
-                    <td><?= ($hoursByUser[$uid] ?? 0) > 0 ? number_format($cost / $hoursByUser[$uid], 2) . ' ' . $currency : '—' ?></td>
+                    <td><?= ($hoursByUser[$uid] ?? 0) > 0 ? format_currency($cost / $hoursByUser[$uid], $currency, $currencyStyle) : '—' ?></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

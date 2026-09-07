@@ -4,14 +4,21 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Controller\Web;
 
+use kintai\Core\Auth\PermissionService;
+use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
+use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
+use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
+use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\TimeclockRepositoryInterface;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
+use kintai\Core\Services\DashboardAlertService;
+use kintai\Core\Services\StoreStatsServiceInterface;
 use kintai\UI\Controller\Web\HomeController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -49,16 +56,37 @@ final class HomeControllerDashboardWidgetsTest extends TestCase
         $swapRequests->method('findAll')->willReturn([]);
         $timeclocks = $this->createMock(TimeclockRepositoryInterface::class);
         $timeclocks->method('findAll')->willReturn([]);
+        $storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
+        $storeUsers->method('findByStore')->willReturn([]);
+        $shiftTypes = $this->createMock(ShiftTypeRepositoryInterface::class);
+        $storeStats = $this->createMock(StoreStatsServiceInterface::class);
+        $permissions = new PermissionService(
+            $this->createMock(RoleAssignmentRepositoryInterface::class),
+            $this->createMock(RoleRepositoryInterface::class),
+        );
+        $dashboardAlerts = new DashboardAlertService(
+            $shifts,
+            $users,
+            $storeUsers,
+            $timeoffRequests,
+            $swapRequests,
+            $timeclocks,
+        );
 
         $this->controller = new HomeController(
             new ViewRenderer(sys_get_temp_dir()),
             $users,
             $stores,
             $shifts,
+            $shiftTypes,
             $timeoffRequests,
             $swapRequests,
             $this->dashboardPrefs,
             $timeclocks,
+            $storeUsers,
+            $storeStats,
+            $dashboardAlerts,
+            $permissions,
         );
     }
 

@@ -9,17 +9,65 @@
 
 /* ── Stat grid + Quick nav (1100px) ─────────────── */
 @media (max-width: 1100px) {
+    /* minmax(0, 1fr) et non 1fr seul, ici et dans toutes les règles de ce
+       fichier qui redéfinissent .stat-grid/.quick-nav/.sstat-two : sinon
+       cette redéfinition mobile écrase la version minmax(0, 1fr) posée en
+       base (cards.css/statistics.css) et fait réapparaître le débordement
+       qu'elle corrigeait — une carte/graphique ne rétrécit jamais sous son
+       min-content sur une piste 1fr seule. */
     .stat-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .quick-nav {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+/* ── Grille de cartes de section : 3 → 2 colonnes (<1200px) ─────── */
+/* Le gabarit fixe (positions .card--c1/c2/c3 + .card--r1..4) est pensé
+   pour 3 colonnes desktop. En dessous, on l'annule et on repasse en
+   flux naturel plutôt que de maintenir un second gabarit fixe à 2
+   colonnes (complexité non justifiée pour une largeur transitoire). */
+@media (max-width: 1200px) {
+    /* minmax(0, 1fr) ici et dans la redéfinition à 900px : sinon cette
+       redéfinition mobile écrase la version minmax(0, 1fr) posée en base
+       (cards.css) et fait réapparaître le débordement qu'elle corrigeait. */
+    .form-section-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .card--c1, .card--c2, .card--c3,
+    .card--r1, .card--r2, .card--r3, .card--r4 {
+        grid-column-start: auto;
+        grid-row-start: auto;
+    }
+
+    .card--col-3,
+    .card--full {
+        grid-column-end: span 2;
     }
 }
 
 /* ── Calendar responsive (<900px) ───────────────── */
 @media (max-width: 900px) {
+    /* 1 seule colonne : position/taille explicites n'ont plus de sens,
+       et un grid-row: span 2 sans contrainte de largeur créerait une
+       carte inutilement haute. */
+    .form-section-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .card--col-2,
+    .card--col-3,
+    .card--full {
+        grid-column-end: span 1;
+    }
+
+    .card--row-2 {
+        grid-row-end: span 1;
+    }
+
     .cal-layout {
         flex-direction: column;
     }
@@ -30,86 +78,97 @@
         position: static;
     }
 
+    .role-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .rf-info, .rf-holders, .rf-permissions {
+        grid-column: 1;
+        grid-row: auto;
+    }
+
     .cal-grid td {
         height: 80px;
     }
 }
 
-/* ── Sidebar + Stat grid + Quick nav (768px) ────── */
+/* ── Topbar nav + Stat grid + Quick nav (768px) ─── */
 @media (max-width: 768px) {
-    /* Menu plein écran sur mobile (distinct du tiroir étroit desktop) :
-       plus de place pour des liens et sections plus grands et plus lisibles.
+    /* Panneau plein écran sur mobile (distinct des menus déroulants
+       flottants du desktop) : la nav et ses groupes s'empilent, toujours
+       dépliés — plus besoin de cliquer un déclencheur pour voir les liens.
        Passe au-dessus de la bottom-nav (z-index 100) une fois ouvert. */
-    .sidebar {
-        width: 100%;
-        max-width: 100%;
-        z-index: 150;
-        transform: translateX(-100%);
-    }
-
-    .sidebar.open {
-        transform: translateX(0);
-    }
-
-    .sidebar-header {
-        padding: var(--space-5) var(--space-6);
-    }
-
-    .sidebar-brand__name {
-        font-size: var(--text-2xl);
-    }
-
-    .sidebar-section {
-        padding-top: var(--space-6);
-        font-size: var(--text-xs);
-    }
-
-    .sidebar-link {
-        font-size: var(--text-lg);
-        padding: var(--space-4) var(--space-6);
-        min-height: 52px;
-        gap: var(--space-4);
-    }
-
-    .sidebar-link__icon svg {
-        width: 22px;
-        height: 22px;
-    }
-
-    .sidebar-nav-footer__link {
-        font-size: var(--text-base);
-        padding: var(--space-4) var(--space-6);
-        min-height: 44px;
-        display: flex;
-        align-items: center;
-    }
-
-    .main-content {
-        margin-left: 0;
-    }
-
-    .sidebar-toggle {
+    .topbar-nav-toggle {
         display: block;
     }
 
-    .sidebar-close {
-        display: block;
-        font-size: 1.75rem;
-    }
-
-    /* Fond assombri : n'est visible que pendant la transition d'ouverture,
-       le menu plein écran le recouvre entièrement une fois ouvert. */
-    .sidebar-backdrop {
+    .topbar-nav {
         display: none;
         position: fixed;
-        inset: 0;
-        background: var(--overlay-bg);
-        z-index: 99;
-        cursor: pointer;
+        top: var(--topbar-height);
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 150;
+        background: var(--color-surface);
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+        padding: var(--space-2) var(--space-3);
+        overflow-y: auto;
     }
 
-    .sidebar-backdrop.open {
-        display: block;
+    .topbar-nav.open {
+        display: flex;
+    }
+
+    .topbar-nav-link,
+    .topbar-nav-group__trigger {
+        width: 100%;
+        justify-content: flex-start;
+        border-radius: var(--radius-sm);
+        font-size: var(--text-base);
+        padding: var(--space-3) var(--space-4);
+    }
+
+    .topbar-nav-group__caret {
+        display: none;
+    }
+
+    /* Toujours dépliés sur mobile plutôt qu'en dropdown flottant. flex-direction:
+       column doit être répété ici : la règle desktop qui le pose (base.css) est
+       scopée à .topbar-nav-group.is-open, jamais vraie sur mobile puisque le
+       panneau est forcé visible par ce bloc sans passer par .is-open — sans ce
+       rappel, display:flex retombe sur son row par défaut et alignait tous les
+       liens (Shifts, Utilisateurs, Rapports d'embauche...) côte à côte au lieu
+       de les empiler, poussant le panneau à plus de 1000px de large. */
+    .topbar-nav-group__panel {
+        display: flex !important;
+        flex-direction: column;
+        position: static;
+        border: none;
+        box-shadow: none;
+        padding: 0 0 var(--space-2) var(--space-4);
+    }
+
+    .topbar-nav-group__link {
+        font-size: var(--text-base);
+        padding: var(--space-3) var(--space-4);
+    }
+
+    .topbar-nav-group__link-icon svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .topbar-brand__subtitle {
+        display: none;
+    }
+
+    /* Widget stats employé : accessible depuis le tableau de bord, pas
+       nécessaire dans une topbar déjà chargée sur petit écran. */
+    .topbar-nav-group--stats {
+        display: none;
     }
 
     .bottom-nav {
@@ -124,8 +183,6 @@
         margin-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
     }
 
-    .topbar-breadcrumb__section { display: none; }
-    .topbar-breadcrumb__sep     { display: none; }
     .user-dropdown__label       { display: none; }
     .user-dropdown__chevron     { display: none; }
 
@@ -142,19 +199,19 @@
     }
 
     .stat-grid {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .quick-nav {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .sstat-two {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
     }
 
     .dash-two-col {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
     }
 }
 
@@ -189,6 +246,20 @@
         grid-template-columns: 1fr;
     }
 
+    /* Grille interne "Informations employé" (2 colonnes desktop) : sur
+       mobile, code employé/couleur/mot de passe/statut/Owner tiennent mal
+       côte à côte (champs + libellés d'aide tronqués) — repasse en 1
+       colonne, la position explicite de .employee-info-grid__owner n'a
+       alors plus de sens (voir cards.css). */
+    .employee-info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .employee-info-grid__owner {
+        grid-column-start: auto;
+        grid-row-start: auto;
+    }
+
     .form-grid,
     .form-grid-2 {
         grid-template-columns: 1fr !important;
@@ -214,7 +285,10 @@
         justify-content: center;
     }
 
-    .btn-group {
+    /* :not(.btn-group--switcher) : sinon ce wrap (même spécificité, importé
+       après components.css) écrase le flex-wrap:nowrap du switcher et casse
+       la piste + pilule sur 2 lignes — voir .btn-group--switcher plus bas. */
+    .btn-group:not(.btn-group--switcher) {
         flex-wrap: wrap;
         gap: var(--space-2);
     }
@@ -225,7 +299,7 @@
     }
 
     .btn-group form .btn,
-    .btn-group > .btn {
+    .btn-group:not(.btn-group--switcher) > .btn {
         width: 100%;
         justify-content: center;
     }
@@ -240,6 +314,22 @@
        voir .btn-group--switcher dans components.css. */
     .btn-group--switcher {
         width: 100%;
+    }
+
+    /* Switcher liste/calendrier/timeline (3 segments icône + libellé) :
+       sur mobile les libellés complets ("Vue calendrier"...) ne tiennent
+       pas sur une ligne dans une piste pleine largeur, ce qui forçait un
+       retour à la ligne et désalignait la pilule. On masque le texte
+       (.switcher-label) et on garde l'icône seule ; le libellé complet
+       reste disponible via aria-label sur le lien pour les lecteurs
+       d'écran. */
+    .btn-group--switcher .switcher-label {
+        display: none;
+    }
+
+    .btn-group--switcher > .btn {
+        padding-left: var(--space-2);
+        padding-right: var(--space-2);
     }
 
     .page-header__actions {
@@ -342,6 +432,16 @@
        scroll tactile natif fonctionner par-dessus les barres. */
     .tl-bar {
         touch-action: auto;
+    }
+
+    /* Création par glisser désactivée sur mobile : .sd-create-zone pose
+       touch-action: none (shifts.css) pour capter le drag souris, ce qui
+       bloque aussi le scroll tactile horizontal du timeline-wrap dès qu'on
+       touche la zone — un simple geste de scroll y déclenchait/empêchait
+       la création. Pas d'équivalent tactile fiable pour "glisser pour
+       créer", donc masquée plutôt que rendue tactile. */
+    .sd-create-zone {
+        display: none;
     }
 
     .week-grid {
@@ -528,14 +628,14 @@
 
 /* ── Print styles ───────────────────────────────── */
 @media print {
-    .sidebar, .topbar, .sstat-period-nav,
+    .topbar, .sstat-period-nav,
     .erep-no-print, .erep-print-btn,
     .page-header__actions, .alert,
-    .bottom-nav, .sidebar-toggle {
+    .bottom-nav {
         display: none !important;
     }
 
-    .app-layout, .main-content,
+    .app-layout,
     .page-content {
         display: block !important;
         width: 100% !important;

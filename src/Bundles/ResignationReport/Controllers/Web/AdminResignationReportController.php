@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\Bundles\ResignationReport\Controllers\Web;
 
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Repositories\ResignationReportRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
@@ -43,6 +44,7 @@ final class AdminResignationReportController
         private readonly ResignationReportRepositoryInterface $resignationReports,
         private readonly StoreUserRepositoryInterface $storeUsers,
         private readonly AuditLogger $auditLogger,
+        private readonly PermissionService $permissions,
     ) {}
 
     public function allResignationReports(Request $request): Response
@@ -283,6 +285,32 @@ final class AdminResignationReportController
         }
 
         return $this->deleteReport($request);
+    }
+
+    /**
+     * Alternative à deleteResignationReport() : au lieu de réactiver l'employé,
+     * supprime définitivement son compte en plus du rapport. Proposée via la
+     * popup de confirmation du bouton "Supprimer" côté vue.
+     */
+    public function deleteResignationReportPermanently(Request $request): Response
+    {
+        [$report, $storeId, $reportId] = $this->findReportOrFail($request);
+        $userId = (int) ($report['user_id'] ?? 0);
+
+        $this->resignationReports->delete($reportId);
+        $this->auditLogger->log($request, 'resignation_report.deleted', 'resignation_report', $reportId, [
+            'store_id' => $storeId,
+        ]);
+
+        if ($userId > 0) {
+            $this->users->delete($userId);
+            $this->auditLogger->log($request, 'user.deleted', 'user', $userId, [
+                'reason'   => 'resignation_report_deleted',
+                'store_id' => $storeId,
+            ]);
+        }
+
+        return $this->redirectToList($storeId, 'resignation', 'user_deleted');
     }
 
     public function resignationReportPdf(Request $request): Response

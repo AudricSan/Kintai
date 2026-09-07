@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Bundles\Feedback;
 
 use kintai\Bundles\Feedback\Controllers\Web\FeedbackController;
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Container;
 use kintai\Core\Repositories\FeedbackRepositoryInterface;
 use kintai\Core\Repositories\LogRepositoryInterface;
+use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
+use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
@@ -16,6 +19,7 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\Log;
+use kintai\Core\Services\NotificationService;
 use kintai\Core\Services\UpdateService;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -30,6 +34,9 @@ final class FeedbackControllerTest extends TestCase
     private StoreUserRepositoryInterface&MockObject $storeUsers;
     private UserRepositoryInterface&MockObject $users;
     private LogRepositoryInterface&MockObject $logRepo;
+    private NotificationService&MockObject $notifs;
+    private RoleAssignmentRepositoryInterface&MockObject $assignments;
+    private RoleRepositoryInterface&MockObject $roles;
     private FeedbackController $controller;
     private string $tmpDir;
 
@@ -61,6 +68,10 @@ final class FeedbackControllerTest extends TestCase
             "<?php return ['version' => '9.9.9'];"
         );
 
+        $this->notifs = $this->createMock(NotificationService::class);
+        $this->assignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
+        $this->roles = $this->createMock(RoleRepositoryInterface::class);
+
         $this->controller = new FeedbackController(
             $view,
             $this->feedbacks,
@@ -71,6 +82,8 @@ final class FeedbackControllerTest extends TestCase
             $this->users,
             new AuditLogger(),
             new UpdateService($this->tmpDir),
+            $this->notifs,
+            new PermissionService($this->assignments, $this->roles),
         );
     }
 
@@ -132,6 +145,35 @@ final class FeedbackControllerTest extends TestCase
         $response = $this->controller->submit($req);
 
         $this->assertSame(302, $response->status());
+    }
+
+    public function testSubmitNotifiesManagersWithFeedbacksViewPermission(): void
+    {
+        $_POST = ['category' => 'other', 'message' => 'Super app !', 'return_to' => '/employee'];
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1]);
+
+        $this->storeUsers->method('findByUser')->with(1)->willReturn([['store_id' => 5]]);
+        $this->storeUsers->method('findByStore')->with(5)->willReturn([
+            ['user_id' => 1],  // l'auteur, sans droit particulier
+            ['user_id' => 20], // manager avec feedbacks.view
+        ]);
+        $this->feedbacks->method('save')->willReturn(['id' => 10]);
+        $this->users->method('findById')->willReturnMap([
+            [1, ['id' => 1]],
+            [20, ['id' => 20]],
+        ]);
+        $this->assignments->method('findByUser')->willReturnMap([
+            [1, []],
+            [20, [['id' => 1, 'user_id' => 20, 'role_id' => 2, 'scope_type' => 'store', 'scope_id' => 5]]],
+        ]);
+        $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'is_system' => 0]);
+        $this->roles->method('getPermissions')->with(2)->willReturn(['feedbacks.view']);
+
+        $this->notifs->expects($this->once())->method('notifyMany')
+            ->with([20], 'feedback_submitted', $this->anything(), 10);
+
+        $this->controller->submit($req);
     }
 
     public function testSubmitDetectsMobileDeviceFromUserAgent(): void

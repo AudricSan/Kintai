@@ -3,14 +3,22 @@
     "all_years": "All years",
     "bundle_resignation_report": "Resignation Report",
     "bundle_resignation_report_desc": "Per-employee resignation reports, with account reactivation.",
+    "confirm_delete_employee_permanently": "Permanently delete this employee and their resignation report? This action cannot be undone.",
     "confirm_delete_resignation_report": "Permanently delete this resignation report?",
     "confirm_reactivate": "Reactivate this employee? This will allow them to log in again.",
+    "delete_employee_and_report_permanently": "Permanently delete the employee and the report",
+    "delete_employee_and_report_permanently_hint": "The employee's account and this report will be permanently deleted. This action cannot be undone.",
+    "delete_resignation_report_intro": "What would you like to do for",
+    "delete_resignation_report_title": "Delete Resignation Report",
     "edit_resignation_report": "Edit Resignation Report",
     "new_resignation_report": "New Resignation Report",
     "person_in_charge": "Person in Charge",
     "reactivate": "Reactivate",
+    "reactivate_and_delete_report": "Reactivate the employee and delete the report",
+    "reactivate_and_delete_report_hint": "The employee's account becomes active again; only the report is deleted.",
     "resignation_date": "Resignation Date",
     "resignation_notice": "Resignation Notice",
     "resignation_report_pdf_title": "Resignation Report (退職報告書)",
-    "resignation_reports": "Resignation Reports"
+    "resignation_reports": "Resignation Reports",
+    "user_deleted_permanently": "The employee and the report have been permanently deleted."
 }

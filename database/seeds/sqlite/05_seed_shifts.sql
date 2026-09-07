@@ -30,18 +30,7 @@ SELECT (
         FROM users
         WHERE
             email = 'alice.martin@kintai.local'
-    ), '2026-02-23', '06:00', '14:00', (
-        SELECT id
-        FROM shift_types
-        WHERE
-            code = 'MORNING'
-            AND store_id = (
-                SELECT id
-                FROM stores
-                WHERE
-                    code = 'KTHQ'
-            )
-    ), 0, 60, 420, '2026-02-23 06:00:00', '2026-02-23 14:00:00', (
+    ), '2026-02-23', '06:00', '14:00', (SELECT st.id FROM shift_types st JOIN shift_type_stores sts ON sts.shift_type_id = st.id JOIN stores s ON s.id = sts.store_id WHERE st.code = 'MORNING' AND s.code = 'KTHQ'), 0, 60, 420, '2026-02-23 06:00:00', '2026-02-23 14:00:00', (
         SELECT id
         FROM users
         WHERE
@@ -58,18 +47,7 @@ SELECT (
         FROM users
         WHERE
             email = 'alice.martin@kintai.local'
-    ), '2026-02-24', '06:00', '14:00', (
-        SELECT id
-        FROM shift_types
-        WHERE
-            code = 'MORNING'
-            AND store_id = (
-                SELECT id
-                FROM stores
-                WHERE
-                    code = 'KTHQ'
-            )
-    ), 0, 60, 420, '2026-02-24 06:00:00', '2026-02-24 14:00:00', (
+    ), '2026-02-24', '06:00', '14:00', (SELECT st.id FROM shift_types st JOIN shift_type_stores sts ON sts.shift_type_id = st.id JOIN stores s ON s.id = sts.store_id WHERE st.code = 'MORNING' AND s.code = 'KTHQ'), 0, 60, 420, '2026-02-24 06:00:00', '2026-02-24 14:00:00', (
         SELECT id
         FROM users
         WHERE
@@ -86,18 +64,7 @@ SELECT (
         FROM users
         WHERE
             email = 'alice.martin@kintai.local'
-    ), '2026-02-25', '06:00', '14:00', (
-        SELECT id
-        FROM shift_types
-        WHERE
-            code = 'MORNING'
-            AND store_id = (
-                SELECT id
-                FROM stores
-                WHERE
-                    code = 'KTHQ'
-            )
-    ), 0, 60, 420, '2026-02-25 06:00:00', '2026-02-25 14:00:00', (
+    ), '2026-02-25', '06:00', '14:00', (SELECT st.id FROM shift_types st JOIN shift_type_stores sts ON sts.shift_type_id = st.id JOIN stores s ON s.id = sts.store_id WHERE st.code = 'MORNING' AND s.code = 'KTHQ'), 0, 60, 420, '2026-02-25 06:00:00', '2026-02-25 14:00:00', (
         SELECT id
         FROM users
         WHERE
@@ -115,18 +82,7 @@ SELECT (
         FROM users
         WHERE
             email = 'bob.dupont@kintai.local'
-    ), '2026-02-23', '14:00', '22:00', (
-        SELECT id
-        FROM shift_types
-        WHERE
-            code = 'AFTERNOON'
-            AND store_id = (
-                SELECT id
-                FROM stores
-                WHERE
-                    code = 'KTHQ'
-            )
-    ), 0, 60, 420, '2026-02-23 14:00:00', '2026-02-23 22:00:00', (
+    ), '2026-02-23', '14:00', '22:00', (SELECT st.id FROM shift_types st JOIN shift_type_stores sts ON sts.shift_type_id = st.id JOIN stores s ON s.id = sts.store_id WHERE st.code = 'AFTERNOON' AND s.code = 'KTHQ'), 0, 60, 420, '2026-02-23 14:00:00', '2026-02-23 22:00:00', (
         SELECT id
         FROM users
         WHERE
@@ -143,18 +99,7 @@ SELECT (
         FROM users
         WHERE
             email = 'bob.dupont@kintai.local'
-    ), '2026-02-24', '14:00', '22:00', (
-        SELECT id
-        FROM shift_types
-        WHERE
-            code = 'AFTERNOON'
-            AND store_id = (
-                SELECT id
-                FROM stores
-                WHERE
-                    code = 'KTHQ'
-            )
-    ), 0, 60, 420, '2026-02-24 14:00:00', '2026-02-24 22:00:00', (
+    ), '2026-02-24', '14:00', '22:00', (SELECT st.id FROM shift_types st JOIN shift_type_stores sts ON sts.shift_type_id = st.id JOIN stores s ON s.id = sts.store_id WHERE st.code = 'AFTERNOON' AND s.code = 'KTHQ'), 0, 60, 420, '2026-02-24 14:00:00', '2026-02-24 22:00:00', (
         SELECT id
         FROM users
         WHERE
@@ -171,18 +116,7 @@ SELECT (
         FROM users
         WHERE
             email = 'bob.dupont@kintai.local'
-    ), '2026-02-25', '14:00', '22:00', (
-        SELECT id
-        FROM shift_types
-        WHERE
-            code = 'AFTERNOON'
-            AND store_id = (
-                SELECT id
-                FROM stores
-                WHERE
-                    code = 'KTHQ'
-            )
-    ), 0, 60, 420, '2026-02-25 14:00:00', '2026-02-25 22:00:00', (
+    ), '2026-02-25', '14:00', '22:00', (SELECT st.id FROM shift_types st JOIN shift_type_stores sts ON sts.shift_type_id = st.id JOIN stores s ON s.id = sts.store_id WHERE st.code = 'AFTERNOON' AND s.code = 'KTHQ'), 0, 60, 420, '2026-02-25 14:00:00', '2026-02-25 22:00:00', (
         SELECT id
         FROM users
         WHERE
@@ -200,18 +134,7 @@ SELECT (
         FROM users
         WHERE
             email = 'chloe.tanaka@kintai.local'
-    ), '2026-02-23', '22:00', '06:00', (
-        SELECT id
-        FROM shift_types
-        WHERE
-            code = 'NIGHT'
-            AND store_id = (
-                SELECT id
-                FROM stores
-                WHERE
-                    code = 'KTHQ'
-            )
-    ), 1, 60, 420, '2026-02-23 22:00:00', '2026-02-24 06:00:00', (
+    ), '2026-02-23', '22:00', '06:00', (SELECT st.id FROM shift_types st JOIN shift_type_stores sts ON sts.shift_type_id = st.id JOIN stores s ON s.id = sts.store_id WHERE st.code = 'NIGHT' AND s.code = 'KTHQ'), 1, 60, 420, '2026-02-23 22:00:00', '2026-02-24 06:00:00', (
         SELECT id
         FROM users
         WHERE
@@ -228,18 +151,7 @@ SELECT (
         FROM users
         WHERE
             email = 'chloe.tanaka@kintai.local'
-    ), '2026-02-24', '22:00', '06:00', (
-        SELECT id
-        FROM shift_types
-        WHERE
-            code = 'NIGHT'
-            AND store_id = (
-                SELECT id
-                FROM stores
-                WHERE
-                    code = 'KTHQ'
-            )
-    ), 1, 60, 420, '2026-02-24 22:00:00', '2026-02-25 06:00:00', (
+    ), '2026-02-24', '22:00', '06:00', (SELECT st.id FROM shift_types st JOIN shift_type_stores sts ON sts.shift_type_id = st.id JOIN stores s ON s.id = sts.store_id WHERE st.code = 'NIGHT' AND s.code = 'KTHQ'), 1, 60, 420, '2026-02-24 22:00:00', '2026-02-25 06:00:00', (
         SELECT id
         FROM users
         WHERE
@@ -257,18 +169,7 @@ SELECT (
         FROM users
         WHERE
             email = 'yuki.yamamoto@kintai.local'
-    ), '2026-02-26', '14:00', '22:00', (
-        SELECT id
-        FROM shift_types
-        WHERE
-            code = 'AFTERNOON'
-            AND store_id = (
-                SELECT id
-                FROM stores
-                WHERE
-                    code = 'KTHQ'
-            )
-    ), 0, 60, 420, '2026-02-26 14:00:00', '2026-02-26 22:00:00', (
+    ), '2026-02-26', '14:00', '22:00', (SELECT st.id FROM shift_types st JOIN shift_type_stores sts ON sts.shift_type_id = st.id JOIN stores s ON s.id = sts.store_id WHERE st.code = 'AFTERNOON' AND s.code = 'KTHQ'), 0, 60, 420, '2026-02-26 14:00:00', '2026-02-26 22:00:00', (
         SELECT id
         FROM users
         WHERE
@@ -285,18 +186,7 @@ SELECT (
         FROM users
         WHERE
             email = 'yuki.yamamoto@kintai.local'
-    ), '2026-02-27', '14:00', '22:00', (
-        SELECT id
-        FROM shift_types
-        WHERE
-            code = 'AFTERNOON'
-            AND store_id = (
-                SELECT id
-                FROM stores
-                WHERE
-                    code = 'KTHQ'
-            )
-    ), 0, 60, 420, '2026-02-27 14:00:00', '2026-02-27 22:00:00', (
+    ), '2026-02-27', '14:00', '22:00', (SELECT st.id FROM shift_types st JOIN shift_type_stores sts ON sts.shift_type_id = st.id JOIN stores s ON s.id = sts.store_id WHERE st.code = 'AFTERNOON' AND s.code = 'KTHQ'), 0, 60, 420, '2026-02-27 14:00:00', '2026-02-27 22:00:00', (
         SELECT id
         FROM users
         WHERE
@@ -315,18 +205,7 @@ SELECT (
         FROM users
         WHERE
             email = 'david.leblanc@kintai.local'
-    ), '2026-02-23', '07:00', '15:00', (
-        SELECT id
-        FROM shift_types
-        WHERE
-            code = 'MORNING'
-            AND store_id = (
-                SELECT id
-                FROM stores
-                WHERE
-                    code = 'KTPARIS'
-            )
-    ), 0, 60, 420, '2026-02-23 07:00:00', '2026-02-23 15:00:00', (
+    ), '2026-02-23', '07:00', '15:00', (SELECT st.id FROM shift_types st JOIN shift_type_stores sts ON sts.shift_type_id = st.id JOIN stores s ON s.id = sts.store_id WHERE st.code = 'MORNING' AND s.code = 'KTPARIS'), 0, 60, 420, '2026-02-23 07:00:00', '2026-02-23 15:00:00', (
         SELECT id
         FROM users
         WHERE
@@ -343,18 +222,7 @@ SELECT (
         FROM users
         WHERE
             email = 'david.leblanc@kintai.local'
-    ), '2026-02-25', '07:00', '15:00', (
-        SELECT id
-        FROM shift_types
-        WHERE
-            code = 'MORNING'
-            AND store_id = (
-                SELECT id
-                FROM stores
-                WHERE
-                    code = 'KTPARIS'
-            )
-    ), 0, 60, 420, '2026-02-25 07:00:00', '2026-02-25 15:00:00', (
+    ), '2026-02-25', '07:00', '15:00', (SELECT st.id FROM shift_types st JOIN shift_type_stores sts ON sts.shift_type_id = st.id JOIN stores s ON s.id = sts.store_id WHERE st.code = 'MORNING' AND s.code = 'KTPARIS'), 0, 60, 420, '2026-02-25 07:00:00', '2026-02-25 15:00:00', (
         SELECT id
         FROM users
         WHERE
@@ -372,18 +240,7 @@ SELECT (
         FROM users
         WHERE
             email = 'emma.sato@kintai.local'
-    ), '2026-02-24', '15:00', '23:00', (
-        SELECT id
-        FROM shift_types
-        WHERE
-            code = 'AFTERNOON'
-            AND store_id = (
-                SELECT id
-                FROM stores
-                WHERE
-                    code = 'KTPARIS'
-            )
-    ), 0, 60, 420, '2026-02-24 15:00:00', '2026-02-24 23:00:00', (
+    ), '2026-02-24', '15:00', '23:00', (SELECT st.id FROM shift_types st JOIN shift_type_stores sts ON sts.shift_type_id = st.id JOIN stores s ON s.id = sts.store_id WHERE st.code = 'AFTERNOON' AND s.code = 'KTPARIS'), 0, 60, 420, '2026-02-24 15:00:00', '2026-02-24 23:00:00', (
         SELECT id
         FROM users
         WHERE
@@ -400,18 +257,7 @@ SELECT (
         FROM users
         WHERE
             email = 'emma.sato@kintai.local'
-    ), '2026-02-26', '15:00', '23:00', (
-        SELECT id
-        FROM shift_types
-        WHERE
-            code = 'AFTERNOON'
-            AND store_id = (
-                SELECT id
-                FROM stores
-                WHERE
-                    code = 'KTPARIS'
-            )
-    ), 0, 60, 420, '2026-02-26 15:00:00', '2026-02-26 23:00:00', (
+    ), '2026-02-26', '15:00', '23:00', (SELECT st.id FROM shift_types st JOIN shift_type_stores sts ON sts.shift_type_id = st.id JOIN stores s ON s.id = sts.store_id WHERE st.code = 'AFTERNOON' AND s.code = 'KTPARIS'), 0, 60, 420, '2026-02-26 15:00:00', '2026-02-26 23:00:00', (
         SELECT id
         FROM users
         WHERE
@@ -430,18 +276,7 @@ SELECT (
         FROM users
         WHERE
             email = 'alice.martin@kintai.local'
-    ), '2026-03-02', '06:00', '14:00', (
-        SELECT id
-        FROM shift_types
-        WHERE
-            code = 'MORNING'
-            AND store_id = (
-                SELECT id
-                FROM stores
-                WHERE
-                    code = 'KTHQ'
-            )
-    ), 0, 60, 420, '2026-03-02 06:00:00', '2026-03-02 14:00:00', (
+    ), '2026-03-02', '06:00', '14:00', (SELECT st.id FROM shift_types st JOIN shift_type_stores sts ON sts.shift_type_id = st.id JOIN stores s ON s.id = sts.store_id WHERE st.code = 'MORNING' AND s.code = 'KTHQ'), 0, 60, 420, '2026-03-02 06:00:00', '2026-03-02 14:00:00', (
         SELECT id
         FROM users
         WHERE
@@ -458,18 +293,7 @@ SELECT (
         FROM users
         WHERE
             email = 'alice.martin@kintai.local'
-    ), '2026-03-03', '06:00', '14:00', (
-        SELECT id
-        FROM shift_types
-        WHERE
-            code = 'MORNING'
-            AND store_id = (
-                SELECT id
-                FROM stores
-                WHERE
-                    code = 'KTHQ'
-            )
-    ), 0, 60, 420, '2026-03-03 06:00:00', '2026-03-03 14:00:00', (
+    ), '2026-03-03', '06:00', '14:00', (SELECT st.id FROM shift_types st JOIN shift_type_stores sts ON sts.shift_type_id = st.id JOIN stores s ON s.id = sts.store_id WHERE st.code = 'MORNING' AND s.code = 'KTHQ'), 0, 60, 420, '2026-03-03 06:00:00', '2026-03-03 14:00:00', (
         SELECT id
         FROM users
         WHERE
@@ -487,18 +311,7 @@ SELECT (
         FROM users
         WHERE
             email = 'bob.dupont@kintai.local'
-    ), '2026-03-02', '14:00', '22:00', (
-        SELECT id
-        FROM shift_types
-        WHERE
-            code = 'AFTERNOON'
-            AND store_id = (
-                SELECT id
-                FROM stores
-                WHERE
-                    code = 'KTHQ'
-            )
-    ), 0, 60, 420, '2026-03-02 14:00:00', '2026-03-02 22:00:00', (
+    ), '2026-03-02', '14:00', '22:00', (SELECT st.id FROM shift_types st JOIN shift_type_stores sts ON sts.shift_type_id = st.id JOIN stores s ON s.id = sts.store_id WHERE st.code = 'AFTERNOON' AND s.code = 'KTHQ'), 0, 60, 420, '2026-03-02 14:00:00', '2026-03-02 22:00:00', (
         SELECT id
         FROM users
         WHERE
@@ -515,18 +328,7 @@ SELECT (
         FROM users
         WHERE
             email = 'bob.dupont@kintai.local'
-    ), '2026-03-03', '14:00', '22:00', (
-        SELECT id
-        FROM shift_types
-        WHERE
-            code = 'AFTERNOON'
-            AND store_id = (
-                SELECT id
-                FROM stores
-                WHERE
-                    code = 'KTHQ'
-            )
-    ), 0, 60, 420, '2026-03-03 14:00:00', '2026-03-03 22:00:00', (
+    ), '2026-03-03', '14:00', '22:00', (SELECT st.id FROM shift_types st JOIN shift_type_stores sts ON sts.shift_type_id = st.id JOIN stores s ON s.id = sts.store_id WHERE st.code = 'AFTERNOON' AND s.code = 'KTHQ'), 0, 60, 420, '2026-03-03 14:00:00', '2026-03-03 22:00:00', (
         SELECT id
         FROM users
         WHERE
@@ -544,18 +346,7 @@ SELECT (
         FROM users
         WHERE
             email = 'chloe.tanaka@kintai.local'
-    ), '2026-03-02', '22:00', '06:00', (
-        SELECT id
-        FROM shift_types
-        WHERE
-            code = 'NIGHT'
-            AND store_id = (
-                SELECT id
-                FROM stores
-                WHERE
-                    code = 'KTHQ'
-            )
-    ), 1, 60, 420, '2026-03-02 22:00:00', '2026-03-03 06:00:00', (
+    ), '2026-03-02', '22:00', '06:00', (SELECT st.id FROM shift_types st JOIN shift_type_stores sts ON sts.shift_type_id = st.id JOIN stores s ON s.id = sts.store_id WHERE st.code = 'NIGHT' AND s.code = 'KTHQ'), 1, 60, 420, '2026-03-02 22:00:00', '2026-03-03 06:00:00', (
         SELECT id
         FROM users
         WHERE
@@ -574,18 +365,7 @@ SELECT (
         FROM users
         WHERE
             email = 'david.leblanc@kintai.local'
-    ), '2026-03-02', '07:00', '15:00', (
-        SELECT id
-        FROM shift_types
-        WHERE
-            code = 'MORNING'
-            AND store_id = (
-                SELECT id
-                FROM stores
-                WHERE
-                    code = 'KTPARIS'
-            )
-    ), 0, 60, 420, '2026-03-02 07:00:00', '2026-03-02 15:00:00', (
+    ), '2026-03-02', '07:00', '15:00', (SELECT st.id FROM shift_types st JOIN shift_type_stores sts ON sts.shift_type_id = st.id JOIN stores s ON s.id = sts.store_id WHERE st.code = 'MORNING' AND s.code = 'KTPARIS'), 0, 60, 420, '2026-03-02 07:00:00', '2026-03-02 15:00:00', (
         SELECT id
         FROM users
         WHERE
@@ -602,18 +382,7 @@ SELECT (
         FROM users
         WHERE
             email = 'david.leblanc@kintai.local'
-    ), '2026-03-03', '07:00', '15:00', (
-        SELECT id
-        FROM shift_types
-        WHERE
-            code = 'MORNING'
-            AND store_id = (
-                SELECT id
-                FROM stores
-                WHERE
-                    code = 'KTPARIS'
-            )
-    ), 0, 60, 420, '2026-03-03 07:00:00', '2026-03-03 15:00:00', (
+    ), '2026-03-03', '07:00', '15:00', (SELECT st.id FROM shift_types st JOIN shift_type_stores sts ON sts.shift_type_id = st.id JOIN stores s ON s.id = sts.store_id WHERE st.code = 'MORNING' AND s.code = 'KTPARIS'), 0, 60, 420, '2026-03-03 07:00:00', '2026-03-03 15:00:00', (
         SELECT id
         FROM users
         WHERE
@@ -630,18 +399,7 @@ SELECT (
         FROM users
         WHERE
             email = 'david.leblanc@kintai.local'
-    ), '2026-03-05', '07:00', '15:00', (
-        SELECT id
-        FROM shift_types
-        WHERE
-            code = 'MORNING'
-            AND store_id = (
-                SELECT id
-                FROM stores
-                WHERE
-                    code = 'KTPARIS'
-            )
-    ), 0, 60, 420, '2026-03-05 07:00:00', '2026-03-05 15:00:00', (
+    ), '2026-03-05', '07:00', '15:00', (SELECT st.id FROM shift_types st JOIN shift_type_stores sts ON sts.shift_type_id = st.id JOIN stores s ON s.id = sts.store_id WHERE st.code = 'MORNING' AND s.code = 'KTPARIS'), 0, 60, 420, '2026-03-05 07:00:00', '2026-03-05 15:00:00', (
         SELECT id
         FROM users
         WHERE
@@ -659,18 +417,7 @@ SELECT (
         FROM users
         WHERE
             email = 'emma.sato@kintai.local'
-    ), '2026-03-04', '15:00', '23:00', (
-        SELECT id
-        FROM shift_types
-        WHERE
-            code = 'AFTERNOON'
-            AND store_id = (
-                SELECT id
-                FROM stores
-                WHERE
-                    code = 'KTPARIS'
-            )
-    ), 0, 60, 420, '2026-03-04 15:00:00', '2026-03-04 23:00:00', (
+    ), '2026-03-04', '15:00', '23:00', (SELECT st.id FROM shift_types st JOIN shift_type_stores sts ON sts.shift_type_id = st.id JOIN stores s ON s.id = sts.store_id WHERE st.code = 'AFTERNOON' AND s.code = 'KTPARIS'), 0, 60, 420, '2026-03-04 15:00:00', '2026-03-04 23:00:00', (
         SELECT id
         FROM users
         WHERE
@@ -687,18 +434,7 @@ SELECT (
         FROM users
         WHERE
             email = 'emma.sato@kintai.local'
-    ), '2026-03-06', '15:00', '23:00', (
-        SELECT id
-        FROM shift_types
-        WHERE
-            code = 'AFTERNOON'
-            AND store_id = (
-                SELECT id
-                FROM stores
-                WHERE
-                    code = 'KTPARIS'
-            )
-    ), 0, 60, 420, '2026-03-06 15:00:00', '2026-03-06 23:00:00', (
+    ), '2026-03-06', '15:00', '23:00', (SELECT st.id FROM shift_types st JOIN shift_type_stores sts ON sts.shift_type_id = st.id JOIN stores s ON s.id = sts.store_id WHERE st.code = 'AFTERNOON' AND s.code = 'KTPARIS'), 0, 60, 420, '2026-03-06 15:00:00', '2026-03-06 23:00:00', (
         SELECT id
         FROM users
         WHERE

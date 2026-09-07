@@ -133,6 +133,9 @@ final class DatabaseLogRepository implements LogRepositoryInterface
         if (!empty($filters['store_id'])) {
             $query->where('store_id', (int) $filters['store_id']);
         }
+        if (isset($filters['store_ids']) && is_array($filters['store_ids'])) {
+            $query->whereIn('store_id', array_map('intval', $filters['store_ids']));
+        }
         if (!empty($filters['from'])) {
             $query->where('created_at', '>=', $filters['from']);
         }

@@ -8,40 +8,55 @@ use kintai\Core\Services\TranslationService;
 /**
  * Formate un montant selon la devise du store.
  *
- * JPY → pas de décimales, séparateur milliers ".", symbole "円" en suffixe
+ * JPY → pas de décimales, séparateur milliers ".", symbole 円 ou ¥ en suffixe selon $jpySymbolStyle
  * EUR → 2 décimales, séparateur décimal ",", milliers ".", symbole "€" en suffixe
  * USD → 2 décimales, séparateur décimal ".", milliers ",", symbole "$" en préfixe
  * Autres → 2 décimales, code ISO en suffixe
  */
-function format_currency(float $amount, string $currency = 'EUR'): string
+function format_currency(float $amount, string $currency = 'EUR', string $jpySymbolStyle = 'kanji'): string
 {
     $currency = strtoupper(trim($currency));
+    $symbol   = currency_symbol($currency, $jpySymbolStyle);
 
     return match ($currency) {
-        'JPY'   => number_format($amount, 0, '.', ',') . '円',
-        'KRW'   => number_format($amount, 0, '.', ',') . '₩',
-        'EUR'   => number_format($amount, 2, ',', '.') . ' €',
-        'USD'   => '$' . number_format($amount, 2, '.', ','),
-        'GBP'   => '£' . number_format($amount, 2, '.', ','),
-        'CHF'   => 'CHF ' . number_format($amount, 2, '.', '\''),
-        default => number_format($amount, 2, '.', ',') . ' ' . $currency,
+        'JPY'   => number_format($amount, 0, '.', ',') . $symbol,
+        'KRW'   => number_format($amount, 0, '.', ',') . $symbol,
+        'EUR'   => number_format($amount, 2, ',', '.') . ' ' . $symbol,
+        'USD'   => $symbol . number_format($amount, 2, '.', ','),
+        'GBP'   => $symbol . number_format($amount, 2, '.', ','),
+        'CHF'   => $symbol . ' ' . number_format($amount, 2, '.', '\''),
+        default => number_format($amount, 2, '.', ',') . ' ' . $symbol,
     };
 }
 
 /**
- * Retourne le symbole d'affichage d'une devise (ex. JPY → 円, EUR → €).
+ * Retourne le symbole d'affichage d'une devise (ex. JPY → 円 ou ¥, EUR → €).
+ * $jpySymbolStyle : 'kanji' (円, défaut) ou 'international' (¥) — n'a d'effet que pour JPY.
  */
-function currency_symbol(string $currency): string
+function currency_symbol(string $currency, string $jpySymbolStyle = 'kanji'): string
 {
-    return match (strtoupper(trim($currency))) {
-        'JPY'   => '円',
+    $currency = strtoupper(trim($currency));
+    if ($currency === 'JPY') {
+        return $jpySymbolStyle === 'international' ? '¥' : '円';
+    }
+    return match ($currency) {
         'KRW'   => '₩',
         'EUR'   => '€',
         'USD'   => '$',
         'GBP'   => '£',
         'CHF'   => 'CHF',
-        default => strtoupper(trim($currency)),
+        default => $currency,
     };
+}
+
+/**
+ * Style d'affichage du symbole yen configuré sur un store ('kanji' ou 'international').
+ * Toute valeur inconnue retombe sur 'kanji' (comportement historique).
+ */
+function store_currency_style(?array $store): string
+{
+    $style = $store['currency_symbol_style'] ?? 'kanji';
+    return $style === 'international' ? 'international' : 'kanji';
 }
 
 /**

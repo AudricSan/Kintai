@@ -1,4 +1,6 @@
 <?php
+use kintai\UI\Components\Badge;
+
 /**
  * @var array  $store
  * @var array  $report
@@ -17,15 +19,15 @@
  */
 $storeId  = (int) $store['id'];
 $reportId = (int) $report['id'];
-$currency = currency_symbol($store['currency'] ?? 'JPY');
+$currency = currency_symbol($store['currency'] ?? 'JPY', store_currency_style($store));
 
 $statusLabels = [
-    'draft'     => ['label' => __('dr_status_draft'),     'class' => 'badge--secondary'],
-    'submitted' => ['label' => __('dr_status_submitted'), 'class' => 'badge--warning'],
-    'validated' => ['label' => __('dr_status_validated'), 'class' => 'badge--active'],
+    'draft'     => __('dr_status_draft'),
+    'submitted' => __('dr_status_submitted'),
+    'validated' => __('dr_status_validated'),
 ];
-$st    = $report['status'] ?? 'draft';
-$badge = $statusLabels[$st] ?? ['label' => $st, 'class' => 'badge--secondary'];
+$st        = $report['status'] ?? 'draft';
+$badgeHtml = Badge::make($statusLabels[$st] ?? $st)->status($st)->sm()->render();
 
 $authorName    = trim(($author['last_name'] ?? '') . ' ' . ($author['first_name'] ?? '')) ?: ($author['email'] ?? '—');
 $validatorName = $validator
@@ -66,9 +68,7 @@ function drShowNum(mixed $n, int $dec = 0): string {
 <div class="page-header">
     <h2 class="page-header__title">
         <?= __('dr_title') ?> — <?= drShowDate($report['report_date']) ?>
-        <span class="badge badge--sm <?= $badge['class'] ?>">
-            <?= $badge['label'] ?>
-        </span>
+        <?= $badgeHtml ?>
     </h2>
     <div class="page-header__actions">
         <a href="<?= $BASE_URL ?>/admin/stores/<?= $storeId ?>/daily-reports"
@@ -260,7 +260,7 @@ $shiftRows = $shiftRows ?? [];
             <?php if ($canDelete): ?>
                 <form method="POST"
                       action="<?= $BASE_URL ?>/admin/stores/<?= $storeId ?>/daily-reports/<?= $reportId ?>/delete"
-                      onsubmit="return confirm('<?= __('dr_confirm_delete') ?>')"
+                      data-confirm="<?= htmlspecialchars(__('dr_confirm_delete'), ENT_QUOTES) ?>"
                       class="ml-auto">
                     <?= csrf_field() ?>
                     <button type="submit" class="btn btn--danger"><?= __('delete') ?></button>

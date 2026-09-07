@@ -34,16 +34,23 @@ define('BASE_PATH', dirname(__DIR__));
     }
 })();
 
+require BASE_PATH . '/vendor/autoload.php';
+require BASE_PATH . '/src/Core/helpers.php';
+
 // Check if the application is installed
 $installedLockFile = BASE_PATH . '/storage/installed.lock';
 if (!file_exists($installedLockFile)) {
-    // If not installed, redirect to the installation script
-    header('Location: /install.php');
-    exit;
+    if (kintai_installed_via_database(BASE_PATH)) {
+        // Le marqueur a disparu (hors Git, cause externe non identifiée — voir CHANGELOG)
+        // alors que la base de données est bien installée : on le régénère au lieu de
+        // forcer un réinstall destructeur à chaque requête.
+        @file_put_contents($installedLockFile, bin2hex(random_bytes(32)));
+    } else {
+        // Réellement pas installé → rediriger vers l'installeur
+        header('Location: /install.php');
+        exit;
+    }
 }
-
-require BASE_PATH . '/vendor/autoload.php';
-require BASE_PATH . '/src/Core/helpers.php';
 
 set_error_handler(function (int $severity, string $message, string $file, int $line): bool {
     if (!(error_reporting() & $severity)) {

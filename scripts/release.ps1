@@ -153,7 +153,7 @@ Set-Content -Path $notesFile -Value $releaseNotes -NoNewline
 
 try {
     Invoke-Checked "git add" { git add CHANGELOG.md composer.json config/app.php }
-    Invoke-Checked "git commit" { git commit -m "chore(release): $tag" }
+    Invoke-Checked "git commit" { git commit -m "core(release): $tag" }
     Invoke-Checked "git tag" { git tag -a $tag -m "Kintai $tag" }
     Invoke-Checked "git push $Branch" { git push origin $Branch }
     Invoke-Checked "git push tag" { git push origin $tag }

@@ -16,7 +16,14 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 
 // ─── Already installed ────────────────────────────────────────────────────────
 
-if (file_exists(BASE_PATH . '/storage/installed.lock')) {
+$installedLockFile = BASE_PATH . '/storage/installed.lock';
+if (file_exists($installedLockFile) || kintai_installed_via_database(BASE_PATH)) {
+    // Le marqueur peut avoir disparu (voir helpers.php:kintai_installed_via_database) sans
+    // que la base ne soit réellement désinstallée — le régénérer avant de rediriger évite de
+    // revenir systématiquement sur ce formulaire d'installation.
+    if (!file_exists($installedLockFile)) {
+        @file_put_contents($installedLockFile, bin2hex(random_bytes(32)));
+    }
     header('Location: /');
     exit;
 }

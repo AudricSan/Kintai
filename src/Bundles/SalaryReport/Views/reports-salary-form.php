@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use kintai\UI\Components\Button;
 use kintai\UI\Components\Card;
+use kintai\UI\Components\Modal;
 
 /**
  * @var array  $store
@@ -17,6 +18,7 @@ $report ??= [];
 $storeId = (int) $store['id'];
 $reportId = (int) ($report['id'] ?? 0);
 $currency = $store['currency'] ?? 'JPY';
+$currencySymbol = currency_symbol($currency, store_currency_style($store));
 
 $action = $mode === 'edit'
     ? $BASE_URL . '/admin/stores/' . $storeId . '/reports/salary/' . $reportId . '/edit'
@@ -27,7 +29,7 @@ $employeeId = (int) ($report['user_id'] ?? 0);
 $isEmployeeScoped = $employeeId > 0;
 
 /** Libellé de champ suffixé par son unité (devise du store, ou heures) — les montants nus sans unité sont une des choses qui rendaient ce formulaire dense et peu lisible. */
-$moneyLabel = fn(string $key) => __($key) . ' (' . $currency . ')';
+$moneyLabel = fn(string $key) => __($key) . ' (' . $currencySymbol . ')';
 $hoursLabel = fn(string $key) => __($key) . ' (h)';
 ?>
 <div class="page-header">
@@ -50,6 +52,8 @@ $hoursLabel = fn(string $key) => __($key) . ' (h)';
     <input type="hidden" name="active_employees" value="<?= $val('active_employees', '0') ?>">
     <input type="hidden" name="new_hires" value="<?= $val('new_hires', '0') ?>">
     <input type="hidden" name="resigned_staff" value="<?= $val('resigned_staff', '0') ?>">
+    <input type="hidden" name="total_payment" value="<?= $val('total_payment', '0') ?>">
+    <input type="hidden" name="hire_registrations" value="<?= $val('hire_registrations') ?>">
     <?php endif; ?>
 
     <?php
@@ -58,10 +62,41 @@ $hoursLabel = fn(string $key) => __($key) . ' (h)';
     <p class="form-hint"><?= __('sr_employee_scope_hint') ?></p>
     <?php endif; ?>
     <div class="form-row">
-        <div class="form-group">
+        <div class="form-group sr-period" id="sr-period"
+             data-calculate-url="<?= htmlspecialchars($BASE_URL . '/admin/stores/' . $storeId . '/reports/salary/calculate') ?>"
+             data-mode="<?= htmlspecialchars($mode) ?>"
+             data-user-id="<?= $employeeId ?>"
+             data-currency="<?= htmlspecialchars($currency) ?>"
+             data-currency-style="<?= htmlspecialchars(store_currency_style($store)) ?>">
             <label class="form-label"><?= __('sr_target_month') ?></label>
-            <input type="month" name="target_month" class="form-control"
-                   value="<?= $val('target_month') ?>" required>
+
+            <div class="btn-group btn-group--switcher mb-xs" style="--segments:2">
+                <span class="btn-group__thumb" style="--pos:0" aria-hidden="true"></span>
+                <button type="button" class="btn btn--ghost btn--sm btn--active" data-period-mode="month"><?= __('sr_period_month') ?></button>
+                <button type="button" class="btn btn--ghost btn--sm" data-period-mode="custom"><?= __('sr_period_custom') ?></button>
+            </div>
+
+            <div data-period-panel="month">
+                <input type="month" id="sr-period-month" class="form-control" value="<?= $val('target_month') ?>">
+            </div>
+            <div data-period-panel="custom" class="form-row" hidden>
+                <div class="form-group">
+                    <label class="form-label" for="sr-period-from"><?= __('sr_period_from') ?></label>
+                    <input type="date" id="sr-period-from" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="sr-period-to"><?= __('sr_period_to') ?></label>
+                    <input type="date" id="sr-period-to" class="form-control">
+                </div>
+            </div>
+
+            <input type="hidden" name="target_month" id="sr-target-month" value="<?= $val('target_month') ?>">
+
+            <div class="sr-period__actions">
+                <?= Button::make(__('sr_recalculate'))->ghost()->sm()->attrs(['type' => 'button', 'id' => 'sr-recalculate'])->render() ?>
+                <?= Button::make(__('sr_calc_detail'))->ghost()->sm()->attrs(['type' => 'button', 'id' => 'sr-calc-detail'])->render() ?>
+                <span id="sr-period-status" class="sr-period__status" aria-live="polite"></span>
+            </div>
         </div>
         <div class="form-group">
             <label class="form-label"><?= __('sr_person_in_charge') ?></label>
@@ -82,15 +117,17 @@ $hoursLabel = fn(string $key) => __($key) . ' (h)';
 
     <?php ob_start(); ?>
     <div class="form-row">
+        <?php if (!$isEmployeeScoped): ?>
         <div class="form-group">
             <label class="form-label"><?= $moneyLabel('sr_total_payment') ?></label>
-            <input type="number" name="total_payment" class="form-control"
-                   step="0.01" min="0" value="<?= $val('total_payment', '0') ?>">
+            <input type="text" inputmode="decimal" name="total_payment" class="form-control td-mono js-money-input"
+                   value="<?= $val('total_payment', '0') ?>">
         </div>
+        <?php endif; ?>
         <div class="form-group">
             <label class="form-label"><?= $moneyLabel('sr_net_payment') ?></label>
-            <input type="number" name="net_payment" class="form-control"
-                   step="0.01" min="0" value="<?= $val('net_payment', '0') ?>">
+            <input type="text" inputmode="decimal" name="net_payment" class="form-control td-mono js-money-input"
+                   value="<?= $val('net_payment', '0') ?>">
         </div>
     </div>
 
@@ -98,32 +135,32 @@ $hoursLabel = fn(string $key) => __($key) . ' (h)';
     <div class="form-row">
         <div class="form-group">
             <label class="form-label"><?= $moneyLabel('sr_income_tax_base') ?></label>
-            <input type="number" name="income_tax_base" class="form-control"
-                   step="0.01" min="0" value="<?= $val('income_tax_base', '0') ?>">
+            <input type="text" inputmode="decimal" name="income_tax_base" class="form-control td-mono js-money-input"
+                   value="<?= $val('income_tax_base', '0') ?>">
         </div>
         <div class="form-group">
             <label class="form-label"><?= $moneyLabel('sr_total_deductions') ?></label>
-            <input type="number" name="total_deductions" class="form-control"
-                   step="0.01" min="0" value="<?= $val('total_deductions', '0') ?>">
+            <input type="text" inputmode="decimal" name="total_deductions" class="form-control td-mono js-money-input"
+                   value="<?= $val('total_deductions', '0') ?>">
         </div>
     </div>
     <div class="form-row">
         <div class="form-group">
             <label class="form-label"><?= $moneyLabel('sr_withholding_tax') ?></label>
-            <input type="number" name="withholding_tax" class="form-control"
-                   step="0.01" min="0" value="<?= $val('withholding_tax', '0') ?>">
+            <input type="text" inputmode="decimal" name="withholding_tax" class="form-control td-mono js-money-input"
+                   value="<?= $val('withholding_tax', '0') ?>">
         </div>
         <div class="form-group">
             <label class="form-label"><?= $moneyLabel('sr_residence_tax') ?></label>
-            <input type="number" name="residence_tax" class="form-control"
-                   step="0.01" min="0" value="<?= $val('residence_tax', '0') ?>">
+            <input type="text" inputmode="decimal" name="residence_tax" class="form-control td-mono js-money-input"
+                   value="<?= $val('residence_tax', '0') ?>">
         </div>
     </div>
     <div class="form-row">
         <div class="form-group">
             <label class="form-label"><?= $moneyLabel('sr_other_deductions') ?></label>
-            <input type="number" name="other_deductions" class="form-control"
-                   step="0.01" min="0" value="<?= $val('other_deductions', '0') ?>">
+            <input type="text" inputmode="decimal" name="other_deductions" class="form-control td-mono js-money-input"
+                   value="<?= $val('other_deductions', '0') ?>">
         </div>
     </div>
 
@@ -131,13 +168,13 @@ $hoursLabel = fn(string $key) => __($key) . ' (h)';
     <div class="form-row">
         <div class="form-group">
             <label class="form-label"><?= $moneyLabel('sr_bank_transfer_salary') ?></label>
-            <input type="number" name="bank_transfer_salary" class="form-control"
-                   step="0.01" min="0" value="<?= $val('bank_transfer_salary', '0') ?>">
+            <input type="text" inputmode="decimal" name="bank_transfer_salary" class="form-control td-mono js-money-input"
+                   value="<?= $val('bank_transfer_salary', '0') ?>">
         </div>
         <div class="form-group">
             <label class="form-label"><?= $moneyLabel('sr_hand_delivered_salary') ?></label>
-            <input type="number" name="hand_delivered_salary" class="form-control"
-                   step="0.01" min="0" value="<?= $val('hand_delivered_salary', '0') ?>">
+            <input type="text" inputmode="decimal" name="hand_delivered_salary" class="form-control td-mono js-money-input"
+                   value="<?= $val('hand_delivered_salary', '0') ?>">
         </div>
     </div>
     <?php
@@ -154,15 +191,15 @@ $hoursLabel = fn(string $key) => __($key) . ' (h)';
         </div>
         <div class="form-group">
             <label class="form-label"><?= $moneyLabel('sr_staff_total_payment') ?></label>
-            <input type="number" name="staff_total_payment" class="form-control"
-                   step="0.01" min="0" value="<?= $val('staff_total_payment', '0') ?>">
+            <input type="text" inputmode="decimal" name="staff_total_payment" class="form-control td-mono js-money-input"
+                   value="<?= $val('staff_total_payment', '0') ?>">
         </div>
     </div>
     <div class="form-row">
         <div class="form-group">
-            <label class="form-label"><?= __('sr_staff_avg_hourly_wage') ?> (<?= $currency ?>/h)</label>
-            <input type="number" name="staff_avg_hourly_wage" class="form-control"
-                   step="0.01" min="0" value="<?= $val('staff_avg_hourly_wage', '0') ?>">
+            <label class="form-label"><?= __('sr_staff_avg_hourly_wage') ?> (<?= $currencySymbol ?>/h)</label>
+            <input type="text" inputmode="decimal" name="staff_avg_hourly_wage" class="form-control td-mono js-money-input"
+                   value="<?= $val('staff_avg_hourly_wage', '0') ?>">
         </div>
         <?php if (!$isEmployeeScoped): ?>
         <div class="form-group">
@@ -177,8 +214,8 @@ $hoursLabel = fn(string $key) => __($key) . ' (h)';
         <textarea name="employee_work_hours" class="form-control" rows="3"><?= $val('employee_work_hours') ?></textarea>
     </div>
 
-    <h4 class="section-subtitle"><?= __('sr_section_hr_movements') ?></h4>
     <?php if (!$isEmployeeScoped): ?>
+    <h4 class="section-subtitle"><?= __('sr_section_hr_movements') ?></h4>
     <div class="form-row">
         <div class="form-group">
             <label class="form-label"><?= __('sr_new_hires') ?></label>
@@ -191,11 +228,11 @@ $hoursLabel = fn(string $key) => __($key) . ' (h)';
                    step="1" min="0" value="<?= $val('resigned_staff', '0') ?>">
         </div>
     </div>
-    <?php endif; ?>
     <div class="form-group">
         <label class="form-label"><?= __('sr_hire_registrations') ?></label>
         <textarea name="hire_registrations" class="form-control" rows="3"><?= $val('hire_registrations') ?></textarea>
     </div>
+    <?php endif; ?>
     <?php
     $staffBody = ob_get_clean();
     echo Card::make()->header(__('sr_section_staff'))->body($staffBody)->render();
@@ -216,3 +253,37 @@ $hoursLabel = fn(string $key) => __($key) . ' (h)';
         <a href="<?= htmlspecialchars($BASE_URL . '/admin/stores/' . $storeId . '/reports/salary') ?>" class="btn btn--ghost"><?= __('cancel') ?></a>
     </div>
 </form>
+
+<?= Modal::make('sr-calc-detail-modal')->title(htmlspecialchars(__('sr_calc_detail_title')))->wide()->body(
+    '<div id="sr-calc-detail-body"></div>'
+)->render() ?>
+
+<script id="sr-i18n" type="application/json"><?= json_encode([
+    'recalculating'        => __('sr_recalculating'),
+    'calc_error'            => __('sr_calc_error'),
+    'confirm_recalculate'   => __('sr_confirm_recalculate'),
+    'gross_pay'             => __('gross_pay'),
+    'net_pay'               => __('net_pay'),
+    'total_deductions'      => __('total_deductions'),
+    'employee'              => __('employee'),
+    'hours'                 => __('hours'),
+    'amount'                => __('amount'),
+    'payslip_no_shift'      => __('payslip_no_shift'),
+    'monthly_fixed'         => __('monthly_fixed'),
+    'ded_health_insurance'  => __('ded_health_insurance'),
+    'ded_pension'           => __('ded_pension'),
+    'ded_employment_insurance' => __('ded_employment_insurance'),
+    'ded_income_tax'        => __('ded_income_tax'),
+    'ded_resident_tax'      => __('ded_resident_tax'),
+    'col_day'               => __('col_day'),
+    'date'                  => __('date'),
+    'shift_type'            => __('shift_type'),
+    'schedule'               => __('schedule'),
+    'gross_h_col'           => __('gross_h_col'),
+    'pause'                 => __('pause'),
+    'net_h_col'             => __('net_h_col'),
+    'col_rate_h'            => __('col_rate_h'),
+    'total_row'             => __('total_row'),
+    'sr_type_breakdown'     => __('sr_type_breakdown'),
+], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR) ?></script>
+<script src="<?= $BASE_URL ?>/assets/js/modules/salary-report-form.js"></script>

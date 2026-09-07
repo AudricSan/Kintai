@@ -11,6 +11,17 @@
         });
     }
 
+    /* ── Style du symbole yen (visible seulement si devise = JPY) ─── */
+    var currencySelect = document.querySelector('[name="currency"]');
+    var jpyStyleGroup   = document.getElementById('jpy-symbol-style-group');
+    if (currencySelect && jpyStyleGroup) {
+        var toggleJpyStyle = function () {
+            jpyStyleGroup.hidden = currencySelect.value !== 'JPY';
+        };
+        currencySelect.addEventListener('change', toggleJpyStyle);
+        toggleJpyStyle();
+    }
+
     /* ── Cartes de fonctionnalités ──────────────── */
     var lang   = document.documentElement.lang || 'fr';
     var onTxt  = lang === 'ja' ? '有効' : (lang === 'en' ? 'Active'   : 'Actif');
