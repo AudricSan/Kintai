@@ -103,23 +103,50 @@ final class StorePhotoController
         $notes     = $request->post('notes') ?? '';
         $createdBy = (int) ($request->getAttribute('auth_user')['id'] ?? 0);
 
-        $submission = $this->photos->saveSubmission([
-            'store_id'       => $storeId,
-            'week_label'     => $weekLabel,
-            'notes'          => $notes,
-            'image_count'    => 0,
-            'retention_days' => max(1, (int) $this->appSettings->get('photo_retention_days', '14')),
-            'created_by'     => $createdBy,
-            'updated_at'     => date('Y-m-d H:i:s'),
-        ]);
-        $submissionId = (int) $submission['id'];
+        // Plusieurs envois pour le même magasin le même jour doivent former un seul
+        // rapport : on rattache à l'envoi du jour déjà existant plutôt que d'en
+        // recréer un (photos + notes s'accumulent dans la même soumission).
+        $today   = date('Y-m-d');
+        $existing = $this->photos->findTodaySubmission($storeId, $today);
+        $isMerge  = $existing !== null;
+
+        if ($isMerge) {
+            $mergedNotes = trim($existing['notes'] ?? '');
+            if ($notes !== '') {
+                $mergedNotes = $mergedNotes !== '' ? $mergedNotes . "\n" . $notes : $notes;
+            }
+            $submission   = $this->photos->saveSubmission([
+                'id'         => $existing['id'],
+                'notes'      => $mergedNotes,
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+            $submissionId = (int) $submission['id'];
+        } else {
+            $submission = $this->photos->saveSubmission([
+                'store_id'       => $storeId,
+                'week_label'     => $weekLabel,
+                'notes'          => $notes,
+                'image_count'    => 0,
+                'retention_days' => max(1, (int) $this->appSettings->get('photo_retention_days', '14')),
+                'created_by'     => $createdBy,
+                'updated_at'     => date('Y-m-d H:i:s'),
+            ]);
+            $submissionId = (int) $submission['id'];
+        }
 
         $files = $request->file('photos');
         if ($files !== null && !empty($files['tmp_name'][0])) {
-            $this->saveUploadedFiles($request, $storeId, $submissionId, $files);
+            $this->saveUploadedFiles($request, $storeId, $submissionId, $files, (int) ($submission['image_count'] ?? 0));
         }
 
-        $this->auditLogger->log($request, 'photo.submission_created', 'store_photo_submission', $submissionId, $submission, $storeId);
+        $this->auditLogger->log(
+            $request,
+            $isMerge ? 'photo.submission_merged' : 'photo.submission_created',
+            'store_photo_submission',
+            $submissionId,
+            $submission,
+            $storeId
+        );
 
         if ($request->isAjax()) {
             return Response::json(['id' => $submissionId]);
@@ -206,7 +233,7 @@ final class StorePhotoController
         return in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true) ? $ext : null;
     }
 
-    private function saveUploadedFiles(Request $request, int $storeId, int $submissionId, array $files): void
+    private function saveUploadedFiles(Request $request, int $storeId, int $submissionId, array $files, int $startIndex = 0): void
     {
         $uploadDir = dirname(__DIR__, 5) . '/storage/uploads/img/';
         $storeDir  = $uploadDir . $storeId . '/';
@@ -214,7 +241,7 @@ final class StorePhotoController
         if (!is_dir($storeDir)) { mkdir($storeDir, 0775, true); }
         if (!is_dir($subDir))  { mkdir($subDir, 0775, true); }
 
-        $count    = 0;
+        $count    = $startIndex;
         $tmpNames = is_array($files['tmp_name']) ? $files['tmp_name'] : [$files['tmp_name']];
         $names    = is_array($files['name'])      ? $files['name']      : [$files['name']];
         $types    = is_array($files['type'])      ? $files['type']      : [$files['type']];

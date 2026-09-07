@@ -232,6 +232,53 @@ final class StorePhotoControllerTest extends TestCase
         $this->assertSame(302, $response->status());
     }
 
+    /**
+     * Plusieurs envois de photos pour le même magasin le même jour doivent former
+     * un seul rapport : store() se rattache à l'envoi du jour trouvé plutôt que
+     * d'en créer un nouveau, et fusionne les notes.
+     */
+    public function testStoreMergesIntoExistingSameDaySubmissionInsteadOfCreatingNew(): void
+    {
+        $_POST = ['store_id' => '1', 'notes' => 'Deuxième envoi'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setAttribute('auth_user', ['id' => 7]);
+
+        $this->photos->method('findTodaySubmission')->with(1, date('Y-m-d'))
+            ->willReturn(['id' => 55, 'store_id' => 1, 'notes' => 'Premier envoi', 'image_count' => 2]);
+
+        $this->photos->expects($this->once())->method('saveSubmission')
+            ->with($this->callback(function (array $data) {
+                return ($data['id'] ?? null) === 55
+                    && !array_key_exists('store_id', $data)
+                    && $data['notes'] === "Premier envoi\nDeuxième envoi";
+            }))
+            ->willReturn(['id' => 55, 'store_id' => 1, 'image_count' => 2]);
+
+        $response = $this->controller->store($req);
+
+        $this->assertSame(302, $response->status());
+    }
+
+    /** Sans envoi existant pour aujourd'hui, store() crée bien une nouvelle soumission (image_count à 0). */
+    public function testStoreCreatesNewSubmissionWhenNoneExistsForToday(): void
+    {
+        $_POST = ['store_id' => '1', 'week_label' => '2026-07-07', 'notes' => 'RAS'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setAttribute('auth_user', ['id' => 7]);
+
+        $this->appSettings->method('get')->willReturn('14');
+        $this->photos->method('findTodaySubmission')->willReturn(null);
+        $this->photos->expects($this->once())->method('saveSubmission')
+            ->with($this->callback(fn (array $data) => ($data['store_id'] ?? null) === 1 && ($data['image_count'] ?? null) === 0))
+            ->willReturn(['id' => 99, 'store_id' => 1, 'image_count' => 0]);
+
+        $response = $this->controller->store($req);
+
+        $this->assertSame(302, $response->status());
+    }
+
     public function testStoreForbiddenWhenStoreNotManaged(): void
     {
         $_POST = ['store_id' => '9'];

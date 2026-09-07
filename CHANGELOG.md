@@ -8,6 +8,10 @@ All notable changes to Kintai are documented here.
 
 ### Changed
 - Update page — the "Notes de version" summary card now shows the release's version number and publication date above the notes, matching what the "view more" modal and the other-channels history already display.
+- Store photo reports — submitting a new photo report for a store that already has one for the same calendar day now attaches the new photos and notes to that existing report instead of creating a separate one, so a single day never shows up as several fragmented reports. Backed by a new `StorePhotoRepositoryInterface::findTodaySubmission()`.
+
+### Fixed
+- Store photo reports — the photo detail grid (`.photo-detail-grid`) was hard-coded to `repeat(5, 1fr)` with no responsive override, squeezing photos into unreadable slivers on mobile; it and the misplaced `.photo-grid`/`.photo-card`/`.photo-detail-card*` rules (accidentally left in `error-log.css` from the earlier CSS module split) were moved to `photos.css` and switched to an `auto-fill`/`minmax` grid like the rest of the codebase's responsive grids.
 
 ## [0.11.9] - 2026-09-05
 
