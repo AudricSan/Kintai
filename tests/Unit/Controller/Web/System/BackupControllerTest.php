@@ -11,6 +11,7 @@ use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Repositories\JsonLanguageRepository;
 use kintai\Core\Repositories\JsonTranslationRepository;
+use kintai\Core\Repositories\StorePhotoRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Services\AppSettingsService;
 use kintai\Core\Services\BackupService;
@@ -29,6 +30,7 @@ final class BackupControllerTest extends TestCase
     private MigrationRunner $migrator;
     private AppSettingsService $settings;
     private ViewRenderer $view;
+    private StorePhotoRepositoryInterface $photoRepo;
 
     protected function setUp(): void
     {
@@ -62,6 +64,9 @@ final class BackupControllerTest extends TestCase
         $this->settings = new AppSettingsService($settingsRepo);
 
         $this->view = new ViewRenderer(sys_get_temp_dir());
+
+        $this->photoRepo = $this->createStub(StorePhotoRepositoryInterface::class);
+        $this->photoRepo->method('findAllSubmissions')->willReturn([]);
 
         // describeFlash() traduit via __() : sans ça, __() (voir helpers.php) retombe
         // silencieusement sur la clé brute faute de TranslationService dans le container,
@@ -138,6 +143,7 @@ final class BackupControllerTest extends TestCase
             $this->backup,
             $this->migrator,
             $this->settings,
+            $this->photoRepo,
             $this->tmpDir,
             $releaseFetcher,
             $zipDownloader,

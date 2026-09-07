@@ -107,6 +107,16 @@ a.photo-card {
     padding: var(--space-2) var(--space-3);
 }
 
+.photo-detail-card__rotate {
+    display: flex;
+    gap: var(--space-1);
+    margin-top: var(--space-1);
+}
+
+.photo-detail-card__rotate .btn {
+    line-height: 1;
+}
+
 /* ── Carousel photo (visionneuse plein écran) ──────────────────── */
 .photo-carousel {
     background: rgba(0, 0, 0, .9);
