@@ -68,7 +68,7 @@ final class StorePhotoController
         $submissionImages = [];
         foreach ($submissions as $s) {
             $sid = (int) $s['id'];
-            $submissionImages[$sid] = $this->photos->findImagesBySubmission($sid);
+            $submissionImages[$sid] = $this->enrichWithVersion($this->photos->findImagesBySubmission($sid));
         }
 
         return Response::html($this->view->render('store-photos::store-photos', [
@@ -247,6 +247,45 @@ final class StorePhotoController
     }
 
     /**
+     * Redresse manuellement une photo déjà stockée. Une fois compressée, l'image
+     * n'a plus d'EXIF (voir ImageCompressionService::applyExifOrientation()) : une
+     * photo de travers doit être corrigée à la main, il n'y a pas d'orientation
+     * à relire automatiquement.
+     */
+    public function rotateImage(Request $request): Response
+    {
+        $imageId = (int) $request->param('image_id');
+        $image   = $this->photos->findImageById($imageId);
+        if (!$image) {
+            return Response::redirect($this->base() . '/admin/photos');
+        }
+
+        $submission = $this->photos->findSubmissionById((int) $image['submission_id']);
+        if (!$submission) {
+            return Response::redirect($this->base() . '/admin/photos');
+        }
+
+        $storeId = (int) $submission['store_id'];
+        $this->assertStoreAccess($request, $storeId);
+        $this->assertPhotosFeatureEnabled($storeId);
+
+        $degrees = $request->post('direction') === 'left' ? -90 : 90;
+        $this->imageCompressor->rotateInPlace(
+            $this->physicalPath((string) $image['filepath']),
+            (string) ($image['mime_type'] ?? 'image/jpeg'),
+            $degrees
+        );
+
+        $this->auditLogger->log($request, 'photo.image_rotated', 'store_photo_image', $imageId, ['degrees' => $degrees], $storeId);
+
+        $backStoreId = $this->resolveBackStoreId($request, $storeId);
+        $redirect    = $this->base() . '/admin/photos/' . $storeId . '/' . $submission['id']
+            . ($backStoreId > 0 ? '?origin_store_id=' . $backStoreId : '');
+
+        return Response::redirect($redirect);
+    }
+
+    /**
      * Détermine vers quelle vue liste revenir (tous les stores, ou un store filtré)
      * une fois l'envoi consulté/supprimé — d'après le filtre actif au moment où
      * l'utilisateur a cliqué sur l'envoi (porté par ?origin_store_id=, y compris
@@ -257,6 +296,27 @@ final class StorePhotoController
     {
         $origin = $request->query('origin_store_id');
         return ($origin === null || $origin === '') ? $fallbackStoreId : (int) $origin;
+    }
+
+    /** Chemin physique sur disque d'une image à partir de son filepath public (storage/img/... → storage/uploads/img/...). */
+    private function physicalPath(string $publicFilepath): string
+    {
+        return dirname(__DIR__, 5) . '/storage/uploads/' . substr($publicFilepath, strlen('storage/'));
+    }
+
+    /**
+     * Ajoute un paramètre ?v= (mtime du fichier) à chaque image pour invalider le
+     * cache navigateur après une rotation : le fichier est réécrit en place, sous
+     * le même nom, et resterait affiché de travers depuis le cache sans ce param.
+     */
+    private function enrichWithVersion(array $images): array
+    {
+        foreach ($images as &$img) {
+            $physical = $this->physicalPath((string) $img['filepath']);
+            $img['version'] = is_file($physical) ? (string) filemtime($physical) : '0';
+        }
+        unset($img);
+        return $images;
     }
 
     /**
@@ -317,7 +377,7 @@ final class StorePhotoController
         }
         $this->assertStoreAccess($request, (int) $submission['store_id']);
 
-        $images = $this->photos->findImagesBySubmission($id);
+        $images = $this->enrichWithVersion($this->photos->findImagesBySubmission($id));
         $store  = $this->stores->findById((int) $submission['store_id']);
 
         return Response::html($this->view->render('store-photos::store-photos-detail', [
@@ -325,6 +385,7 @@ final class StorePhotoController
             'submission'   => $submission,
             'images'       => $images,
             'store'        => $store,
+            'isOwner'      => !empty($request->getAttribute('auth_user')['is_admin']),
             'backStoreId'  => $this->resolveBackStoreId($request, (int) $submission['store_id']),
         ], 'layout.app'));
     }

@@ -45,7 +45,7 @@ $backUrl   = $BASE_URL . '/admin/photos' . ($backStoreId > 0 ? '?store_id=' . $b
         <?php foreach (array_values($images) as $i => $img): ?>
             <div class="card photo-detail-card">
                 <button type="button" class="photo-detail-card__trigger" onclick="photoCarouselOpen(<?= (int) $i ?>)">
-                    <img src="<?= $BASE_URL ?>/<?= htmlspecialchars($img['filepath']) ?>"
+                    <img src="<?= $BASE_URL ?>/<?= htmlspecialchars($img['filepath']) ?>?v=<?= htmlspecialchars($img['version'] ?? '') ?>"
                          alt="<?= htmlspecialchars($img['filename']) ?>"
                          loading="lazy"
                          class="photo-detail-card__img">
@@ -54,6 +54,20 @@ $backUrl   = $BASE_URL . '/admin/photos' . ($backStoreId > 0 ? '?store_id=' . $b
                     <div class="text-xs text-muted"><?= htmlspecialchars($img['filename']) ?></div>
                     <?php if (!empty($img['filesize'])): ?>
                         <div class="text-xs text-muted"><?= number_format((int) $img['filesize'] / 1024, 1) ?> KB</div>
+                    <?php endif; ?>
+                    <?php if ($isOwner): ?>
+                        <div class="photo-detail-card__rotate">
+                            <form method="POST" action="<?= $BASE_URL ?>/admin/photos/image/<?= (int) $img['id'] ?>/rotate?origin_store_id=<?= $backStoreId ?>" class="form-inline">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="direction" value="left">
+                                <button type="submit" class="btn btn--ghost btn--xs" title="<?= htmlspecialchars(__('photo_rotate_left')) ?>">⟲</button>
+                            </form>
+                            <form method="POST" action="<?= $BASE_URL ?>/admin/photos/image/<?= (int) $img['id'] ?>/rotate?origin_store_id=<?= $backStoreId ?>" class="form-inline">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="direction" value="right">
+                                <button type="submit" class="btn btn--ghost btn--xs" title="<?= htmlspecialchars(__('photo_rotate_right')) ?>">⟳</button>
+                            </form>
+                        </div>
                     <?php endif; ?>
                 </div>
             </div>
@@ -76,7 +90,7 @@ $backUrl   = $BASE_URL . '/admin/photos' . ($backStoreId > 0 ? '?store_id=' . $b
 
     <script type="application/json" id="photo-carousel-data"><?= json_encode(array_map(static function ($img) use ($BASE_URL) {
         return [
-            'src'      => $BASE_URL . '/' . $img['filepath'],
+            'src'      => $BASE_URL . '/' . $img['filepath'] . '?v=' . ($img['version'] ?? ''),
             'filename' => $img['filename'],
         ];
     }, array_values($images)), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?></script>
