@@ -103,7 +103,7 @@ final class GithubUpdateService
         return [
             'current_version' => $current,
             'latest_version'  => $latest,
-            'has_update'      => version_compare($latest, $current, '>'),
+            'has_update'      => self::isNewerVersion($latest, $current),
             'release_notes'   => $release['body'] ?? '',
             'release_url'     => $release['html_url'] ?? null,
             'published_at'    => $release['published_at'] ?? null,
@@ -677,6 +677,45 @@ final class GithubUpdateService
     private static function isValidReleaseList(mixed $data): bool
     {
         return is_array($data) && array_is_list($data);
+    }
+
+    /**
+     * Compare deux versions du schéma X.Y.Z[-LN] (voir docs/releasing.md) en
+     * tenant compte du fait que le suffixe -LN est perdu à l'installation
+     * (getCurrentVersion() relit config/app.php, qui ne contient jamais que
+     * X.Y.Z) : version_compare() natif classe un suffixe alphabétique non
+     * reconnu ("ak3") EN DESSOUS d'une chaîne sans suffixe, ce qui masquerait
+     * silencieusement une prerelease dont la base X.Y.Z est déjà installée
+     * (ex: version_compare('0.11.9-ak3', '0.11.9', '>') === false).
+     */
+    private static function isNewerVersion(string $latest, string $current): bool
+    {
+        [$latestBase, $latestSuffix] = self::splitVersion($latest);
+        [$currentBase, $currentSuffix] = self::splitVersion($current);
+
+        $baseComparison = version_compare($latestBase, $currentBase);
+        if ($baseComparison !== 0) {
+            return $baseComparison > 0;
+        }
+
+        if ($latestSuffix === null) {
+            return false;
+        }
+        if ($currentSuffix === null) {
+            return true;
+        }
+
+        return version_compare($latestSuffix, $currentSuffix, '>');
+    }
+
+    /** @return array{0: string, 1: ?string} [X.Y.Z, LN ou null] */
+    private static function splitVersion(string $version): array
+    {
+        if (preg_match('/^(\d+\.\d+\.\d+)-([a-z]+\d+)$/i', $version, $matches) === 1) {
+            return [$matches[1], $matches[2]];
+        }
+
+        return [$version, null];
     }
 
     private function downloadZip(string $url, string $destination): bool
