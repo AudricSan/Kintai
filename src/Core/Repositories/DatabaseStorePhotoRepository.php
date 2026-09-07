@@ -36,6 +36,21 @@ final class DatabaseStorePhotoRepository implements StorePhotoRepositoryInterfac
             ->toArray();
     }
 
+    public function findTodaySubmission(int $storeId, string $date): ?array
+    {
+        $start = $date . ' 00:00:00';
+        $end   = date('Y-m-d 00:00:00', strtotime($date . ' +1 day'));
+
+        $s = StorePhotoSubmission::where('store_id', $storeId)
+            ->whereNull('deleted_at')
+            ->where('created_at', '>=', $start)
+            ->where('created_at', '<', $end)
+            ->orderByDesc('created_at')
+            ->first();
+
+        return $s ? $s->toArray() : null;
+    }
+
     public function findImagesBySubmission(int $submissionId): array
     {
         return StorePhotoImage::where('submission_id', $submissionId)
