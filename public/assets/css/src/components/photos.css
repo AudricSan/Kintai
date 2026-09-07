@@ -1,6 +1,111 @@
 /* ================================================
-   Kintai — Carrousel photo (visionneuse plein écran)
+   Kintai — Envois de photos (liste, détail, carrousel)
    ================================================ */
+
+/* ── Liste des envois ───────────────────────────── */
+.photo-day-group__header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+    padding-bottom: var(--space-1);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.photo-day-group__header:not(:first-child) {
+    margin-top: var(--space-5);
+}
+
+.photo-day-group__title {
+    margin: 0;
+    font-size: var(--text-base);
+}
+
+.photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
+}
+
+a.photo-card {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+.photo-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+    transition: all 0.2s ease;
+}
+
+.photo-card__preview-img {
+    width: 100%;
+    height: 160px;
+    object-fit: scale-down;
+    background: var(--color-bg-alt, #e9ecef);
+    border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.photo-card__preview-empty {
+    height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.photo-card__body {
+    padding: var(--space-3);
+}
+
+.photo-card__meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-1);
+}
+
+.photo-card__notes,
+.photo-card__date {
+    margin-top: var(--space-1);
+}
+
+/* ── Détail d'un envoi ───────────────────────────── */
+/* auto-fill/minmax plutôt qu'un nombre de colonnes fixe : la grille était
+   figée à 5 colonnes quelle que soit la largeur d'écran, ce qui écrasait
+   les photos en bandes illisibles sur mobile. */
+.photo-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: var(--space-2);
+}
+
+.photo-detail-card:hover {
+    box-shadow: var(--shadow-md);
+    transition: box-shadow 0.2s ease;
+}
+
+.photo-detail-card__trigger {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+}
+
+.photo-detail-card__img {
+    width: 100%;
+    max-height: 400px;
+    object-fit: scale-down;
+    background: var(--color-bg-alt, #e9ecef);
+    border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.photo-detail-card__body {
+    padding: var(--space-2) var(--space-3);
+}
 
 /* ── Carousel photo (visionneuse plein écran) ──────────────────── */
 .photo-carousel {
