@@ -44,6 +44,26 @@ final class StorePhotoController
             $submissions = array_values(array_filter($submissions, fn($s) => (int) ($s['store_id'] ?? 0) === $storeId));
         }
 
+        // Jours disponibles pour le filtre, calculés avant le filtre par jour
+        // lui-même : sinon le sélecteur ne proposerait plus que le jour choisi.
+        $availableDates = [];
+        foreach ($submissions as $s) {
+            $day = date('Y-m-d', strtotime($s['created_at'] ?? 'now'));
+            $availableDates[$day] = ($availableDates[$day] ?? 0) + 1;
+        }
+        krsort($availableDates);
+
+        $filterDate = (string) ($request->query('date') ?? '');
+        if ($filterDate !== '' && !isset($availableDates[$filterDate])) {
+            $filterDate = '';
+        }
+        if ($filterDate !== '') {
+            $submissions = array_values(array_filter(
+                $submissions,
+                fn($s) => date('Y-m-d', strtotime($s['created_at'] ?? 'now')) === $filterDate
+            ));
+        }
+
         $storeNames = $this->buildStoresMap(null);
         $submissionImages = [];
         foreach ($submissions as $s) {
@@ -58,6 +78,8 @@ final class StorePhotoController
             'storeNames'        => $storeNames,
             'availableStores'   => $this->availableStores($managedIds),
             'filterStoreId'     => $storeId,
+            'availableDates'    => $availableDates,
+            'filterDate'        => $filterDate,
         ], 'layout.app'));
     }
 
@@ -103,23 +125,50 @@ final class StorePhotoController
         $notes     = $request->post('notes') ?? '';
         $createdBy = (int) ($request->getAttribute('auth_user')['id'] ?? 0);
 
-        $submission = $this->photos->saveSubmission([
-            'store_id'       => $storeId,
-            'week_label'     => $weekLabel,
-            'notes'          => $notes,
-            'image_count'    => 0,
-            'retention_days' => max(1, (int) $this->appSettings->get('photo_retention_days', '14')),
-            'created_by'     => $createdBy,
-            'updated_at'     => date('Y-m-d H:i:s'),
-        ]);
-        $submissionId = (int) $submission['id'];
+        // Plusieurs envois pour le même magasin le même jour doivent former un seul
+        // rapport : on rattache à l'envoi du jour déjà existant plutôt que d'en
+        // recréer un (photos + notes s'accumulent dans la même soumission).
+        $today   = date('Y-m-d');
+        $existing = $this->photos->findTodaySubmission($storeId, $today);
+        $isMerge  = $existing !== null;
+
+        if ($isMerge) {
+            $mergedNotes = trim($existing['notes'] ?? '');
+            if ($notes !== '') {
+                $mergedNotes = $mergedNotes !== '' ? $mergedNotes . "\n" . $notes : $notes;
+            }
+            $submission   = $this->photos->saveSubmission([
+                'id'         => $existing['id'],
+                'notes'      => $mergedNotes,
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+            $submissionId = (int) $submission['id'];
+        } else {
+            $submission = $this->photos->saveSubmission([
+                'store_id'       => $storeId,
+                'week_label'     => $weekLabel,
+                'notes'          => $notes,
+                'image_count'    => 0,
+                'retention_days' => max(1, (int) $this->appSettings->get('photo_retention_days', '14')),
+                'created_by'     => $createdBy,
+                'updated_at'     => date('Y-m-d H:i:s'),
+            ]);
+            $submissionId = (int) $submission['id'];
+        }
 
         $files = $request->file('photos');
         if ($files !== null && !empty($files['tmp_name'][0])) {
-            $this->saveUploadedFiles($request, $storeId, $submissionId, $files);
+            $this->saveUploadedFiles($request, $storeId, $submissionId, $files, (int) ($submission['image_count'] ?? 0));
         }
 
-        $this->auditLogger->log($request, 'photo.submission_created', 'store_photo_submission', $submissionId, $submission, $storeId);
+        $this->auditLogger->log(
+            $request,
+            $isMerge ? 'photo.submission_merged' : 'photo.submission_created',
+            'store_photo_submission',
+            $submissionId,
+            $submission,
+            $storeId
+        );
 
         if ($request->isAjax()) {
             return Response::json(['id' => $submissionId]);
@@ -198,6 +247,19 @@ final class StorePhotoController
     }
 
     /**
+     * Détermine vers quelle vue liste revenir (tous les stores, ou un store filtré)
+     * une fois l'envoi consulté/supprimé — d'après le filtre actif au moment où
+     * l'utilisateur a cliqué sur l'envoi (porté par ?origin_store_id=, y compris
+     * la valeur 0 pour "tous les stores"). Sans ce paramètre (lien direct/ancien),
+     * on retombe sur le store de l'envoi lui-même, comme avant.
+     */
+    private function resolveBackStoreId(Request $request, int $fallbackStoreId): int
+    {
+        $origin = $request->query('origin_store_id');
+        return ($origin === null || $origin === '') ? $fallbackStoreId : (int) $origin;
+    }
+
+    /**
      * Retourne l'extension normalisée si le fichier est une image autorisée, null sinon.
      */
     private function safeImageExtension(string $filename): ?string
@@ -206,7 +268,7 @@ final class StorePhotoController
         return in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true) ? $ext : null;
     }
 
-    private function saveUploadedFiles(Request $request, int $storeId, int $submissionId, array $files): void
+    private function saveUploadedFiles(Request $request, int $storeId, int $submissionId, array $files, int $startIndex = 0): void
     {
         $uploadDir = dirname(__DIR__, 5) . '/storage/uploads/img/';
         $storeDir  = $uploadDir . $storeId . '/';
@@ -214,7 +276,7 @@ final class StorePhotoController
         if (!is_dir($storeDir)) { mkdir($storeDir, 0775, true); }
         if (!is_dir($subDir))  { mkdir($subDir, 0775, true); }
 
-        $count    = 0;
+        $count    = $startIndex;
         $tmpNames = is_array($files['tmp_name']) ? $files['tmp_name'] : [$files['tmp_name']];
         $names    = is_array($files['name'])      ? $files['name']      : [$files['name']];
         $types    = is_array($files['type'])      ? $files['type']      : [$files['type']];
@@ -259,10 +321,11 @@ final class StorePhotoController
         $store  = $this->stores->findById((int) $submission['store_id']);
 
         return Response::html($this->view->render('store-photos::store-photos-detail', [
-            'title'      => __('photo_submission') . ' #' . $id,
-            'submission' => $submission,
-            'images'     => $images,
-            'store'      => $store,
+            'title'        => __('photo_submission') . ' #' . $id,
+            'submission'   => $submission,
+            'images'       => $images,
+            'store'        => $store,
+            'backStoreId'  => $this->resolveBackStoreId($request, (int) $submission['store_id']),
         ], 'layout.app'));
     }
 
@@ -279,7 +342,8 @@ final class StorePhotoController
             return Response::redirect($this->base() . '/admin/photos');
         }
 
-        $storeId = (int) $submission['store_id'];
+        $storeId    = (int) $submission['store_id'];
+        $backStoreId = $this->resolveBackStoreId($request, $storeId);
 
         $uploadDir = dirname(__DIR__, 5) . '/storage/uploads/img/' . $storeId . '/' . $id . '/';
         if (is_dir($uploadDir)) {
@@ -294,7 +358,11 @@ final class StorePhotoController
         $this->photos->deleteSubmission($id);
         $this->auditLogger->log($request, 'photo.submission_deleted', 'store_photo_submission', $id, $submission, $storeId);
 
-        return Response::redirect($this->base() . '/admin/photos?store_id=' . $storeId);
+        // Revenir là où l'utilisateur se trouvait (tous les stores, ou un store
+        // filtré) plutôt que de forcer un filtre sur le store de l'élément
+        // supprimé — sinon un envoi supprimé depuis la vue "tous les stores"
+        // ramenait à tort sur le store de cet envoi.
+        return Response::redirect($this->base() . '/admin/photos' . ($backStoreId > 0 ? '?store_id=' . $backStoreId : ''));
     }
 
     public function settings(Request $request): Response
