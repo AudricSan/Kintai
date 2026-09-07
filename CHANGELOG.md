@@ -18,6 +18,7 @@ All notable changes to Kintai are documented here.
 
 ### Fixed
 - Store photo reports — the photo detail grid (`.photo-detail-grid`) was hard-coded to `repeat(5, 1fr)` with no responsive override, squeezing photos into unreadable slivers on mobile; it and the misplaced `.photo-grid`/`.photo-card`/`.photo-detail-card*` rules (accidentally left in `error-log.css` from the earlier CSS module split) were moved to `photos.css` and switched to an `auto-fill`/`minmax` grid like the rest of the codebase's responsive grids.
+- Update check — `GithubUpdateService::checkLatestRelease()` compared versions with PHP's native `version_compare()`, which ranks an unrecognized suffix (the `-LN` week-letter/sub-version added by `.github/workflows/release.yml`, e.g. `-ak3`) *below* a bare `X.Y.Z` string. Since `config/app.php` never stores that suffix (it only ever holds `X.Y.Z`), an installed instance whose bumped base already matched a newly published alpha/beta tag's base (e.g. current `0.11.9`, latest `0.11.9-ak3`) would never see that prerelease as an available update. Replaced with a scheme-aware comparison (`isNewerVersion()`) that compares the `X.Y.Z` base numerically first and only falls back to comparing the `-LN` suffix when both bases are equal.
 
 ## [0.11.9] - 2026-09-05
 
