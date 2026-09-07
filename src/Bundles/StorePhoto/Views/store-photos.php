@@ -56,7 +56,7 @@ echo Flash::fromQuery('success', [
             $preview = !empty($images) ? $images[0] : null;
             $count   = count($images);
             ?>
-            <a href="<?= $BASE_URL ?>/admin/photos/<?= $storeId ?>/<?= $sid ?>" class="card photo-card">
+            <a href="<?= $BASE_URL ?>/admin/photos/<?= $storeId ?>/<?= $sid ?>?origin_store_id=<?= $filterStoreId ?>" class="card photo-card">
                 <div class="photo-card__preview">
                     <?php if ($preview): ?>
                         <img src="<?= $BASE_URL ?>/<?= htmlspecialchars($preview['filepath']) ?>"
