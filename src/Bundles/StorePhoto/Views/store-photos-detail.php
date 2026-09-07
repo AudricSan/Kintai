@@ -4,19 +4,21 @@
 /** @var array|null $store */
 /** @var string $BASE_URL */
 /** @var array|null $auth_user */
+/** @var int    $backStoreId */
 
 $storeName = $store['name'] ?? ('#' . ($submission['store_id'] ?? '?'));
 $sid       = (int) $submission['id'];
 $isOwner   = !empty($auth_user['is_admin']);
+$backUrl   = $BASE_URL . '/admin/photos' . ($backStoreId > 0 ? '?store_id=' . $backStoreId : '');
 ?>
 <div class="page-header">
     <h2 class="page-header__title">
         <?= htmlspecialchars($storeName) ?> — <?= htmlspecialchars($submission['week_label'] ?? '') ?>
     </h2>
     <div class="page-header__actions">
-        <a href="<?= $BASE_URL ?>/admin/photos" class="btn btn--ghost btn--sm">← <?= __('back') ?></a>
+        <a href="<?= $backUrl ?>" class="btn btn--ghost btn--sm">← <?= __('back') ?></a>
         <?php if ($isOwner): ?>
-            <form method="POST" action="<?= $BASE_URL ?>/admin/photos/<?= (int) ($submission['store_id'] ?? 0) ?>/<?= $sid ?>/delete"
+            <form method="POST" action="<?= $BASE_URL ?>/admin/photos/<?= (int) ($submission['store_id'] ?? 0) ?>/<?= $sid ?>/delete?origin_store_id=<?= $backStoreId ?>"
                   class="form-inline" data-confirm="<?= htmlspecialchars(__('photo_confirm_delete'), ENT_QUOTES) ?>">
                 <?= csrf_field() ?>
                 <button type="submit" class="btn btn--danger btn--sm"><?= __('delete') ?></button>
