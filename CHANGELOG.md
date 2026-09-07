@@ -8,6 +8,8 @@ All notable changes to Kintai are documented here.
 
 ### Added
 - Store photo reports — the global list now groups submissions under a header per calendar day (with a photo-count badge) instead of one flat grid, and a new "Day" filter (alongside the existing store filter) narrows the list to a single day, for readability when many stores submit reports.
+- Store photo reports — each photo in the detail view now has left/right rotate buttons (Owner only) to fix a sideways photo in place, backed by a new `ImageCompressionService::rotateInPlace()` and `POST /admin/photos/image/{image_id}/rotate`. Uploaded JPEGs are also auto-corrected for their camera's EXIF orientation before compression (GD ignores that tag and never re-writes it, so without this a sideways photo stayed sideways permanently).
+- `scripts/consolidate-daily-photo-reports.php` (`--dry-run` supported) retroactively merges same-store/same-day photo submissions that accumulated separately before the day-merging behavior existed (see `findTodaySubmission()` below) — backed by a new `StorePhotoConsolidationService`. The same consolidation now also runs automatically, best-effort, as part of every applied update (`GithubUpdateService::applyUpdate()`), so existing instances catch up without running the script by hand.
 
 ### Changed
 - Update page — the "Notes de version" summary card now shows the release's version number and publication date above the notes, matching what the "view more" modal and the other-channels history already display.

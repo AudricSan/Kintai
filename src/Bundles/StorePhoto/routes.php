@@ -21,6 +21,7 @@ $router->group('/admin', function ($r) {
     $r->get('/photos/create',                  [StorePhotoController::class, 'create'],       name: 'admin.photos.create');
     $r->post('/photos/create',                 [StorePhotoController::class, 'store'],        name: 'admin.photos.store');
     $r->post('/photos/{id}/upload',            [StorePhotoController::class, 'uploadFile'],   name: 'admin.photos.upload_file');
+    $r->post('/photos/image/{image_id}/rotate', [StorePhotoController::class, 'rotateImage'],  name: 'admin.photos.image.rotate');
     $r->get('/photos/{store_id}/{id}',         [StorePhotoController::class, 'show'],         name: 'admin.photos.show');
     $r->post('/photos/{store_id}/{id}/delete', [StorePhotoController::class, 'delete'],       name: 'admin.photos.delete');
 }, middleware: [AuthMiddleware::class, AdminMiddleware::class, PermissionMiddleware::class]);

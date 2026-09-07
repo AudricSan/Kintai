@@ -75,14 +75,14 @@ echo Flash::fromQuery('success', [
             <?php $currentDay = $day; ?>
             <div class="photo-day-group__header">
                 <h3 class="photo-day-group__title"><?= date('d/m/Y', strtotime($day)) ?></h3>
-                <span class="badge badge--secondary badge--sm"><?= $availableDates[$day] ?? 0 ?> <?= __('photo_count_unit') ?></span>
+                <span class="badge badge--secondary badge--sm"><?= $availableDates[$day] ?? 0 ?> <?= __('photos_count') ?></span>
             </div>
             <div class="photo-grid">
         <?php endif; ?>
             <a href="<?= $BASE_URL ?>/admin/photos/<?= $storeId ?>/<?= $sid ?>?origin_store_id=<?= $filterStoreId ?>" class="card photo-card">
                 <div class="photo-card__preview">
                     <?php if ($preview): ?>
-                        <img src="<?= $BASE_URL ?>/<?= htmlspecialchars($preview['filepath']) ?>"
+                        <img src="<?= $BASE_URL ?>/<?= htmlspecialchars($preview['filepath']) ?>?v=<?= htmlspecialchars($preview['version'] ?? '') ?>"
                              alt="<?= htmlspecialchars($preview['filename']) ?>"
                              loading="lazy"
                              class="photo-card__preview-img">
@@ -93,7 +93,7 @@ echo Flash::fromQuery('success', [
                 <div class="card-body photo-card__body">
                     <div class="photo-card__meta">
                         <strong><?= htmlspecialchars($storeName) ?></strong>
-                        <span class="badge badge--secondary badge--sm"><?= $count ?> <?= __('photo_count_unit') ?></span>
+                        <span class="badge badge--secondary badge--sm"><?= $count ?> <?= __('photos_count') ?></span>
                     </div>
                     <div class="text-muted text-sm"><?= htmlspecialchars($sub['week_label'] ?? '') ?></div>
                     <?php if (!empty($sub['notes'])): ?>

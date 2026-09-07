@@ -59,6 +59,12 @@ final class DatabaseStorePhotoRepository implements StorePhotoRepositoryInterfac
             ->toArray();
     }
 
+    public function findImageById(int $id): ?array
+    {
+        $img = StorePhotoImage::find($id);
+        return $img ? $img->toArray() : null;
+    }
+
     public function saveSubmission(array $data): array
     {
         if (!empty($data['id'])) {
