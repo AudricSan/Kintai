@@ -120,6 +120,91 @@ final class StorePhotoControllerTest extends TestCase
         $this->assertSame(200, $response->status());
     }
 
+    /**
+     * Le filtre ?date= doit restreindre les envois au jour choisi, et la liste
+     * des jours disponibles (pour le sélecteur) doit ignorer ce filtre pour
+     * continuer à proposer tous les jours du store/périmètre sélectionné.
+     */
+    public function testIndexFiltersSubmissionsByDate(): void
+    {
+        $base = sys_get_temp_dir() . '/kintai-store-photos-date-test-' . uniqid();
+        mkdir($base . '/store-photos', 0777, true);
+        mkdir($base . '/layout', 0777, true);
+        file_put_contents(
+            $base . '/store-photos/store-photos.php',
+            '<?php echo implode(",", array_column($submissions, "id")) . "|" . implode(",", array_keys($availableDates)) . "|" . $filterDate;'
+        );
+        file_put_contents($base . '/layout/app.php', '<?php echo $content;');
+
+        $view = new ViewRenderer($base);
+        $view->addNamespace('store-photos', $base . '/store-photos');
+
+        $controller = new StorePhotoController(
+            $view,
+            $this->photos,
+            $this->stores,
+            $this->appSettings,
+            new AuditLogger(),
+            new ImageCompressionService(),
+        );
+
+        $this->stores->method('findAll')->willReturn([['id' => 1, 'name' => 'Store A']]);
+        $this->photos->method('findAllSubmissions')->willReturn([
+            ['id' => 10, 'store_id' => 1, 'created_at' => '2026-09-08 10:00:00'],
+            ['id' => 11, 'store_id' => 1, 'created_at' => '2026-09-07 09:00:00'],
+        ]);
+        $this->photos->method('findImagesBySubmission')->willReturn([]);
+
+        $_GET['date'] = '2026-09-07';
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+
+        $response = $controller->index($req);
+
+        $this->assertSame(200, $response->status());
+        $this->assertSame('11|2026-09-08,2026-09-07|2026-09-07', $response->body());
+    }
+
+    /** Un ?date= qui ne correspond à aucun envoi visible est silencieusement ignoré. */
+    public function testIndexIgnoresUnknownDateFilter(): void
+    {
+        $base = sys_get_temp_dir() . '/kintai-store-photos-date-test-' . uniqid();
+        mkdir($base . '/store-photos', 0777, true);
+        mkdir($base . '/layout', 0777, true);
+        file_put_contents(
+            $base . '/store-photos/store-photos.php',
+            '<?php echo implode(",", array_column($submissions, "id")) . "|" . $filterDate;'
+        );
+        file_put_contents($base . '/layout/app.php', '<?php echo $content;');
+
+        $view = new ViewRenderer($base);
+        $view->addNamespace('store-photos', $base . '/store-photos');
+
+        $controller = new StorePhotoController(
+            $view,
+            $this->photos,
+            $this->stores,
+            $this->appSettings,
+            new AuditLogger(),
+            new ImageCompressionService(),
+        );
+
+        $this->stores->method('findAll')->willReturn([['id' => 1, 'name' => 'Store A']]);
+        $this->photos->method('findAllSubmissions')->willReturn([
+            ['id' => 10, 'store_id' => 1, 'created_at' => '2026-09-08 10:00:00'],
+        ]);
+        $this->photos->method('findImagesBySubmission')->willReturn([]);
+
+        $_GET['date'] = '2099-01-01';
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+
+        $response = $controller->index($req);
+
+        $this->assertSame(200, $response->status());
+        $this->assertSame('10|', $response->body());
+    }
+
     // -------------------------------------------------------------------------
     // show()
     // -------------------------------------------------------------------------

@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Added
+- Store photo reports — the global list now groups submissions under a header per calendar day (with a photo-count badge) instead of one flat grid, and a new "Day" filter (alongside the existing store filter) narrows the list to a single day, for readability when many stores submit reports.
+
 ### Changed
 - Update page — the "Notes de version" summary card now shows the release's version number and publication date above the notes, matching what the "view more" modal and the other-channels history already display.
 - Store photo reports — submitting a new photo report for a store that already has one for the same calendar day now attaches the new photos and notes to that existing report instead of creating a separate one, so a single day never shows up as several fragmented reports. Backed by a new `StorePhotoRepositoryInterface::findTodaySubmission()`.

@@ -44,6 +44,26 @@ final class StorePhotoController
             $submissions = array_values(array_filter($submissions, fn($s) => (int) ($s['store_id'] ?? 0) === $storeId));
         }
 
+        // Jours disponibles pour le filtre, calculés avant le filtre par jour
+        // lui-même : sinon le sélecteur ne proposerait plus que le jour choisi.
+        $availableDates = [];
+        foreach ($submissions as $s) {
+            $day = date('Y-m-d', strtotime($s['created_at'] ?? 'now'));
+            $availableDates[$day] = ($availableDates[$day] ?? 0) + 1;
+        }
+        krsort($availableDates);
+
+        $filterDate = (string) ($request->query('date') ?? '');
+        if ($filterDate !== '' && !isset($availableDates[$filterDate])) {
+            $filterDate = '';
+        }
+        if ($filterDate !== '') {
+            $submissions = array_values(array_filter(
+                $submissions,
+                fn($s) => date('Y-m-d', strtotime($s['created_at'] ?? 'now')) === $filterDate
+            ));
+        }
+
         $storeNames = $this->buildStoresMap(null);
         $submissionImages = [];
         foreach ($submissions as $s) {
@@ -58,6 +78,8 @@ final class StorePhotoController
             'storeNames'        => $storeNames,
             'availableStores'   => $this->availableStores($managedIds),
             'filterStoreId'     => $storeId,
+            'availableDates'    => $availableDates,
+            'filterDate'        => $filterDate,
         ], 'layout.app'));
     }
 
