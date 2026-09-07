@@ -11,6 +11,7 @@ use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Repositories\StorePhotoRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Request;
+use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -153,6 +154,51 @@ final class StorePhotoControllerTest extends TestCase
         $response = $this->controller->show($req);
 
         $this->assertSame(200, $response->status());
+    }
+
+    /**
+     * ?origin_store_id= porte le filtre actif au moment où l'utilisateur a cliqué
+     * sur l'envoi (0 = vue "tous les stores") ; show() doit le transmettre tel
+     * quel à la vue pour que le bouton retour y ramène.
+     */
+    public function testShowPassesOriginStoreIdAsBackStoreId(): void
+    {
+        $viewDir = sys_get_temp_dir() . '/kintai-store-photos-views';
+        file_put_contents($viewDir . DIRECTORY_SEPARATOR . 'store-photos-detail.php', '<?php echo $backStoreId;');
+        file_put_contents(sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'layout' . DIRECTORY_SEPARATOR . 'app.php', '<?php echo $content;');
+
+        $_GET = ['origin_store_id' => '0'];
+        $this->photos->method('findSubmissionById')->with(10)->willReturn(['id' => 10, 'store_id' => 1]);
+        $this->photos->method('findImagesBySubmission')->with(10)->willReturn([]);
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Store A']);
+
+        $req = new Request();
+        $req->setRouteParams(['id' => '10']);
+        $req->setAttribute('managed_store_ids', [1]);
+
+        $response = $this->controller->show($req);
+
+        $this->assertSame('0', $response->body());
+    }
+
+    /** Sans ?origin_store_id= (lien direct/ancien), show() retombe sur le store de l'envoi lui-même. */
+    public function testShowFallsBackToSubmissionsStoreWithoutOrigin(): void
+    {
+        $viewDir = sys_get_temp_dir() . '/kintai-store-photos-views';
+        file_put_contents($viewDir . DIRECTORY_SEPARATOR . 'store-photos-detail.php', '<?php echo $backStoreId;');
+        file_put_contents(sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'layout' . DIRECTORY_SEPARATOR . 'app.php', '<?php echo $content;');
+
+        $this->photos->method('findSubmissionById')->with(10)->willReturn(['id' => 10, 'store_id' => 1]);
+        $this->photos->method('findImagesBySubmission')->with(10)->willReturn([]);
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Store A']);
+
+        $req = new Request();
+        $req->setRouteParams(['id' => '10']);
+        $req->setAttribute('managed_store_ids', [1]);
+
+        $response = $this->controller->show($req);
+
+        $this->assertSame('1', $response->body());
     }
 
     public function testStoreForbiddenWhenPhotosDisabledForStore(): void
@@ -313,6 +359,63 @@ final class StorePhotoControllerTest extends TestCase
         $this->assertSame(302, $response->status());
     }
 
+    /**
+     * Sans ?origin_store_id= (lien direct/ancien), delete() retombe sur le store
+     * de l'envoi supprimé — comportement historique préservé.
+     */
+    public function testDeleteWithoutOriginRedirectsToTheSubmissionsOwnStore(): void
+    {
+        $_SERVER['SCRIPT_NAME'] = '/index.php';
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+        $req->setRouteParams(['id' => '42']);
+
+        $this->photos->method('findSubmissionById')->with(42)->willReturn(['id' => 42, 'store_id' => 3]);
+
+        $response = $this->controller->delete($req);
+
+        $this->assertSame(302, $response->status());
+        $this->assertRedirectLocation($response, '/admin/photos?store_id=3');
+    }
+
+    /**
+     * Régression : supprimer un envoi consulté depuis la vue "tous les stores"
+     * (?origin_store_id=0) doit revenir sur "tous les stores", pas se retrouver
+     * filtré sur le store de l'envoi supprimé.
+     */
+    public function testDeleteFromAllStoresViewReturnsToAllStores(): void
+    {
+        $_SERVER['SCRIPT_NAME'] = '/index.php';
+        $_GET = ['origin_store_id' => '0'];
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+        $req->setRouteParams(['id' => '42']);
+
+        $this->photos->method('findSubmissionById')->with(42)->willReturn(['id' => 42, 'store_id' => 3]);
+
+        $response = $this->controller->delete($req);
+
+        $this->assertSame(302, $response->status());
+        $this->assertRedirectLocation($response, '/admin/photos');
+    }
+
+    /** Supprimé depuis une vue filtrée sur un AUTRE store que celui de l'envoi : on y revient, pas sur le store de l'envoi. */
+    public function testDeleteFromDifferentFilteredStoreReturnsToThatStore(): void
+    {
+        $_SERVER['SCRIPT_NAME'] = '/index.php';
+        $_GET = ['origin_store_id' => '9'];
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+        $req->setRouteParams(['id' => '42']);
+
+        $this->photos->method('findSubmissionById')->with(42)->willReturn(['id' => 42, 'store_id' => 3]);
+
+        $response = $this->controller->delete($req);
+
+        $this->assertSame(302, $response->status());
+        $this->assertRedirectLocation($response, '/admin/photos?store_id=9');
+    }
+
     public function testSettingsForbiddenForNonAdmin(): void
     {
         $req = new Request();
@@ -348,6 +451,13 @@ final class StorePhotoControllerTest extends TestCase
         $response = $this->controller->saveSettings($req);
 
         $this->assertSame(302, $response->status());
+    }
+
+    private function assertRedirectLocation(Response $response, string $expected): void
+    {
+        $ref = new \ReflectionProperty($response, 'headers');
+        $ref->setAccessible(true);
+        $this->assertSame($expected, $ref->getValue($response)['Location'] ?? null);
     }
 
     private function ensureViewFile(string $dir, string $view): void

@@ -225,6 +225,19 @@ final class StorePhotoController
     }
 
     /**
+     * Détermine vers quelle vue liste revenir (tous les stores, ou un store filtré)
+     * une fois l'envoi consulté/supprimé — d'après le filtre actif au moment où
+     * l'utilisateur a cliqué sur l'envoi (porté par ?origin_store_id=, y compris
+     * la valeur 0 pour "tous les stores"). Sans ce paramètre (lien direct/ancien),
+     * on retombe sur le store de l'envoi lui-même, comme avant.
+     */
+    private function resolveBackStoreId(Request $request, int $fallbackStoreId): int
+    {
+        $origin = $request->query('origin_store_id');
+        return ($origin === null || $origin === '') ? $fallbackStoreId : (int) $origin;
+    }
+
+    /**
      * Retourne l'extension normalisée si le fichier est une image autorisée, null sinon.
      */
     private function safeImageExtension(string $filename): ?string
@@ -286,10 +299,11 @@ final class StorePhotoController
         $store  = $this->stores->findById((int) $submission['store_id']);
 
         return Response::html($this->view->render('store-photos::store-photos-detail', [
-            'title'      => __('photo_submission') . ' #' . $id,
-            'submission' => $submission,
-            'images'     => $images,
-            'store'      => $store,
+            'title'        => __('photo_submission') . ' #' . $id,
+            'submission'   => $submission,
+            'images'       => $images,
+            'store'        => $store,
+            'backStoreId'  => $this->resolveBackStoreId($request, (int) $submission['store_id']),
         ], 'layout.app'));
     }
 
@@ -306,7 +320,8 @@ final class StorePhotoController
             return Response::redirect($this->base() . '/admin/photos');
         }
 
-        $storeId = (int) $submission['store_id'];
+        $storeId    = (int) $submission['store_id'];
+        $backStoreId = $this->resolveBackStoreId($request, $storeId);
 
         $uploadDir = dirname(__DIR__, 5) . '/storage/uploads/img/' . $storeId . '/' . $id . '/';
         if (is_dir($uploadDir)) {
@@ -321,7 +336,11 @@ final class StorePhotoController
         $this->photos->deleteSubmission($id);
         $this->auditLogger->log($request, 'photo.submission_deleted', 'store_photo_submission', $id, $submission, $storeId);
 
-        return Response::redirect($this->base() . '/admin/photos?store_id=' . $storeId);
+        // Revenir là où l'utilisateur se trouvait (tous les stores, ou un store
+        // filtré) plutôt que de forcer un filtre sur le store de l'élément
+        // supprimé — sinon un envoi supprimé depuis la vue "tous les stores"
+        // ramenait à tort sur le store de cet envoi.
+        return Response::redirect($this->base() . '/admin/photos' . ($backStoreId > 0 ? '?store_id=' . $backStoreId : ''));
     }
 
     public function settings(Request $request): Response
