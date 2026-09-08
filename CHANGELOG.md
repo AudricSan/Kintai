@@ -13,6 +13,9 @@ All notable changes to Kintai are documented here.
 - RBAC — the Messaging bundle (`/admin/messages/*`) was the only one of the eleven bundles never wired into the permission system: its admin routes only went through the coarse `AdminMiddleware` check, so any store manager could read/send/delete messages for every store they manage regardless of their assigned role. Added a `messaging` category (`view`/`send`/`delete`) to `PermissionCatalog`, mapped the routes in `config/permissions.php`, and put `PermissionMiddleware` in front of the admin route group — a role can now be scoped to messaging alone, or exclude it entirely.
 - Messaging API (`/api/v1/messages/*`) — despite being documented as "strictly scoped to the token holder", `ApiMessageController` had no ownership checks at all: any valid Bearer token could list another user's threads via `?user_id=`, and read, reply to, or delete any thread/message/participant by id. It now requires the token holder to be a participant of the thread for every read/write, and a message's own sender to delete it — matching the access control the web `MessageController` already enforced.
 
+### Changed
+- RBAC — Store Photos (`/admin/photos/*`) had no permission category of its own and reused `documents.*`, shared with the unrelated Hiring/Resignation report bundles: a role couldn't grant photo management without also granting HR document management, or vice versa. Split it into its own `photos` category (`view`/`create`/`update`/`delete`) in `PermissionCatalog`, remapped the routes in `config/permissions.php`, and added migration `2026_09_09_000000` to mirror each `documents.<action>` an existing role already held onto the matching `photos.<action>`, so no custom role silently loses photo access from the split.
+
 ## [0.11.10] - 2026-09-08
 
 ### Added

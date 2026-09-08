@@ -20,6 +20,7 @@ final class PermissionCatalog
         'stores'        => ['view', 'create', 'update', 'delete'],
         'payroll'       => ['view', 'generate', 'export'],
         'documents'     => ['view', 'create', 'update', 'delete'],
+        'photos'        => ['view', 'create', 'update', 'delete'],
         'settings'      => ['update'],
         'timeoff'       => ['view', 'create', 'update', 'approve', 'delete'],
         'swaps'         => ['view', 'create', 'update', 'approve', 'delete'],
@@ -38,6 +39,7 @@ final class PermissionCatalog
      * valides en base et réapparaissent si le bundle est réactivé.
      */
     public const CATEGORY_BUNDLES = [
+        'photos'        => 'store-photos',
         'timeoff'       => 'timeoff',
         'swaps'         => 'shift-swap',
         'timeclock'     => 'timeclock',
@@ -59,6 +61,7 @@ final class PermissionCatalog
         'stores.view', 'stores.update',
         'payroll.view', 'payroll.generate', 'payroll.export',
         'documents.view', 'documents.create', 'documents.update', 'documents.delete',
+        'photos.view', 'photos.create', 'photos.update', 'photos.delete',
         'timeoff.view', 'timeoff.create', 'timeoff.update', 'timeoff.approve', 'timeoff.delete',
         'swaps.view', 'swaps.create', 'swaps.update', 'swaps.approve', 'swaps.delete',
         'timeclock.view', 'timeclock.update', 'timeclock.delete',
