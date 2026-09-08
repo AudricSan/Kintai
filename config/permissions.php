@@ -213,14 +213,14 @@ return [
     'admin.messages.delete_thread'   => 'messaging.delete',
     'admin.messages.delete_message'  => 'messaging.delete',
 
-    // --- Photos de magasin (bundle StorePhoto) → documents.* ---------------------
-    'admin.photos.index'              => 'documents.view',
-    'admin.photos.show'               => 'documents.view',
-    'admin.photos.create'             => 'documents.create',
-    'admin.photos.store'              => 'documents.create',
-    'admin.photos.upload_file'        => 'documents.create',
-    'admin.photos.image.rotate'       => 'documents.update',
-    'admin.photos.delete'             => 'documents.delete',
-    'admin.photos.settings'           => 'documents.update',
-    'admin.photos.settings.save'      => 'documents.update',
+    // --- Photos de magasin (bundle StorePhoto) → photos.* -------------------------
+    'admin.photos.index'              => 'photos.view',
+    'admin.photos.show'               => 'photos.view',
+    'admin.photos.create'             => 'photos.create',
+    'admin.photos.store'              => 'photos.create',
+    'admin.photos.upload_file'        => 'photos.create',
+    'admin.photos.image.rotate'       => 'photos.update',
+    'admin.photos.delete'             => 'photos.delete',
+    'admin.photos.settings'           => 'photos.update',
+    'admin.photos.settings.save'      => 'photos.update',
 ];
