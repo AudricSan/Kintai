@@ -72,7 +72,7 @@ final class StaffViewPermissionGatesTest extends TestCase
             'store_names'      => [],
             'user_store_ids'   => [],
             'user_store_map'   => [5 => 1],
-            'user_can'         => $this->canFn(['employees.create', 'payroll.view', 'payroll.generate', 'documents.create']),
+            'user_can'         => $this->canFn(['employees.create', 'payroll.view', 'payroll.generate', 'resignation_reports.create']),
         ]);
 
         $this->assertStringContainsString('/admin/users/create', $html);
