@@ -1,0 +1,244 @@
+<?php
+
+declare(strict_types=1);
+
+namespace kintai\Tests\Unit\Bundles\Messaging\Api;
+
+use kintai\Bundles\Messaging\Controllers\Api\MessageController;
+use kintai\Core\Exceptions\ForbiddenException;
+use kintai\Core\Exceptions\NotFoundException;
+use kintai\Core\Repositories\MessageRepositoryInterface;
+use kintai\Core\Request;
+use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\TestCase;
+
+/**
+ * Régression : ApiMessageController n'avait aucune vérification d'appartenance
+ * malgré .wiki/API-Reference.md documentant messages.* comme "strictly scoped
+ * to the token holder" — n'importe quel token valide pouvait lire/supprimer
+ * les threads et messages de n'importe quel autre utilisateur.
+ */
+final class MessageControllerTest extends TestCase
+{
+    private MessageRepositoryInterface&MockObject $messages;
+    private MessageController $controller;
+
+    protected function setUp(): void
+    {
+        $this->messages  = $this->createMock(MessageRepositoryInterface::class);
+        $this->controller = new MessageController($this->messages);
+    }
+
+    protected function tearDown(): void
+    {
+        $_GET = [];
+        $_POST = [];
+        $_SERVER = [];
+    }
+
+    private function requestAs(int $userId, array $json = []): Request
+    {
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => $userId]);
+        if ($json !== []) {
+            $ref = new \ReflectionProperty(Request::class, 'jsonBody');
+            $ref->setAccessible(true);
+            $ref->setValue($req, $json);
+        }
+        return $req;
+    }
+
+    // ── listThreads ──────────────────────────────────────────────────────────
+
+    public function testListThreadsAlwaysUsesTokenHolderRegardlessOfUserIdQuery(): void
+    {
+        $_GET = ['user_id' => '999'];
+        $req  = $this->requestAs(42);
+
+        $this->messages->expects($this->once())
+            ->method('findParticipationsByUser')
+            ->with(42)
+            ->willReturn([]);
+
+        $response = $this->controller->listThreads($req);
+        $this->assertSame(200, $response->status());
+    }
+
+    // ── createThread ─────────────────────────────────────────────────────────
+
+    public function testCreateThreadForcesCreatorIdFromTokenAndAddsSelfAsParticipant(): void
+    {
+        $req = $this->requestAs(42, [
+            'store_id'         => 3,
+            'subject'          => 'Sujet',
+            'creator_id'       => 999, // tentative de spoof, doit être ignorée
+            'participant_ids'  => [7, 42], // 42 (soi-même) ne doit pas être dupliqué
+        ]);
+
+        $this->messages->expects($this->once())
+            ->method('saveThread')
+            ->with($this->callback(fn($data) => $data['creator_id'] === 42 && $data['store_id'] === 3))
+            ->willReturn(['id' => 5, 'creator_id' => 42, 'store_id' => 3]);
+
+        $participantCalls = [];
+        $this->messages->expects($this->exactly(2))
+            ->method('saveParticipant')
+            ->willReturnCallback(function (array $data) use (&$participantCalls) {
+                $participantCalls[] = $data['user_id'];
+                return $data;
+            });
+
+        $response = $this->controller->createThread($req);
+
+        $this->assertSame(201, $response->status());
+        $this->assertSame([42, 7], $participantCalls);
+    }
+
+    // ── getThread ─────────────────────────────────────────────────────────────
+
+    public function testGetThreadReturns404ForNonParticipant(): void
+    {
+        $req = $this->requestAs(42);
+        $req->setRouteParams(['id' => '10']);
+
+        $this->messages->method('findThreadById')->with(10)->willReturn(['id' => 10, 'store_id' => 3]);
+        $this->messages->method('findParticipant')->with(10, 42)->willReturn(null);
+
+        $this->expectException(NotFoundException::class);
+        $this->controller->getThread($req);
+    }
+
+    public function testGetThreadReturns404ForUnknownThread(): void
+    {
+        $req = $this->requestAs(42);
+        $req->setRouteParams(['id' => '999']);
+
+        $this->messages->method('findThreadById')->with(999)->willReturn(null);
+
+        $this->expectException(NotFoundException::class);
+        $this->controller->getThread($req);
+    }
+
+    public function testGetThreadSucceedsForParticipant(): void
+    {
+        $req = $this->requestAs(42);
+        $req->setRouteParams(['id' => '10']);
+
+        $this->messages->method('findThreadById')->with(10)->willReturn(['id' => 10, 'store_id' => 3]);
+        $this->messages->method('findParticipant')->with(10, 42)->willReturn(['thread_id' => 10, 'user_id' => 42]);
+
+        $response = $this->controller->getThread($req);
+        $this->assertSame(200, $response->status());
+    }
+
+    // ── deleteThread ─────────────────────────────────────────────────────────
+
+    public function testDeleteThreadRejectsNonParticipant(): void
+    {
+        $req = $this->requestAs(42);
+        $req->setRouteParams(['id' => '10']);
+
+        $this->messages->method('findThreadById')->with(10)->willReturn(['id' => 10]);
+        $this->messages->method('findParticipant')->with(10, 42)->willReturn(null);
+        $this->messages->expects($this->never())->method('deleteThread');
+
+        $this->expectException(NotFoundException::class);
+        $this->controller->deleteThread($req);
+    }
+
+    // ── listMessages / addMessage ───────────────────────────────────────────
+
+    public function testListMessagesRejectsNonParticipant(): void
+    {
+        $req = $this->requestAs(42);
+        $req->setRouteParams(['id' => '10']);
+
+        $this->messages->method('findThreadById')->with(10)->willReturn(['id' => 10]);
+        $this->messages->method('findParticipant')->with(10, 42)->willReturn(null);
+
+        $this->expectException(NotFoundException::class);
+        $this->controller->listMessages($req);
+    }
+
+    public function testAddMessageForcesSenderIdFromToken(): void
+    {
+        $req = $this->requestAs(42, ['body' => 'salut', 'sender_id' => 999]);
+        $req->setRouteParams(['id' => '10']);
+
+        $this->messages->method('findThreadById')->with(10)->willReturn(['id' => 10]);
+        $this->messages->method('findParticipant')->with(10, 42)->willReturn(['thread_id' => 10, 'user_id' => 42]);
+
+        $this->messages->expects($this->once())
+            ->method('saveMessage')
+            ->with($this->callback(fn($data) => $data['sender_id'] === 42 && $data['thread_id'] === 10))
+            ->willReturn(['id' => 1]);
+
+        $response = $this->controller->addMessage($req);
+        $this->assertSame(201, $response->status());
+    }
+
+    // ── deleteMessage ────────────────────────────────────────────────────────
+
+    public function testDeleteMessageRejectsNonSender(): void
+    {
+        $req = $this->requestAs(42);
+        $req->setRouteParams(['id' => '7']);
+
+        $this->messages->method('findMessageById')->with(7)->willReturn(['id' => 7, 'sender_id' => 999]);
+        $this->messages->expects($this->never())->method('deleteMessage');
+
+        $this->expectException(ForbiddenException::class);
+        $this->controller->deleteMessage($req);
+    }
+
+    public function testDeleteMessageSucceedsForSender(): void
+    {
+        $req = $this->requestAs(42);
+        $req->setRouteParams(['id' => '7']);
+
+        $this->messages->method('findMessageById')->with(7)->willReturn(['id' => 7, 'sender_id' => 42]);
+        $this->messages->expects($this->once())->method('deleteMessage')->with(7);
+
+        $response = $this->controller->deleteMessage($req);
+        $this->assertSame(204, $response->status());
+    }
+
+    // ── participants ─────────────────────────────────────────────────────────
+
+    public function testListParticipantsRejectsNonParticipant(): void
+    {
+        $req = $this->requestAs(42);
+        $req->setRouteParams(['id' => '10']);
+
+        $this->messages->method('findThreadById')->with(10)->willReturn(['id' => 10]);
+        $this->messages->method('findParticipant')->with(10, 42)->willReturn(null);
+
+        $this->expectException(NotFoundException::class);
+        $this->controller->listParticipants($req);
+    }
+
+    public function testAddParticipantRejectsNonParticipant(): void
+    {
+        $req = $this->requestAs(42, ['user_id' => 7]);
+        $req->setRouteParams(['id' => '10']);
+
+        $this->messages->method('findThreadById')->with(10)->willReturn(['id' => 10]);
+        $this->messages->method('findParticipant')->with(10, 42)->willReturn(null);
+        $this->messages->expects($this->never())->method('saveParticipant');
+
+        $this->expectException(NotFoundException::class);
+        $this->controller->addParticipant($req);
+    }
+
+    public function testGetParticipantRejectsCallerNotInThread(): void
+    {
+        $req = $this->requestAs(42);
+        $req->setRouteParams(['id' => '10', 'user_id' => '7']);
+
+        $this->messages->method('findThreadById')->with(10)->willReturn(['id' => 10]);
+        $this->messages->method('findParticipant')->with(10, 42)->willReturn(null);
+
+        $this->expectException(NotFoundException::class);
+        $this->controller->getParticipant($req);
+    }
+}
