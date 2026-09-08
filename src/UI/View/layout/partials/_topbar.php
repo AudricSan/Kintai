@@ -211,10 +211,10 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
                     <?php break;
                     case 'statistics': ?>
                         <?php
-                        $_canHiring      = bundle_enabled('hiring-report') && $can('documents.view');
-                        $_canResignation = bundle_enabled('resignation-report') && $can('documents.view');
+                        $_canHiring      = bundle_enabled('hiring-report') && $can('hiring_reports.view');
+                        $_canResignation = bundle_enabled('resignation-report') && $can('resignation_reports.view');
                         $_canSalary      = bundle_enabled('salary-report') && $can('payroll.view');
-                        $_canPhotos      = $feat('photos') && $can('documents.view');
+                        $_canPhotos      = $feat('photos') && $can('photos.view');
                         ?>
                         <?php if ($_canHiring || ($can('payroll.view') && !$navHide('employee_report')) || ($feat('daily_reports') && !$navHide('daily_reports')) || ($_canResignation && !$navHide('resignation_report')) || ($_canSalary && !$navHide('salary_report')) || ($_canPhotos && !$navHide('photos'))): ?>
                             <div class="topbar-nav-group<?= (str_contains($path, '/reports/') || str_contains($path, '/employee-report') || str_contains($path, '/daily-reports') || str_contains($path, '/admin/photos')) ? ' topbar-nav-group--active' : '' ?>">

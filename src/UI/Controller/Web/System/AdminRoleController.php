@@ -39,11 +39,11 @@ final class AdminRoleController
         'delete'   => 'delete',
         'import'   => 'perm_action_import',
         'export'   => 'perm_action_export',
-        'validate' => 'perm_action_validate',
         'generate' => 'perm_action_generate',
         'approve'  => 'perm_action_approve',
         'publish'  => 'perm_action_publish',
         'submit'   => 'perm_action_submit',
+        'send'     => 'perm_action_send',
     ];
 
     public function __construct(

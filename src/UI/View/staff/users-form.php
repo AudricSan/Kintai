@@ -278,7 +278,7 @@ endforeach;
             <?php foreach ($user_memberships as $m): ?>
                 <?php $sid = (int) $m['store_id']; ?>
                 <div class="btn-group mb-sm">
-                    <?php if ($can('documents.create')): ?>
+                    <?php if ($can('resignation_reports.create')): ?>
                     <a href="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/reports/resignation/create?user_id=<?= (int)$user['id'] ?>" class="btn btn--danger btn--sm"><?= __('resign') ?> — <?= htmlspecialchars($m['store_name'] ?? '') ?></a>
                     <?php endif; ?>
                     <?php if ($can('payroll.generate')): ?>
