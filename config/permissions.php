@@ -204,6 +204,15 @@ return [
     'admin.daily_reports.settings'      => 'daily_reports.update',
     'admin.daily_reports.settings.save' => 'daily_reports.update',
 
+    // --- Messagerie (bundle Messaging) → messaging.* ------------------------------
+    'admin.messages'                 => 'messaging.view',
+    'admin.messages.thread'          => 'messaging.view',
+    'admin.messages.compose'         => 'messaging.send',
+    'admin.messages.send'            => 'messaging.send',
+    'admin.messages.reply'           => 'messaging.send',
+    'admin.messages.delete_thread'   => 'messaging.delete',
+    'admin.messages.delete_message'  => 'messaging.delete',
+
     // --- Photos de magasin (bundle StorePhoto) → documents.* ---------------------
     'admin.photos.index'              => 'documents.view',
     'admin.photos.show'               => 'documents.view',
