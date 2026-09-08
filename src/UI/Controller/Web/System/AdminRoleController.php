@@ -44,6 +44,7 @@ final class AdminRoleController
         'approve'  => 'perm_action_approve',
         'publish'  => 'perm_action_publish',
         'submit'   => 'perm_action_submit',
+        'send'     => 'perm_action_send',
     ];
 
     public function __construct(

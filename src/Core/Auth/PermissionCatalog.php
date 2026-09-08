@@ -27,6 +27,7 @@ final class PermissionCatalog
         'open_shifts'   => ['view', 'publish', 'approve'],
         'feedbacks'     => ['view', 'update', 'delete'],
         'daily_reports' => ['view', 'create', 'update', 'submit', 'approve', 'delete'],
+        'messaging'     => ['view', 'send', 'delete'],
     ];
 
     /**
@@ -43,6 +44,7 @@ final class PermissionCatalog
         'open_shifts'   => 'shift-claim',
         'feedbacks'     => 'feedback',
         'daily_reports' => 'daily-report',
+        'messaging'     => 'messaging',
     ];
 
     /**
@@ -64,6 +66,7 @@ final class PermissionCatalog
         'feedbacks.view', 'feedbacks.update', 'feedbacks.delete',
         'daily_reports.view', 'daily_reports.create', 'daily_reports.update',
         'daily_reports.submit', 'daily_reports.approve', 'daily_reports.delete',
+        'messaging.view', 'messaging.send', 'messaging.delete',
     ];
 
     /** @return string[] Toutes les clés de permission ("categorie.action"), aplaties. */
