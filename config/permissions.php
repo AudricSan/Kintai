@@ -25,6 +25,17 @@ declare(strict_types=1);
  * Les pages réservées à l'Owner (owner-settings, langues, bundles, rôles,
  * backup, update, mail-test) ne figurent pas ici : elles restent protégées
  * par leur requireOwner() explicite.
+ *
+ * Autres routes volontairement absentes (voir tests/Unit/Core/PermissionMapsTest,
+ * qui fait échouer la suite si une route sous PermissionMiddleware est ajoutée
+ * sans être ni mappée ici, ni ajoutée à son allowlist documentée) :
+ * - 'home' : simple redirection d'accueil, aucune ressource propre ;
+ * - 'admin.nav_settings'(.save) : préférences de navigation personnelles de
+ *   l'utilisateur, en libre-service comme employee.nav_settings ;
+ * - 'admin.requests' : tableau de bord agrégeant plusieurs bundles, chaque
+ *   section s'auto-filtre par PermissionService::can() dans le contrôleur
+ *   (timeoff.view / swaps.view / ...) plutôt que d'exiger une clé unique qui
+ *   masquerait la page entière à qui n'a qu'une partie des droits.
  */
 
 return [
@@ -32,6 +43,7 @@ return [
     // --- Employés -----------------------------------------------------------
     'admin.users'                     => 'employees.view',
     'admin.users.export_pdf'          => 'employees.view',
+    'admin.users.export_pdf_download' => 'employees.view',
     'admin.users.export_json'         => 'employees.view',
     'admin.users.create'              => 'employees.create',
     'admin.users.store'               => 'employees.create',
@@ -72,6 +84,7 @@ return [
     'admin.shift_types.edit'          => 'shifts.update',
     'admin.shift_types.update'        => 'shifts.update',
     'admin.shift_types.delete'        => 'shifts.update',
+    'admin.shift_types.toggle_store'  => 'shifts.update',
 
     // --- Shifts -------------------------------------------------------------------
     'admin.shifts'                    => 'shifts.view',
@@ -79,6 +92,7 @@ return [
     'admin.shifts.timeline'           => 'shifts.view',
     'admin.shifts.timeline.print'     => 'shifts.view',
     'admin.shifts.conflicts'          => 'shifts.view',
+    'admin.shifts.wage_preview'       => 'shifts.view',
     'admin.shifts.resolve_newer'      => 'shifts.update',
     'admin.shifts.import'             => 'shifts.import',
     'admin.shifts.import.process'     => 'shifts.import',
@@ -135,11 +149,13 @@ return [
     'admin.stores.hiring_reports.update'   => 'documents.update',
     'admin.stores.hiring_reports.delete'   => 'documents.delete',
     'admin.stores.hiring_reports.pdf'      => 'documents.view',
+    'admin.stores.hiring_reports.pdf_download' => 'documents.view',
 
     // --- Rapports de démission (bundle ResignationReport) → documents.* ---------
     'admin.reports.resignation'                  => 'documents.view',
     'admin.reports.resignation.export_json'      => 'documents.view',
     'admin.reports.resignation.export_pdf'       => 'documents.view',
+    'admin.reports.resignation.export_pdf_download' => 'documents.view',
     'admin.stores.resignation_reports'           => 'documents.view',
     'admin.stores.resignation_reports.create'    => 'documents.create',
     'admin.stores.resignation_reports.store'     => 'documents.create',
@@ -147,21 +163,26 @@ return [
     'admin.stores.resignation_reports.edit'      => 'documents.view',
     'admin.stores.resignation_reports.update'    => 'documents.update',
     'admin.stores.resignation_reports.delete'    => 'documents.delete',
+    'admin.stores.resignation_reports.delete_permanently' => 'documents.delete',
     'admin.stores.resignation_reports.pdf'       => 'documents.view',
+    'admin.stores.resignation_reports.pdf_download' => 'documents.view',
     'admin.stores.resignation_reports.reactivate' => 'employees.update',
 
     // --- Rapports de salaire (bundle SalaryReport) → payroll.* -------------------
     'admin.reports.salary'                 => 'payroll.view',
     'admin.reports.salary.export_json'     => 'payroll.view',
     'admin.reports.salary.export_pdf'      => 'payroll.view',
+    'admin.reports.salary.export_pdf_download' => 'payroll.view',
     'admin.stores.salary_reports'          => 'payroll.view',
     'admin.stores.salary_reports.create'   => 'payroll.generate',
     'admin.stores.salary_reports.store'    => 'payroll.generate',
+    'admin.stores.salary_reports.calculate' => 'payroll.generate',
     'admin.stores.salary_reports.show'     => 'payroll.view',
     'admin.stores.salary_reports.edit'     => 'payroll.view',
     'admin.stores.salary_reports.update'   => 'payroll.generate',
     'admin.stores.salary_reports.delete'   => 'payroll.generate',
     'admin.stores.salary_reports.pdf'      => 'payroll.export',
+    'admin.stores.salary_reports.pdf_download' => 'payroll.export',
 
     // --- Journal d'activité --------------------------------------------------------------
     'admin.activity'                  => 'stores.view',
@@ -189,6 +210,7 @@ return [
     'admin.photos.create'             => 'documents.create',
     'admin.photos.store'              => 'documents.create',
     'admin.photos.upload_file'        => 'documents.create',
+    'admin.photos.image.rotate'       => 'documents.update',
     'admin.photos.delete'             => 'documents.delete',
     'admin.photos.settings'           => 'documents.update',
     'admin.photos.settings.save'      => 'documents.update',
