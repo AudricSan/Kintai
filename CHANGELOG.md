@@ -15,6 +15,8 @@ All notable changes to Kintai are documented here.
 
 ### Changed
 - RBAC — Store Photos (`/admin/photos/*`) had no permission category of its own and reused `documents.*`, shared with the unrelated Hiring/Resignation report bundles: a role couldn't grant photo management without also granting HR document management, or vice versa. Split it into its own `photos` category (`view`/`create`/`update`/`delete`) in `PermissionCatalog`, remapped the routes in `config/permissions.php`, and added migration `2026_09_09_000000` to mirror each `documents.<action>` an existing role already held onto the matching `photos.<action>`, so no custom role silently loses photo access from the split.
+- RBAC — `documents.*` still merged HiringReport and ResignationReport, two unrelated bundles: same problem as Store Photos above, one grant governed both. Split into dedicated `hiring_reports.*` and `resignation_reports.*` categories, remapped their routes, and migration `2026_09_09_000001` mirrors each existing `documents.<action>` grant onto both new categories before dropping the now-dead `documents.*` rows. Also fixes two nav/quick-action checks (`_topbar.php`'s reports menu, the "resign" shortcut on the user list/profile) that were still gated on the old `documents.*` key and would otherwise have silently broken for any role without exactly matching legacy grants.
+- RBAC — `settings.update`, `shifts.export` and `shifts.validate` were toggleable in the role editor but checked by no route or controller anywhere — cocher/décocher them had zero effect, misleadingly. Removed from `PermissionCatalog`; migration `2026_09_09_000002` cleans up the now-meaningless `role_permissions` rows.
 
 ## [0.11.10] - 2026-09-08
 
