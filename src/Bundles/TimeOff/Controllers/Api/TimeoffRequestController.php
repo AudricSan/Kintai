@@ -6,8 +6,6 @@ namespace kintai\Bundles\TimeOff\Controllers\Api;
 
 use kintai\Core\Api\Paginator;
 use kintai\Core\Auth\PermissionService;
-use kintai\Core\Exceptions\ForbiddenException;
-use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
@@ -93,13 +91,12 @@ final class TimeoffRequestController
     /** Charge la demande par id et vérifie $permissionKey sur son store réel. */
     private function requireTimeoff(Request $request, string $permissionKey): array
     {
-        $item = $this->timeoffRequests->findById((int) $request->param('id'));
-        if ($item === null) {
-            throw new NotFoundException('Demande de congé introuvable.');
-        }
-        if (!$this->permissions->can($this->authUser($request), $permissionKey, (int) ($item['store_id'] ?? 0))) {
-            throw new ForbiddenException('Permission insuffisante : ' . $permissionKey);
-        }
-        return $item;
+        return $this->permissions->requireOwnedResource(
+            $this->authUser($request),
+            fn(int $id) => $this->timeoffRequests->findById($id),
+            (int) $request->param('id'),
+            $permissionKey,
+            notFoundMessage: 'Demande de congé introuvable.',
+        );
     }
 }
