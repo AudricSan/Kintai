@@ -3,6 +3,7 @@
    ================================================ */
 
 /* ── Page indisponible localement (docs/unavailable) ── */
+.docs-unavailable__mascot { display: block; width: 120px; height: auto; margin: 0 auto 1rem; }
 .docs-unavailable__message { font-size: var(--text-sm); margin: 0 0 1rem; }
 .docs-unavailable__btn { display: inline-flex; }
 
@@ -77,6 +78,8 @@
     border-radius: var(--radius);
     padding: 1rem;
 }
+
+.docs-wiki__mascot { display: block; width: 72px; height: auto; margin: 0 auto; }
 
 .docs-wiki__toc-title {
     font-size: var(--text-xs);
