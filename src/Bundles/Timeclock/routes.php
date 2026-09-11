@@ -29,9 +29,9 @@ $router->group('/employee', function ($r) {
 // =============================================================================
 
 $router->group('/admin', function ($r) {
-    $r->get('/timeclocks',              [AdminTimeclockController::class, 'timeclocks'],       name: 'admin.timeclocks');
-    $r->post('/timeclocks/{id}/edit',   [AdminTimeclockController::class, 'timeclocksEdit'],   name: 'admin.timeclocks.edit');
-    $r->post('/timeclocks/{id}/delete', [AdminTimeclockController::class, 'timeclocksDelete'], name: 'admin.timeclocks.delete');
+    $r->get('/timeclocks',              [AdminTimeclockController::class, 'timeclocks'],       name: 'admin.timeclocks', permission: 'timeclock.view');
+    $r->post('/timeclocks/{id}/edit',   [AdminTimeclockController::class, 'timeclocksEdit'],   name: 'admin.timeclocks.edit', permission: 'timeclock.update');
+    $r->post('/timeclocks/{id}/delete', [AdminTimeclockController::class, 'timeclocksDelete'], name: 'admin.timeclocks.delete', permission: 'timeclock.delete');
 }, middleware: [AuthMiddleware::class, AdminMiddleware::class, PermissionMiddleware::class]);
 
 // =============================================================================
@@ -39,10 +39,10 @@ $router->group('/admin', function ($r) {
 // =============================================================================
 
 $router->group('/api/v1', function ($r) {
-    $r->post('/timeclocks/clock-in',  [ApiTimeclockController::class, 'clockIn'],  name: 'api.v1.timeclock.clock_in');
-    $r->post('/timeclocks/clock-out', [ApiTimeclockController::class, 'clockOut'], name: 'api.v1.timeclock.clock_out');
-    $r->get('/timeclocks',            [ApiTimeclockController::class, 'index'],    name: 'api.v1.timeclock.index');
-    $r->get('/timeclocks/{id}',       [ApiTimeclockController::class, 'show'],     name: 'api.v1.timeclock.show');
-    $r->put('/timeclocks/{id}',       [ApiTimeclockController::class, 'update'],   name: 'api.v1.timeclock.update');
-    $r->delete('/timeclocks/{id}',    [ApiTimeclockController::class, 'destroy'],  name: 'api.v1.timeclock.destroy');
+    $r->post('/timeclocks/clock-in',  [ApiTimeclockController::class, 'clockIn'],  name: 'api.v1.timeclock.clock_in', permission: ['perm' => 'timeclock.update', 'self' => 'user_id']);
+    $r->post('/timeclocks/clock-out', [ApiTimeclockController::class, 'clockOut'], name: 'api.v1.timeclock.clock_out', permission: ['perm' => 'timeclock.update', 'self' => 'user_id']);
+    $r->get('/timeclocks',            [ApiTimeclockController::class, 'index'],    name: 'api.v1.timeclock.index', permission: ['perm' => 'timeclock.view', 'self' => 'user_id']);
+    $r->get('/timeclocks/{id}',       [ApiTimeclockController::class, 'show'],     name: 'api.v1.timeclock.show', permission: 'timeclock.view');
+    $r->put('/timeclocks/{id}',       [ApiTimeclockController::class, 'update'],   name: 'api.v1.timeclock.update', permission: 'timeclock.update');
+    $r->delete('/timeclocks/{id}',    [ApiTimeclockController::class, 'destroy'],  name: 'api.v1.timeclock.destroy', permission: 'timeclock.delete');
 }, middleware: [ApiAuthMiddleware::class, ApiPermissionMiddleware::class]);

@@ -14,6 +14,12 @@ final readonly class Route
      * @param string[] $paramNames Ordered parameter names
      * @param string[] $middleware Middleware class names
      * @param string|null $name Route name for URL generation
+     * @param string|array|null $permission Règle RBAC consommée par PermissionMiddleware/
+     *        ApiPermissionMiddleware : une clé de PermissionCatalog ('categorie.action'), un
+     *        tableau de règle ('perm' + 'self'/'membership'/'store_param'), ou la chaîne
+     *        littérale 'public' pour une route volontairement exemptée de RBAC (libre-service,
+     *        agrégat, ou déjà protégée par un requireOwner()/OwnerOnlyMiddleware dédié). null
+     *        pour une route hors du périmètre RBAC (pas sous /admin ni /api/v1, ex. /login).
      */
     public function __construct(
         public string $method,
@@ -23,5 +29,6 @@ final readonly class Route
         public array $paramNames,
         public array $middleware = [],
         public ?string $name = null,
+        public string|array|null $permission = null,
     ) {}
 }
