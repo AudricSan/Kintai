@@ -5,14 +5,25 @@ declare(strict_types=1);
 namespace kintai\Bundles\ShiftClaim\Controllers\Api;
 
 use kintai\Core\Api\Paginator;
+use kintai\Core\Auth\PermissionService;
+use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\ShiftClaimRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 
+/**
+ * Régression (audit RBAC du 11/09/2026) : mêmes correctifs que
+ * ShiftSwapRequestController — voir son docblock pour le détail de la faille.
+ * index() sans filtre renvoyait en plus TOUTES les candidatures de TOUS les
+ * stores à n'importe quel porteur de token (findAll() sans restriction).
+ */
 final class ShiftClaimController
 {
-    public function __construct(private readonly ShiftClaimRepositoryInterface $claims) {}
+    public function __construct(
+        private readonly ShiftClaimRepositoryInterface $claims,
+        private readonly PermissionService $permissions,
+    ) {}
 
     /** GET /api/v1/shift-claims?store_id=X&user_id=Y&shift_id=Z&status=W&page=1&limit=20 */
     public function index(Request $request): Response
@@ -35,16 +46,15 @@ final class ShiftClaimController
             $items = $this->claims->findAll();
         }
 
+        $items = $this->permissions->restrictToScope($this->authUser($request), 'open_shifts.view', $items);
+
         return Response::json(Paginator::paginate($items, $page, $limit));
     }
 
     /** GET /api/v1/shift-claims/{id} */
     public function show(Request $request): Response
     {
-        $claim = $this->claims->findById((int) $request->param('id'));
-        if ($claim === null) {
-            throw new NotFoundException('Candidature introuvable.');
-        }
+        $claim = $this->requireClaim($request, 'open_shifts.view');
         return Response::json($claim);
     }
 
@@ -58,21 +68,34 @@ final class ShiftClaimController
     /** PUT /api/v1/shift-claims/{id} */
     public function update(Request $request): Response
     {
-        $id = (int) $request->param('id');
-        if ($this->claims->findById($id) === null) {
-            throw new NotFoundException('Candidature introuvable.');
-        }
+        $claim = $this->requireClaim($request, 'open_shifts.approve');
+        $id    = (int) $claim['id'];
         return Response::json($this->claims->save(array_merge($request->json() ?? [], ['id' => $id])));
     }
 
     /** DELETE /api/v1/shift-claims/{id} */
     public function destroy(Request $request): Response
     {
-        $id = (int) $request->param('id');
-        if ($this->claims->findById($id) === null) {
+        $claim = $this->requireClaim($request, 'open_shifts.approve');
+        $this->claims->delete((int) $claim['id']);
+        return Response::empty();
+    }
+
+    private function authUser(Request $request): array
+    {
+        return $request->getAttribute('auth_user') ?? [];
+    }
+
+    /** Charge la candidature par id et vérifie $permissionKey sur le store réel du shift. */
+    private function requireClaim(Request $request, string $permissionKey): array
+    {
+        $claim = $this->claims->findById((int) $request->param('id'));
+        if ($claim === null) {
             throw new NotFoundException('Candidature introuvable.');
         }
-        $this->claims->delete($id);
-        return Response::empty();
+        if (!$this->permissions->can($this->authUser($request), $permissionKey, (int) ($claim['store_id'] ?? 0))) {
+            throw new ForbiddenException('Permission insuffisante : ' . $permissionKey);
+        }
+        return $claim;
     }
 }
