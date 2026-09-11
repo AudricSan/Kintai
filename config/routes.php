@@ -32,7 +32,6 @@ use kintai\UI\Controller\Web\System\LanguageController;
 use kintai\UI\Controller\Web\System\MailTestController;
 use kintai\UI\Controller\Web\System\OwnerSettingsController;
 use kintai\Core\Middleware\AuthMiddleware;
-use kintai\Core\Middleware\AdminMiddleware;
 use kintai\Core\Middleware\PermissionMiddleware;
 use kintai\Core\Middleware\ApiAuthMiddleware;
 use kintai\Core\Middleware\ApiPermissionMiddleware;
@@ -82,7 +81,7 @@ $router->get('/manifest.json', [PwaController::class, 'manifest'], name: 'pwa.ma
 $router->get('/privacy', [PrivacyController::class, 'show'], name: 'privacy');
 
 // --- Fichiers uploadés (photos de stores, imports) — réservé aux admins/managers ---
-$router->get('/storage/{path*}', [StorageFileController::class, 'serve'], middleware: [AuthMiddleware::class, AdminMiddleware::class], name: 'storage.file');
+$router->get('/storage/{path*}', [StorageFileController::class, 'serve'], middleware: [AuthMiddleware::class, PermissionMiddleware::class], name: 'storage.file', permission: 'public');
 
 // =============================================================================
 // Routes authentifiées (tout utilisateur connecté)
@@ -148,8 +147,8 @@ $router->post('/switch-device', [AuthController::class, 'switchDevice'], middlew
 $router->get('/lang/{locale}', [AuthController::class, 'switchLanguage'], name: 'lang.switch');
 
 // --- Accueil / Dashboard ---
-$router->get('/', [HomeController::class, 'index'], middleware: [AuthMiddleware::class, AdminMiddleware::class, PermissionMiddleware::class], name: 'home', permission: 'public');
-$router->post('/admin/dashboard/widgets', [HomeController::class, 'saveDashboardWidgets'], middleware: [AuthMiddleware::class, AdminMiddleware::class], name: 'admin.dashboard.widgets');
+$router->get('/', [HomeController::class, 'index'], middleware: [AuthMiddleware::class, PermissionMiddleware::class], name: 'home', permission: 'public');
+$router->post('/admin/dashboard/widgets', [HomeController::class, 'saveDashboardWidgets'], middleware: [AuthMiddleware::class, PermissionMiddleware::class], name: 'admin.dashboard.widgets', permission: 'public');
 
 // =============================================================================
 // Routes administration (web)
@@ -300,7 +299,7 @@ $router->group('/admin', function ($r) {
     $r->post('/roles/{id}/edit',   [AdminRoleController::class, 'updateRole'], name: 'admin.roles.update', permission: 'public');
     $r->post('/roles/{id}/delete', [AdminRoleController::class, 'deleteRole'], name: 'admin.roles.delete', permission: 'public');
 
-}, middleware: [AuthMiddleware::class, AdminMiddleware::class, PermissionMiddleware::class]);
+}, middleware: [AuthMiddleware::class, PermissionMiddleware::class]);
 
 // =============================================================================
 // API v1

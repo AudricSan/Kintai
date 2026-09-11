@@ -13,25 +13,38 @@ use kintai\Core\Response;
 use kintai\UI\ViewRenderer;
 
 /**
- * Contrôle des permissions fines du système RBAC.
- * Doit être placé après AdminMiddleware (auth_user et managed_store_ids déjà
- * attachés à la requête).
+ * Contrôle d'accès admin + permissions fines du RBAC, en un seul middleware
+ * (fusion de l'ancien AdminMiddleware + PermissionMiddleware, RBAC-V2).
  *
  * La règle requise par route est déclarée directement sur la route elle-même
  * (paramètre permission: de Router::get/post/..., voir Route::$permission) :
- * une clé de PermissionCatalog, ou tableau ['perm' => clé, 'membership' =>
- * true] — voir le format documenté sur Route::$permission. Pour un non-Owner :
- * - accès refusé (403) si aucun de ses rôles n'accorde la clé (et, si la
- *   règle porte 'membership', si l'utilisateur n'est pas non plus membre du
- *   store ciblé — porte d'entrée grossière pour un accès en libre-service,
- *   ex. bundle DailyReport) ;
- * - sinon, managed_store_ids est resserré aux seuls stores où la clé est
- *   accordée — les contrôleurs filtrant déjà toutes leurs données par cet
- *   attribut, la portée de chaque permission s'applique sans les modifier.
- * Une route sans règle 'permission' déclarée (null) reste soumise au seul
- * filtre d'AdminMiddleware — voir tests/Unit/Core/PermissionMapsTest, qui
- * fait échouer la suite si une route sous ce middleware n'a ni permission
- * précise ni marqueur 'public' explicite.
+ * une clé de PermissionCatalog, un tableau ['perm' => clé, 'membership' =>
+ * true] / ['perm' => clé, 'store_param' => '...'], ou 'public' pour une route
+ * volontairement exemptée de contrôle fin (self-service, agrégat, ou déjà
+ * protégée par OwnerOnlyMiddleware/requireOwner()).
+ *
+ * - Owner (is_admin, ponté depuis un rôle système en portée globale) : accès
+ *   complet, managed_store_ids = null.
+ * - Non-Owner sur une route à permission précise : accordé si un rôle
+ *   accorde cette clé (scopée à un store, ou globalement), ou — pour une
+ *   règle 'membership' — si l'utilisateur est simplement membre du store
+ *   ciblé (porte d'entrée volontairement grossière pour un accès en
+ *   libre-service, ex. bundle DailyReport ; la logique fine par ressource
+ *   reste vérifiée par le contrôleur). Ce repli 'membership' est vérifié
+ *   INDÉPENDAMMENT de toute permission RBAC : un pur membre de store sans
+ *   aucun rôle ne doit pas être bloqué par la porte grossière ci-dessous.
+ *   managed_store_ids est alors resserré à la portée réelle de CETTE
+ *   permission (ou au seul store ciblé pour un repli 'membership') — jamais
+ *   à un heuristique global.
+ * - Non-Owner sur une route 'public'/sans permission déclarée : accordé s'il
+ *   détient au moins une permission RBAC quelque part (managed_store_ids =
+ *   l'ensemble de ces stores), sinon redirigé vers /employee — remplace
+ *   l'ancien filtre grossier d'AdminMiddleware pour ces pages self-service/
+ *   agrégats (ex. admin.requests, chaque section s'auto-filtrant ensuite par
+ *   permission dans son propre contrôleur).
+ *
+ * tests/Unit/Core/PermissionMapsTest fait échouer la suite si une route sous
+ * ce middleware n'a ni permission précise ni marqueur 'public' explicite.
  */
 final class PermissionMiddleware implements MiddlewareInterface
 {
@@ -46,42 +59,63 @@ final class PermissionMiddleware implements MiddlewareInterface
         $user    = $request->getAttribute('auth_user') ?? [];
         $isOwner = !empty($user['is_admin']); // Owner (rôle système, ponté sur is_admin par AuthService)
 
-        // Le helper de vue user_can est partagé par AuthMiddleware (toutes les
-        // pages authentifiées) pour que la navigation reste identique partout ;
-        // ce middleware ne s'occupe plus que du contrôle d'accès et de la
-        // portée managed_store_ids.
-        $rule = $request->getAttribute('route_permission');
-        if ($rule === null || $rule === 'public' || $isOwner) {
+        if ($isOwner) {
+            $this->setManagedStoreIds($request, null);
             return $next($request);
         }
-
-        $key               = is_array($rule) ? (string) $rule['perm'] : $rule;
-        $requireMembership = is_array($rule) && !empty($rule['membership']);
-        $storeParam        = is_array($rule) ? ($rule['store_param'] ?? 'id') : 'id';
 
         $userId = (int) ($user['id'] ?? 0);
-        $scoped = $this->permissions->scopedStoreIds($userId, $key);
-        if ($scoped !== []) {
-            $request->setAttribute('managed_store_ids', $scoped);
-            $this->view->share('managed_store_ids', $scoped);
-            return $next($request);
-        }
+        $rule   = $request->getAttribute('route_permission');
+        $key    = is_array($rule) ? (string) $rule['perm'] : $rule;
 
-        // Affectation de portée globale (rôle non-système accordant la clé partout)
-        if ($this->permissions->can($user, $key, null)) {
-            return $next($request);
-        }
-
-        // Porte d'entrée volontairement grossière pour un accès en libre-service :
-        // n'écrase pas managed_store_ids (la portée fine reste gérée par le
-        // contrôleur, ex. DailyReportPermissionService + findMembership()).
-        if ($requireMembership) {
-            $storeId = (int) ($request->param($storeParam) ?? 0);
-            if ($storeId > 0 && $this->storeUsers->findMembership($storeId, $userId) !== null) {
+        if ($key !== null && $key !== 'public') {
+            $scoped = $this->permissions->scopedStoreIds($userId, $key);
+            if ($scoped !== []) {
+                $this->setManagedStoreIds($request, $scoped);
                 return $next($request);
+            }
+            // Affectation de portée globale (rôle non-système accordant la clé partout)
+            if ($this->permissions->can($user, $key, null)) {
+                $this->setManagedStoreIds($request, null);
+                return $next($request);
+            }
+
+            // Porte d'entrée volontairement grossière pour un accès en libre-service,
+            // INDÉPENDANTE de toute permission RBAC (ex. bundle DailyReport : tout
+            // membre du store peut créer/soumettre son propre rapport). Vérifiée avant
+            // la porte grossière ci-dessous : un pur membre de store, sans aucune
+            // permission RBAC nulle part, doit quand même pouvoir passer ici — la
+            // portée fine par ressource reste vérifiée par le contrôleur.
+            if (is_array($rule) && !empty($rule['membership'])) {
+                $storeParam = $rule['store_param'] ?? 'id';
+                $storeId    = (int) ($request->param($storeParam) ?? 0);
+                if ($storeId > 0 && $this->storeUsers->findMembership($storeId, $userId) !== null) {
+                    $this->setManagedStoreIds($request, [$storeId]);
+                    return $next($request);
+                }
             }
         }
 
+        // Ni permission précise accordée pour cette route (ni membership), ni route
+        // 'public'/sans règle : porte d'entrée grossière — au moins une permission
+        // RBAC quelque part (remplace l'ancien AdminMiddleware), sinon /employee.
+        $managedIds = $this->permissions->anyGrantedStoreIds($user);
+        if ($managedIds === []) {
+            return Response::redirect(base_url() . '/employee');
+        }
+        $this->setManagedStoreIds($request, $managedIds);
+
+        if ($key === null || $key === 'public') {
+            return $next($request);
+        }
+
         throw new ForbiddenException('Permission requise : ' . $key);
+    }
+
+    /** @param int[]|null $storeIds */
+    private function setManagedStoreIds(Request $request, ?array $storeIds): void
+    {
+        $request->setAttribute('managed_store_ids', $storeIds);
+        $this->view->share('managed_store_ids', $storeIds);
     }
 }

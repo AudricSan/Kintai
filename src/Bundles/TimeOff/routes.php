@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use kintai\Core\Middleware\AuthMiddleware;
-use kintai\Core\Middleware\AdminMiddleware;
 use kintai\Core\Middleware\ApiAuthMiddleware;
 use kintai\Core\Middleware\ApiPermissionMiddleware;
 use kintai\Core\Middleware\PermissionMiddleware;
@@ -35,7 +34,7 @@ $router->group('/admin', function ($r) {
     $r->post('/timeoff/{id}/approve', [AdminTimeoffController::class, 'approveTimeoff'],         name: 'admin.timeoff.approve', permission: 'timeoff.approve');
     $r->post('/timeoff/{id}/refuse',  [AdminTimeoffController::class, 'refuseTimeoff'],          name: 'admin.timeoff.refuse', permission: 'timeoff.approve');
     $r->post('/timeoff/{id}/delete',  [AdminTimeoffController::class, 'deleteTimeoff'],          name: 'admin.timeoff.delete', permission: 'timeoff.delete');
-}, middleware: [AuthMiddleware::class, AdminMiddleware::class, PermissionMiddleware::class]);
+}, middleware: [AuthMiddleware::class, PermissionMiddleware::class]);
 
 // =============================================================================
 // TimeOff — Routes API

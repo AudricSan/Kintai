@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use kintai\Core\Middleware\AuthMiddleware;
-use kintai\Core\Middleware\AdminMiddleware;
 use kintai\Core\Middleware\ApiAuthMiddleware;
 use kintai\Core\Middleware\ApiPermissionMiddleware;
 use kintai\Core\Middleware\PermissionMiddleware;
@@ -35,7 +34,7 @@ $router->group('/admin', function ($r) {
     $r->post('/shifts/{id}/unpublish',    [AdminShiftClaimController::class, 'unpublishShift'],       name: 'admin.shifts.unpublish', permission: 'open_shifts.publish');
     $r->post('/open-shifts/{id}/approve', [AdminShiftClaimController::class, 'approveShiftClaim'],    name: 'admin.open_shifts.approve', permission: 'open_shifts.approve');
     $r->post('/open-shifts/{id}/reject',  [AdminShiftClaimController::class, 'rejectShiftClaim'],     name: 'admin.open_shifts.reject', permission: 'open_shifts.approve');
-}, middleware: [AuthMiddleware::class, AdminMiddleware::class, PermissionMiddleware::class]);
+}, middleware: [AuthMiddleware::class, PermissionMiddleware::class]);
 
 // =============================================================================
 // ShiftClaim — Routes API

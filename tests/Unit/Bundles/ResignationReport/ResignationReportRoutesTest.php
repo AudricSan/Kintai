@@ -7,7 +7,7 @@ namespace kintai\Tests\Unit\Bundles\ResignationReport;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use kintai\Core\Container;
-use kintai\Core\Middleware\AdminMiddleware;
+use kintai\Core\Middleware\PermissionMiddleware;
 use kintai\Core\Middleware\AuthMiddleware;
 use kintai\Core\Router;
 
@@ -33,7 +33,7 @@ final class ResignationReportRoutesTest extends TestCase
         [$route] = $this->loadRoutes()->dispatch($method, $path);
 
         $this->assertContains(AuthMiddleware::class, $route->middleware);
-        $this->assertContains(AdminMiddleware::class, $route->middleware);
+        $this->assertContains(PermissionMiddleware::class, $route->middleware);
     }
 
     public static function adminRoutesProvider(): array

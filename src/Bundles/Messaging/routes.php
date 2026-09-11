@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use kintai\Core\Middleware\AuthMiddleware;
-use kintai\Core\Middleware\AdminMiddleware;
 use kintai\Core\Middleware\ApiAuthMiddleware;
 use kintai\Core\Middleware\PermissionMiddleware;
 use kintai\Bundles\Messaging\Controllers\Web\MessageController;
@@ -31,7 +30,7 @@ $router->group('/admin', function ($r) {
     $r->post('/messages/{id}',                      [MessageController::class, 'messagesReply'],          name: 'admin.messages.reply', permission: 'messaging.send');
     $r->post('/messages/{id}/delete',               [MessageController::class, 'messagesDeleteThread'],   name: 'admin.messages.delete_thread', permission: 'messaging.delete');
     $r->post('/messages/{id}/message/{mid}/delete', [MessageController::class, 'messagesDeleteMessage'],  name: 'admin.messages.delete_message', permission: 'messaging.delete');
-}, middleware: [AuthMiddleware::class, AdminMiddleware::class, PermissionMiddleware::class]);
+}, middleware: [AuthMiddleware::class, PermissionMiddleware::class]);
 
 // =============================================================================
 // Messaging — Routes Web Employé

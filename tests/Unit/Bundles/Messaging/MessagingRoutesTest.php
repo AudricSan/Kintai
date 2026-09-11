@@ -7,7 +7,6 @@ namespace kintai\Tests\Unit\Bundles\Messaging;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use kintai\Core\Container;
-use kintai\Core\Middleware\AdminMiddleware;
 use kintai\Core\Middleware\ApiAuthMiddleware;
 use kintai\Core\Middleware\AuthMiddleware;
 use kintai\Core\Middleware\PermissionMiddleware;
@@ -15,9 +14,10 @@ use kintai\Core\Router;
 
 /**
  * Régression : Messaging était le seul bundle des onze jamais raccordé au
- * RBAC (task/mermission.md) — ses routes /admin/messages/* ne passaient que
- * par AdminMiddleware, donc n'importe quel manager pouvait tout lire/envoyer/
- * supprimer indépendamment de son rôle assigné.
+ * RBAC — ses routes /admin/messages/* ne passaient que par le filtre grossier
+ * "gestionnaire d'au moins un store" (l'ancien AdminMiddleware), donc
+ * n'importe quel manager pouvait tout lire/envoyer/supprimer indépendamment
+ * de son rôle assigné.
  */
 final class MessagingRoutesTest extends TestCase
 {
@@ -57,7 +57,6 @@ final class MessagingRoutesTest extends TestCase
         [$route] = $this->loadRoutes()->dispatch($method, $path);
 
         $this->assertContains(AuthMiddleware::class, $route->middleware);
-        $this->assertContains(AdminMiddleware::class, $route->middleware);
         $this->assertContains(PermissionMiddleware::class, $route->middleware);
     }
 
