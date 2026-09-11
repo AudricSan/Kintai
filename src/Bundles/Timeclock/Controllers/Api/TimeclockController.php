@@ -7,7 +7,6 @@ namespace kintai\Bundles\Timeclock\Controllers\Api;
 use kintai\Core\Api\Paginator;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ConflictException;
-use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\TimeclockRepositoryInterface;
@@ -154,13 +153,12 @@ final class TimeclockController
     /** Charge l'entrée par id et vérifie $permissionKey sur son store réel. */
     private function requireTimeclock(Request $request, string $permissionKey): array
     {
-        $record = $this->timeclocks->findById((int) $request->param('id'));
-        if ($record === null) {
-            throw new NotFoundException('Entrée de pointage introuvable.');
-        }
-        if (!$this->permissions->can($this->authUser($request), $permissionKey, (int) ($record['store_id'] ?? 0))) {
-            throw new ForbiddenException('Permission insuffisante : ' . $permissionKey);
-        }
-        return $record;
+        return $this->permissions->requireOwnedResource(
+            $this->authUser($request),
+            fn(int $id) => $this->timeclocks->findById($id),
+            (int) $request->param('id'),
+            $permissionKey,
+            notFoundMessage: 'Entrée de pointage introuvable.',
+        );
     }
 }

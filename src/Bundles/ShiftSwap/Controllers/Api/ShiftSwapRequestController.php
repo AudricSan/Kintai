@@ -6,8 +6,6 @@ namespace kintai\Bundles\ShiftSwap\Controllers\Api;
 
 use kintai\Core\Api\Paginator;
 use kintai\Core\Auth\PermissionService;
-use kintai\Core\Exceptions\ForbiddenException;
-use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
@@ -19,8 +17,8 @@ use kintai\Core\Services\AuditLogger;
  * par {id} (show/update/destroy) rien ne l'y oblige, et PermissionService::can()
  * traite l'absence de store comme "n'importe où". Un manager n'ayant swaps.* que sur
  * un store pouvait ainsi lire/modifier/supprimer une demande d'échange de n'importe
- * quel autre store. Corrigé en re-vérifiant après coup la permission sur le store réel
- * de la ressource chargée (même pattern que DailyReportController/MessageController).
+ * quel autre store. Corrigé via PermissionService::requireOwnedResource() (RBAC-V2),
+ * qui re-vérifie la permission sur le store réel de la ressource après chargement.
  */
 final class ShiftSwapRequestController
 {
@@ -98,13 +96,12 @@ final class ShiftSwapRequestController
     /** Charge la demande par id et vérifie $permissionKey sur son store réel. */
     private function requireSwap(Request $request, string $permissionKey): array
     {
-        $item = $this->swapRequests->findById((int) $request->param('id'));
-        if ($item === null) {
-            throw new NotFoundException('Demande d\'échange introuvable.');
-        }
-        if (!$this->permissions->can($this->authUser($request), $permissionKey, (int) ($item['store_id'] ?? 0))) {
-            throw new ForbiddenException('Permission insuffisante : ' . $permissionKey);
-        }
-        return $item;
+        return $this->permissions->requireOwnedResource(
+            $this->authUser($request),
+            fn(int $id) => $this->swapRequests->findById($id),
+            (int) $request->param('id'),
+            $permissionKey,
+            notFoundMessage: 'Demande d\'échange introuvable.',
+        );
     }
 }

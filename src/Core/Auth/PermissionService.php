@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace kintai\Core\Auth;
 
+use kintai\Core\Exceptions\ForbiddenException;
+use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 
@@ -121,6 +123,38 @@ final class PermissionService
             }
         }
         return array_values(array_unique($storeIds));
+    }
+
+    /**
+     * Charge une ressource par id via $finder, vérifie que $permissionKey est accordée
+     * sur son store RÉEL (jamais celui, optionnel, fourni par le client) — le pattern
+     * "findById() + can()" que chaque contrôleur de ressource {id} devait ré-écrire à la
+     * main, et dont l'omission a produit l'IDOR inter-store trouvé et corrigé le
+     * 11/09/2026 dans 5 bundles (ShiftSwap, TimeOff, Timeclock, ShiftClaim, Feedback) :
+     * ApiPermissionMiddleware ne peut borner la portée en amont que si le client fournit
+     * lui-même store_id, ce qu'aucune route {id} n'exige. Utiliser cette méthode pour tout
+     * nouveau show/update/destroy plutôt que de refaire le couple à la main.
+     *
+     * @param callable(int): (array|null) $finder Ex. fn(int $id) => $this->repo->findById($id)
+     * @throws NotFoundException Si $finder($id) retourne null.
+     * @throws ForbiddenException Si $permissionKey n'est pas accordée sur le store réel de la ressource.
+     */
+    public function requireOwnedResource(
+        array $authUser,
+        callable $finder,
+        int $id,
+        string $permissionKey,
+        string $storeField = 'store_id',
+        string $notFoundMessage = 'Ressource introuvable.',
+    ): array {
+        $item = $finder($id);
+        if ($item === null) {
+            throw new NotFoundException($notFoundMessage);
+        }
+        if (!$this->can($authUser, $permissionKey, (int) ($item[$storeField] ?? 0))) {
+            throw new ForbiddenException('Permission insuffisante : ' . $permissionKey);
+        }
+        return $item;
     }
 
     private function matchesScope(array $assignment, ?int $storeId): bool

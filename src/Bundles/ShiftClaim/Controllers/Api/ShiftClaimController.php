@@ -6,8 +6,6 @@ namespace kintai\Bundles\ShiftClaim\Controllers\Api;
 
 use kintai\Core\Api\Paginator;
 use kintai\Core\Auth\PermissionService;
-use kintai\Core\Exceptions\ForbiddenException;
-use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\ShiftClaimRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
@@ -89,13 +87,12 @@ final class ShiftClaimController
     /** Charge la candidature par id et vérifie $permissionKey sur le store réel du shift. */
     private function requireClaim(Request $request, string $permissionKey): array
     {
-        $claim = $this->claims->findById((int) $request->param('id'));
-        if ($claim === null) {
-            throw new NotFoundException('Candidature introuvable.');
-        }
-        if (!$this->permissions->can($this->authUser($request), $permissionKey, (int) ($claim['store_id'] ?? 0))) {
-            throw new ForbiddenException('Permission insuffisante : ' . $permissionKey);
-        }
-        return $claim;
+        return $this->permissions->requireOwnedResource(
+            $this->authUser($request),
+            fn(int $id) => $this->claims->findById($id),
+            (int) $request->param('id'),
+            $permissionKey,
+            notFoundMessage: 'Candidature introuvable.',
+        );
     }
 }

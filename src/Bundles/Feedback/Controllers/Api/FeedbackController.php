@@ -6,8 +6,6 @@ namespace kintai\Bundles\Feedback\Controllers\Api;
 
 use kintai\Core\Api\Paginator;
 use kintai\Core\Auth\PermissionService;
-use kintai\Core\Exceptions\ForbiddenException;
-use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\FeedbackRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
@@ -84,13 +82,12 @@ final class FeedbackController
     /** Charge le feedback par id et vérifie $permissionKey sur son store réel. */
     private function requireFeedback(Request $request, string $permissionKey): array
     {
-        $item = $this->feedbacks->findById((int) $request->param('id'));
-        if ($item === null) {
-            throw new NotFoundException('Feedback introuvable.');
-        }
-        if (!$this->permissions->can($this->authUser($request), $permissionKey, (int) ($item['store_id'] ?? 0))) {
-            throw new ForbiddenException('Permission insuffisante : ' . $permissionKey);
-        }
-        return $item;
+        return $this->permissions->requireOwnedResource(
+            $this->authUser($request),
+            fn(int $id) => $this->feedbacks->findById($id),
+            (int) $request->param('id'),
+            $permissionKey,
+            notFoundMessage: 'Feedback introuvable.',
+        );
     }
 }
