@@ -397,6 +397,13 @@ img {
 
 .error-page { text-align: center; }
 
+.error-mascot {
+    display: block;
+    width: 140px;
+    height: auto;
+    margin: 0 auto var(--space-2);
+}
+
 .error-code {
     font-size: 6rem;
     font-weight: 700;

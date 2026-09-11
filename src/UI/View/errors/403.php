@@ -8,6 +8,7 @@
 </head>
 <body class="error-body">
     <div class="error-page">
+        <img src="<?= ($BASE_URL ?? '') ?>/assets/img/mascot/error-403.png" alt="<?= __('mascot_alt') ?>" class="error-mascot">
         <div class="error-code">403</div>
         <p class="error-message"><?= __('error_403_message') ?></p>
         <?php // Détail technique (ex. « Permission requise : shifts.import ») : utile
