@@ -28,7 +28,6 @@ final class BackupController
     /** GET /admin/backup/download?filename= — télécharge une archive de sauvegarde existante. */
     public function download(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $filename = (string) $request->query('filename', '');
         $path = $this->backup->getPath($filename);
@@ -41,7 +40,6 @@ final class BackupController
 
     public function index(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $backups = $this->backup->list();
         $flash = $this->describeFlash((string) $request->query('success', ''));
@@ -55,7 +53,6 @@ final class BackupController
 
     public function updatePage(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $flash = $this->describeFlash((string) $request->query('success', ''));
 
@@ -91,7 +88,6 @@ final class BackupController
     /** POST /admin/update/channel — change le canal de mise à jour suivi (release/beta/alpha). */
     public function saveChannel(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $channel = (string) $request->post('channel', 'release');
         if (!in_array($channel, ['alpha', 'beta', 'release'], true)) {
@@ -106,7 +102,6 @@ final class BackupController
     /** POST /admin/update/apply — applique la dernière release GitHub disponible. */
     public function update(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $wasMaintenanceEnabled = $this->settings->maintenanceModeEnabled();
         if (!$wasMaintenanceEnabled) {
@@ -149,7 +144,6 @@ final class BackupController
      */
     public function updateStream(Request $request): Response
     {
-        $this->requireOwner($request);
 
         session_write_close();
         while (ob_get_level() > 0) {
@@ -202,7 +196,6 @@ final class BackupController
 
     public function create(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $note = trim((string) $request->post('note', ''));
 
@@ -217,7 +210,6 @@ final class BackupController
 
     public function restore(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $filename = trim((string) $request->post('filename', ''));
 
@@ -236,7 +228,6 @@ final class BackupController
 
     public function delete(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $filename = trim((string) $request->post('filename', ''));
 
@@ -250,7 +241,6 @@ final class BackupController
 
     public function migrate(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $wasMaintenanceEnabled = $this->settings->maintenanceModeEnabled();
         if (!$wasMaintenanceEnabled) {
@@ -275,7 +265,6 @@ final class BackupController
 
     public function deleteAll(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $count = $this->backup->deleteAll();
         return Response::redirect('/admin/backup?success=deleted_all_' . $count);
@@ -328,13 +317,5 @@ final class BackupController
             str_starts_with($decoded, 'error_') => ['type' => 'danger', 'text' => __('error_prefix') . substr($decoded, strlen('error_'))],
             default => ['type' => 'success', 'text' => $decoded],
         };
-    }
-
-    private function requireOwner(Request $request): void
-    {
-        $user = $request->getAttribute('auth_user');
-        if (empty($user['is_admin'])) {
-            throw new ForbiddenException('Réservé au propriétaire.');
-        }
     }
 }

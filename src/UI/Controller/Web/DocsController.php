@@ -100,18 +100,8 @@ final class DocsController
      */
     public function sync(Request $request): Response
     {
-        $this->requireOwner($request);
-
         $result = $this->wikiSync->sync();
 
         return Response::json($result, $result['ok'] ? 200 : 500);
-    }
-
-    private function requireOwner(Request $request): void
-    {
-        $user = $request->getAttribute('auth_user');
-        if (empty($user['is_admin'])) {
-            throw new ForbiddenException('Réservé au propriétaire.');
-        }
     }
 }
