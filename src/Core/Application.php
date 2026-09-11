@@ -154,8 +154,10 @@ final class Application
             [$route, $params] = $this->router->dispatch($request->method(), $request->uri());
 
             $request->setRouteParams($params);
-            // Nom de la route matchée, exploité par PermissionMiddleware (config/permissions.php)
             $request->setAttribute('route_name', $route->name);
+            // Règle RBAC déclarée sur la route elle-même (voir Route::$permission),
+            // exploitée par PermissionMiddleware/ApiPermissionMiddleware.
+            $request->setAttribute('route_permission', $route->permission);
 
             // Core handler: resolve controller, call method
             $core = function (Request $request) use ($route) {

@@ -32,7 +32,7 @@ use kintai\UI\Controller\Web\System\LanguageController;
 use kintai\UI\Controller\Web\System\MailTestController;
 use kintai\UI\Controller\Web\System\OwnerSettingsController;
 use kintai\Core\Middleware\AuthMiddleware;
-use kintai\Core\Middleware\AdminMiddleware;
+use kintai\Core\Middleware\OwnerOnlyMiddleware;
 use kintai\Core\Middleware\PermissionMiddleware;
 use kintai\Core\Middleware\ApiAuthMiddleware;
 use kintai\Core\Middleware\ApiPermissionMiddleware;
@@ -82,7 +82,7 @@ $router->get('/manifest.json', [PwaController::class, 'manifest'], name: 'pwa.ma
 $router->get('/privacy', [PrivacyController::class, 'show'], name: 'privacy');
 
 // --- Fichiers uploadés (photos de stores, imports) — réservé aux admins/managers ---
-$router->get('/storage/{path*}', [StorageFileController::class, 'serve'], middleware: [AuthMiddleware::class, AdminMiddleware::class], name: 'storage.file');
+$router->get('/storage/{path*}', [StorageFileController::class, 'serve'], middleware: [AuthMiddleware::class, PermissionMiddleware::class], name: 'storage.file', permission: 'public');
 
 // =============================================================================
 // Routes authentifiées (tout utilisateur connecté)
@@ -105,7 +105,7 @@ $router->group('/notifications', function ($r) {
 
 // --- Documentation ---
 $router->get('/docs', [DocsController::class, 'index'], middleware: [AuthMiddleware::class], name: 'docs.index');
-$router->post('/docs/sync', [DocsController::class, 'sync'], middleware: [AuthMiddleware::class], name: 'docs.sync');
+$router->post('/docs/sync', [DocsController::class, 'sync'], middleware: [AuthMiddleware::class, OwnerOnlyMiddleware::class], name: 'docs.sync');
 $router->get('/docs/{lang}/{page}', [DocsController::class, 'show'], middleware: [AuthMiddleware::class], name: 'docs.show');
 
 $router->group('/employee', function ($r) {
@@ -148,8 +148,8 @@ $router->post('/switch-device', [AuthController::class, 'switchDevice'], middlew
 $router->get('/lang/{locale}', [AuthController::class, 'switchLanguage'], name: 'lang.switch');
 
 // --- Accueil / Dashboard ---
-$router->get('/', [HomeController::class, 'index'], middleware: [AuthMiddleware::class, AdminMiddleware::class, PermissionMiddleware::class], name: 'home');
-$router->post('/admin/dashboard/widgets', [HomeController::class, 'saveDashboardWidgets'], middleware: [AuthMiddleware::class, AdminMiddleware::class], name: 'admin.dashboard.widgets');
+$router->get('/', [HomeController::class, 'index'], middleware: [AuthMiddleware::class, PermissionMiddleware::class], name: 'home', permission: 'public');
+$router->post('/admin/dashboard/widgets', [HomeController::class, 'saveDashboardWidgets'], middleware: [AuthMiddleware::class, PermissionMiddleware::class], name: 'admin.dashboard.widgets', permission: 'public');
 
 // =============================================================================
 // Routes administration (web)
@@ -158,52 +158,52 @@ $router->post('/admin/dashboard/widgets', [HomeController::class, 'saveDashboard
 $router->group('/admin', function ($r) {
 
     // Configuration organisation
-    $r->get('/owner-settings',  [OwnerSettingsController::class, 'show'], name: 'admin.owner_settings');
-    $r->post('/owner-settings', [OwnerSettingsController::class, 'save'], name: 'admin.owner_settings.save');
+    $r->get('/owner-settings',  [OwnerSettingsController::class, 'show'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.owner_settings', permission: 'public');
+    $r->post('/owner-settings', [OwnerSettingsController::class, 'save'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.owner_settings.save', permission: 'public');
 
     // Navigation
-    $r->get('/nav-settings',  [AdminController::class, 'navSettings'],     name: 'admin.nav_settings');
-    $r->post('/nav-settings', [AdminController::class, 'saveNavSettings'], name: 'admin.nav_settings.save');
+    $r->get('/nav-settings',  [AdminController::class, 'navSettings'],     name: 'admin.nav_settings', permission: 'public');
+    $r->post('/nav-settings', [AdminController::class, 'saveNavSettings'], name: 'admin.nav_settings.save', permission: 'public');
 
     // Demandes (résumé) : agrège congés, échanges de shifts et bourse aux shifts
-    $r->get('/requests', [AdminRequestsController::class, 'index'], name: 'admin.requests');
+    $r->get('/requests', [AdminRequestsController::class, 'index'], name: 'admin.requests', permission: 'public');
 
     // Utilisateurs
-    $r->get('/users',                     [AdminUserController::class, 'users'],               name: 'admin.users');
-    $r->get('/users/export/pdf',          [AdminUserController::class, 'exportUsersPdf'],      name: 'admin.users.export_pdf');
-    $r->get('/users/export/pdf/download', [AdminUserController::class, 'exportUsersPdfDownload'], name: 'admin.users.export_pdf_download');
-    $r->get('/users/export/json',         [AdminUserController::class, 'exportUsersJson'],     name: 'admin.users.export_json');
-    $r->get('/users/create',              [AdminUserController::class, 'createUser'],          name: 'admin.users.create');
-    $r->post('/users/create',             [AdminUserController::class, 'storeUser'],           name: 'admin.users.store');
-    $r->post('/users/quick-create',       [AdminUserController::class, 'quickCreateUser'],     name: 'admin.users.quick_create');
-    $r->get('/users/check-employee-code', [AdminUserController::class, 'checkEmployeeCode'],   name: 'admin.users.check_employee_code');
-    $r->get('/users/check-email',         [AdminUserController::class, 'checkEmail'],          name: 'admin.users.check_email');
-    $r->get('/users/{id}/edit',           [AdminUserController::class, 'editUser'],            name: 'admin.users.edit');
-    $r->post('/users/{id}/edit',          [AdminUserController::class, 'updateUser'],          name: 'admin.users.update');
-    $r->post('/users/{id}/delete',        [AdminUserController::class, 'deleteUser'],          name: 'admin.users.delete');
-    $r->post('/users/{id}/reset-password',[AdminUserController::class, 'resetPassword'],       name: 'admin.users.reset_password');
-    $r->post('/users/{id}/rates',         [AdminUserController::class, 'setUserRate'],         name: 'admin.users.rates.set');
-    $r->post('/users/{id}/rates/{rid}/delete', [AdminUserController::class, 'deleteUserRate'], name: 'admin.users.rates.delete');
+    $r->get('/users',                     [AdminUserController::class, 'users'],               name: 'admin.users', permission: 'employees.view');
+    $r->get('/users/export/pdf',          [AdminUserController::class, 'exportUsersPdf'],      name: 'admin.users.export_pdf', permission: 'employees.view');
+    $r->get('/users/export/pdf/download', [AdminUserController::class, 'exportUsersPdfDownload'], name: 'admin.users.export_pdf_download', permission: 'employees.view');
+    $r->get('/users/export/json',         [AdminUserController::class, 'exportUsersJson'],     name: 'admin.users.export_json', permission: 'employees.view');
+    $r->get('/users/create',              [AdminUserController::class, 'createUser'],          name: 'admin.users.create', permission: 'employees.create');
+    $r->post('/users/create',             [AdminUserController::class, 'storeUser'],           name: 'admin.users.store', permission: 'employees.create');
+    $r->post('/users/quick-create',       [AdminUserController::class, 'quickCreateUser'],     name: 'admin.users.quick_create', permission: 'employees.create');
+    $r->get('/users/check-employee-code', [AdminUserController::class, 'checkEmployeeCode'],   name: 'admin.users.check_employee_code', permission: 'employees.view');
+    $r->get('/users/check-email',         [AdminUserController::class, 'checkEmail'],          name: 'admin.users.check_email', permission: 'employees.view');
+    $r->get('/users/{id}/edit',           [AdminUserController::class, 'editUser'],            name: 'admin.users.edit', permission: 'employees.view');
+    $r->post('/users/{id}/edit',          [AdminUserController::class, 'updateUser'],          name: 'admin.users.update', permission: 'employees.update');
+    $r->post('/users/{id}/delete',        [AdminUserController::class, 'deleteUser'],          name: 'admin.users.delete', permission: 'employees.delete');
+    $r->post('/users/{id}/reset-password',[AdminUserController::class, 'resetPassword'],       name: 'admin.users.reset_password', permission: 'employees.update');
+    $r->post('/users/{id}/rates',         [AdminUserController::class, 'setUserRate'],         name: 'admin.users.rates.set', permission: 'employees.update');
+    $r->post('/users/{id}/rates/{rid}/delete', [AdminUserController::class, 'deleteUserRate'], name: 'admin.users.rates.delete', permission: 'employees.update');
 
     // Magasins
-    $r->get('/stores',                    [AdminStoreController::class, 'stores'],               name: 'admin.stores');
-    $r->get('/stores/create',             [AdminStoreController::class, 'createStore'],          name: 'admin.stores.create');
-    $r->post('/stores/create',            [AdminStoreController::class, 'storeStore'],           name: 'admin.stores.store');
-    $r->get('/stores/{id}/edit',          [AdminStoreController::class, 'editStore'],            name: 'admin.stores.edit');
-    $r->post('/stores/{id}/edit',         [AdminStoreController::class, 'updateStore'],          name: 'admin.stores.update');
-    $r->post('/stores/{id}/delete',       [AdminStoreController::class, 'deleteStore'],          name: 'admin.stores.delete');
-    $r->post('/stores/{id}/members',      [AdminStoreController::class, 'addMember'],            name: 'admin.stores.members.add');
-    $r->post('/stores/{id}/members/{mid}/role',   [AdminStoreController::class, 'updateMemberRole'], name: 'admin.stores.members.role');
-    $r->post('/stores/{id}/members/{mid}/delete', [AdminStoreController::class, 'removeMember'],      name: 'admin.stores.members.delete');
-    $r->get('/stores/{id}/members/{mid}/deductions',  [AdminStoreController::class, 'editMemberDeductions'],   name: 'admin.stores.members.deductions');
-    $r->post('/stores/{id}/members/{mid}/deductions', [AdminStoreController::class, 'saveMemberDeductions'],   name: 'admin.stores.members.deductions.save');
+    $r->get('/stores',                    [AdminStoreController::class, 'stores'],               name: 'admin.stores', permission: 'stores.view');
+    $r->get('/stores/create',             [AdminStoreController::class, 'createStore'],          name: 'admin.stores.create', permission: 'stores.create');
+    $r->post('/stores/create',            [AdminStoreController::class, 'storeStore'],           name: 'admin.stores.store', permission: 'stores.create');
+    $r->get('/stores/{id}/edit',          [AdminStoreController::class, 'editStore'],            name: 'admin.stores.edit', permission: 'stores.view');
+    $r->post('/stores/{id}/edit',         [AdminStoreController::class, 'updateStore'],          name: 'admin.stores.update', permission: 'stores.update');
+    $r->post('/stores/{id}/delete',       [AdminStoreController::class, 'deleteStore'],          name: 'admin.stores.delete', permission: 'stores.delete');
+    $r->post('/stores/{id}/members',      [AdminStoreController::class, 'addMember'],            name: 'admin.stores.members.add', permission: 'employees.update');
+    $r->post('/stores/{id}/members/{mid}/role',   [AdminStoreController::class, 'updateMemberRole'], name: 'admin.stores.members.role', permission: 'employees.update');
+    $r->post('/stores/{id}/members/{mid}/delete', [AdminStoreController::class, 'removeMember'],      name: 'admin.stores.members.delete', permission: 'employees.update');
+    $r->get('/stores/{id}/members/{mid}/deductions',  [AdminStoreController::class, 'editMemberDeductions'],   name: 'admin.stores.members.deductions', permission: 'payroll.view');
+    $r->post('/stores/{id}/members/{mid}/deductions', [AdminStoreController::class, 'saveMemberDeductions'],   name: 'admin.stores.members.deductions.save', permission: 'payroll.generate');
 
     // Statistiques & Rapports
-    $r->get('/stores/{id}/stats',              [AdminStoreController::class, 'storeStats'],       name: 'admin.stores.stats');
-    $r->get('/stores/{id}/stats/export',       [AdminStoreController::class, 'storeStatsExport'], name: 'admin.stores.stats_export');
-    $r->get('/stores/{id}/profitability',      [AdminStoreController::class, 'storeProfitability'], name: 'admin.stores.profitability');
-    $r->get('/stores/{id}/employee-report',                      [AdminStoreController::class, 'employeeReport'],    name: 'admin.stores.employee_report');
-    $r->get('/stores/{id}/employee-report/{uid}/stats',          [AdminStoreController::class, 'employeeStats'],     name: 'admin.stores.employee_stats');
+    $r->get('/stores/{id}/stats',              [AdminStoreController::class, 'storeStats'],       name: 'admin.stores.stats', permission: 'payroll.view');
+    $r->get('/stores/{id}/stats/export',       [AdminStoreController::class, 'storeStatsExport'], name: 'admin.stores.stats_export', permission: 'payroll.export');
+    $r->get('/stores/{id}/profitability',      [AdminStoreController::class, 'storeProfitability'], name: 'admin.stores.profitability', permission: 'payroll.view');
+    $r->get('/stores/{id}/employee-report',                      [AdminStoreController::class, 'employeeReport'],    name: 'admin.stores.employee_report', permission: 'payroll.view');
+    $r->get('/stores/{id}/employee-report/{uid}/stats',          [AdminStoreController::class, 'employeeStats'],     name: 'admin.stores.employee_stats', permission: 'payroll.view');
 
     // Rapports d'embauche : voir src/Bundles/HiringReport/routes.php
 
@@ -211,34 +211,34 @@ $router->group('/admin', function ($r) {
     // Salaire : voir src/Bundles/SalaryReport/routes.php
 
     // Shift types
-    $r->get('/shift-types',               [AdminShiftTypeController::class, 'shiftTypes'],         name: 'admin.shift_types');
-    $r->get('/shift-types/create',        [AdminShiftTypeController::class, 'createShiftType'],    name: 'admin.shift_types.create');
-    $r->post('/shift-types/create',       [AdminShiftTypeController::class, 'storeShiftType'],     name: 'admin.shift_types.store');
-    $r->get('/shift-types/{id}/edit',     [AdminShiftTypeController::class, 'editShiftType'],      name: 'admin.shift_types.edit');
-    $r->post('/shift-types/{id}/edit',    [AdminShiftTypeController::class, 'updateShiftType'],    name: 'admin.shift_types.update');
-    $r->post('/shift-types/{id}/delete',  [AdminShiftTypeController::class, 'deleteShiftType'],    name: 'admin.shift_types.delete');
-    $r->post('/shift-types/{id}/toggle-store', [AdminShiftTypeController::class, 'toggleShiftTypeStore'], name: 'admin.shift_types.toggle_store');
+    $r->get('/shift-types',               [AdminShiftTypeController::class, 'shiftTypes'],         name: 'admin.shift_types', permission: 'shifts.view');
+    $r->get('/shift-types/create',        [AdminShiftTypeController::class, 'createShiftType'],    name: 'admin.shift_types.create', permission: 'shifts.update');
+    $r->post('/shift-types/create',       [AdminShiftTypeController::class, 'storeShiftType'],     name: 'admin.shift_types.store', permission: 'shifts.update');
+    $r->get('/shift-types/{id}/edit',     [AdminShiftTypeController::class, 'editShiftType'],      name: 'admin.shift_types.edit', permission: 'shifts.update');
+    $r->post('/shift-types/{id}/edit',    [AdminShiftTypeController::class, 'updateShiftType'],    name: 'admin.shift_types.update', permission: 'shifts.update');
+    $r->post('/shift-types/{id}/delete',  [AdminShiftTypeController::class, 'deleteShiftType'],    name: 'admin.shift_types.delete', permission: 'shifts.update');
+    $r->post('/shift-types/{id}/toggle-store', [AdminShiftTypeController::class, 'toggleShiftTypeStore'], name: 'admin.shift_types.toggle_store', permission: 'shifts.update');
 
     // Shifts
-    $r->get('/shifts',              [AdminShiftController::class, 'shifts'],               name: 'admin.shifts');
-    $r->get('/shifts/calendar',     [AdminShiftController::class, 'shiftsCalendar'],       name: 'admin.shifts.calendar');
-    $r->get('/shifts/timeline',     [AdminShiftController::class, 'shiftsTimeline'],       name: 'admin.shifts.timeline');
-    $r->get('/shifts/timeline/print', [AdminShiftController::class, 'shiftsTimelinePrint'], name: 'admin.shifts.timeline.print');
-    $r->get('/shifts/conflicts',    [AdminShiftController::class, 'shiftConflicts'],       name: 'admin.shifts.conflicts');
-    $r->post('/shifts/conflicts/resolve-newer', [AdminShiftController::class, 'resolveNewerConflict'], name: 'admin.shifts.resolve_newer');
+    $r->get('/shifts',              [AdminShiftController::class, 'shifts'],               name: 'admin.shifts', permission: 'shifts.view');
+    $r->get('/shifts/calendar',     [AdminShiftController::class, 'shiftsCalendar'],       name: 'admin.shifts.calendar', permission: 'shifts.view');
+    $r->get('/shifts/timeline',     [AdminShiftController::class, 'shiftsTimeline'],       name: 'admin.shifts.timeline', permission: 'shifts.view');
+    $r->get('/shifts/timeline/print', [AdminShiftController::class, 'shiftsTimelinePrint'], name: 'admin.shifts.timeline.print', permission: 'shifts.view');
+    $r->get('/shifts/conflicts',    [AdminShiftController::class, 'shiftConflicts'],       name: 'admin.shifts.conflicts', permission: 'shifts.view');
+    $r->post('/shifts/conflicts/resolve-newer', [AdminShiftController::class, 'resolveNewerConflict'], name: 'admin.shifts.resolve_newer', permission: 'shifts.update');
 
-    $r->get('/shifts/import',       [AdminShiftImportController::class, 'importShifts'],         name: 'admin.shifts.import');
-    $r->post('/shifts/import',      [AdminShiftImportController::class, 'processImport'],        name: 'admin.shifts.import.process');
-    $r->post('/shifts/import/confirm', [AdminShiftImportController::class, 'confirmImport'],     name: 'admin.shifts.import.confirm');
-    $r->get('/shifts/create',       [AdminShiftController::class, 'createShift'],          name: 'admin.shifts.create');
-    $r->get('/shifts/wage-preview', [AdminShiftController::class, 'wagePreview'],          name: 'admin.shifts.wage_preview');
-    $r->post('/shifts/create',      [AdminShiftController::class, 'storeShift'],           name: 'admin.shifts.store');
-    $r->post('/shifts/quick',       [AdminShiftController::class, 'quickShift'],           name: 'admin.shifts.quick');
-    $r->post('/shifts/bulk-delete', [AdminShiftController::class, 'bulkDeleteShifts'],     name: 'admin.shifts.bulk_delete');
-    $r->get('/shifts/{id}/edit',    [AdminShiftController::class, 'editShift'],            name: 'admin.shifts.edit');
-    $r->post('/shifts/{id}/edit',   [AdminShiftController::class, 'updateShift'],          name: 'admin.shifts.update');
-    $r->post('/shifts/{id}/delete', [AdminShiftController::class, 'deleteShift'],          name: 'admin.shifts.delete');
-    $r->post('/shifts/{id}/move',   [AdminShiftController::class, 'moveShift'],            name: 'admin.shifts.move');
+    $r->get('/shifts/import',       [AdminShiftImportController::class, 'importShifts'],         name: 'admin.shifts.import', permission: 'shifts.import');
+    $r->post('/shifts/import',      [AdminShiftImportController::class, 'processImport'],        name: 'admin.shifts.import.process', permission: 'shifts.import');
+    $r->post('/shifts/import/confirm', [AdminShiftImportController::class, 'confirmImport'],     name: 'admin.shifts.import.confirm', permission: 'shifts.import');
+    $r->get('/shifts/create',       [AdminShiftController::class, 'createShift'],          name: 'admin.shifts.create', permission: 'shifts.create');
+    $r->get('/shifts/wage-preview', [AdminShiftController::class, 'wagePreview'],          name: 'admin.shifts.wage_preview', permission: 'shifts.view');
+    $r->post('/shifts/create',      [AdminShiftController::class, 'storeShift'],           name: 'admin.shifts.store', permission: 'shifts.create');
+    $r->post('/shifts/quick',       [AdminShiftController::class, 'quickShift'],           name: 'admin.shifts.quick', permission: 'shifts.create');
+    $r->post('/shifts/bulk-delete', [AdminShiftController::class, 'bulkDeleteShifts'],     name: 'admin.shifts.bulk_delete', permission: 'shifts.delete');
+    $r->get('/shifts/{id}/edit',    [AdminShiftController::class, 'editShift'],            name: 'admin.shifts.edit', permission: 'shifts.view');
+    $r->post('/shifts/{id}/edit',   [AdminShiftController::class, 'updateShift'],          name: 'admin.shifts.update', permission: 'shifts.update');
+    $r->post('/shifts/{id}/delete', [AdminShiftController::class, 'deleteShift'],          name: 'admin.shifts.delete', permission: 'shifts.delete');
+    $r->post('/shifts/{id}/move',   [AdminShiftController::class, 'moveShift'],            name: 'admin.shifts.move', permission: 'shifts.update');
 
     // Bourse aux shifts : voir src/Bundles/ShiftClaim/routes.php
 
@@ -249,58 +249,58 @@ $router->group('/admin', function ($r) {
     // Pointage : voir src/Bundles/Timeclock/routes.php
 
     // Journal d'activité (unifié)
-    $r->get('/activity', [ActivityController::class, 'index'], name: 'admin.activity');
+    $r->get('/activity', [ActivityController::class, 'index'], name: 'admin.activity', permission: 'stores.view');
 
     // Feedbacks : voir src/Bundles/Feedback/routes.php
 
     // Diagnostic mail
-    $r->get('/mail-test',  [MailTestController::class, 'show'], name: 'admin.mail_test');
-    $r->post('/mail-test', [MailTestController::class, 'send'], name: 'admin.mail_test.send');
+    $r->get('/mail-test',  [MailTestController::class, 'show'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.mail_test', permission: 'public');
+    $r->post('/mail-test', [MailTestController::class, 'send'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.mail_test.send', permission: 'public');
 
     // Sauvegardes
-    $r->get('/backup',               [BackupController::class, 'index'],  name: 'admin.backup');
-    $r->get('/backup/download',      [BackupController::class, 'download'], name: 'admin.backup.download');
-    $r->post('/backup/create',       [BackupController::class, 'create'], name: 'admin.backup.create');
-    $r->post('/backup/restore',      [BackupController::class, 'restore'], name: 'admin.backup.restore');
-    $r->post('/backup/delete',       [BackupController::class, 'delete'], name: 'admin.backup.delete');
-    $r->post('/backup/delete-all',   [BackupController::class, 'deleteAll'], name: 'admin.backup.delete_all');
+    $r->get('/backup',               [BackupController::class, 'index'],  middleware: [OwnerOnlyMiddleware::class], name: 'admin.backup', permission: 'public');
+    $r->get('/backup/download',      [BackupController::class, 'download'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.backup.download', permission: 'public');
+    $r->post('/backup/create',       [BackupController::class, 'create'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.backup.create', permission: 'public');
+    $r->post('/backup/restore',      [BackupController::class, 'restore'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.backup.restore', permission: 'public');
+    $r->post('/backup/delete',       [BackupController::class, 'delete'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.backup.delete', permission: 'public');
+    $r->post('/backup/delete-all',   [BackupController::class, 'deleteAll'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.backup.delete_all', permission: 'public');
 
     // Réinitialisation de l'application ("danger zone")
-    $r->post('/reset/prepare', [AppResetController::class, 'prepare'], name: 'admin.reset.prepare');
-    $r->post('/reset/execute', [AppResetController::class, 'execute'], name: 'admin.reset.execute');
+    $r->post('/reset/prepare', [AppResetController::class, 'prepare'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.reset.prepare', permission: 'public');
+    $r->post('/reset/execute', [AppResetController::class, 'execute'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.reset.execute', permission: 'public');
 
     // Mises à jour
-    $r->get('/update',               [BackupController::class, 'updatePage'], name: 'admin.update');
-    $r->post('/update/apply',        [BackupController::class, 'update'], name: 'admin.update.apply');
-    $r->post('/update/stream',       [BackupController::class, 'updateStream'], name: 'admin.update.stream');
-    $r->post('/update/migrate',      [BackupController::class, 'migrate'], name: 'admin.update.migrate');
-    $r->post('/update/channel',      [BackupController::class, 'saveChannel'], name: 'admin.update.channel');
+    $r->get('/update',               [BackupController::class, 'updatePage'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.update', permission: 'public');
+    $r->post('/update/apply',        [BackupController::class, 'update'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.update.apply', permission: 'public');
+    $r->post('/update/stream',       [BackupController::class, 'updateStream'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.update.stream', permission: 'public');
+    $r->post('/update/migrate',      [BackupController::class, 'migrate'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.update.migrate', permission: 'public');
+    $r->post('/update/channel',      [BackupController::class, 'saveChannel'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.update.channel', permission: 'public');
 
     // Photos : voir src/Bundles/StorePhoto/routes.php
 
     // Langues & traductions (Owner uniquement)
-    $r->get('/languages',                       [LanguageController::class, 'index'],        name: 'admin.languages');
-    $r->post('/languages',                      [LanguageController::class, 'store'],        name: 'admin.languages.store');
-    $r->post('/languages/{code}/default',       [LanguageController::class, 'setDefault'],   name: 'admin.languages.set_default');
-    $r->post('/languages/{code}/toggle-active', [LanguageController::class, 'toggleActive'], name: 'admin.languages.toggle_active');
-    $r->post('/languages/{code}/delete',        [LanguageController::class, 'destroy'],      name: 'admin.languages.delete');
-    $r->get('/languages/{code}/edit',           [LanguageController::class, 'edit'],         name: 'admin.languages.edit');
-    $r->post('/languages/{code}/edit/save',     [LanguageController::class, 'saveKey'],      name: 'admin.languages.edit.save');
-    $r->post('/languages/{code}/edit/delete',   [LanguageController::class, 'deleteKey'],    name: 'admin.languages.edit.delete');
+    $r->get('/languages',                       [LanguageController::class, 'index'],        middleware: [OwnerOnlyMiddleware::class], name: 'admin.languages', permission: 'public');
+    $r->post('/languages',                      [LanguageController::class, 'store'],        middleware: [OwnerOnlyMiddleware::class], name: 'admin.languages.store', permission: 'public');
+    $r->post('/languages/{code}/default',       [LanguageController::class, 'setDefault'],   middleware: [OwnerOnlyMiddleware::class], name: 'admin.languages.set_default', permission: 'public');
+    $r->post('/languages/{code}/toggle-active', [LanguageController::class, 'toggleActive'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.languages.toggle_active', permission: 'public');
+    $r->post('/languages/{code}/delete',        [LanguageController::class, 'destroy'],      middleware: [OwnerOnlyMiddleware::class], name: 'admin.languages.delete', permission: 'public');
+    $r->get('/languages/{code}/edit',           [LanguageController::class, 'edit'],         middleware: [OwnerOnlyMiddleware::class], name: 'admin.languages.edit', permission: 'public');
+    $r->post('/languages/{code}/edit/save',     [LanguageController::class, 'saveKey'],      middleware: [OwnerOnlyMiddleware::class], name: 'admin.languages.edit.save', permission: 'public');
+    $r->post('/languages/{code}/edit/delete',   [LanguageController::class, 'deleteKey'],    middleware: [OwnerOnlyMiddleware::class], name: 'admin.languages.edit.delete', permission: 'public');
 
     // Bundles (Owner uniquement)
-    $r->get('/bundles',  [BundleSettingsController::class, 'show'], name: 'admin.bundles');
-    $r->post('/bundles', [BundleSettingsController::class, 'save'], name: 'admin.bundles.save');
+    $r->get('/bundles',  [BundleSettingsController::class, 'show'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles', permission: 'public');
+    $r->post('/bundles', [BundleSettingsController::class, 'save'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.save', permission: 'public');
 
     // Rôles & permissions (Owner uniquement) — voir task/mermission.md
-    $r->get('/roles',              [AdminRoleController::class, 'roles'],      name: 'admin.roles');
-    $r->get('/roles/create',       [AdminRoleController::class, 'createRole'], name: 'admin.roles.create');
-    $r->post('/roles/create',      [AdminRoleController::class, 'storeRole'],  name: 'admin.roles.store');
-    $r->get('/roles/{id}/edit',    [AdminRoleController::class, 'editRole'],   name: 'admin.roles.edit');
-    $r->post('/roles/{id}/edit',   [AdminRoleController::class, 'updateRole'], name: 'admin.roles.update');
-    $r->post('/roles/{id}/delete', [AdminRoleController::class, 'deleteRole'], name: 'admin.roles.delete');
+    $r->get('/roles',              [AdminRoleController::class, 'roles'],      middleware: [OwnerOnlyMiddleware::class], name: 'admin.roles', permission: 'public');
+    $r->get('/roles/create',       [AdminRoleController::class, 'createRole'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.roles.create', permission: 'public');
+    $r->post('/roles/create',      [AdminRoleController::class, 'storeRole'],  middleware: [OwnerOnlyMiddleware::class], name: 'admin.roles.store', permission: 'public');
+    $r->get('/roles/{id}/edit',    [AdminRoleController::class, 'editRole'],   middleware: [OwnerOnlyMiddleware::class], name: 'admin.roles.edit', permission: 'public');
+    $r->post('/roles/{id}/edit',   [AdminRoleController::class, 'updateRole'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.roles.update', permission: 'public');
+    $r->post('/roles/{id}/delete', [AdminRoleController::class, 'deleteRole'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.roles.delete', permission: 'public');
 
-}, middleware: [AuthMiddleware::class, AdminMiddleware::class, PermissionMiddleware::class]);
+}, middleware: [AuthMiddleware::class, PermissionMiddleware::class]);
 
 // =============================================================================
 // API v1
@@ -314,68 +314,68 @@ $router->post('/api/v1/auth/login', [ApiAuthController::class, 'login'], name: '
 $router->group('/api/v1', function ($r) {
 
     // Auth
-    $r->post('/auth/logout',        [ApiAuthController::class, 'logout'],      name: 'api.v1.auth.logout');
-    $r->get('/auth/me',             [ApiAuthController::class, 'me'],          name: 'api.v1.auth.me');
-    $r->get('/auth/tokens',         [ApiAuthController::class, 'listTokens'],  name: 'api.v1.auth.tokens');
-    $r->delete('/auth/tokens/{id}', [ApiAuthController::class, 'revokeToken'], name: 'api.v1.auth.tokens.revoke');
+    $r->post('/auth/logout',        [ApiAuthController::class, 'logout'],      name: 'api.v1.auth.logout', permission: 'public');
+    $r->get('/auth/me',             [ApiAuthController::class, 'me'],          name: 'api.v1.auth.me', permission: 'public');
+    $r->get('/auth/tokens',         [ApiAuthController::class, 'listTokens'],  name: 'api.v1.auth.tokens', permission: 'public');
+    $r->delete('/auth/tokens/{id}', [ApiAuthController::class, 'revokeToken'], name: 'api.v1.auth.tokens.revoke', permission: 'public');
 
     // Users
-    $r->get('/users',         [ApiUserController::class, 'index'],   name: 'api.v1.users.index');
-    $r->post('/users',        [ApiUserController::class, 'store'],   name: 'api.v1.users.store');
-    $r->get('/users/{id}',    [ApiUserController::class, 'show'],    name: 'api.v1.users.show');
-    $r->put('/users/{id}',    [ApiUserController::class, 'update'],  name: 'api.v1.users.update');
-    $r->delete('/users/{id}', [ApiUserController::class, 'destroy'], name: 'api.v1.users.destroy');
+    $r->get('/users',         [ApiUserController::class, 'index'],   name: 'api.v1.users.index', permission: 'employees.view');
+    $r->post('/users',        [ApiUserController::class, 'store'],   name: 'api.v1.users.store', permission: 'employees.create');
+    $r->get('/users/{id}',    [ApiUserController::class, 'show'],    name: 'api.v1.users.show', permission: ['perm' => 'employees.view', 'self' => 'id']);
+    $r->put('/users/{id}',    [ApiUserController::class, 'update'],  name: 'api.v1.users.update', permission: 'employees.update');
+    $r->delete('/users/{id}', [ApiUserController::class, 'destroy'], name: 'api.v1.users.destroy', permission: 'employees.delete');
 
     // Users — prefs, rates, ical-tokens
-    $r->get('/users/{user_id}/dashboard-prefs',                       [ApiUserPrefsController::class, 'getDashboardPrefs'],  name: 'api.v1.users.dashboard_prefs.get');
-    $r->put('/users/{user_id}/dashboard-prefs',                       [ApiUserPrefsController::class, 'saveDashboardPrefs'], name: 'api.v1.users.dashboard_prefs.save');
-    $r->get('/users/{user_id}/nav-prefs',                             [ApiUserPrefsController::class, 'getNavPrefs'],        name: 'api.v1.users.nav_prefs.get');
-    $r->put('/users/{user_id}/nav-prefs',                             [ApiUserPrefsController::class, 'saveNavPrefs'],       name: 'api.v1.users.nav_prefs.save');
-    $r->get('/users/{user_id}/rates',                                 [ApiUserShiftRateController::class, 'index'],          name: 'api.v1.users.rates.index');
-    $r->post('/users/{user_id}/rates',                                [ApiUserShiftRateController::class, 'store'],          name: 'api.v1.users.rates.store');
-    $r->get('/users/{user_id}/rates/{id}',                            [ApiUserShiftRateController::class, 'show'],           name: 'api.v1.users.rates.show');
-    $r->put('/users/{user_id}/rates/{id}',                            [ApiUserShiftRateController::class, 'update'],         name: 'api.v1.users.rates.update');
-    $r->delete('/users/{user_id}/rates/{id}',                         [ApiUserShiftRateController::class, 'destroy'],        name: 'api.v1.users.rates.destroy');
-    $r->get('/users/{user_id}/ical-tokens',                           [ApiIcalTokenController::class, 'index'],              name: 'api.v1.users.ical_tokens.index');
-    $r->post('/users/{user_id}/ical-tokens',                          [ApiIcalTokenController::class, 'store'],              name: 'api.v1.users.ical_tokens.store');
-    $r->post('/users/{user_id}/ical-tokens/{store_id}/regenerate',    [ApiIcalTokenController::class, 'regenerate'],         name: 'api.v1.users.ical_tokens.regenerate');
-    $r->get('/users/{user_id}/ical-tokens/{store_id}',                [ApiIcalTokenController::class, 'show'],               name: 'api.v1.users.ical_tokens.show');
-    $r->delete('/users/{user_id}/ical-tokens/{store_id}',             [ApiIcalTokenController::class, 'destroy'],            name: 'api.v1.users.ical_tokens.destroy');
+    $r->get('/users/{user_id}/dashboard-prefs',                       [ApiUserPrefsController::class, 'getDashboardPrefs'],  name: 'api.v1.users.dashboard_prefs.get', permission: ['perm' => 'employees.view', 'self' => 'user_id']);
+    $r->put('/users/{user_id}/dashboard-prefs',                       [ApiUserPrefsController::class, 'saveDashboardPrefs'], name: 'api.v1.users.dashboard_prefs.save', permission: ['perm' => 'employees.update', 'self' => 'user_id']);
+    $r->get('/users/{user_id}/nav-prefs',                             [ApiUserPrefsController::class, 'getNavPrefs'],        name: 'api.v1.users.nav_prefs.get', permission: ['perm' => 'employees.view', 'self' => 'user_id']);
+    $r->put('/users/{user_id}/nav-prefs',                             [ApiUserPrefsController::class, 'saveNavPrefs'],       name: 'api.v1.users.nav_prefs.save', permission: ['perm' => 'employees.update', 'self' => 'user_id']);
+    $r->get('/users/{user_id}/rates',                                 [ApiUserShiftRateController::class, 'index'],          name: 'api.v1.users.rates.index', permission: ['perm' => 'payroll.view', 'self' => 'user_id']);
+    $r->post('/users/{user_id}/rates',                                [ApiUserShiftRateController::class, 'store'],          name: 'api.v1.users.rates.store', permission: 'employees.update');
+    $r->get('/users/{user_id}/rates/{id}',                            [ApiUserShiftRateController::class, 'show'],           name: 'api.v1.users.rates.show', permission: ['perm' => 'payroll.view', 'self' => 'user_id']);
+    $r->put('/users/{user_id}/rates/{id}',                            [ApiUserShiftRateController::class, 'update'],         name: 'api.v1.users.rates.update', permission: 'employees.update');
+    $r->delete('/users/{user_id}/rates/{id}',                         [ApiUserShiftRateController::class, 'destroy'],        name: 'api.v1.users.rates.destroy', permission: 'employees.update');
+    $r->get('/users/{user_id}/ical-tokens',                           [ApiIcalTokenController::class, 'index'],              name: 'api.v1.users.ical_tokens.index', permission: ['perm' => 'employees.view', 'self' => 'user_id']);
+    $r->post('/users/{user_id}/ical-tokens',                          [ApiIcalTokenController::class, 'store'],              name: 'api.v1.users.ical_tokens.store', permission: ['perm' => 'employees.update', 'self' => 'user_id']);
+    $r->post('/users/{user_id}/ical-tokens/{store_id}/regenerate',    [ApiIcalTokenController::class, 'regenerate'],         name: 'api.v1.users.ical_tokens.regenerate', permission: ['perm' => 'employees.update', 'self' => 'user_id']);
+    $r->get('/users/{user_id}/ical-tokens/{store_id}',                [ApiIcalTokenController::class, 'show'],               name: 'api.v1.users.ical_tokens.show', permission: ['perm' => 'employees.view', 'self' => 'user_id']);
+    $r->delete('/users/{user_id}/ical-tokens/{store_id}',             [ApiIcalTokenController::class, 'destroy'],            name: 'api.v1.users.ical_tokens.destroy', permission: ['perm' => 'employees.update', 'self' => 'user_id']);
 
     // Stores
-    $r->get('/stores',         [ApiStoreController::class, 'index'],   name: 'api.v1.stores.index');
-    $r->post('/stores',        [ApiStoreController::class, 'store'],   name: 'api.v1.stores.store');
-    $r->get('/stores/{id}',    [ApiStoreController::class, 'show'],    name: 'api.v1.stores.show');
-    $r->put('/stores/{id}',    [ApiStoreController::class, 'update'],  name: 'api.v1.stores.update');
-    $r->delete('/stores/{id}', [ApiStoreController::class, 'destroy'], name: 'api.v1.stores.destroy');
+    $r->get('/stores',         [ApiStoreController::class, 'index'],   name: 'api.v1.stores.index', permission: 'stores.view');
+    $r->post('/stores',        [ApiStoreController::class, 'store'],   name: 'api.v1.stores.store', permission: 'stores.create');
+    $r->get('/stores/{id}',    [ApiStoreController::class, 'show'],    name: 'api.v1.stores.show', permission: 'stores.view');
+    $r->put('/stores/{id}',    [ApiStoreController::class, 'update'],  name: 'api.v1.stores.update', permission: 'stores.update');
+    $r->delete('/stores/{id}', [ApiStoreController::class, 'destroy'], name: 'api.v1.stores.destroy', permission: 'stores.delete');
 
     // Stores — membres
-    $r->get('/stores/{store_id}/members',         [ApiStoreUserController::class, 'index'],   name: 'api.v1.store_members.index');
-    $r->post('/stores/{store_id}/members',        [ApiStoreUserController::class, 'store'],   name: 'api.v1.store_members.store');
-    $r->get('/stores/{store_id}/members/{id}',    [ApiStoreUserController::class, 'show'],    name: 'api.v1.store_members.show');
-    $r->put('/stores/{store_id}/members/{id}',    [ApiStoreUserController::class, 'update'],  name: 'api.v1.store_members.update');
-    $r->delete('/stores/{store_id}/members/{id}', [ApiStoreUserController::class, 'destroy'], name: 'api.v1.store_members.destroy');
+    $r->get('/stores/{store_id}/members',         [ApiStoreUserController::class, 'index'],   name: 'api.v1.store_members.index', permission: 'employees.view');
+    $r->post('/stores/{store_id}/members',        [ApiStoreUserController::class, 'store'],   name: 'api.v1.store_members.store', permission: 'employees.update');
+    $r->get('/stores/{store_id}/members/{id}',    [ApiStoreUserController::class, 'show'],    name: 'api.v1.store_members.show', permission: 'employees.view');
+    $r->put('/stores/{store_id}/members/{id}',    [ApiStoreUserController::class, 'update'],  name: 'api.v1.store_members.update', permission: 'employees.update');
+    $r->delete('/stores/{store_id}/members/{id}', [ApiStoreUserController::class, 'destroy'], name: 'api.v1.store_members.destroy', permission: 'employees.update');
 
     // Shift types
-    $r->get('/shift-types',         [ApiShiftTypeController::class, 'index'],   name: 'api.v1.shift_types.index');
-    $r->post('/shift-types',        [ApiShiftTypeController::class, 'store'],   name: 'api.v1.shift_types.store');
-    $r->get('/shift-types/{id}',    [ApiShiftTypeController::class, 'show'],    name: 'api.v1.shift_types.show');
-    $r->put('/shift-types/{id}',    [ApiShiftTypeController::class, 'update'],  name: 'api.v1.shift_types.update');
-    $r->delete('/shift-types/{id}', [ApiShiftTypeController::class, 'destroy'], name: 'api.v1.shift_types.destroy');
+    $r->get('/shift-types',         [ApiShiftTypeController::class, 'index'],   name: 'api.v1.shift_types.index', permission: 'shifts.view');
+    $r->post('/shift-types',        [ApiShiftTypeController::class, 'store'],   name: 'api.v1.shift_types.store', permission: 'shifts.update');
+    $r->get('/shift-types/{id}',    [ApiShiftTypeController::class, 'show'],    name: 'api.v1.shift_types.show', permission: 'shifts.view');
+    $r->put('/shift-types/{id}',    [ApiShiftTypeController::class, 'update'],  name: 'api.v1.shift_types.update', permission: 'shifts.update');
+    $r->delete('/shift-types/{id}', [ApiShiftTypeController::class, 'destroy'], name: 'api.v1.shift_types.destroy', permission: 'shifts.update');
 
     // Shifts
-    $r->get('/shifts',         [ApiShiftController::class, 'index'],   name: 'api.v1.shifts.index');
-    $r->post('/shifts',        [ApiShiftController::class, 'store'],   name: 'api.v1.shifts.store');
-    $r->get('/shifts/{id}',    [ApiShiftController::class, 'show'],    name: 'api.v1.shifts.show');
-    $r->put('/shifts/{id}',    [ApiShiftController::class, 'update'],  name: 'api.v1.shifts.update');
-    $r->delete('/shifts/{id}', [ApiShiftController::class, 'destroy'], name: 'api.v1.shifts.destroy');
+    $r->get('/shifts',         [ApiShiftController::class, 'index'],   name: 'api.v1.shifts.index', permission: 'shifts.view');
+    $r->post('/shifts',        [ApiShiftController::class, 'store'],   name: 'api.v1.shifts.store', permission: 'shifts.create');
+    $r->get('/shifts/{id}',    [ApiShiftController::class, 'show'],    name: 'api.v1.shifts.show', permission: 'shifts.view');
+    $r->put('/shifts/{id}',    [ApiShiftController::class, 'update'],  name: 'api.v1.shifts.update', permission: 'shifts.update');
+    $r->delete('/shifts/{id}', [ApiShiftController::class, 'destroy'], name: 'api.v1.shifts.destroy', permission: 'shifts.delete');
 
     // Disponibilités
-    $r->get('/availabilities',         [ApiAvailabilityController::class, 'index'],   name: 'api.v1.availabilities.index');
-    $r->post('/availabilities',        [ApiAvailabilityController::class, 'store'],   name: 'api.v1.availabilities.store');
-    $r->get('/availabilities/{id}',    [ApiAvailabilityController::class, 'show'],    name: 'api.v1.availabilities.show');
-    $r->put('/availabilities/{id}',    [ApiAvailabilityController::class, 'update'],  name: 'api.v1.availabilities.update');
-    $r->delete('/availabilities/{id}', [ApiAvailabilityController::class, 'destroy'], name: 'api.v1.availabilities.destroy');
+    $r->get('/availabilities',         [ApiAvailabilityController::class, 'index'],   name: 'api.v1.availabilities.index', permission: 'shifts.view');
+    $r->post('/availabilities',        [ApiAvailabilityController::class, 'store'],   name: 'api.v1.availabilities.store', permission: 'shifts.update');
+    $r->get('/availabilities/{id}',    [ApiAvailabilityController::class, 'show'],    name: 'api.v1.availabilities.show', permission: 'shifts.view');
+    $r->put('/availabilities/{id}',    [ApiAvailabilityController::class, 'update'],  name: 'api.v1.availabilities.update', permission: 'shifts.update');
+    $r->delete('/availabilities/{id}', [ApiAvailabilityController::class, 'destroy'], name: 'api.v1.availabilities.destroy', permission: 'shifts.update');
 
     // Demandes de congé : voir src/Bundles/TimeOff/routes.php
 
@@ -386,15 +386,15 @@ $router->group('/api/v1', function ($r) {
     // Bourse aux shifts : voir src/Bundles/ShiftClaim/routes.php
 
     // Notifications
-    $r->post('/notifications/read-all',    [ApiNotificationController::class, 'markAllRead'], name: 'api.v1.notifications.read_all');
-    $r->get('/notifications',              [ApiNotificationController::class, 'index'],       name: 'api.v1.notifications.index');
-    $r->get('/notifications/{id}',         [ApiNotificationController::class, 'show'],        name: 'api.v1.notifications.show');
-    $r->post('/notifications/{id}/read',   [ApiNotificationController::class, 'markRead'],    name: 'api.v1.notifications.read');
-    $r->delete('/notifications/{id}',      [ApiNotificationController::class, 'destroy'],     name: 'api.v1.notifications.destroy');
+    $r->post('/notifications/read-all',    [ApiNotificationController::class, 'markAllRead'], name: 'api.v1.notifications.read_all', permission: 'public');
+    $r->get('/notifications',              [ApiNotificationController::class, 'index'],       name: 'api.v1.notifications.index', permission: 'public');
+    $r->get('/notifications/{id}',         [ApiNotificationController::class, 'show'],        name: 'api.v1.notifications.show', permission: 'public');
+    $r->post('/notifications/{id}/read',   [ApiNotificationController::class, 'markRead'],    name: 'api.v1.notifications.read', permission: 'public');
+    $r->delete('/notifications/{id}',      [ApiNotificationController::class, 'destroy'],     name: 'api.v1.notifications.destroy', permission: 'public');
 
     // Feedbacks : voir src/Bundles/Feedback/routes.php
 
     // Journal d'activité
-    $r->get('/activity', [ApiActivityController::class, 'index'], name: 'api.v1.activity.index');
+    $r->get('/activity', [ApiActivityController::class, 'index'], name: 'api.v1.activity.index', permission: 'stores.view');
 
 }, middleware: [ApiAuthMiddleware::class, ApiPermissionMiddleware::class]);

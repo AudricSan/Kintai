@@ -7,7 +7,6 @@ namespace kintai\Tests\Unit\Bundles\DailyReport;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use kintai\Core\Container;
-use kintai\Core\Middleware\AdminMiddleware;
 use kintai\Core\Middleware\ApiAuthMiddleware;
 use kintai\Core\Middleware\ApiPermissionMiddleware;
 use kintai\Core\Middleware\AuthMiddleware;
@@ -17,9 +16,12 @@ use kintai\Core\Router;
 /**
  * Régression : les routes du bundle DailyReport doivent rester protégées par
  * PermissionMiddleware/ApiPermissionMiddleware après leur ajout au système
- * déclaratif de permissions, SANS gagner AdminMiddleware sur le groupe en
- * libre-service (ça bloquerait tout employé qui n'est manager d'aucun store,
- * qui doit pouvoir créer/soumettre son propre rapport).
+ * déclaratif de permissions. Le groupe en libre-service ne doit déclarer
+ * aucune permission stricte (règle 'membership' uniquement) : PermissionMiddleware
+ * (qui a absorbé l'ancien AdminMiddleware en RBAC-V2) vérifie le repli
+ * 'membership' AVANT sa porte grossière "au moins une permission RBAC quelque
+ * part" — sinon un simple employé qui n'est manager d'aucun store ne pourrait
+ * jamais soumettre son propre rapport.
  */
 final class DailyReportRoutesTest extends TestCase
 {
@@ -33,17 +35,14 @@ final class DailyReportRoutesTest extends TestCase
     }
 
     #[DataProvider('selfServiceRoutesProvider')]
-    public function testSelfServiceRoutesAreAuthenticatedAndPermissionCheckedButNotAdminOnly(string $method, string $path): void
+    public function testSelfServiceRoutesAreAuthenticatedAndPermissionChecked(string $method, string $path): void
     {
         [$route] = $this->loadRoutes()->dispatch($method, $path);
 
         $this->assertContains(AuthMiddleware::class, $route->middleware);
         $this->assertContains(PermissionMiddleware::class, $route->middleware);
-        $this->assertNotContains(
-            AdminMiddleware::class,
-            $route->middleware,
-            "$path ne doit pas exiger AdminMiddleware : un simple employé doit pouvoir soumettre son propre rapport."
-        );
+        $this->assertIsArray($route->permission, "$path doit déclarer une règle 'membership' (accès en libre-service par appartenance au store).");
+        $this->assertTrue($route->permission['membership'] ?? false, "$path doit rester en libre-service (règle 'membership') pour qu'un simple employé puisse soumettre son propre rapport.");
     }
 
     public static function selfServiceRoutesProvider(): array
@@ -56,18 +55,18 @@ final class DailyReportRoutesTest extends TestCase
             ['GET', '/admin/stores/1/daily-reports/10/edit'],
             ['POST', '/admin/stores/1/daily-reports/10/edit'],
             ['POST', '/admin/stores/1/daily-reports/10/submit'],
-            ['POST', '/admin/stores/1/daily-reports/10/validate'],
-            ['POST', '/admin/stores/1/daily-reports/10/delete'],
+            ['GET', '/admin/stores/1/daily-reports/10/pdf'],
+            ['GET', '/admin/stores/1/daily-reports/10/pdf/download'],
         ];
     }
 
-    public function testIndexAllRouteRequiresAdminAndPermission(): void
+    public function testIndexAllRouteRequiresPermission(): void
     {
         [$route] = $this->loadRoutes()->dispatch('GET', '/admin/daily-reports');
 
         $this->assertContains(AuthMiddleware::class, $route->middleware);
-        $this->assertContains(AdminMiddleware::class, $route->middleware);
         $this->assertContains(PermissionMiddleware::class, $route->middleware);
+        $this->assertSame('daily_reports.view', $route->permission);
     }
 
     #[DataProvider('apiRoutesProvider')]

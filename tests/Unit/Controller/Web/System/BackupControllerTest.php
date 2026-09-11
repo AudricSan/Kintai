@@ -7,7 +7,6 @@ namespace kintai\Tests\Unit\Controller\Web\System;
 use Illuminate\Database\Capsule\Manager as Capsule;
 use kintai\Core\Container;
 use kintai\Core\Database\MigrationRunner;
-use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Repositories\JsonLanguageRepository;
 use kintai\Core\Repositories\JsonTranslationRepository;
@@ -174,13 +173,8 @@ final class BackupControllerTest extends TestCase
         return $method->invoke($controller, $raw);
     }
 
-    public function testCreateRejectsNonOwner(): void
-    {
-        $controller = $this->makeController();
-
-        $this->expectException(ForbiddenException::class);
-        $controller->create($this->requestAs(false));
-    }
+    // Le rejet non-Owner est désormais couvert par OwnerOnlyMiddlewareTest
+    // (route-level, RBAC-V2) — le contrôleur ne se garde plus lui-même.
 
     public function testCreateAllowsOwner(): void
     {
@@ -190,14 +184,6 @@ final class BackupControllerTest extends TestCase
 
         $this->assertSame(302, $response->status());
         $this->assertStringContainsString('success=created_', $this->locationOf($response));
-    }
-
-    public function testDownloadRejectsNonOwner(): void
-    {
-        $controller = $this->makeController();
-
-        $this->expectException(ForbiddenException::class);
-        $controller->download($this->requestAs(false));
     }
 
     public function testDownloadRedirectsWhenFileMissing(): void
@@ -221,14 +207,6 @@ final class BackupControllerTest extends TestCase
         $response = $controller->download($this->requestAs(true));
 
         $this->assertSame(200, $response->status());
-    }
-
-    public function testUpdateRejectsNonOwner(): void
-    {
-        $controller = $this->makeController();
-
-        $this->expectException(ForbiddenException::class);
-        $controller->update($this->requestAs(false));
     }
 
     public function testUpdateReturnsErrorWhenNoUpdateAvailable(): void
@@ -324,14 +302,6 @@ final class BackupControllerTest extends TestCase
         $this->assertTrue($this->settings->maintenanceModeEnabled());
     }
 
-    public function testMigrateRejectsNonOwner(): void
-    {
-        $controller = $this->makeController();
-
-        $this->expectException(ForbiddenException::class);
-        $controller->migrate($this->requestAs(false));
-    }
-
     public function testMigrateRedirectsToUpdatePage(): void
     {
         $controller = $this->makeController();
@@ -341,14 +311,6 @@ final class BackupControllerTest extends TestCase
         $this->assertSame(302, $response->status());
         $this->assertStringStartsWith('/admin/update?success=migrated', $this->locationOf($response));
         $this->assertFalse($this->settings->maintenanceModeEnabled());
-    }
-
-    public function testSaveChannelRejectsNonOwner(): void
-    {
-        $controller = $this->makeController();
-
-        $this->expectException(ForbiddenException::class);
-        $controller->saveChannel($this->requestAs(false));
     }
 
     public function testSaveChannelPersistsValidChannel(): void

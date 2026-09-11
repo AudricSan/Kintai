@@ -321,19 +321,20 @@ final class AuthServiceTest extends TestCase
     }
 
     /**
-     * Régression : un rôle qui n'accorde QUE des permissions .view (ex. le rôle "employee"
-     * par défaut, avec seulement shifts.view pour consulter son planning) ne doit PAS compter
-     * comme gestionnaire de ce store — sinon un simple employé accède à /admin/* (shifts,
-     * types de shifts, personnel...) alors qu'il ne devrait avoir qu'un accès en lecture à
-     * son propre planning. Voir CHANGELOG.
+     * Régression (12/09/2026) : un rôle qui n'accorde QUE des permissions .view (ex. un rôle
+     * custom "lecture seule sur les rapports photos", avec seulement photos.view) DOIT compter
+     * comme gestionnaire de ce store — sinon ce rôle ne peut jamais atteindre /admin/*, même
+     * pour consulter exactement ce que sa permission autorise. PermissionMiddleware reste la
+     * barrière fine qui limite ensuite l'accès à cette seule permission. Voir CHANGELOG et le
+     * docblock de roleGrantsAnyPermission().
      */
-    public function testManagedStoreIdsEmptyForRoleGrantingOnlyViewPermissions(): void
+    public function testManagedStoreIdsIncludesStoreForRoleGrantingOnlyViewPermissions(): void
     {
         $_SESSION['auth_user_id'] = 10;
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
-        $this->grantStoreRole(10, 1, 3, ['shifts.view']);
+        $this->grantStoreRole(10, 1, 3, ['photos.view']);
 
-        $this->assertSame([], $this->auth->managedStoreIds());
+        $this->assertSame([1], $this->auth->managedStoreIds());
     }
 
     // -------------------------------------------------------------------------
@@ -364,13 +365,13 @@ final class AuthServiceTest extends TestCase
         $this->assertFalse($this->auth->isManager());
     }
 
-    /** Régression : voir testManagedStoreIdsEmptyForRoleGrantingOnlyViewPermissions. */
-    public function testIsManagerFalseForRoleGrantingOnlyViewPermissions(): void
+    /** Régression : voir testManagedStoreIdsIncludesStoreForRoleGrantingOnlyViewPermissions. */
+    public function testIsManagerTrueForRoleGrantingOnlyViewPermissions(): void
     {
         $_SESSION['auth_user_id'] = 10;
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
-        $this->grantStoreRole(10, 1, 3, ['shifts.view']);
-        $this->assertFalse($this->auth->isManager());
+        $this->grantStoreRole(10, 1, 3, ['photos.view']);
+        $this->assertTrue($this->auth->isManager());
     }
 
     // -------------------------------------------------------------------------

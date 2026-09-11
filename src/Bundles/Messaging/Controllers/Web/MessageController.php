@@ -378,7 +378,7 @@ final class MessageController
             return $managed;
         }
 
-        // Employé simple (pas passé par AdminMiddleware) : restreint à ses propres stores.
+        // Employé simple (managed_store_ids jamais posé par PermissionMiddleware) : restreint à ses propres stores.
         $userId = (int) ($user['id'] ?? 0);
         return array_values(array_unique(array_map(
             fn($su) => (int) $su['store_id'],
