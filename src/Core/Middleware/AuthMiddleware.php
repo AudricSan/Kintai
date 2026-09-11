@@ -15,6 +15,7 @@ use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserNavPrefsRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\Router;
 use kintai\Core\Services\EmployeeStatsService;
 use kintai\Core\Services\TranslationService;
 use kintai\UI\ViewRenderer;
@@ -59,6 +60,23 @@ final class AuthMiddleware implements MiddlewareInterface
         $isOwner = !empty($user['is_admin']);
         $view->share('user_can', fn(string $permissionKey): bool
             => $isOwner || $permissions->can($user, $permissionKey, null));
+
+        // Visibilité de nav pilotée par la permission RÉELLEMENT déclarée sur la route
+        // (Route::$permission, RBAC-V2) plutôt qu'une clé recopiée à la main à côté du
+        // lien — élimine la classe de bug où la nav affiche un lien que la route
+        // bloquerait ensuite (ex. bottom-nav "Messages"/"Rapports journaliers" n'avait
+        // jusqu'ici aucun contrôle de permission alors que leurs routes en exigent une).
+        // Route absente/sans permission déclarée/'public' : toujours visible.
+        $router = $this->container->make(Router::class);
+        $view->share('route_visible', function (string $routeName) use ($router, $isOwner, $permissions, $user): bool {
+            $route = $router->routeByName($routeName);
+            $rule  = $route?->permission;
+            if ($rule === null || $rule === 'public') {
+                return true;
+            }
+            $key = is_array($rule) ? (string) ($rule['perm'] ?? '') : $rule;
+            return $key === '' || $isOwner || $permissions->can($user, $key, null);
+        });
 
         // Langue courante
         $view->share('locale', $this->container->make(TranslationService::class)->getLocale());

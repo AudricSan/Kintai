@@ -129,6 +129,12 @@ final class Router
         return $this->routes;
     }
 
+    /** Route nommée, ou null si aucune route de ce nom n'est enregistrée. */
+    public function routeByName(string $name): ?Route
+    {
+        return $this->named[$name] ?? null;
+    }
+
     private function addRoute(string $method, string $pattern, array $handler, array $middleware, ?string $name, string|array|null $permission = null): self
     {
         $fullPattern = $this->groupPrefix . $pattern;
