@@ -23,6 +23,7 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\Router;
 use kintai\Core\Services\EmployeeStatsService;
 use kintai\Core\Services\TranslationService;
 use kintai\UI\ViewRenderer;
@@ -139,6 +140,40 @@ final class AuthMiddlewareTest extends TestCase
         $can = $this->view->get('user_can');
         $this->assertTrue($can('employees.view'));
         $this->assertTrue($can('stores.delete'));
+    }
+
+    /**
+     * route_visible (RBAC-V2) : la visibilité de nav dérive de la permission
+     * RÉELLEMENT déclarée sur la route (Route::$permission), jamais d'une clé
+     * recopiée à la main à côté du lien.
+     */
+    public function testRouteVisibleReflectsThePermissionDeclaredOnTheRoute(): void
+    {
+        $router = new Router();
+        $router->get('/admin/photos', [\kintai\UI\Controller\Web\HomeController::class, 'index'], name: 'admin.photos.index', permission: 'photos.view');
+        $router->get('/admin/owner-settings', [\kintai\UI\Controller\Web\HomeController::class, 'index'], name: 'admin.owner_settings', permission: 'public');
+        $this->container->instance(Router::class, $router);
+
+        $this->bindAuthenticatedUser(['shifts.view']);
+        $this->handle();
+
+        $routeVisible = $this->view->get('route_visible');
+        $this->assertIsCallable($routeVisible);
+        $this->assertFalse($routeVisible('admin.photos.index'), 'shifts.view ne doit pas rendre visible un lien vers une route exigeant photos.view');
+        $this->assertTrue($routeVisible('admin.owner_settings'), "une route 'public' reste toujours visible");
+        $this->assertTrue($routeVisible('route.inexistante'), 'une route inconnue ne doit pas bloquer l’affichage');
+    }
+
+    public function testRouteVisibleTrueWhenPermissionGranted(): void
+    {
+        $router = new Router();
+        $router->get('/admin/photos', [\kintai\UI\Controller\Web\HomeController::class, 'index'], name: 'admin.photos.index', permission: 'photos.view');
+        $this->container->instance(Router::class, $router);
+
+        $this->bindAuthenticatedUser(['photos.view']);
+        $this->handle();
+
+        $this->assertTrue($this->view->get('route_visible')('admin.photos.index'));
     }
 
     public function testRedirectsToLoginWhenNotAuthenticated(): void
