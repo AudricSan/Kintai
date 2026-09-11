@@ -13,13 +13,14 @@ use kintai\Core\Response;
 use kintai\UI\ViewRenderer;
 
 /**
- * Contrôle des permissions fines du système RBAC (task/mermission.md).
+ * Contrôle des permissions fines du système RBAC.
  * Doit être placé après AdminMiddleware (auth_user et managed_store_ids déjà
  * attachés à la requête).
  *
- * La règle requise par route est déclarée dans config/permissions.php (nom de
- * route → clé de PermissionCatalog, ou tableau ['perm' => clé, 'membership' =>
- * true] — voir le format documenté dans ce fichier). Pour un non-Owner :
+ * La règle requise par route est déclarée directement sur la route elle-même
+ * (paramètre permission: de Router::get/post/..., voir Route::$permission) :
+ * une clé de PermissionCatalog, ou tableau ['perm' => clé, 'membership' =>
+ * true] — voir le format documenté sur Route::$permission. Pour un non-Owner :
  * - accès refusé (403) si aucun de ses rôles n'accorde la clé (et, si la
  *   règle porte 'membership', si l'utilisateur n'est pas non plus membre du
  *   store ciblé — porte d'entrée grossière pour un accès en libre-service,
@@ -27,13 +28,13 @@ use kintai\UI\ViewRenderer;
  * - sinon, managed_store_ids est resserré aux seuls stores où la clé est
  *   accordée — les contrôleurs filtrant déjà toutes leurs données par cet
  *   attribut, la portée de chaque permission s'applique sans les modifier.
- * Une route absente de la map reste soumise au seul filtre d'AdminMiddleware.
+ * Une route sans règle 'permission' déclarée (null) reste soumise au seul
+ * filtre d'AdminMiddleware — voir tests/Unit/Core/PermissionMapsTest, qui
+ * fait échouer la suite si une route sous ce middleware n'a ni permission
+ * précise ni marqueur 'public' explicite.
  */
 final class PermissionMiddleware implements MiddlewareInterface
 {
-    /** @var array<string, string|array{perm: string, membership?: bool, store_param?: string}>|null */
-    private static ?array $routePermissions = null;
-
     public function __construct(
         private readonly PermissionService $permissions,
         private readonly ViewRenderer $view,
@@ -49,8 +50,8 @@ final class PermissionMiddleware implements MiddlewareInterface
         // pages authentifiées) pour que la navigation reste identique partout ;
         // ce middleware ne s'occupe plus que du contrôle d'accès et de la
         // portée managed_store_ids.
-        $rule = $this->rule((string) ($request->getAttribute('route_name') ?? ''));
-        if ($rule === null || $isOwner) {
+        $rule = $request->getAttribute('route_permission');
+        if ($rule === null || $rule === 'public' || $isOwner) {
             return $next($request);
         }
 
@@ -82,17 +83,5 @@ final class PermissionMiddleware implements MiddlewareInterface
         }
 
         throw new ForbiddenException('Permission requise : ' . $key);
-    }
-
-    private function rule(string $routeName): string|array|null
-    {
-        if ($routeName === '') {
-            return null;
-        }
-        if (self::$routePermissions === null) {
-            $file = dirname(__DIR__, 3) . '/config/permissions.php';
-            self::$routePermissions = is_file($file) ? (require $file) : [];
-        }
-        return self::$routePermissions[$routeName] ?? null;
     }
 }
