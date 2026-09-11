@@ -57,7 +57,7 @@ $typeIcons = [
 </div>
 
 <?php if (empty($notifications)): ?>
-    <div class="empty-state">
+    <div class="empty-state empty-state--bell">
         <p><?= __('no_notifications') ?></p>
     </div>
 <?php else: ?>

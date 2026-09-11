@@ -319,6 +319,13 @@ img {
     margin-bottom: var(--space-8);
 }
 
+.guest-brand__mascot {
+    display: block;
+    width: 96px;
+    height: auto;
+    margin: 0 auto var(--space-2);
+}
+
 .guest-brand h1 {
     font-size: 2rem;
     font-weight: 700;
@@ -377,6 +384,19 @@ img {
     text-align: center;
     color: var(--color-text-muted);
     font-size: var(--text-sm);
+}
+
+.empty-state::before {
+    content: '';
+    display: block;
+    width: 88px;
+    height: 88px;
+    margin: 0 auto var(--space-2);
+    background: url('../../img/mascot/box-empty.png') center / contain no-repeat;
+}
+
+.empty-state--bell::before {
+    background-image: url('../../img/mascot/bell.png');
 }
 
 .empty-state__icon {
