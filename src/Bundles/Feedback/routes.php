@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use kintai\Core\Middleware\AuthMiddleware;
-use kintai\Core\Middleware\AdminMiddleware;
 use kintai\Core\Middleware\ApiAuthMiddleware;
 use kintai\Core\Middleware\ApiPermissionMiddleware;
 use kintai\Core\Middleware\PermissionMiddleware;
@@ -29,7 +28,7 @@ $router->group('/employee', function ($r) {
 $router->group('/admin', function ($r) {
     $r->get('/feedbacks',              [FeedbackController::class, 'index'],  name: 'admin.feedbacks', permission: 'feedbacks.view');
     $r->post('/feedbacks/{id}/delete', [FeedbackController::class, 'delete'], name: 'admin.feedbacks.delete', permission: 'feedbacks.delete');
-}, middleware: [AuthMiddleware::class, AdminMiddleware::class, PermissionMiddleware::class]);
+}, middleware: [AuthMiddleware::class, PermissionMiddleware::class]);
 
 // =============================================================================
 // Feedback — Routes API

@@ -301,12 +301,12 @@ final class AuthService
 
     /**
      * Vrai si ce rôle accorde au moins une permission RBAC, peu importe laquelle — c'est le
-     * critère utilisé pour décider si un utilisateur passe AdminMiddleware et accède à
-     * /admin/*. Un rôle purement ".view" (ex. un rôle "lecture seule sur les rapports
-     * photos", n'accordant que photos.view) doit pouvoir accéder à /admin/* : PermissionMiddleware
-     * vérifie ensuite la permission précise par route, et managed_store_ids est toujours
-     * resserré à la portée réelle de CETTE permission (scopedStoreIds), pas à un heuristique
-     * global calculé ici.
+     * critère utilisé (par PermissionMiddleware, qui a absorbé l'ancien AdminMiddleware
+     * en RBAC-V2) pour décider si un utilisateur accède à /admin/*. Un rôle purement
+     * ".view" (ex. un rôle "lecture seule sur les rapports photos", n'accordant que
+     * photos.view) doit pouvoir y accéder : la permission précise est ensuite vérifiée
+     * par route, et managed_store_ids est toujours resserré à la portée réelle de CETTE
+     * permission (scopedStoreIds), pas à un heuristique global calculé ici.
      *
      * Historique : entre le 06/08/2026 et le 12/09/2026, cette méthode excluait les rôles
      * n'accordant QUE des permissions .view (voir l'ancien commit "plain employees could

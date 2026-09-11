@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use kintai\Core\Middleware\AuthMiddleware;
-use kintai\Core\Middleware\AdminMiddleware;
 use kintai\Core\Middleware\ApiAuthMiddleware;
 use kintai\Core\Middleware\ApiPermissionMiddleware;
 use kintai\Core\Middleware\PermissionMiddleware;
@@ -17,7 +16,7 @@ use kintai\Bundles\DailyReport\Controllers\Api\DailyReportController as ApiDaily
 // Daily Report — Routes Web (admin)
 // =============================================================================
 
-$router->get('/admin/daily-reports', [DailyReportController::class, 'indexAll'], middleware: [AuthMiddleware::class, AdminMiddleware::class, PermissionMiddleware::class], name: 'admin.daily_reports.all', permission: 'daily_reports.view');
+$router->get('/admin/daily-reports', [DailyReportController::class, 'indexAll'], middleware: [AuthMiddleware::class, PermissionMiddleware::class], name: 'admin.daily_reports.all', permission: 'daily_reports.view');
 
 $router->group('/admin', function ($r) {
     $r->get('/stores/{id}/daily-reports',              [DailyReportController::class, 'index'],        name: 'admin.daily_reports.index', permission: ['perm' => 'daily_reports.view', 'membership' => true]);

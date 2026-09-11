@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use kintai\Core\Middleware\AuthMiddleware;
-use kintai\Core\Middleware\AdminMiddleware;
 use kintai\Core\Middleware\PermissionMiddleware;
 use kintai\Bundles\SalaryReport\Controllers\Web\AdminSalaryReportController;
 
@@ -30,4 +29,4 @@ $router->group('/admin', function ($r) {
     $r->post('/stores/{id}/reports/salary/{rid}/delete', [AdminSalaryReportController::class, 'deleteSalaryReport'], name: 'admin.stores.salary_reports.delete', permission: 'payroll.generate');
     $r->get('/stores/{id}/reports/salary/{rid}/pdf',    [AdminSalaryReportController::class, 'salaryReportPdf'],    name: 'admin.stores.salary_reports.pdf', permission: 'payroll.export');
     $r->get('/stores/{id}/reports/salary/{rid}/pdf/download', [AdminSalaryReportController::class, 'salaryReportPdfDownload'], name: 'admin.stores.salary_reports.pdf_download', permission: 'payroll.export');
-}, middleware: [AuthMiddleware::class, AdminMiddleware::class, PermissionMiddleware::class]);
+}, middleware: [AuthMiddleware::class, PermissionMiddleware::class]);

@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use kintai\Core\Middleware\AuthMiddleware;
-use kintai\Core\Middleware\AdminMiddleware;
 use kintai\Core\Middleware\ApiAuthMiddleware;
 use kintai\Core\Middleware\ApiPermissionMiddleware;
 use kintai\Core\Middleware\PermissionMiddleware;
@@ -38,7 +37,7 @@ $router->group('/admin', function ($r) {
     $r->post('/swap-requests/{id}/approve', [AdminSwapController::class, 'approveSwap'],  name: 'admin.swap.approve', permission: 'swaps.approve');
     $r->post('/swap-requests/{id}/refuse',  [AdminSwapController::class, 'refuseSwap'],   name: 'admin.swap.refuse', permission: 'swaps.approve');
     $r->post('/swap-requests/{id}/delete',  [AdminSwapController::class, 'deleteSwap'],   name: 'admin.swap.delete', permission: 'swaps.delete');
-}, middleware: [AuthMiddleware::class, AdminMiddleware::class, PermissionMiddleware::class]);
+}, middleware: [AuthMiddleware::class, PermissionMiddleware::class]);
 
 // =============================================================================
 // ShiftSwap — Routes API

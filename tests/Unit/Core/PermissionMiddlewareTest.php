@@ -51,22 +51,48 @@ final class PermissionMiddlewareTest extends TestCase
         return fn(Request $r) => Response::html('ok');
     }
 
-    public function testRouteWithoutPermissionDeclaredPassesThrough(): void
+    /**
+     * Route sans permission déclarée (null) ou 'public' (self-service, agrégat, ou déjà
+     * protégée par requireOwner()) : porte grossière héritée de l'ancien AdminMiddleware,
+     * fusionné dans ce middleware en RBAC-V2 — au moins une permission RBAC quelque part
+     * suffit, aucune clé précise n'est exigée.
+     */
+    public function testRouteWithoutPermissionDeclaredPassesThroughWhenAnyPermissionIsGranted(): void
     {
-        $request = $this->makeRequest(null, ['id' => 10], [1]);
+        $this->assignments->method('findByUser')->with(10)->willReturn([
+            ['id' => 1, 'user_id' => 10, 'role_id' => 2, 'scope_type' => 'store', 'scope_id' => 1],
+        ]);
+        $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'is_system' => 0]);
+        $this->roles->method('getPermissions')->with(2)->willReturn(['photos.view']);
 
+        $request  = $this->makeRequest(null, ['id' => 10], [1]);
         $response = $this->middleware->handle($request, $this->next());
 
         $this->assertSame(200, $response->status());
     }
 
-    public function testPublicRoutePassesThroughWithoutConsultingRoles(): void
+    public function testPublicRoutePassesThroughWhenAnyPermissionIsGranted(): void
     {
-        $this->assignments->expects($this->never())->method('findByUser');
+        $this->assignments->method('findByUser')->with(10)->willReturn([
+            ['id' => 1, 'user_id' => 10, 'role_id' => 2, 'scope_type' => 'store', 'scope_id' => 1],
+        ]);
+        $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'is_system' => 0]);
+        $this->roles->method('getPermissions')->with(2)->willReturn(['photos.view']);
 
         $request = $this->makeRequest('public', ['id' => 10], [1]);
 
         $this->assertSame(200, $this->middleware->handle($request, $this->next())->status());
+    }
+
+    /** Sans aucune permission RBAC nulle part, la porte grossière redirige vers /employee. */
+    public function testPublicRouteRedirectsToEmployeeWithoutAnyPermission(): void
+    {
+        $this->assignments->method('findByUser')->with(10)->willReturn([]);
+
+        $request  = $this->makeRequest('public', ['id' => 10], null);
+        $response = $this->middleware->handle($request, $this->next());
+
+        $this->assertSame(302, $response->status());
     }
 
     public function testScopedByStoresView(): void
@@ -149,20 +175,22 @@ final class PermissionMiddlewareTest extends TestCase
 
     public function testGlobalScopeGrantPassesWithoutNarrowing(): void
     {
-        // Affectation de portée globale (rôle non-système, ex. futur "Auditor" global)
+        // Affectation de portée globale (rôle non-système, ex. futur "Auditor" global) :
+        // aucune restriction par store pour CETTE permission, managed_store_ids = null
+        // (pas un heuristique calculé ailleurs).
         $this->assignments->method('findByUser')->with(10)->willReturn([
             ['id' => 7, 'user_id' => 10, 'role_id' => 4, 'scope_type' => 'global', 'scope_id' => null],
         ]);
         $this->roles->method('findById')->willReturn(['id' => 4, 'is_system' => 0]);
         $this->roles->method('getPermissions')->willReturn(['employees.view']);
 
-        $request = $this->makeRequest('employees.view', ['id' => 10], [1, 2]);
+        $request = $this->makeRequest('employees.view', ['id' => 10], null);
         $response = $this->middleware->handle($request, function (Request $r) {
             return Response::json(['managed' => $r->getAttribute('managed_store_ids')]);
         });
 
         $this->assertSame(200, $response->status());
-        $this->assertSame([1, 2], json_decode($response->body(), true)['managed']);
+        $this->assertNull(json_decode($response->body(), true)['managed']);
     }
 
     // -------------------------------------------------------------------------
@@ -181,15 +209,21 @@ final class PermissionMiddlewareTest extends TestCase
         $this->assertSame(200, $this->middleware->handle($request, $this->next())->status());
     }
 
+    /**
+     * Ni membre du store ciblé, ni aucune permission RBAC nulle part : retombe sur la
+     * porte grossière (ex-AdminMiddleware), qui redirige vers /employee — pas un 403,
+     * cohérent avec le comportement d'origine où AdminMiddleware aurait de toute façon
+     * intercepté cet utilisateur avant qu'il n'atteigne la vérification de permission.
+     */
     public function testMembershipRuleRejectsNonMemberWithoutPermission(): void
     {
         $this->assignments->method('findByUser')->with(10)->willReturn([]);
         $this->storeUsers->method('findMembership')->with(1, 10)->willReturn(null);
 
-        $request = $this->makeRequest(['perm' => 'daily_reports.create', 'membership' => true], ['id' => 10], null, ['id' => '1']);
+        $request  = $this->makeRequest(['perm' => 'daily_reports.create', 'membership' => true], ['id' => 10], null, ['id' => '1']);
+        $response = $this->middleware->handle($request, $this->next());
 
-        $this->expectException(ForbiddenException::class);
-        $this->middleware->handle($request, $this->next());
+        $this->assertSame(302, $response->status());
     }
 
     public function testMembershipRuleStillGrantsViaScopedPermissionAndNarrows(): void
@@ -212,10 +246,27 @@ final class PermissionMiddlewareTest extends TestCase
         $this->assertSame([1], json_decode($response->body(), true)['managed']);
     }
 
-    public function testNonMembershipRuleNeverConsultsMembership(): void
+    public function testNonMembershipRuleNeverConsultsMembershipAndRedirectsWithoutAnyPermission(): void
     {
         // Une règle sans 'membership' n'a pas d'exception libre-service (ex. admin.daily_reports.delete).
+        // Aucune permission nulle part → porte grossière → /employee (pas de findMembership consulté).
         $this->assignments->method('findByUser')->with(10)->willReturn([]);
+        $this->storeUsers->expects($this->never())->method('findMembership');
+
+        $request  = $this->makeRequest('daily_reports.delete', ['id' => 10], null, ['id' => '1']);
+        $response = $this->middleware->handle($request, $this->next());
+
+        $this->assertSame(302, $response->status());
+    }
+
+    /** Une permission RBAC existe ailleurs (porte grossière franchie) mais pas la clé exacte requise : 403. */
+    public function testNonMembershipRuleForbiddenWhenSomePermissionExistsButNotTheRequiredOne(): void
+    {
+        $this->assignments->method('findByUser')->with(10)->willReturn([
+            ['id' => 1, 'user_id' => 10, 'role_id' => 2, 'scope_type' => 'store', 'scope_id' => 1],
+        ]);
+        $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'is_system' => 0]);
+        $this->roles->method('getPermissions')->with(2)->willReturn(['photos.view']);
         $this->storeUsers->expects($this->never())->method('findMembership');
 
         $request = $this->makeRequest('daily_reports.delete', ['id' => 10], null, ['id' => '1']);

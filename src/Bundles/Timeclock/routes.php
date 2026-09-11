@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use kintai\Core\Middleware\AuthMiddleware;
-use kintai\Core\Middleware\AdminMiddleware;
 use kintai\Core\Middleware\ApiAuthMiddleware;
 use kintai\Core\Middleware\ApiPermissionMiddleware;
 use kintai\Core\Middleware\PermissionMiddleware;
@@ -32,7 +31,7 @@ $router->group('/admin', function ($r) {
     $r->get('/timeclocks',              [AdminTimeclockController::class, 'timeclocks'],       name: 'admin.timeclocks', permission: 'timeclock.view');
     $r->post('/timeclocks/{id}/edit',   [AdminTimeclockController::class, 'timeclocksEdit'],   name: 'admin.timeclocks.edit', permission: 'timeclock.update');
     $r->post('/timeclocks/{id}/delete', [AdminTimeclockController::class, 'timeclocksDelete'], name: 'admin.timeclocks.delete', permission: 'timeclock.delete');
-}, middleware: [AuthMiddleware::class, AdminMiddleware::class, PermissionMiddleware::class]);
+}, middleware: [AuthMiddleware::class, PermissionMiddleware::class]);
 
 // =============================================================================
 // Timeclock — Routes API

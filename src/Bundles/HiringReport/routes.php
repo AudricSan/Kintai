@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use kintai\Core\Middleware\AuthMiddleware;
-use kintai\Core\Middleware\AdminMiddleware;
 use kintai\Core\Middleware\PermissionMiddleware;
 use kintai\Bundles\HiringReport\Controllers\Web\AdminHiringReportController;
 
@@ -26,4 +25,4 @@ $router->group('/admin', function ($r) {
     $r->post('/stores/{id}/reports/hiring/{rid}/delete', [AdminHiringReportController::class, 'deleteHiringReport'], name: 'admin.stores.hiring_reports.delete', permission: 'hiring_reports.delete');
     $r->get('/stores/{id}/reports/hiring/{rid}/pdf',    [AdminHiringReportController::class, 'hiringReportPdf'],    name: 'admin.stores.hiring_reports.pdf', permission: 'hiring_reports.view');
     $r->get('/stores/{id}/reports/hiring/{rid}/pdf/download', [AdminHiringReportController::class, 'hiringReportPdfDownload'], name: 'admin.stores.hiring_reports.pdf_download', permission: 'hiring_reports.view');
-}, middleware: [AuthMiddleware::class, AdminMiddleware::class, PermissionMiddleware::class]);
+}, middleware: [AuthMiddleware::class, PermissionMiddleware::class]);

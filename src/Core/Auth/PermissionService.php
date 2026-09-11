@@ -90,6 +90,39 @@ final class PermissionService
         ));
     }
 
+    /**
+     * Stores pour lesquels l'utilisateur détient, via une affectation de portée 'store',
+     * un rôle accordant N'IMPORTE QUELLE permission RBAC (peu importe laquelle) — porte
+     * d'entrée grossière utilisée par PermissionMiddleware pour les routes 'public'/sans
+     * permission précise déclarée (self-service, agrégats), en remplacement de l'ancien
+     * AdminMiddleware séparé (fusionné en RBAC-V2). Contrairement à
+     * AuthService::managedStoreIds() (qui relit l'utilisateur depuis la session PHP),
+     * cette méthode opère directement sur le tableau $authUser déjà résolu par le
+     * pipeline de requête — cohérent avec can()/scopedStoreIds() ci-dessus.
+     * @return int[]
+     */
+    public function anyGrantedStoreIds(array $authUser): array
+    {
+        $userId = (int) ($authUser['id'] ?? 0);
+        if ($userId <= 0) {
+            return [];
+        }
+        $storeIds = [];
+        foreach ($this->assignments->findByUser($userId) as $assignment) {
+            if ($assignment['scope_type'] !== 'store' || $assignment['scope_id'] === null) {
+                continue;
+            }
+            $role = $this->role((int) $assignment['role_id']);
+            if ($role === null) {
+                continue;
+            }
+            if (!empty($role['is_system']) || $this->roles->getPermissions((int) $assignment['role_id']) !== []) {
+                $storeIds[] = (int) $assignment['scope_id'];
+            }
+        }
+        return array_values(array_unique($storeIds));
+    }
+
     private function matchesScope(array $assignment, ?int $storeId): bool
     {
         if ($storeId === null) {
