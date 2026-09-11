@@ -23,7 +23,6 @@ final class OwnerSettingsController
     /** GET /admin/owner-settings */
     public function show(Request $request): Response
     {
-        $this->requireOwner($request);
 
         return Response::html($this->view->render('system.owner-settings', [
             'title'    => __('owner_settings'),
@@ -43,7 +42,6 @@ final class OwnerSettingsController
     /** POST /admin/owner-settings */
     public function save(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $subtitle     = substr(trim((string) $request->post('app_subtitle', '')), 0, 100);
         $loginNotice  = substr(trim((string) $request->post('app_login_notice', '')), 0, 300);
@@ -91,15 +89,4 @@ final class OwnerSettingsController
 
         return Response::redirect($this->base() . '/admin/owner-settings?success=1');
     }
-
-    private function requireOwner(Request $request): void
-    {
-        $user = $request->getAttribute('auth_user');
-        if (empty($user['is_admin'])) {
-            header('Location: ' . $this->base() . '/');
-            exit;
-        }
-    }
-
-
 }

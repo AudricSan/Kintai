@@ -35,7 +35,6 @@ final class AppResetController
     /** POST /admin/reset/prepare */
     public function prepare(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $mode = (string) $request->post('mode', 'data');
         if (!in_array($mode, self::MODES, true)) {
@@ -57,7 +56,6 @@ final class AppResetController
     /** POST /admin/reset/execute */
     public function execute(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $mode = (string) $request->post('mode', 'data');
         if (!in_array($mode, self::MODES, true)) {
@@ -111,13 +109,5 @@ final class AppResetController
             $keep === [] ? '(rien)' : implode(',', $keep)
         );
         @file_put_contents($logDir . '/reset.log', $entry, FILE_APPEND | LOCK_EX);
-    }
-
-    private function requireOwner(Request $request): void
-    {
-        $user = $request->getAttribute('auth_user');
-        if (empty($user['is_admin'])) {
-            throw new ForbiddenException('Réservé au propriétaire.');
-        }
     }
 }
