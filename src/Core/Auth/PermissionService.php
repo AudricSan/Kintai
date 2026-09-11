@@ -66,6 +66,30 @@ final class PermissionService
         return array_values(array_unique($storeIds));
     }
 
+    /**
+     * Filtre $items aux seuls éléments dont le store est couvert par $permissionKey
+     * pour cet utilisateur — défense en profondeur pour les endpoints API qui listent
+     * une ressource par un identifiant autre que store_id (user_id, shift_id...) : dans
+     * ce cas ApiPermissionMiddleware ne peut pas borner la portée en amont (le store_id
+     * réel n'est connu qu'après lecture des lignes), donc le contrôleur doit refiltrer
+     * lui-même après coup. Portée globale (rôle système, ou rôle custom affecté en
+     * portée globale) = aucun filtrage.
+     * @param array<int, array<string,mixed>> $items
+     * @return array<int, array<string,mixed>>
+     */
+    public function restrictToScope(array $authUser, string $permissionKey, array $items, string $storeField = 'store_id'): array
+    {
+        $userId   = (int) ($authUser['id'] ?? 0);
+        $storeIds = $this->scopedStoreIds($userId, $permissionKey);
+        if ($storeIds === [] && $this->can($authUser, $permissionKey, null)) {
+            return $items;
+        }
+        return array_values(array_filter(
+            $items,
+            fn(array $item): bool => in_array((int) ($item[$storeField] ?? 0), $storeIds, true)
+        ));
+    }
+
     private function matchesScope(array $assignment, ?int $storeId): bool
     {
         if ($storeId === null) {
