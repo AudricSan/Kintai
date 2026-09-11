@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Controller;
 
 use kintai\Core\Container;
-use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Repositories\LanguageRepositoryInterface;
 use kintai\Core\Repositories\TranslationRepositoryInterface;
 use kintai\Core\Request;
@@ -227,12 +226,6 @@ final class DocsControllerTest extends TestCase
     // sync() — inchangé, réservé au propriétaire
     // -------------------------------------------------------------------------
 
-    public function testSyncRejectsNonOwner(): void
-    {
-        $req = new Request();
-        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => 0]);
-
-        $this->expectException(ForbiddenException::class);
-        $this->controller('fr')->sync($req);
-    }
+    // Le rejet non-Owner est désormais couvert par OwnerOnlyMiddlewareTest
+    // (route-level, RBAC-V2) — le contrôleur ne se garde plus lui-même.
 }

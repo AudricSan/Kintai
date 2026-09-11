@@ -29,7 +29,6 @@ final class BundleSettingsController
     /** GET /admin/bundles */
     public function show(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $official = $this->officialBundleSlugs();
         $bundles = [];
@@ -53,7 +52,6 @@ final class BundleSettingsController
     /** POST /admin/bundles */
     public function save(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $discoveredSlugs = array_keys($this->discovery->discover());
 
@@ -87,14 +85,5 @@ final class BundleSettingsController
     {
         $path = BASE_PATH . '/config/official-bundles.php';
         return file_exists($path) ? (require $path) : [];
-    }
-
-    private function requireOwner(Request $request): void
-    {
-        $user = $request->getAttribute('auth_user');
-        if (empty($user['is_admin'])) {
-            header('Location: ' . $this->base() . '/');
-            exit;
-        }
     }
 }

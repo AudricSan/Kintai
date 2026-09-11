@@ -32,6 +32,7 @@ use kintai\UI\Controller\Web\System\LanguageController;
 use kintai\UI\Controller\Web\System\MailTestController;
 use kintai\UI\Controller\Web\System\OwnerSettingsController;
 use kintai\Core\Middleware\AuthMiddleware;
+use kintai\Core\Middleware\OwnerOnlyMiddleware;
 use kintai\Core\Middleware\PermissionMiddleware;
 use kintai\Core\Middleware\ApiAuthMiddleware;
 use kintai\Core\Middleware\ApiPermissionMiddleware;
@@ -104,7 +105,7 @@ $router->group('/notifications', function ($r) {
 
 // --- Documentation ---
 $router->get('/docs', [DocsController::class, 'index'], middleware: [AuthMiddleware::class], name: 'docs.index');
-$router->post('/docs/sync', [DocsController::class, 'sync'], middleware: [AuthMiddleware::class], name: 'docs.sync');
+$router->post('/docs/sync', [DocsController::class, 'sync'], middleware: [AuthMiddleware::class, OwnerOnlyMiddleware::class], name: 'docs.sync');
 $router->get('/docs/{lang}/{page}', [DocsController::class, 'show'], middleware: [AuthMiddleware::class], name: 'docs.show');
 
 $router->group('/employee', function ($r) {
@@ -157,8 +158,8 @@ $router->post('/admin/dashboard/widgets', [HomeController::class, 'saveDashboard
 $router->group('/admin', function ($r) {
 
     // Configuration organisation
-    $r->get('/owner-settings',  [OwnerSettingsController::class, 'show'], name: 'admin.owner_settings', permission: 'public');
-    $r->post('/owner-settings', [OwnerSettingsController::class, 'save'], name: 'admin.owner_settings.save', permission: 'public');
+    $r->get('/owner-settings',  [OwnerSettingsController::class, 'show'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.owner_settings', permission: 'public');
+    $r->post('/owner-settings', [OwnerSettingsController::class, 'save'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.owner_settings.save', permission: 'public');
 
     // Navigation
     $r->get('/nav-settings',  [AdminController::class, 'navSettings'],     name: 'admin.nav_settings', permission: 'public');
@@ -253,51 +254,51 @@ $router->group('/admin', function ($r) {
     // Feedbacks : voir src/Bundles/Feedback/routes.php
 
     // Diagnostic mail
-    $r->get('/mail-test',  [MailTestController::class, 'show'], name: 'admin.mail_test', permission: 'public');
-    $r->post('/mail-test', [MailTestController::class, 'send'], name: 'admin.mail_test.send', permission: 'public');
+    $r->get('/mail-test',  [MailTestController::class, 'show'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.mail_test', permission: 'public');
+    $r->post('/mail-test', [MailTestController::class, 'send'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.mail_test.send', permission: 'public');
 
     // Sauvegardes
-    $r->get('/backup',               [BackupController::class, 'index'],  name: 'admin.backup', permission: 'public');
-    $r->get('/backup/download',      [BackupController::class, 'download'], name: 'admin.backup.download', permission: 'public');
-    $r->post('/backup/create',       [BackupController::class, 'create'], name: 'admin.backup.create', permission: 'public');
-    $r->post('/backup/restore',      [BackupController::class, 'restore'], name: 'admin.backup.restore', permission: 'public');
-    $r->post('/backup/delete',       [BackupController::class, 'delete'], name: 'admin.backup.delete', permission: 'public');
-    $r->post('/backup/delete-all',   [BackupController::class, 'deleteAll'], name: 'admin.backup.delete_all', permission: 'public');
+    $r->get('/backup',               [BackupController::class, 'index'],  middleware: [OwnerOnlyMiddleware::class], name: 'admin.backup', permission: 'public');
+    $r->get('/backup/download',      [BackupController::class, 'download'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.backup.download', permission: 'public');
+    $r->post('/backup/create',       [BackupController::class, 'create'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.backup.create', permission: 'public');
+    $r->post('/backup/restore',      [BackupController::class, 'restore'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.backup.restore', permission: 'public');
+    $r->post('/backup/delete',       [BackupController::class, 'delete'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.backup.delete', permission: 'public');
+    $r->post('/backup/delete-all',   [BackupController::class, 'deleteAll'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.backup.delete_all', permission: 'public');
 
     // Réinitialisation de l'application ("danger zone")
-    $r->post('/reset/prepare', [AppResetController::class, 'prepare'], name: 'admin.reset.prepare', permission: 'public');
-    $r->post('/reset/execute', [AppResetController::class, 'execute'], name: 'admin.reset.execute', permission: 'public');
+    $r->post('/reset/prepare', [AppResetController::class, 'prepare'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.reset.prepare', permission: 'public');
+    $r->post('/reset/execute', [AppResetController::class, 'execute'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.reset.execute', permission: 'public');
 
     // Mises à jour
-    $r->get('/update',               [BackupController::class, 'updatePage'], name: 'admin.update', permission: 'public');
-    $r->post('/update/apply',        [BackupController::class, 'update'], name: 'admin.update.apply', permission: 'public');
-    $r->post('/update/stream',       [BackupController::class, 'updateStream'], name: 'admin.update.stream', permission: 'public');
-    $r->post('/update/migrate',      [BackupController::class, 'migrate'], name: 'admin.update.migrate', permission: 'public');
-    $r->post('/update/channel',      [BackupController::class, 'saveChannel'], name: 'admin.update.channel', permission: 'public');
+    $r->get('/update',               [BackupController::class, 'updatePage'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.update', permission: 'public');
+    $r->post('/update/apply',        [BackupController::class, 'update'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.update.apply', permission: 'public');
+    $r->post('/update/stream',       [BackupController::class, 'updateStream'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.update.stream', permission: 'public');
+    $r->post('/update/migrate',      [BackupController::class, 'migrate'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.update.migrate', permission: 'public');
+    $r->post('/update/channel',      [BackupController::class, 'saveChannel'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.update.channel', permission: 'public');
 
     // Photos : voir src/Bundles/StorePhoto/routes.php
 
     // Langues & traductions (Owner uniquement)
-    $r->get('/languages',                       [LanguageController::class, 'index'],        name: 'admin.languages', permission: 'public');
-    $r->post('/languages',                      [LanguageController::class, 'store'],        name: 'admin.languages.store', permission: 'public');
-    $r->post('/languages/{code}/default',       [LanguageController::class, 'setDefault'],   name: 'admin.languages.set_default', permission: 'public');
-    $r->post('/languages/{code}/toggle-active', [LanguageController::class, 'toggleActive'], name: 'admin.languages.toggle_active', permission: 'public');
-    $r->post('/languages/{code}/delete',        [LanguageController::class, 'destroy'],      name: 'admin.languages.delete', permission: 'public');
-    $r->get('/languages/{code}/edit',           [LanguageController::class, 'edit'],         name: 'admin.languages.edit', permission: 'public');
-    $r->post('/languages/{code}/edit/save',     [LanguageController::class, 'saveKey'],      name: 'admin.languages.edit.save', permission: 'public');
-    $r->post('/languages/{code}/edit/delete',   [LanguageController::class, 'deleteKey'],    name: 'admin.languages.edit.delete', permission: 'public');
+    $r->get('/languages',                       [LanguageController::class, 'index'],        middleware: [OwnerOnlyMiddleware::class], name: 'admin.languages', permission: 'public');
+    $r->post('/languages',                      [LanguageController::class, 'store'],        middleware: [OwnerOnlyMiddleware::class], name: 'admin.languages.store', permission: 'public');
+    $r->post('/languages/{code}/default',       [LanguageController::class, 'setDefault'],   middleware: [OwnerOnlyMiddleware::class], name: 'admin.languages.set_default', permission: 'public');
+    $r->post('/languages/{code}/toggle-active', [LanguageController::class, 'toggleActive'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.languages.toggle_active', permission: 'public');
+    $r->post('/languages/{code}/delete',        [LanguageController::class, 'destroy'],      middleware: [OwnerOnlyMiddleware::class], name: 'admin.languages.delete', permission: 'public');
+    $r->get('/languages/{code}/edit',           [LanguageController::class, 'edit'],         middleware: [OwnerOnlyMiddleware::class], name: 'admin.languages.edit', permission: 'public');
+    $r->post('/languages/{code}/edit/save',     [LanguageController::class, 'saveKey'],      middleware: [OwnerOnlyMiddleware::class], name: 'admin.languages.edit.save', permission: 'public');
+    $r->post('/languages/{code}/edit/delete',   [LanguageController::class, 'deleteKey'],    middleware: [OwnerOnlyMiddleware::class], name: 'admin.languages.edit.delete', permission: 'public');
 
     // Bundles (Owner uniquement)
-    $r->get('/bundles',  [BundleSettingsController::class, 'show'], name: 'admin.bundles', permission: 'public');
-    $r->post('/bundles', [BundleSettingsController::class, 'save'], name: 'admin.bundles.save', permission: 'public');
+    $r->get('/bundles',  [BundleSettingsController::class, 'show'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles', permission: 'public');
+    $r->post('/bundles', [BundleSettingsController::class, 'save'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.save', permission: 'public');
 
     // Rôles & permissions (Owner uniquement) — voir task/mermission.md
-    $r->get('/roles',              [AdminRoleController::class, 'roles'],      name: 'admin.roles', permission: 'public');
-    $r->get('/roles/create',       [AdminRoleController::class, 'createRole'], name: 'admin.roles.create', permission: 'public');
-    $r->post('/roles/create',      [AdminRoleController::class, 'storeRole'],  name: 'admin.roles.store', permission: 'public');
-    $r->get('/roles/{id}/edit',    [AdminRoleController::class, 'editRole'],   name: 'admin.roles.edit', permission: 'public');
-    $r->post('/roles/{id}/edit',   [AdminRoleController::class, 'updateRole'], name: 'admin.roles.update', permission: 'public');
-    $r->post('/roles/{id}/delete', [AdminRoleController::class, 'deleteRole'], name: 'admin.roles.delete', permission: 'public');
+    $r->get('/roles',              [AdminRoleController::class, 'roles'],      middleware: [OwnerOnlyMiddleware::class], name: 'admin.roles', permission: 'public');
+    $r->get('/roles/create',       [AdminRoleController::class, 'createRole'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.roles.create', permission: 'public');
+    $r->post('/roles/create',      [AdminRoleController::class, 'storeRole'],  middleware: [OwnerOnlyMiddleware::class], name: 'admin.roles.store', permission: 'public');
+    $r->get('/roles/{id}/edit',    [AdminRoleController::class, 'editRole'],   middleware: [OwnerOnlyMiddleware::class], name: 'admin.roles.edit', permission: 'public');
+    $r->post('/roles/{id}/edit',   [AdminRoleController::class, 'updateRole'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.roles.update', permission: 'public');
+    $r->post('/roles/{id}/delete', [AdminRoleController::class, 'deleteRole'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.roles.delete', permission: 'public');
 
 }, middleware: [AuthMiddleware::class, PermissionMiddleware::class]);
 
