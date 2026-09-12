@@ -7,6 +7,7 @@ All notable changes to Kintai are documented here.
 ## [Unreleased]
 
 ### Added
+- Owner settings — a new "Appearance" card lets the Owner pick the app's primary color (buttons, active links), defaulting to Foxy the mascot's orange (`#ff9f4a`) instead of the previous hardcoded violet. `PrimaryColorPalette` derives the full set of hover/tint/dark-mode variants from that single color and injects them as inline CSS custom properties on `<html>`, so the light/dark theme toggle keeps working unchanged.
 - Foxy, the Kintai mascot, now illustrates the error pages (403/404/405/422/500/503) and the in-app documentation (wiki sidebar and the "not cloned locally" placeholder) — one pose per context (thinking for 404, startled for 403, sleeping for 503, disappointed for 500, etc.), cropped and made transparent from the original character sheet (kept for reference under `docs/brand/foxy-style-guide.png`).
 - Foxy also now waves hello on every guest page (login, forgot/reset password) and illustrates every generic empty state (`.empty-state`, ~25 spots app-wide) with a default "empty box" pose, swapped for a bell on the notifications page specifically — re-exported the 403/405/422/500/503/docs poses from a newer, more complete reference sheet (`docs/brand/foxy_pose.png`, 24 poses) so Foxy consistently carries its little "K" bag across all of them. See `docs/brand/mascot.md` for the full pose inventory and what's still available to wire up.
 

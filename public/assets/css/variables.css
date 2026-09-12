@@ -6,13 +6,22 @@
 
 :root {
     /* ── Couleurs primaires ──────────────────────── */
-    /* Violet unique : contrairement à l'ambre de la direction "Rail", cette
+    /* Violet par défaut : contrairement à l'ambre de la direction "Rail", cette
        teinte fonctionne aussi bien en texte/lien qu'en fond de bouton plein
-       (pas besoin d'un token de contraste séparé). */
-    --color-primary:        #6c5ce7;
-    --color-primary-hover:  #5b4bd6;
-    --color-primary-light:  #edebfc;
-    --color-primary-lighter:#f5f3fe;
+       (pas besoin d'un token de contraste séparé).
+       Indirection via --light-primary-* et --dark-primary-* : PrimaryColorPalette
+       (Owner > Paramètres) surcharge ces tokens en style inline sur <html>
+       sans toucher --color-primary* directement, pour ne pas casser la
+       bascule clair/sombre ci-dessous. */
+    --light-primary:         #6c5ce7;
+    --light-primary-hover:   #5b4bd6;
+    --light-primary-light:   #edebfc;
+    --light-primary-lighter: #f5f3fe;
+
+    --color-primary:         var(--light-primary);
+    --color-primary-hover:   var(--light-primary-hover);
+    --color-primary-light:   var(--light-primary-light);
+    --color-primary-lighter: var(--light-primary-lighter);
 
     /* ── Couleurs sémantiques ────────────────────── */
     --color-success:        #1fae6b;
@@ -37,7 +46,8 @@
     /* ── Couleurs sémantiques étendues ──────────── */
     --color-neutral:        #4b4864;   /* texte neutre (badges inactifs, états par défaut) */
     --color-admin-text:     #c2368c;   /* texte badge administrateur (rose — distinct du violet de marque) */
-    --color-primary-medium: #d6d0f7;   /* primaire intermédiaire (hover btn--secondary) */
+    --light-primary-medium: #d6d0f7;   /* primaire intermédiaire (hover btn--secondary) */
+    --color-primary-medium: var(--light-primary-medium);
     --color-success-border: #8fd9b6;   /* bordure alerte succès */
     --color-danger-border:  #f2a3a6;   /* bordure alerte danger */
     --color-warning-border: #ebc17e;   /* bordure alerte avertissement & conflits */
@@ -281,11 +291,11 @@ html[data-theme="light"] {
     --color-text-secondary:  #9a97ac;
     --color-border:          #e7e5f0;
     --color-border-light:    #f1eff8;
-    --color-primary:         #6c5ce7;
-    --color-primary-hover:   #5b4bd6;
-    --color-primary-light:   #edebfc;
-    --color-primary-lighter: #f5f3fe;
-    --color-primary-medium:  #d6d0f7;
+    --color-primary:         var(--light-primary);
+    --color-primary-hover:   var(--light-primary-hover);
+    --color-primary-light:   var(--light-primary-light);
+    --color-primary-lighter: var(--light-primary-lighter);
+    --color-primary-medium:  var(--light-primary-medium);
     --color-success:         #1fae6b;
     --color-success-hover:   #18925a;
     --color-success-light:   #e2f6ec;
