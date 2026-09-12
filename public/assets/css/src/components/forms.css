@@ -243,6 +243,102 @@ select.form-control {
     cursor: pointer;
 }
 
+.color-presets {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.color-preset {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid var(--color-border);
+    cursor: pointer;
+    padding: 0;
+}
+
+.color-preset:hover,
+.color-preset:focus-visible {
+    border-color: var(--color-text-secondary);
+}
+
+.color-preset.is-active {
+    border-color: var(--color-text);
+}
+
+.theme-dark-color {
+    margin-top: var(--space-2);
+    padding-left: var(--space-4);
+    border-left: 2px solid var(--color-border);
+}
+
+/* Grille de cartes compactes pour les 7 couleurs personnalisables — voir
+   feedback_card_grid_equal_height : grille fixe + stretch, jamais flex nu, dès que
+   2+ cartes sont côte à côte. Colonnes réduites en cascade dans responsive.css. */
+.theme-color-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-3);
+    align-items: stretch;
+}
+
+.theme-color-card {
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+}
+
+.theme-color-card .input-color {
+    margin-top: var(--space-1);
+}
+
+.theme-color-card__hint {
+    margin-top: var(--space-1);
+    margin-bottom: 0;
+}
+
+.theme-foxy-palette {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    margin-bottom: var(--space-4);
+    background: var(--color-bg-subtle);
+    border-radius: var(--radius);
+}
+
+.theme-foxy-palette__icon {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+}
+
+.theme-foxy-palette__title {
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0 0 var(--space-1);
+}
+
+/* Teintes fixes de la palette officielle de Foxy (docs/brand/foxy-style-guide.png) —
+   voir aussi ThemeColorPalette::DEFAULTS côté PHP, source de vérité de ces mêmes valeurs. */
+.theme-foxy-palette__swatch--fur       { background-color: #ff9f4a; }
+.theme-foxy-palette__swatch--nose      { background-color: #5b4a3a; }
+.theme-foxy-palette__swatch--belly     { background-color: #fff5e6; }
+.theme-foxy-palette__swatch--bag       { background-color: #4caf50; }
+.theme-foxy-palette__swatch--highlight { background-color: #dff5e1; }
+
+/* .input-group{display:flex} a la même spécificité que le [hidden] du UA stylesheet
+   et le déclare après lui dans la cascade : sans ce sélecteur plus spécifique, un
+   .theme-dark-color[hidden] reste visible malgré l'attribut. */
+.theme-dark-color[hidden] {
+    display: none;
+}
+
 .section-divider {
     border-top: 1px solid var(--color-border);
     padding-top: var(--space-4);
