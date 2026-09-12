@@ -50,7 +50,7 @@ echo Flash::fromQuery('error', [
 <div class="page-header">
     <h2 class="page-header__title"><?= $mode === 'edit' ? __('edit_user') : __('new_user') ?></h2>
     <div class="page-header__actions">
-        <a href="<?= route_url('admin.users') ?>" class="btn btn--ghost">← <?= __('back') ?></a>
+        <a href="<?= back_url(route_url('admin.users')) ?>" class="btn btn--ghost">← <?= __('back') ?></a>
     </div>
 </div>
 
@@ -278,7 +278,7 @@ endforeach;
             <?php foreach ($user_memberships as $m): ?>
                 <?php $sid = (int) $m['store_id']; ?>
                 <div class="btn-group mb-sm">
-                    <?php if ($can('documents.create')): ?>
+                    <?php if ($can('resignation_reports.create')): ?>
                     <a href="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/reports/resignation/create?user_id=<?= (int)$user['id'] ?>" class="btn btn--danger btn--sm"><?= __('resign') ?> — <?= htmlspecialchars($m['store_name'] ?? '') ?></a>
                     <?php endif; ?>
                     <?php if ($can('payroll.generate')): ?>
@@ -298,7 +298,7 @@ endforeach;
     <?php if ($canEditUser): ?>
     <?= Button::make($mode === 'edit' ? __('save') : __('new_user'))->primary()->submit()->attrs(['form' => 'userEditForm'])->render() ?>
     <?php endif; ?>
-    <a href="<?= route_url('admin.users') ?>" class="btn btn--ghost"><?= __('cancel') ?></a>
+    <a href="<?= back_url(route_url('admin.users')) ?>" class="btn btn--ghost"><?= __('cancel') ?></a>
     <?php if ($mode === 'edit' && $canEditUser): ?>
     <span class="autosave-status" data-autosave-status
           data-saving-label="<?= htmlspecialchars(__('autosave_saving')) ?>"

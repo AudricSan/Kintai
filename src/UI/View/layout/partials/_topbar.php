@@ -5,7 +5,7 @@ $onCalendar       = str_starts_with($path, '/admin/shifts/calendar');
 $ico              = fn(string $k): string => '<span class="topbar-nav-group__link-icon">' . $svgIcon($k) . '</span>';
 ?>
 <header class="topbar">
-    <a href="<?= route_url('home') ?>" class="topbar-brand"><span class="topbar-brand__dot"></span>Kintai<?php if (!empty($app_subtitle)): ?><span class="topbar-brand__subtitle"><?= htmlspecialchars($app_subtitle, ENT_QUOTES) ?></span><?php endif; ?></a>
+    <a href="<?= route_url('home') ?>" class="topbar-brand"><img src="<?= $BASE_URL ?>/assets/img/mascot/brand-icon.png" alt="" class="topbar-brand__icon">Kintai<?php if (!empty($app_subtitle)): ?><span class="topbar-brand__subtitle"><?= htmlspecialchars($app_subtitle, ENT_QUOTES) ?></span><?php endif; ?></a>
 
     <button type="button" class="topbar-nav-toggle" id="topbarNavToggle" aria-label="Menu" aria-expanded="false">☰</button>
 
@@ -126,9 +126,10 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
         <?php elseif ($showAdminMenu): ?>
             <?php
             $navHide = fn(string $k): bool => in_array($k, (array)($user_nav_hidden ?? []), true);
-            // Permissions fines RBAC (partagé par PermissionMiddleware) — absent
-            // sur les pages hors /admin : tout est visible par défaut.
-            $can = $user_can ?? fn(string $k): bool => true;
+            // Visibilité pilotée par la permission réellement déclarée sur la route
+            // (route_visible, RBAC-V2) plutôt qu'une clé recopiée à la main à côté du
+            // lien — absent sur les pages hors /admin : tout est visible par défaut.
+            $routeVisible = $route_visible ?? fn(string $r): bool => true;
             $_defSec = ['planning', 'hr', 'requests', 'statistics'];
             $_rawOrd = (array)($user_nav_section_order ?? []);
             $_secOrd = array_values(array_unique(array_merge(
@@ -143,8 +144,8 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
 
             <?php foreach ($_secOrd as $_sec): switch ($_sec):
                     case 'planning': ?>
-                        <?php $_canShifts = $feat('shifts') && $can('shifts.view'); ?>
-                        <?php $_canTimeclock = $feat('timeclock') && $can('timeclock.view'); ?>
+                        <?php $_canShifts = $feat('shifts') && $routeVisible('admin.shifts.timeline'); ?>
+                        <?php $_canTimeclock = $feat('timeclock') && $routeVisible('admin.timeclocks'); ?>
                         <?php if (($_canShifts && !$navHide('shifts')) || ($_canShifts && !$navHide('calendar')) || ($_canShifts && !$navHide('shift_types')) || ($_canTimeclock && !$navHide('timeclocks'))): ?>
                             <div class="topbar-nav-group<?= ($onShifts || $onCalendar || str_starts_with($path, '/admin/shift-types') || str_starts_with($path, '/admin/timeclocks')) ? ' topbar-nav-group--active' : '' ?>">
                                 <button type="button" class="topbar-nav-group__trigger"><?= __('planning') ?> <span class="topbar-nav-group__caret">▾</span></button>
@@ -166,14 +167,14 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
                         <?php endif; ?>
                     <?php break;
                     case 'hr': ?>
-                        <?php if (($can('employees.view') && !$navHide('users')) || ($can('stores.view') && !$navHide('stores'))): ?>
+                        <?php if (($routeVisible('admin.users') && !$navHide('users')) || ($routeVisible('admin.stores') && !$navHide('stores'))): ?>
                             <div class="topbar-nav-group<?= (str_starts_with($path, '/admin/users') || str_starts_with($path, '/admin/stores')) ? ' topbar-nav-group--active' : '' ?>">
                                 <button type="button" class="topbar-nav-group__trigger"><?= __('hr') ?> <span class="topbar-nav-group__caret">▾</span></button>
                                 <div class="topbar-nav-group__panel">
-                                    <?php if ($can('employees.view') && !$navHide('users')): ?>
+                                    <?php if ($routeVisible('admin.users') && !$navHide('users')): ?>
                                         <a href="<?= route_url('admin.users') ?>" class="topbar-nav-group__link<?= str_starts_with($path, '/admin/users') ? ' topbar-nav-group__link--active' : '' ?>"><?= $ico('users') ?><?= __('staff') ?></a>
                                     <?php endif; ?>
-                                    <?php if ($can('stores.view') && !$navHide('stores')): ?>
+                                    <?php if ($routeVisible('admin.stores') && !$navHide('stores')): ?>
                                         <a href="<?= route_url('admin.stores') ?>" class="topbar-nav-group__link<?= str_starts_with($path, '/admin/stores') ? ' topbar-nav-group__link--active' : '' ?>"><?= $ico('store') ?><?= __('stores') ?></a>
                                     <?php endif; ?>
                                 </div>
@@ -182,11 +183,12 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
                     <?php break;
                     case 'requests': ?>
                         <?php
-                        $_canTimeoff    = $feat('timeoff') && $can('timeoff.view');
-                        $_canSwaps      = $feat('swaps') && $can('swaps.view');
-                        $_canOpenShifts = $feat('open_shifts') && $can('open_shifts.view');
+                        $_canTimeoff    = $feat('timeoff') && $routeVisible('admin.timeoff');
+                        $_canSwaps      = $feat('swaps') && $routeVisible('admin.swap_requests');
+                        $_canOpenShifts = $feat('open_shifts') && $routeVisible('admin.open_shifts');
+                        $_canMessages   = $feat('messages') && $routeVisible('admin.messages');
                         ?>
-                        <?php if (($_canTimeoff && !$navHide('timeoff')) || ($_canSwaps && !$navHide('swaps')) || ($_canOpenShifts && !$navHide('open_shifts')) || ($feat('messages') && !$navHide('messages'))): ?>
+                        <?php if (($_canTimeoff && !$navHide('timeoff')) || ($_canSwaps && !$navHide('swaps')) || ($_canOpenShifts && !$navHide('open_shifts')) || ($_canMessages && !$navHide('messages'))): ?>
                             <div class="topbar-nav-group<?= (str_starts_with($path, '/admin/timeoff') || str_starts_with($path, '/admin/swap-requests') || str_starts_with($path, '/admin/open-shifts') || str_starts_with($path, '/admin/messages')) ? ' topbar-nav-group--active' : '' ?>">
                                 <button type="button" class="topbar-nav-group__trigger"><?= __('requests') ?> <span class="topbar-nav-group__caret">▾</span></button>
                                 <div class="topbar-nav-group__panel">
@@ -199,7 +201,7 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
                                     <?php if ($_canOpenShifts && !$navHide('open_shifts')): ?>
                                         <a href="<?= route_url('admin.open_shifts') ?>" class="topbar-nav-group__link<?= str_starts_with($path, '/admin/open-shifts') ? ' topbar-nav-group__link--active' : '' ?>"><?= $ico('plus') ?><?= __('open_shifts') ?></a>
                                     <?php endif; ?>
-                                    <?php if ($feat('messages') && !$navHide('messages')): ?>
+                                    <?php if ($_canMessages && !$navHide('messages')): ?>
                                         <a href="<?= route_url('admin.messages') ?>" class="topbar-nav-group__link<?= str_starts_with($path, '/admin/messages') ? ' topbar-nav-group__link--active' : '' ?>">
                                             <?= $ico('message') ?><?= __('messages') ?>
                                             <?php if (($unread_messages_count ?? 0) > 0): ?><span class="nav-badge"><?= (int) $unread_messages_count ?></span><?php endif; ?>
@@ -211,22 +213,24 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
                     <?php break;
                     case 'statistics': ?>
                         <?php
-                        $_canHiring      = bundle_enabled('hiring-report') && $can('documents.view');
-                        $_canResignation = bundle_enabled('resignation-report') && $can('documents.view');
-                        $_canSalary      = bundle_enabled('salary-report') && $can('payroll.view');
-                        $_canPhotos      = $feat('photos') && $can('documents.view');
+                        $_canHiring         = bundle_enabled('hiring-report') && $routeVisible('admin.reports.hiring');
+                        $_canResignation    = bundle_enabled('resignation-report') && $routeVisible('admin.reports.resignation');
+                        $_canSalary         = bundle_enabled('salary-report') && $routeVisible('admin.reports.salary');
+                        $_canPhotos         = $feat('photos') && $routeVisible('admin.photos.index');
+                        $_canEmployeeReport = $routeVisible('admin.stores.employee_report');
+                        $_canDailyReports   = $feat('daily_reports') && $routeVisible('admin.daily_reports.all');
                         ?>
-                        <?php if ($_canHiring || ($can('payroll.view') && !$navHide('employee_report')) || ($feat('daily_reports') && !$navHide('daily_reports')) || ($_canResignation && !$navHide('resignation_report')) || ($_canSalary && !$navHide('salary_report')) || ($_canPhotos && !$navHide('photos'))): ?>
+                        <?php if ($_canHiring || ($_canEmployeeReport && !$navHide('employee_report')) || ($_canDailyReports && !$navHide('daily_reports')) || ($_canResignation && !$navHide('resignation_report')) || ($_canSalary && !$navHide('salary_report')) || ($_canPhotos && !$navHide('photos'))): ?>
                             <div class="topbar-nav-group<?= (str_contains($path, '/reports/') || str_contains($path, '/employee-report') || str_contains($path, '/daily-reports') || str_contains($path, '/admin/photos')) ? ' topbar-nav-group--active' : '' ?>">
                                 <button type="button" class="topbar-nav-group__trigger"><?= __('reports') ?> <span class="topbar-nav-group__caret">▾</span></button>
                                 <div class="topbar-nav-group__panel">
                                     <?php if ($_canHiring && !$navHide('hiring_report')): ?>
                                         <a href="<?= route_url('admin.reports.hiring') ?>" class="topbar-nav-group__link<?= str_contains($path, '/reports/hiring') ? ' topbar-nav-group__link--active' : '' ?>"><?= $ico('person') ?><?= __('hiring_reports') ?></a>
                                     <?php endif; ?>
-                                    <?php if ($can('payroll.view') && !$navHide('employee_report')): ?>
+                                    <?php if ($_canEmployeeReport && !$navHide('employee_report')): ?>
                                         <a href="<?= $reportHref ?>" class="topbar-nav-group__link<?= str_contains($path, '/employee-report') ? ' topbar-nav-group__link--active' : '' ?>"><?= $ico('chart') ?><?= __('employee_report') ?></a>
                                     <?php endif; ?>
-                                    <?php if ($feat('daily_reports') && !$navHide('daily_reports')): ?>
+                                    <?php if ($_canDailyReports && !$navHide('daily_reports')): ?>
                                         <a href="<?= route_url('admin.daily_reports.all') ?>" class="topbar-nav-group__link<?= str_contains($path, '/daily-reports') ? ' topbar-nav-group__link--active' : '' ?>"><?= $ico('chart') ?><?= __('daily_reports') ?></a>
                                     <?php endif; ?>
                                     <?php if ($_canResignation && !$navHide('resignation_report')): ?>

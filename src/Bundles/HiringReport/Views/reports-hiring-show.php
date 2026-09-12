@@ -13,7 +13,7 @@ $base = $BASE_URL . '/admin/stores/' . $storeId . '/reports/hiring';
 <div class="page-header">
     <h2 class="page-header__title"><?= __('hiring_report') ?> — <?= htmlspecialchars($report['employee_name'] ?? '') ?></h2>
     <div class="page-header__actions">
-        <?= Button::make('← ' . __('back'))->ghost()->sm()->link($base)->render() ?>
+        <?= Button::make('← ' . __('back'))->ghost()->sm()->link(back_url($base))->render() ?>
         <?= Button::make(__('edit'))->primary()->sm()->link($base . '/' . $reportId . '/edit')->render() ?>
         <?= Button::make('PDF')->ghost()->sm()->link($base . '/' . $reportId . '/pdf')->attrs(['target' => '_blank'])->render() ?>
         <form method="POST" action="<?= htmlspecialchars($base . '/' . $reportId . '/delete') ?>" class="form-inline" data-confirm="<?= htmlspecialchars(__('confirm_delete_hiring_report'), ENT_QUOTES) ?>">

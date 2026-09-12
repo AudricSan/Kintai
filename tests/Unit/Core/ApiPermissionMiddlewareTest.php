@@ -38,12 +38,13 @@ final class ApiPermissionMiddlewareTest extends TestCase
         $_POST = [];
     }
 
-    private function makeRequest(?string $routeName, int $authUserId, array $routeParams = [], array $query = [], array $post = []): Request
+    /** @param string|array|null $permission Règle telle que déclarée par Route::$permission. */
+    private function makeRequest(string|array|null $permission, int $authUserId, array $routeParams = [], array $query = [], array $post = []): Request
     {
         $_GET  = $query;
         $_POST = $post;
         $request = new Request();
-        $request->setAttribute('route_name', $routeName);
+        $request->setAttribute('route_permission', $permission);
         $request->setAttribute('auth_user', ['id' => $authUserId]);
         $request->setRouteParams($routeParams);
         return $request;
@@ -63,10 +64,19 @@ final class ApiPermissionMiddlewareTest extends TestCase
         $this->roles->method('getPermissions')->with($roleId)->willReturn($permissions);
     }
 
-    public function testUnmappedRoutePassesThrough(): void
+    public function testRouteWithoutPermissionDeclaredPassesThrough(): void
     {
-        // auth.me = opération du porteur du token, volontairement non mappée
-        $request = $this->makeRequest('api.v1.auth.me', 10);
+        // Ex. auth.me = opération du porteur du token, volontairement sans permission.
+        $request = $this->makeRequest(null, 10);
+
+        $this->assertSame(200, $this->middleware->handle($request, $this->next())->status());
+    }
+
+    public function testPublicRoutePassesThroughWithoutConsultingRoles(): void
+    {
+        $this->assignments->expects($this->never())->method('findByUser');
+
+        $request = $this->makeRequest('public', 10);
 
         $this->assertSame(200, $this->middleware->handle($request, $this->next())->status());
     }
@@ -75,7 +85,7 @@ final class ApiPermissionMiddlewareTest extends TestCase
     {
         $this->assignments->method('findByUser')->willReturn([]);
 
-        $request  = $this->makeRequest('api.v1.users.index', 10);
+        $request  = $this->makeRequest('employees.view', 10);
         $response = $this->middleware->handle($request, $this->next());
 
         $this->assertSame(403, $response->status());
@@ -86,7 +96,7 @@ final class ApiPermissionMiddlewareTest extends TestCase
     {
         $this->grantStoreRole(10, 2, 1, ['employees.view']);
 
-        $request = $this->makeRequest('api.v1.users.index', 10);
+        $request = $this->makeRequest('employees.view', 10);
 
         $this->assertSame(200, $this->middleware->handle($request, $this->next())->status());
     }
@@ -96,7 +106,7 @@ final class ApiPermissionMiddlewareTest extends TestCase
         // employees.view accordé sur le store 1 seulement → membres du store 2 refusés
         $this->grantStoreRole(10, 2, 1, ['employees.view']);
 
-        $request  = $this->makeRequest('api.v1.store_members.index', 10, ['store_id' => '2']);
+        $request  = $this->makeRequest('employees.view', 10, ['store_id' => '2']);
         $response = $this->middleware->handle($request, $this->next());
 
         $this->assertSame(403, $response->status());
@@ -106,7 +116,7 @@ final class ApiPermissionMiddlewareTest extends TestCase
     {
         $this->grantStoreRole(10, 2, 1, ['employees.view']);
 
-        $request = $this->makeRequest('api.v1.store_members.index', 10, ['store_id' => '1']);
+        $request = $this->makeRequest('employees.view', 10, ['store_id' => '1']);
 
         $this->assertSame(200, $this->middleware->handle($request, $this->next())->status());
     }
@@ -115,10 +125,10 @@ final class ApiPermissionMiddlewareTest extends TestCase
     {
         $this->grantStoreRole(10, 2, 1, ['shifts.view']);
 
-        $ok  = $this->makeRequest('api.v1.shifts.index', 10, [], ['store_id' => '1']);
+        $ok  = $this->makeRequest('shifts.view', 10, [], ['store_id' => '1']);
         $this->assertSame(200, $this->middleware->handle($ok, $this->next())->status());
 
-        $ko  = $this->makeRequest('api.v1.shifts.index', 10, [], ['store_id' => '2']);
+        $ko  = $this->makeRequest('shifts.view', 10, [], ['store_id' => '2']);
         $this->assertSame(403, $this->middleware->handle($ko, $this->next())->status());
     }
 
@@ -127,7 +137,7 @@ final class ApiPermissionMiddlewareTest extends TestCase
         $this->assignments->method('findByUser')->willReturn([]);
 
         // GET /users/10 par l'utilisateur 10 lui-même
-        $request = $this->makeRequest('api.v1.users.show', 10, ['id' => '10']);
+        $request = $this->makeRequest(['perm' => 'employees.view', 'self' => 'id'], 10, ['id' => '10']);
 
         $this->assertSame(200, $this->middleware->handle($request, $this->next())->status());
     }
@@ -136,7 +146,7 @@ final class ApiPermissionMiddlewareTest extends TestCase
     {
         $this->assignments->method('findByUser')->willReturn([]);
 
-        $request  = $this->makeRequest('api.v1.users.show', 10, ['id' => '11']);
+        $request  = $this->makeRequest(['perm' => 'employees.view', 'self' => 'id'], 10, ['id' => '11']);
         $response = $this->middleware->handle($request, $this->next());
 
         $this->assertSame(403, $response->status());
@@ -147,7 +157,7 @@ final class ApiPermissionMiddlewareTest extends TestCase
         $this->assignments->method('findByUser')->willReturn([]);
 
         // clock-in pour soi-même (user_id du corps) → autorisé sans permission
-        $request = $this->makeRequest('api.v1.timeclock.clock_in', 10, post: ['user_id' => '10']);
+        $request = $this->makeRequest(['perm' => 'timeclock.update', 'self' => 'user_id'], 10, post: ['user_id' => '10']);
 
         $this->assertSame(200, $this->middleware->handle($request, $this->next())->status());
     }
@@ -157,7 +167,7 @@ final class ApiPermissionMiddlewareTest extends TestCase
         $this->assignments->method('findByUser')->willReturn([]);
 
         // clock-in pour un autre employé sans timeclock.update → 403
-        $request  = $this->makeRequest('api.v1.timeclock.clock_in', 10, post: ['user_id' => '11']);
+        $request  = $this->makeRequest(['perm' => 'timeclock.update', 'self' => 'user_id'], 10, post: ['user_id' => '11']);
         $response = $this->middleware->handle($request, $this->next());
 
         $this->assertSame(403, $response->status());
@@ -167,10 +177,10 @@ final class ApiPermissionMiddlewareTest extends TestCase
     {
         $this->grantStoreRole(10, 2, 1, ['timeoff.view', 'timeoff.approve']);
 
-        $ok = $this->makeRequest('api.v1.timeoff.index', 10);
+        $ok = $this->makeRequest(['perm' => 'timeoff.view', 'self' => 'user_id'], 10);
         $this->assertSame(200, $this->middleware->handle($ok, $this->next())->status());
 
-        $ko       = $this->makeRequest('api.v1.timeoff.destroy', 10, ['id' => '5']);
+        $ko       = $this->makeRequest('timeoff.delete', 10, ['id' => '5']);
         $response = $this->middleware->handle($ko, $this->next());
         $this->assertSame(403, $response->status());
     }
@@ -182,7 +192,7 @@ final class ApiPermissionMiddlewareTest extends TestCase
         ]);
         $this->roles->method('findById')->with(1)->willReturn(['id' => 1, 'is_system' => 1]);
 
-        $request = $this->makeRequest('api.v1.stores.destroy', 1, ['id' => '3']);
+        $request = $this->makeRequest('stores.delete', 1, ['id' => '3']);
 
         $this->assertSame(200, $this->middleware->handle($request, $this->next())->status());
     }
@@ -197,7 +207,7 @@ final class ApiPermissionMiddlewareTest extends TestCase
         $this->assignments->method('findByUser')->willReturn([]);
         $this->storeUsers->method('findMembership')->with(1, 10)->willReturn(['store_id' => 1, 'user_id' => 10]);
 
-        $request = $this->makeRequest('api.v1.daily_reports.store', 10, [], ['store_id' => '1']);
+        $request = $this->makeRequest(['perm' => 'daily_reports.create', 'membership' => true], 10, [], ['store_id' => '1']);
 
         $this->assertSame(200, $this->middleware->handle($request, $this->next())->status());
     }
@@ -207,7 +217,7 @@ final class ApiPermissionMiddlewareTest extends TestCase
         $this->assignments->method('findByUser')->willReturn([]);
         $this->storeUsers->method('findMembership')->with(1, 10)->willReturn(null);
 
-        $request  = $this->makeRequest('api.v1.daily_reports.store', 10, [], ['store_id' => '1']);
+        $request  = $this->makeRequest(['perm' => 'daily_reports.create', 'membership' => true], 10, [], ['store_id' => '1']);
         $response = $this->middleware->handle($request, $this->next());
 
         $this->assertSame(403, $response->status());
@@ -220,7 +230,7 @@ final class ApiPermissionMiddlewareTest extends TestCase
         $this->assignments->method('findByUser')->willReturn([]);
         $this->storeUsers->expects($this->never())->method('findMembership');
 
-        $request  = $this->makeRequest('api.v1.daily_reports.store', 10);
+        $request  = $this->makeRequest(['perm' => 'daily_reports.create', 'membership' => true], 10);
         $response = $this->middleware->handle($request, $this->next());
 
         $this->assertSame(403, $response->status());
@@ -233,7 +243,7 @@ final class ApiPermissionMiddlewareTest extends TestCase
         $this->grantStoreRole(10, 2, 1, ['daily_reports.create']);
         $this->storeUsers->expects($this->never())->method('findMembership');
 
-        $request = $this->makeRequest('api.v1.daily_reports.store', 10, [], ['store_id' => '1']);
+        $request = $this->makeRequest(['perm' => 'daily_reports.create', 'membership' => true], 10, [], ['store_id' => '1']);
 
         $this->assertSame(200, $this->middleware->handle($request, $this->next())->status());
     }

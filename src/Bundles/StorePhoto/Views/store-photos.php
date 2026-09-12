@@ -6,6 +6,8 @@ use kintai\UI\Components\Flash;
 /** @var array  $storeNames */
 /** @var array  $availableStores */
 /** @var int    $filterStoreId */
+/** @var array  $availableDates */
+/** @var string $filterDate */
 /** @var string $BASE_URL */
 
 echo Flash::fromQuery('success', [
@@ -35,6 +37,17 @@ echo Flash::fromQuery('success', [
                 </select>
             </div>
             <div class="form-group">
+                <label class="form-label"><?= __('photo_filter_day') ?></label>
+                <select name="date" class="form-control form-control-sm" onchange="this.form.submit()">
+                    <option value=""><?= __('photo_filter_all_days') ?></option>
+                    <?php foreach ($availableDates as $day => $dayCount): ?>
+                        <option value="<?= htmlspecialchars($day) ?>" <?= $filterDate === $day ? 'selected' : '' ?>>
+                            <?= date('d/m/Y', strtotime($day)) ?> (<?= $dayCount ?>)
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="form-group">
                 <a href="?" class="btn btn--ghost btn--sm"><?= __('reset') ?></a>
             </div>
         </form>
@@ -46,41 +59,51 @@ echo Flash::fromQuery('success', [
         <div class="empty-state"><?= __('photo_empty') ?></div>
     </div>
 <?php else: ?>
-    <div class="photo-grid" id="photo-grid">
-        <?php foreach ($submissions as $sub): ?>
-            <?php
-            $sid     = (int) $sub['id'];
-            $images  = $submissionImages[$sid] ?? [];
-            $storeId = (int) ($sub['store_id'] ?? 0);
-            $storeName = $storeNames[$storeId] ?? '#' . $storeId;
-            $preview = !empty($images) ? $images[0] : null;
-            $count   = count($images);
-            ?>
-            <a href="<?= $BASE_URL ?>/admin/photos/<?= $storeId ?>/<?= $sid ?>" class="card photo-card">
+    <?php $currentDay = null; ?>
+    <?php foreach ($submissions as $sub): ?>
+        <?php
+        $sid     = (int) $sub['id'];
+        $images  = $submissionImages[$sid] ?? [];
+        $storeId = (int) ($sub['store_id'] ?? 0);
+        $storeName = $storeNames[$storeId] ?? '#' . $storeId;
+        $preview = !empty($images) ? $images[0] : null;
+        $count   = count($images);
+        $day     = date('Y-m-d', strtotime($sub['created_at'] ?? 'now'));
+        ?>
+        <?php if ($day !== $currentDay): ?>
+            <?php if ($currentDay !== null): ?></div><?php endif; ?>
+            <?php $currentDay = $day; ?>
+            <div class="photo-day-group__header">
+                <h3 class="photo-day-group__title"><?= date('d/m/Y', strtotime($day)) ?></h3>
+                <span class="badge badge--secondary badge--sm"><?= $availableDates[$day] ?? 0 ?> <?= __('photos_count') ?></span>
+            </div>
+            <div class="photo-grid">
+        <?php endif; ?>
+            <a href="<?= $BASE_URL ?>/admin/photos/<?= $storeId ?>/<?= $sid ?>?origin_store_id=<?= $filterStoreId ?>" class="card photo-card">
                 <div class="photo-card__preview">
                     <?php if ($preview): ?>
-                        <img src="<?= $BASE_URL ?>/<?= htmlspecialchars($preview['filepath']) ?>"
+                        <img src="<?= $BASE_URL ?>/<?= htmlspecialchars($preview['filepath']) ?>?v=<?= htmlspecialchars($preview['version'] ?? '') ?>"
                              alt="<?= htmlspecialchars($preview['filename']) ?>"
                              loading="lazy"
-                             style="width:100%;height:160px;object-fit:scale-down;background:#e9ecef;border-radius:var(--radius) var(--radius) 0 0">
+                             class="photo-card__preview-img">
                     <?php else: ?>
-                        <div class="empty-state" style="height:160px;display:flex;align-items:center;justify-content:center"><?= __('photo_no_images') ?></div>
+                        <div class="empty-state photo-card__preview-empty"><?= __('photo_no_images') ?></div>
                     <?php endif; ?>
                 </div>
-                <div class="card-body" style="padding:var(--space-3)">
+                <div class="card-body photo-card__body">
                     <div class="photo-card__meta">
                         <strong><?= htmlspecialchars($storeName) ?></strong>
                         <span class="badge badge--secondary badge--sm"><?= $count ?> <?= __('photos_count') ?></span>
                     </div>
                     <div class="text-muted text-sm"><?= htmlspecialchars($sub['week_label'] ?? '') ?></div>
                     <?php if (!empty($sub['notes'])): ?>
-                        <div class="text-muted text-xs" style="margin-top:var(--space-1)"><?= htmlspecialchars(mb_substr($sub['notes'], 0, 80)) ?></div>
+                        <div class="text-muted text-xs photo-card__notes"><?= htmlspecialchars(mb_substr($sub['notes'], 0, 80)) ?></div>
                     <?php endif; ?>
-                    <div class="text-xs text-muted" style="margin-top:var(--space-1)">
+                    <div class="text-xs text-muted photo-card__date">
                         <?= date('d/m/Y', strtotime($sub['created_at'] ?? 'now')) ?>
                     </div>
                 </div>
             </a>
-        <?php endforeach; ?>
+    <?php endforeach; ?>
     </div>
 <?php endif; ?>

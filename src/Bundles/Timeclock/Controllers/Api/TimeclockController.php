@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace kintai\Bundles\Timeclock\Controllers\Api;
 
 use kintai\Core\Api\Paginator;
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ConflictException;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
@@ -13,12 +14,17 @@ use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
 
+/**
+ * Régression (audit RBAC du 11/09/2026) : mêmes correctifs que
+ * ShiftSwapRequestController — voir son docblock pour le détail de la faille.
+ */
 final class TimeclockController
 {
     public function __construct(
         private readonly TimeclockRepositoryInterface $timeclocks,
         private readonly StoreUserRepositoryInterface $storeUsers,
         private readonly AuditLogger $auditLogger,
+        private readonly PermissionService $permissions,
     ) {}
 
     /** GET /api/v1/timeclocks?store_id=X&user_id=Y&date=Z&page=1&limit=20 */
@@ -41,16 +47,15 @@ final class TimeclockController
             $items = [];
         }
 
+        $items = $this->permissions->restrictToScope($this->authUser($request), 'timeclock.view', $items);
+
         return Response::json(Paginator::paginate($items, $page, $limit));
     }
 
     /** GET /api/v1/timeclocks/{id} */
     public function show(Request $request): Response
     {
-        $record = $this->timeclocks->findById((int) $request->param('id'));
-        if ($record === null) {
-            throw new NotFoundException('Entrée de pointage introuvable.');
-        }
+        $record = $this->requireTimeclock($request, 'timeclock.view');
         return Response::json($record);
     }
 
@@ -113,11 +118,8 @@ final class TimeclockController
     /** PUT /api/v1/timeclocks/{id} */
     public function update(Request $request): Response
     {
-        $id  = (int) $request->param('id');
-        $old = $this->timeclocks->findById($id);
-        if ($old === null) {
-            throw new NotFoundException('Entrée de pointage introuvable.');
-        }
+        $old = $this->requireTimeclock($request, 'timeclock.update');
+        $id  = (int) $old['id'];
 
         $data   = array_merge($request->json() ?? [], ['id' => $id, 'updated_at' => date('Y-m-d H:i:s')]);
         $record = $this->timeclocks->save($data);
@@ -136,12 +138,27 @@ final class TimeclockController
     /** DELETE /api/v1/timeclocks/{id} */
     public function destroy(Request $request): Response
     {
-        $id = (int) $request->param('id');
-        if ($this->timeclocks->findById($id) === null) {
-            throw new NotFoundException('Entrée de pointage introuvable.');
-        }
+        $record = $this->requireTimeclock($request, 'timeclock.delete');
+        $id     = (int) $record['id'];
         $this->timeclocks->delete($id);
         $this->auditLogger->log($request, 'timeclock.deleted', 'timeclock', resourceId: $id);
         return Response::empty();
+    }
+
+    private function authUser(Request $request): array
+    {
+        return $request->getAttribute('auth_user') ?? [];
+    }
+
+    /** Charge l'entrée par id et vérifie $permissionKey sur son store réel. */
+    private function requireTimeclock(Request $request, string $permissionKey): array
+    {
+        return $this->permissions->requireOwnedResource(
+            $this->authUser($request),
+            fn(int $id) => $this->timeclocks->findById($id),
+            (int) $request->param('id'),
+            $permissionKey,
+            notFoundMessage: 'Entrée de pointage introuvable.',
+        );
     }
 }

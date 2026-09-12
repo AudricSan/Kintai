@@ -224,6 +224,7 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius);
     overflow: hidden;
+    margin-top: var(--space-4);
 }
 
 .conflict-group__header {

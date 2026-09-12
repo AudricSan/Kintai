@@ -5,17 +5,22 @@ declare(strict_types=1);
 namespace kintai\Bundles\TimeOff\Controllers\Api;
 
 use kintai\Core\Api\Paginator;
-use kintai\Core\Exceptions\NotFoundException;
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
 
+/**
+ * Régression (audit RBAC du 11/09/2026) : mêmes correctifs que
+ * ShiftSwapRequestController — voir son docblock pour le détail de la faille.
+ */
 final class TimeoffRequestController
 {
     public function __construct(
         private readonly TimeoffRequestRepositoryInterface $timeoffRequests,
         private readonly AuditLogger $auditLogger,
+        private readonly PermissionService $permissions,
     ) {}
 
     /** GET /api/v1/timeoff-requests?store_id=X&user_id=Y&status=Z&page=1&limit=20 */
@@ -36,16 +41,15 @@ final class TimeoffRequestController
             $items = [];
         }
 
+        $items = $this->permissions->restrictToScope($this->authUser($request), 'timeoff.view', $items);
+
         return Response::json(Paginator::paginate($items, $page, $limit));
     }
 
     /** GET /api/v1/timeoff-requests/{id} */
     public function show(Request $request): Response
     {
-        $item = $this->timeoffRequests->findById((int) $request->param('id'));
-        if ($item === null) {
-            throw new NotFoundException('Demande de congé introuvable.');
-        }
+        $item = $this->requireTimeoff($request, 'timeoff.view');
         return Response::json($item);
     }
 
@@ -61,11 +65,8 @@ final class TimeoffRequestController
     /** PUT /api/v1/timeoff-requests/{id} */
     public function update(Request $request): Response
     {
-        $id  = (int) $request->param('id');
-        $old = $this->timeoffRequests->findById($id);
-        if ($old === null) {
-            throw new NotFoundException('Demande de congé introuvable.');
-        }
+        $old = $this->requireTimeoff($request, 'timeoff.update');
+        $id  = (int) $old['id'];
         $data  = $request->json() ?? [];
         $saved = $this->timeoffRequests->save(array_merge($data, ['id' => $id]));
         $this->auditLogger->logUpdate($request, 'timeoff_request.updated', 'timeoff_request', resourceId: $id, oldData: $old, newData: $saved, extraContext: $data, storeId: isset($data['store_id']) ? (int) $data['store_id'] : null);
@@ -75,12 +76,27 @@ final class TimeoffRequestController
     /** DELETE /api/v1/timeoff-requests/{id} */
     public function destroy(Request $request): Response
     {
-        $id = (int) $request->param('id');
-        if ($this->timeoffRequests->findById($id) === null) {
-            throw new NotFoundException('Demande de congé introuvable.');
-        }
+        $item = $this->requireTimeoff($request, 'timeoff.delete');
+        $id   = (int) $item['id'];
         $this->timeoffRequests->delete($id);
         $this->auditLogger->log($request, 'timeoff_request.deleted', 'timeoff_request', resourceId: $id);
         return Response::empty();
+    }
+
+    private function authUser(Request $request): array
+    {
+        return $request->getAttribute('auth_user') ?? [];
+    }
+
+    /** Charge la demande par id et vérifie $permissionKey sur son store réel. */
+    private function requireTimeoff(Request $request, string $permissionKey): array
+    {
+        return $this->permissions->requireOwnedResource(
+            $this->authUser($request),
+            fn(int $id) => $this->timeoffRequests->findById($id),
+            (int) $request->param('id'),
+            $permissionKey,
+            notFoundMessage: 'Demande de congé introuvable.',
+        );
     }
 }

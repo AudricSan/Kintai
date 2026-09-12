@@ -8,6 +8,7 @@
 </head>
 <body class="error-body">
     <div class="error-page">
+        <img src="<?= ($BASE_URL ?? '') ?>/assets/img/mascot/error-503.png" alt="<?= __('mascot_alt') ?>" class="error-mascot">
         <div class="error-code">503</div>
         <p class="error-message"><?= htmlspecialchars($message ?? __('error_503_message')) ?></p>
     </div>
