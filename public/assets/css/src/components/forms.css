@@ -302,7 +302,7 @@ select.form-control {
 
 .theme-foxy-palette {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: var(--space-4);
     padding: var(--space-4);
     margin-bottom: var(--space-4);
@@ -311,8 +311,8 @@ select.form-control {
 }
 
 .theme-foxy-palette__icon {
-    width: 48px;
-    height: 48px;
+    width: 60px;
+    height: 60px;
     flex-shrink: 0;
 }
 
