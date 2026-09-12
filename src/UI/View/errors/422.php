@@ -8,6 +8,7 @@
 </head>
 <body class="error-body">
     <div class="error-page">
+        <img src="<?= ($BASE_URL ?? '') ?>/assets/img/mascot/error-422.png" alt="<?= __('mascot_alt') ?>" class="error-mascot">
         <div class="error-code">422</div>
         <p class="error-message"><?= htmlspecialchars($message ?? __('error_422_message')) ?></p>
         <a href="<?= ($BASE_URL ?? '') ?>/" class="error-link">← <?= __('back_to_dashboard') ?></a>
