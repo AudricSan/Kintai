@@ -71,7 +71,7 @@ echo Flash::fromQuery('success', [
         </details>
         <?php endif; ?>
         <?php if (!$allMode): ?>
-        <?= Button::make(__('back'))->ghost()->link($BASE_URL . '/admin/stores/' . $storeId . '/edit')->render() ?>
+        <?= Button::make(__('back'))->ghost()->link(back_url($BASE_URL . '/admin/stores/' . $storeId . '/edit'))->render() ?>
         <?php endif; ?>
     </div>
 </div>

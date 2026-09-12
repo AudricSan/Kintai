@@ -32,7 +32,7 @@ echo Flash::fromQuery('error', ['swap_conflict' => __('swap_conflict_error')])->
 <div class="page-header">
     <h2 class="page-header__title"><?= __('create_swap') ?></h2>
     <div class="page-header__actions">
-        <a href="<?= $BASE_URL ?>/admin/swap-requests" class="btn btn--ghost btn--sm">← <?= __('back') ?></a>
+        <a href="<?= back_url($BASE_URL . '/admin/swap-requests') ?>" class="btn btn--ghost btn--sm">← <?= __('back') ?></a>
     </div>
 </div>
 

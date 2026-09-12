@@ -26,7 +26,7 @@ echo Flash::fromQuery('success', [
 <div class="page-header">
     <h2 class="page-header__title"><?= $mode === 'edit' ? __('edit_resignation_report') : __('new_resignation_report') ?></h2>
     <div class="page-header__actions">
-        <a href="<?= $base ?>" class="btn btn--ghost">← <?= __('back') ?></a>
+        <a href="<?= back_url($base) ?>" class="btn btn--ghost">← <?= __('back') ?></a>
     </div>
 </div>
 
@@ -95,7 +95,7 @@ echo '</select></div>';
 
 echo '<div class="form-actions">';
 echo Button::make($mode === 'edit' ? __('save') : __('create'))->primary()->submit()->render();
-echo ' <a href="' . $base . '" class="btn btn--ghost">' . __('cancel') . '</a>';
+echo ' <a href="' . back_url($base) . '" class="btn btn--ghost">' . __('cancel') . '</a>';
 echo '</div></form>';
 
 echo Card::make()->body(ob_get_clean())->render();

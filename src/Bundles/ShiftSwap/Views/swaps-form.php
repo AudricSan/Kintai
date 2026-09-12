@@ -21,7 +21,7 @@ function swapLabel(array $shift, array $types_map): string {
 <div class="page-header">
     <h2 class="page-header__title"><?= __('request_swap') ?></h2>
     <div class="page-header__actions">
-        <a href="<?= route_url('employee.swaps') ?>" class="btn btn--ghost btn--sm">← <?= __('back') ?></a>
+        <a href="<?= back_url(route_url('employee.swaps')) ?>" class="btn btn--ghost btn--sm">← <?= __('back') ?></a>
     </div>
 </div>
 
