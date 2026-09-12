@@ -264,6 +264,7 @@ $router->group('/admin', function ($r) {
     $r->post('/backup/restore',      [BackupController::class, 'restore'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.backup.restore', permission: 'public');
     $r->post('/backup/delete',       [BackupController::class, 'delete'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.backup.delete', permission: 'public');
     $r->post('/backup/delete-all',   [BackupController::class, 'deleteAll'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.backup.delete_all', permission: 'public');
+    $r->post('/backup/settings',     [BackupController::class, 'saveSettings'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.backup.settings', permission: 'public');
 
     // Réinitialisation de l'application ("danger zone")
     $r->post('/reset/prepare', [AppResetController::class, 'prepare'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.reset.prepare', permission: 'public');

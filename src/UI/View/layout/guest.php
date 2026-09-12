@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" style="<?= htmlspecialchars($app_primary_color_style ?? '', ENT_QUOTES) ?>">
+<html lang="en" style="<?= htmlspecialchars($app_theme_color_style ?? '', ENT_QUOTES) ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
