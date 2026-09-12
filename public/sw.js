@@ -1,4 +1,4 @@
-const CACHE = 'kintai-v3';
+const CACHE = 'kintai-v4';
 
 // Base de déploiement déduite du scope d'enregistrement (ex. '/kintai') plutôt
 // que codée en dur, pour fonctionner aussi bien à la racine du domaine que
