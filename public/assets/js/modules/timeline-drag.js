@@ -8,7 +8,6 @@
     var CSRF  = cfg.csrfToken || '';
     var i18n  = cfg.i18n      || {};
     var USERS = cfg.users  || [];
-    var TYPES = cfg.types  || [];
     var T_START = 360, T_TOTAL = 1440;
 
     /* ── Helpers mathématiques ──────────────────── */
@@ -168,35 +167,16 @@
             opt.textContent = u.name;
             opt.dataset.storeId = u.store_id;
         });
-        refreshTypes(userSel);
-        userSel.onchange = function () { refreshTypes(userSel); };
         document.querySelector('#qc-form input[name="shift_date"]').value = d;
         document.querySelector('#qc-form input[name="start_time"]').value = startTime || '';
         document.querySelector('#qc-form input[name="end_time"]').value   = endTime   || '';
         document.getElementById('qc-overlay').classList.add('open');
     };
 
-    /* ── Filtre les types de shift selon le store sélectionné ── */
-    function refreshTypes(userSel) {
-        var selOpt  = userSel.options[userSel.selectedIndex];
-        var storeId = selOpt ? parseInt(selOpt.dataset.storeId || '0') : 0;
-        var typeSel = document.querySelector('#qc-form select[name="shift_type_id"]');
-        typeSel.innerHTML = '<option value="">' + (i18n.no_type || '— None —') + '</option>';
-        TYPES.forEach(function (t) {
-            if (storeId > 0 && parseInt(t.store_id) !== storeId) return;
-            var opt = document.createElement('option');
-            opt.value = t.id;
-            opt.textContent = t.name + ' (' + (t.code || '') + ')';
-            typeSel.appendChild(opt);
-        });
-    }
-
     /* ── Modal création rapide : fermeture ──────── */
     window.sdQcClose = function () {
         var overlay = document.getElementById('qc-overlay');
         if (overlay) overlay.classList.remove('open');
-        var userSel = document.querySelector('#qc-form select[name="user_id"]');
-        if (userSel) userSel.onchange = null;
     };
 
     /* ── Soumission du formulaire quick-create : POST natif, pas d'AJAX ── */
