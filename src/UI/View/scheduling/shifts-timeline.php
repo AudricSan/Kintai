@@ -539,7 +539,6 @@ ob_start();
         'network_error'       => __('network_error'),
         'creating'            => __('creating'),
         'create'              => __('create'),
-        'no_type'             => __('no_type'),
         'staff_planned_label' => __('staff_planned_label'),
         'peak_abbr'           => __('peak_abbr'),
         'simult_abbr'         => __('simult_abbr'),
@@ -553,7 +552,6 @@ ob_start();
         'name'     => $users_map[$uid] ?? ('#' . $uid),
         'store_id' => $_userStoreMap[$uid] ?? 0,
     ], $all_user_ids),
-    'types' => array_values($types_map),
 ], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?></script>
 <script src="<?= $BASE_URL ?>/assets/js/modules/shift-wage-preview.js"></script>
 <script src="<?= $BASE_URL ?>/assets/js/modules/shift-detail-modal.js"></script>
