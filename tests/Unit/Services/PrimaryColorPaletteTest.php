@@ -31,6 +31,7 @@ final class PrimaryColorPaletteTest extends TestCase
 
         $this->assertSame([
             '--light-primary',
+            '--light-primary-rgb',
             '--light-primary-hover',
             '--light-primary-light',
             '--light-primary-lighter',
@@ -43,6 +44,28 @@ final class PrimaryColorPaletteTest extends TestCase
         ], array_keys($palette));
 
         $this->assertSame('#6c5ce7', $palette['--light-primary']);
+        $this->assertSame('108, 92, 231', $palette['--light-primary-rgb']);
+    }
+
+    public function testGenerateUsesRealMascotColorsForTheDefault(): void
+    {
+        $palette = PrimaryColorPalette::generate(PrimaryColorPalette::DEFAULT_COLOR);
+
+        // Couleurs officielles du style guide (docs/brand/foxy-style-guide.png),
+        // pas des teintes calculées : pelage, nez/pattes, ventre.
+        $this->assertSame('#ff9f4a', $palette['--light-primary']);
+        $this->assertSame('#5b4a3a', $palette['--light-primary-hover']);
+        $this->assertSame('#fff5e6', $palette['--light-primary-light']);
+    }
+
+    public function testGenerateComputesHoverForCustomColors(): void
+    {
+        $palette = PrimaryColorPalette::generate('#2f86d6');
+
+        // Une couleur personnalisée n'a pas de teintes "toutes faites" dans la
+        // palette de la mascotte : elle reste dérivée par calcul HSL.
+        $this->assertNotSame('#5b4a3a', $palette['--light-primary-hover']);
+        $this->assertNotSame('#fff5e6', $palette['--light-primary-light']);
     }
 
     public function testHoverIsDarkerThanBaseInLightTheme(): void
