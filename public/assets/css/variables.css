@@ -170,37 +170,37 @@
     --dark-border-light:   #282536;
 
     /* ── Couleurs sémantiques (adaptées fond sombre) ── */
-    --dark-primary:         #8f7ff5;
-    --dark-primary-hover:   #a596f8;
-    --dark-primary-light:   rgba(143, 127, 245, 0.16);
-    --dark-primary-lighter: rgba(143, 127, 245, 0.08);
-    --dark-primary-medium:  rgba(143, 127, 245, 0.30);
+    --dark-primary:         #fdd0a8;
+    --dark-primary-hover:   #fee6d0;
+    --dark-primary-light:   rgba(253, 208, 168, 0.16);
+    --dark-primary-lighter: rgba(253, 208, 168, 0.08);
+    --dark-primary-medium:  rgba(253, 208, 168, 0.30);
 
-    --dark-success:         #4bd695;
-    --dark-success-hover:   #64e0a6;
-    --dark-success-light:   rgba(75, 214, 149, 0.16);
-    --dark-success-dark:    #8fe8be;
-    --dark-success-border:  #4bd695;
+    --dark-success:         #4fd999;
+    --dark-success-hover:   #71e0ac;
+    --dark-success-light:   rgba(79, 217, 153, 0.16);
+    --dark-success-dark:    #8ae6bb;
+    --dark-success-border:  #4fd999;
 
-    --dark-warning:         #f0b358;
-    --dark-warning-hover:   #f5c378;
-    --dark-warning-light:   rgba(240, 179, 88, 0.16);
-    --dark-warning-dark:    #f5c88a;
-    --dark-warning-border:  #f0b358;
+    --dark-warning:         #eaa64d;
+    --dark-warning-hover:   #eeb871;
+    --dark-warning-light:   rgba(234, 166, 77, 0.16);
+    --dark-warning-dark:    #f2c68d;
+    --dark-warning-border:  #eaa64d;
 
-    --dark-danger:          #ff7a7f;
-    --dark-danger-hover:    #ff9498;
-    --dark-danger-light:    rgba(255, 122, 127, 0.16);
-    --dark-danger-dark:     #ffaeb1;
-    --dark-danger-border:   #ff7a7f;
+    --dark-danger:          #ed9b9e;
+    --dark-danger-hover:    #f3bec0;
+    --dark-danger-light:    rgba(237, 155, 158, 0.16);
+    --dark-danger-dark:     #f8d8d9;
+    --dark-danger-border:   #ed9b9e;
 
-    --dark-info:            #6cb3f2;
-    --dark-info-light:      rgba(108, 179, 242, 0.16);
-    --dark-info-dark:       #a2cff7;
-    --dark-info-border:     #6cb3f2;
+    --dark-info:            #80b2e1;
+    --dark-info-light:      rgba(128, 178, 225, 0.16);
+    --dark-info-dark:       #bad5ef;
+    --dark-info-border:     #80b2e1;
 
     --dark-accent:         #8fc891;
-    --dark-table-highlight: rgba(76, 175, 80, 0.18);
+    --dark-table-highlight: rgba(223, 245, 225, 0.18);
     --dark-neutral:        #9c98b3;
     --dark-admin-text:     #e066b8;
 
