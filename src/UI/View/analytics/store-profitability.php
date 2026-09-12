@@ -64,7 +64,7 @@ function lcBadgeClass(?float $pct): string {
     <div class="page-header__actions">
         <?= Button::make(__('statistics'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . $storeId . '/stats?period=90')->render() ?>
         <?= Button::make(__('daily_reports'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . $storeId . '/daily-reports')->render() ?>
-        <?= Button::make(__('back'))->ghost()->sm()->link(route_url('admin.stores'))->render() ?>
+        <?= Button::make(__('back'))->ghost()->sm()->link(back_url(route_url('admin.stores')))->render() ?>
     </div>
 </div>
 

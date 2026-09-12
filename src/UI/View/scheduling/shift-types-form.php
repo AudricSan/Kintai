@@ -19,7 +19,7 @@ echo Flash::fromQuery('error', [
 <div class="page-header">
     <h2 class="page-header__title"><?= $mode === 'edit' ? __('edit_shift_type') : __('new_shift_type') ?></h2>
     <div class="page-header__actions">
-        <a href="<?= route_url('admin.shift_types') ?>" class="btn btn--ghost">← <?= __('back') ?></a>
+        <a href="<?= back_url(route_url('admin.shift_types')) ?>" class="btn btn--ghost">← <?= __('back') ?></a>
     </div>
 </div>
 
@@ -30,7 +30,7 @@ echo csrf_field();
 include __DIR__ . '/../_partials/_form-shift-type.php';
 echo '<div class="form-actions">';
 echo Button::make($mode === 'edit' ? __('save') : __('new_type'))->primary()->submit()->render();
-echo ' <a href="' . route_url('admin.shift_types') . '" class="btn btn--ghost">' . __('cancel') . '</a>';
+echo ' <a href="' . back_url(route_url('admin.shift_types')) . '" class="btn btn--ghost">' . __('cancel') . '</a>';
 echo '</div></form>';
 echo Card::make()->body(ob_get_clean())->render();
 ?>
