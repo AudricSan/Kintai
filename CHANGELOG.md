@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Fixed
+- PWA — the service worker's `CACHE` name hadn't changed since it started actually being registered (v0.12.0), so its cache-first `/assets/*` strategy kept serving whatever CSS/JS was cached on first install forever, even across later deploys that changed those files (e.g. the new Appearance color palette shipped in the same release): a visitor who'd loaded the app even once before a CSS change would never see it, and clearing the browser's HTTP cache doesn't clear the separate Cache Storage API the service worker owns. Bumped `CACHE` to `kintai-v4` so the next deploy's service worker update purges the stale cache for everyone automatically.
+
 ## [0.12.0] - 2026-09-13
 
 ### Added
