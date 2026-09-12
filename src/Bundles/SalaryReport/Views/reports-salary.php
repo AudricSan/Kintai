@@ -116,7 +116,7 @@ echo Flash::fromQuery('success', [
         <button type="button" class="btn btn--primary" onclick="srResetCreateModal();openModal('sr-create-modal')">+ <?= __('sr_new') ?></button>
         <?php endif; ?>
         <?php if (!$allMode): ?>
-        <?= Button::make('← ' . __('back'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . $storeId . '/edit')->render() ?>
+        <?= Button::make('← ' . __('back'))->ghost()->sm()->link(back_url($BASE_URL . '/admin/stores/' . $storeId . '/edit'))->render() ?>
         <?php endif; ?>
     </div>
 </div>

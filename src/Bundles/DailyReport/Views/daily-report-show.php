@@ -71,7 +71,7 @@ function drShowNum(mixed $n, int $dec = 0): string {
         <?= $badgeHtml ?>
     </h2>
     <div class="page-header__actions">
-        <a href="<?= $BASE_URL ?>/admin/stores/<?= $storeId ?>/daily-reports"
+        <a href="<?= back_url($BASE_URL . '/admin/stores/' . $storeId . '/daily-reports') ?>"
            class="btn btn--ghost">← <?= __('back') ?></a>
         <?php if (($report['status'] ?? '') === 'validated'): ?>
             <a href="<?= $BASE_URL ?>/admin/stores/<?= $storeId ?>/daily-reports/<?= $reportId ?>/pdf"

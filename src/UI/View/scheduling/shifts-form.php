@@ -29,7 +29,7 @@ echo Flash::fromQuery('error', [
 <div class="page-header">
     <h2 class="page-header__title"><?= $mode === 'edit' ? __('edit_shift') : __('new_shift') ?></h2>
     <div class="page-header__actions">
-        <a href="<?= route_url('admin.shifts') ?>" class="btn btn--ghost">← <?= __('back') ?></a>
+        <a href="<?= back_url(route_url('admin.shifts')) ?>" class="btn btn--ghost">← <?= __('back') ?></a>
     </div>
 </div>
 
@@ -58,7 +58,7 @@ ob_start();
                 <?= Badge::make(__('open_bourse'))->success()->render() ?>
             <?php endif; ?>
         <?php endif; ?>
-        <a href="<?= route_url('admin.shifts') ?>" class="btn btn--ghost"><?= __('cancel') ?></a>
+        <a href="<?= back_url(route_url('admin.shifts')) ?>" class="btn btn--ghost"><?= __('cancel') ?></a>
         <?php if ($mode === 'edit'): ?>
             <form method="POST" action="<?= $BASE_URL ?>/admin/shifts/<?= (int)$shift['id'] ?>/delete" class="form-inline ml-auto">
                 <?= csrf_field() ?>

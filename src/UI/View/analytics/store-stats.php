@@ -92,7 +92,7 @@ function deltaChip(mixed $val, bool $invertColor = false, string $suffix = '%'):
         <?= Button::make(__('profitability'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . (int) $store['id'] . '/profitability')->render() ?>
         <?= Button::make(__('employee_report'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . (int) $store['id'] . '/employee-report')->render() ?>
         <?= Button::make(__('edit'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . (int) $store['id'] . '/edit')->render() ?>
-        <?= Button::make(__('back'))->ghost()->sm()->link(route_url('admin.stores'))->render() ?>
+        <?= Button::make(__('back'))->ghost()->sm()->link(back_url(route_url('admin.stores')))->render() ?>
     </div>
 </div>
 
