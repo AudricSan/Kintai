@@ -5,6 +5,33 @@ use kintai\UI\Components\Flash;
 
 /** @var array  $settings */
 /** @var bool   $success */
+/** @var array  $theme_colors */
+/** @var array  $theme_colors_dark */
+/** @var string $theme_dark_mode */
+
+/** Groupes de couleurs personnalisables (voir kintai\Core\Services\ThemeColorPalette). */
+$themeGroups = [
+    'primary'         => ['label' => 'primary_color',                'hint' => 'primary_color_hint'],
+    'accent'          => ['label' => 'theme_accent_color',           'hint' => 'theme_accent_color_hint'],
+    'table_highlight' => ['label' => 'theme_table_highlight_color',  'hint' => 'theme_table_highlight_color_hint'],
+    'success'         => ['label' => 'theme_success_color',          'hint' => 'theme_success_color_hint'],
+    'warning'         => ['label' => 'theme_warning_color',          'hint' => 'theme_warning_color_hint'],
+    'danger'          => ['label' => 'theme_danger_color',           'hint' => 'theme_danger_color_hint'],
+    'info'            => ['label' => 'theme_info_color',             'hint' => 'theme_info_color_hint'],
+];
+
+/**
+ * Les 3 couleurs personnalisables réellement issues de la mascotte (les 4 couleurs
+ * sémantiques success/warning/danger/info n'en font pas partie) : regroupées dans une
+ * seule pastille de référence, plutôt que répétées sous chaque champ concerné.
+ */
+$foxyPalette = [
+    ['css' => 'fur',       'color' => '#ff9f4a', 'label' => 'theme_foxy_swatch_fur'],
+    ['css' => 'nose',      'color' => '#5b4a3a', 'label' => 'theme_foxy_swatch_nose'],
+    ['css' => 'belly',     'color' => '#fff5e6', 'label' => 'theme_foxy_swatch_belly'],
+    ['css' => 'bag',       'color' => '#4caf50', 'label' => 'theme_foxy_swatch_bag'],
+    ['css' => 'highlight', 'color' => '#dff5e1', 'label' => 'theme_foxy_swatch_highlight'],
+];
 
 echo Flash::fromQuery('success', ['default' => __('save_success')])->render();
 ?>
@@ -35,13 +62,45 @@ echo Flash::fromQuery('success', ['default' => __('save_success')])->render();
     <?php
     ob_start();
     ?>
-    <div class="form-group">
-        <label class="form-label" for="app_primary_color"><?= __('primary_color') ?></label>
-        <div class="input-group">
-            <input type="color" id="app_primary_color" name="app_primary_color" class="input-color"
-                   value="<?= htmlspecialchars($settings['app_primary_color'] ?? '#ff9f4a', ENT_QUOTES) ?>">
-            <span class="text-sm-muted"><?= __('primary_color_hint') ?></span>
+
+    <div class="theme-foxy-palette">
+        <img src="<?= $BASE_URL ?>/assets/img/mascot/brand-icon.png" alt="<?= __('mascot_alt') ?>" class="theme-foxy-palette__icon">
+        <div>
+            <p class="theme-foxy-palette__title"><?= __('theme_foxy_palette_title') ?> <span class="badge badge--success badge--xs"><?= __('theme_color_recommended') ?></span></p>
+            <!-- <p class="text-sm-muted"><?= __('theme_foxy_palette_hint') ?></p> -->
+            <div class="color-presets">
+                <?php foreach ($foxyPalette as $swatch): ?>
+                <span class="color-preset theme-foxy-palette__swatch--<?= $swatch['css'] ?>" title="<?= __($swatch['label']) ?> — <?= $swatch['color'] ?>"></span>
+                <?php endforeach; ?>
+            </div>
         </div>
+    </div>
+
+    <div class="form-group">
+        <label class="form-label"><?= __('theme_dark_mode') ?></label>
+        <div class="btn-group btn-group--switcher mb-xs" style="--segments:2" data-theme-dark-mode-switcher>
+            <span class="btn-group__thumb" style="--pos:<?= $theme_dark_mode === 'manual' ? 1 : 0 ?>" aria-hidden="true"></span>
+            <button type="button" class="btn btn--ghost btn--sm <?= $theme_dark_mode !== 'manual' ? 'btn--active' : '' ?>" data-dark-mode-option="auto"><?= __('theme_dark_mode_auto') ?></button>
+            <button type="button" class="btn btn--ghost btn--sm <?= $theme_dark_mode === 'manual' ? 'btn--active' : '' ?>" data-dark-mode-option="manual"><?= __('theme_dark_mode_manual') ?></button>
+        </div>
+        <input type="hidden" name="app_theme_dark_mode" id="app_theme_dark_mode" value="<?= htmlspecialchars($theme_dark_mode, ENT_QUOTES) ?>">
+        <p class="form-hint"><?= __('theme_dark_mode_hint') ?></p>
+    </div>
+
+    <div class="theme-color-grid">
+        <?php foreach ($themeGroups as $group => $meta): ?>
+        <div class="theme-color-card">
+            <label class="form-label" for="app_<?= $group ?>_color"><?= __($meta['label']) ?></label>
+            <input type="color" id="app_<?= $group ?>_color" name="app_<?= $group ?>_color" class="input-color"
+                   value="<?= htmlspecialchars($theme_colors[$group] ?? '', ENT_QUOTES) ?>">
+            <p class="text-sm-muted theme-color-card__hint"><?= __($meta['hint']) ?></p>
+            <div class="theme-dark-color" data-theme-dark-color-for="<?= $group ?>" <?= $theme_dark_mode !== 'manual' ? 'hidden' : '' ?>>
+                <label class="form-label" for="app_<?= $group ?>_color_dark"><?= __('theme_dark_color_label') ?></label>
+                <input type="color" id="app_<?= $group ?>_color_dark" name="app_<?= $group ?>_color_dark" class="input-color"
+                       value="<?= htmlspecialchars($theme_colors_dark[$group], ENT_QUOTES) ?>">
+            </div>
+        </div>
+        <?php endforeach; ?>
     </div>
     <?php
     echo Card::make()->header(__('appearance'))->body(ob_get_clean())->render();
@@ -79,29 +138,6 @@ echo Flash::fromQuery('success', ['default' => __('save_success')])->render();
     ob_start();
     ?>
     <div class="form-group">
-        <label class="form-label"><?= __('backup_auto_enabled') ?></label>
-        <label class="form-toggle">
-            <input type="checkbox" name="backup_auto_enabled" value="1" class="form-toggle__input"
-                   <?= ($settings['backup_auto_enabled'] ?? '1') === '1' ? 'checked' : '' ?>>
-            <span class="form-toggle__track"></span>
-        </label>
-        <p class="form-hint"><?= __('backup_auto_hint') ?></p>
-    </div>
-    <div class="form-group">
-        <label class="form-label" for="backup_max_keep"><?= __('backup_max_keep') ?></label>
-        <input type="number" id="backup_max_keep" name="backup_max_keep" class="form-control"
-               min="0" max="365" style="width:100px"
-               value="<?= (int) ($settings['backup_max_keep'] ?? 0) ?>">
-        <p class="form-hint"><?= __('backup_max_keep_hint') ?></p>
-    </div>
-    <?php
-    echo Card::make()->header(__('backup_card_title'))->body(ob_get_clean())->render();
-    ?>
-
-    <?php
-    ob_start();
-    ?>
-    <div class="form-group">
         <label class="form-label"><?= __('maintenance_mode_enabled') ?></label>
         <label class="form-toggle">
             <input type="checkbox" name="maintenance_mode_enabled" value="1" class="form-toggle__input"
@@ -126,3 +162,5 @@ echo Flash::fromQuery('success', ['default' => __('save_success')])->render();
         <a href="<?= route_url('home') ?>" class="btn btn--ghost"><?= __('cancel') ?></a>
     </div>
 </form>
+
+<script src="<?= $BASE_URL ?>/assets/js/modules/owner-settings.js"></script>

@@ -186,6 +186,25 @@ final class BackupControllerTest extends TestCase
         $this->assertStringContainsString('success=created_', $this->locationOf($response));
     }
 
+    public function testIndexExposesBackupSettingsToTheView(): void
+    {
+        foreach (['system', 'layout'] as $dir) {
+            $path = sys_get_temp_dir() . '/' . $dir;
+            if (!is_dir($path)) {
+                mkdir($path, 0777, true);
+            }
+        }
+        touch(sys_get_temp_dir() . '/system/backup.php');
+        touch(sys_get_temp_dir() . '/layout/app.php');
+
+        $controller = $this->makeController();
+        $this->settings->setMany(['backup_auto_enabled' => '0', 'backup_max_keep' => '5']);
+
+        $response = $controller->index($this->requestAs(true));
+
+        $this->assertSame(200, $response->status());
+    }
+
     public function testDownloadRedirectsWhenFileMissing(): void
     {
         $controller = $this->makeController();
@@ -313,6 +332,43 @@ final class BackupControllerTest extends TestCase
         $this->assertFalse($this->settings->maintenanceModeEnabled());
     }
 
+    public function testSaveSettingsPersistsAutoEnabledAndMaxKeep(): void
+    {
+        $controller = $this->makeController();
+
+        $_POST = ['backup_auto_enabled' => '1', 'backup_max_keep' => '10'];
+        $response = $controller->saveSettings($this->requestAs(true));
+        $_POST = [];
+
+        $this->assertSame(302, $response->status());
+        $this->assertStringContainsString('success=settings_saved', $this->locationOf($response));
+        $this->assertTrue($this->settings->backupAutoEnabled());
+        $this->assertSame(10, $this->settings->backupMaxKeep());
+    }
+
+    public function testSaveSettingsDisablesAutoWhenCheckboxUnchecked(): void
+    {
+        $controller = $this->makeController();
+        $this->settings->setMany(['backup_auto_enabled' => '1']);
+
+        $_POST = ['backup_max_keep' => '0'];
+        $controller->saveSettings($this->requestAs(true));
+        $_POST = [];
+
+        $this->assertFalse($this->settings->backupAutoEnabled());
+    }
+
+    public function testSaveSettingsClampsMaxKeepToValidRange(): void
+    {
+        $controller = $this->makeController();
+
+        $_POST = ['backup_auto_enabled' => '1', 'backup_max_keep' => '9999'];
+        $controller->saveSettings($this->requestAs(true));
+        $_POST = [];
+
+        $this->assertSame(365, $this->settings->backupMaxKeep());
+    }
+
     public function testSaveChannelPersistsValidChannel(): void
     {
         $controller = $this->makeController();
@@ -376,7 +432,7 @@ final class BackupControllerTest extends TestCase
     {
         $controller = $this->makeController();
 
-        foreach (['restored', 'deleted', 'migrated', 'created_backup-2026-08-05.zip', 'deleted_all_3', 'channel_alpha'] as $code) {
+        foreach (['restored', 'deleted', 'migrated', 'created_backup-2026-08-05.zip', 'deleted_all_3', 'channel_alpha', 'settings_saved'] as $code) {
             $flash = $this->describeFlash($controller, $code);
             $this->assertNotNull($flash, $code);
             $this->assertSame('success', $flash['type'], $code);

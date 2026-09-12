@@ -7,6 +7,8 @@ use kintai\UI\Components\Table;
  * @var array                                        $backups
  * @var string                                        $BASE_URL
  * @var array{type: 'success'|'danger', text: string}|null $flash
+ * @var string                                        $backup_auto_enabled
+ * @var int                                           $backup_max_keep
  */
 
 $action = route_url('admin.backup');
@@ -19,6 +21,34 @@ $action = route_url('admin.backup');
 </div>
 
 <?php include __DIR__ . '/../_partials/_settings-tabs.php'; ?>
+
+<?php
+ob_start();
+?>
+<div class="form-group">
+    <label class="form-label"><?= __('backup_auto_enabled') ?></label>
+    <label class="form-toggle">
+        <input type="checkbox" name="backup_auto_enabled" value="1" class="form-toggle__input"
+               <?= $backup_auto_enabled === '1' ? 'checked' : '' ?>>
+        <span class="form-toggle__track"></span>
+    </label>
+    <p class="form-hint"><?= __('backup_auto_hint') ?></p>
+</div>
+<div class="form-group">
+    <label class="form-label" for="backup_max_keep"><?= __('backup_max_keep') ?></label>
+    <input type="number" id="backup_max_keep" name="backup_max_keep" class="form-control"
+           min="0" max="365" style="width:100px"
+           value="<?= (int) $backup_max_keep ?>">
+    <p class="form-hint"><?= __('backup_max_keep_hint') ?></p>
+</div>
+<div class="form-actions">
+    <?= Button::make(__('save'))->primary()->submit()->render() ?>
+</div>
+<?php
+$settingsBody = ob_get_clean();
+$settingsForm = '<form method="POST" action="' . htmlspecialchars($action) . '/settings">' . csrf_field() . $settingsBody . '</form>';
+echo Card::make()->header(__('backup_card_title'))->body($settingsForm)->render();
+?>
 
 <?php
 ob_start();

@@ -287,6 +287,7 @@ final class AdminSalaryReportControllerTest extends TestCase
     public function testUpdateSalaryReportMergesPostFieldsAndRedirects(): void
     {
         $_POST = [
+            'target_month'          => '2026-09',
             'store_name'            => 'Store A',
             'person_in_charge'      => 'Manager Y',
             'total_payment'         => '200000',
@@ -320,6 +321,8 @@ final class AdminSalaryReportControllerTest extends TestCase
                 $data['id'] === 30
                 && $data['person_in_charge'] === 'Manager Y'
                 && $data['total_payment'] === 200000.0
+                // Régression : la date du rapport modifiée dans le formulaire doit être persistée (voir sr-target-month).
+                && $data['target_month'] === '2026-09'
         ));
 
         $response = $this->controller->updateSalaryReport($req);
