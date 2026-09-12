@@ -55,6 +55,7 @@
     --color-warning-border: #ebc17e;   /* bordure alerte avertissement & conflits */
     --color-info-border:    #9dc7ed;   /* bordure éléments informatifs */
     --color-accent:         #4caf50;   /* accent complémentaire — vert du sac "K" de Foxy */
+    --color-table-highlight: #dff5e1;  /* survol des lignes de tableau — vert clair de Foxy */
 
     /* ── Couleurs neutres ────────────────────────── */
     --color-text:           #1d1b2e;
@@ -174,6 +175,7 @@
     --dark-info-border:     #6cb3f2;
 
     --dark-accent:         #8fc891;
+    --dark-table-highlight: rgba(76, 175, 80, 0.18);
     --dark-neutral:        #9c98b3;
     --dark-admin-text:     #e066b8;
 
@@ -225,6 +227,7 @@
         --color-info-dark:       var(--dark-info-dark);
         --color-info-border:     var(--dark-info-border);
         --color-accent:          var(--dark-accent);
+        --color-table-highlight: var(--dark-table-highlight);
         --color-neutral:         var(--dark-neutral);
         --color-admin-text:      var(--dark-admin-text);
         --color-sidebar-bg:      var(--dark-sidebar-bg);
@@ -272,6 +275,7 @@ html[data-theme="dark"] {
     --color-info-dark:       var(--dark-info-dark);
     --color-info-border:     var(--dark-info-border);
     --color-accent:          var(--dark-accent);
+    --color-table-highlight: var(--dark-table-highlight);
     --color-neutral:         var(--dark-neutral);
     --color-admin-text:      var(--dark-admin-text);
     --color-sidebar-bg:      var(--dark-sidebar-bg);
@@ -318,6 +322,7 @@ html[data-theme="light"] {
     --color-info-dark:       #1e5a93;
     --color-info-border:     #9dc7ed;
     --color-accent:          #4caf50;
+    --color-table-highlight: #dff5e1;
     --color-neutral:         #4b4864;
     --color-admin-text:      #c2368c;
     --color-sidebar-bg:      #1d1b2e;
