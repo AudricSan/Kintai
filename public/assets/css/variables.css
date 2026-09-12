@@ -10,9 +10,9 @@
        pelage en couleur pleine, brun du nez/pattes au hover, crème du ventre
        en teinte claire — fonctionne aussi bien en texte/lien qu'en fond de
        bouton plein (pas besoin d'un token de contraste séparé).
-       Indirection via --light-primary-* et --dark-primary-* : PrimaryColorPalette
-       (Owner > Paramètres) surcharge ces tokens en style inline sur <html>
-       sans toucher --color-primary* directement, pour ne pas casser la
+       Indirection via --light-primary-* et --dark-primary-* : ThemeColorPalette
+       (Owner > Paramètres > Apparence) surcharge ces tokens en style inline sur
+       <html> sans toucher --color-primary* directement, pour ne pas casser la
        bascule clair/sombre ci-dessous. */
     --light-primary:         #ff9f4a;
     --light-primary-rgb:     255, 159, 74;
@@ -26,36 +26,61 @@
     --color-primary-lighter: var(--light-primary-lighter);
 
     /* ── Couleurs sémantiques ────────────────────── */
-    --color-success:        #1fae6b;
-    --color-success-hover:  #18925a;
-    --color-success-light:  #e2f6ec;
-    --color-success-dark:   #12693f;
+    /* Indirection --light-xxx (même mécanisme que --light-primary-xxx ci-dessus, voir
+       ThemeColorPalette) : Owner > Paramètres > Apparence peut surcharger ces tokens en
+       style inline sans toucher --color-xxx directement. Contrepartie --dark-xxx déjà
+       présente plus bas (bloc "Dark mode tokens"). */
+    --light-success:        #1fae6b;
+    --light-success-hover:  #18925a;
+    --light-success-light:  #e2f6ec;
+    --light-success-dark:   #12693f;
+    --light-success-border: #8fd9b6;
+    --color-success:        var(--light-success);
+    --color-success-hover:  var(--light-success-hover);
+    --color-success-light:  var(--light-success-light);
+    --color-success-dark:   var(--light-success-dark);
+    --color-success-border: var(--light-success-border);
 
-    --color-warning:        #c97a12;
-    --color-warning-hover:  #a8630d;
-    --color-warning-light:  #fbedd9;
-    --color-warning-dark:   #7a490a;
+    --light-warning:        #c97a12;
+    --light-warning-hover:  #a8630d;
+    --light-warning-light:  #fbedd9;
+    --light-warning-dark:   #7a490a;
+    --light-warning-border: #ebc17e;
+    --color-warning:        var(--light-warning);
+    --color-warning-hover:  var(--light-warning-hover);
+    --color-warning-light:  var(--light-warning-light);
+    --color-warning-dark:   var(--light-warning-dark);
+    --color-warning-border: var(--light-warning-border);
 
-    --color-danger:         #e5484d;
-    --color-danger-hover:   #c93a3f;
-    --color-danger-light:   #fce3e4;
-    --color-danger-dark:    #922025;
+    --light-danger:        #e5484d;
+    --light-danger-hover:  #c93a3f;
+    --light-danger-light:  #fce3e4;
+    --light-danger-dark:   #922025;
+    --light-danger-border: #f2a3a6;
+    --color-danger:        var(--light-danger);
+    --color-danger-hover:  var(--light-danger-hover);
+    --color-danger-light:  var(--light-danger-light);
+    --color-danger-dark:   var(--light-danger-dark);
+    --color-danger-border: var(--light-danger-border);
 
-    --color-info:           #2f86d6;
-    --color-info-light:     #e3f0fc;
-    --color-info-dark:      #1e5a93;
+    --light-info:        #2f86d6;
+    --light-info-light:  #e3f0fc;
+    --light-info-dark:   #1e5a93;
+    --light-info-border: #9dc7ed;
+    --color-info:        var(--light-info);
+    --color-info-light:  var(--light-info-light);
+    --color-info-dark:   var(--light-info-dark);
+    --color-info-border: var(--light-info-border);
 
     /* ── Couleurs sémantiques étendues ──────────── */
     --color-neutral:        #4b4864;   /* texte neutre (badges inactifs, états par défaut) */
     --color-admin-text:     #c2368c;   /* texte badge administrateur (rose — distinct du violet de marque) */
     --light-primary-medium: #ffe0c5;   /* primaire intermédiaire (hover btn--secondary) */
     --color-primary-medium: var(--light-primary-medium);
-    --color-success-border: #8fd9b6;   /* bordure alerte succès */
-    --color-danger-border:  #f2a3a6;   /* bordure alerte danger */
-    --color-warning-border: #ebc17e;   /* bordure alerte avertissement & conflits */
-    --color-info-border:    #9dc7ed;   /* bordure éléments informatifs */
-    --color-accent:         #4caf50;   /* accent complémentaire — vert du sac "K" de Foxy */
-    --color-table-highlight: #dff5e1;  /* survol des lignes de tableau — vert clair de Foxy */
+    --light-accent:          #4caf50;   /* accent complémentaire — vert du sac "K" de Foxy */
+    --light-table-highlight: #dff5e1;  /* survol des lignes de tableau — vert clair de Foxy */
+    --color-accent:          var(--light-accent);
+    --color-table-highlight: var(--light-table-highlight);
 
     /* ── Couleurs neutres ────────────────────────── */
     --color-text:           #1d1b2e;
@@ -302,27 +327,27 @@ html[data-theme="light"] {
     --color-primary-light:   var(--light-primary-light);
     --color-primary-lighter: var(--light-primary-lighter);
     --color-primary-medium:  var(--light-primary-medium);
-    --color-success:         #1fae6b;
-    --color-success-hover:   #18925a;
-    --color-success-light:   #e2f6ec;
-    --color-success-dark:    #12693f;
-    --color-success-border:  #8fd9b6;
-    --color-warning:         #c97a12;
-    --color-warning-hover:   #a8630d;
-    --color-warning-light:   #fbedd9;
-    --color-warning-dark:    #7a490a;
-    --color-warning-border:  #ebc17e;
-    --color-danger:          #e5484d;
-    --color-danger-hover:    #c93a3f;
-    --color-danger-light:    #fce3e4;
-    --color-danger-dark:     #922025;
-    --color-danger-border:   #f2a3a6;
-    --color-info:            #2f86d6;
-    --color-info-light:      #e3f0fc;
-    --color-info-dark:       #1e5a93;
-    --color-info-border:     #9dc7ed;
-    --color-accent:          #4caf50;
-    --color-table-highlight: #dff5e1;
+    --color-success:         var(--light-success);
+    --color-success-hover:   var(--light-success-hover);
+    --color-success-light:   var(--light-success-light);
+    --color-success-dark:    var(--light-success-dark);
+    --color-success-border:  var(--light-success-border);
+    --color-warning:         var(--light-warning);
+    --color-warning-hover:   var(--light-warning-hover);
+    --color-warning-light:   var(--light-warning-light);
+    --color-warning-dark:    var(--light-warning-dark);
+    --color-warning-border:  var(--light-warning-border);
+    --color-danger:          var(--light-danger);
+    --color-danger-hover:    var(--light-danger-hover);
+    --color-danger-light:    var(--light-danger-light);
+    --color-danger-dark:     var(--light-danger-dark);
+    --color-danger-border:   var(--light-danger-border);
+    --color-info:            var(--light-info);
+    --color-info-light:      var(--light-info-light);
+    --color-info-dark:       var(--light-info-dark);
+    --color-info-border:     var(--light-info-border);
+    --color-accent:          var(--light-accent);
+    --color-table-highlight: var(--light-table-highlight);
     --color-neutral:         #4b4864;
     --color-admin-text:      #c2368c;
     --color-sidebar-bg:      #1d1b2e;
