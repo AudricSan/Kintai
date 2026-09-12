@@ -115,7 +115,9 @@ img {
     width: 9px;
     height: 9px;
     border-radius: 50%;
-    background: var(--color-primary);
+    /* Vert accent plutôt que la couleur principale : rappelle le sac "K" de
+       Foxy à côté du orange du pelage, visible sur chaque page. */
+    background: var(--color-accent);
     flex-shrink: 0;
 }
 
