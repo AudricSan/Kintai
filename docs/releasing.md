@@ -19,55 +19,64 @@ Consequences:
 - Only **GitHub Releases** count (not bare tags, not commits). Until a matching Release exists for the instance's channel, `checkLatestRelease()` returns `null`.
 - No `v` prefix in config files (the `v` prefix only exists on the Git tag — `GithubUpdateService` strips it before comparing versions).
 
-## Version scheme: X.Y.Z-\<week letter>\<sub-version>
+## Version scheme: X.Y.Z, cascading precision
 
-The version number is `X.Y.Z` for a stable release (no suffix), or `X.Y.Z-LN` for a prerelease (`L` = letter, `N` = number):
+The version number is always a plain `X.Y.Z` — no prerelease suffix, no week letter:
 
-- **X** — cumulative count of **stable** releases published on `main`.
-- **Y** — cumulative count of **beta** releases published on `beta`.
-- **Z** — cumulative count of **alpha** releases published on `alpha`.
+- **X** — major version. Bumped **by hand**, only for a breaking change. Bumping `X` resets `Y` and `Z` to `0`.
+- **Y** — release line. Bumped **by hand**, once, when opening the *first* alpha of a new line — typically right after the previous line shipped to `main`. Bumping `Y` resets `Z` to `0`.
+- **Z** — iteration counter within the current `X.Y` line, shared and cumulative across `alpha` and `beta` (never reset between the two channels): the line's first alpha publish is `X.Y.1`, the next alpha or beta publish (whichever comes first) is `X.Y.2`, and so on. **`Z` is computed automatically by `.github/workflows/release.yml`** from the highest existing `vX.Y.*` tag — never entered by hand.
+- **`Z = 0` is reserved exclusively for the stable release published on `main`.** Because alpha/beta always start a line at `Z = 1` and only ever count up, `X.Y.0` never collides with an earlier alpha/beta tag from the same line.
 
-Each of the three counters is bumped **by hand**, +1, only on the channel you're publishing to (the other two stay unchanged) — see "Publishing a new version" below.
+Example for line `0.13`:
 
-- **L** — letter for the current ISO week, computed automatically by `.github/workflows/release.yml` (bijective base-26 encoding, spreadsheet-column style: `a` = week 1, `b` = week 2 ... `z` = week 26, `aa` = week 27...).
-- **N** — sub-version: a counter reset to 1 at the start of each new ISO week, auto-incremented on every alpha/beta publish during that week (across both channels), derived from the tags already published that week.
+```
+alpha  -> v0.13.1, v0.13.2
+beta   -> v0.13.3, v0.13.4   (same counter, picks up where alpha left off)
+main   -> v0.13.0            (stable, tagged once the line is ready)
+```
 
-`L` and `N` are **never** entered by hand — the workflow computes them at publish time. Only `alpha`/`beta` releases carry this suffix; a stable (`main`) release stays `vX.Y.Z` with no suffix.
+The next line starts at `0.14.1` (`Y` bumped by hand, `Z` back to its `0` placeholder in `composer.json`/`config/app.php` until the workflow computes the real first `Z`).
 
-## Which counter to bump (X, Y, or Z)
+This replaces the previous `X.Y.Z-<week letter><sub-version>` suffix scheme (e.g. `0.12.0-ak23`), which encoded three independent per-channel counters plus an ISO-week letter that was hard to read at a glance on `/admin/update`.
 
-Which counter you bump depends only on the **channel you're publishing to**, not on the scope of the change (unlike a classic semver MAJOR/MINOR/PATCH):
+## Which number to bump
 
-- Publishing to `alpha` → bump **Z** (`config/app.php`/`composer.json`).
-- Publishing to `beta` → bump **Y**.
-- Publishing to `main` (stable release) → bump **X**.
+Unlike a classic semver MAJOR/MINOR/PATCH, `Z` is never bumped by hand — only `X`/`Y` are, and only in these two situations:
+
+- **Opening the first alpha of a new line** → bump **Y** in `composer.json`/`config/app.php` (leave `Z` at its `.0` placeholder — the real per-publish `Z` is computed by the workflow, never stored here).
+- **Breaking change** → bump **X** instead (this also resets `Y` to `0`).
+- **Every later alpha or beta publish on that line** → nothing to bump by hand; `composer.json` keeps reading `X.Y.0`, only `CHANGELOG.md`'s `[Unreleased]` section grows.
+- **Publishing the stable release on `main`** → nothing to bump either; `composer.json` should already read `X.Y.0` from the line's first alpha. The workflow tags exactly `vX.Y.0`, skipped with a log message if that tag already exists (no version bump happened since the last stable release).
 
 ## Publishing a new version (recommended flow)
 
-The base version number (`X.Y.Z` in `composer.json`/`config/app.php`/`CHANGELOG.md`) is still bumped **by hand**, exactly as before. What's automated by `.github/workflows/release.yml` whenever a bump lands on `alpha`, `beta`, or `main` is *creating the Git tag and GitHub Release* — you no longer tag or `gh release create` yourself.
+The base version number (`X.Y` in `composer.json`/`config/app.php`/`CHANGELOG.md`, always written as `X.Y.0`) is still bumped **by hand**, exactly as before, but only when opening a new line (see "Which number to bump" above) — not on every alpha/beta publish. What's automated by `.github/workflows/release.yml` on every push to `alpha`, `beta`, or `main` is *computing `Z` and creating the Git tag + GitHub Release* — you never tag or `gh release create` yourself.
 
-1. On a regular working branch, bump the version (see "Manual procedure" below, or run `scripts/release.ps1 -DryRun` to preview the CHANGELOG notes — its automated tag/push/`gh release create` steps are superseded by the Action and will simply fail against a protected branch, so don't run it without `-DryRun` anymore).
+1. On a regular working branch, bump the version if you're opening a new line (see "Manual procedure" below, or run `scripts/release.ps1 -DryRun` to preview the CHANGELOG notes — its automated tag/push/`gh release create` steps are superseded by the Action and will simply fail against a protected branch, so don't run it without `-DryRun` anymore).
 2. Open a PR targeting the channel branch you want to publish to (`alpha`, `beta`, or `main`), and merge it once CI is green (required by branch protection).
 3. `.github/workflows/release.yml` runs on the resulting push and:
-   - reads the base version from `composer.json`;
-   - on `alpha`/`beta`, computes the week letter and sub-version (see above) and tags `vX.Y.Z-LN`, marked as a prerelease — every publish produces a distinct tag (no more rolling tag rewritten on each push);
-   - on `main`, tags `vX.Y.Z` as a normal (non-prerelease) Release — skipped with a log message if that exact tag already exists (i.e. no version bump happened since the last stable release);
-   - extracts the release notes from `CHANGELOG.md` (the dated `## [X.Y.Z]` section for `main`, the `## [Unreleased]` section for `alpha`/`beta`).
+   - reads the `X.Y` line from `composer.json`;
+   - on `alpha`/`beta`, finds the highest existing `vX.Y.*` tag, computes `Z+1`, and tags `vX.Y.Z`, marked as a prerelease — every publish produces a distinct, ever-increasing tag;
+   - on `main`, tags `vX.Y.0` as a normal (non-prerelease) Release — skipped with a log message if that exact tag already exists (i.e. the line was already shipped stable);
+   - extracts the release notes from `CHANGELOG.md` (the dated `## [X.Y.0]` section for `main`, the `## [Unreleased]` section for `alpha`/`beta`).
 
 To promote a version from one channel to the next (alpha → beta → release), merge the corresponding branch forward (e.g. `alpha` into `beta`, then `beta` into `main`) via PR, same as any other branch promotion.
 
 ## Manual procedure (bumping the version)
 
-1. On a working branch, rename `## [Unreleased]` to `## [0.11.0] - 2026-08-04` in `CHANGELOG.md` (the base `X.Y.Z`, without the `-LN` suffix the workflow will compute) and add a new empty `## [Unreleased]` section right above it.
-2. Update the version in `composer.json` (`"version": "0.11.0"`) and `config/app.php` (`env('APP_VERSION', '0.11.0')`), incrementing only the counter for the channel you're targeting (X for `main`, Y for `beta`, Z for `alpha`).
-3. Commit, push the branch, and open a PR into `alpha`, `beta`, or `main` as appropriate:
+Only needed when opening a new line (or a new major) — see "Which number to bump" above; skip this for every other alpha/beta publish.
+
+1. On a working branch, rename `## [Unreleased]` to `## [0.13.0] - 2026-08-04` in `CHANGELOG.md` (the `X.Y.0` line version — `Z` here is always `0`, the real per-publish `Z` is computed by the workflow) and add a new empty `## [Unreleased]` section right above it.
+2. Update the version in `composer.json` (`"version": "0.13.0"`) and `config/app.php` (`env('APP_VERSION', '0.13.0')`), bumping `Y` (or `X` for a breaking change) and resetting the rest to `0`.
+3. Commit, push the branch, and open a PR into `alpha` (new lines always start there):
    ```bash
    git add CHANGELOG.md composer.json config/app.php
-   git commit -m "core(release): v0.11.0"
+   git commit -m "core(release): v0.13.0"
    git push -u origin <your-branch>
-   gh pr create --base beta
+   gh pr create --base alpha
    ```
-4. Once merged, `.github/workflows/release.yml` creates the tag (with the `-LN` suffix on `alpha`/`beta`) and GitHub Release automatically — nothing left to do manually.
+4. Once merged, `.github/workflows/release.yml` computes the real `Z` (`1` for this first publish) and creates the tag (`v0.13.1`) and GitHub Release automatically — nothing left to do manually. Every later alpha/beta publish on this line is just a normal PR (no version bump) into `alpha` or `beta`.
 
 ## After publishing
 

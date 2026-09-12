@@ -188,19 +188,18 @@ final class GithubUpdateServiceTest extends TestCase
     }
 
     /**
-     * Régression : le suffixe -LN (voir docs/releasing.md) n'est jamais
-     * conservé dans config/app.php, donc la version installée après une
-     * précédente prerelease redevient une base nue "X.Y.Z" identique à celle
-     * de la nouvelle prerelease "X.Y.Z-LN". version_compare() natif classerait
-     * à tort "ak3" en dessous d'une chaîne sans suffixe et masquerait la mise
-     * à jour.
+     * Régression : config/app.php ne conserve jamais que la ligne "X.Y.0"
+     * (voir docs/releasing.md) — une instance jamais mise à jour via
+     * l'auto-updater affiche donc ce placeholder, alors que le tag alpha/beta
+     * réel de la ligne porte un Z non nul. La comparaison doit tout de même
+     * détecter la mise à jour.
      */
-    public function testCheckLatestReleaseDetectsUpdateWhenLatestHasSuffixOfSameBase(): void
+    public function testCheckLatestReleaseDetectsUpdateWhenCurrentIsLinePlaceholder(): void
     {
         $service = $this->makeService(
-            'v0.11.9-ak3',
+            'v0.11.3',
             ['README.md' => 'hello'],
-            currentVersion: '0.11.9',
+            currentVersion: '0.11.0',
             channel: 'alpha',
             prerelease: true,
             targetCommitish: 'alpha',
@@ -210,31 +209,15 @@ final class GithubUpdateServiceTest extends TestCase
 
         $this->assertNotNull($info);
         $this->assertTrue($info['has_update']);
-        $this->assertSame('0.11.9-ak3', $info['latest_version']);
+        $this->assertSame('0.11.3', $info['latest_version']);
     }
 
-    public function testCheckLatestReleaseNoUpdateWhenAlreadyOnSameSuffixedVersion(): void
+    public function testCheckLatestReleaseDetectsUpdateBetweenTwoIterationsOfSameLine(): void
     {
         $service = $this->makeService(
-            'v0.11.9-ak3',
+            'v0.11.3',
             ['README.md' => 'hello'],
-            currentVersion: '0.11.9-ak3',
-            channel: 'alpha',
-            prerelease: true,
-            targetCommitish: 'alpha',
-        );
-
-        $info = $service->checkLatestRelease();
-
-        $this->assertFalse($info['has_update']);
-    }
-
-    public function testCheckLatestReleaseDetectsUpdateBetweenTwoSuffixesOfSameBase(): void
-    {
-        $service = $this->makeService(
-            'v0.11.9-ak3',
-            ['README.md' => 'hello'],
-            currentVersion: '0.11.9-ak2',
+            currentVersion: '0.11.2',
             channel: 'alpha',
             prerelease: true,
             targetCommitish: 'alpha',
@@ -396,16 +379,16 @@ final class GithubUpdateServiceTest extends TestCase
     }
 
     /**
-     * Régression : appliquer une prerelease "-LN" ne doit pas laisser
+     * Régression : appliquer une prerelease dont le Z réel dépasse le
+     * placeholder "X.Y.0" synchronisé dans config/app.php ne doit pas laisser
      * l'instance se croire perpétuellement en retard sur cette même release
-     * (config/app.php ne conserve que la base X.Y.Z une fois synchronisé —
-     * voir UpdateService::recordAppliedVersion()).
+     * (voir UpdateService::recordAppliedVersion()).
      */
-    public function testCheckLatestReleaseIsUpToDateRightAfterApplyingASuffixedRelease(): void
+    public function testCheckLatestReleaseIsUpToDateRightAfterApplyingAnIteratedRelease(): void
     {
         $service = $this->makeService(
-            'v0.11.10-ak5',
-            ['README.md' => 'hello', 'config/app.php' => "<?php return ['version' => '0.11.10'];"],
+            'v0.11.10',
+            ['README.md' => 'hello', 'config/app.php' => "<?php return ['version' => '0.11.0'];"],
             currentVersion: '0.11.9',
             channel: 'alpha',
             prerelease: true,
@@ -416,7 +399,7 @@ final class GithubUpdateServiceTest extends TestCase
 
         $info = $service->checkLatestRelease();
         $this->assertFalse($info['has_update']);
-        $this->assertSame('0.11.10-ak5', $info['current_version']);
+        $this->assertSame('0.11.10', $info['current_version']);
     }
 
     /**
