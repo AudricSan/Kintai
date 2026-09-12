@@ -9,7 +9,7 @@ $thisWeek = date('Y-m-d', strtotime('tuesday this week'));
 <div class="page-header">
     <h2 class="page-header__title"><?= __('photo_new_submission') ?></h2>
     <div class="page-header__actions">
-        <a href="<?= $BASE_URL ?>/admin/photos" class="btn btn--ghost btn--sm">← <?= __('back') ?></a>
+        <a href="<?= back_url($BASE_URL . '/admin/photos') ?>" class="btn btn--ghost btn--sm">← <?= __('back') ?></a>
     </div>
 </div>
 
@@ -54,7 +54,7 @@ $thisWeek = date('Y-m-d', strtotime('tuesday this week'));
 
 <div class="form-actions">
     <button type="button" class="btn btn--primary" id="uploadBtn" disabled><?= __('photo_submit') ?></button>
-    <a href="<?= $BASE_URL ?>/admin/photos" class="btn btn--ghost"><?= __('cancel') ?></a>
+    <a href="<?= back_url($BASE_URL . '/admin/photos') ?>" class="btn btn--ghost"><?= __('cancel') ?></a>
 </div>
 
 <script>

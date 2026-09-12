@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\Core\Services;
 
+use kintai\Bundles\StorePhoto\Services\StorePhotoConsolidationService;
 use kintai\Core\Database\MigrationRunner;
+use kintai\Core\Repositories\StorePhotoRepositoryInterface;
 
 /**
  * Met à jour l'application depuis une Release GitHub taguée : télécharge
@@ -52,6 +54,7 @@ final class GithubUpdateService
         private readonly BackupService $backup,
         private readonly MigrationRunner $migrator,
         private readonly AppSettingsService $settings,
+        private readonly StorePhotoRepositoryInterface $photoRepo,
         ?string $basePath = null,
         private readonly ?\Closure $releaseFetcher = null,
         private readonly ?\Closure $zipDownloader = null,
@@ -100,7 +103,7 @@ final class GithubUpdateService
         return [
             'current_version' => $current,
             'latest_version'  => $latest,
-            'has_update'      => version_compare($latest, $current, '>'),
+            'has_update'      => VersionScheme::isNewer($latest, $current),
             'release_notes'   => $release['body'] ?? '',
             'release_url'     => $release['html_url'] ?? null,
             'published_at'    => $release['published_at'] ?? null,
@@ -284,6 +287,18 @@ final class GithubUpdateService
             $progress(80, __('backup_update_step_migrate'));
             $migrationsApplied = $this->migrator->run();
 
+            // Rattrapage ponctuel : avant l'introduction du regroupement journalier
+            // (StorePhotoController::store()), plusieurs envois de photos pouvaient
+            // s'accumuler séparément pour un même magasin le même jour. Best-effort :
+            // une erreur ici ne doit jamais faire échouer la mise à jour elle-même.
+            $photoReportsMerged = 0;
+            try {
+                $consolidation = new StorePhotoConsolidationService($this->photoRepo, $this->basePath . '/storage/uploads/img/');
+                $photoReportsMerged = $consolidation->consolidate()['merged_submissions'];
+            } catch (\Throwable $e) {
+                error_log('[Kintai][Update] Regroupement des rapports photo échoué : ' . $e->getMessage());
+            }
+
             $composerStatus = 'skipped';
             $composerOutput = null;
             if ($lockChanged) {
@@ -293,6 +308,7 @@ final class GithubUpdateService
                 $composerOutput = $composer['output'];
             }
 
+            $this->updateService->recordAppliedVersion($release['latest_version']);
             $this->updateService->recordUpdateDuration((int) round(microtime(true) - $startedAt));
 
             $progress(100, __('backup_update_step_done'));
@@ -303,6 +319,7 @@ final class GithubUpdateService
                 'files_copied'       => $sync['copied'],
                 'files_deleted'      => $sync['deleted'],
                 'migrations_applied' => $migrationsApplied,
+                'photo_reports_merged' => $photoReportsMerged,
                 'composer'           => $composerStatus,
                 'composer_output'    => $composerOutput,
             ];

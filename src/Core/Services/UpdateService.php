@@ -16,9 +16,16 @@ final class UpdateService
     }
 
     /**
-     * La version installée est celle déclarée dans config/app.php (bumpée à
-     * chaque release, et synchronisée par GithubUpdateService::syncFiles()
-     * lors d'une mise à jour) — pas de fichier JSON supplémentaire à tenir à jour.
+     * La version installée est la base X.Y.Z déclarée dans config/app.php
+     * (bumpée à chaque release, et synchronisée par
+     * GithubUpdateService::syncFiles() lors d'une mise à jour) — ce fichier
+     * ne contient jamais le suffixe -LN d'une prerelease (voir
+     * docs/releasing.md), qui n'existe que sur le tag Git. On complète donc
+     * avec le tag exact retenu par recordAppliedVersion() lors de la
+     * dernière mise à jour appliquée via l'auto-updater, tant que sa base
+     * correspond toujours à celle de config/app.php (sinon, ce tag est
+     * obsolète — la base a été changée par un autre moyen, ex. un git pull
+     * manuel — et on retombe sur la base seule).
      */
     public function getCurrentVersion(): string
     {
@@ -27,7 +34,22 @@ final class UpdateService
             return '0.0.0';
         }
         $config = require $configFile;
-        return $config['version'] ?? '0.0.0';
+        $base = $config['version'] ?? '0.0.0';
+
+        $appliedVersion = $this->readVersion()['applied_version'] ?? null;
+        if (is_string($appliedVersion) && VersionScheme::baseOf($appliedVersion) === $base) {
+            return $appliedVersion;
+        }
+
+        return $base;
+    }
+
+    /** Mémorise le tag exact (avec suffixe -LN éventuel) appliqué par la dernière mise à jour réussie. */
+    public function recordAppliedVersion(string $version): void
+    {
+        $data = $this->readVersion();
+        $data['applied_version'] = $version;
+        $this->writeVersion($data);
     }
 
     public function getInstalledAt(): ?string

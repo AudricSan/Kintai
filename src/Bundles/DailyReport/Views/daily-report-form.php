@@ -36,9 +36,9 @@ if (!function_exists('drFormH')) {
 }
 
 $shiftRows = $shiftRows ?? [];
-$backUrl   = $isEdit
+$backUrl   = back_url($isEdit
     ? $BASE_URL . '/admin/stores/' . $storeId . '/daily-reports/' . $reportId
-    : $BASE_URL . '/admin/stores/' . $storeId . '/daily-reports';
+    : $BASE_URL . '/admin/stores/' . $storeId . '/daily-reports');
 ?>
 
 <div class="page-header">

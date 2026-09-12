@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace kintai\Core\Auth;
 
+use kintai\Core\Exceptions\ForbiddenException;
+use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 
@@ -64,6 +66,95 @@ final class PermissionService
             }
         }
         return array_values(array_unique($storeIds));
+    }
+
+    /**
+     * Filtre $items aux seuls éléments dont le store est couvert par $permissionKey
+     * pour cet utilisateur — défense en profondeur pour les endpoints API qui listent
+     * une ressource par un identifiant autre que store_id (user_id, shift_id...) : dans
+     * ce cas ApiPermissionMiddleware ne peut pas borner la portée en amont (le store_id
+     * réel n'est connu qu'après lecture des lignes), donc le contrôleur doit refiltrer
+     * lui-même après coup. Portée globale (rôle système, ou rôle custom affecté en
+     * portée globale) = aucun filtrage.
+     * @param array<int, array<string,mixed>> $items
+     * @return array<int, array<string,mixed>>
+     */
+    public function restrictToScope(array $authUser, string $permissionKey, array $items, string $storeField = 'store_id'): array
+    {
+        $userId   = (int) ($authUser['id'] ?? 0);
+        $storeIds = $this->scopedStoreIds($userId, $permissionKey);
+        if ($storeIds === [] && $this->can($authUser, $permissionKey, null)) {
+            return $items;
+        }
+        return array_values(array_filter(
+            $items,
+            fn(array $item): bool => in_array((int) ($item[$storeField] ?? 0), $storeIds, true)
+        ));
+    }
+
+    /**
+     * Stores pour lesquels l'utilisateur détient, via une affectation de portée 'store',
+     * un rôle accordant N'IMPORTE QUELLE permission RBAC (peu importe laquelle) — porte
+     * d'entrée grossière utilisée par PermissionMiddleware pour les routes 'public'/sans
+     * permission précise déclarée (self-service, agrégats), en remplacement de l'ancien
+     * AdminMiddleware séparé (fusionné en RBAC-V2). Contrairement à
+     * AuthService::managedStoreIds() (qui relit l'utilisateur depuis la session PHP),
+     * cette méthode opère directement sur le tableau $authUser déjà résolu par le
+     * pipeline de requête — cohérent avec can()/scopedStoreIds() ci-dessus.
+     * @return int[]
+     */
+    public function anyGrantedStoreIds(array $authUser): array
+    {
+        $userId = (int) ($authUser['id'] ?? 0);
+        if ($userId <= 0) {
+            return [];
+        }
+        $storeIds = [];
+        foreach ($this->assignments->findByUser($userId) as $assignment) {
+            if ($assignment['scope_type'] !== 'store' || $assignment['scope_id'] === null) {
+                continue;
+            }
+            $role = $this->role((int) $assignment['role_id']);
+            if ($role === null) {
+                continue;
+            }
+            if (!empty($role['is_system']) || $this->roles->getPermissions((int) $assignment['role_id']) !== []) {
+                $storeIds[] = (int) $assignment['scope_id'];
+            }
+        }
+        return array_values(array_unique($storeIds));
+    }
+
+    /**
+     * Charge une ressource par id via $finder, vérifie que $permissionKey est accordée
+     * sur son store RÉEL (jamais celui, optionnel, fourni par le client) — le pattern
+     * "findById() + can()" que chaque contrôleur de ressource {id} devait ré-écrire à la
+     * main, et dont l'omission a produit l'IDOR inter-store trouvé et corrigé le
+     * 11/09/2026 dans 5 bundles (ShiftSwap, TimeOff, Timeclock, ShiftClaim, Feedback) :
+     * ApiPermissionMiddleware ne peut borner la portée en amont que si le client fournit
+     * lui-même store_id, ce qu'aucune route {id} n'exige. Utiliser cette méthode pour tout
+     * nouveau show/update/destroy plutôt que de refaire le couple à la main.
+     *
+     * @param callable(int): (array|null) $finder Ex. fn(int $id) => $this->repo->findById($id)
+     * @throws NotFoundException Si $finder($id) retourne null.
+     * @throws ForbiddenException Si $permissionKey n'est pas accordée sur le store réel de la ressource.
+     */
+    public function requireOwnedResource(
+        array $authUser,
+        callable $finder,
+        int $id,
+        string $permissionKey,
+        string $storeField = 'store_id',
+        string $notFoundMessage = 'Ressource introuvable.',
+    ): array {
+        $item = $finder($id);
+        if ($item === null) {
+            throw new NotFoundException($notFoundMessage);
+        }
+        if (!$this->can($authUser, $permissionKey, (int) ($item[$storeField] ?? 0))) {
+            throw new ForbiddenException('Permission insuffisante : ' . $permissionKey);
+        }
+        return $item;
     }
 
     private function matchesScope(array $assignment, ?int $storeId): bool

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="<?= htmlspecialchars($app_theme_color_style ?? '', ENT_QUOTES) ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,6 +10,7 @@
 <body class="guest-layout">
     <div class="guest-container">
         <div class="guest-brand">
+            <img src="<?= $BASE_URL ?>/assets/img/mascot/wave-hello.png" alt="<?= __('mascot_alt') ?>" class="guest-brand__mascot">
             <h1>Kintai</h1>
             <?php if (!empty($app_subtitle)): ?>
                 <p class="guest-brand__company"><?= htmlspecialchars($app_subtitle, ENT_QUOTES) ?></p>

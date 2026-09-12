@@ -146,7 +146,7 @@
 }
 
 .sstat-table tr:last-child td { border-bottom: none; }
-.sstat-table tr:hover td      { background: var(--color-bg); }
+.sstat-table tr:hover td      { background: var(--color-table-highlight); }
 
 .sstat-progress {
     height: 6px;

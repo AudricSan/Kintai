@@ -51,3 +51,4 @@ CLAUDE.md
 /public/storage
 /storage.back
 config/database.local.php
+/mobile

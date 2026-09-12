@@ -34,6 +34,7 @@ final class AdminSalaryReportController
         'view'      => 'salary-report::reports-salary',
         'not_found' => 'Rapport de salaire introuvable.',
         'fields'    => [
+            'target_month'          => 'str',
             'store_name'            => 'str',
             'employee_name'         => 'str',
             'person_in_charge'      => 'str',

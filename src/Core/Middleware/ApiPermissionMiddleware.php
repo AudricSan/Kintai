@@ -14,17 +14,15 @@ use kintai\Core\Response;
  * Autorisation RBAC de l'API v1. Doit être placé après ApiAuthMiddleware
  * (auth_user déjà attaché à partir du token Bearer).
  *
- * La règle par route est déclarée dans config/api-permissions.php (voir le
- * format documenté dans ce fichier). Contrairement à l'utilisateur de session
- * web, l'auth_user attaché ici est la ligne brute de la table users : le flag
- * legacy is_admin n'est PAS consulté — un Owner passe parce que son
- * affectation au rôle système accorde toutes les clés via PermissionService.
+ * La règle par route est déclarée directement sur la route elle-même
+ * (paramètre permission: de Router::get/post/..., voir Route::$permission).
+ * Contrairement à l'utilisateur de session web, l'auth_user attaché ici est
+ * la ligne brute de la table users : le flag legacy is_admin n'est PAS
+ * consulté — un Owner passe parce que son affectation au rôle système
+ * accorde toutes les clés via PermissionService.
  */
 final class ApiPermissionMiddleware implements MiddlewareInterface
 {
-    /** @var array<string, string|array{perm: string, self?: string, membership?: bool}>|null */
-    private static ?array $routeRules = null;
-
     public function __construct(
         private readonly PermissionService $permissions,
         private readonly StoreUserRepositoryInterface $storeUsers,
@@ -32,8 +30,8 @@ final class ApiPermissionMiddleware implements MiddlewareInterface
 
     public function handle(Request $request, Closure $next): Response
     {
-        $rule = $this->rule((string) ($request->getAttribute('route_name') ?? ''));
-        if ($rule === null) {
+        $rule = $request->getAttribute('route_permission');
+        if ($rule === null || $rule === 'public') {
             return $next($request);
         }
 
@@ -98,17 +96,5 @@ final class ApiPermissionMiddleware implements MiddlewareInterface
             ?? $request->json('store_id');
         $storeId = $value !== null && $value !== '' ? (int) $value : 0;
         return $storeId > 0 ? $storeId : null;
-    }
-
-    private function rule(string $routeName): string|array|null
-    {
-        if ($routeName === '') {
-            return null;
-        }
-        if (self::$routeRules === null) {
-            $file = dirname(__DIR__, 3) . '/config/api-permissions.php';
-            self::$routeRules = is_file($file) ? (require $file) : [];
-        }
-        return self::$routeRules[$routeName] ?? null;
     }
 }
