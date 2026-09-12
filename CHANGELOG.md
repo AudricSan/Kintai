@@ -6,6 +6,8 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-09-13
+
 ### Added
 - Kintai is now a properly installable PWA with partial offline support. `sw.js` (previously written but never registered) is now registered on every page and precaches the app shell; navigation requests fall back to the last cached page (or a new dedicated `public/offline.html`) when the network is unreachable. The manifest gained real PNG icons (192/512 + a 512 maskable variant, generated from the existing brand mark) alongside the SVG.
 - Timeclock: clock-in/clock-out actions queued while offline (already stored client-side via IndexedDB) are now actually replayed — the queue is flushed on reconnect and once on page load, sequentially and in order (a clock-out queued after a clock-in could previously race ahead of it once both fired in parallel on reconnect, failing with "no active clock"). A small "pending sync" indicator shows how many actions are still queued.
