@@ -30,7 +30,7 @@ $isEmployeeScoped = !empty($report['user_id']);
         <span class="page-count"><?= htmlspecialchars($store['name'] ?? '') ?></span>
     </h2>
     <div class="page-header__actions">
-        <?= Button::make('← ' . __('back'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . $storeId . '/reports/salary')->render() ?>
+        <?= Button::make('← ' . __('back'))->ghost()->sm()->link(back_url($BASE_URL . '/admin/stores/' . $storeId . '/reports/salary'))->render() ?>
         <?= Button::make(__('edit'))->primary()->sm()->link($base . '/edit')->render() ?>
         <?= Button::make(__('sr_pdf'))->ghost()->sm()->link($base . '/pdf')->attrs(['target' => '_blank'])->render() ?>
         <form method="POST" action="<?= htmlspecialchars($base . '/delete') ?>" class="form-inline" data-confirm="<?= htmlspecialchars(__('sr_confirm_delete'), ENT_QUOTES) ?>">

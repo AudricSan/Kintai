@@ -121,6 +121,38 @@ final class AdminTimeclockControllerTest extends TestCase
         $this->assertSame(302, $response->status());
     }
 
+    /**
+     * Régression (audit RBAC du 11/09/2026) : timeclocksEdit()/timeclocksDelete()
+     * n'appelaient jamais assertStoreAccess() — un manager restreint au store 5
+     * pouvait éditer/supprimer un pointage du store 9.
+     */
+    public function testTimeclocksEditRejectsEntryFromUnmanagedStore(): void
+    {
+        $_POST = ['clock_in_time' => '2026-08-01 09:00:00'];
+        $req = new Request();
+        $req->setRouteParams(['id' => '10']);
+        $req->setAttribute('managed_store_ids', [5]);
+
+        $this->timeclocks->method('findById')->with(10)->willReturn(['id' => 10, 'store_id' => 9]);
+        $this->timeclocks->expects($this->never())->method('save');
+
+        $this->expectException(\kintai\Core\Exceptions\ForbiddenException::class);
+        $this->controller->timeclocksEdit($req);
+    }
+
+    public function testTimeclocksDeleteRejectsEntryFromUnmanagedStore(): void
+    {
+        $req = new Request();
+        $req->setRouteParams(['id' => '10']);
+        $req->setAttribute('managed_store_ids', [5]);
+
+        $this->timeclocks->method('findById')->with(10)->willReturn(['id' => 10, 'store_id' => 9]);
+        $this->timeclocks->expects($this->never())->method('delete');
+
+        $this->expectException(\kintai\Core\Exceptions\ForbiddenException::class);
+        $this->controller->timeclocksDelete($req);
+    }
+
     private function ensureViewFile(string $dir, string $view): void
     {
         $file = $dir . DIRECTORY_SEPARATOR . str_replace('.', DIRECTORY_SEPARATOR, $view) . '.php';

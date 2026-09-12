@@ -158,7 +158,7 @@ $exportQuery = $filter_store_id !== 0 ? '?store_id=' . $filter_store_id : '';
         if ($can('payroll.generate')) {
             $panel .= '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/reports/salary/create?user_id=' . $uid . '" class="row-actions__link">💰 ' . htmlspecialchars(__('salary_report')) . '</a>';
         }
-        if ($can('documents.create')) {
+        if ($can('resignation_reports.create')) {
             $panel .= '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/reports/resignation/create?user_id=' . $uid . '" class="row-actions__link row-actions__link--danger">✕ ' . htmlspecialchars(__('resign')) . '</a>';
         }
         if ($panel === '') {

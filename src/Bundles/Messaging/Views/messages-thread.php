@@ -20,7 +20,7 @@ $_canManage = $can_manage ?? true;
 <div class="page-header">
     <h2 class="page-header__title"><?= htmlspecialchars($thread['subject'] ?? '') ?></h2>
     <div class="page-header__actions">
-        <a href="<?= $BASE_URL . $base_path ?>" class="btn btn--ghost">← <?= __('back') ?></a>
+        <a href="<?= back_url($BASE_URL . $base_path) ?>" class="btn btn--ghost">← <?= __('back') ?></a>
         <form method="POST" action="<?= $BASE_URL . $base_path ?>/<?= (int) $thread['id'] ?>/delete"
               data-confirm="<?= htmlspecialchars(__('confirm_delete_thread'), ENT_QUOTES) ?>">
             <?= csrf_field() ?>

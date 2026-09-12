@@ -14,6 +14,13 @@ use kintai\Core\Services\AuditLogger;
 use kintai\UI\Controller\Web\HasAdminAccess;
 use kintai\UI\ViewRenderer;
 
+/**
+ * Régression (audit RBAC du 11/09/2026) : timeclocksEdit()/timeclocksDelete()
+ * n'appelaient jamais assertStoreAccess() (contrairement aux contrôleurs sœurs
+ * ShiftSwap/ShiftClaim/TimeOff) — un manager restreint à un store pouvait
+ * éditer/supprimer n'importe quel pointage de n'importe quel autre store
+ * directement depuis /admin/timeclocks.
+ */
 final class AdminTimeclockController
 {
     use HasAdminAccess;
@@ -61,6 +68,7 @@ final class AdminTimeclockController
         if ($entry === null) {
             throw new NotFoundException('Entrée de pointage introuvable.');
         }
+        $this->assertStoreAccess($request, (int) ($entry['store_id'] ?? 0));
 
         $clockIn  = trim((string) $request->post('clock_in_time',  ''));
         $clockOut = trim((string) $request->post('clock_out_time', ''));
@@ -97,6 +105,7 @@ final class AdminTimeclockController
         }
 
         $storeId = (int) ($entry['store_id'] ?? 0);
+        $this->assertStoreAccess($request, $storeId);
         $this->auditLogger->log($request, 'timeclock.deleted', 'timeclock', $id, [
             'store_id' => $storeId ?: null,
             'date'     => $entry['clock_in_date'] ?? '',

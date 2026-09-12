@@ -80,7 +80,7 @@ foreach ($conflicts as $c) {
     <?php
     $resolveBtn = '';
     if ($filter_month !== '' && count($sameMonthConflicts) > 0):
-        $resolveBtn = '<form method="POST" action="' . route_url('admin.shifts.resolve_newer') . '" class="form-inline ml-sm"'
+        $resolveBtn = '<form method="POST" action="' . route_url('admin.shifts.resolve_newer') . '" class="form-inline"'
             . ' onsubmit="return confirm(\'' . htmlspecialchars(__('resolve_all_month') . ' (' . count($sameMonthConflicts) . ') ?') . '")">'
             . csrf_field()
             . '<input type="hidden" name="bulk" value="1">'

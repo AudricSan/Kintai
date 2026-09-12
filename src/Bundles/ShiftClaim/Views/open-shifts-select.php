@@ -16,7 +16,7 @@ echo Flash::fromQuery('error', ['default' => __('error_generic')])->render();
     <h2 class="page-header__title"><?= __('select_shift_to_publish') ?></h2>
     <div class="page-header__actions">
         <?= Button::make('+ ' . __('create_new_shift'))->primary()->link($BASE_URL . '/admin/shifts/create?is_open=1&redirect_to=' . urlencode($BASE_URL . '/admin/open-shifts'))->render() ?>
-        <a href="<?= $BASE_URL ?>/admin/open-shifts" class="btn btn--ghost btn--sm">← <?= __('back') ?></a>
+        <a href="<?= back_url($BASE_URL . '/admin/open-shifts') ?>" class="btn btn--ghost btn--sm">← <?= __('back') ?></a>
     </div>
 </div>
 

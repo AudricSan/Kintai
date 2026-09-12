@@ -48,6 +48,42 @@ final class AppSettingsService
         return $this->get('app_support_email');
     }
 
+    /**
+     * Couleur claire d'un groupe personnalisable du thème (primary, accent,
+     * table_highlight, success, warning, danger, info). Retombe sur la valeur par
+     * défaut de la palette de la mascotte Foxy si non réglée ou invalide.
+     */
+    public function themeColor(string $group): string
+    {
+        $default = ThemeColorPalette::DEFAULTS[$group] ?? '';
+        $stored = $this->get("app_{$group}_color", $default);
+        return ThemeColorPalette::isValidHex($stored) ? $stored : $default;
+    }
+
+    /** Couleur sombre réglée manuellement pour ce groupe ('' si non réglée : mode auto). */
+    public function themeColorDark(string $group): string
+    {
+        return $this->get("app_{$group}_color_dark", '');
+    }
+
+    /** Mode de calcul des couleurs sombres : 'auto' (calculées par HSL) ou 'manual'. */
+    public function themeDarkMode(): string
+    {
+        return $this->get('app_theme_dark_mode', ThemeColorPalette::DEFAULT_DARK_MODE) === 'manual' ? 'manual' : 'auto';
+    }
+
+    /** Variables CSS (--light-xxx, --dark-xxx) de tous les groupes personnalisés à injecter en style inline sur <html>. */
+    public function themeColorStyle(): string
+    {
+        $light = [];
+        $dark = [];
+        foreach (ThemeColorPalette::DEFAULTS as $group => $default) {
+            $light[$group] = $this->themeColor($group);
+            $dark[$group] = $this->themeColorDark($group);
+        }
+        return ThemeColorPalette::toInlineStyle($light, $dark, $this->themeDarkMode());
+    }
+
     // ── Backup ─────────────────────────────────────────────────────────────────
 
     /** Nombre maximal de sauvegardes à conserver (0 = illimité). */

@@ -28,7 +28,6 @@ final class BackupController
     /** GET /admin/backup/download?filename= — télécharge une archive de sauvegarde existante. */
     public function download(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $filename = (string) $request->query('filename', '');
         $path = $this->backup->getPath($filename);
@@ -41,7 +40,6 @@ final class BackupController
 
     public function index(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $backups = $this->backup->list();
         $flash = $this->describeFlash((string) $request->query('success', ''));
@@ -50,12 +48,28 @@ final class BackupController
             'title'   => 'Sauvegardes',
             'backups' => $backups,
             'flash'   => $flash,
+            'backup_auto_enabled' => $this->settings->backupAutoEnabled() ? '1' : '0',
+            'backup_max_keep'     => $this->settings->backupMaxKeep(),
         ], 'layout.app'));
+    }
+
+    /** POST /admin/backup/settings — sauvegarde automatique (cron) et rétention. */
+    public function saveSettings(Request $request): Response
+    {
+
+        $autoEnabled = $request->post('backup_auto_enabled', '0') === '1' ? '1' : '0';
+        $maxKeep = max(0, min(365, (int) $request->post('backup_max_keep', '0')));
+
+        $this->settings->setMany([
+            'backup_auto_enabled' => $autoEnabled,
+            'backup_max_keep'     => (string) $maxKeep,
+        ]);
+
+        return Response::redirect('/admin/backup?success=settings_saved');
     }
 
     public function updatePage(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $flash = $this->describeFlash((string) $request->query('success', ''));
 
@@ -64,12 +78,22 @@ final class BackupController
             ? $this->githubUpdate->condenseReleaseNotes((string) $updateInfo['release_notes'])
             : '';
 
+        $currentChannel = $this->settings->updateChannel();
+        $otherChannelsHistory = [];
+        foreach (['release', 'beta', 'alpha'] as $channel) {
+            if ($channel === $currentChannel) {
+                continue;
+            }
+            $otherChannelsHistory[$channel] = $this->githubUpdate->getReleaseHistory($channel);
+        }
+
         return Response::html($this->view->render('system.update', [
             'title'                     => 'Mises à jour',
             'currentVersion'            => $this->update->getCurrentVersion(),
             'updateInfo'                => $updateInfo,
             'updateCheckError'          => $this->githubUpdate->getLastCheckError(),
-            'updateChannel'             => $this->settings->updateChannel(),
+            'updateChannel'             => $currentChannel,
+            'otherChannelsHistory'      => $otherChannelsHistory,
             'pendingMigs'               => $this->update->getPendingMigrations(),
             'lastUpdateDurationSeconds' => $this->update->getLastUpdateDuration(),
             'releaseNotesCondensed'     => $releaseNotesCondensed,
@@ -81,7 +105,6 @@ final class BackupController
     /** POST /admin/update/channel — change le canal de mise à jour suivi (release/beta/alpha). */
     public function saveChannel(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $channel = (string) $request->post('channel', 'release');
         if (!in_array($channel, ['alpha', 'beta', 'release'], true)) {
@@ -96,7 +119,6 @@ final class BackupController
     /** POST /admin/update/apply — applique la dernière release GitHub disponible. */
     public function update(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $wasMaintenanceEnabled = $this->settings->maintenanceModeEnabled();
         if (!$wasMaintenanceEnabled) {
@@ -139,7 +161,6 @@ final class BackupController
      */
     public function updateStream(Request $request): Response
     {
-        $this->requireOwner($request);
 
         session_write_close();
         while (ob_get_level() > 0) {
@@ -192,7 +213,6 @@ final class BackupController
 
     public function create(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $note = trim((string) $request->post('note', ''));
 
@@ -207,7 +227,6 @@ final class BackupController
 
     public function restore(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $filename = trim((string) $request->post('filename', ''));
 
@@ -226,7 +245,6 @@ final class BackupController
 
     public function delete(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $filename = trim((string) $request->post('filename', ''));
 
@@ -240,7 +258,6 @@ final class BackupController
 
     public function migrate(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $wasMaintenanceEnabled = $this->settings->maintenanceModeEnabled();
         if (!$wasMaintenanceEnabled) {
@@ -265,7 +282,6 @@ final class BackupController
 
     public function deleteAll(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $count = $this->backup->deleteAll();
         return Response::redirect('/admin/backup?success=deleted_all_' . $count);
@@ -288,6 +304,7 @@ final class BackupController
         $decoded = urldecode($raw);
 
         return match (true) {
+            $decoded === 'settings_saved' => ['type' => 'success', 'text' => __('save_success')],
             $decoded === 'restored' => ['type' => 'success', 'text' => __('backup_flash_restored')],
             $decoded === 'deleted'  => ['type' => 'success', 'text' => __('backup_flash_deleted')],
             $decoded === 'migrated' => ['type' => 'success', 'text' => __('backup_flash_migrated')],
@@ -318,13 +335,5 @@ final class BackupController
             str_starts_with($decoded, 'error_') => ['type' => 'danger', 'text' => __('error_prefix') . substr($decoded, strlen('error_'))],
             default => ['type' => 'success', 'text' => $decoded],
         };
-    }
-
-    private function requireOwner(Request $request): void
-    {
-        $user = $request->getAttribute('auth_user');
-        if (empty($user['is_admin'])) {
-            throw new ForbiddenException('Réservé au propriétaire.');
-        }
     }
 }

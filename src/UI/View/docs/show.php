@@ -45,6 +45,7 @@ $langFlags = ['fr' => '🇫🇷', 'en' => '🇬🇧', 'ja' => '🇯🇵'];
 
 <div class="docs-wiki">
     <nav class="docs-wiki__sidebar" aria-label="<?= htmlspecialchars(__('docs_toc_title')) ?>">
+        <img src="<?= ($BASE_URL ?? '') ?>/assets/img/mascot/docs-hero.png" alt="<?= __('mascot_alt') ?>" class="docs-wiki__mascot">
         <?php foreach ($toc as $group): ?>
             <?php if ($group['label'] !== null): ?>
                 <h4 class="docs-wiki__toc-title"><?= htmlspecialchars($group['label']) ?></h4>
