@@ -111,13 +111,9 @@ img {
     text-decoration: none;
 }
 
-.topbar-brand__dot {
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    /* Vert accent plutôt que la couleur principale : rappelle le sac "K" de
-       Foxy à côté du orange du pelage, visible sur chaque page. */
-    background: var(--color-accent);
+.topbar-brand__icon {
+    width: 26px;
+    height: 26px;
     flex-shrink: 0;
 }
 
