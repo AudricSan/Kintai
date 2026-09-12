@@ -48,7 +48,24 @@ final class BackupController
             'title'   => 'Sauvegardes',
             'backups' => $backups,
             'flash'   => $flash,
+            'backup_auto_enabled' => $this->settings->backupAutoEnabled() ? '1' : '0',
+            'backup_max_keep'     => $this->settings->backupMaxKeep(),
         ], 'layout.app'));
+    }
+
+    /** POST /admin/backup/settings — sauvegarde automatique (cron) et rétention. */
+    public function saveSettings(Request $request): Response
+    {
+
+        $autoEnabled = $request->post('backup_auto_enabled', '0') === '1' ? '1' : '0';
+        $maxKeep = max(0, min(365, (int) $request->post('backup_max_keep', '0')));
+
+        $this->settings->setMany([
+            'backup_auto_enabled' => $autoEnabled,
+            'backup_max_keep'     => (string) $maxKeep,
+        ]);
+
+        return Response::redirect('/admin/backup?success=settings_saved');
     }
 
     public function updatePage(Request $request): Response
@@ -287,6 +304,7 @@ final class BackupController
         $decoded = urldecode($raw);
 
         return match (true) {
+            $decoded === 'settings_saved' => ['type' => 'success', 'text' => __('save_success')],
             $decoded === 'restored' => ['type' => 'success', 'text' => __('backup_flash_restored')],
             $decoded === 'deleted'  => ['type' => 'success', 'text' => __('backup_flash_deleted')],
             $decoded === 'migrated' => ['type' => 'success', 'text' => __('backup_flash_migrated')],
