@@ -36,6 +36,21 @@ echo Flash::fromQuery('success', ['default' => __('save_success')])->render();
     ob_start();
     ?>
     <div class="form-group">
+        <label class="form-label" for="app_primary_color"><?= __('primary_color') ?></label>
+        <div class="input-group">
+            <input type="color" id="app_primary_color" name="app_primary_color" class="input-color"
+                   value="<?= htmlspecialchars($settings['app_primary_color'] ?? '#ff9f4a', ENT_QUOTES) ?>">
+            <span class="text-sm-muted"><?= __('primary_color_hint') ?></span>
+        </div>
+    </div>
+    <?php
+    echo Card::make()->header(__('appearance'))->body(ob_get_clean())->render();
+    ?>
+
+    <?php
+    ob_start();
+    ?>
+    <div class="form-group">
         <label class="form-label"><?= __('login_notice') ?></label>
         <textarea name="app_login_notice" class="form-control" rows="3"
                   maxlength="300"

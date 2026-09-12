@@ -5,7 +5,7 @@ $onCalendar       = str_starts_with($path, '/admin/shifts/calendar');
 $ico              = fn(string $k): string => '<span class="topbar-nav-group__link-icon">' . $svgIcon($k) . '</span>';
 ?>
 <header class="topbar">
-    <a href="<?= route_url('home') ?>" class="topbar-brand"><span class="topbar-brand__dot"></span>Kintai<?php if (!empty($app_subtitle)): ?><span class="topbar-brand__subtitle"><?= htmlspecialchars($app_subtitle, ENT_QUOTES) ?></span><?php endif; ?></a>
+    <a href="<?= route_url('home') ?>" class="topbar-brand"><img src="<?= $BASE_URL ?>/assets/img/mascot/brand-icon.png" alt="" class="topbar-brand__icon">Kintai<?php if (!empty($app_subtitle)): ?><span class="topbar-brand__subtitle"><?= htmlspecialchars($app_subtitle, ENT_QUOTES) ?></span><?php endif; ?></a>
 
     <button type="button" class="topbar-nav-toggle" id="topbarNavToggle" aria-label="Menu" aria-expanded="false">☰</button>
 

@@ -56,4 +56,27 @@ final class AppSettingsServiceTest extends TestCase
             $this->makeService(['maintenance_message' => 'Maintenance en cours.'])->maintenanceMessage(),
         );
     }
+
+    public function testPrimaryColorDefaultsToFoxyOrange(): void
+    {
+        $this->assertSame('#ff9f4a', $this->makeService()->primaryColor());
+    }
+
+    public function testPrimaryColorReadsStoredValue(): void
+    {
+        $this->assertSame('#6c5ce7', $this->makeService(['app_primary_color' => '#6c5ce7'])->primaryColor());
+    }
+
+    public function testPrimaryColorRejectsInvalidStoredValue(): void
+    {
+        $this->assertSame('#ff9f4a', $this->makeService(['app_primary_color' => 'not-a-color'])->primaryColor());
+    }
+
+    public function testPrimaryColorStyleContainsGeneratedTokens(): void
+    {
+        $style = $this->makeService(['app_primary_color' => '#6c5ce7'])->primaryColorStyle();
+
+        $this->assertStringContainsString('--light-primary:#6c5ce7;', $style);
+        $this->assertStringContainsString('--dark-primary:', $style);
+    }
 }
