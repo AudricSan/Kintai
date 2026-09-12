@@ -8,6 +8,7 @@
 </head>
 <body class="error-body">
     <div class="error-page">
+        <img src="<?= ($BASE_URL ?? '') ?>/assets/img/mascot/error-404.png" alt="<?= __('mascot_alt') ?>" class="error-mascot">
         <div class="error-code">404</div>
         <p class="error-message"><?= htmlspecialchars($message ?? __('error_404_message')) ?></p>
         <a href="/" class="error-link">← <?= __('back_to_dashboard') ?></a>
