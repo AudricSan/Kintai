@@ -1,30 +1,30 @@
 /**
- * Owner settings : pastilles de présélection pour la couleur principale.
+ * Owner settings : interrupteur Auto/Manuel pour les variantes sombres des couleurs
+ * du thème (voir ThemeColorPalette) — affiche/masque les 7 sélecteurs correspondants.
  */
 (function () {
-    document.querySelectorAll('[data-color-presets-for]').forEach(function (group) {
-        var input = document.getElementById(group.getAttribute('data-color-presets-for'));
-        if (!input) return;
+    var switcher = document.querySelector('[data-theme-dark-mode-switcher]');
+    var modeInput = document.getElementById('app_theme_dark_mode');
+    if (!switcher || !modeInput) return;
 
-        var swatches = group.querySelectorAll('.color-preset');
-        function syncActive() {
-            swatches.forEach(function (btn) {
-                btn.classList.toggle('is-active', btn.getAttribute('data-color').toLowerCase() === input.value.toLowerCase());
-            });
-        }
+    var buttons = switcher.querySelectorAll('[data-dark-mode-option]');
+    var thumb = switcher.querySelector('.btn-group__thumb');
+    var darkFields = document.querySelectorAll('[data-theme-dark-color-for]');
 
-        swatches.forEach(function (btn) {
-            var color = btn.getAttribute('data-color');
-            btn.style.backgroundColor = color;
-            btn.addEventListener('click', function () {
-                input.value = color;
-                input.dispatchEvent(new Event('input'));
-                input.dispatchEvent(new Event('change'));
-                syncActive();
-            });
+    function applyMode(mode) {
+        modeInput.value = mode;
+        buttons.forEach(function (btn) {
+            btn.classList.toggle('btn--active', btn.dataset.darkModeOption === mode);
         });
+        if (thumb) thumb.style.setProperty('--pos', mode === 'manual' ? 1 : 0);
+        darkFields.forEach(function (field) {
+            field.hidden = mode !== 'manual';
+        });
+    }
 
-        input.addEventListener('input', syncActive);
-        syncActive();
+    buttons.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            applyMode(btn.dataset.darkModeOption);
+        });
     });
 })();
