@@ -20,6 +20,12 @@ final class PrimaryColorPalette
         return (bool) preg_match('/^#[0-9a-fA-F]{6}$/', $hex);
     }
 
+    /** Nez/pattes de Foxy — hover de la couleur par défaut uniquement (docs/brand/foxy-style-guide.png). */
+    private const DEFAULT_HOVER = '#5b4a3a';
+    /** Ventre de Foxy — teinte claire de la couleur par défaut uniquement. */
+    private const DEFAULT_LIGHT = '#fff5e6';
+    private const DEFAULT_LIGHTER = '#fffaf3';
+
     /** @return array<string, string> variables CSS prêtes à injecter en style inline sur <html> */
     public static function generate(string $hex): array
     {
@@ -28,6 +34,14 @@ final class PrimaryColorPalette
         }
 
         [$h, $s, $l] = self::hexToHsl($hex);
+        [$r, $g, $b] = self::hexToRgb($hex);
+
+        // Pour la couleur par défaut, on reprend telles quelles les teintes
+        // officielles de la palette de la mascotte (5 couleurs du style guide)
+        // au lieu de les recalculer : une couleur personnalisée choisie par
+        // l'Owner n'a pas de teintes "toutes faites" et reste donc dérivée
+        // par calcul HSL.
+        $isDefault = strcasecmp($hex, self::DEFAULT_COLOR) === 0;
 
         $darkS = max(0.0, $s - 0.05);
         $darkL = min(0.92, $l + 0.18);
@@ -37,9 +51,10 @@ final class PrimaryColorPalette
 
         return [
             '--light-primary'         => $hex,
-            '--light-primary-hover'   => self::hslToHex($h, $s, max(0.0, $l - 0.12)),
-            '--light-primary-light'   => self::tint($hex, 0.88),
-            '--light-primary-lighter' => self::tint($hex, 0.94),
+            '--light-primary-rgb'     => "$r, $g, $b",
+            '--light-primary-hover'   => $isDefault ? self::DEFAULT_HOVER : self::hslToHex($h, $s, max(0.0, $l - 0.12)),
+            '--light-primary-light'   => $isDefault ? self::DEFAULT_LIGHT : self::tint($hex, 0.88),
+            '--light-primary-lighter' => $isDefault ? self::DEFAULT_LIGHTER : self::tint($hex, 0.94),
             '--light-primary-medium'  => self::tint($hex, 0.68),
             '--dark-primary'          => $darkBase,
             '--dark-primary-hover'    => $darkHover,
