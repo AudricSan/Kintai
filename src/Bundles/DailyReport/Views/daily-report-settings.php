@@ -19,7 +19,7 @@ $noReportTime      = $settings['no_report_time']     ?? '18:00';
         <?= __('dr_settings') ?> — <?= htmlspecialchars($store['name']) ?>
     </h2>
     <div class="page-header__actions">
-        <a href="<?= $BASE_URL ?>/admin/stores/<?= $storeId ?>/daily-reports"
+        <a href="<?= back_url($BASE_URL . '/admin/stores/' . $storeId . '/daily-reports') ?>"
            class="btn btn--ghost btn--sm">← <?= __('back') ?></a>
     </div>
 </div>
@@ -156,7 +156,7 @@ $noReportTime      = $settings['no_report_time']     ?? '18:00';
 
     <div class="form-actions">
         <button type="submit" class="btn btn--primary"><?= __('save') ?></button>
-        <a href="<?= $BASE_URL ?>/admin/stores/<?= $storeId ?>/daily-reports"
+        <a href="<?= back_url($BASE_URL . '/admin/stores/' . $storeId . '/daily-reports') ?>"
            class="btn btn--ghost"><?= __('cancel') ?></a>
     </div>
 

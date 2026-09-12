@@ -10,7 +10,7 @@ echo Flash::fromQuery('success', ['saved' => __('save_success')])->render();
 <div class="page-header">
     <h2 class="page-header__title"><?= __('photo_settings') ?></h2>
     <div class="page-header__actions">
-        <a href="<?= $BASE_URL ?>/admin/photos" class="btn btn--ghost btn--sm">← <?= __('back') ?></a>
+        <a href="<?= back_url($BASE_URL . '/admin/photos') ?>" class="btn btn--ghost btn--sm">← <?= __('back') ?></a>
     </div>
 </div>
 
@@ -40,6 +40,6 @@ echo Flash::fromQuery('success', ['saved' => __('save_success')])->render();
 
     <div class="form-actions">
         <button type="submit" class="btn btn--primary"><?= __('save') ?></button>
-        <a href="<?= $BASE_URL ?>/admin/photos" class="btn btn--ghost"><?= __('cancel') ?></a>
+        <a href="<?= back_url($BASE_URL . '/admin/photos') ?>" class="btn btn--ghost"><?= __('cancel') ?></a>
     </div>
 </form>

@@ -25,7 +25,7 @@ echo Flash::fromQuery('error', ['already_exists' => __('report_already_exists')]
 <div class="page-header">
     <h2 class="page-header__title"><?= htmlspecialchars($title) ?></h2>
     <div class="page-header__actions">
-        <a href="<?= htmlspecialchars($base) ?>" class="btn btn--ghost">← <?= __('back') ?></a>
+        <a href="<?= htmlspecialchars(back_url($base)) ?>" class="btn btn--ghost">← <?= __('back') ?></a>
     </div>
 </div>
 
@@ -176,6 +176,6 @@ echo Flash::fromQuery('error', ['already_exists' => __('report_already_exists')]
 
     <div class="form-actions">
         <?= Button::make($mode === 'edit' ? __('save') : __('new_hiring_report'))->primary()->submit()->render() ?>
-        <a href="<?= htmlspecialchars($base) ?>" class="btn btn--ghost"><?= __('cancel') ?></a>
+        <a href="<?= htmlspecialchars(back_url($base)) ?>" class="btn btn--ghost"><?= __('cancel') ?></a>
     </div>
 </form>

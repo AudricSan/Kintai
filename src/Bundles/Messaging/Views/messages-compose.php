@@ -7,7 +7,7 @@
 <div class="page-header">
     <h2 class="page-header__title"><?= __('new_message') ?></h2>
     <div class="page-header__actions">
-        <a href="<?= $BASE_URL . $base_path ?>" class="btn btn--ghost">← <?= __('back') ?></a>
+        <a href="<?= back_url($BASE_URL . $base_path) ?>" class="btn btn--ghost">← <?= __('back') ?></a>
     </div>
 </div>
 
@@ -64,7 +64,7 @@
 
                 <div class="form-actions">
                     <button type="submit" class="btn btn--primary"><?= __('send') ?></button>
-                    <a href="<?= $BASE_URL . $base_path ?>" class="btn btn--ghost"><?= __('cancel') ?></a>
+                    <a href="<?= back_url($BASE_URL . $base_path) ?>" class="btn btn--ghost"><?= __('cancel') ?></a>
                 </div>
 
             </div>

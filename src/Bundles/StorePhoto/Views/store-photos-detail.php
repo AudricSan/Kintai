@@ -9,7 +9,7 @@
 $storeName = $store['name'] ?? ('#' . ($submission['store_id'] ?? '?'));
 $sid       = (int) $submission['id'];
 $isOwner   = !empty($auth_user['is_admin']);
-$backUrl   = $BASE_URL . '/admin/photos' . ($backStoreId > 0 ? '?store_id=' . $backStoreId : '');
+$backUrl   = back_url($BASE_URL . '/admin/photos' . ($backStoreId > 0 ? '?store_id=' . $backStoreId : ''));
 ?>
 <div class="page-header">
     <h2 class="page-header__title">

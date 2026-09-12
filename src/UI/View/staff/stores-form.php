@@ -39,7 +39,7 @@ echo Flash::fromQuery('error', [
 <div class="page-header">
     <h2 class="page-header__title"><?= $mode === 'edit' ? __('edit_store') : __('new_store') ?></h2>
     <div class="page-header__actions">
-        <a href="<?= route_url('admin.stores') ?>" class="btn btn--ghost">← <?= __('back') ?></a>
+        <a href="<?= back_url(route_url('admin.stores')) ?>" class="btn btn--ghost">← <?= __('back') ?></a>
     </div>
 </div>
 
@@ -48,7 +48,7 @@ echo Flash::fromQuery('error', [
     <?php include __DIR__ . '/../_partials/_form-store.php'; ?>
     <div class="form-actions">
         <?= Button::make($mode === 'edit' ? __('save') : __('new_store'))->primary()->submit()->render() ?>
-        <a href="<?= route_url('admin.stores') ?>" class="btn btn--ghost"><?= __('cancel') ?></a>
+        <a href="<?= back_url(route_url('admin.stores')) ?>" class="btn btn--ghost"><?= __('cancel') ?></a>
     </div>
 </form>
 

@@ -156,6 +156,49 @@ if (!function_exists('hash_token')) {
     }
 }
 
+if (!function_exists('back_url')) {
+    /**
+     * Destination d'un bouton "Retour"/"Annuler" : une même page pouvant être atteinte
+     * depuis plusieurs écrans (liste filtrée, tableau de bord, recherche...), on ne code
+     * jamais une destination fixe. On préfère le Referer envoyé par le navigateur — il
+     * pointe exactement vers l'écran d'où l'utilisateur vient, filtres/pagination/magasin
+     * sélectionné compris puisqu'ils font partie de son URL — et on ne retombe sur
+     * $fallback que si le Referer est absent, hors origine (navigateur qui ne l'envoie
+     * pas, accès direct par URL/favori) ou identique à la page courante (rechargement).
+     */
+    function back_url(string $fallback): string
+    {
+        try {
+            $request = \kintai\Core\Container::getInstance()->make(\kintai\Core\Request::class);
+        } catch (\Throwable) {
+            return $fallback;
+        }
+
+        $referer = $request->header('Referer');
+        $host = $request->server('HTTP_HOST');
+        if (!$referer || !$host) {
+            return $fallback;
+        }
+
+        $ownOrigin = ($request->isSecure() ? 'https://' : 'http://') . $host;
+        if ($referer !== $ownOrigin && !str_starts_with($referer, $ownOrigin . '/')) {
+            return $fallback;
+        }
+
+        $refererPath = parse_url($referer, PHP_URL_PATH) ?: '/';
+        $scriptBase = base_url();
+        if ($scriptBase !== '' && str_starts_with($refererPath, $scriptBase)) {
+            $refererPath = substr($refererPath, strlen($scriptBase));
+        }
+        $refererPath = '/' . trim($refererPath, '/');
+        if ($refererPath === $request->uri()) {
+            return $fallback;
+        }
+
+        return $referer;
+    }
+}
+
 if (!function_exists('render_markdown')) {
     /**
      * Rend du Markdown en HTML (Parsedown, safe mode) pour l'affichage de
