@@ -12,6 +12,14 @@
     padding: var(--space-4);
 }
 
+.photo-grid > .card {
+    margin-bottom: 0;
+}
+
+.card.photo-detail-card {
+    margin-bottom: 0;
+}
+
 /* .card a désormais son propre padding (utile aux cartes sans wrapper
    interne : un .table-wrap ou un formulaire posés à même la carte se
    retrouvaient collés à ses bords). Mais .card-header/.card-body/etc.

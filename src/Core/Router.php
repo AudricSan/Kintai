@@ -20,29 +20,29 @@ final class Router
     /** @var string[] */
     private array $groupMiddleware = [];
 
-    public function get(string $pattern, array $handler, array $middleware = [], ?string $name = null): self
+    public function get(string $pattern, array $handler, array $middleware = [], ?string $name = null, string|array|null $permission = null): self
     {
-        return $this->addRoute('GET', $pattern, $handler, $middleware, $name);
+        return $this->addRoute('GET', $pattern, $handler, $middleware, $name, $permission);
     }
 
-    public function post(string $pattern, array $handler, array $middleware = [], ?string $name = null): self
+    public function post(string $pattern, array $handler, array $middleware = [], ?string $name = null, string|array|null $permission = null): self
     {
-        return $this->addRoute('POST', $pattern, $handler, $middleware, $name);
+        return $this->addRoute('POST', $pattern, $handler, $middleware, $name, $permission);
     }
 
-    public function put(string $pattern, array $handler, array $middleware = [], ?string $name = null): self
+    public function put(string $pattern, array $handler, array $middleware = [], ?string $name = null, string|array|null $permission = null): self
     {
-        return $this->addRoute('PUT', $pattern, $handler, $middleware, $name);
+        return $this->addRoute('PUT', $pattern, $handler, $middleware, $name, $permission);
     }
 
-    public function patch(string $pattern, array $handler, array $middleware = [], ?string $name = null): self
+    public function patch(string $pattern, array $handler, array $middleware = [], ?string $name = null, string|array|null $permission = null): self
     {
-        return $this->addRoute('PATCH', $pattern, $handler, $middleware, $name);
+        return $this->addRoute('PATCH', $pattern, $handler, $middleware, $name, $permission);
     }
 
-    public function delete(string $pattern, array $handler, array $middleware = [], ?string $name = null): self
+    public function delete(string $pattern, array $handler, array $middleware = [], ?string $name = null, string|array|null $permission = null): self
     {
-        return $this->addRoute('DELETE', $pattern, $handler, $middleware, $name);
+        return $this->addRoute('DELETE', $pattern, $handler, $middleware, $name, $permission);
     }
 
     /**
@@ -129,7 +129,13 @@ final class Router
         return $this->routes;
     }
 
-    private function addRoute(string $method, string $pattern, array $handler, array $middleware, ?string $name): self
+    /** Route nommée, ou null si aucune route de ce nom n'est enregistrée. */
+    public function routeByName(string $name): ?Route
+    {
+        return $this->named[$name] ?? null;
+    }
+
+    private function addRoute(string $method, string $pattern, array $handler, array $middleware, ?string $name, string|array|null $permission = null): self
     {
         $fullPattern = $this->groupPrefix . $pattern;
         $fullMiddleware = array_merge($this->groupMiddleware, $middleware);
@@ -151,6 +157,7 @@ final class Router
             paramNames: $paramNames,
             middleware: $fullMiddleware,
             name: $name,
+            permission: $permission,
         );
 
         $this->routes[] = $route;

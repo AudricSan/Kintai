@@ -151,4 +151,52 @@ final class PermissionServiceTest extends TestCase
 
         $this->assertSame([], $this->service->scopedStoreIds(1, 'employees.view'));
     }
+
+    // -------------------------------------------------------------------------
+    // restrictToScope()
+    // -------------------------------------------------------------------------
+
+    public function testRestrictToScopeKeepsOnlyItemsFromScopedStores(): void
+    {
+        $this->assignments->method('findByUser')->with(2)->willReturn([
+            ['id' => 1, 'user_id' => 2, 'role_id' => 20, 'scope_type' => 'store', 'scope_id' => 5],
+        ]);
+        $this->roles->method('findById')->with(20)->willReturn($this->role(20));
+        $this->roles->method('getPermissions')->with(20)->willReturn(['timeoff.view']);
+
+        $items = [
+            ['id' => 1, 'store_id' => 5],
+            ['id' => 2, 'store_id' => 9],
+        ];
+
+        $result = $this->service->restrictToScope(['id' => 2], 'timeoff.view', $items);
+
+        $this->assertSame([['id' => 1, 'store_id' => 5]], $result);
+    }
+
+    public function testRestrictToScopeReturnsEverythingForGlobalRole(): void
+    {
+        $this->assignments->method('findByUser')->with(1)->willReturn([
+            ['id' => 1, 'user_id' => 1, 'role_id' => 10, 'scope_type' => 'global', 'scope_id' => null],
+        ]);
+        $this->roles->method('findById')->with(10)->willReturn($this->role(10, isSystem: true));
+
+        $items = [
+            ['id' => 1, 'store_id' => 5],
+            ['id' => 2, 'store_id' => 9],
+        ];
+
+        $result = $this->service->restrictToScope(['id' => 1], 'timeoff.view', $items);
+
+        $this->assertSame($items, $result);
+    }
+
+    public function testRestrictToScopeReturnsEmptyWithoutAnyGrant(): void
+    {
+        $this->assignments->method('findByUser')->with(3)->willReturn([]);
+
+        $items = [['id' => 1, 'store_id' => 5]];
+
+        $this->assertSame([], $this->service->restrictToScope(['id' => 3], 'timeoff.view', $items));
+    }
 }

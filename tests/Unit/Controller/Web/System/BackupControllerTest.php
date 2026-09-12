@@ -7,10 +7,10 @@ namespace kintai\Tests\Unit\Controller\Web\System;
 use Illuminate\Database\Capsule\Manager as Capsule;
 use kintai\Core\Container;
 use kintai\Core\Database\MigrationRunner;
-use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Repositories\JsonLanguageRepository;
 use kintai\Core\Repositories\JsonTranslationRepository;
+use kintai\Core\Repositories\StorePhotoRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Services\AppSettingsService;
 use kintai\Core\Services\BackupService;
@@ -29,6 +29,7 @@ final class BackupControllerTest extends TestCase
     private MigrationRunner $migrator;
     private AppSettingsService $settings;
     private ViewRenderer $view;
+    private StorePhotoRepositoryInterface $photoRepo;
 
     protected function setUp(): void
     {
@@ -62,6 +63,9 @@ final class BackupControllerTest extends TestCase
         $this->settings = new AppSettingsService($settingsRepo);
 
         $this->view = new ViewRenderer(sys_get_temp_dir());
+
+        $this->photoRepo = $this->createStub(StorePhotoRepositoryInterface::class);
+        $this->photoRepo->method('findAllSubmissions')->willReturn([]);
 
         // describeFlash() traduit via __() : sans ça, __() (voir helpers.php) retombe
         // silencieusement sur la clé brute faute de TranslationService dans le container,
@@ -138,6 +142,7 @@ final class BackupControllerTest extends TestCase
             $this->backup,
             $this->migrator,
             $this->settings,
+            $this->photoRepo,
             $this->tmpDir,
             $releaseFetcher,
             $zipDownloader,
@@ -168,13 +173,8 @@ final class BackupControllerTest extends TestCase
         return $method->invoke($controller, $raw);
     }
 
-    public function testCreateRejectsNonOwner(): void
-    {
-        $controller = $this->makeController();
-
-        $this->expectException(ForbiddenException::class);
-        $controller->create($this->requestAs(false));
-    }
+    // Le rejet non-Owner est désormais couvert par OwnerOnlyMiddlewareTest
+    // (route-level, RBAC-V2) — le contrôleur ne se garde plus lui-même.
 
     public function testCreateAllowsOwner(): void
     {
@@ -186,12 +186,23 @@ final class BackupControllerTest extends TestCase
         $this->assertStringContainsString('success=created_', $this->locationOf($response));
     }
 
-    public function testDownloadRejectsNonOwner(): void
+    public function testIndexExposesBackupSettingsToTheView(): void
     {
-        $controller = $this->makeController();
+        foreach (['system', 'layout'] as $dir) {
+            $path = sys_get_temp_dir() . '/' . $dir;
+            if (!is_dir($path)) {
+                mkdir($path, 0777, true);
+            }
+        }
+        touch(sys_get_temp_dir() . '/system/backup.php');
+        touch(sys_get_temp_dir() . '/layout/app.php');
 
-        $this->expectException(ForbiddenException::class);
-        $controller->download($this->requestAs(false));
+        $controller = $this->makeController();
+        $this->settings->setMany(['backup_auto_enabled' => '0', 'backup_max_keep' => '5']);
+
+        $response = $controller->index($this->requestAs(true));
+
+        $this->assertSame(200, $response->status());
     }
 
     public function testDownloadRedirectsWhenFileMissing(): void
@@ -215,14 +226,6 @@ final class BackupControllerTest extends TestCase
         $response = $controller->download($this->requestAs(true));
 
         $this->assertSame(200, $response->status());
-    }
-
-    public function testUpdateRejectsNonOwner(): void
-    {
-        $controller = $this->makeController();
-
-        $this->expectException(ForbiddenException::class);
-        $controller->update($this->requestAs(false));
     }
 
     public function testUpdateReturnsErrorWhenNoUpdateAvailable(): void
@@ -318,14 +321,6 @@ final class BackupControllerTest extends TestCase
         $this->assertTrue($this->settings->maintenanceModeEnabled());
     }
 
-    public function testMigrateRejectsNonOwner(): void
-    {
-        $controller = $this->makeController();
-
-        $this->expectException(ForbiddenException::class);
-        $controller->migrate($this->requestAs(false));
-    }
-
     public function testMigrateRedirectsToUpdatePage(): void
     {
         $controller = $this->makeController();
@@ -337,12 +332,41 @@ final class BackupControllerTest extends TestCase
         $this->assertFalse($this->settings->maintenanceModeEnabled());
     }
 
-    public function testSaveChannelRejectsNonOwner(): void
+    public function testSaveSettingsPersistsAutoEnabledAndMaxKeep(): void
     {
         $controller = $this->makeController();
 
-        $this->expectException(ForbiddenException::class);
-        $controller->saveChannel($this->requestAs(false));
+        $_POST = ['backup_auto_enabled' => '1', 'backup_max_keep' => '10'];
+        $response = $controller->saveSettings($this->requestAs(true));
+        $_POST = [];
+
+        $this->assertSame(302, $response->status());
+        $this->assertStringContainsString('success=settings_saved', $this->locationOf($response));
+        $this->assertTrue($this->settings->backupAutoEnabled());
+        $this->assertSame(10, $this->settings->backupMaxKeep());
+    }
+
+    public function testSaveSettingsDisablesAutoWhenCheckboxUnchecked(): void
+    {
+        $controller = $this->makeController();
+        $this->settings->setMany(['backup_auto_enabled' => '1']);
+
+        $_POST = ['backup_max_keep' => '0'];
+        $controller->saveSettings($this->requestAs(true));
+        $_POST = [];
+
+        $this->assertFalse($this->settings->backupAutoEnabled());
+    }
+
+    public function testSaveSettingsClampsMaxKeepToValidRange(): void
+    {
+        $controller = $this->makeController();
+
+        $_POST = ['backup_auto_enabled' => '1', 'backup_max_keep' => '9999'];
+        $controller->saveSettings($this->requestAs(true));
+        $_POST = [];
+
+        $this->assertSame(365, $this->settings->backupMaxKeep());
     }
 
     public function testSaveChannelPersistsValidChannel(): void
@@ -408,7 +432,7 @@ final class BackupControllerTest extends TestCase
     {
         $controller = $this->makeController();
 
-        foreach (['restored', 'deleted', 'migrated', 'created_backup-2026-08-05.zip', 'deleted_all_3', 'channel_alpha'] as $code) {
+        foreach (['restored', 'deleted', 'migrated', 'created_backup-2026-08-05.zip', 'deleted_all_3', 'channel_alpha', 'settings_saved'] as $code) {
             $flash = $this->describeFlash($controller, $code);
             $this->assertNotNull($flash, $code);
             $this->assertSame('success', $flash['type'], $code);

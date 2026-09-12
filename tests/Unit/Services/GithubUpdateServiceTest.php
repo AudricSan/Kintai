@@ -7,6 +7,7 @@ namespace kintai\Tests\Unit\Services;
 use Illuminate\Database\Capsule\Manager as Capsule;
 use kintai\Core\Database\MigrationRunner;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
+use kintai\Core\Repositories\StorePhotoRepositoryInterface;
 use kintai\Core\Services\AppSettingsService;
 use kintai\Core\Services\BackupService;
 use kintai\Core\Services\GithubUpdateService;
@@ -20,6 +21,7 @@ final class GithubUpdateServiceTest extends TestCase
     private UpdateService $updateService;
     private BackupService $backup;
     private MigrationRunner $migrator;
+    private StorePhotoRepositoryInterface $photoRepo;
 
     protected function setUp(): void
     {
@@ -48,6 +50,9 @@ final class GithubUpdateServiceTest extends TestCase
 
         $this->backup = new BackupService($capsule);
         $this->setPrivate($this->backup, 'backupDir', $this->tmpDir . '/storage/backups');
+
+        $this->photoRepo = $this->createStub(StorePhotoRepositoryInterface::class);
+        $this->photoRepo->method('findAllSubmissions')->willReturn([]);
     }
 
     protected function tearDown(): void
@@ -139,6 +144,7 @@ final class GithubUpdateServiceTest extends TestCase
             $this->backup,
             $this->migrator,
             $this->makeSettings($channel),
+            $this->photoRepo,
             $this->tmpDir,
             $releaseFetcher,
             $zipDownloader,
@@ -152,6 +158,7 @@ final class GithubUpdateServiceTest extends TestCase
             $this->backup,
             $this->migrator,
             $this->makeSettings(),
+            $this->photoRepo,
             $this->tmpDir,
             fn(string $repo, string $token): ?array => null,
         );
@@ -178,6 +185,64 @@ final class GithubUpdateServiceTest extends TestCase
         $info = $service->checkLatestRelease();
 
         $this->assertFalse($info['has_update']);
+    }
+
+    /**
+     * Régression : le suffixe -LN (voir docs/releasing.md) n'est jamais
+     * conservé dans config/app.php, donc la version installée après une
+     * précédente prerelease redevient une base nue "X.Y.Z" identique à celle
+     * de la nouvelle prerelease "X.Y.Z-LN". version_compare() natif classerait
+     * à tort "ak3" en dessous d'une chaîne sans suffixe et masquerait la mise
+     * à jour.
+     */
+    public function testCheckLatestReleaseDetectsUpdateWhenLatestHasSuffixOfSameBase(): void
+    {
+        $service = $this->makeService(
+            'v0.11.9-ak3',
+            ['README.md' => 'hello'],
+            currentVersion: '0.11.9',
+            channel: 'alpha',
+            prerelease: true,
+            targetCommitish: 'alpha',
+        );
+
+        $info = $service->checkLatestRelease();
+
+        $this->assertNotNull($info);
+        $this->assertTrue($info['has_update']);
+        $this->assertSame('0.11.9-ak3', $info['latest_version']);
+    }
+
+    public function testCheckLatestReleaseNoUpdateWhenAlreadyOnSameSuffixedVersion(): void
+    {
+        $service = $this->makeService(
+            'v0.11.9-ak3',
+            ['README.md' => 'hello'],
+            currentVersion: '0.11.9-ak3',
+            channel: 'alpha',
+            prerelease: true,
+            targetCommitish: 'alpha',
+        );
+
+        $info = $service->checkLatestRelease();
+
+        $this->assertFalse($info['has_update']);
+    }
+
+    public function testCheckLatestReleaseDetectsUpdateBetweenTwoSuffixesOfSameBase(): void
+    {
+        $service = $this->makeService(
+            'v0.11.9-ak3',
+            ['README.md' => 'hello'],
+            currentVersion: '0.11.9-ak2',
+            channel: 'alpha',
+            prerelease: true,
+            targetCommitish: 'alpha',
+        );
+
+        $info = $service->checkLatestRelease();
+
+        $this->assertTrue($info['has_update']);
     }
 
     public function testReleaseChannelIgnoresAlphaAndBetaTags(): void
@@ -260,6 +325,7 @@ final class GithubUpdateServiceTest extends TestCase
             $this->backup,
             $this->migrator,
             $this->makeSettings('release'),
+            $this->photoRepo,
             $this->tmpDir,
             $releaseFetcher,
         );
@@ -288,6 +354,7 @@ final class GithubUpdateServiceTest extends TestCase
             $this->backup,
             $this->migrator,
             $this->makeSettings(),
+            $this->photoRepo,
             $this->tmpDir,
             fn(string $repo, string $token): ?array => [
                 [
@@ -326,6 +393,67 @@ final class GithubUpdateServiceTest extends TestCase
         $this->assertFileExists($this->tmpDir . '/README.md');
         $this->assertFileExists($this->tmpDir . '/src/Foo.php');
         $this->assertSame('<?php // foo v1', file_get_contents($this->tmpDir . '/src/Foo.php'));
+    }
+
+    /**
+     * Régression : appliquer une prerelease "-LN" ne doit pas laisser
+     * l'instance se croire perpétuellement en retard sur cette même release
+     * (config/app.php ne conserve que la base X.Y.Z une fois synchronisé —
+     * voir UpdateService::recordAppliedVersion()).
+     */
+    public function testCheckLatestReleaseIsUpToDateRightAfterApplyingASuffixedRelease(): void
+    {
+        $service = $this->makeService(
+            'v0.11.10-ak5',
+            ['README.md' => 'hello', 'config/app.php' => "<?php return ['version' => '0.11.10'];"],
+            currentVersion: '0.11.9',
+            channel: 'alpha',
+            prerelease: true,
+            targetCommitish: 'alpha',
+        );
+
+        $this->assertTrue($service->applyUpdate()['ok']);
+
+        $info = $service->checkLatestRelease();
+        $this->assertFalse($info['has_update']);
+        $this->assertSame('0.11.10-ak5', $info['current_version']);
+    }
+
+    /**
+     * Rattrapage ponctuel : les envois de photos déjà en base qui datent du même
+     * jour pour un même magasin (accumulés avant l'introduction du regroupement
+     * dans StorePhotoController::store()) sont fusionnés à chaque mise à jour
+     * appliquée — pas seulement via scripts/consolidate-daily-photo-reports.php.
+     */
+    public function testApplyUpdateMergesSameDayPhotoReportsAndReportsTheCount(): void
+    {
+        $this->photoRepo = $this->createStub(StorePhotoRepositoryInterface::class);
+        $this->photoRepo->method('findAllSubmissions')->willReturn([
+            ['id' => 2, 'store_id' => 1, 'created_at' => '2026-07-10 15:00:00', 'image_count' => 0, 'notes' => null],
+            ['id' => 1, 'store_id' => 1, 'created_at' => '2026-07-10 09:00:00', 'image_count' => 0, 'notes' => null],
+        ]);
+        $this->photoRepo->method('findImagesBySubmission')->willReturn([]);
+
+        $service = $this->makeService('v1.0.0', ['README.md' => 'v1 readme']);
+
+        $result = $service->applyUpdate();
+
+        $this->assertTrue($result['ok']);
+        $this->assertSame(1, $result['photo_reports_merged']);
+    }
+
+    /** Une erreur du regroupement des rapports photo ne doit jamais faire échouer la mise à jour elle-même. */
+    public function testApplyUpdateSucceedsEvenWhenPhotoReportConsolidationFails(): void
+    {
+        $this->photoRepo = $this->createStub(StorePhotoRepositoryInterface::class);
+        $this->photoRepo->method('findAllSubmissions')->willThrowException(new \RuntimeException('boom'));
+
+        $service = $this->makeService('v1.0.0', ['README.md' => 'v1 readme']);
+
+        $result = $service->applyUpdate();
+
+        $this->assertTrue($result['ok']);
+        $this->assertSame(0, $result['photo_reports_merged']);
     }
 
     public function testApplyUpdateDeletesFilesRemovedFromNewRelease(): void
@@ -477,6 +605,7 @@ final class GithubUpdateServiceTest extends TestCase
             $this->backup,
             $this->migrator,
             $this->makeSettings(),
+            $this->photoRepo,
             $this->tmpDir,
             fn(string $repo, string $token): ?array => null,
         );
@@ -493,6 +622,7 @@ final class GithubUpdateServiceTest extends TestCase
             $this->backup,
             $this->migrator,
             $this->makeSettings(),
+            $this->photoRepo,
             $this->tmpDir,
             fn(string $repo, string $token): ?array => [['tag_name' => 'v1.0.0', 'zipball_url' => 'z']],
         );
@@ -589,6 +719,7 @@ final class GithubUpdateServiceTest extends TestCase
             $this->backup,
             $this->migrator,
             $this->makeSettings(),
+            $this->photoRepo,
             $this->tmpDir,
             fn(string $repo, string $token): ?array => null,
         );

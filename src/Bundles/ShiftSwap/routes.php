@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use kintai\Core\Middleware\AuthMiddleware;
-use kintai\Core\Middleware\AdminMiddleware;
 use kintai\Core\Middleware\ApiAuthMiddleware;
 use kintai\Core\Middleware\ApiPermissionMiddleware;
 use kintai\Core\Middleware\PermissionMiddleware;
@@ -32,22 +31,22 @@ $router->group('/employee', function ($r) {
 // =============================================================================
 
 $router->group('/admin', function ($r) {
-    $r->get('/swap-requests',               [AdminSwapController::class, 'swapRequests'], name: 'admin.swap_requests');
-    $r->get('/swap-requests/create',        [AdminSwapController::class, 'createSwap'],   name: 'admin.swap_requests.create');
-    $r->post('/swap-requests/create',       [AdminSwapController::class, 'storeSwap'],    name: 'admin.swap_requests.store');
-    $r->post('/swap-requests/{id}/approve', [AdminSwapController::class, 'approveSwap'],  name: 'admin.swap.approve');
-    $r->post('/swap-requests/{id}/refuse',  [AdminSwapController::class, 'refuseSwap'],   name: 'admin.swap.refuse');
-    $r->post('/swap-requests/{id}/delete',  [AdminSwapController::class, 'deleteSwap'],   name: 'admin.swap.delete');
-}, middleware: [AuthMiddleware::class, AdminMiddleware::class, PermissionMiddleware::class]);
+    $r->get('/swap-requests',               [AdminSwapController::class, 'swapRequests'], name: 'admin.swap_requests', permission: 'swaps.view');
+    $r->get('/swap-requests/create',        [AdminSwapController::class, 'createSwap'],   name: 'admin.swap_requests.create', permission: 'swaps.create');
+    $r->post('/swap-requests/create',       [AdminSwapController::class, 'storeSwap'],    name: 'admin.swap_requests.store', permission: 'swaps.create');
+    $r->post('/swap-requests/{id}/approve', [AdminSwapController::class, 'approveSwap'],  name: 'admin.swap.approve', permission: 'swaps.approve');
+    $r->post('/swap-requests/{id}/refuse',  [AdminSwapController::class, 'refuseSwap'],   name: 'admin.swap.refuse', permission: 'swaps.approve');
+    $r->post('/swap-requests/{id}/delete',  [AdminSwapController::class, 'deleteSwap'],   name: 'admin.swap.delete', permission: 'swaps.delete');
+}, middleware: [AuthMiddleware::class, PermissionMiddleware::class]);
 
 // =============================================================================
 // ShiftSwap — Routes API
 // =============================================================================
 
 $router->group('/api/v1', function ($r) {
-    $r->get('/shift-swap-requests',         [ApiShiftSwapRequestController::class, 'index'],   name: 'api.v1.swap.index');
-    $r->post('/shift-swap-requests',        [ApiShiftSwapRequestController::class, 'store'],   name: 'api.v1.swap.store');
-    $r->get('/shift-swap-requests/{id}',    [ApiShiftSwapRequestController::class, 'show'],    name: 'api.v1.swap.show');
-    $r->put('/shift-swap-requests/{id}',    [ApiShiftSwapRequestController::class, 'update'],  name: 'api.v1.swap.update');
-    $r->delete('/shift-swap-requests/{id}', [ApiShiftSwapRequestController::class, 'destroy'], name: 'api.v1.swap.destroy');
+    $r->get('/shift-swap-requests',         [ApiShiftSwapRequestController::class, 'index'],   name: 'api.v1.swap.index', permission: 'swaps.view');
+    $r->post('/shift-swap-requests',        [ApiShiftSwapRequestController::class, 'store'],   name: 'api.v1.swap.store', permission: 'swaps.create');
+    $r->get('/shift-swap-requests/{id}',    [ApiShiftSwapRequestController::class, 'show'],    name: 'api.v1.swap.show', permission: 'swaps.view');
+    $r->put('/shift-swap-requests/{id}',    [ApiShiftSwapRequestController::class, 'update'],  name: 'api.v1.swap.update', permission: 'swaps.update');
+    $r->delete('/shift-swap-requests/{id}', [ApiShiftSwapRequestController::class, 'destroy'], name: 'api.v1.swap.destroy', permission: 'swaps.delete');
 }, middleware: [ApiAuthMiddleware::class, ApiPermissionMiddleware::class]);

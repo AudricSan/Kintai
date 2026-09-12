@@ -7,7 +7,6 @@ namespace kintai\Tests\Unit\Controller\Web\System;
 use Illuminate\Database\Capsule\Manager as Capsule;
 use kintai\Core\Auth\AuthService;
 use kintai\Core\Database\MigrationRunner;
-use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Repositories\RememberTokenRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
@@ -128,11 +127,8 @@ final class AppResetControllerTest extends TestCase
         return $ref->getValue($response)['Location'] ?? '';
     }
 
-    public function testPrepareRejectsNonOwner(): void
-    {
-        $this->expectException(ForbiddenException::class);
-        $this->controller->prepare($this->requestAs(false));
-    }
+    // Le rejet non-Owner est désormais couvert par OwnerOnlyMiddlewareTest
+    // (route-level, RBAC-V2) — le contrôleur ne se garde plus lui-même.
 
     public function testPrepareRejectsInvalidMode(): void
     {
@@ -155,11 +151,8 @@ final class AppResetControllerTest extends TestCase
         $this->assertCount(1, glob($this->tmpDir . '/storage/backups/*.zip') ?: [], 'la sauvegarde doit avoir été créée avant la page de confirmation');
     }
 
-    public function testExecuteRejectsNonOwner(): void
-    {
-        $this->expectException(ForbiddenException::class);
-        $this->controller->execute($this->requestAs(false));
-    }
+    // Le rejet non-Owner est désormais couvert par OwnerOnlyMiddlewareTest
+    // (route-level, RBAC-V2) — le contrôleur ne se garde plus lui-même.
 
     public function testExecuteRejectsMissingBackupFile(): void
     {

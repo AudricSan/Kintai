@@ -14,7 +14,7 @@ $typeLabels = [
 <div class="page-header">
     <h2 class="page-header__title"><?= __('create_timeoff') ?></h2>
     <div class="page-header__actions">
-        <a href="<?= $BASE_URL ?>/admin/timeoff" class="btn btn--ghost">← <?= __('back') ?></a>
+        <a href="<?= back_url($BASE_URL . '/admin/timeoff') ?>" class="btn btn--ghost">← <?= __('back') ?></a>
     </div>
 </div>
 

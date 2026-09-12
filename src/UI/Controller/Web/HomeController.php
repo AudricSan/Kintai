@@ -71,7 +71,7 @@ final class HomeController
         $user  = $request->getAttribute('auth_user');
         $today = date('Y-m-d');
 
-        // Manager restreint à un sous-ensemble de stores (AdminMiddleware) : null = admin
+        // Manager restreint à un sous-ensemble de stores (PermissionMiddleware) : null = admin
         // global, aucune restriction. Toutes les données du dashboard doivent être
         // bornées à cette liste pour éviter de divulguer des données d'autres stores.
         $managedStoreIds = $request->getAttribute('managed_store_ids');
