@@ -6,7 +6,9 @@ namespace kintai\Tests\Unit\Services;
 
 use Illuminate\Database\Capsule\Manager as Capsule;
 use kintai\Core\Repositories\DatabaseNotificationRepository;
+use kintai\Core\Repositories\DevicePushTokenRepositoryInterface;
 use kintai\Core\Services\NotificationService;
+use kintai\Core\Services\PushNotificationService;
 use kintai\Domain\Eloquent\Notification;
 use PHPUnit\Framework\TestCase;
 
@@ -37,7 +39,10 @@ final class NotificationServiceTest extends TestCase
             $table->timestamp('created_at')->useCurrent();
         });
 
-        $this->service = new NotificationService(new DatabaseNotificationRepository());
+        // FCM désactivé (config vide) : PushNotificationService::sendToUser() est un
+        // no-op immédiat, aucun appel réseau n'a lieu dans ce test.
+        $push = new PushNotificationService([], $this->createMock(DevicePushTokenRepositoryInterface::class));
+        $this->service = new NotificationService(new DatabaseNotificationRepository(), $push);
     }
 
     public function testNotifyInsertsARealRowWithoutThrowing(): void
