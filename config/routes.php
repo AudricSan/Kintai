@@ -49,6 +49,7 @@ use kintai\UI\Controller\Api\V1\UserShiftRateController as ApiUserShiftRateContr
 use kintai\UI\Controller\Api\V1\ActivityController as ApiActivityController;
 use kintai\UI\Controller\Api\V1\IcalTokenController as ApiIcalTokenController;
 use kintai\UI\Controller\Api\V1\UserPrefsController as ApiUserPrefsController;
+use kintai\UI\Controller\Api\V1\PushTokenController as ApiPushTokenController;
 
 
 /** @var \kintai\Core\Router $router */
@@ -309,7 +310,7 @@ $router->group('/admin', function ($r) {
 
 // --- Routes publiques ---
 $router->get('/api/v1/ping',       [ApiAuthController::class, 'ping'],  name: 'api.v1.ping');
-$router->post('/api/v1/auth/login', [ApiAuthController::class, 'login'], name: 'api.v1.auth.login');
+$router->post('/api/v1/auth/login', [ApiAuthController::class, 'login'], middleware: [RateLimiterMiddleware::class], name: 'api.v1.auth.login');
 
 // --- Routes protégées par token Bearer ---
 $router->group('/api/v1', function ($r) {
@@ -337,6 +338,9 @@ $router->group('/api/v1', function ($r) {
     $r->get('/users/{user_id}/rates/{id}',                            [ApiUserShiftRateController::class, 'show'],           name: 'api.v1.users.rates.show', permission: ['perm' => 'payroll.view', 'self' => 'user_id']);
     $r->put('/users/{user_id}/rates/{id}',                            [ApiUserShiftRateController::class, 'update'],         name: 'api.v1.users.rates.update', permission: 'employees.update');
     $r->delete('/users/{user_id}/rates/{id}',                         [ApiUserShiftRateController::class, 'destroy'],        name: 'api.v1.users.rates.destroy', permission: 'employees.update');
+    // Users — jetons d'appareil push (notifications mobiles, FCM)
+    $r->post('/users/{user_id}/push-tokens',                          [ApiPushTokenController::class, 'store'],              name: 'api.v1.users.push_tokens.store', permission: ['perm' => 'employees.update', 'self' => 'user_id']);
+    $r->delete('/users/{user_id}/push-tokens',                        [ApiPushTokenController::class, 'destroy'],            name: 'api.v1.users.push_tokens.destroy', permission: ['perm' => 'employees.update', 'self' => 'user_id']);
     $r->get('/users/{user_id}/ical-tokens',                           [ApiIcalTokenController::class, 'index'],              name: 'api.v1.users.ical_tokens.index', permission: ['perm' => 'employees.view', 'self' => 'user_id']);
     $r->post('/users/{user_id}/ical-tokens',                          [ApiIcalTokenController::class, 'store'],              name: 'api.v1.users.ical_tokens.store', permission: ['perm' => 'employees.update', 'self' => 'user_id']);
     $r->post('/users/{user_id}/ical-tokens/{store_id}/regenerate',    [ApiIcalTokenController::class, 'regenerate'],         name: 'api.v1.users.ical_tokens.regenerate', permission: ['perm' => 'employees.update', 'self' => 'user_id']);

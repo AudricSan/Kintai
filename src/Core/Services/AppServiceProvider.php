@@ -27,6 +27,7 @@ use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Repositories\StorePhotoRepositoryInterface;
 use kintai\Core\Repositories\LanguageRepositoryInterface;
 use kintai\Core\Repositories\TranslationRepositoryInterface;
+use kintai\Core\Repositories\DevicePushTokenRepositoryInterface;
 use Illuminate\Database\Capsule\Manager as Capsule;
 use kintai\UI\ViewRenderer;
 
@@ -35,6 +36,7 @@ final class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->registerMail();
+        $this->registerPush();
         $this->registerLogging();
         $this->registerBusinessServices();
     }
@@ -48,6 +50,15 @@ final class AppServiceProvider extends ServiceProvider
         });
     }
 
+    private function registerPush(): void
+    {
+        $this->container->singleton(PushNotificationService::class, function (Container $c) {
+            $path = dirname(dirname(dirname(__DIR__))) . '/config/push.php';
+            $config = file_exists($path) ? require $path : [];
+            return new PushNotificationService($config, $c->make(DevicePushTokenRepositoryInterface::class));
+        });
+    }
+
     private function registerLogging(): void
     {
         $this->container->singleton(AuditLogger::class, fn() => new AuditLogger());
@@ -57,7 +68,10 @@ final class AppServiceProvider extends ServiceProvider
 
     private function registerBusinessServices(): void
     {
-        $this->container->singleton(NotificationService::class, fn(Container $c) => new NotificationService($c->make(NotificationRepositoryInterface::class)));
+        $this->container->singleton(NotificationService::class, fn(Container $c) => new NotificationService(
+            $c->make(NotificationRepositoryInterface::class),
+            $c->make(PushNotificationService::class),
+        ));
         
         $this->container->singleton(IcalService::class, fn() => new IcalService());
         

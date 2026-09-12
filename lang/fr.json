@@ -1023,6 +1023,8 @@
     "thu_abbr": "Jeu",
     "thursday": "Jeudi",
     "timeclock": "Pointage",
+    "timeclock_pending_many": "%d pointages en attente de synchronisation",
+    "timeclock_pending_one": "1 pointage en attente de synchronisation",
     "timeclocks": "Pointages",
     "timeline": "Timeline",
     "timeline_legend_hint": "06:00 → 06:00 · Cliquez pour détails · Glissez pour déplacer · Zone + pour créer",
