@@ -95,26 +95,26 @@ final class UpdateServiceTest extends TestCase
     }
 
     /**
-     * Régression : après application d'une prerelease "-LN", config/app.php
-     * ne conserve que la base X.Y.Z (voir docs/releasing.md) — sans mémoire
-     * du tag exact appliqué, l'instance se croirait perpétuellement en retard
-     * sur cette même prerelease.
+     * Régression : après application d'une prerelease, config/app.php ne
+     * conserve que la ligne "X.Y.0" (voir docs/releasing.md) — sans mémoire
+     * du tag exact appliqué (avec le vrai Z), l'instance se croirait
+     * perpétuellement en retard sur cette même prerelease.
      */
-    public function testGetCurrentVersionPrefersAppliedVersionWhenBaseMatches(): void
+    public function testGetCurrentVersionPrefersAppliedVersionWhenLineMatches(): void
     {
-        $this->writeAppVersion('0.11.10');
-        $this->service->recordAppliedVersion('0.11.10-ak5');
+        $this->writeAppVersion('0.11.0');
+        $this->service->recordAppliedVersion('0.11.10');
 
-        $this->assertSame('0.11.10-ak5', $this->service->getCurrentVersion());
+        $this->assertSame('0.11.10', $this->service->getCurrentVersion());
     }
 
-    public function testGetCurrentVersionIgnoresStaleAppliedVersionWhenBaseChanged(): void
+    public function testGetCurrentVersionIgnoresStaleAppliedVersionWhenLineChanged(): void
     {
-        $this->writeAppVersion('0.11.10');
-        $this->service->recordAppliedVersion('0.11.10-ak5');
+        $this->writeAppVersion('0.11.0');
+        $this->service->recordAppliedVersion('0.11.10');
 
-        $this->writeAppVersion('0.11.11');
+        $this->writeAppVersion('0.12.0');
 
-        $this->assertSame('0.11.11', $this->service->getCurrentVersion());
+        $this->assertSame('0.12.0', $this->service->getCurrentVersion());
     }
 }

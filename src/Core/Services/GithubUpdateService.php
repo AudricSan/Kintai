@@ -171,10 +171,10 @@ final class GithubUpdateService
      * - alpha   : toutes les releases, canal le plus permissif.
      *
      * Le canal se détermine via `target_commitish` (la branche source de la
-     * release, renseignée par .github/workflows/release.yml) et non plus en
-     * inspectant le tag : depuis le schéma de version X.Y.Z-<lettre de
-     * semaine><sous-version> (voir docs/releasing.md), le tag ne contient
-     * plus les mots "-alpha"/"-beta".
+     * release, renseignée par .github/workflows/release.yml) et non pas en
+     * inspectant le tag : le schéma de version X.Y.Z en cascade (voir
+     * docs/releasing.md) ne fait jamais apparaître les mots "-alpha"/"-beta"
+     * dans le tag lui-même.
      */
     private function filterReleasesForChannel(array $releases, string $channel): array
     {
