@@ -89,7 +89,7 @@
                 _drag.ghost = g;
             } else {
                 var g2 = document.createElement('div');
-                g2.style.cssText = 'position:absolute;top:2px;bottom:2px;border-radius:5px;box-sizing:border-box;pointer-events:none;z-index:10;background:rgba(99,102,241,.22);border:2px dashed #6366f1';
+                g2.style.cssText = 'position:absolute;top:2px;bottom:2px;border-radius:5px;box-sizing:border-box;pointer-events:none;z-index:10;background:rgba(76,175,80,.22);border:2px dashed #4caf50';
                 _drag.zone.appendChild(g2);
                 _drag.ghost = g2;
             }
