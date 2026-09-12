@@ -310,7 +310,7 @@ $router->group('/admin', function ($r) {
 
 // --- Routes publiques ---
 $router->get('/api/v1/ping',       [ApiAuthController::class, 'ping'],  name: 'api.v1.ping');
-$router->post('/api/v1/auth/login', [ApiAuthController::class, 'login'], name: 'api.v1.auth.login');
+$router->post('/api/v1/auth/login', [ApiAuthController::class, 'login'], middleware: [RateLimiterMiddleware::class], name: 'api.v1.auth.login');
 
 // --- Routes protégées par token Bearer ---
 $router->group('/api/v1', function ($r) {
