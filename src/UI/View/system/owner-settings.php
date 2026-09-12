@@ -40,6 +40,12 @@ echo Flash::fromQuery('success', ['default' => __('save_success')])->render();
         <div class="input-group">
             <input type="color" id="app_primary_color" name="app_primary_color" class="input-color"
                    value="<?= htmlspecialchars($settings['app_primary_color'] ?? '#ff9f4a', ENT_QUOTES) ?>">
+            <div class="color-presets" data-color-presets-for="app_primary_color">
+                <?php foreach (['#ff9f4a', '#5b4a3a', '#fff5e6', '#4caf50', '#dff5e1'] as $preset): ?>
+                <button type="button" class="color-preset"
+                        data-color="<?= $preset ?>" title="<?= $preset ?>" aria-label="<?= $preset ?>"></button>
+                <?php endforeach; ?>
+            </div>
             <span class="text-sm-muted"><?= __('primary_color_hint') ?></span>
         </div>
     </div>
@@ -126,3 +132,5 @@ echo Flash::fromQuery('success', ['default' => __('save_success')])->render();
         <a href="<?= route_url('home') ?>" class="btn btn--ghost"><?= __('cancel') ?></a>
     </div>
 </form>
+
+<script src="<?= $BASE_URL ?>/assets/js/modules/owner-settings.js"></script>
