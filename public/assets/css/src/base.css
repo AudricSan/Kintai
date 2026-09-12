@@ -111,11 +111,9 @@ img {
     text-decoration: none;
 }
 
-.topbar-brand__dot {
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    background: var(--color-primary);
+.topbar-brand__icon {
+    width: 26px;
+    height: 26px;
     flex-shrink: 0;
 }
 

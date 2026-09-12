@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="<?= htmlspecialchars($locale ?? 'en') ?>">
+<html lang="<?= htmlspecialchars($locale ?? 'en') ?>" style="<?= htmlspecialchars($app_primary_color_style ?? '', ENT_QUOTES) ?>">
 
 <head>
     <meta charset="UTF-8">

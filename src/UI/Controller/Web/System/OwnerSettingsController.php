@@ -8,6 +8,7 @@ use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AppSettingsService;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\PrimaryColorPalette;
 use kintai\UI\Controller\Web\HasBaseUrl;
 use kintai\UI\ViewRenderer;
 
@@ -30,6 +31,7 @@ final class OwnerSettingsController
                 'app_subtitle'      => $this->settings->subtitle(),
                 'app_login_notice'  => $this->settings->loginNotice(),
                 'app_support_email' => $this->settings->supportEmail(),
+                'app_primary_color' => $this->settings->primaryColor(),
                 'backup_max_keep'       => $this->settings->backupMaxKeep(),
                 'backup_auto_enabled'   => $this->settings->backupAutoEnabled() ? '1' : '0',
                 'maintenance_mode_enabled' => $this->settings->maintenanceModeEnabled() ? '1' : '0',
@@ -51,6 +53,11 @@ final class OwnerSettingsController
             $supportEmail = '';
         }
 
+        $primaryColor = strtolower(trim((string) $request->post('app_primary_color', '')));
+        if (!PrimaryColorPalette::isValidHex($primaryColor)) {
+            $primaryColor = $this->settings->primaryColor();
+        }
+
         $backupMaxKeep     = max(0, min(365, (int) $request->post('backup_max_keep', '0')));
         $backupAutoEnabled = $request->post('backup_auto_enabled', '0') === '1' ? '1' : '0';
 
@@ -61,6 +68,7 @@ final class OwnerSettingsController
             'app_subtitle'      => $this->settings->subtitle(),
             'app_login_notice'  => $this->settings->loginNotice(),
             'app_support_email' => $this->settings->supportEmail(),
+            'app_primary_color' => $this->settings->primaryColor(),
             'backup_max_keep'       => $this->settings->backupMaxKeep(),
             'backup_auto_enabled'   => $this->settings->backupAutoEnabled() ? '1' : '0',
             'maintenance_mode_enabled' => $this->settings->maintenanceModeEnabled() ? '1' : '0',
@@ -71,6 +79,7 @@ final class OwnerSettingsController
             'app_subtitle'      => $subtitle,
             'app_login_notice'  => $loginNotice,
             'app_support_email' => $supportEmail,
+            'app_primary_color' => $primaryColor,
             'backup_max_keep'       => (string) $backupMaxKeep,
             'backup_auto_enabled'   => $backupAutoEnabled,
             'maintenance_mode_enabled' => $maintenanceModeEnabled,
@@ -81,6 +90,7 @@ final class OwnerSettingsController
             'app_subtitle'      => $subtitle,
             'app_login_notice'  => $loginNotice,
             'app_support_email' => $supportEmail,
+            'app_primary_color' => $primaryColor,
             'backup_max_keep'       => (string) $backupMaxKeep,
             'backup_auto_enabled'   => $backupAutoEnabled,
             'maintenance_mode_enabled' => $maintenanceModeEnabled,

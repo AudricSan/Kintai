@@ -48,6 +48,19 @@ final class AppSettingsService
         return $this->get('app_support_email');
     }
 
+    /** Couleur principale de l'interface (boutons, liens actifs...). Défaut : orange de la mascotte Foxy. */
+    public function primaryColor(): string
+    {
+        $stored = $this->get('app_primary_color', PrimaryColorPalette::DEFAULT_COLOR);
+        return PrimaryColorPalette::isValidHex($stored) ? $stored : PrimaryColorPalette::DEFAULT_COLOR;
+    }
+
+    /** Variables CSS (--light-primary-*, --dark-primary-*) à injecter en style inline sur <html>. */
+    public function primaryColorStyle(): string
+    {
+        return PrimaryColorPalette::toInlineStyle($this->primaryColor());
+    }
+
     // ── Backup ─────────────────────────────────────────────────────────────────
 
     /** Nombre maximal de sauvegardes à conserver (0 = illimité). */
