@@ -69,55 +69,100 @@
         });
     }
 
-    function flushQueue() {
+    function countPending(callback) {
         openDb().then(function (db) {
-            var tx = db.transaction('pending', 'readonly');
+            var tx  = db.transaction('pending', 'readonly');
+            var req = tx.objectStore('pending').count();
+            req.onsuccess = function () { db.close(); callback(req.result || 0); };
+            req.onerror   = function () { db.close(); callback(0); };
+        });
+    }
+
+    function updatePendingBadge() {
+        var badge = document.getElementById('timeclock-pending');
+        if (!badge) return;
+        countPending(function (n) {
+            if (n > 0) {
+                badge.textContent = n === 1
+                    ? meta.dataset.msgPendingOne
+                    : meta.dataset.msgPendingMany.replace('%d', n);
+                badge.style.display = 'block';
+            } else {
+                badge.style.display = 'none';
+            }
+        });
+    }
+
+    var flushing = false;
+
+    // Rejoue la file dans l'ordre d'entrée (entrée avant sortie) : deux fetch simultanés
+    // pourraient arriver au serveur dans le désordre et faire échouer une sortie dont
+    // l'entrée correspondante n'a pas encore été enregistrée.
+    function flushQueue() {
+        if (flushing) return;
+        flushing = true;
+
+        openDb().then(function (db) {
+            var tx  = db.transaction('pending', 'readonly');
             var req = tx.objectStore('pending').getAll();
             req.onsuccess = function () {
                 var ops = req.result || [];
-                if (ops.length === 0) { db.close(); return; }
-
-                var remaining  = ops.length;
-                var hadFailure = false;
-
-                ops.forEach(function (op) {
-                    fetch(op.url, {
-                        method:  'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-CSRF-Token': csrfToken,
-                        },
-                        credentials: 'same-origin',
-                        body:    JSON.stringify(op.body),
-                    }).then(function (r) {
-                        // Une transaction IndexedDB ouverte avant ce fetch (async) aurait déjà
-                        // auto-commit au moment où ce callback s'exécute : une nouvelle transaction
-                        // par suppression, ouverte ici, est la seule façon fiable de la faire aboutir.
-                        // r.ok=false (ex. token CSRF expiré, shift supprimé entre-temps) : on NE
-                        // supprime PAS l'opération, sinon l'action hors ligne serait perdue en
-                        // silence sans jamais avoir été réellement enregistrée côté serveur.
-                        if (r.ok) {
-                            db.transaction('pending', 'readwrite').objectStore('pending').delete(op.id);
-                        } else {
-                            hadFailure = true;
-                        }
-                    }).catch(function () {
-                        hadFailure = true; // réseau à nouveau indisponible : reste en file, nouvel essai plus tard
-                    }).then(function () {
-                        remaining -= 1;
-                        if (remaining > 0) return;
-                        db.close();
-                        if (hadFailure) {
-                            showMessage('Une action hors ligne n\'a pas pu être synchronisée. Nouvelle tentative au prochain chargement de la page.', 'danger');
-                        } else {
-                            location.reload();
-                        }
-                    });
-                });
+                db.close();
+                if (ops.length === 0) { flushing = false; return; }
+                replayNext(ops, 0, false);
             };
+            req.onerror = function () { db.close(); flushing = false; };
         });
     }
+
+    function replayNext(ops, index, hadFailure) {
+        if (index >= ops.length) {
+            flushing = false;
+            updatePendingBadge();
+            if (hadFailure) {
+                showMessage('Une action hors ligne n\'a pas pu être synchronisée. Nouvelle tentative au prochain chargement de la page.', 'danger');
+            } else {
+                location.reload();
+            }
+            return;
+        }
+
+        var op = ops[index];
+        fetch(op.url, {
+            method:  'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-Token': csrfToken,
+            },
+            credentials: 'same-origin',
+            body:    JSON.stringify(op.body),
+        }).then(function (r) {
+            if (r.ok) {
+                openDb().then(function (db) {
+                    var delTx = db.transaction('pending', 'readwrite');
+                    delTx.objectStore('pending').delete(op.id);
+                    delTx.oncomplete = function () {
+                        db.close();
+                        replayNext(ops, index + 1, hadFailure);
+                    };
+                });
+            } else {
+                // r.ok=false (ex. token CSRF expiré, shift supprimé entre-temps) : on NE
+                // supprime PAS l'opération, sinon l'action hors ligne serait perdue en
+                // silence sans jamais avoir été réellement enregistrée côté serveur. On
+                // arrête la chaîne ici pour ne pas rejouer une suite hors ordre.
+                replayNext(ops, ops.length, true);
+            }
+        }).catch(function () {
+            // Réseau à nouveau indisponible en cours de synchro : le reste reste en file.
+            replayNext(ops, ops.length, true);
+        });
+    }
+
+    window.addEventListener('online', flushQueue);
+    if (navigator.onLine) { flushQueue(); }
+    updatePendingBadge();
 
     /* ── Helpers ───────────────────────────────── */
     function showMessage(text, type) {
@@ -150,6 +195,7 @@
         })
         .catch(function () {
             queueOperation({ url: url, body: body, created_at: new Date().toISOString() });
+            updatePendingBadge();
             showMessage('Action mise en attente (hors ligne). Elle sera synchronisée automatiquement.', 'warning');
         });
     }
@@ -159,7 +205,7 @@
     if (btnIn) {
         btnIn.addEventListener('click', function () {
             btnIn.disabled = true;
-            apiCall(clockInUrl, { user_id: userId, store_id: storeId },
+            apiCall(clockInUrl, { user_id: userId, store_id: storeId, client_time: new Date().toISOString() },
                 function () {
                     showMessage(meta.dataset.msgClockInOk, 'success');
                     setTimeout(function () { location.reload(); }, 800);
@@ -174,7 +220,7 @@
     if (btnOut) {
         btnOut.addEventListener('click', function () {
             btnOut.disabled = true;
-            apiCall(clockOutUrl, { user_id: userId },
+            apiCall(clockOutUrl, { user_id: userId, client_time: new Date().toISOString() },
                 function (res) {
                     var dur = res.data.duration_minutes !== null
                         ? ' (' + formatDuration(res.data.duration_minutes) + ')'

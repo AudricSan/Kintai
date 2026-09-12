@@ -7,7 +7,7 @@
     <meta name="csrf-token" content="<?= htmlspecialchars(csrf_token(), ENT_QUOTES) ?>">
     <meta name="theme-color" content="#1a5c8c">
     <link rel="manifest" href="<?= route_url('pwa.manifest') ?>">
-    <link rel="apple-touch-icon" href="<?= $BASE_URL ?>/assets/img/kintai-192.svg">
+    <link rel="apple-touch-icon" href="<?= $BASE_URL ?>/assets/img/kintai-192.png">
     <title><?= htmlspecialchars($title ?? 'Kintai') ?> — Kintai</title>
     <link rel="stylesheet" href="<?= $BASE_URL ?>/assets/css/app.css">
     <script>(function(){var t=localStorage.getItem('kintai-theme');if(t)document.documentElement.dataset.theme=t;}());</script>
@@ -76,6 +76,13 @@
 
     <script src="<?= $BASE_URL ?>/assets/js/app.js"></script>
     <script src="<?= $BASE_URL ?>/assets/js/modules/notifications.js"></script>
+    <script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+            navigator.serviceWorker.register('<?= $BASE_URL ?>/sw.js', { scope: '<?= $BASE_URL ?>/' }).catch(function () {});
+        });
+    }
+    </script>
     <script>document.addEventListener('click',function(e){if(e.target.closest('a,button,input,select,textarea,form'))return;var t=e.target.closest('.tr--clickable[data-href]');if(t){location.href=t.getAttribute('data-href');return;}var m=e.target.closest('.tr--clickable[data-modal]');if(m&&window.openModal){window.openModal(m.getAttribute('data-modal'));}});</script>
 
     <?php if ($feedback_enabled ?? true): ?>
