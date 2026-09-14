@@ -6,54 +6,82 @@ namespace kintai\Core\Services;
 
 final class IcalService
 {
+    public function __construct(
+        private readonly TranslationService $translations,
+    ) {}
+
     /**
      * Génère le contenu VCALENDAR (RFC 5545) pour un employé dans un store.
      *
+     * Le contenu est produit dans la langue de l'employé propriétaire du flux : ordre de
+     * résolution override implicite absent ici → langue de l'utilisateur ($user['language'])
+     * → locale du store ($store['locale']) → 'fr' par défaut (même pattern que
+     * DailyReportMailService::resolveLocale()).
+     *
      * @param array $shifts   Shifts de l'employé dans ce store (déjà filtrés par store_id)
      * @param array $timeoffs Congés approuvés de l'employé dans ce store (déjà filtrés)
-     * @param array $store    Ligne du store (id, name, timezone)
-     * @param array $user     Ligne de l'utilisateur (id, first_name, last_name)
+     * @param array $store    Ligne du store (id, name, timezone, locale)
+     * @param array $user     Ligne de l'utilisateur (id, first_name, last_name, language)
      * @param array $types    Map id => shift_type (pour le SUMMARY)
      */
     public function build(array $shifts, array $timeoffs, array $store, array $user, array $types = []): string
     {
-        $tz        = $store['timezone'] ?? 'UTC';
-        $storeName = $store['name'] ?? 'Store';
-        $calName   = $storeName . ' — ' . ($user['last_name'] ?? '') . ' ' . ($user['first_name'] ?? '');
-        $dtstamp   = gmdate('Ymd\THis\Z');
+        $resolved = $this->resolveLocale($user, $store);
+        $previous = $this->translations->getLocale();
+        $this->translations->setLocale($resolved);
 
-        $lines = [
-            'BEGIN:VCALENDAR',
-            'VERSION:2.0',
-            'PRODID:-//Kintai//Kintai//EN',
-            'CALSCALE:GREGORIAN',
-            'METHOD:PUBLISH',
-            'X-WR-CALNAME:' . $this->escapeText($calName),
-            'X-WR-TIMEZONE:' . $tz,
-            'REFRESH-INTERVAL;VALUE=DURATION:PT1H',
-            'X-PUBLISHED-TTL:PT1H',
-        ];
+        try {
+            $tz        = $store['timezone'] ?? 'UTC';
+            $storeName = $store['name'] ?? __('store');
+            $calName   = $storeName . ' — ' . ($user['last_name'] ?? '') . ' ' . ($user['first_name'] ?? '');
+            $dtstamp   = gmdate('Ymd\THis\Z');
 
-        $cutoff = date('Y-m-d H:i:s', strtotime('-30 days'));
+            $lines = [
+                'BEGIN:VCALENDAR',
+                'VERSION:2.0',
+                'PRODID:-//Kintai//Kintai//EN',
+                'CALSCALE:GREGORIAN',
+                'METHOD:PUBLISH',
+                'X-WR-CALNAME:' . $this->escapeText($calName),
+                'X-WR-TIMEZONE:' . $tz,
+                'REFRESH-INTERVAL;VALUE=DURATION:PT1H',
+                'X-PUBLISHED-TTL:PT1H',
+            ];
 
-        foreach ($shifts as $shift) {
-            if (!empty($shift['deleted_at'])) {
-                // Inclure les shifts supprimés récemment comme CANCELLED (30 jours)
-                if (($shift['deleted_at'] ?? '') >= $cutoff) {
-                    $lines[] = $this->buildShiftEvent($shift, $store, $types, $dtstamp, $tz, cancelled: true);
+            $cutoff = date('Y-m-d H:i:s', strtotime('-30 days'));
+
+            foreach ($shifts as $shift) {
+                if (!empty($shift['deleted_at'])) {
+                    // Inclure les shifts supprimés récemment comme CANCELLED (30 jours)
+                    if (($shift['deleted_at'] ?? '') >= $cutoff) {
+                        $lines[] = $this->buildShiftEvent($shift, $store, $types, $dtstamp, $tz, cancelled: true);
+                    }
+                    continue;
                 }
-                continue;
+                $lines[] = $this->buildShiftEvent($shift, $store, $types, $dtstamp, $tz);
             }
-            $lines[] = $this->buildShiftEvent($shift, $store, $types, $dtstamp, $tz);
+
+            foreach ($timeoffs as $timeoff) {
+                $lines[] = $this->buildTimeoffEvent($timeoff, $store, $dtstamp);
+            }
+
+            $lines[] = 'END:VCALENDAR';
+
+            return implode("\r\n", $lines) . "\r\n";
+        } finally {
+            $this->translations->setLocale($previous);
         }
+    }
 
-        foreach ($timeoffs as $timeoff) {
-            $lines[] = $this->buildTimeoffEvent($timeoff, $store, $dtstamp);
-        }
-
-        $lines[] = 'END:VCALENDAR';
-
-        return implode("\r\n", $lines) . "\r\n";
+    private function resolveLocale(array $user, array $store): string
+    {
+        $raw  = $user['language'] ?? $store['locale'] ?? 'fr';
+        $lang = strtolower(substr((string) $raw, 0, 2));
+        return match ($lang) {
+            'ja'    => 'ja',
+            'en'    => 'en',
+            default => 'fr',
+        };
     }
 
     private function buildShiftEvent(
@@ -61,7 +89,7 @@ final class IcalService
         bool $cancelled = false
     ): string {
         $typeId   = (int) ($shift['shift_type_id'] ?? 0);
-        $typeName = $types[$typeId]['name'] ?? 'Shift';
+        $typeName = $types[$typeId]['name'] ?? __('ical_shift_fallback');
         $summary  = $typeName . ' — ' . ($store['name'] ?? '');
 
         $shiftDate = $shift['shift_date'] ?? date('Y-m-d');
@@ -82,7 +110,7 @@ final class IcalService
 
         $description = '';
         if (!empty($shift['pause_minutes'])) {
-            $description = 'Pause: ' . (int) $shift['pause_minutes'] . ' min';
+            $description = __('ical_pause_minutes', ['minutes' => (int) $shift['pause_minutes']]);
         }
         if (!empty($shift['notes'])) {
             $description .= ($description ? '\n' : '') . $this->escapeText($shift['notes']);
@@ -117,7 +145,7 @@ final class IcalService
         $endDate   = date('Ymd', strtotime(($timeoff['end_date'] ?? date('Y-m-d')) . ' +1 day'));
 
         $uid     = 'timeoff-' . ($timeoff['id'] ?? uniqid()) . '@kintai';
-        $summary = 'Congé — ' . ($store['name'] ?? '');
+        $summary = __('ical_timeoff_summary', ['store' => $store['name'] ?? '']);
 
         $eventLines = [
             'BEGIN:VEVENT',
