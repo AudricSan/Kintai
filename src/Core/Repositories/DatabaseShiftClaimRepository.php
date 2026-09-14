@@ -68,4 +68,19 @@ final class DatabaseShiftClaimRepository implements ShiftClaimRepositoryInterfac
         $record = EloquentShiftClaim::find($id);
         return $record ? ($record->delete() ? 1 : 0) : 0;
     }
+
+    public function approveIfPending(int $id, string $resolvedAt, int $resolvedBy): ?array
+    {
+        $affected = EloquentShiftClaim::where('id', $id)
+            ->where('status', 'pending')
+            ->update([
+                'status'      => 'approved',
+                'resolved_at' => $resolvedAt,
+                'resolved_by' => $resolvedBy,
+            ]);
+        if ($affected === 0) {
+            return null;
+        }
+        return EloquentShiftClaim::find($id)->toArray();
+    }
 }
