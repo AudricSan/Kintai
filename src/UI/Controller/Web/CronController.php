@@ -58,7 +58,7 @@ final class CronController
     {
         $secret = (string) env('CRON_SECRET', '');
         if ($secret === '' || $request->query('token', '') !== $secret) {
-            throw new ForbiddenException('Token cron invalide ou CRON_SECRET non configuré.');
+            throw new ForbiddenException(__('error_cron_secret_missing'));
         }
 
         set_time_limit(0);

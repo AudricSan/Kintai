@@ -88,7 +88,7 @@ final class EmployeeTimeoffController
 
         $req = $this->timeoffRequests->findById((int) $request->param('id'));
         if ($req === null || (int) $req['user_id'] !== $userId) {
-            throw new ForbiddenException('Demande introuvable.');
+            throw new ForbiddenException(__('error_request_not_found'));
         }
         if (($req['status'] ?? '') !== 'pending') {
             return Response::redirect($this->base() . '/employee/timeoff?error=not_pending');

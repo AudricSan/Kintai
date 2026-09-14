@@ -686,7 +686,7 @@ final class AdminShiftController
     {
         $shift = $this->shifts->findById((int) $request->param('id'));
         if ($shift === null) {
-            throw new NotFoundException('Shift introuvable.');
+            throw new NotFoundException(__('error_shift_not_found'));
         }
         $this->assertStoreAccess($request, (int) $shift['store_id']);
 
@@ -715,7 +715,7 @@ final class AdminShiftController
     {
         $shift = $this->shifts->findById((int) $request->param('id'));
         if ($shift === null) {
-            throw new NotFoundException('Shift introuvable.');
+            throw new NotFoundException(__('error_shift_not_found'));
         }
         $this->assertStoreAccess($request, (int) $shift['store_id']);
         $old = $shift;
@@ -883,7 +883,7 @@ final class AdminShiftController
         try {
             $this->assertStoreAccess($request, $storeId);
         } catch (ForbiddenException) {
-            return Response::json(['error' => 'Accès refusé.'], 403);
+            return Response::json(['error' => __('error_access_denied')], 403);
         }
 
         $shiftDate = $body['shift_date'] ?? '';
@@ -1187,12 +1187,12 @@ final class AdminShiftController
     {
         $shift = $this->shifts->findById((int) $request->param('id'));
         if ($shift === null) {
-            return Response::json(['error' => 'Shift introuvable.'], 404);
+            return Response::json(['error' => __('error_shift_not_found')], 404);
         }
         try {
             $this->assertStoreAccess($request, (int) $shift['store_id']);
         } catch (ForbiddenException) {
-            return Response::json(['error' => 'Accès refusé.'], 403);
+            return Response::json(['error' => __('error_access_denied')], 403);
         }
         $old = $shift;
 

@@ -39,7 +39,7 @@ final class RateLimiterMiddleware implements MiddlewareInterface
         }
 
         if (count($attempts) >= self::MAX_ATTEMPTS) {
-            throw new HttpException(429, 'Trop de tentatives. Réessayez dans quelques minutes.');
+            throw new HttpException(429, __('error_too_many_attempts'));
         }
 
         $attempts[] = $now;

@@ -27,7 +27,7 @@ final class OwnerOnlyMiddleware implements MiddlewareInterface
     {
         $user = $request->getAttribute('auth_user') ?? [];
         if (empty($user['is_admin'])) {
-            throw new ForbiddenException('Réservé au propriétaire.');
+            throw new ForbiddenException(__('error_owner_only'));
         }
         return $next($request);
     }

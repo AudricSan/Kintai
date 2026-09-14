@@ -37,7 +37,7 @@ final class ShiftTypeController
     {
         $type = $this->shiftTypes->findById((int) $request->param('id'));
         if ($type === null) {
-            throw new NotFoundException('Type de shift introuvable.');
+            throw new NotFoundException(__('error_shift_type_not_found'));
         }
         return Response::json($this->withStoreIds($type));
     }
@@ -73,7 +73,7 @@ final class ShiftTypeController
         $id  = (int) $request->param('id');
         $old = $this->shiftTypes->findById($id);
         if ($old === null) {
-            throw new NotFoundException('Type de shift introuvable.');
+            throw new NotFoundException(__('error_shift_type_not_found'));
         }
         $data     = $request->json() ?? [];
         $storeIds = $this->extractStoreIds($data);
@@ -93,7 +93,7 @@ final class ShiftTypeController
     {
         $id = (int) $request->param('id');
         if ($this->shiftTypes->findById($id) === null) {
-            throw new NotFoundException('Type de shift introuvable.');
+            throw new NotFoundException(__('error_shift_type_not_found'));
         }
         $this->shiftTypes->delete($id);
         $this->auditLogger->log($request, 'shift_type.deleted', 'shift_type', resourceId: $id);
