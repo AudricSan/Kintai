@@ -30,7 +30,7 @@ final class UserController
     {
         $user = $this->users->findById((int) $request->param('id'));
         if ($user === null) {
-            throw new NotFoundException('Utilisateur introuvable.');
+            throw new NotFoundException(__('error_user_not_found'));
         }
         return Response::json($user);
     }
@@ -50,7 +50,7 @@ final class UserController
         $id  = (int) $request->param('id');
         $old = $this->users->findById($id);
         if ($old === null) {
-            throw new NotFoundException('Utilisateur introuvable.');
+            throw new NotFoundException(__('error_user_not_found'));
         }
         $data  = $request->json() ?? [];
         $saved = $this->users->save(array_merge($data, ['id' => $id]));
@@ -63,7 +63,7 @@ final class UserController
     {
         $id = (int) $request->param('id');
         if ($this->users->findById($id) === null) {
-            throw new NotFoundException('Utilisateur introuvable.');
+            throw new NotFoundException(__('error_user_not_found'));
         }
         $this->users->delete($id);
         $this->auditLogger->log($request, 'user.deleted', 'user', resourceId: $id);

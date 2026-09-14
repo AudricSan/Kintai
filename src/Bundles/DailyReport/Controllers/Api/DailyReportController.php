@@ -163,7 +163,7 @@ final class DailyReportController
     {
         $report = $this->reports->findById((int) $request->param('id'));
         if ($report === null) {
-            throw new NotFoundException('Rapport introuvable.');
+            throw new NotFoundException(__('error_report_not_found'));
         }
         return $report;
     }
@@ -173,7 +173,7 @@ final class DailyReportController
     {
         $store = $this->stores->findById($storeId);
         if ($store === null) {
-            throw new NotFoundException('Magasin introuvable.');
+            throw new NotFoundException(__('error_store_not_found'));
         }
         $authUser   = $request->getAttribute('auth_user') ?? [];
         $membership = $this->storeUsers->findMembership($storeId, (int) ($authUser['id'] ?? 0));
@@ -183,7 +183,7 @@ final class DailyReportController
     private function forbidden(): Response
     {
         return Response::json([
-            'error' => 'Permission insuffisante pour cette action sur ce rapport.',
+            'error' => __('error_daily_report_permission_insufficient'),
             'code'  => 'FORBIDDEN',
         ], 403);
     }

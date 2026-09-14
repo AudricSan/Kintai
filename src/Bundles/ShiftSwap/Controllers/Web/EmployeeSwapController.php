@@ -128,16 +128,16 @@ final class EmployeeSwapController
 
         $myShift = $this->shifts->findById($myShiftId);
         if ($myShift === null || (int) $myShift['user_id'] !== $userId) {
-            throw new ForbiddenException('Shift introuvable.');
+            throw new ForbiddenException(__('error_shift_not_found'));
         }
 
         $targetShift = $this->shifts->findById($targetShiftId);
         if ($targetShift === null || (int) $targetShift['user_id'] !== $targetId) {
-            throw new ForbiddenException('Shift cible introuvable.');
+            throw new ForbiddenException(__('error_target_shift_not_found'));
         }
 
         if ((int) $myShift['store_id'] !== (int) $targetShift['store_id']) {
-            throw new ForbiddenException('Les shifts doivent appartenir au même store.');
+            throw new ForbiddenException(__('error_shifts_different_stores'));
         }
 
         $savedSwap = $this->swapRequests->save([
@@ -167,7 +167,7 @@ final class EmployeeSwapController
 
         $swap = $this->swapRequests->findById((int) $request->param('id'));
         if ($swap === null || (int) $swap['target_user_id'] !== $userId) {
-            throw new ForbiddenException('Demande introuvable.');
+            throw new ForbiddenException(__('error_request_not_found'));
         }
         if (($swap['status'] ?? '') !== 'pending' || ($swap['accepted_at'] ?? null) !== null) {
             return Response::redirect($this->base() . '/employee/swaps?error=invalid_state');
@@ -194,7 +194,7 @@ final class EmployeeSwapController
 
         $swap = $this->swapRequests->findById((int) $request->param('id'));
         if ($swap === null || (int) $swap['target_user_id'] !== $userId) {
-            throw new ForbiddenException('Demande introuvable.');
+            throw new ForbiddenException(__('error_request_not_found'));
         }
         if (($swap['status'] ?? '') !== 'pending' || ($swap['accepted_at'] ?? null) !== null) {
             return Response::redirect($this->base() . '/employee/swaps?error=invalid_state');
@@ -218,7 +218,7 @@ final class EmployeeSwapController
 
         $swap = $this->swapRequests->findById((int) $request->param('id'));
         if ($swap === null || (int) $swap['requester_id'] !== $userId) {
-            throw new ForbiddenException('Demande introuvable.');
+            throw new ForbiddenException(__('error_request_not_found'));
         }
         if (($swap['status'] ?? '') !== 'pending') {
             return Response::redirect($this->base() . '/employee/swaps?error=invalid_state');
