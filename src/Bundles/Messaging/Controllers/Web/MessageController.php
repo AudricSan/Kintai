@@ -172,7 +172,8 @@ final class MessageController
         $this->notifs->notifyMany(
             $recipients,
             'message_received',
-            'Nouveau message : ' . mb_strimwidth($subject, 0, 60, '…'),
+            'notif_message_received_body',
+            ['subject' => mb_strimwidth($subject, 0, 60, '…')],
             $threadId
         );
 
@@ -266,7 +267,8 @@ final class MessageController
             $this->notifs->notifyMany(
                 $otherParticipants,
                 'message_received',
-                'Nouveau message dans : ' . mb_strimwidth($thread['subject'] ?? '', 0, 60, '…'),
+                'notif_thread_message_received_body',
+                ['subject' => mb_strimwidth($thread['subject'] ?? '', 0, 60, '…')],
                 $threadId
             );
         }
