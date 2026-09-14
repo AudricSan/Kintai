@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Fixed
+- i18n — ~90 hardcoded French exception/validation messages and JSON error responses across ~50 core/bundle controllers and services (`throw new NotFoundException('...')`, `ForbiddenException('...')`, `Response::json(['error' => '...'])`) now go through `__()` instead, with matching `en`/`ja` translations added to `lang/*.json`. Duplicate messages across files (e.g. "Magasin introuvable.", "Accès refusé.", "Utilisateur introuvable.") were consolidated onto a single shared key each. Also fixed a real bug in `Messaging\MessageController::assertFeature()` that threw `ForbiddenException('feature_disabled')` — the raw untranslated key literal, never wrapped in `__()`, and a key that didn't even exist in the language files.
+
 ### Changed
 - Release versioning — replaced the `X.Y.Z-<week letter><sub-version>` prerelease suffix (e.g. `0.12.0-ak23`, hard to read on `/admin/update`) with a plain, cascading `X.Y.Z`: `X` is the major, `Y` identifies the release line, and `Z` is a cumulative alpha+beta iteration counter within that line, computed automatically by `.github/workflows/release.yml` (never entered by hand). `Z = 0` is reserved for the line's stable release on `main`, so it never collides with an earlier alpha/beta tag of the same line. See `docs/releasing.md` for the full scheme and the simplified manual procedure (only `X`/`Y` are ever bumped by hand, and only when opening a new line).
 

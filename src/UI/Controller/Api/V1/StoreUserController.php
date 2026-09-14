@@ -36,7 +36,7 @@ final class StoreUserController
 
         $member = $this->storeUsers->findById($id);
         if ($member === null || (int) $member['store_id'] !== $storeId) {
-            throw new NotFoundException('Membre introuvable.');
+            throw new NotFoundException(__('error_member_not_found'));
         }
 
         return Response::json($member);
@@ -62,7 +62,7 @@ final class StoreUserController
 
         $existing = $this->storeUsers->findById($id);
         if ($existing === null || (int) $existing['store_id'] !== $storeId) {
-            throw new NotFoundException('Membre introuvable.');
+            throw new NotFoundException(__('error_member_not_found'));
         }
 
         return Response::json($this->storeUsers->save(array_merge($existing, $request->json() ?? [], ['id' => $id, 'store_id' => $storeId])));
@@ -77,7 +77,7 @@ final class StoreUserController
 
         $existing = $this->storeUsers->findById($id);
         if ($existing === null || (int) $existing['store_id'] !== $storeId) {
-            throw new NotFoundException('Membre introuvable.');
+            throw new NotFoundException(__('error_member_not_found'));
         }
 
         $this->storeUsers->delete($id);
@@ -88,7 +88,7 @@ final class StoreUserController
     private function requireStore(int $id): void
     {
         if ($this->stores->findById($id) === null) {
-            throw new NotFoundException('Magasin introuvable.');
+            throw new NotFoundException(__('error_store_not_found'));
         }
     }
 }

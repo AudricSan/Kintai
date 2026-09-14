@@ -159,7 +159,7 @@ final class AdminShiftClaimController
     {
         $shift = $this->shifts->findById((int) $request->param('id'));
         if ($shift === null) {
-            throw new NotFoundException('Shift introuvable.');
+            throw new NotFoundException(__('error_shift_not_found'));
         }
         $this->assertStoreAccess($request, (int) ($shift['store_id'] ?? 0));
         $old = $shift;
@@ -180,7 +180,7 @@ final class AdminShiftClaimController
     {
         $shift = $this->shifts->findById((int) $request->param('id'));
         if ($shift === null) {
-            throw new NotFoundException('Shift introuvable.');
+            throw new NotFoundException(__('error_shift_not_found'));
         }
         $this->assertStoreAccess($request, (int) ($shift['store_id'] ?? 0));
         $old = $shift;
@@ -201,7 +201,7 @@ final class AdminShiftClaimController
     {
         $claim = $this->shiftClaims->findById((int) $request->param('id'));
         if ($claim === null) {
-            throw new NotFoundException('Candidature introuvable.');
+            throw new NotFoundException(__('error_claim_not_found'));
         }
         $oldClaim = $claim;
         // C-2 : guard statut pending
@@ -210,7 +210,7 @@ final class AdminShiftClaimController
         }
         $shift = $this->shifts->findById((int) ($claim['shift_id'] ?? 0));
         if ($shift === null) {
-            throw new NotFoundException('Shift introuvable.');
+            throw new NotFoundException(__('error_shift_not_found'));
         }
         // C-3 : le shift doit être encore ouvert
         if (!(int) ($shift['is_open'] ?? 0)) {
@@ -258,7 +258,7 @@ final class AdminShiftClaimController
     {
         $claim = $this->shiftClaims->findById((int) $request->param('id'));
         if ($claim === null) {
-            throw new NotFoundException('Candidature introuvable.');
+            throw new NotFoundException(__('error_claim_not_found'));
         }
         $oldClaim = $claim;
         // M-3 : guard statut pending
@@ -267,7 +267,7 @@ final class AdminShiftClaimController
         }
         $shift = $this->shifts->findById((int) ($claim['shift_id'] ?? 0));
         if ($shift === null) {
-            throw new NotFoundException('Shift introuvable.');
+            throw new NotFoundException(__('error_shift_not_found'));
         }
         $this->assertStoreAccess($request, (int) ($shift['store_id'] ?? 0));
 

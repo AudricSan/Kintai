@@ -30,7 +30,7 @@ final class StoreController
     {
         $store = $this->stores->findById((int) $request->param('id'));
         if ($store === null) {
-            throw new NotFoundException('Magasin introuvable.');
+            throw new NotFoundException(__('error_store_not_found'));
         }
         return Response::json($store);
     }
@@ -50,7 +50,7 @@ final class StoreController
         $id  = (int) $request->param('id');
         $old = $this->stores->findById($id);
         if ($old === null) {
-            throw new NotFoundException('Magasin introuvable.');
+            throw new NotFoundException(__('error_store_not_found'));
         }
         $data  = $request->json() ?? [];
         $saved = $this->stores->save(array_merge($data, ['id' => $id]));
@@ -63,7 +63,7 @@ final class StoreController
     {
         $id = (int) $request->param('id');
         if ($this->stores->findById($id) === null) {
-            throw new NotFoundException('Magasin introuvable.');
+            throw new NotFoundException(__('error_store_not_found'));
         }
         $this->stores->delete($id);
         $this->auditLogger->log($request, 'store.deleted', 'store', resourceId: $id);
