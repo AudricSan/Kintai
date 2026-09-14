@@ -26,7 +26,6 @@ final class LanguageController
     /** GET /admin/languages */
     public function index(Request $request): Response
     {
-        $this->requireOwner($request);
 
         return Response::html($this->view->render('system.languages', [
             'title'     => __('languages'),
@@ -39,7 +38,6 @@ final class LanguageController
     /** POST /admin/languages */
     public function store(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $code = strtolower(trim((string) $request->post('code', '')));
         $name = trim((string) $request->post('name', ''));
@@ -69,7 +67,6 @@ final class LanguageController
     /** POST /admin/languages/{code}/default */
     public function setDefault(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $code = (string) $request->param('code');
         if (!$this->languages->setDefault($code)) {
@@ -84,7 +81,6 @@ final class LanguageController
     /** POST /admin/languages/{code}/toggle-active */
     public function toggleActive(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $code = (string) $request->param('code');
         $lang = $this->languages->findByCode($code);
@@ -105,7 +101,6 @@ final class LanguageController
     /** POST /admin/languages/{code}/delete */
     public function destroy(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $code = (string) $request->param('code');
         $lang = $this->languages->findByCode($code);
@@ -132,7 +127,6 @@ final class LanguageController
     /** GET /admin/languages/{code}/edit */
     public function edit(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $code = (string) $request->param('code');
         $lang = $this->languages->findByCode($code);
@@ -162,17 +156,16 @@ final class LanguageController
     /** POST /admin/languages/{code}/edit/save (AJAX) — upsert d'une clé (ajout ou modification). */
     public function saveKey(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $code = (string) $request->param('code');
         if (!$this->languages->findByCode($code)) {
-            return Response::json(['error' => 'unknown language'], 404);
+            return Response::json(['error' => __('error_unknown_language')], 404);
         }
 
         $key   = trim((string) $request->post('key', ''));
         $value = (string) $request->post('value', '');
         if ($key === '' || !preg_match('/^[a-z0-9_.]+$/i', $key)) {
-            return Response::json(['error' => 'invalid key'], 400);
+            return Response::json(['error' => __('error_invalid_key')], 400);
         }
 
         $this->translationManagement->saveValue($code, $key, $value);
@@ -184,26 +177,16 @@ final class LanguageController
     /** POST /admin/languages/{code}/edit/delete (AJAX) — supprime une clé pour cette langue uniquement. */
     public function deleteKey(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $code = (string) $request->param('code');
         $key  = trim((string) $request->post('key', ''));
         if ($key === '') {
-            return Response::json(['error' => 'key required'], 400);
+            return Response::json(['error' => __('error_key_required')], 400);
         }
 
         $this->translationManagement->deleteValue($code, $key);
         $this->auditLogger->log($request, 'translation.deleted', 'translation', null, ['locale' => $code, 'key' => $key]);
 
         return Response::json(['ok' => true]);
-    }
-
-    private function requireOwner(Request $request): void
-    {
-        $user = $request->getAttribute('auth_user');
-        if (empty($user['is_admin'])) {
-            header('Location: ' . $this->base() . '/');
-            exit;
-        }
     }
 }

@@ -194,7 +194,7 @@ $store_stats_hours_by_week ??= [];
             <div class="stat-card">
                 <div class="stat-card__icon stat-card__icon--primary">⏱️</div>
                 <div class="stat-card__body">
-                    <div class="stat-card__value"><?= number_format((float) $_row['total_hours'], 1) ?>h</div>
+                    <div class="stat-card__value"><?= number_format((float) $_row['total_hours'], 1) ?><?= __('hours_unit') ?></div>
                     <div class="stat-card__label"><?= __('net_hours') ?></div>
                 </div>
             </div>
@@ -242,7 +242,7 @@ $store_stats_hours_by_week ??= [];
                     <?php foreach ($store_stats_rows as $_row): ?>
                         <tr class="tr--clickable" onclick="location.href='<?= route_url('admin.stores.stats', ['id' => $_row['store_id']]) ?>'">
                             <td data-label="<?= htmlspecialchars(__('store')) ?>"><?= htmlspecialchars((string) $_row['store_name']) ?></td>
-                            <td data-label="<?= htmlspecialchars(__('net_hours')) ?>"><?= number_format((float) $_row['total_hours'], 1) ?>h</td>
+                            <td data-label="<?= htmlspecialchars(__('net_hours')) ?>"><?= number_format((float) $_row['total_hours'], 1) ?><?= __('hours_unit') ?></td>
                             <td data-label="<?= htmlspecialchars(__('total_cost')) ?>"><?= format_currency((float) $_row['total_cost'], (string) $_row['currency'], (string) $_row['currency_symbol_style']) ?></td>
                             <td data-label="<?= htmlspecialchars(__('score_stability')) ?>"><?= $_row['stability'] !== null ? (int) $_row['stability'] : '—' ?></td>
                             <td><a href="<?= route_url('admin.stores.stats', ['id' => $_row['store_id']]) ?>" class="card-header-link"><?= __('statistics') ?> →</a></td>

@@ -148,9 +148,9 @@ document.addEventListener('DOMContentLoaded', () => {
         var icon   = document.getElementById('theme-icon');
         var label  = document.getElementById('theme-label');
         if (icon)  icon.textContent  = isDark ? '☀️' : '🌙';
-        if (label) label.textContent = isDark ? 'Mode clair' : 'Mode sombre';
         document.querySelectorAll('#themeToggle').forEach(function (btn) {
-            btn.title = isDark ? 'Passer en mode clair' : 'Passer en mode sombre';
+            if (label) label.textContent = isDark ? btn.dataset.labelLight : btn.dataset.labelDark;
+            btn.title = isDark ? btn.dataset.titleLight : btn.dataset.titleDark;
         });
     }
 

@@ -13,6 +13,7 @@ $langLabel  = $langLabels[$locale] ?? $locale;
 
 <div class="card docs-unavailable">
     <div class="card-body">
+        <img src="<?= ($BASE_URL ?? '') ?>/assets/img/mascot/docs-hero.png" alt="<?= __('mascot_alt') ?>" class="docs-unavailable__mascot">
         <p class="docs-unavailable__message">
             <?= __('docs_unavailable_message', ['lang' => $langLabel]) ?>
         </p>

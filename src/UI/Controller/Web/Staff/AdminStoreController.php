@@ -65,7 +65,7 @@ final class AdminStoreController
     public function createStore(Request $request): Response
     {
         if ($this->managedIds($request) !== null) {
-            throw new ForbiddenException('Seul un owner peut créer un store.');
+            throw new ForbiddenException(__('error_owner_only_create_store'));
         }
 
         return Response::html($this->view->render('staff.stores-form', [
@@ -79,7 +79,7 @@ final class AdminStoreController
     public function storeStore(Request $request): Response
     {
         if ($this->managedIds($request) !== null) {
-            throw new ForbiddenException('Seul un owner peut créer un store.');
+            throw new ForbiddenException(__('error_owner_only_create_store'));
         }
         $savedStore = $this->storeService->createStore([
             'code'            => strtoupper(trim($request->post('code', ''))),
@@ -107,7 +107,7 @@ final class AdminStoreController
     {
         $store = $this->stores->findById((int) $request->param('id'));
         if ($store === null) {
-            throw new NotFoundException('Store introuvable.');
+            throw new NotFoundException(__('error_store_not_found'));
         }
         $this->assertStoreAccess($request, (int) $store['id']);
 
@@ -152,7 +152,7 @@ final class AdminStoreController
     {
         $store = $this->stores->findById((int) $request->param('id'));
         if ($store === null) {
-            throw new NotFoundException('Store introuvable.');
+            throw new NotFoundException(__('error_store_not_found'));
         }
         $storeId = (int) $store['id'];
         $this->assertStoreAccess($request, $storeId);
@@ -233,13 +233,13 @@ final class AdminStoreController
     public function deleteStore(Request $request): Response
     {
         if ($this->managedIds($request) !== null) {
-            throw new ForbiddenException('Seul un owner peut supprimer un store.');
+            throw new ForbiddenException(__('error_owner_only_delete_store'));
         }
 
         $id    = (int) $request->param('id');
         $store = $this->stores->findById($id);
         if ($store === null) {
-            throw new NotFoundException('Store introuvable.');
+            throw new NotFoundException(__('error_store_not_found'));
         }
 
         $this->storeService->deleteStore($id);
@@ -254,7 +254,7 @@ final class AdminStoreController
         $storeId = (int) $request->param('id');
         $store   = $this->stores->findById($storeId);
         if ($store === null) {
-            throw new NotFoundException('Store introuvable.');
+            throw new NotFoundException(__('error_store_not_found'));
         }
         $this->assertStoreAccess($request, $storeId);
 
@@ -290,7 +290,7 @@ final class AdminStoreController
 
         $membership = $this->storeUsers->findById($mid);
         if ($membership === null || (int) $membership['store_id'] !== $storeId) {
-            throw new NotFoundException('Appartenance introuvable.');
+            throw new NotFoundException(__('error_membership_not_found'));
         }
         $this->assertStoreAccess($request, $storeId);
 
@@ -319,7 +319,7 @@ final class AdminStoreController
 
         $membership = $this->storeUsers->findById($mid);
         if ($membership === null || (int) $membership['store_id'] !== $storeId) {
-            throw new NotFoundException('Appartenance introuvable.');
+            throw new NotFoundException(__('error_membership_not_found'));
         }
         $this->assertStoreAccess($request, $storeId);
 
@@ -340,15 +340,15 @@ final class AdminStoreController
         $this->assertStoreAccess($request, $storeId);
 
         $store = $this->stores->findById($storeId);
-        if ($store === null) throw new NotFoundException('Magasin introuvable.');
+        if ($store === null) throw new NotFoundException(__('error_store_not_found'));
 
         $membership = $this->storeUsers->findById($mid);
         if ($membership === null || (int) $membership['store_id'] !== $storeId) {
-            throw new NotFoundException('Membre introuvable.');
+            throw new NotFoundException(__('error_member_not_found'));
         }
 
         $user = $this->users->findById((int) $membership['user_id']);
-        if ($user === null) throw new NotFoundException('Utilisateur introuvable.');
+        if ($user === null) throw new NotFoundException(__('error_user_not_found'));
 
         return Response::html($this->view->render('staff.member-deductions', [
             'title'              => 'Cotisations — ' . ($user['display_name'] ?? $user['email'] ?? ''),
@@ -368,7 +368,7 @@ final class AdminStoreController
 
         $membership = $this->storeUsers->findById($mid);
         if ($membership === null || (int) $membership['store_id'] !== $storeId) {
-            throw new NotFoundException('Membre introuvable.');
+            throw new NotFoundException(__('error_member_not_found'));
         }
 
         $overrides    = $this->storeService->getDeductionOverrides($mid);
@@ -396,7 +396,7 @@ final class AdminStoreController
 
         $store = $this->stores->findById($storeId);
         if ($store === null) {
-            throw new NotFoundException('Magasin introuvable.');
+            throw new NotFoundException(__('error_store_not_found'));
         }
 
         $period      = max(7, min(365, (int) ($request->query('period') ?? 30)));
@@ -421,7 +421,7 @@ final class AdminStoreController
 
         $store = $this->stores->findById($storeId);
         if ($store === null) {
-            throw new NotFoundException('Magasin introuvable.');
+            throw new NotFoundException(__('error_store_not_found'));
         }
 
         $period  = max(7, min(365, (int) ($request->query('period') ?? 30)));
@@ -507,7 +507,7 @@ final class AdminStoreController
 
         $store = $this->stores->findById($storeId);
         if ($store === null) {
-            throw new NotFoundException('Magasin introuvable.');
+            throw new NotFoundException(__('error_store_not_found'));
         }
 
         $today  = date('Y-m-d');
@@ -537,13 +537,13 @@ final class AdminStoreController
         $this->assertStoreAccess($request, $storeId);
 
         $store = $this->stores->findById($storeId);
-        if ($store === null) throw new NotFoundException('Magasin introuvable.');
+        if ($store === null) throw new NotFoundException(__('error_store_not_found'));
 
         $user = $this->users->findById($userId);
-        if ($user === null) throw new NotFoundException('Employé introuvable.');
+        if ($user === null) throw new NotFoundException(__('error_employee_not_found'));
 
         $membership = $this->storeUsers->findMembership($storeId, $userId);
-        if ($membership === null) throw new ForbiddenException('Cet employé n\'est pas membre de ce magasin.');
+        if ($membership === null) throw new ForbiddenException(__('error_employee_not_store_member'));
 
         $period = max(7, min(365, (int) ($request->query('period') ?? 30)));
         $data   = $this->storeStatsService->employeeStats($storeId, $userId, $period);
@@ -572,7 +572,7 @@ final class AdminStoreController
 
         $store = $this->stores->findById($storeId);
         if ($store === null) {
-            throw new NotFoundException('Magasin introuvable.');
+            throw new NotFoundException(__('error_store_not_found'));
         }
 
         $period = max(7, min(365, (int) ($request->query('period') ?? 30)));

@@ -78,6 +78,49 @@ final class ImageCompressionServiceTest extends TestCase
         $this->assertNull($result);
     }
 
+    /**
+     * Un téléphone stocke souvent la photo telle que capturée par le capteur
+     * (potentiellement de travers) avec un tag EXIF Orientation indiquant comment
+     * l'afficher. GD ignore ce tag à la lecture et ne le réécrit jamais à
+     * l'encodage : sans correction préalable, la photo compressée reste de travers
+     * de façon permanente (l'info est perdue). Orientation 6 = pivoter 90° horaire.
+     */
+    public function testAppliesExifOrientationBeforeCompressing(): void
+    {
+        $source = $this->workDir . '/oriented.jpg';
+        $this->writeJpegWithExifOrientation($source, 100, 50, 6);
+
+        $result = $this->service->compress($source, $this->workDir . '/out', ImageCompressionService::DEFAULT_MAX_BYTES);
+
+        $this->assertNotNull($result);
+        [$width, $height] = getimagesize($result['path']);
+        $this->assertSame(50, $width);
+        $this->assertSame(100, $height);
+        $this->assertMarkerNear($result['path'], $width - 5, 5);
+    }
+
+    public function testRotateInPlaceRotatesClockwiseAndOverwritesTheFile(): void
+    {
+        $path = $this->workDir . '/photo.jpg';
+        $this->writeMarkedJpeg($path, 100, 50);
+
+        $ok = $this->service->rotateInPlace($path, 'image/jpeg', 90);
+
+        $this->assertTrue($ok);
+        [$width, $height] = getimagesize($path);
+        $this->assertSame(50, $width);
+        $this->assertSame(100, $height);
+        $this->assertMarkerNear($path, $width - 5, 5);
+    }
+
+    public function testRotateInPlaceReturnsFalseForNonImageFile(): void
+    {
+        $path = $this->workDir . '/not-an-image.jpg';
+        file_put_contents($path, 'nope');
+
+        $this->assertFalse($this->service->rotateInPlace($path, 'image/jpeg', 90));
+    }
+
     private function writeNoisyOpaquePng(string $path, int $width, int $height): void
     {
         $image = imagecreatetruecolor($width, $height);
@@ -101,5 +144,63 @@ final class ImageCompressionServiceTest extends TestCase
         imagefilledellipse($image, (int) ($width / 2), (int) ($height / 2), (int) ($width / 2), (int) ($height / 2), $opaque);
         imagepng($image, $path, 0);
         imagedestroy($image);
+    }
+
+    /** JPEG avec un marqueur rouge dans le coin haut-gauche, pour vérifier une rotation par sa nouvelle position. */
+    private function writeMarkedJpeg(string $path, int $width, int $height): void
+    {
+        $image = imagecreatetruecolor($width, $height);
+        $bg = imagecolorallocate($image, 255, 255, 255);
+        imagefill($image, 0, 0, $bg);
+        $marker = imagecolorallocate($image, 255, 0, 0);
+        imagefilledrectangle($image, 0, 0, 9, 9, $marker);
+        imagejpeg($image, $path, 90);
+        imagedestroy($image);
+    }
+
+    /**
+     * JPEG marqué (voir writeMarkedJpeg) avec un segment APP1/EXIF minimal inséré
+     * juste après le SOI, portant uniquement le tag Orientation — GD ne sachant pas
+     * écrire l'EXIF, ce segment est construit à la main (TIFF little-endian, une
+     * seule entrée d'IFD).
+     */
+    private function writeJpegWithExifOrientation(string $path, int $width, int $height, int $orientation): void
+    {
+        $raw = $this->workDir . '/exif-src-raw.jpg';
+        $this->writeMarkedJpeg($raw, $width, $height);
+
+        $bytes = (string) file_get_contents($raw);
+        $soi   = substr($bytes, 0, 2);
+        $rest  = substr($bytes, 2);
+
+        file_put_contents($path, $soi . $this->buildExifOrientationSegment($orientation) . $rest);
+        unlink($raw);
+    }
+
+    private function buildExifOrientationSegment(int $orientation): string
+    {
+        $tiffHeader = 'II' . pack('v', 42) . pack('V', 8);
+        $entry      = pack('v', 0x0112) . pack('v', 3) . pack('V', 1) . pack('v', $orientation) . "\x00\x00";
+        $ifd        = pack('v', 1) . $entry . pack('V', 0);
+        $exif       = "Exif\x00\x00" . $tiffHeader . $ifd;
+
+        return "\xFF\xE1" . pack('n', strlen($exif) + 2) . $exif;
+    }
+
+    /** Vérifie que le pixel à ($x, $y) est bien rouge (voir writeMarkedJpeg). */
+    private function assertMarkerNear(string $jpegPath, int $x, int $y): void
+    {
+        $image = imagecreatefromjpeg($jpegPath);
+        $this->assertNotFalse($image);
+        $color = imagecolorat($image, $x, $y);
+        imagedestroy($image);
+
+        $r = ($color >> 16) & 0xFF;
+        $g = ($color >> 8) & 0xFF;
+        $b = $color & 0xFF;
+
+        $this->assertGreaterThan(150, $r, "Pixel ($x,$y) devrait être rouge (marqueur), R=$r G=$g B=$b");
+        $this->assertLessThan(100, $g, "Pixel ($x,$y) devrait être rouge (marqueur), R=$r G=$g B=$b");
+        $this->assertLessThan(100, $b, "Pixel ($x,$y) devrait être rouge (marqueur), R=$r G=$g B=$b");
     }
 }

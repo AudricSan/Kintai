@@ -147,6 +147,85 @@ final class EmployeeTimeclockControllerTest extends TestCase
         $this->controller->clockOut($req);
     }
 
+    /** Un pointage synchronisé après coup (hors-ligne) doit garder l'heure réelle du clic, pas l'heure de synchro. */
+    public function testClockInUsesClientTimeWhenWithinTrustWindow(): void
+    {
+        $clientTime = (new \DateTimeImmutable('-2 hours'))->format('c');
+        $_POST['client_time'] = $clientTime;
+
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1]);
+
+        $this->storeUsers->method('findByUser')->with(1)->willReturn([['store_id' => 5]]);
+        $this->timeclocks->method('findActiveByUser')->with(1)->willReturn(null);
+
+        $expected = (new \DateTimeImmutable($clientTime))->format('Y-m-d H:i:s');
+        $this->timeclocks->expects($this->once())->method('save')->with($this->callback(
+            fn(array $data) => $data['clock_in_time'] === $expected && $data['shift_date'] === substr($expected, 0, 10)
+        ))->willReturn(['id' => 10]);
+
+        $response = $this->controller->clockIn($req);
+
+        $this->assertSame(201, $response->status());
+    }
+
+    /** Un client_time trop ancien (dérive excessive) est ignoré au profit de l'heure serveur. */
+    public function testClockInIgnoresClientTimeOutsideTrustWindow(): void
+    {
+        $_POST['client_time'] = (new \DateTimeImmutable('-2 days'))->format('c');
+
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1]);
+
+        $this->storeUsers->method('findByUser')->with(1)->willReturn([['store_id' => 5]]);
+        $this->timeclocks->method('findActiveByUser')->with(1)->willReturn(null);
+
+        $today = date('Y-m-d');
+        $this->timeclocks->expects($this->once())->method('save')->with($this->callback(
+            fn(array $data) => $data['shift_date'] === $today
+        ))->willReturn(['id' => 10]);
+
+        $this->controller->clockIn($req);
+    }
+
+    /** La durée d'un pointage hors-ligne se calcule sur l'heure réelle de sortie, pas l'heure de synchro. */
+    public function testClockOutUsesClientTimeForDuration(): void
+    {
+        $_POST['client_time'] = (new \DateTimeImmutable('-30 minutes'))->format('c');
+
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1]);
+
+        $this->timeclocks->method('findActiveByUser')->with(1)->willReturn([
+            'id' => 9, 'store_id' => 5, 'clock_in_time' => (new \DateTimeImmutable('-90 minutes'))->format('Y-m-d H:i:s'),
+        ]);
+        $this->timeclocks->expects($this->once())->method('save')->with($this->callback(
+            fn(array $data) => $data['duration_minutes'] >= 59 && $data['duration_minutes'] <= 61
+        ))->willReturn(['id' => 9]);
+
+        $response = $this->controller->clockOut($req);
+
+        $this->assertSame(200, $response->status());
+    }
+
+    /** Une sortie hors-ligne rejouée avant son entrée (désordre de synchro) retombe sur l'heure serveur. */
+    public function testClockOutFallsBackToServerTimeWhenClientTimeBeforeClockIn(): void
+    {
+        $_POST['client_time'] = (new \DateTimeImmutable('-2 hours'))->format('c');
+
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1]);
+
+        $this->timeclocks->method('findActiveByUser')->with(1)->willReturn([
+            'id' => 9, 'store_id' => 5, 'clock_in_time' => (new \DateTimeImmutable('-30 minutes'))->format('Y-m-d H:i:s'),
+        ]);
+        $this->timeclocks->expects($this->once())->method('save')->with($this->callback(
+            fn(array $data) => $data['duration_minutes'] >= 0
+        ))->willReturn(['id' => 9]);
+
+        $this->controller->clockOut($req);
+    }
+
     private function ensureViewFile(string $dir, string $view): void
     {
         $file = $dir . DIRECTORY_SEPARATOR . str_replace('.', DIRECTORY_SEPARATOR, $view) . '.php';

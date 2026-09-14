@@ -6,7 +6,9 @@ namespace kintai\Tests\Unit\Controller\Web;
 
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Repositories\AvailabilityRepositoryInterface;
+use kintai\Core\Repositories\DevicePushTokenRepositoryInterface;
 use kintai\Core\Repositories\IcalTokenRepositoryInterface;
+use kintai\Core\Repositories\LanguageRepositoryInterface;
 use kintai\Core\Repositories\NotificationRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
@@ -17,6 +19,7 @@ use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\TimeclockRepositoryInterface;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
+use kintai\Core\Repositories\TranslationRepositoryInterface;
 use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserNavPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
@@ -24,6 +27,8 @@ use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\NotificationService;
+use kintai\Core\Services\PushNotificationService;
+use kintai\Core\Services\TranslationService;
 use kintai\UI\Controller\Web\EmployeeController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -69,7 +74,15 @@ final class EmployeeControllerShiftDayCanManageTest extends TestCase
             $this->createMock(TimeclockRepositoryInterface::class),
             $this->createMock(AvailabilityRepositoryInterface::class),
             $this->createMock(UserDashboardPrefsRepositoryInterface::class),
-            new NotificationService($this->createMock(NotificationRepositoryInterface::class)),
+            new NotificationService(
+                $this->createMock(NotificationRepositoryInterface::class),
+                new PushNotificationService([], $this->createMock(DevicePushTokenRepositoryInterface::class)),
+                new TranslationService(
+                    $this->createStub(TranslationRepositoryInterface::class),
+                    $this->createStub(LanguageRepositoryInterface::class),
+                ),
+                $this->createMock(UserRepositoryInterface::class),
+            ),
             $this->createMock(UserNavPrefsRepositoryInterface::class),
             new PermissionService($this->assignments, $this->roles),
         );
