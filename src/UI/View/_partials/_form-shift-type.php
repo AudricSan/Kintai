@@ -60,7 +60,7 @@ $selected_store_ids ??= [];
 
     <!-- ── Taux horaire ─────────────────────────── -->
     <div class="form-group">
-        <label class="form-label"><?= __('hourly_rate') ?> (/h)</label>
+        <label class="form-label"><?= __('hourly_rate') ?> (<?= __('per_hour_unit') ?>)</label>
         <input type="number" name="hourly_rate" class="form-control"
                min="0" step="0.01"
                value="<?= number_format((float) ($shift_type['hourly_rate'] ?? 0), 2, '.', '') ?>"

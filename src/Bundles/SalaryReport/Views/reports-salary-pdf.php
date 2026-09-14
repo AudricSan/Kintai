@@ -142,7 +142,7 @@ th { background: #f0f0f0; font-weight: 600; }
     </tr>
     <tr>
         <th><?= __('sr_staff_avg_hourly_wage') ?></th>
-        <td class="tr td-mono"><?= $cur($report['staff_avg_hourly_wage'] ?? null) ?>/h</td>
+        <td class="tr td-mono"><?= $cur($report['staff_avg_hourly_wage'] ?? null) ?><?= ($report['staff_avg_hourly_wage'] ?? null) !== null && ($report['staff_avg_hourly_wage'] ?? '') !== '' ? __('per_hour_unit') : '' ?></td>
     </tr>
     <tr>
         <th><?= __('sr_employee_work_hours') ?></th>
