@@ -340,11 +340,30 @@ echo Modal::make('—', '<div id="al-detail-content"></div>')
     ->render();
 ?>
 
+<script type="application/json" id="kintai-activity-log-data"><?= json_encode([
+    'labels' => [
+        'level'       => __('level'),
+        'channel'     => __('channel'),
+        'date'        => __('date'),
+        'user'        => __('user'),
+        'store'       => __('store'),
+        'resource'    => __('resource'),
+        'message'     => __('message'),
+        'httpRequest' => __('http_request'),
+        'method'      => __('method'),
+        'status'      => __('status'),
+        'duration'    => __('duration'),
+        'client'      => __('client'),
+        'session'     => __('session'),
+    ],
+], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?></script>
+
 <script>
 (function() {
     var rows = document.querySelectorAll('.log-row');
     var content = document.getElementById('al-detail-content');
     var title   = document.getElementById('al-modal-title');
+    var LBL = JSON.parse(document.getElementById('kintai-activity-log-data').textContent).labels;
 
     function escapeHtml(str) {
         if (str == null) return '';
@@ -402,20 +421,20 @@ echo Modal::make('—', '<div id="al-detail-content"></div>')
 
         // Métadonnées principales
         html += '<div class="al-meta">';
-        html += '<div class="al-meta-item"><span class="text-dim">Niveau</span><span class="badge badge--' + lc + '">' + escapeHtml(level) + '</span></div>';
-        html += '<div class="al-meta-item"><span class="text-dim">Canal</span><code>' + val(row.getAttribute('data-channel')) + '</code></div>';
-        html += '<div class="al-meta-item"><span class="text-dim">Date</span>' + val(row.getAttribute('data-created-at')) + '</div>';
-        html += '<div class="al-meta-item"><span class="text-dim">Utilisateur</span>' + val(row.getAttribute('data-user-name')) + '</div>';
+        html += '<div class="al-meta-item"><span class="text-dim">' + LBL.level + '</span><span class="badge badge--' + lc + '">' + escapeHtml(level) + '</span></div>';
+        html += '<div class="al-meta-item"><span class="text-dim">' + LBL.channel + '</span><code>' + val(row.getAttribute('data-channel')) + '</code></div>';
+        html += '<div class="al-meta-item"><span class="text-dim">' + LBL.date + '</span>' + val(row.getAttribute('data-created-at')) + '</div>';
+        html += '<div class="al-meta-item"><span class="text-dim">' + LBL.user + '</span>' + val(row.getAttribute('data-user-name')) + '</div>';
         var storeId = row.getAttribute('data-store-id');
         if (storeId && storeId !== '0') {
-            html += '<div class="al-meta-item"><span class="text-dim">Magasin</span>#' + escapeHtml(storeId) + '</div>';
+            html += '<div class="al-meta-item"><span class="text-dim">' + LBL.store + '</span>#' + escapeHtml(storeId) + '</div>';
         }
         var resType = row.getAttribute('data-resource-type');
         var resId   = row.getAttribute('data-resource-id');
         if (resType) {
-            html += '<div class="al-meta-item"><span class="text-dim">Ressource</span><code>' + escapeHtml(resType) + '</code> ' + (resId && resId !== '0' ? '#' + escapeHtml(resId) : '') + '</div>';
+            html += '<div class="al-meta-item"><span class="text-dim">' + LBL.resource + '</span><code>' + escapeHtml(resType) + '</code> ' + (resId && resId !== '0' ? '#' + escapeHtml(resId) : '') + '</div>';
         }
-        html += '<div class="al-meta-item"><span class="text-dim">Message</span><em>' + val(row.getAttribute('data-message')) + '</em></div>';
+        html += '<div class="al-meta-item"><span class="text-dim">' + LBL.message + '</span><em>' + val(row.getAttribute('data-message')) + '</em></div>';
         html += '</div>';
 
         // Requête HTTP
@@ -424,11 +443,11 @@ echo Modal::make('—', '<div id="al-detail-content"></div>')
         var status = row.getAttribute('data-response-status');
         var dur    = row.getAttribute('data-duration-ms');
         if (method || uri) {
-            html += '<h4 class="mb-xs mt-sm">Requête HTTP</h4><div class="al-meta">';
-            if (method) html += '<div class="al-meta-item"><span class="text-dim">Méthode</span>' + val(method) + '</div>';
+            html += '<h4 class="mb-xs mt-sm">' + LBL.httpRequest + '</h4><div class="al-meta">';
+            if (method) html += '<div class="al-meta-item"><span class="text-dim">' + LBL.method + '</span>' + val(method) + '</div>';
             if (uri)    html += '<div class="al-meta-item"><span class="text-dim">URI</span><code>' + val(uri) + '</code></div>';
-            if (status && status !== '0') html += '<div class="al-meta-item"><span class="text-dim">Statut</span>' + escapeHtml(status) + '</div>';
-            if (dur && dur !== '0')       html += '<div class="al-meta-item"><span class="text-dim">Durée</span>' + escapeHtml(dur) + ' ms</div>';
+            if (status && status !== '0') html += '<div class="al-meta-item"><span class="text-dim">' + LBL.status + '</span>' + escapeHtml(status) + '</div>';
+            if (dur && dur !== '0')       html += '<div class="al-meta-item"><span class="text-dim">' + LBL.duration + '</span>' + escapeHtml(dur) + ' ms</div>';
             html += '</div>';
         }
 
@@ -437,9 +456,9 @@ echo Modal::make('—', '<div id="al-detail-content"></div>')
         var ua  = row.getAttribute('data-user-agent');
         var sid = row.getAttribute('data-session-id');
         if (ip || ua || sid) {
-            html += '<h4 class="mb-xs mt-sm">Client</h4><div class="al-meta">';
+            html += '<h4 class="mb-xs mt-sm">' + LBL.client + '</h4><div class="al-meta">';
             if (ip)  html += '<div class="al-meta-item"><span class="text-dim">IP</span><code>' + val(ip) + '</code></div>';
-            if (sid) html += '<div class="al-meta-item"><span class="text-dim">Session</span><code>' + val(sid) + '</code></div>';
+            if (sid) html += '<div class="al-meta-item"><span class="text-dim">' + LBL.session + '</span><code>' + val(sid) + '</code></div>';
             if (ua)  html += '<div class="al-meta-item al-meta-item--full"><span class="text-dim">User-Agent</span><span class="text-hint">' + escapeHtml(ua.length > 200 ? ua.substring(0, 200) + '…' : ua) + '</span></div>';
             html += '</div>';
         }
