@@ -67,13 +67,13 @@ $section = function (string $titleKey, string $body, string $span = '') use ($as
                 <label class="form-label form-label--required"><?= __('furigana_last_name') ?></label>
                 <input type="text" name="furigana_last_name" class="form-control"
                        value="<?= htmlspecialchars($user['furigana_last_name'] ?? '') ?>"
-                       placeholder="カタカナ" required>
+                       placeholder="<?= __('furigana_placeholder') ?>" required>
             </div>
             <div class="form-group">
                 <label class="form-label form-label--required"><?= __('furigana_first_name') ?></label>
                 <input type="text" name="furigana_first_name" class="form-control"
                        value="<?= htmlspecialchars($user['furigana_first_name'] ?? '') ?>"
-                       placeholder="カタカナ" required>
+                       placeholder="<?= __('furigana_placeholder') ?>" required>
             </div>
         </div>
     <?php $section('identity', ob_get_clean(), 'card--c1 card--r1'); ?>
