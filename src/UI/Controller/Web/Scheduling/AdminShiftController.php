@@ -665,7 +665,8 @@ final class AdminShiftController
                 $this->notifs->notify(
                     $uid,
                     'shift_assigned',
-                    'Un shift a été ajouté à votre planning le ' . $shiftDate . '.',
+                    'notif_shift_assigned_body',
+                    ['date' => $shiftDate],
                     (int) ($saved['id'] ?? 0)
                 );
             } catch (\Throwable $e) {
@@ -788,7 +789,8 @@ final class AdminShiftController
                 $this->notifs->notify(
                     $newUid,
                     'shift_assigned',
-                    'Un shift a été ajouté à votre planning le ' . $shiftDate . '.',
+                    'notif_shift_assigned_body',
+                    ['date' => $shiftDate],
                     (int) $shift['id']
                 );
             } catch (\Throwable $e) {

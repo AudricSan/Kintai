@@ -151,7 +151,8 @@ final class AdminSwapController
         $this->notifs->notifyMany(
             [$requesterId, $targetId],
             'shift_assigned',
-            'Un échange de shift a été appliqué à votre planning.',
+            'notif_swap_applied_body',
+            [],
             (int) ($savedSwap['id'] ?? 0)
         );
 
@@ -254,7 +255,8 @@ final class AdminSwapController
         $this->notifs->notifyMany(
             array_filter([(int) ($swap['requester_id'] ?? 0), (int) ($swap['target_user_id'] ?? 0)]),
             'swap_accepted',
-            'Votre échange de shift a été accepté.',
+            'notif_swap_accepted_body',
+            [],
             (int) $swap['id']
         );
         return Response::redirect($this->base() . '/admin/swap-requests?success=approved');
@@ -272,7 +274,8 @@ final class AdminSwapController
         $this->notifs->notify(
             (int) ($swap['requester_id'] ?? 0),
             'swap_refused',
-            'Votre demande d\'échange de shift a été refusée.',
+            'notif_swap_refused_body',
+            [],
             (int) $swap['id']
         );
         return Response::redirect($this->base() . '/admin/swap-requests?success=refused');
@@ -308,7 +311,8 @@ final class AdminSwapController
             $this->notifs->notifyMany(
                 array_filter([$requesterId, $targetId]),
                 'shift_assigned',
-                'L\'échange de shift a été annulé, vos shifts ont été remis dans leur état initial.',
+                'notif_swap_cancelled_restored_body',
+                [],
                 (int) $swap['id']
             );
         }

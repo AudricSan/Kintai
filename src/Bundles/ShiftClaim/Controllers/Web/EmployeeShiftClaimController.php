@@ -134,7 +134,7 @@ final class EmployeeShiftClaimController
             'store_id' => $shift['store_id'] ?? null,
         ], (int) ($shift['store_id'] ?? 0) ?: null);
 
-        $this->notifyManagers((int) ($shift['store_id'] ?? 0), 'shift_claim_submitted', 'Une candidature attend votre décision à la bourse aux shifts.', $shiftId);
+        $this->notifyManagers((int) ($shift['store_id'] ?? 0), 'shift_claim_submitted', 'notif_shift_claim_pending_body', $shiftId);
 
         return Response::redirect($this->base() . '/employee/open-shifts?success=claimed');
     }
@@ -159,7 +159,7 @@ final class EmployeeShiftClaimController
     }
 
     /** Notifie les membres du store détenant open_shifts.approve (candidats à une décision). */
-    private function notifyManagers(int $storeId, string $type, string $body, int $referenceId): void
+    private function notifyManagers(int $storeId, string $type, string $bodyKey, int $referenceId): void
     {
         $recipients = [];
         foreach ($this->storeUsers->findByStore($storeId) as $m) {
@@ -170,7 +170,7 @@ final class EmployeeShiftClaimController
             }
         }
         if ($recipients !== []) {
-            $this->notifs->notifyMany($recipients, $type, $body, $referenceId);
+            $this->notifs->notifyMany($recipients, $type, $bodyKey, [], $referenceId);
         }
     }
 }
