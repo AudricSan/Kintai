@@ -9,10 +9,10 @@ use kintai\UI\Components\Button;
 
 <?php if ($sent ?? false): ?>
 
-    <?= Alert::make('Si un compte existe pour cette adresse, un lien de réinitialisation a été envoyé. Vérifiez vos e-mails (et vos spams).')->success()->render() ?>
+    <?= Alert::make(__('forgot_password_sent'))->success()->render() ?>
 
     <p class="login-hint login-hint--center">
-        <a href="<?= route_url('auth.login') ?>">← Retour à la connexion</a>
+        <a href="<?= route_url('auth.login') ?>">← <?= __('back_to_login') ?></a>
     </p>
 
 <?php else: ?>
@@ -21,9 +21,9 @@ use kintai\UI\Components\Button;
         echo Alert::make('Adresse e-mail invalide.')->danger()->render();
     endif; ?>
 
-    <h2 class="guest-subtitle">Mot de passe oublié</h2>
+    <h2 class="guest-subtitle"><?= __('forgot_password_title') ?></h2>
     <p class="login-hint">
-        Saisissez votre adresse e-mail et nous vous enverrons un lien pour réinitialiser votre mot de passe.
+        <?= __('forgot_password_intro') ?>
     </p>
 
     <form method="POST" action="<?= route_url('password.forgot') ?>">
@@ -41,7 +41,7 @@ use kintai\UI\Components\Button;
     </form>
 
     <p class="login-hint login-hint--center">
-        <a href="<?= route_url('auth.login') ?>">← Retour à la connexion</a>
+        <a href="<?= route_url('auth.login') ?>">← <?= __('back_to_login') ?></a>
     </p>
 
 <?php endif; ?>

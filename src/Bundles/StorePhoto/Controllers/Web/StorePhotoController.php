@@ -44,11 +44,31 @@ final class StorePhotoController
             $submissions = array_values(array_filter($submissions, fn($s) => (int) ($s['store_id'] ?? 0) === $storeId));
         }
 
+        // Jours disponibles pour le filtre, calculés avant le filtre par jour
+        // lui-même : sinon le sélecteur ne proposerait plus que le jour choisi.
+        $availableDates = [];
+        foreach ($submissions as $s) {
+            $day = date('Y-m-d', strtotime($s['created_at'] ?? 'now'));
+            $availableDates[$day] = ($availableDates[$day] ?? 0) + 1;
+        }
+        krsort($availableDates);
+
+        $filterDate = (string) ($request->query('date') ?? '');
+        if ($filterDate !== '' && !isset($availableDates[$filterDate])) {
+            $filterDate = '';
+        }
+        if ($filterDate !== '') {
+            $submissions = array_values(array_filter(
+                $submissions,
+                fn($s) => date('Y-m-d', strtotime($s['created_at'] ?? 'now')) === $filterDate
+            ));
+        }
+
         $storeNames = $this->buildStoresMap(null);
         $submissionImages = [];
         foreach ($submissions as $s) {
             $sid = (int) $s['id'];
-            $submissionImages[$sid] = $this->photos->findImagesBySubmission($sid);
+            $submissionImages[$sid] = $this->enrichWithVersion($this->photos->findImagesBySubmission($sid));
         }
 
         return Response::html($this->view->render('store-photos::store-photos', [
@@ -58,6 +78,8 @@ final class StorePhotoController
             'storeNames'        => $storeNames,
             'availableStores'   => $this->availableStores($managedIds),
             'filterStoreId'     => $storeId,
+            'availableDates'    => $availableDates,
+            'filterDate'        => $filterDate,
         ], 'layout.app'));
     }
 
@@ -159,19 +181,19 @@ final class StorePhotoController
         $submissionId = (int) $request->param('id');
         $submission   = $this->photos->findSubmissionById($submissionId);
         if (!$submission) {
-            return Response::json(['error' => 'Submission not found'], 404);
+            return Response::json(['error' => __('error_submission_not_found')], 404);
         }
         $this->assertStoreAccess($request, (int) $submission['store_id']);
         $this->assertPhotosFeatureEnabled((int) $submission['store_id']);
 
         $file = $request->file('photo');
         if ($file === null || !is_uploaded_file($file['tmp_name'])) {
-            return Response::json(['error' => 'No file uploaded'], 400);
+            return Response::json(['error' => __('error_no_file_uploaded')], 400);
         }
 
         $ext = $this->safeImageExtension($file['name'] ?? '');
         if ($ext === null) {
-            return Response::json(['error' => 'File type not allowed'], 422);
+            return Response::json(['error' => __('error_file_type_not_allowed')], 422);
         }
 
         $storeId = (int) $submission['store_id'];
@@ -184,7 +206,7 @@ final class StorePhotoController
 
         $compressed = $this->imageCompressor->compress($file['tmp_name'], $subDir . 'photo_' . ($index + 1));
         if ($compressed === null) {
-            return Response::json(['error' => 'File type not allowed'], 422);
+            return Response::json(['error' => __('error_file_type_not_allowed')], 422);
         }
         $safe = basename($compressed['path']);
 
@@ -214,7 +236,7 @@ final class StorePhotoController
     private function assertPhotosFeatureEnabled(int $storeId): void
     {
         if (!$this->isPhotosFeatureEnabled($storeId)) {
-            throw new ForbiddenException("La fonctionnalité Photos n'est pas activée pour ce magasin.");
+            throw new ForbiddenException(__('error_photos_feature_disabled'));
         }
     }
 
@@ -222,6 +244,45 @@ final class StorePhotoController
     {
         $features = $this->stores->getFeatures($storeId);
         return $features === [] || in_array('photos', $features, true);
+    }
+
+    /**
+     * Redresse manuellement une photo déjà stockée. Une fois compressée, l'image
+     * n'a plus d'EXIF (voir ImageCompressionService::applyExifOrientation()) : une
+     * photo de travers doit être corrigée à la main, il n'y a pas d'orientation
+     * à relire automatiquement.
+     */
+    public function rotateImage(Request $request): Response
+    {
+        $imageId = (int) $request->param('image_id');
+        $image   = $this->photos->findImageById($imageId);
+        if (!$image) {
+            return Response::redirect($this->base() . '/admin/photos');
+        }
+
+        $submission = $this->photos->findSubmissionById((int) $image['submission_id']);
+        if (!$submission) {
+            return Response::redirect($this->base() . '/admin/photos');
+        }
+
+        $storeId = (int) $submission['store_id'];
+        $this->assertStoreAccess($request, $storeId);
+        $this->assertPhotosFeatureEnabled($storeId);
+
+        $degrees = $request->post('direction') === 'left' ? -90 : 90;
+        $this->imageCompressor->rotateInPlace(
+            $this->physicalPath((string) $image['filepath']),
+            (string) ($image['mime_type'] ?? 'image/jpeg'),
+            $degrees
+        );
+
+        $this->auditLogger->log($request, 'photo.image_rotated', 'store_photo_image', $imageId, ['degrees' => $degrees], $storeId);
+
+        $backStoreId = $this->resolveBackStoreId($request, $storeId);
+        $redirect    = $this->base() . '/admin/photos/' . $storeId . '/' . $submission['id']
+            . ($backStoreId > 0 ? '?origin_store_id=' . $backStoreId : '');
+
+        return Response::redirect($redirect);
     }
 
     /**
@@ -235,6 +296,27 @@ final class StorePhotoController
     {
         $origin = $request->query('origin_store_id');
         return ($origin === null || $origin === '') ? $fallbackStoreId : (int) $origin;
+    }
+
+    /** Chemin physique sur disque d'une image à partir de son filepath public (storage/img/... → storage/uploads/img/...). */
+    private function physicalPath(string $publicFilepath): string
+    {
+        return dirname(__DIR__, 5) . '/storage/uploads/' . substr($publicFilepath, strlen('storage/'));
+    }
+
+    /**
+     * Ajoute un paramètre ?v= (mtime du fichier) à chaque image pour invalider le
+     * cache navigateur après une rotation : le fichier est réécrit en place, sous
+     * le même nom, et resterait affiché de travers depuis le cache sans ce param.
+     */
+    private function enrichWithVersion(array $images): array
+    {
+        foreach ($images as &$img) {
+            $physical = $this->physicalPath((string) $img['filepath']);
+            $img['version'] = is_file($physical) ? (string) filemtime($physical) : '0';
+        }
+        unset($img);
+        return $images;
     }
 
     /**
@@ -295,7 +377,7 @@ final class StorePhotoController
         }
         $this->assertStoreAccess($request, (int) $submission['store_id']);
 
-        $images = $this->photos->findImagesBySubmission($id);
+        $images = $this->enrichWithVersion($this->photos->findImagesBySubmission($id));
         $store  = $this->stores->findById((int) $submission['store_id']);
 
         return Response::html($this->view->render('store-photos::store-photos-detail', [
@@ -303,6 +385,7 @@ final class StorePhotoController
             'submission'   => $submission,
             'images'       => $images,
             'store'        => $store,
+            'isOwner'      => !empty($request->getAttribute('auth_user')['is_admin']),
             'backStoreId'  => $this->resolveBackStoreId($request, (int) $submission['store_id']),
         ], 'layout.app'));
     }
@@ -311,7 +394,7 @@ final class StorePhotoController
     {
         $authUser = $request->getAttribute('auth_user');
         if (empty($authUser['is_admin'])) {
-            throw new ForbiddenException('Seul le propriétaire peut supprimer un envoi de photos.');
+            throw new ForbiddenException(__('error_owner_only_delete_photos'));
         }
 
         $id = (int) $request->param('id');
@@ -347,7 +430,7 @@ final class StorePhotoController
     {
         $authUser = $request->getAttribute('auth_user');
         if (empty($authUser['is_admin'])) {
-            throw new ForbiddenException();
+            throw new ForbiddenException(__('error_access_denied'));
         }
 
         return Response::html($this->view->render('store-photos::store-photos-settings', [
@@ -361,7 +444,7 @@ final class StorePhotoController
     {
         $authUser = $request->getAttribute('auth_user');
         if (empty($authUser['is_admin'])) {
-            throw new ForbiddenException();
+            throw new ForbiddenException(__('error_access_denied'));
         }
 
         $retentionDays = max(1, (int) ($request->post('photo_retention_days') ?: 14));

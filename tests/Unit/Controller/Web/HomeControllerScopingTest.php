@@ -28,7 +28,7 @@ use PHPUnit\Framework\TestCase;
  * Régression : le dashboard admin (HomeController::index) ignorait totalement
  * managed_store_ids et affichait toujours les données de TOUS les stores
  * (utilisateurs, shifts, congés, échanges, pointages), même pour un manager
- * restreint par AdminMiddleware à un sous-ensemble de stores.
+ * restreint par PermissionMiddleware à un sous-ensemble de stores.
  */
 final class HomeControllerScopingTest extends TestCase
 {

@@ -11,6 +11,7 @@ interface StorePhotoRepositoryInterface
     public function findTodaySubmission(int $storeId, string $date): ?array;
     public function findAllSubmissions(?array $storeIds = null, int $limit = 50): array;
     public function findImagesBySubmission(int $submissionId): array;
+    public function findImageById(int $id): ?array;
     public function saveSubmission(array $data): array;
     public function saveImage(array $data): array;
     public function deleteSubmission(int $id): int;

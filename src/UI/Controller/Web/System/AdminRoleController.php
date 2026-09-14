@@ -39,11 +39,11 @@ final class AdminRoleController
         'delete'   => 'delete',
         'import'   => 'perm_action_import',
         'export'   => 'perm_action_export',
-        'validate' => 'perm_action_validate',
         'generate' => 'perm_action_generate',
         'approve'  => 'perm_action_approve',
         'publish'  => 'perm_action_publish',
         'submit'   => 'perm_action_submit',
+        'send'     => 'perm_action_send',
     ];
 
     public function __construct(
@@ -58,7 +58,6 @@ final class AdminRoleController
     /** GET /admin/roles */
     public function roles(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $roles = $this->roles->findAll();
         $counts = [];
@@ -77,7 +76,6 @@ final class AdminRoleController
     /** GET /admin/roles/create */
     public function createRole(Request $request): Response
     {
-        $this->requireOwner($request);
 
         return Response::html($this->view->render('system.roles-form', [
             'title'                 => __('new_role'),
@@ -93,7 +91,6 @@ final class AdminRoleController
     /** POST /admin/roles/create */
     public function storeRole(Request $request): Response
     {
-        $this->requireOwner($request);
 
         $name = trim($request->post('name', ''));
         $slug = $this->uniqueSlug($this->slugify($name));
@@ -122,7 +119,6 @@ final class AdminRoleController
     /** GET /admin/roles/{id}/edit */
     public function editRole(Request $request): Response
     {
-        $this->requireOwner($request);
         $role = $this->findRoleOrFail($request);
 
         return Response::html($this->view->render('system.roles-form', [
@@ -139,10 +135,9 @@ final class AdminRoleController
     /** POST /admin/roles/{id}/edit */
     public function updateRole(Request $request): Response
     {
-        $this->requireOwner($request);
         $role = $this->findRoleOrFail($request);
         if (!empty($role['is_system'])) {
-            throw new ForbiddenException('Le rôle Owner n\'est pas modifiable.');
+            throw new ForbiddenException(__('error_owner_role_immutable'));
         }
 
         $name = trim($request->post('name', $role['name'] ?? ''));
@@ -183,11 +178,10 @@ final class AdminRoleController
     /** POST /admin/roles/{id}/delete */
     public function deleteRole(Request $request): Response
     {
-        $this->requireOwner($request);
         $role = $this->findRoleOrFail($request);
 
         if (!empty($role['is_system'])) {
-            throw new ForbiddenException('Le rôle Owner ne peut pas être supprimé.');
+            throw new ForbiddenException(__('error_owner_role_undeletable'));
         }
         if (count($this->assignments->findByRole((int) $role['id'])) > 0) {
             return Response::redirect($this->base() . '/admin/roles?error=role_in_use');
@@ -204,7 +198,7 @@ final class AdminRoleController
     {
         $role = $this->roles->findById((int) $request->param('id'));
         if ($role === null) {
-            throw new NotFoundException('Rôle introuvable.');
+            throw new NotFoundException(__('error_role_not_found'));
         }
         return $role;
     }
@@ -296,14 +290,5 @@ final class AdminRoleController
             $slug = $base . '-' . $attempt;
         }
         return $slug;
-    }
-
-    private function requireOwner(Request $request): void
-    {
-        $user = $request->getAttribute('auth_user');
-        if (empty($user['is_admin'])) {
-            header('Location: ' . $this->base() . '/');
-            exit;
-        }
     }
 }

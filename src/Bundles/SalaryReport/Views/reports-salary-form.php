@@ -38,7 +38,7 @@ $hoursLabel = fn(string $key) => __($key) . ' (h)';
         <?php if ($isEmployeeScoped): ?> — <?= $val('employee_name') ?><?php endif; ?>
     </h2>
     <div class="page-header__actions">
-        <?= Button::make('← ' . __('back'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . $storeId . '/reports/salary')->render() ?>
+        <?= Button::make('← ' . __('back'))->ghost()->sm()->link(back_url($BASE_URL . '/admin/stores/' . $storeId . '/reports/salary'))->render() ?>
     </div>
 </div>
 
@@ -197,7 +197,7 @@ $hoursLabel = fn(string $key) => __($key) . ' (h)';
     </div>
     <div class="form-row">
         <div class="form-group">
-            <label class="form-label"><?= __('sr_staff_avg_hourly_wage') ?> (<?= $currencySymbol ?>/h)</label>
+            <label class="form-label"><?= __('sr_staff_avg_hourly_wage') ?> (<?= $currencySymbol ?><?= __('per_hour_unit') ?>)</label>
             <input type="text" inputmode="decimal" name="staff_avg_hourly_wage" class="form-control td-mono js-money-input"
                    value="<?= $val('staff_avg_hourly_wage', '0') ?>">
         </div>
@@ -250,7 +250,7 @@ $hoursLabel = fn(string $key) => __($key) . ' (h)';
 
     <div class="form-actions">
         <?= Button::make($mode === 'edit' ? __('save') : __('sr_create'))->primary()->submit()->render() ?>
-        <a href="<?= htmlspecialchars($BASE_URL . '/admin/stores/' . $storeId . '/reports/salary') ?>" class="btn btn--ghost"><?= __('cancel') ?></a>
+        <a href="<?= htmlspecialchars(back_url($BASE_URL . '/admin/stores/' . $storeId . '/reports/salary')) ?>" class="btn btn--ghost"><?= __('cancel') ?></a>
     </div>
 </form>
 

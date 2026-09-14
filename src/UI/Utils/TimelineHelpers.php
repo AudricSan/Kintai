@@ -79,7 +79,7 @@ final class TimelineHelpers
             if ($rate > 0) $hasRate = true;
             $items[] = [
                 'type_name' => $type['name'] ?? '?', 'minutes' => $minutes,
-                'rate' => $rate, 'rate_fmt' => $rate > 0 ? format_currency($rate, $currency, $currencySymbolStyle) . '/h' : '',
+                'rate' => $rate, 'rate_fmt' => $rate > 0 ? format_currency($rate, $currency, $currencySymbolStyle) . __('per_hour_unit') : '',
                 'pay_fmt' => $rate > 0 ? format_currency($pay, $currency, $currencySymbolStyle) : '', 'has_rate' => $rate > 0,
             ];
         }

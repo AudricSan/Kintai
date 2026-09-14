@@ -32,8 +32,9 @@ final class AdminSalaryReportController
         'entity'    => 'salary_report',
         'slug'      => 'salary',
         'view'      => 'salary-report::reports-salary',
-        'not_found' => 'Rapport de salaire introuvable.',
+        'not_found' => 'error_salary_report_not_found',
         'fields'    => [
+            'target_month'          => 'str',
             'store_name'            => 'str',
             'employee_name'         => 'str',
             'person_in_charge'      => 'str',
@@ -449,7 +450,7 @@ final class AdminSalaryReportController
             $user = $this->users->findById($uid);
             if ($user !== null) {
                 $name = trim(($user['last_name'] ?? '') . ' ' . ($user['first_name'] ?? '')) ?: ($user['display_name'] ?? '#' . $uid);
-                $lines[] = $name . ': ' . round($minutes / 60, 1) . 'h';
+                $lines[] = $name . ': ' . round($minutes / 60, 1) . __('hours_unit');
             }
         }
 

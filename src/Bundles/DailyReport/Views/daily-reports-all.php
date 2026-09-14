@@ -21,9 +21,9 @@ $statusLabels = [
 ];
 
 $monthNames = [
-    1 => 'Janvier', 2 => 'Février', 3 => 'Mars', 4 => 'Avril',
-    5 => 'Mai', 6 => 'Juin', 7 => 'Juillet', 8 => 'Août',
-    9 => 'Septembre', 10 => 'Octobre', 11 => 'Novembre', 12 => 'Décembre',
+    1 => __('January'), 2 => __('February'), 3 => __('March'), 4 => __('April'),
+    5 => __('May'), 6 => __('June'), 7 => __('July'), 8 => __('August'),
+    9 => __('September'), 10 => __('October'), 11 => __('November'), 12 => __('December'),
 ];
 
 function drAllFormatDate(string $date): string {

@@ -14,7 +14,7 @@ echo Flash::fromQuery('error', [
 ?>
 <div class="page-header">
     <h2 class="page-header__title"><?= __('import_excel_title') ?></h2>
-    <a href="<?= route_url('admin.shifts') ?>" class="btn btn--ghost">← <?= __('back') ?></a>
+    <a href="<?= back_url(route_url('admin.shifts')) ?>" class="btn btn--ghost">← <?= __('back') ?></a>
 </div>
 
 <?php

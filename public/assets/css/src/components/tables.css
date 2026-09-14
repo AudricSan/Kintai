@@ -59,7 +59,8 @@
 }
 
 .data-table tbody tr:hover td {
-    background: var(--color-surface-alt);
+    /* Vert clair de Foxy (ventre du sac "K") au survol des lignes. */
+    background: var(--color-table-highlight);
 }
 
 .data-table tbody tr.tr--clickable {
@@ -67,7 +68,7 @@
 }
 
 .data-table tbody tr.tr--clickable:hover td {
-    background: var(--color-primary-light);
+    background: var(--color-table-highlight);
 }
 
 .td-top {

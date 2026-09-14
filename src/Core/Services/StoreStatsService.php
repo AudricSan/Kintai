@@ -168,11 +168,11 @@ final class StoreStatsService implements StoreStatsServiceInterface
         $shiftsCreatedByManager = [];
         $modByManager           = [];
         foreach ($allShifts as $s) {
-            $mid = $s['created_by'] ? (int) $s['created_by'] : 0;
+            $mid = (int) ($s['created_by'] ?? 0);
             $shiftsCreatedByManager[$mid] = ($shiftsCreatedByManager[$mid] ?? 0) + 1;
         }
         foreach ($modifiedShifts as $s) {
-            $mid = $s['created_by'] ? (int) $s['created_by'] : 0;
+            $mid = (int) ($s['created_by'] ?? 0);
             $modByManager[$mid] = ($modByManager[$mid] ?? 0) + 1;
         }
         arsort($shiftsCreatedByManager);
@@ -201,7 +201,7 @@ final class StoreStatsService implements StoreStatsServiceInterface
         $hoursByMonth = [];
         foreach ($allShifts as $s) {
             $uid  = (int) $s['user_id'];
-            $tid  = $s['shift_type_id'] ? (int) $s['shift_type_id'] : null;
+            $tid  = !empty($s['shift_type_id']) ? (int) $s['shift_type_id'] : null;
             $wage = $wageCalc->costOf($s, $storeTypesMap, $rateCache[$uid] ?? []);
             $h    = $wage['net_minutes'] / 60;
             $cost = $wage['amount'];

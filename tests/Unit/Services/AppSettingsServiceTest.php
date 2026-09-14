@@ -56,4 +56,68 @@ final class AppSettingsServiceTest extends TestCase
             $this->makeService(['maintenance_message' => 'Maintenance en cours.'])->maintenanceMessage(),
         );
     }
+
+    public function testThemeColorDefaultsToFoxyPalette(): void
+    {
+        $this->assertSame('#ff9f4a', $this->makeService()->themeColor('primary'));
+        $this->assertSame('#4caf50', $this->makeService()->themeColor('accent'));
+    }
+
+    public function testThemeColorReadsStoredValue(): void
+    {
+        $this->assertSame('#6c5ce7', $this->makeService(['app_primary_color' => '#6c5ce7'])->themeColor('primary'));
+    }
+
+    public function testThemeColorRejectsInvalidStoredValue(): void
+    {
+        $this->assertSame('#ff9f4a', $this->makeService(['app_primary_color' => 'not-a-color'])->themeColor('primary'));
+    }
+
+    public function testThemeColorDarkDefaultsToEmptyMeaningAutoMode(): void
+    {
+        $this->assertSame('', $this->makeService()->themeColorDark('primary'));
+    }
+
+    public function testThemeColorDarkReadsStoredValue(): void
+    {
+        $this->assertSame('#112233', $this->makeService(['app_primary_color_dark' => '#112233'])->themeColorDark('primary'));
+    }
+
+    public function testThemeDarkModeDefaultsToAuto(): void
+    {
+        $this->assertSame('auto', $this->makeService()->themeDarkMode());
+    }
+
+    public function testThemeDarkModeReadsManual(): void
+    {
+        $this->assertSame('manual', $this->makeService(['app_theme_dark_mode' => 'manual'])->themeDarkMode());
+    }
+
+    public function testThemeDarkModeRejectsUnknownValue(): void
+    {
+        $this->assertSame('auto', $this->makeService(['app_theme_dark_mode' => 'nightly'])->themeDarkMode());
+    }
+
+    public function testThemeColorStyleContainsGeneratedTokensForACustomColor(): void
+    {
+        $style = $this->makeService(['app_primary_color' => '#6c5ce7'])->themeColorStyle();
+
+        $this->assertStringContainsString('--light-primary:#6c5ce7;', $style);
+        $this->assertStringContainsString('--dark-primary:', $style);
+    }
+
+    public function testThemeColorStyleIsEmptyWhenEverythingIsAtItsDefault(): void
+    {
+        $this->assertSame('', $this->makeService()->themeColorStyle());
+    }
+
+    public function testThemeColorStyleUsesManualDarkColorWhenModeIsManual(): void
+    {
+        $style = $this->makeService([
+            'app_theme_dark_mode'  => 'manual',
+            'app_danger_color_dark' => '#112233',
+        ])->themeColorStyle();
+
+        $this->assertStringContainsString('--dark-danger:#112233;', $style);
+    }
 }

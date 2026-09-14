@@ -141,7 +141,7 @@ foreach ($shifts as $s) {
         <div class="empty-state"><?= __('no_shift_found') ?></div>
     <?php else: ?>
         <div id="bulk-bar" class="bulk-bar is-hidden">
-            <span id="bulk-count" class="bulk-bar__count">0 sélectionné(s)</span>
+            <span id="bulk-count" class="bulk-bar__count"><?= __('n_selected', ['count' => 0]) ?></span>
             <?= Button::make('🗑 ' . __('bulk_delete_selection'))->danger()->sm()->submit()->attrs(['form' => 'bulk-form', 'onclick' => "return confirm('" . __('confirm_bulk_delete') . "')"])->render() ?>
             <button type="button" class="btn btn--ghost btn--sm" onclick="bulkSelectAll(false)"><?= __('deselect_all') ?></button>
         </div>
@@ -149,7 +149,7 @@ foreach ($shifts as $s) {
             <table class="data-table data-table--shifts">
                 <thead>
                     <tr>
-                        <th class="col-check"><input type="checkbox" id="bulk-select-all" title="Tout sélectionner/désélectionner" onchange="bulkSelectAll(this.checked)"></th>
+                        <th class="col-check"><input type="checkbox" id="bulk-select-all" title="<?= __('select_deselect_all') ?>" onchange="bulkSelectAll(this.checked)"></th>
                         <th class="col-id">#</th>
                         <th class="col-date"><a href="<?= shiftSortUrl('date', $sort, $activeFilters) ?>" class="link-sort"><?= __('date') ?><span class="sort-icon"><?= shiftSortIcon('date', $sort) ?></span></a></th>
                         <?php if (count($stores_map) > 1): ?>

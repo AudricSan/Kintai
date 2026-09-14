@@ -102,7 +102,7 @@ final class AdminRoleControllerTest extends TestCase
             'description'             => 'Lecture seule',
             'color'                   => '#ff0000',
             'perm_employees_view'     => '1',
-            'perm_documents_view'     => '1',
+            'perm_hiring_reports_view' => '1',
         ];
         $req = $this->ownerRequest();
 
@@ -127,7 +127,7 @@ final class AdminRoleControllerTest extends TestCase
         $this->assertSame('auditor', $captured['slug']);
         $this->assertSame(0, $captured['is_system']);
         sort($capturedPermissions);
-        $this->assertSame(['documents.view', 'employees.view'], $capturedPermissions);
+        $this->assertSame(['employees.view', 'hiring_reports.view'], $capturedPermissions);
     }
 
     public function testStoreRoleRedirectsWithErrorWhenNameBlank(): void

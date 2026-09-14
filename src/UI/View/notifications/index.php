@@ -57,7 +57,7 @@ $typeIcons = [
 </div>
 
 <?php if (empty($notifications)): ?>
-    <div class="empty-state">
+    <div class="empty-state empty-state--bell">
         <p><?= __('no_notifications') ?></p>
     </div>
 <?php else: ?>
@@ -74,7 +74,7 @@ $typeIcons = [
                 <?php if (!$isRead): ?>
                 <form method="POST" action="<?= $BASE_URL ?>/notifications/<?= (int) $n['id'] ?>/read" class="notif-item__action">
                     <?= csrf_field() ?>
-                    <button type="submit" class="btn btn--ghost btn--xs" title="Marquer comme lu">✓</button>
+                    <button type="submit" class="btn btn--ghost btn--xs" title="<?= __('mark_as_read') ?>">✓</button>
                 </form>
                 <?php endif; ?>
             </div>

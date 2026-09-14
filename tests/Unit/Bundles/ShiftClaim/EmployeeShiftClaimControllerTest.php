@@ -169,7 +169,7 @@ final class EmployeeShiftClaimControllerTest extends TestCase
         );
 
         $this->notifs->expects($this->once())->method('notifyMany')
-            ->with([20], 'shift_claim_submitted', $this->anything(), 50);
+            ->with([20], 'shift_claim_submitted', $this->anything(), $this->anything(), 50);
 
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 9]);

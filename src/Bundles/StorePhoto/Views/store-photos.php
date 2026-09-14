@@ -6,6 +6,8 @@ use kintai\UI\Components\Flash;
 /** @var array  $storeNames */
 /** @var array  $availableStores */
 /** @var int    $filterStoreId */
+/** @var array  $availableDates */
+/** @var string $filterDate */
 /** @var string $BASE_URL */
 
 echo Flash::fromQuery('success', [
@@ -35,6 +37,17 @@ echo Flash::fromQuery('success', [
                 </select>
             </div>
             <div class="form-group">
+                <label class="form-label"><?= __('photo_filter_day') ?></label>
+                <select name="date" class="form-control form-control-sm" onchange="this.form.submit()">
+                    <option value=""><?= __('photo_filter_all_days') ?></option>
+                    <?php foreach ($availableDates as $day => $dayCount): ?>
+                        <option value="<?= htmlspecialchars($day) ?>" <?= $filterDate === $day ? 'selected' : '' ?>>
+                            <?= date('d/m/Y', strtotime($day)) ?> (<?= $dayCount ?>)
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="form-group">
                 <a href="?" class="btn btn--ghost btn--sm"><?= __('reset') ?></a>
             </div>
         </form>
@@ -46,20 +59,30 @@ echo Flash::fromQuery('success', [
         <div class="empty-state"><?= __('photo_empty') ?></div>
     </div>
 <?php else: ?>
-    <div class="photo-grid" id="photo-grid">
-        <?php foreach ($submissions as $sub): ?>
-            <?php
-            $sid     = (int) $sub['id'];
-            $images  = $submissionImages[$sid] ?? [];
-            $storeId = (int) ($sub['store_id'] ?? 0);
-            $storeName = $storeNames[$storeId] ?? '#' . $storeId;
-            $preview = !empty($images) ? $images[0] : null;
-            $count   = count($images);
-            ?>
+    <?php $currentDay = null; ?>
+    <?php foreach ($submissions as $sub): ?>
+        <?php
+        $sid     = (int) $sub['id'];
+        $images  = $submissionImages[$sid] ?? [];
+        $storeId = (int) ($sub['store_id'] ?? 0);
+        $storeName = $storeNames[$storeId] ?? '#' . $storeId;
+        $preview = !empty($images) ? $images[0] : null;
+        $count   = count($images);
+        $day     = date('Y-m-d', strtotime($sub['created_at'] ?? 'now'));
+        ?>
+        <?php if ($day !== $currentDay): ?>
+            <?php if ($currentDay !== null): ?></div><?php endif; ?>
+            <?php $currentDay = $day; ?>
+            <div class="photo-day-group__header">
+                <h3 class="photo-day-group__title"><?= date('d/m/Y', strtotime($day)) ?></h3>
+                <span class="badge badge--secondary badge--sm"><?= $availableDates[$day] ?? 0 ?> <?= __('photos_count') ?></span>
+            </div>
+            <div class="photo-grid">
+        <?php endif; ?>
             <a href="<?= $BASE_URL ?>/admin/photos/<?= $storeId ?>/<?= $sid ?>?origin_store_id=<?= $filterStoreId ?>" class="card photo-card">
                 <div class="photo-card__preview">
                     <?php if ($preview): ?>
-                        <img src="<?= $BASE_URL ?>/<?= htmlspecialchars($preview['filepath']) ?>"
+                        <img src="<?= $BASE_URL ?>/<?= htmlspecialchars($preview['filepath']) ?>?v=<?= htmlspecialchars($preview['version'] ?? '') ?>"
                              alt="<?= htmlspecialchars($preview['filename']) ?>"
                              loading="lazy"
                              class="photo-card__preview-img">
@@ -81,6 +104,6 @@ echo Flash::fromQuery('success', [
                     </div>
                 </div>
             </a>
-        <?php endforeach; ?>
+    <?php endforeach; ?>
     </div>
 <?php endif; ?>
