@@ -52,6 +52,10 @@ echo Flash::fromQuery('error', [
     </div>
 </form>
 
+<script id="store-form-i18n" type="application/json"><?= json_encode([
+    'active'   => __('active'),
+    'inactive' => __('inactive'),
+], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?></script>
 <script src="<?= $BASE_URL ?>/assets/js/modules/stores-form.js"></script>
 
 <?php if ($mode === 'edit'): ?>

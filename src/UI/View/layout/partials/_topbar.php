@@ -562,9 +562,13 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
 
                 <hr class="user-dropdown__divider">
 
-                <button id="themeToggle" class="user-dropdown__item" role="menuitem" type="button">
+                <button id="themeToggle" class="user-dropdown__item" role="menuitem" type="button"
+                        data-label-light="<?= __('theme_light_mode') ?>"
+                        data-label-dark="<?= __('theme_dark_mode') ?>"
+                        data-title-light="<?= __('switch_to_light_mode') ?>"
+                        data-title-dark="<?= __('switch_to_dark_mode') ?>">
                     <span class="user-dropdown__item-icon" id="theme-icon">🌙</span>
-                    <span id="theme-label">Mode sombre</span>
+                    <span id="theme-label"><?= __('theme_dark_mode') ?></span>
                 </button>
 
                 <div class="user-dropdown__item user-dropdown__lang">
