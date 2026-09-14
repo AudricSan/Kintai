@@ -94,7 +94,7 @@ final class EmployeeSwapControllerTest extends TestCase
             return $d + ['id' => 42];
         });
 
-        $this->notifs->expects($this->once())->method('notify')->with(2, 'swap_requested', $this->anything(), 42);
+        $this->notifs->expects($this->once())->method('notify')->with(2, 'swap_requested', $this->anything(), $this->anything(), 42);
 
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 1]);
@@ -138,7 +138,7 @@ final class EmployeeSwapControllerTest extends TestCase
             return $d;
         });
 
-        $this->notifs->expects($this->once())->method('notify')->with(1, 'swap_peer_accepted', $this->anything(), 5);
+        $this->notifs->expects($this->once())->method('notify')->with(1, 'swap_peer_accepted', $this->anything(), $this->anything(), 5);
 
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 9]);
@@ -181,7 +181,7 @@ final class EmployeeSwapControllerTest extends TestCase
             return $d;
         });
 
-        $this->notifs->expects($this->once())->method('notify')->with(1, 'swap_peer_refused', $this->anything(), 5);
+        $this->notifs->expects($this->once())->method('notify')->with(1, 'swap_peer_refused', $this->anything(), $this->anything(), 5);
 
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 9]);
@@ -202,7 +202,7 @@ final class EmployeeSwapControllerTest extends TestCase
         $this->swapRequests->method('findById')->with(5)->willReturn($swap);
         $this->swapRequests->expects($this->once())->method('save');
 
-        $this->notifs->expects($this->once())->method('notify')->with(9, 'swap_cancelled', $this->anything(), 5);
+        $this->notifs->expects($this->once())->method('notify')->with(9, 'swap_cancelled', $this->anything(), $this->anything(), 5);
 
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 1]);
