@@ -318,7 +318,7 @@ function deltaChip(mixed $val, bool $invertColor = false, string $suffix = '%'):
     <div class="sstat-grid">
         <?= statCard(__('total_cost'), format_currency($totalCost, $currency, $currencyStyle), __('on_period'), '#10b981') ?>
         <?= statCard(__('avg_cost_per_shift'), format_currency($avgCostPerShift, $currency, $currencyStyle)) ?>
-        <?= statCard(__('avg_cost_per_hour'), format_currency($avgCostPerHour, $currency, $currencyStyle) . '/h') ?>
+        <?= statCard(__('avg_cost_per_hour'), format_currency($avgCostPerHour, $currency, $currencyStyle) . __('per_hour_unit')) ?>
     </div>
     <?php if ($totalCost == 0): ?>
         <?= Alert::make(__('no_rate_cost_hint'))->warning()->render() ?>
