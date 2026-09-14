@@ -189,4 +189,44 @@ final class DatabaseShiftRepositoryTest extends TestCase
     {
         $this->assertSame(0, $this->repo->delete(999));
     }
+
+    // -------------------------------------------------------------------------
+    // closeOpenShiftTo()
+    // -------------------------------------------------------------------------
+
+    public function testCloseOpenShiftToAssignsUserAndClosesShift(): void
+    {
+        $s = EloquentShift::create(['store_id' => 1, 'user_id' => null, 'shift_date' => '2025-06-15', 'is_open' => 1, 'ical_sequence' => 2]);
+
+        $result = $this->repo->closeOpenShiftTo($s->id, 42);
+
+        $this->assertNotNull($result);
+        $this->assertSame(42, $result['user_id']);
+        $this->assertSame(0, $result['is_open']);
+        $this->assertSame(3, $result['ical_sequence']);
+    }
+
+    /**
+     * Régression : deux admins approuvent deux candidatures différentes du même
+     * shift ouvert. Le premier appel de closeOpenShiftTo() ferme le shift ; le
+     * second (WHERE is_open = 1 dans l'UPDATE) ne doit trouver aucune ligne à
+     * modifier et retourner null, au lieu d'écraser silencieusement l'affectation
+     * du premier.
+     */
+    public function testCloseOpenShiftToReturnsNullWhenAlreadyClosedByConcurrentApproval(): void
+    {
+        $s = EloquentShift::create(['store_id' => 1, 'user_id' => null, 'shift_date' => '2025-06-15', 'is_open' => 1]);
+
+        $first  = $this->repo->closeOpenShiftTo($s->id, 42);
+        $second = $this->repo->closeOpenShiftTo($s->id, 99);
+
+        $this->assertNotNull($first);
+        $this->assertNull($second);
+        $this->assertSame(42, EloquentShift::find($s->id)->user_id);
+    }
+
+    public function testCloseOpenShiftToReturnsNullWhenShiftNotFound(): void
+    {
+        $this->assertNull($this->repo->closeOpenShiftTo(999, 42));
+    }
 }
