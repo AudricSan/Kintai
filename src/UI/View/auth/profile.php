@@ -71,7 +71,7 @@ if ($errMsg !== '') {
     </a>
     <a href="<?= route_url('profile') ?>?tab=data"
        class="profile-tab<?= $tab === 'data' ? ' profile-tab--active' : '' ?>">
-        Confidentialité
+        <?= __('tab_privacy') ?>
     </a>
 </div>
 
@@ -334,8 +334,8 @@ $_filteredBnPool = array_values(array_filter(
                 <span class="nav-order-handle" aria-hidden="true">⠿</span>
                 <span class="nav-order-label"><?= __($_sk) ?></span>
                 <div class="nav-order-arrows">
-                    <button type="button" class="nav-order-btn nav-order-btn--up" aria-label="Monter">▲</button>
-                    <button type="button" class="nav-order-btn nav-order-btn--down" aria-label="Descendre">▼</button>
+                    <button type="button" class="nav-order-btn nav-order-btn--up" aria-label="<?= __('nav_move_up') ?>">▲</button>
+                    <button type="button" class="nav-order-btn nav-order-btn--down" aria-label="<?= __('nav_move_down') ?>">▼</button>
                 </div>
                 <input type="hidden" name="section_order[]" value="<?= htmlspecialchars($_sk) ?>">
             </li>
@@ -462,14 +462,15 @@ echo Card::make(__('ical_feeds'))->body(ob_get_clean())->render();
 
 <?php
 ob_start();
-echo '<p class="mb-sm">Conformément au RGPD, vous pouvez télécharger l\'ensemble de vos données personnelles au format JSON.</p>';
-echo Button::make('Télécharger mes données')->primary()->link(route_url('profile.export'))->render();
-echo Card::make('Export de vos données')->body(ob_get_clean())->render();
+echo '<p class="mb-sm">' . __('gdpr_export_intro') . '</p>';
+echo Button::make(__('gdpr_export_btn'))->primary()->link(route_url('profile.export'))->render();
+echo Card::make(__('gdpr_export_title'))->body(ob_get_clean())->render();
 
 ob_start();
-echo Alert::make('Attention : la suppression de votre compte est irréversible. Vos données personnelles seront anonymisées, mais les données liées (pointages, shifts) seront conservées pour l\'intégrité des archives.')->danger()->render();
+echo Alert::make(__('gdpr_delete_warning'))->danger()->render();
 ?>
-<form method="POST" action="<?= route_url('profile.delete') ?>" class="form-stack">
+<form method="POST" action="<?= route_url('profile.delete') ?>" class="form-stack"
+      data-confirm="<?= htmlspecialchars(__('gdpr_delete_confirm'), ENT_QUOTES) ?>">
     <?= csrf_field() ?>
     <div class="form-group mw-420">
         <label class="form-label form-label--required" for="delete_password">
@@ -480,14 +481,13 @@ echo Alert::make('Attention : la suppression de votre compte est irréversible. 
     </div>
     <?= Button::make('Supprimer mon compte')
         ->danger()
-        ->attrs(['onclick' => "return confirm('Êtes-vous sûr de vouloir supprimer définitivement votre compte ?')"])
         ->submit()->render() ?>
 </form>
 <?php
 echo Card::make('Suppression du compte')->body(ob_get_clean())->render();
 
-echo Card::make('Politique de confidentialité')
-    ->body('<p>Consultez notre politique de confidentialité pour comprendre comment vos données sont collectées et traitées.</p><a href="' . route_url('privacy') . '" class="btn btn--ghost">Voir la politique</a>')
+echo Card::make(__('privacy_policy_title'))
+    ->body('<p>' . __('privacy_policy_intro') . '</p><a href="' . route_url('privacy') . '" class="btn btn--ghost">' . __('privacy_policy_link') . '</a>')
     ->render();
 ?>
 

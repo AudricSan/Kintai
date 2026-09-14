@@ -73,7 +73,7 @@ endif; ?>
                        autocomplete="current-password" required
                        <?= $mode !== 'email' ? 'disabled' : '' ?>>
                 <p class="login-hint login-hint--end">
-                    <a href="<?= route_url('password.forgot') ?>">Mot de passe oublié ?</a>
+                    <a href="<?= route_url('password.forgot') ?>"><?= __('forgot_password_link') ?></a>
                 </p>
             </div>
         </div>
