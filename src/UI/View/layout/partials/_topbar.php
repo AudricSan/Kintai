@@ -409,11 +409,11 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
                     <div class="sb-stats-card">
                         <div class="sb-stats-row">
                             <span class="sb-stats-label"><?= __('hours') ?></span>
-                            <strong class="sb-stats-value--primary"><?= number_format($ems['hours_month'], 1) ?> h</strong>
+                            <strong class="sb-stats-value--primary"><?= number_format($ems['hours_month'], 1) ?> <?= __('hours_unit') ?></strong>
                         </div>
                         <div class="sb-stats-row">
                             <span class="sb-stats-label"><?= __('avg_per_week') ?></span>
-                            <strong><?= number_format($ems['hours_week'], 1) ?> h</strong>
+                            <strong><?= number_format($ems['hours_week'], 1) ?> <?= __('hours_unit') ?></strong>
                         </div>
                         <?php if ($ems['has_rate']): ?>
                             <div class="sb-stats-row sb-stats-row--border">

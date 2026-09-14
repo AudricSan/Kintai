@@ -12,12 +12,11 @@ use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 
 final class EmployeeStatsService
 {
-    private const FR_DAYS = ['Mon'=>'Lun','Tue'=>'Mar','Wed'=>'Mer','Thu'=>'Jeu','Fri'=>'Ven','Sat'=>'Sam','Sun'=>'Dim'];
-    private const FR_MONTHS = ['Jan'=>'jan.','Feb'=>'fév.','Mar'=>'mars','Apr'=>'avr.','May'=>'mai','Jun'=>'juin',
-                               'Jul'=>'juil.','Aug'=>'août','Sep'=>'sep.','Oct'=>'oct.','Nov'=>'nov.','Dec'=>'déc.'];
-    private const FR_MONTHS_FULL = [
-        '01'=>'Janvier','02'=>'Février','03'=>'Mars','04'=>'Avril','05'=>'Mai','06'=>'Juin',
-        '07'=>'Juillet','08'=>'Août','09'=>'Septembre','10'=>'Octobre','11'=>'Novembre','12'=>'Décembre',
+    /** Clés de traduction (namespace SalaryReport, fusionnées globalement) associées à chaque mois. */
+    private const MONTH_KEYS = [
+        '01' => 'January', '02' => 'February', '03' => 'March', '04' => 'April',
+        '05' => 'May', '06' => 'June', '07' => 'July', '08' => 'August',
+        '09' => 'September', '10' => 'October', '11' => 'November', '12' => 'December',
     ];
 
     public function __construct(
@@ -92,9 +91,9 @@ final class EmployeeStatsService
             $estimatedPay += $pay;
 
             $dt       = new \DateTimeImmutable($d);
-            $dateLabel = ($this::FR_DAYS[$dt->format('D')] ?? $dt->format('D'))
+            $dateLabel = __(strtolower($dt->format('D')) . '_abbr')
                 . ' ' . $dt->format('j')
-                . ' ' . ($this::FR_MONTHS[$dt->format('M')] ?? $dt->format('M'));
+                . ' ' . __(self::MONTH_KEYS[$dt->format('m')] ?? $dt->format('M'));
             $h = intdiv($netMin, 60);
             $m = $netMin % 60;
             $shiftDetails[] = [
@@ -116,7 +115,7 @@ final class EmployeeStatsService
         usort($shiftDetails, fn($a, $b) => strcmp($a['date'] . $a['start'], $b['date'] . $b['start']));
 
         [$y, $mNum] = array_pad(explode('-', $month), 2, '');
-        $monthLabel = ($this::FR_MONTHS_FULL[$mNum] ?? $mNum) . ' ' . $y;
+        $monthLabel = __(self::MONTH_KEYS[$mNum] ?? $mNum) . ' ' . $y;
 
         return [
             'hours_month'   => $monthMinutes / 60,

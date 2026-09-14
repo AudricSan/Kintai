@@ -156,12 +156,12 @@ function deltaChip(mixed $val, bool $invertColor = false, string $suffix = '%'):
     <div class="sstat-section-title"><?= __('section_planning_stats') ?></div>
     <div class="sstat-grid">
         <?= statCard(__('shifts_analyzed'), (string) $n) ?>
-        <?= statCard(__('avg_shift_duration'), number_format($avgDuration, 1) . 'h') ?>
+        <?= statCard(__('avg_shift_duration'), number_format($avgDuration, 1) . __('hours_unit')) ?>
         <?= statCard(__('avg_shifts_per_emp'), (string) $avgShiftsPerEmployee) ?>
         <?= statCard(__('avg_work_days'), (string) $avgDaysPerEmployee, __('per_employee')) ?>
         <?= statCard(__('opening_shifts'), (string) $openingShifts, pct($openingShifts, $n) . ' ' . __('of_shifts'), '#4f46e5') ?>
         <?= statCard(__('closing_shifts'), (string) $closingShifts, pct($closingShifts, $n) . ' ' . __('of_shifts'), '#6b7280') ?>
-        <?= statCard(__('avg_gap_between_shifts'), $avgTimeBetweenShifts !== null ? $avgTimeBetweenShifts . 'h' : '—', __('same_employee_gap')) ?>
+        <?= statCard(__('avg_gap_between_shifts'), $avgTimeBetweenShifts !== null ? $avgTimeBetweenShifts . __('hours_unit') : '—', __('same_employee_gap')) ?>
         <?php if ($shortRateShifts !== null): ?>
             <?= statCard(__('short_shifts_stat'), (string) $shortRateShifts, '< ' . $minShiftMin . ' min (' . pct($shortRateShifts, $n) . ')', $shortRateShifts > 0 ? '#ef4444' : '#10b981') ?>
         <?php endif; ?>
@@ -181,8 +181,8 @@ function deltaChip(mixed $val, bool $invertColor = false, string $suffix = '%'):
 <div class="sstat-section">
     <div class="sstat-section-title"><?= __('section_operational') ?></div>
     <div class="sstat-grid">
-        <?= statCard(__('net_hours'), number_format($totalNetHours, 1) . 'h') ?>
-        <?= statCard(__('gross_hours'), number_format($totalGrossHours, 1) . 'h') ?>
+        <?= statCard(__('net_hours'), number_format($totalNetHours, 1) . __('hours_unit')) ?>
+        <?= statCard(__('gross_hours'), number_format($totalGrossHours, 1) . __('hours_unit')) ?>
         <?= statCard(__('active_days'), (string) $activeDays) ?>
         <?= statCard(__('avg_emp_per_hour'), (string) $avgEmpPerHour) ?>
     </div>
@@ -191,7 +191,7 @@ function deltaChip(mixed $val, bool $invertColor = false, string $suffix = '%'):
         <?php
         $slotData = [];
         foreach ($hoursBySlot as $h => $v) {
-            $slotData[sprintf('%02dh', $h)] = $v;
+            $slotData[sprintf('%02d', $h) . __('oclock_unit')] = $v;
         }
         echo barChart($slotData, '#4f46e5');
         ?>
@@ -204,8 +204,8 @@ function deltaChip(mixed $val, bool $invertColor = false, string $suffix = '%'):
 <div class="sstat-section">
     <div class="sstat-section-title"><?= __('section_workload') ?></div>
     <div class="sstat-grid">
-        <?= statCard(__('avg_hours_per_emp'), number_format($meanHours, 1) . 'h') ?>
-        <?= statCard(__('std_deviation'), number_format($stdDev, 1) . 'h') ?>
+        <?= statCard(__('avg_hours_per_emp'), number_format($meanHours, 1) . __('hours_unit')) ?>
+        <?= statCard(__('std_deviation'), number_format($stdDev, 1) . __('hours_unit')) ?>
         <?= statCard(__('gini_coeff'), number_format($gini, 3), __('gini_hint'), $gini > 0.4 ? '#ef4444' : ($gini > 0.2 ? '#f59e0b' : '#10b981')) ?>
         <?= statCard(__('top20_hours'), $top20ratio . '%', __('of_total_hours')) ?>
     </div>
@@ -220,7 +220,7 @@ function deltaChip(mixed $val, bool $invertColor = false, string $suffix = '%'):
                 foreach ($hoursByUser as $uid => $h): ?>
                     <tr>
                         <td><a href="<?= $BASE_URL ?>/admin/users/<?= (int) $uid ?>/edit"><?= htmlspecialchars(userName($usersMap, (int) $uid)) ?></a></td>
-                        <td><?= number_format($h, 1) ?>h</td>
+                        <td><?= number_format($h, 1) ?><?= __('hours_unit') ?></td>
                         <td class="col-40">
                             <div class="sstat-progress">
                                 <div class="sstat-progress-bar" style="width:<?= round($h / $maxH * 100) ?>%"></div>
@@ -245,7 +245,7 @@ function deltaChip(mixed $val, bool $invertColor = false, string $suffix = '%'):
     <div class="sstat-section-title"><?= __('section_stability') ?></div>
     <div class="sstat-grid">
         <?= statCard(__('modification_rate'), $modRate . '%', __('shifts_were_modified'), $modRate > 30 ? '#ef4444' : ($modRate > 10 ? '#f59e0b' : '#10b981')) ?>
-        <?= statCard(__('avg_mod_delay'), $avgModDelay !== null ? number_format($avgModDelay, 1) . 'h' : '—', __('between_create_mod')) ?>
+        <?= statCard(__('avg_mod_delay'), $avgModDelay !== null ? number_format($avgModDelay, 1) . __('hours_unit') : '—', __('between_create_mod')) ?>
     </div>
     <div class="sstat-two mt-md">
         <div class="card">
@@ -344,7 +344,7 @@ function deltaChip(mixed $val, bool $invertColor = false, string $suffix = '%'):
                 <?php foreach ($hoursByType as $label => $h): ?>
                     <tr>
                         <td><?= htmlspecialchars($label) ?></td>
-                        <td><?= number_format($h, 1) ?>h</td>
+                        <td><?= number_format($h, 1) ?><?= __('hours_unit') ?></td>
                         <?php if ($totalCost > 0): ?>
                             <td><?= format_currency($costByType[$label] ?? 0, $currency, $currencyStyle) ?></td>
                         <?php endif; ?>
@@ -367,7 +367,7 @@ function deltaChip(mixed $val, bool $invertColor = false, string $suffix = '%'):
                 <tr>
                     <td><a href="<?= $BASE_URL ?>/admin/users/<?= (int) $uid ?>/edit"><?= htmlspecialchars(userName($usersMap, (int) $uid)) ?></a></td>
                     <td><?= format_currency($cost, $currency, $currencyStyle) ?></td>
-                    <td><?= number_format($hoursByUser[$uid] ?? 0, 1) ?>h</td>
+                    <td><?= number_format($hoursByUser[$uid] ?? 0, 1) ?><?= __('hours_unit') ?></td>
                     <td><?= ($hoursByUser[$uid] ?? 0) > 0 ? format_currency($cost / $hoursByUser[$uid], $currency, $currencyStyle) : '—' ?></td>
                 </tr>
             <?php endforeach; ?>
