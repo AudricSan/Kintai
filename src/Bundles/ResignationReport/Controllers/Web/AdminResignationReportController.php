@@ -25,7 +25,7 @@ final class AdminResignationReportController
         'entity'    => 'resignation_report',
         'slug'      => 'resignation',
         'view'      => 'resignation-report::reports-resignation',
-        'not_found' => 'Rapport de démission introuvable.',
+        'not_found' => 'error_resignation_report_not_found',
         'fields'    => [
             'employee_number'    => 'str',
             'employee_name'      => 'str',

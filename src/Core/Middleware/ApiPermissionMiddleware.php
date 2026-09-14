@@ -64,7 +64,7 @@ final class ApiPermissionMiddleware implements MiddlewareInterface
         }
 
         return Response::json([
-            'error' => 'Permission insuffisante : ' . $permissionKey . ' requise.',
+            'error' => __('error_api_permission_insufficient', ['key' => $permissionKey]),
             'code'  => 'FORBIDDEN',
         ], 403);
     }

@@ -101,21 +101,21 @@ final class AdminSwapController
         $reason          = $request->post('reason', '') ?: null;
 
         if ($requesterId <= 0 || $targetId <= 0 || $requesterId === $targetId) {
-            throw new ForbiddenException('Sélection d\'employés invalide.');
+            throw new ForbiddenException(__('error_invalid_employee_selection'));
         }
 
         $reqShift = $this->shifts->findById($requesterShiftId);
         if ($reqShift === null || (int) $reqShift['user_id'] !== $requesterId) {
-            throw new ForbiddenException('Shift demandeur introuvable.');
+            throw new ForbiddenException(__('error_shift_not_found'));
         }
 
         $tgtShift = $this->shifts->findById($targetShiftId);
         if ($tgtShift === null || (int) $tgtShift['user_id'] !== $targetId) {
-            throw new ForbiddenException('Shift cible introuvable.');
+            throw new ForbiddenException(__('error_target_shift_not_found'));
         }
 
         if ((int) $reqShift['store_id'] !== (int) $tgtShift['store_id']) {
-            throw new ForbiddenException('Les shifts doivent appartenir au même store.');
+            throw new ForbiddenException(__('error_shifts_different_stores'));
         }
 
         $storeId = (int) $reqShift['store_id'];
@@ -235,7 +235,7 @@ final class AdminSwapController
     {
         $swap = $this->swapRequests->findById((int) $request->param('id'));
         if ($swap === null) {
-            throw new NotFoundException('Demande introuvable.');
+            throw new NotFoundException(__('error_request_not_found'));
         }
         $this->assertStoreAccess($request, (int) ($swap['store_id'] ?? 0));
 
@@ -266,7 +266,7 @@ final class AdminSwapController
     {
         $swap = $this->swapRequests->findById((int) $request->param('id'));
         if ($swap === null) {
-            throw new NotFoundException('Demande introuvable.');
+            throw new NotFoundException(__('error_request_not_found'));
         }
         $this->assertStoreAccess($request, (int) ($swap['store_id'] ?? 0));
         $this->swapRequests->save(array_merge($swap, ['status' => 'refused']));
@@ -290,7 +290,7 @@ final class AdminSwapController
     {
         $swap = $this->swapRequests->findById((int) $request->param('id'));
         if ($swap === null) {
-            throw new NotFoundException('Demande introuvable.');
+            throw new NotFoundException(__('error_request_not_found'));
         }
         $this->assertStoreAccess($request, (int) ($swap['store_id'] ?? 0));
 
