@@ -53,7 +53,7 @@ trait HasStaffReportCrud
 
         $report = $this->reportRepo()->findById($reportId);
         if ($report === null || (int) $report['store_id'] !== $storeId) {
-            throw new NotFoundException($this->reportConfig()['not_found']);
+            throw new NotFoundException(__($this->reportConfig()['not_found']));
         }
 
         return [$report, $storeId, $reportId];
@@ -253,7 +253,7 @@ trait HasStaffReportCrud
         $queryStoreIds = $storeIds;
         if ($filterStoreId > 0) {
             if (empty($authUser['is_admin']) && !in_array($filterStoreId, $storeIds, true)) {
-                throw new \kintai\Core\Exceptions\ForbiddenException('Accès refusé à ce magasin.');
+                throw new \kintai\Core\Exceptions\ForbiddenException(__('error_store_access_denied'));
             }
             $queryStoreIds = [$filterStoreId];
         }
@@ -265,7 +265,7 @@ trait HasStaffReportCrud
     {
         $store = $this->stores->findById($storeId);
         if ($store === null) {
-            throw new NotFoundException('Magasin introuvable.');
+            throw new NotFoundException(__('error_store_not_found'));
         }
         return $store;
     }

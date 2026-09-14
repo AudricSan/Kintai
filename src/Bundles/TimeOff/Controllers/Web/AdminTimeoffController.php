@@ -117,12 +117,12 @@ final class AdminTimeoffController
         $userId = (int) $request->post('user_id', 0);
         $user   = $userId > 0 ? $this->users->findById($userId) : null;
         if ($user === null) {
-            throw new NotFoundException('Employé introuvable.');
+            throw new NotFoundException(__('error_employee_not_found'));
         }
 
         $managedIds = $this->managedIds($request);
         if ($managedIds !== null && !in_array($userId, $this->memberUserIds($managedIds), true)) {
-            throw new ForbiddenException('Vous n\'êtes pas gestionnaire de cet employé.');
+            throw new ForbiddenException(__('error_not_employee_manager'));
         }
 
         $memberships = $this->storeUsers->findByUser($userId);
@@ -158,7 +158,8 @@ final class AdminTimeoffController
         $this->notifs->notify(
             $userId,
             'timeoff_approved',
-            'Un congé a été ajouté à votre planning.',
+            'notif_timeoff_added_body',
+            [],
             (int) ($saved['id'] ?? 0)
         );
 
@@ -169,7 +170,7 @@ final class AdminTimeoffController
     {
         $req = $this->timeoffRequests->findById((int) $request->param('id'));
         if ($req === null) {
-            throw new NotFoundException('Demande introuvable.');
+            throw new NotFoundException(__('error_request_not_found'));
         }
         $this->assertStoreAccess($request, (int) ($req['store_id'] ?? 0));
         $this->timeoffRequests->save(array_merge($req, ['status' => 'approved']));
@@ -177,7 +178,8 @@ final class AdminTimeoffController
         $this->notifs->notify(
             (int) $req['user_id'],
             'timeoff_approved',
-            'Votre demande de congé a été approuvée.',
+            'notif_timeoff_approved_body',
+            [],
             (int) $req['id']
         );
         return Response::redirect($this->base() . '/admin/timeoff?success=approved');
@@ -187,7 +189,7 @@ final class AdminTimeoffController
     {
         $req = $this->timeoffRequests->findById((int) $request->param('id'));
         if ($req === null) {
-            throw new NotFoundException('Demande introuvable.');
+            throw new NotFoundException(__('error_request_not_found'));
         }
         $this->assertStoreAccess($request, (int) ($req['store_id'] ?? 0));
         $this->timeoffRequests->save(array_merge($req, ['status' => 'refused']));
@@ -195,7 +197,8 @@ final class AdminTimeoffController
         $this->notifs->notify(
             (int) $req['user_id'],
             'timeoff_refused',
-            'Votre demande de congé a été refusée.',
+            'notif_timeoff_refused_body',
+            [],
             (int) $req['id']
         );
         return Response::redirect($this->base() . '/admin/timeoff?success=refused');
@@ -209,7 +212,7 @@ final class AdminTimeoffController
     {
         $req = $this->timeoffRequests->findById((int) $request->param('id'));
         if ($req === null) {
-            throw new NotFoundException('Demande introuvable.');
+            throw new NotFoundException(__('error_request_not_found'));
         }
         $this->assertStoreAccess($request, (int) ($req['store_id'] ?? 0));
 

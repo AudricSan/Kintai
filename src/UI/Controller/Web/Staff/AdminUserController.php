@@ -547,7 +547,7 @@ final class AdminUserController
         ]);
 
         if (empty($saved['id'])) {
-            return Response::json(['success' => false, 'error' => 'Création échouée.'], 500);
+            return Response::json(['success' => false, 'error' => __('error_creation_failed')], 500);
         }
         $this->roleSync->syncOwnerRole((int) $saved['id'], (bool) $isAdmin);
 
@@ -620,7 +620,7 @@ final class AdminUserController
     {
         $user = $this->users->findById((int) $request->param('id'));
         if ($user === null) {
-            throw new NotFoundException('Utilisateur introuvable.');
+            throw new NotFoundException(__('error_user_not_found'));
         }
 
         $userId = (int) $user['id'];
@@ -716,7 +716,7 @@ final class AdminUserController
     {
         $user = $this->users->findById((int) $request->param('id'));
         if ($user === null) {
-            throw new NotFoundException('Utilisateur introuvable.');
+            throw new NotFoundException(__('error_user_not_found'));
         }
 
         $email = trim($request->post('email', $user['email'] ?? ''));
@@ -804,7 +804,7 @@ final class AdminUserController
     {
         $user   = $this->users->findById((int) $request->param('id'));
         if ($user === null) {
-            throw new NotFoundException('Utilisateur introuvable.');
+            throw new NotFoundException(__('error_user_not_found'));
         }
 
         $oldUser = $user;
@@ -826,7 +826,7 @@ final class AdminUserController
         $userId = (int) $request->param('id');
         $user   = $this->users->findById($userId);
         if ($user === null) {
-            throw new NotFoundException('Utilisateur introuvable.');
+            throw new NotFoundException(__('error_user_not_found'));
         }
 
         $shiftTypeId = (int) $request->post('shift_type_id', 0);

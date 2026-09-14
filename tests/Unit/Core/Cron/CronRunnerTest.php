@@ -99,7 +99,7 @@ final class CronRunnerTest extends TestCase
         $req = $this->makeCleanRequest();
 
         $this->expectException(ForbiddenException::class);
-        $this->expectExceptionMessage('Token cron requis.');
+        $this->expectExceptionMessage('error_cron_token_missing');
         $this->runner->run('test-job', $req);
     }
 
@@ -110,7 +110,7 @@ final class CronRunnerTest extends TestCase
         $this->cronTokens->method('findByToken')->willReturn(null);
 
         $this->expectException(ForbiddenException::class);
-        $this->expectExceptionMessage('Token cron invalide.');
+        $this->expectExceptionMessage('error_cron_token_invalid');
         $this->runner->run('test-job', $req);
     }
 
@@ -124,7 +124,7 @@ final class CronRunnerTest extends TestCase
                 : null);
 
         $this->expectException(ForbiddenException::class);
-        $this->expectExceptionMessage('Token cron expiré.');
+        $this->expectExceptionMessage('error_cron_token_expired');
         $this->runner->run('test-job', $req);
     }
 
@@ -133,7 +133,7 @@ final class CronRunnerTest extends TestCase
         $req = $this->requestWithQuery('some-token');
 
         $this->expectException(NotFoundException::class);
-        $this->expectExceptionMessage("Job cron 'unknown-job' inconnu.");
+        $this->expectExceptionMessage('error_cron_unknown_job');
         $this->runner->run('unknown-job', $req);
     }
 

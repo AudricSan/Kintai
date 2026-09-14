@@ -92,7 +92,7 @@ final class ShiftClaimController
             fn(int $id) => $this->claims->findById($id),
             (int) $request->param('id'),
             $permissionKey,
-            notFoundMessage: 'Candidature introuvable.',
+            notFoundMessage: __('error_claim_not_found'),
         );
     }
 }
