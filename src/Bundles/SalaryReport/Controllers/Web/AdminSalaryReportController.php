@@ -450,7 +450,7 @@ final class AdminSalaryReportController
             $user = $this->users->findById($uid);
             if ($user !== null) {
                 $name = trim(($user['last_name'] ?? '') . ' ' . ($user['first_name'] ?? '')) ?: ($user['display_name'] ?? '#' . $uid);
-                $lines[] = $name . ': ' . round($minutes / 60, 1) . 'h';
+                $lines[] = $name . ': ' . round($minutes / 60, 1) . __('hours_unit');
             }
         }
 

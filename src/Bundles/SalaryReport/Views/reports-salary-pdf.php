@@ -134,7 +134,7 @@ th { background: #f0f0f0; font-weight: 600; }
 <table>
     <tr>
         <th style="width:50%"><?= __('sr_staff_man_hours') ?></th>
-        <td class="tr td-mono"><?= $fmt($report['staff_man_hours'] ?? null) ?> h</td>
+        <td class="tr td-mono"><?= $fmt($report['staff_man_hours'] ?? null) ?> <?= __('hours_unit') ?></td>
     </tr>
     <tr>
         <th><?= __('sr_staff_total_payment') ?></th>
