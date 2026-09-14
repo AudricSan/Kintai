@@ -107,7 +107,7 @@ final class EmployeeStatsService
                 'net_hours_fmt' => $h . 'h' . str_pad((string)$m, 2, '0', STR_PAD_LEFT),
                 'pause_min'     => $wage['pause_minutes'],
                 'rate'          => $rate,
-                'rate_fmt'      => $rate > 0 ? format_currency($rate, $currency, $currencyStyle) . '/h' : '—',
+                'rate_fmt'      => $rate > 0 ? format_currency($rate, $currency, $currencyStyle) . __('per_hour_unit') : '—',
                 'pay_fmt'       => $rate > 0 ? format_currency($pay, $currency, $currencyStyle) : '—',
                 'has_rate'      => $rate > 0,
             ];
