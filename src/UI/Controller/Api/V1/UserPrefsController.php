@@ -81,7 +81,7 @@ final class UserPrefsController
     private function requireUser(int $id): void
     {
         if ($this->users->findById($id) === null) {
-            throw new NotFoundException('Utilisateur introuvable.');
+            throw new NotFoundException(__('error_user_not_found'));
         }
     }
 }

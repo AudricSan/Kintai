@@ -153,13 +153,13 @@ final class WikiContentService
     public function render(string $lang, string $slug): string
     {
         if (!$this->pageExists($lang, $slug)) {
-            throw new NotFoundException("Page de documentation introuvable : {$slug}");
+            throw new NotFoundException(__('error_doc_page_not_found', ['slug' => $slug]));
         }
 
         $raw = file_get_contents($this->resolvePath($lang, $slug));
 
         if ($raw === false) {
-            throw new NotFoundException("Impossible de lire la page : {$slug}");
+            throw new NotFoundException(__('error_doc_page_unreadable', ['slug' => $slug]));
         }
 
         $markdown  = $this->linkifyInternalPages($this->stripLanguageSwitchLine($raw), $lang);
