@@ -196,15 +196,21 @@ final class AdminShiftClaimControllerTest extends TestCase
             ['id' => 11, 'user_id' => 3, 'status' => 'pending'],
         ]);
 
+        $this->shiftClaims->expects($this->once())->method('approveIfPending')
+            ->with(10, $this->anything(), 1)
+            ->willReturn(array_merge($claim, ['status' => 'approved']));
+
+        $closedShift = null;
+        $this->shifts->expects($this->once())->method('closeOpenShiftTo')
+            ->with(1, 9)
+            ->willReturnCallback(function (int $id, int $userId) use (&$closedShift, $shift) {
+                $closedShift = array_merge($shift, ['user_id' => $userId, 'is_open' => 0]);
+                return $closedShift;
+            });
+
         $savedClaims = [];
         $this->shiftClaims->method('save')->willReturnCallback(function (array $d) use (&$savedClaims) {
             $savedClaims[] = $d;
-            return $d;
-        });
-
-        $savedShift = null;
-        $this->shifts->expects($this->once())->method('save')->willReturnCallback(function (array $d) use (&$savedShift) {
-            $savedShift = $d;
             return $d;
         });
 
@@ -221,12 +227,88 @@ final class AdminShiftClaimControllerTest extends TestCase
         $response = $this->controller->approveShiftClaim($req);
 
         $this->assertSame(302, $response->status());
-        $this->assertSame(9, $savedShift['user_id']);
-        $this->assertSame(0, $savedShift['is_open']);
-        $this->assertSame('approved', $savedClaims[0]['status']);
-        $this->assertSame('rejected', $savedClaims[1]['status']);
+        $this->assertSame(9, $closedShift['user_id']);
+        $this->assertSame(0, $closedShift['is_open']);
+        // Seule la candidature #11 (l'autre pending) passe par save() : #10 est
+        // gérée par approveIfPending(), pas par save().
+        $this->assertCount(1, $savedClaims);
+        $this->assertSame('rejected', $savedClaims[0]['status']);
         $this->assertContains([9, 'shift_claim_approved'], $notified);
         $this->assertContains([3, 'shift_claim_rejected'], $notified);
+    }
+
+    /**
+     * Régression : deux admins approuvent deux candidatures différentes du même
+     * shift en même temps. approveIfPending() modélise la perte de la course sur
+     * la candidature elle-même (déjà résolue par l'autre admin entre la lecture
+     * et l'écriture) — aucune écriture supplémentaire ne doit avoir lieu.
+     */
+    public function testApproveShiftClaimReturnsAlreadyResolvedWhenClaimLosesRace(): void
+    {
+        $claim = ['id' => 10, 'shift_id' => 1, 'user_id' => 9, 'status' => 'pending'];
+        $shift = ['id' => 1, 'store_id' => 5, 'is_open' => 1];
+
+        $this->shiftClaims->method('findById')->with(10)->willReturn($claim);
+        $this->shifts->method('findById')->with(1)->willReturn($shift);
+        $this->shiftClaims->expects($this->once())->method('approveIfPending')->willReturn(null);
+        $this->shifts->expects($this->never())->method('closeOpenShiftTo');
+        $this->shiftClaims->expects($this->never())->method('save');
+        $this->notifs->expects($this->never())->method('notify');
+
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setAttribute('auth_user', ['id' => 1]);
+        $req->setRouteParams(['id' => '10']);
+
+        $response = $this->controller->approveShiftClaim($req);
+
+        $this->assertSame(302, $response->status());
+        $this->assertStringContainsString('error=already_resolved', $this->locationOf($response));
+    }
+
+    /**
+     * Régression : la candidature #10 gagne sa propre course (approveIfPending
+     * réussit) mais le shift a déjà été fermé entre-temps par l'approbation
+     * concurrente d'une autre candidature — on doit annuler l'approbation de
+     * #10 (la repasser en pending) plutôt que de la laisser "approved" alors
+     * que le shift est attribué à quelqu'un d'autre.
+     */
+    public function testApproveShiftClaimRevertsApprovalWhenShiftAlreadyClosedByConcurrentApproval(): void
+    {
+        $claim = ['id' => 10, 'shift_id' => 1, 'user_id' => 9, 'status' => 'pending'];
+        $shift = ['id' => 1, 'store_id' => 5, 'is_open' => 1];
+
+        $this->shiftClaims->method('findById')->with(10)->willReturn($claim);
+        $this->shifts->method('findById')->with(1)->willReturn($shift);
+        $this->shiftClaims->method('approveIfPending')->willReturn(array_merge($claim, ['status' => 'approved']));
+        $this->shifts->expects($this->once())->method('closeOpenShiftTo')->with(1, 9)->willReturn(null);
+
+        $reverted = null;
+        $this->shiftClaims->expects($this->once())->method('save')->willReturnCallback(function (array $d) use (&$reverted) {
+            $reverted = $d;
+            return $d;
+        });
+        $this->notifs->expects($this->never())->method('notify');
+
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setAttribute('auth_user', ['id' => 1]);
+        $req->setRouteParams(['id' => '10']);
+
+        $response = $this->controller->approveShiftClaim($req);
+
+        $this->assertSame(302, $response->status());
+        $this->assertStringContainsString('error=already_resolved', $this->locationOf($response));
+        $this->assertSame('pending', $reverted['status']);
+        $this->assertNull($reverted['resolved_at']);
+        $this->assertNull($reverted['resolved_by']);
+    }
+
+    private function locationOf(\kintai\Core\Response $response): string
+    {
+        $headersRef = new \ReflectionProperty($response, 'headers');
+        $headersRef->setAccessible(true);
+        return $headersRef->getValue($response)['Location'] ?? '';
     }
 
     public function testRejectShiftClaimSetsRejectedStatus(): void
