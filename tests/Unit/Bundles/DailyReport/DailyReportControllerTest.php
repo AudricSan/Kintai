@@ -160,7 +160,7 @@ final class DailyReportControllerTest extends TestCase
         ]);
 
         $this->notifs->expects($this->once())->method('notifyMany')
-            ->with([20], 'daily_report_submitted', $this->anything(), 10);
+            ->with([20], 'daily_report_submitted', $this->anything(), $this->anything(), 10);
 
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 9]);
@@ -185,7 +185,7 @@ final class DailyReportControllerTest extends TestCase
         $this->roles->method('getPermissions')->with(2)->willReturn(['daily_reports.approve']);
 
         $this->notifs->expects($this->once())->method('notify')
-            ->with(9, 'daily_report_validated', $this->anything(), 10);
+            ->with(9, 'daily_report_validated', $this->anything(), $this->anything(), 10);
 
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 20]);

@@ -108,7 +108,7 @@ final class AdminSwapControllerTest extends TestCase
         });
 
         $this->notifs->expects($this->once())->method('notifyMany')
-            ->with([1, 2], 'shift_assigned', $this->isString(), 77);
+            ->with([1, 2], 'shift_assigned', $this->isString(), $this->anything(), 77);
 
         $response = $this->controller->storeSwap($req);
 
@@ -259,7 +259,7 @@ final class AdminSwapControllerTest extends TestCase
             return $d;
         });
 
-        $this->notifs->expects($this->once())->method('notifyMany')->with([1, 2], 'shift_assigned', $this->isString(), 77);
+        $this->notifs->expects($this->once())->method('notifyMany')->with([1, 2], 'shift_assigned', $this->isString(), $this->anything(), 77);
         $this->swapRequests->expects($this->once())->method('delete')->with(77);
 
         $response = $this->controller->deleteSwap($req);
