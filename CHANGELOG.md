@@ -13,6 +13,8 @@ All notable changes to Kintai are documented here.
 
 ### Fixed
 - Store photo reports — the photo detail grid (`.photo-detail-grid`) was hard-coded to `repeat(5, 1fr)` with no responsive override, squeezing photos into unreadable slivers on mobile; it and the misplaced `.photo-grid`/`.photo-card`/`.photo-detail-card*` rules (accidentally left in `error-log.css` from the earlier CSS module split) were moved to `photos.css` and switched to an `auto-fill`/`minmax` grid like the rest of the codebase's responsive grids.
+- Payroll breakdown — `ShiftWageCalculator::costOf()` read `$type['name']` without a `??` fallback (unlike the neighboring `start_time`/`end_time`/`hourly_rate` keys), silently losing the shift type label in the wage detail whenever it was missing.
+- Store stats — `StoreStatsService::storeStats()` read `created_by`/`shift_type_id` without a `??`/`empty()` guard, so multi-store comparisons could attribute shifts to manager "0" or type "Non défini" instead of just warning.
 
 ## [0.11.9] - 2026-09-05
 
