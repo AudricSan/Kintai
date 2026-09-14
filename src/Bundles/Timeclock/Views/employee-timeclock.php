@@ -29,6 +29,8 @@ $clockInIso  = $isActive ? str_replace(' ', 'T', $clockInTime) : '';
      data-msg-error="<?= htmlspecialchars(__('error_generic')) ?>"
      data-msg-pending-one="<?= htmlspecialchars(__('timeclock_pending_one')) ?>"
      data-msg-pending-many="<?= htmlspecialchars(__('timeclock_pending_many')) ?>"
+     data-msg-offline-sync-failed="<?= htmlspecialchars(__('timeclock_offline_sync_failed')) ?>"
+     data-msg-offline-queued="<?= htmlspecialchars(__('timeclock_offline_queued')) ?>"
      hidden></div>
 
 <div class="page-header">

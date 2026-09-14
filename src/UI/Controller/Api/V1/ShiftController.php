@@ -44,7 +44,7 @@ final class ShiftController
     {
         $shift = $this->shifts->findById((int) $request->param('id'));
         if ($shift === null) {
-            throw new NotFoundException('Shift introuvable.');
+            throw new NotFoundException(__('error_shift_not_found'));
         }
         return Response::json($shift);
     }
@@ -64,7 +64,7 @@ final class ShiftController
         $id  = (int) $request->param('id');
         $old = $this->shifts->findById($id);
         if ($old === null) {
-            throw new NotFoundException('Shift introuvable.');
+            throw new NotFoundException(__('error_shift_not_found'));
         }
         $data  = $request->json() ?? [];
         $saved = $this->shifts->save(array_merge($data, ['id' => $id]));
@@ -77,7 +77,7 @@ final class ShiftController
     {
         $id = (int) $request->param('id');
         if ($this->shifts->findById($id) === null) {
-            throw new NotFoundException('Shift introuvable.');
+            throw new NotFoundException(__('error_shift_not_found'));
         }
         $this->shifts->delete($id);
         $this->auditLogger->log($request, 'shift.deleted', 'shift', resourceId: $id);

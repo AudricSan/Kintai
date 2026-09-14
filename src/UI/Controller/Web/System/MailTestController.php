@@ -19,7 +19,7 @@ final class MailTestController
     public function show(Request $request): Response
     {
         return Response::html($this->view->render('system.mail-test', [
-            'title'      => 'Test d\'envoi de mail',
+            'title'      => __('mailtest_title'),
             'mailConfig' => $this->loadConfig(),
             'phpIni'     => $this->phpIniInfo(),
             'result'     => null,
@@ -32,13 +32,13 @@ final class MailTestController
         $to = trim((string) $request->post('to', ''));
 
         if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
-            $result = ['success' => false, 'error' => 'Adresse e-mail invalide.'];
+            $result = ['success' => false, 'error' => __('mail_test_error_invalid_email')];
         } else {
             $result = $this->attemptSend($to);
         }
 
         return Response::html($this->view->render('system.mail-test', [
-            'title'      => 'Test d\'envoi de mail',
+            'title'      => __('mailtest_title'),
             'mailConfig' => $this->loadConfig(),
             'phpIni'     => $this->phpIniInfo(),
             'result'     => $result,
@@ -51,11 +51,12 @@ final class MailTestController
         $config      = $this->loadConfig();
         $fromAddress = $config['from']['address'] ?? 'noreply@example.com';
         $fromName    = $config['from']['name']    ?? 'Kintai';
-        $subject     = '[Kintai] Mail de test — ' . date('Y-m-d H:i:s');
-        $body        = '<p>Ceci est un mail de test envoyé depuis Kintai.<br>'
-                     . 'Si vous recevez ce message, la configuration mail est correcte.</p>'
-                     . '<p><small>Envoyé le ' . date('d/m/Y à H:i:s') . ' via le driver <strong>'
-                     . htmlspecialchars($config['driver'] ?? 'native') . '</strong>.</small></p>';
+        $subject     = __('mail_test_subject', ['date' => date('Y-m-d H:i:s')]);
+        $body        = '<p>' . __('mail_test_body_intro') . '</p>'
+                     . '<p><small>' . __('mail_test_body_sent_at', [
+                         'date'   => date('d/m/Y à H:i:s'),
+                         'driver' => '<strong>' . htmlspecialchars($config['driver'] ?? 'native') . '</strong>',
+                     ]) . '</small></p>';
 
         if (($config['driver'] ?? 'native') === 'smtp') {
             $smtp      = $config['smtp'] ?? [];
@@ -73,7 +74,7 @@ final class MailTestController
                 return ['success' => true];
             }
 
-            $err = $transport->getLastError() ?? 'Échec SMTP — consultez le journal PHP pour les détails.';
+            $err = $transport->getLastError() ?? __('mail_test_error_smtp');
             return ['success' => false, 'error' => $err];
         }
 
@@ -86,7 +87,7 @@ final class MailTestController
             return ['success' => true];
         }
 
-        $err = error_get_last()['message'] ?? 'Échec mail() — consultez le journal PHP pour les détails.';
+        $err = error_get_last()['message'] ?? __('mail_test_error_native');
         return ['success' => false, 'error' => $err];
     }
 
@@ -99,9 +100,9 @@ final class MailTestController
     private function phpIniInfo(): array
     {
         return [
-            'SMTP'          => ini_get('SMTP')          ?: '(non défini)',
-            'smtp_port'     => ini_get('smtp_port')     ?: '(non défini)',
-            'sendmail_path' => ini_get('sendmail_path') ?: '(non défini)',
+            'SMTP'          => ini_get('SMTP')          ?: __('not_defined'),
+            'smtp_port'     => ini_get('smtp_port')     ?: __('not_defined'),
+            'sendmail_path' => ini_get('sendmail_path') ?: __('not_defined'),
         ];
     }
 }

@@ -109,7 +109,7 @@ final class AuthController
         $tokenRecord = $this->tokens->findById($id);
 
         if ($tokenRecord === null || (int) $tokenRecord['user_id'] !== (int) $user['id']) {
-            throw new NotFoundException('Token introuvable.');
+            throw new NotFoundException(__('error_token_not_found'));
         }
 
         $this->tokens->delete($id);

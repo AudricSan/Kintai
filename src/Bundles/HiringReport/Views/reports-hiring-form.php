@@ -66,11 +66,11 @@ echo Flash::fromQuery('error', ['already_exists' => __('report_already_exists')]
     <div class="form-row">
         <div class="form-group">
             <label class="form-label"><?= __('furigana_last_name') ?></label>
-            <input type="text" name="furigana_last_name" class="form-control" value="<?= $v('furigana_last_name') ?>" placeholder="カタカナ">
+            <input type="text" name="furigana_last_name" class="form-control" value="<?= $v('furigana_last_name') ?>" placeholder="<?= __('furigana_placeholder') ?>">
         </div>
         <div class="form-group">
             <label class="form-label"><?= __('furigana_first_name') ?></label>
-            <input type="text" name="furigana_first_name" class="form-control" value="<?= $v('furigana_first_name') ?>" placeholder="カタカナ">
+            <input type="text" name="furigana_first_name" class="form-control" value="<?= $v('furigana_first_name') ?>" placeholder="<?= __('furigana_placeholder') ?>">
         </div>
     </div>
     <div class="form-row">

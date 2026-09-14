@@ -171,7 +171,7 @@ final class FeedbackControllerTest extends TestCase
         $this->roles->method('getPermissions')->with(2)->willReturn(['feedbacks.view']);
 
         $this->notifs->expects($this->once())->method('notifyMany')
-            ->with([20], 'feedback_submitted', $this->anything(), 10);
+            ->with([20], 'feedback_submitted', $this->anything(), $this->anything(), 10);
 
         $this->controller->submit($req);
     }

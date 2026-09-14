@@ -152,7 +152,7 @@ final class AdminShiftClaimControllerTest extends TestCase
         ]);
 
         $this->notifs->expects($this->once())->method('notifyMany')
-            ->with($this->callback(fn($ids) => !in_array(9, $ids, true) && in_array(20, $ids, true) && in_array(21, $ids, true)), 'open_shift_published', $this->anything(), 1);
+            ->with($this->callback(fn($ids) => !in_array(9, $ids, true) && in_array(20, $ids, true) && in_array(21, $ids, true)), 'open_shift_published', $this->anything(), $this->anything(), 1);
 
         $req = new Request();
         $req->setAttribute('managed_store_ids', null);
@@ -173,7 +173,7 @@ final class AdminShiftClaimControllerTest extends TestCase
         ]);
         $this->shiftClaims->expects($this->once())->method('save')
             ->with($this->callback(fn($d) => $d['id'] === 10 && $d['status'] === 'withdrawn'));
-        $this->notifs->expects($this->once())->method('notify')->with(7, 'shift_claim_withdrawn', $this->anything(), 1);
+        $this->notifs->expects($this->once())->method('notify')->with(7, 'shift_claim_withdrawn', $this->anything(), $this->anything(), 1);
 
         $req = new Request();
         $req->setAttribute('managed_store_ids', null);
@@ -324,7 +324,7 @@ final class AdminShiftClaimControllerTest extends TestCase
             $captured = $d;
             return $d;
         });
-        $this->notifs->expects($this->once())->method('notify')->with(9, 'shift_claim_rejected', $this->anything(), 1);
+        $this->notifs->expects($this->once())->method('notify')->with(9, 'shift_claim_rejected', $this->anything(), $this->anything(), 1);
 
         $req = new Request();
         $req->setAttribute('managed_store_ids', null);

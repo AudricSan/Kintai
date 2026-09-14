@@ -12,14 +12,14 @@ use kintai\UI\Components\Button;
 
 <?php if ($success ?? false): ?>
 
-    <?= Alert::make('Votre mot de passe a été réinitialisé avec succès.')->success()->render() ?>
+    <?= Alert::make(__('reset_password_success'))->success()->render() ?>
     <p class="login-hint login-hint--center">
         <?= Button::make('Se connecter')->primary()->link($login_url ?? route_url('auth.login'))->render() ?>
     </p>
 
 <?php elseif (!($valid ?? false)): ?>
 
-    <?= Alert::make('Ce lien de réinitialisation est invalide ou a expiré. Veuillez refaire une demande.')->danger()->render() ?>
+    <?= Alert::make(__('reset_password_invalid_link'))->danger()->render() ?>
     <p class="login-hint login-hint--center">
         <a href="<?= route_url('password.forgot') ?>">Nouvelle demande</a>
     </p>
@@ -31,7 +31,7 @@ use kintai\UI\Components\Button;
     endif; ?>
 
     <h2 class="guest-subtitle">Nouveau mot de passe</h2>
-    <p class="login-hint">Choisissez un mot de passe d'au moins 8 caractères.</p>
+    <p class="login-hint"><?= __('reset_password_hint') ?></p>
 
     <form method="POST"
           action="<?= $BASE_URL ?>/reset-password/<?= htmlspecialchars($token, ENT_QUOTES) ?>">
