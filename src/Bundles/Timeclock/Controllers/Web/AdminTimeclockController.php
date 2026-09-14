@@ -66,7 +66,7 @@ final class AdminTimeclockController
 
         $entry = $this->timeclocks->findById($id);
         if ($entry === null) {
-            throw new NotFoundException('Entrée de pointage introuvable.');
+            throw new NotFoundException(__('error_timeclock_entry_not_found'));
         }
         $this->assertStoreAccess($request, (int) ($entry['store_id'] ?? 0));
 
@@ -101,7 +101,7 @@ final class AdminTimeclockController
 
         $entry = $this->timeclocks->findById($id);
         if ($entry === null) {
-            throw new NotFoundException('Entrée de pointage introuvable.');
+            throw new NotFoundException(__('error_timeclock_entry_not_found'));
         }
 
         $storeId = (int) ($entry['store_id'] ?? 0);

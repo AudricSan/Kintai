@@ -145,14 +145,14 @@ final class PermissionService
         int $id,
         string $permissionKey,
         string $storeField = 'store_id',
-        string $notFoundMessage = 'Ressource introuvable.',
+        ?string $notFoundMessage = null,
     ): array {
         $item = $finder($id);
         if ($item === null) {
-            throw new NotFoundException($notFoundMessage);
+            throw new NotFoundException($notFoundMessage ?? __('error_resource_not_found'));
         }
         if (!$this->can($authUser, $permissionKey, (int) ($item[$storeField] ?? 0))) {
-            throw new ForbiddenException('Permission insuffisante : ' . $permissionKey);
+            throw new ForbiddenException(__('error_permission_insufficient', ['key' => $permissionKey]));
         }
         return $item;
     }

@@ -159,7 +159,7 @@ final class AdminShiftClaimController
     {
         $shift = $this->shifts->findById((int) $request->param('id'));
         if ($shift === null) {
-            throw new NotFoundException('Shift introuvable.');
+            throw new NotFoundException(__('error_shift_not_found'));
         }
         $this->assertStoreAccess($request, (int) ($shift['store_id'] ?? 0));
         $old = $shift;
@@ -170,7 +170,7 @@ final class AdminShiftClaimController
         $holderId = (int) ($shift['user_id'] ?? 0);
         $eligible = array_values(array_diff($this->memberUserIds([$storeId]), [$holderId]));
         if ($eligible !== []) {
-            $this->notifs->notifyMany($eligible, 'open_shift_published', 'Un shift est disponible à la bourse aux shifts.', (int) $shift['id']);
+            $this->notifs->notifyMany($eligible, 'open_shift_published', 'Un shift est disponible à la bourse aux shifts.', [], (int) $shift['id']);
         }
 
         return Response::redirect($this->base() . '/admin/open-shifts?success=published');
@@ -180,7 +180,7 @@ final class AdminShiftClaimController
     {
         $shift = $this->shifts->findById((int) $request->param('id'));
         if ($shift === null) {
-            throw new NotFoundException('Shift introuvable.');
+            throw new NotFoundException(__('error_shift_not_found'));
         }
         $this->assertStoreAccess($request, (int) ($shift['store_id'] ?? 0));
         $old = $shift;
@@ -190,7 +190,7 @@ final class AdminShiftClaimController
             if (($claim['status'] ?? '') === 'pending') {
                 $this->shiftClaims->save(array_merge($claim, ['status' => 'withdrawn']));
                 $withdrawn++;
-                $this->notifs->notify((int) ($claim['user_id'] ?? 0), 'shift_claim_withdrawn', 'Le shift auquel vous aviez postulé n\'est plus disponible.', (int) $shift['id']);
+                $this->notifs->notify((int) ($claim['user_id'] ?? 0), 'shift_claim_withdrawn', 'notif_shift_claim_withdrawn_body', [], (int) $shift['id']);
             }
         }
         $this->auditLogger->logUpdate($request, 'shift.unpublished', 'shift', (int) $shift['id'], $old, $saved, ['withdrawn' => $withdrawn], (int) ($shift['store_id'] ?? 0) ?: null);
@@ -201,7 +201,7 @@ final class AdminShiftClaimController
     {
         $claim = $this->shiftClaims->findById((int) $request->param('id'));
         if ($claim === null) {
-            throw new NotFoundException('Candidature introuvable.');
+            throw new NotFoundException(__('error_claim_not_found'));
         }
         $oldClaim = $claim;
         // C-2 : guard statut pending
@@ -210,7 +210,7 @@ final class AdminShiftClaimController
         }
         $shift = $this->shifts->findById((int) ($claim['shift_id'] ?? 0));
         if ($shift === null) {
-            throw new NotFoundException('Shift introuvable.');
+            throw new NotFoundException(__('error_shift_not_found'));
         }
         // C-3 : le shift doit être encore ouvert
         if (!(int) ($shift['is_open'] ?? 0)) {
@@ -243,13 +243,13 @@ final class AdminShiftClaimController
                     'resolved_at' => $now,
                     'resolved_by' => $resolver,
                 ]));
-                $this->notifs->notify((int) $other['user_id'], 'shift_claim_rejected', 'Votre candidature n\'a pas été retenue.', (int) $shift['id']);
+                $this->notifs->notify((int) $other['user_id'], 'shift_claim_rejected', 'notif_shift_claim_rejected_body', [], (int) $shift['id']);
             }
         }
 
         $this->auditLogger->logUpdate($request, 'shift_claim.approved', 'shift_claim', (int) $claim['id'], $oldClaim, $savedClaim, [], (int) ($shift['store_id'] ?? 0) ?: null);
 
-        $this->notifs->notify((int) $claim['user_id'], 'shift_claim_approved', 'Votre candidature a été approuvée, le shift vous est attribué.', (int) $shift['id']);
+        $this->notifs->notify((int) $claim['user_id'], 'shift_claim_approved', 'notif_shift_claim_approved_body', [], (int) $shift['id']);
 
         return Response::redirect($this->base() . '/admin/open-shifts?success=claim_approved');
     }
@@ -258,7 +258,7 @@ final class AdminShiftClaimController
     {
         $claim = $this->shiftClaims->findById((int) $request->param('id'));
         if ($claim === null) {
-            throw new NotFoundException('Candidature introuvable.');
+            throw new NotFoundException(__('error_claim_not_found'));
         }
         $oldClaim = $claim;
         // M-3 : guard statut pending
@@ -267,7 +267,7 @@ final class AdminShiftClaimController
         }
         $shift = $this->shifts->findById((int) ($claim['shift_id'] ?? 0));
         if ($shift === null) {
-            throw new NotFoundException('Shift introuvable.');
+            throw new NotFoundException(__('error_shift_not_found'));
         }
         $this->assertStoreAccess($request, (int) ($shift['store_id'] ?? 0));
 
@@ -282,7 +282,7 @@ final class AdminShiftClaimController
         ]));
         $this->auditLogger->logUpdate($request, 'shift_claim.rejected', 'shift_claim', (int) $claim['id'], $oldClaim, $savedClaim, [], (int) ($shift['store_id'] ?? 0) ?: null);
 
-        $this->notifs->notify((int) $claim['user_id'], 'shift_claim_rejected', 'Votre candidature n\'a pas été retenue.', (int) $shift['id']);
+        $this->notifs->notify((int) $claim['user_id'], 'shift_claim_rejected', 'notif_shift_claim_rejected_body', [], (int) $shift['id']);
 
         return Response::redirect($this->base() . '/admin/open-shifts?success=claim_rejected');
     }

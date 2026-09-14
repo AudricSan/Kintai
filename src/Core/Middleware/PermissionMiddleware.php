@@ -109,7 +109,7 @@ final class PermissionMiddleware implements MiddlewareInterface
             return $next($request);
         }
 
-        throw new ForbiddenException('Permission requise : ' . $key);
+        throw new ForbiddenException(__('error_permission_required', ['key' => $key]));
     }
 
     /** @param int[]|null $storeIds */

@@ -44,7 +44,7 @@ final class IcalController
 
         $tokenRow = $this->icalTokens->findByToken($token);
         if (!$tokenRow || (int) $tokenRow['store_id'] !== $storeId) {
-            throw new NotFoundException('Flux iCal introuvable.');
+            throw new NotFoundException(__('error_ical_feed_not_found'));
         }
 
         $userId = (int) $tokenRow['user_id'];
@@ -52,7 +52,7 @@ final class IcalController
         $user   = $this->users->findById($userId);
 
         if (!$store || !$user) {
-            throw new NotFoundException('Ressource introuvable.');
+            throw new NotFoundException(__('error_resource_not_found'));
         }
 
         $cutoff = date('Y-m-d H:i:s', strtotime('-30 days'));

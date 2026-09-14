@@ -118,14 +118,14 @@ final class FeedbackController
         );
 
         if ($storeId !== null) {
-            $this->notifyManagers($storeId, 'Un nouveau feedback a été soumis.', (int) ($saved['id'] ?? 0));
+            $this->notifyManagers($storeId, 'notif_feedback_submitted_body', (int) ($saved['id'] ?? 0));
         }
 
         return Response::redirect($returnTo . '?fb_success=sent');
     }
 
     /** Notifie les membres du store détenant feedbacks.view qu'un nouveau feedback existe. */
-    private function notifyManagers(int $storeId, string $body, int $referenceId): void
+    private function notifyManagers(int $storeId, string $bodyKey, int $referenceId): void
     {
         $recipients = [];
         foreach ($this->storeUsers->findByStore($storeId) as $m) {
@@ -136,7 +136,7 @@ final class FeedbackController
             }
         }
         if ($recipients !== []) {
-            $this->notifs->notifyMany($recipients, 'feedback_submitted', $body, $referenceId);
+            $this->notifs->notifyMany($recipients, 'feedback_submitted', $bodyKey, [], $referenceId);
         }
     }
 
