@@ -158,7 +158,8 @@ final class AdminTimeoffController
         $this->notifs->notify(
             $userId,
             'timeoff_approved',
-            'Un congé a été ajouté à votre planning.',
+            'notif_timeoff_added_body',
+            [],
             (int) ($saved['id'] ?? 0)
         );
 
@@ -177,7 +178,8 @@ final class AdminTimeoffController
         $this->notifs->notify(
             (int) $req['user_id'],
             'timeoff_approved',
-            'Votre demande de congé a été approuvée.',
+            'notif_timeoff_approved_body',
+            [],
             (int) $req['id']
         );
         return Response::redirect($this->base() . '/admin/timeoff?success=approved');
@@ -195,7 +197,8 @@ final class AdminTimeoffController
         $this->notifs->notify(
             (int) $req['user_id'],
             'timeoff_refused',
-            'Votre demande de congé a été refusée.',
+            'notif_timeoff_refused_body',
+            [],
             (int) $req['id']
         );
         return Response::redirect($this->base() . '/admin/timeoff?success=refused');
