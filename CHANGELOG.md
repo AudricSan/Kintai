@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Fixed
+- i18n — remaining hardcoded French text across the auth/profile/scheduling/notifications/system views (`forgot-password`, `login`, `reset-password`, `profile`, `notifications/index`, `scheduling/shifts*`, `system/activity-log`, `system/languages`) plus the entire `privacy.php` legal page (now fully translatable, EN/JA included) is now routed through `__()`, with new keys added to `lang/{fr,en,ja}.json`. The profile page's account-deletion confirmation now uses the shared `data-confirm` modal pattern instead of a hardcoded `confirm()`. In JS (`app.js`'s theme toggle, `timeclock.js`'s offline messages, `stores-form.js`'s hand-rolled active/inactive dictionary, `shifts-import-preview.js`'s pluralized row counter), hardcoded strings are now injected from PHP via `data-*` attributes or a `<script type="application/json">` block, following the pattern already used elsewhere in the codebase.
+
 ### Changed
 - Release versioning — replaced the `X.Y.Z-<week letter><sub-version>` prerelease suffix (e.g. `0.12.0-ak23`, hard to read on `/admin/update`) with a plain, cascading `X.Y.Z`: `X` is the major, `Y` identifies the release line, and `Z` is a cumulative alpha+beta iteration counter within that line, computed automatically by `.github/workflows/release.yml` (never entered by hand). `Z = 0` is reserved for the line's stable release on `main`, so it never collides with an earlier alpha/beta tag of the same line. See `docs/releasing.md` for the full scheme and the simplified manual procedure (only `X`/`Y` are ever bumped by hand, and only when opening a new line).
 
