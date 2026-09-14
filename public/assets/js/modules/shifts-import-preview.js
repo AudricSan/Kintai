@@ -223,6 +223,10 @@
 
 /* ── Propagation des assignations manuelles ──── */
 (function () {
+    var cfgEl = document.getElementById('kintai-import-data');
+    var cfg   = cfgEl ? JSON.parse(cfgEl.textContent || '{}') : (window.KintaiImport || {});
+    var i18n  = cfg.i18n || {};
+
     document.addEventListener('change', function (e) {
         var sel = e.target.closest('[data-field="user_id"]');
         if (!sel) return;
@@ -251,7 +255,7 @@
                 pill.className = 'propagate-pill';
                 sel.parentNode.appendChild(pill);
             }
-            pill.textContent = '→ ' + count + ' ligne' + (count > 1 ? 's' : '');
+            pill.textContent = '→ ' + count + ' ' + (count > 1 ? (i18n.propagatedRows || 'lignes') : (i18n.propagatedRow || 'ligne'));
             clearTimeout(sel._propagateTimer);
             sel._propagateTimer = setTimeout(function () { if (pill) pill.remove(); }, 3000);
         }

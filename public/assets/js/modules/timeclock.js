@@ -120,7 +120,7 @@
             flushing = false;
             updatePendingBadge();
             if (hadFailure) {
-                showMessage('Une action hors ligne n\'a pas pu être synchronisée. Nouvelle tentative au prochain chargement de la page.', 'danger');
+                showMessage(meta.dataset.msgOfflineSyncFailed, 'danger');
             } else {
                 location.reload();
             }
@@ -196,7 +196,7 @@
         .catch(function () {
             queueOperation({ url: url, body: body, created_at: new Date().toISOString() });
             updatePendingBadge();
-            showMessage('Action mise en attente (hors ligne). Elle sera synchronisée automatiquement.', 'warning');
+            showMessage(meta.dataset.msgOfflineQueued, 'warning');
         });
     }
 

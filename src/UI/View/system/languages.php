@@ -109,7 +109,7 @@ echo Flash::fromQuery('error', [
             <div class="form-group">
                 <label class="form-label"><?= __('language_name') ?></label>
                 <input type="text" name="name" class="form-control form-control-sm" maxlength="100"
-                       placeholder="Español" required>
+                       placeholder="<?= __('language_name_example_placeholder') ?>" required>
             </div>
             <input type="hidden" name="is_active" value="1">
             <div class="form-group">

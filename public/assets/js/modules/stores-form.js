@@ -23,9 +23,10 @@
     }
 
     /* ── Cartes de fonctionnalités ──────────────── */
-    var lang   = document.documentElement.lang || 'fr';
-    var onTxt  = lang === 'ja' ? '有効' : (lang === 'en' ? 'Active'   : 'Actif');
-    var offTxt = lang === 'ja' ? '無効' : (lang === 'en' ? 'Inactive' : 'Inactif');
+    var i18nEl = document.getElementById('store-form-i18n');
+    var i18n   = i18nEl ? JSON.parse(i18nEl.textContent) : {};
+    var onTxt  = i18n.active   || 'Active';
+    var offTxt = i18n.inactive || 'Inactive';
 
     function applyFeatureState(card, checked) {
         card.classList.toggle('feature-card--on', checked);

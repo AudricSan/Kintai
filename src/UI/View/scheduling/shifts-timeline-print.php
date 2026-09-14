@@ -71,7 +71,7 @@ for ($h = 6; $h < 30; $h++) $ganttHours[] = $h % 24;
     <style>
         @page {
             @bottom-center {
-                content: "Document généré par Kintai — <?= date('d/m/Y H:i') ?> — Ce document est un récapitulatif estimatif et ne remplace pas un bulletin de paie légal.";
+                content: "<?= __('print_footer_disclaimer', ['date' => date('d/m/Y H:i')]) ?>";
                 font-family: Arial, Helvetica, sans-serif;
                 font-size: 6pt;
                 color: #999;
