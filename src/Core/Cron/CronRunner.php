@@ -28,26 +28,26 @@ final class CronRunner
     {
         $job = $this->jobs[$jobName] ?? null;
         if ($job === null) {
-            throw new NotFoundException("Job cron '$jobName' inconnu.");
+            throw new NotFoundException(__('error_cron_unknown_job', ['job' => $jobName]));
         }
 
         $rawToken = $this->extractToken($request);
         if ($rawToken === null) {
-            throw new ForbiddenException('Token cron requis.');
+            throw new ForbiddenException(__('error_cron_token_missing'));
         }
 
         $hashed = hash_token($rawToken);
         $record = $this->cronTokens->findByToken($hashed);
         if ($record === null) {
-            throw new ForbiddenException('Token cron invalide.');
+            throw new ForbiddenException(__('error_cron_token_invalid'));
         }
 
         if (!empty($record['expires_at']) && $record['expires_at'] < date('Y-m-d H:i:s')) {
-            throw new ForbiddenException('Token cron expiré.');
+            throw new ForbiddenException(__('error_cron_token_expired'));
         }
 
         if (isset($record['job_name']) && $record['job_name'] !== '' && $record['job_name'] !== $jobName) {
-            throw new ForbiddenException('Ce token n\'est pas autorisé pour le job demandé.');
+            throw new ForbiddenException(__('error_cron_token_not_allowed'));
         }
 
         $this->cronTokens->touchLastUsed((int) $record['id']);

@@ -194,13 +194,13 @@ final class MessageController
 
         $thread = $this->msgRepo->findThreadById($threadId);
         if ($thread === null) {
-            throw new NotFoundException('Conversation introuvable.');
+            throw new NotFoundException(__('error_conversation_not_found'));
         }
         $this->assertStoreAccess($request, (int) $thread['store_id']);
 
         $part = $this->msgRepo->findParticipant($threadId, $userId);
         if ($part === null) {
-            throw new ForbiddenException('Vous ne faites pas partie de cette conversation.');
+            throw new ForbiddenException(__('error_not_in_conversation'));
         }
         if (!(int) ($part['is_read'] ?? 0)) {
             $this->msgRepo->saveParticipant(array_merge($part, ['is_read' => 1]));
@@ -238,13 +238,13 @@ final class MessageController
 
         $thread = $this->msgRepo->findThreadById($threadId);
         if ($thread === null) {
-            throw new NotFoundException('Conversation introuvable.');
+            throw new NotFoundException(__('error_conversation_not_found'));
         }
         $this->assertStoreAccess($request, (int) $thread['store_id']);
 
         $part = $this->msgRepo->findParticipant($threadId, $userId);
         if ($part === null) {
-            throw new ForbiddenException('Vous ne faites pas partie de cette conversation.');
+            throw new ForbiddenException(__('error_not_in_conversation'));
         }
 
         $this->msgRepo->saveMessage([
@@ -290,13 +290,13 @@ final class MessageController
 
         $thread = $this->msgRepo->findThreadById($threadId);
         if ($thread === null) {
-            throw new NotFoundException('Conversation introuvable.');
+            throw new NotFoundException(__('error_conversation_not_found'));
         }
         $this->assertStoreAccess($request, (int) $thread['store_id']);
 
         $part = $this->msgRepo->findParticipant($threadId, $userId);
         if ($part === null) {
-            throw new ForbiddenException('Vous ne faites pas partie de cette conversation.');
+            throw new ForbiddenException(__('error_not_in_conversation'));
         }
 
         $storeId = (int) ($thread['store_id'] ?? 0);
@@ -322,16 +322,16 @@ final class MessageController
 
         $thread = $this->msgRepo->findThreadById($threadId);
         if ($thread === null) {
-            throw new NotFoundException('Conversation introuvable.');
+            throw new NotFoundException(__('error_conversation_not_found'));
         }
         $this->assertStoreAccess($request, (int) $thread['store_id']);
 
         $message = $this->msgRepo->findMessageById($mid);
         if ($message === null || (int) $message['thread_id'] !== $threadId) {
-            throw new NotFoundException('Message introuvable.');
+            throw new NotFoundException(__('error_message_not_found'));
         }
         if ((int) $message['sender_id'] !== $userId) {
-            throw new ForbiddenException('Vous ne pouvez supprimer que vos propres messages.');
+            throw new ForbiddenException(__('error_delete_own_messages_only'));
         }
 
         $this->msgRepo->deleteMessage($mid);
@@ -417,7 +417,7 @@ final class MessageController
     {
         $managedIds = $this->managedIds($request);
         if ($managedIds !== null && !in_array($storeId, $managedIds, true)) {
-            throw new ForbiddenException('Vous n\'êtes pas autorisé pour ce store.');
+            throw new ForbiddenException(__('error_not_authorized_store'));
         }
     }
 
@@ -437,7 +437,7 @@ final class MessageController
             return;
         }
         if (!in_array($feature, $features, true)) {
-            throw new ForbiddenException('feature_disabled');
+            throw new ForbiddenException(__('error_feature_disabled'));
         }
     }
 

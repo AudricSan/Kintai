@@ -137,7 +137,7 @@ final class AdminRoleController
     {
         $role = $this->findRoleOrFail($request);
         if (!empty($role['is_system'])) {
-            throw new ForbiddenException('Le rôle Owner n\'est pas modifiable.');
+            throw new ForbiddenException(__('error_owner_role_immutable'));
         }
 
         $name = trim($request->post('name', $role['name'] ?? ''));
@@ -181,7 +181,7 @@ final class AdminRoleController
         $role = $this->findRoleOrFail($request);
 
         if (!empty($role['is_system'])) {
-            throw new ForbiddenException('Le rôle Owner ne peut pas être supprimé.');
+            throw new ForbiddenException(__('error_owner_role_undeletable'));
         }
         if (count($this->assignments->findByRole((int) $role['id'])) > 0) {
             return Response::redirect($this->base() . '/admin/roles?error=role_in_use');
@@ -198,7 +198,7 @@ final class AdminRoleController
     {
         $role = $this->roles->findById((int) $request->param('id'));
         if ($role === null) {
-            throw new NotFoundException('Rôle introuvable.');
+            throw new NotFoundException(__('error_role_not_found'));
         }
         return $role;
     }
