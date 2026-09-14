@@ -23,7 +23,7 @@ final class AdminHiringReportController
         'entity'    => 'hiring_report',
         'slug'      => 'hiring',
         'view'      => 'hiring-report::reports-hiring',
-        'not_found' => 'Rapport d\'embauche introuvable.',
+        'not_found' => 'error_hiring_report_not_found',
         'fields'    => [
             'employee_number'     => 'str',
             'employee_name'       => 'str',

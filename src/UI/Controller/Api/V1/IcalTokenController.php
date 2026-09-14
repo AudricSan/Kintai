@@ -34,7 +34,7 @@ final class IcalTokenController
 
         $token = $this->icalTokens->findByUserAndStore($userId, $storeId);
         if ($token === null) {
-            throw new NotFoundException('Token iCal introuvable.');
+            throw new NotFoundException(__('error_ical_token_not_found'));
         }
 
         return Response::json($token);
@@ -67,7 +67,7 @@ final class IcalTokenController
         $this->requireUser($userId);
 
         if ($this->icalTokens->findByUserAndStore($userId, $storeId) === null) {
-            throw new NotFoundException('Token iCal introuvable.');
+            throw new NotFoundException(__('error_ical_token_not_found'));
         }
 
         $this->icalTokens->deleteByUserAndStore($userId, $storeId);
@@ -96,7 +96,7 @@ final class IcalTokenController
     private function requireUser(int $id): void
     {
         if ($this->users->findById($id) === null) {
-            throw new NotFoundException('Utilisateur introuvable.');
+            throw new NotFoundException(__('error_user_not_found'));
         }
     }
 }

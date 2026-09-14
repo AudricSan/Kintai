@@ -32,12 +32,12 @@ final class MessageStreamController
 
         $thread = $this->msgRepo->findThreadById($threadId);
         if ($thread === null) {
-            throw new NotFoundException('Conversation introuvable.');
+            throw new NotFoundException(__('error_conversation_not_found'));
         }
 
         $part = $this->msgRepo->findParticipant($threadId, $userId);
         if ($part === null) {
-            throw new ForbiddenException('Accès refusé.');
+            throw new ForbiddenException(__('error_access_denied'));
         }
 
         // last-event-id envoyé par le navigateur lors d'une reconnexion automatique

@@ -73,7 +73,7 @@ final class NotificationController
         $item   = $this->notifications->findById((int) $request->param('id'));
         $userId = (int) ($request->getAttribute('auth_user')['id'] ?? 0);
         if ($item === null || (int) ($item['user_id'] ?? 0) !== $userId) {
-            throw new NotFoundException('Notification introuvable.');
+            throw new NotFoundException(__('error_notification_not_found'));
         }
         return $item;
     }
