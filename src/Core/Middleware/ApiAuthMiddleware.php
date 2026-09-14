@@ -25,7 +25,7 @@ final class ApiAuthMiddleware implements MiddlewareInterface
         $token = $this->extractToken($request);
 
         if ($token === null) {
-            return Response::json(['error' => 'Token d\'authentification manquant.', 'code' => 'MISSING_TOKEN'], 401);
+            return Response::json(['error' => __('error_token_missing'), 'code' => 'MISSING_TOKEN'], 401);
         }
 
         /** @var ApiTokenRepositoryInterface $tokens */
@@ -33,11 +33,11 @@ final class ApiAuthMiddleware implements MiddlewareInterface
         $record = $tokens->findByToken(hash_token($token));
 
         if ($record === null) {
-            return Response::json(['error' => 'Token invalide.', 'code' => 'INVALID_TOKEN'], 401);
+            return Response::json(['error' => __('error_token_invalid'), 'code' => 'INVALID_TOKEN'], 401);
         }
 
         if (!empty($record['expires_at']) && strtotime($record['expires_at']) < time()) {
-            return Response::json(['error' => 'Token expiré.', 'code' => 'EXPIRED_TOKEN'], 401);
+            return Response::json(['error' => __('error_token_expired'), 'code' => 'EXPIRED_TOKEN'], 401);
         }
 
         /** @var UserRepositoryInterface $users */
@@ -45,7 +45,7 @@ final class ApiAuthMiddleware implements MiddlewareInterface
         $user  = $users->findById((int) $record['user_id']);
 
         if ($user === null || empty($user['is_active']) || !empty($user['deleted_at'])) {
-            return Response::json(['error' => 'Utilisateur inactif ou supprimé.', 'code' => 'INACTIVE_USER'], 401);
+            return Response::json(['error' => __('error_user_inactive'), 'code' => 'INACTIVE_USER'], 401);
         }
 
         // Mettre à jour last_used_at sans bloquer la requête en cas d'échec

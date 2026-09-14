@@ -34,7 +34,7 @@ final class UserShiftRateController
 
         $rate = $this->rates->findById($id);
         if ($rate === null || (int) $rate['user_id'] !== $userId) {
-            throw new NotFoundException('Taux introuvable.');
+            throw new NotFoundException(__('error_rate_not_found'));
         }
 
         return Response::json($rate);
@@ -63,7 +63,7 @@ final class UserShiftRateController
 
         $rate = $this->rates->findById($id);
         if ($rate === null || (int) $rate['user_id'] !== $userId) {
-            throw new NotFoundException('Taux introuvable.');
+            throw new NotFoundException(__('error_rate_not_found'));
         }
 
         return Response::json($this->rates->save(array_merge($request->json() ?? [], [
@@ -82,7 +82,7 @@ final class UserShiftRateController
 
         $rate = $this->rates->findById($id);
         if ($rate === null || (int) $rate['user_id'] !== $userId) {
-            throw new NotFoundException('Taux introuvable.');
+            throw new NotFoundException(__('error_rate_not_found'));
         }
 
         $this->rates->delete($id);
@@ -92,7 +92,7 @@ final class UserShiftRateController
     private function requireUser(int $id): void
     {
         if ($this->users->findById($id) === null) {
-            throw new NotFoundException('Utilisateur introuvable.');
+            throw new NotFoundException(__('error_user_not_found'));
         }
     }
 }

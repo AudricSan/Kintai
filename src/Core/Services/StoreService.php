@@ -100,7 +100,7 @@ final class StoreService implements StoreServiceInterface
     {
         $store = $this->stores->findById($storeId);
         if ($store === null) {
-            throw new NotFoundException('Store introuvable.');
+            throw new NotFoundException(__('error_store_not_found'));
         }
 
         $storeData = array_merge($store, [
@@ -143,7 +143,7 @@ final class StoreService implements StoreServiceInterface
     {
         $store = $this->stores->findById($storeId);
         if ($store === null) {
-            throw new NotFoundException('Store introuvable.');
+            throw new NotFoundException(__('error_store_not_found'));
         }
         $this->stores->delete($storeId);
     }
@@ -168,7 +168,7 @@ final class StoreService implements StoreServiceInterface
     {
         $membership = $this->storeUsers->findById($membershipId);
         if ($membership === null || (int) $membership['store_id'] !== $storeId) {
-            throw new NotFoundException('Appartenance introuvable.');
+            throw new NotFoundException(__('error_membership_not_found'));
         }
 
         $validator = new StoreValidator($this->languages);
@@ -181,7 +181,7 @@ final class StoreService implements StoreServiceInterface
     {
         $membership = $this->storeUsers->findById($membershipId);
         if ($membership === null || (int) $membership['store_id'] !== $storeId) {
-            throw new NotFoundException('Appartenance introuvable.');
+            throw new NotFoundException(__('error_membership_not_found'));
         }
         $this->storeUsers->delete($membershipId);
     }
@@ -190,7 +190,7 @@ final class StoreService implements StoreServiceInterface
     {
         $membership = $this->storeUsers->findById($membershipId);
         if ($membership === null || (int) $membership['store_id'] !== $storeId) {
-            throw new NotFoundException('Membre introuvable.');
+            throw new NotFoundException(__('error_member_not_found'));
         }
         $this->storeUsers->setSubjectToDeductions($membershipId, $subjectTo);
     }

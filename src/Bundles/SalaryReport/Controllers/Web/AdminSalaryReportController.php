@@ -32,7 +32,7 @@ final class AdminSalaryReportController
         'entity'    => 'salary_report',
         'slug'      => 'salary',
         'view'      => 'salary-report::reports-salary',
-        'not_found' => 'Rapport de salaire introuvable.',
+        'not_found' => 'error_salary_report_not_found',
         'fields'    => [
             'target_month'          => 'str',
             'store_name'            => 'str',
