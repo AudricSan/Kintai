@@ -27,7 +27,7 @@ trait HasAdminAccess
     {
         $managedIds = $request->getAttribute('managed_store_ids');
         if ($managedIds !== null && !in_array($storeId, $managedIds, true)) {
-            throw new ForbiddenException('Vous n\'êtes pas gestionnaire de ce store.');
+            throw new ForbiddenException(__('error_not_store_manager'));
         }
     }
 
@@ -47,7 +47,7 @@ trait HasAdminAccess
                 return;
             }
         }
-        throw new ForbiddenException('Vous n\'êtes pas gestionnaire d\'un store associé à cette ressource.');
+        throw new ForbiddenException(__('error_not_resource_store_manager'));
     }
 
     protected function memberUserIds(array $managedIds): array

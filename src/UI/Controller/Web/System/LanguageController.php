@@ -159,13 +159,13 @@ final class LanguageController
 
         $code = (string) $request->param('code');
         if (!$this->languages->findByCode($code)) {
-            return Response::json(['error' => 'unknown language'], 404);
+            return Response::json(['error' => __('error_unknown_language')], 404);
         }
 
         $key   = trim((string) $request->post('key', ''));
         $value = (string) $request->post('value', '');
         if ($key === '' || !preg_match('/^[a-z0-9_.]+$/i', $key)) {
-            return Response::json(['error' => 'invalid key'], 400);
+            return Response::json(['error' => __('error_invalid_key')], 400);
         }
 
         $this->translationManagement->saveValue($code, $key, $value);
@@ -181,7 +181,7 @@ final class LanguageController
         $code = (string) $request->param('code');
         $key  = trim((string) $request->post('key', ''));
         if ($key === '') {
-            return Response::json(['error' => 'key required'], 400);
+            return Response::json(['error' => __('error_key_required')], 400);
         }
 
         $this->translationManagement->deleteValue($code, $key);

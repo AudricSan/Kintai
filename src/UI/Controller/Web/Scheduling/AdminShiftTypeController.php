@@ -99,7 +99,7 @@ final class AdminShiftTypeController
     {
         $type = $this->shiftTypes->findById((int) $request->param('id'));
         if ($type === null) {
-            throw new NotFoundException('Type de shift introuvable.');
+            throw new NotFoundException(__('error_shift_type_not_found'));
         }
         $storeIds = $this->shiftTypes->getStoreIds((int) $type['id']);
         $this->assertAnyStoreAccess($request, $storeIds);
@@ -117,7 +117,7 @@ final class AdminShiftTypeController
     {
         $type = $this->shiftTypes->findById((int) $request->param('id'));
         if ($type === null) {
-            throw new NotFoundException('Type de shift introuvable.');
+            throw new NotFoundException(__('error_shift_type_not_found'));
         }
         $existingStoreIds = $this->shiftTypes->getStoreIds((int) $type['id']);
         $this->assertAnyStoreAccess($request, $existingStoreIds);
@@ -174,7 +174,7 @@ final class AdminShiftTypeController
         $id   = (int) $request->param('id');
         $type = $this->shiftTypes->findById($id);
         if ($type === null) {
-            throw new NotFoundException('Type de shift introuvable.');
+            throw new NotFoundException(__('error_shift_type_not_found'));
         }
 
         $storeId = (int) $request->post('store_id', '0');

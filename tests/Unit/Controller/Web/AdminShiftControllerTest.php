@@ -159,7 +159,7 @@ final class AdminShiftControllerTest extends TestCase
 
         $this->assertSame(403, $response->status());
         $data = json_decode($response->body(), true);
-        $this->assertSame('Accès refusé.', $data['error']);
+        $this->assertSame('error_access_denied', $data['error']);
     }
 
     /**

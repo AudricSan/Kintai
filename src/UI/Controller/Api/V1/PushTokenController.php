@@ -36,10 +36,10 @@ final class PushTokenController
         $platform = (string) ($data['platform'] ?? '');
 
         if ($token === '') {
-            throw new ValidationException(['token' => ['Le jeton de l\'appareil est requis.']]);
+            throw new ValidationException(['token' => [__('validation_device_token_required')]]);
         }
         if ($platform !== '' && !in_array($platform, self::PLATFORMS, true)) {
-            throw new ValidationException(['platform' => ['Plateforme invalide (android, ios ou web).']]);
+            throw new ValidationException(['platform' => [__('validation_platform_invalid')]]);
         }
 
         $record = $this->tokens->save([
@@ -62,7 +62,7 @@ final class PushTokenController
 
         $token = trim((string) ($request->json('token') ?? ''));
         if ($token === '') {
-            throw new ValidationException(['token' => ['Le jeton de l\'appareil est requis.']]);
+            throw new ValidationException(['token' => [__('validation_device_token_required')]]);
         }
 
         $this->tokens->deleteByToken($token);
@@ -72,7 +72,7 @@ final class PushTokenController
     private function requireUser(int $id): void
     {
         if ($this->users->findById($id) === null) {
-            throw new NotFoundException('Utilisateur introuvable.');
+            throw new NotFoundException(__('error_user_not_found'));
         }
     }
 }

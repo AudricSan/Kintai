@@ -41,7 +41,7 @@ final class AvailabilityController
     {
         $item = $this->availabilities->findById((int) $request->param('id'));
         if ($item === null) {
-            throw new NotFoundException('Disponibilité introuvable.');
+            throw new NotFoundException(__('error_availability_not_found'));
         }
         return Response::json($item);
     }
@@ -61,7 +61,7 @@ final class AvailabilityController
         $id  = (int) $request->param('id');
         $old = $this->availabilities->findById($id);
         if ($old === null) {
-            throw new NotFoundException('Disponibilité introuvable.');
+            throw new NotFoundException(__('error_availability_not_found'));
         }
         $data  = $request->json() ?? [];
         $saved = $this->availabilities->save(array_merge($data, ['id' => $id]));
@@ -74,7 +74,7 @@ final class AvailabilityController
     {
         $id = (int) $request->param('id');
         if ($this->availabilities->findById($id) === null) {
-            throw new NotFoundException('Disponibilité introuvable.');
+            throw new NotFoundException(__('error_availability_not_found'));
         }
         $this->availabilities->delete($id);
         $this->auditLogger->log($request, 'availability.deleted', 'availability', resourceId: $id);
