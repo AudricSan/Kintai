@@ -197,7 +197,7 @@ $hoursLabel = fn(string $key) => __($key) . ' (h)';
     </div>
     <div class="form-row">
         <div class="form-group">
-            <label class="form-label"><?= __('sr_staff_avg_hourly_wage') ?> (<?= $currencySymbol ?>/h)</label>
+            <label class="form-label"><?= __('sr_staff_avg_hourly_wage') ?> (<?= $currencySymbol ?><?= __('per_hour_unit') ?>)</label>
             <input type="text" inputmode="decimal" name="staff_avg_hourly_wage" class="form-control td-mono js-money-input"
                    value="<?= $val('staff_avg_hourly_wage', '0') ?>">
         </div>
