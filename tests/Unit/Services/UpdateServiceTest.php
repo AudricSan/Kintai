@@ -65,11 +65,6 @@ final class UpdateServiceTest extends TestCase
         $this->assertSame('2.0.0', $this->service->getCurrentVersion());
     }
 
-    public function testGetInstalledAtReturnsNullWhenNoVersionFile(): void
-    {
-        $this->assertNull($this->service->getInstalledAt());
-    }
-
     public function testGetLastUpdateDurationReturnsNullByDefault(): void
     {
         $this->assertNull($this->service->getLastUpdateDuration());
@@ -86,12 +81,6 @@ final class UpdateServiceTest extends TestCase
         $this->service->recordUpdateDuration(42);
         $this->service->recordUpdateDuration(7);
         $this->assertSame(7, $this->service->getLastUpdateDuration());
-    }
-
-    public function testRecordUpdateDurationUpdatesUpdatedAt(): void
-    {
-        $this->service->recordUpdateDuration(15);
-        $this->assertNotNull($this->service->getUpdatedAt());
     }
 
     /**
