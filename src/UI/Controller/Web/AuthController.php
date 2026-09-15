@@ -90,7 +90,7 @@ final class AuthController
         } else {
             // Connexion classique email + mot de passe
             $email    = trim($request->post('email', ''));
-            $password = $password = $request->post('password', '');
+            $password = $request->post('password', '');
             $ok = $this->auth->attempt($email, $password, $remember);
         }
 

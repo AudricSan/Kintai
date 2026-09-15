@@ -59,23 +59,23 @@ final class StorageFileController
 
         $base = realpath($this->uploadsPath);
         if ($base === false) {
-            throw new NotFoundException('Stockage introuvable.');
+            throw new NotFoundException(__('error_storage_not_found'));
         }
 
         $file = realpath($base . DIRECTORY_SEPARATOR . $path);
         if ($file === false || !is_file($file)) {
-            throw new NotFoundException('Fichier introuvable.');
+            throw new NotFoundException(__('error_file_not_found'));
         }
 
         // Confinement : le chemin résolu doit rester sous storage/uploads
         if (!str_starts_with($file, $base . DIRECTORY_SEPARATOR)) {
-            throw new ForbiddenException('Chemin non autorisé.');
+            throw new ForbiddenException(__('error_path_not_allowed'));
         }
 
         $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
         $inline = isset(self::INLINE_TYPES[$ext]);
         if (!$inline && !isset(self::ATTACHMENT_TYPES[$ext])) {
-            throw new ForbiddenException('Type de fichier non autorisé.');
+            throw new ForbiddenException(__('error_file_type_not_allowed'));
         }
 
         $this->assertPathStoreAccess($request, $file, $base);
@@ -110,7 +110,7 @@ final class StorageFileController
 
         $storeSegment = $segments[0] === 'img' ? ($segments[1] ?? '') : $segments[0];
         if (!ctype_digit($storeSegment) || !in_array((int) $storeSegment, $managedIds, true)) {
-            throw new ForbiddenException('Vous n\'êtes pas gestionnaire de ce store.');
+            throw new ForbiddenException(__('error_not_store_manager'));
         }
     }
 }

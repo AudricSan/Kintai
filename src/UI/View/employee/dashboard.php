@@ -162,11 +162,11 @@ $headerHtml = $navPrev
 ob_start();
 ?>
 <div class="dash-stat">
-    <div class="dash-stat__value"><?= number_format($stats['hours_month'], 1) ?> h</div>
+    <div class="dash-stat__value"><?= number_format($stats['hours_month'], 1) ?> <?= __('hours_unit') ?></div>
     <div class="dash-stat__label"><?= __('hours_this_month') ?></div>
 </div>
 <div class="dash-stat">
-    <div class="dash-stat__value dash-stat__value--neutral"><?= number_format($stats['hours_week'], 1) ?> h</div>
+    <div class="dash-stat__value dash-stat__value--neutral"><?= number_format($stats['hours_week'], 1) ?> <?= __('hours_unit') ?></div>
     <div class="dash-stat__label"><?= __('avg_per_week') ?></div>
 </div>
 <div class="dash-stat dash-stat--wide">

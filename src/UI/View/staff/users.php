@@ -132,13 +132,13 @@ $exportQuery = $filter_store_id !== 0 ? '?store_id=' . $filter_store_id : '';
             ? Badge::make(__('active'))->active()->render()
             : Badge::make(__('inactive'))->inactive()->render()
     )
-    ->sortable(__('hours') . '/mois', 'hours', function($u) use ($user_stats) {
+    ->sortable(__('hours_per_month_short'), 'hours', function($u) use ($user_stats) {
         $hm = ($user_stats ?? [])[(int) $u['id']]['hours_month'] ?? 0;
-        return $hm > 0 ? '<strong>' . number_format((float) $hm, 1) . '</strong> h' : '<span class="text-muted">—</span>';
+        return $hm > 0 ? '<strong>' . number_format((float) $hm, 1) . '</strong> ' . __('hours_unit') : '<span class="text-muted">—</span>';
     })
     ->column(__('avg_per_week_short'), function($u) use ($user_stats) {
         $hw = ($user_stats ?? [])[(int) $u['id']]['hours_week'] ?? 0;
-        return $hw > 0 ? number_format((float) $hw, 1) . ' h' : '<span class="text-muted">—</span>';
+        return $hw > 0 ? number_format((float) $hw, 1) . ' ' . __('hours_unit') : '<span class="text-muted">—</span>';
     })
     ->column(__('estimated_pay'), function($u) use ($user_stats, $store_currency, $store_currency_symbol_style) {
         $pay = ($user_stats ?? [])[(int) $u['id']]['estimated_pay'] ?? 0;

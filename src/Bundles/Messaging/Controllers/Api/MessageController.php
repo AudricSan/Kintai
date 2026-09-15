@@ -135,10 +135,10 @@ final class MessageController
 
         $message = $this->messages->findMessageById($id);
         if ($message === null) {
-            throw new NotFoundException('Message introuvable.');
+            throw new NotFoundException(__('error_message_not_found'));
         }
         if ((int) $message['sender_id'] !== $userId) {
-            throw new ForbiddenException('Vous ne pouvez supprimer que vos propres messages.');
+            throw new ForbiddenException(__('error_delete_own_messages_only'));
         }
 
         $this->messages->deleteMessage($id);
@@ -180,7 +180,7 @@ final class MessageController
         $userId      = (int) $request->param('user_id');
         $participant = $this->messages->findParticipant($threadId, $userId);
         if ($participant === null) {
-            throw new NotFoundException('Participant introuvable.');
+            throw new NotFoundException(__('error_participant_not_found'));
         }
 
         return Response::json($participant);
@@ -206,11 +206,11 @@ final class MessageController
     {
         $thread = $this->messages->findThreadById($threadId);
         if ($thread === null) {
-            throw new NotFoundException('Thread introuvable.');
+            throw new NotFoundException(__('error_thread_not_found'));
         }
         $userId = $this->authUserId($request);
         if ($this->messages->findParticipant($threadId, $userId) === null) {
-            throw new NotFoundException('Thread introuvable.');
+            throw new NotFoundException(__('error_thread_not_found'));
         }
         return $thread;
     }

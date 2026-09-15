@@ -69,7 +69,7 @@ final class ShiftWageCalculator
             $brutTotal += $minutes;
             $breakdown[] = [
                 'shift_type_id' => (int) $type['id'],
-                'name'          => (string) $type['name'],
+                'name'          => (string) ($type['name'] ?? ''),
                 'minutes'       => $minutes,
                 'rate'          => (float) ($type['hourly_rate'] ?? 0),
                 'amount'        => 0.0, // calculé après réduction éventuelle

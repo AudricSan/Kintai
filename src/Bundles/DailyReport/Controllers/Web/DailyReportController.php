@@ -56,7 +56,7 @@ final class DailyReportController
         $this->assertStoreAccess($request, $storeId);
 
         if (!$this->permissions->canViewList($authUser, $store, $membership)) {
-            throw new ForbiddenException('Accès refusé aux rapports journaliers.');
+            throw new ForbiddenException(__('error_daily_report_access_denied'));
         }
 
         $status    = $request->query('status', '');
@@ -150,7 +150,7 @@ final class DailyReportController
         $queryStoreIds = $storeIdsFilter;
         if ($filterStoreId > 0) {
             if (empty($authUser['is_admin']) && !in_array($filterStoreId, $storeIdsFilter, true)) {
-                throw new ForbiddenException('Accès refusé à ce magasin.');
+                throw new ForbiddenException(__('error_daily_report_access_denied'));
             }
             $queryStoreIds = [$filterStoreId];
         }
@@ -253,7 +253,7 @@ final class DailyReportController
         $this->assertStoreAccess($request, $storeId);
 
         if (!$this->permissions->canCreate($authUser, $store, $membership)) {
-            throw new ForbiddenException('Vous n\'êtes pas autorisé à créer un rapport pour ce magasin.');
+            throw new ForbiddenException(__('error_daily_report_not_authorized_create'));
         }
 
         $today    = date('Y-m-d');
@@ -291,7 +291,7 @@ final class DailyReportController
         $this->assertStoreAccess($request, $storeId);
 
         if (!$this->permissions->canCreate($authUser, $store, $membership)) {
-            throw new ForbiddenException('Accès refusé.');
+            throw new ForbiddenException(__('error_access_denied'));
         }
 
         $data   = $request->allPost();
@@ -389,7 +389,7 @@ final class DailyReportController
         $this->assertStoreAccess($request, $storeId);
 
         if (!$this->permissions->canViewReport($authUser, $store, $report, $membership)) {
-            throw new ForbiddenException('Accès refusé à ce rapport.');
+            throw new ForbiddenException(__('error_daily_report_access_denied'));
         }
 
         $author   = $this->users->findById((int) $report['author_id']);
@@ -432,7 +432,7 @@ final class DailyReportController
         $this->assertStoreAccess($request, $storeId);
 
         if (!$this->permissions->canEdit($authUser, $store, $report, $membership)) {
-            throw new ForbiddenException('Ce rapport ne peut plus être modifié.');
+            throw new ForbiddenException(__('error_report_locked'));
         }
 
         $settings = $this->permissions->getSettings($store);
@@ -468,7 +468,7 @@ final class DailyReportController
         $this->assertStoreAccess($request, $storeId);
 
         if (!$this->permissions->canEdit($authUser, $store, $report, $membership)) {
-            throw new ForbiddenException('Ce rapport ne peut plus être modifié.');
+            throw new ForbiddenException(__('error_report_locked'));
         }
 
         $data   = $request->allPost();
@@ -525,7 +525,7 @@ final class DailyReportController
         $this->assertStoreAccess($request, $storeId);
 
         if (!$this->permissions->canSubmit($authUser, $store, $report, $membership)) {
-            throw new ForbiddenException('Vous ne pouvez pas soumettre ce rapport.');
+            throw new ForbiddenException(__('error_daily_report_not_authorized_submit'));
         }
 
         $submitted = $this->reports->save(array_merge($report, [
@@ -560,7 +560,7 @@ final class DailyReportController
         $this->assertStoreAccess($request, $storeId);
 
         if (!$this->permissions->canValidate($authUser, $store, $report, $membership)) {
-            throw new ForbiddenException('Vous n\'êtes pas autorisé à valider ce rapport.');
+            throw new ForbiddenException(__('error_daily_report_not_authorized_validate'));
         }
 
         $now     = date('Y-m-d H:i:s');
@@ -580,7 +580,7 @@ final class DailyReportController
 
         $authorId = (int) ($report['author_id'] ?? 0);
         if ($authorId > 0 && $authorId !== (int) $authUser['id']) {
-            $this->notifs->notify($authorId, 'daily_report_validated', 'Votre rapport journalier a été validé.', $reportId);
+            $this->notifs->notify($authorId, 'daily_report_validated', 'notif_daily_report_validated_body', [], $reportId);
         }
 
         // Envoi automatique si configuré
@@ -614,7 +614,7 @@ final class DailyReportController
         $this->assertStoreAccess($request, $storeId);
 
         if (!$this->permissions->canSendMail($authUser, $store, $report, $membership)) {
-            throw new ForbiddenException('Vous n\'êtes pas autorisé à envoyer ce rapport.');
+            throw new ForbiddenException(__('error_daily_report_not_authorized_send'));
         }
 
         $mailAuthor = $this->users->findById((int) $report['author_id']) ?? [];
@@ -661,7 +661,7 @@ final class DailyReportController
         $this->assertStoreAccess($request, $storeId);
 
         if (!$this->permissions->canViewReport($authUser, $store, $report, $membership)) {
-            throw new ForbiddenException('Accès refusé.');
+            throw new ForbiddenException(__('error_access_denied'));
         }
 
         $pdfAuthor   = $this->users->findById((int) $report['author_id']) ?? [];
@@ -683,14 +683,14 @@ final class DailyReportController
         $this->assertStoreAccess($request, $storeId);
 
         if (!$this->permissions->canViewReport($authUser, $store, $report, $membership)) {
-            throw new ForbiddenException('Accès refusé.');
+            throw new ForbiddenException(__('error_access_denied'));
         }
 
         $pdfAuthor = $this->users->findById((int) $report['author_id']) ?? [];
         $bytes     = $this->pdfService->generateBytes($report, $store, $pdfAuthor, $this->translations->getLocale());
 
         if ($bytes === null) {
-            throw new NotFoundException('Impossible de générer le PDF.');
+            throw new NotFoundException(__('error_pdf_generation_failed'));
         }
 
         $this->auditLogger->log($request, 'export.daily_report_pdf', 'daily_report', $reportId, [
@@ -719,7 +719,7 @@ final class DailyReportController
         $this->assertStoreAccess($request, $storeId);
 
         if (!$this->permissions->canDelete($authUser, $store, $report, $membership)) {
-            throw new ForbiddenException('Vous n\'êtes pas autorisé à supprimer ce rapport.');
+            throw new ForbiddenException(__('error_daily_report_not_authorized_delete'));
         }
 
         $this->reports->save(array_merge($report, [
@@ -749,7 +749,7 @@ final class DailyReportController
         $this->assertStoreAccess($request, $storeId);
 
         if (!$this->permissions->canManageSettings($authUser, $store)) {
-            throw new ForbiddenException('Accès refusé.');
+            throw new ForbiddenException(__('error_access_denied'));
         }
 
         $settings = $this->permissions->getSettings($store);
@@ -775,7 +775,7 @@ final class DailyReportController
         $this->assertStoreAccess($request, $storeId);
 
         if (!$this->permissions->canManageSettings($authUser, $store)) {
-            throw new ForbiddenException('Accès refusé.');
+            throw new ForbiddenException(__('error_access_denied'));
         }
 
         $data = $request->allPost();
@@ -874,7 +874,7 @@ final class DailyReportController
     {
         $store = $this->stores->findById($id);
         if ($store === null) {
-            throw new NotFoundException('Magasin introuvable.');
+            throw new NotFoundException(__('error_store_not_found'));
         }
         return $store;
     }
@@ -883,13 +883,13 @@ final class DailyReportController
     {
         $report = $this->reports->findById($id);
         if ($report === null || (int) $report['store_id'] !== $storeId) {
-            throw new NotFoundException('Rapport introuvable.');
+            throw new NotFoundException(__('error_report_not_found'));
         }
         return $report;
     }
 
     /** Notifie les membres du store détenant $permissionKey (ex. les managers pouvant valider). */
-    private function notifyManagers(int $storeId, string $permissionKey, string $type, string $body, int $referenceId): void
+    private function notifyManagers(int $storeId, string $permissionKey, string $type, string $bodyKey, int $referenceId): void
     {
         $recipients = [];
         foreach ($this->storeUsers->findByStore($storeId) as $m) {
@@ -900,7 +900,7 @@ final class DailyReportController
             }
         }
         if ($recipients !== []) {
-            $this->notifs->notifyMany($recipients, $type, $body, $referenceId);
+            $this->notifs->notifyMany($recipients, $type, $bodyKey, [], $referenceId);
         }
     }
 
@@ -908,7 +908,7 @@ final class DailyReportController
     {
         $managedIds = $request->getAttribute('managed_store_ids');
         if ($managedIds !== null && !in_array($storeId, $managedIds, true)) {
-            throw new ForbiddenException('Vous n\'êtes pas gestionnaire de ce magasin.');
+            throw new ForbiddenException(__('error_not_store_manager'));
         }
     }
 

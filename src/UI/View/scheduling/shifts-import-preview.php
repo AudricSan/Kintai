@@ -168,7 +168,7 @@ if ($unmatched > 0)       $filterTypes[] = ['key' => 'unassigned', 'icon' => '�
                             elseif ($isDupExcel):
                                 echo Badge::make('⚠️ ' . __('duplicate_excel'))->warning()->render();
                             else:
-                                echo Badge::make('✓ OK')->active()->render();
+                                echo Badge::make(__('ok'))->active()->render();
                             endif; ?>
                         </td>
                         <td data-label="<?= htmlspecialchars(__('ignore')) ?>" class="td-center">
@@ -223,9 +223,11 @@ echo Modal::make(__('quick_create_title'), ob_get_clean())
     'storeId'   => (int) $store_id,
     'filterTpl' => __('import_filter_count'),
     'i18n'      => [
-        'introTpl'   => __('quick_create_intro'),
-        'msgSuccess' => __('quick_create_success'),
-        'msgError'   => __('quick_create_error'),
+        'introTpl'       => __('quick_create_intro'),
+        'msgSuccess'     => __('quick_create_success'),
+        'msgError'       => __('quick_create_error'),
+        'propagatedRow'  => __('propagated_row'),
+        'propagatedRows' => __('propagated_rows'),
     ],
 ], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?></script>
 <script src="<?= $BASE_URL ?>/assets/js/modules/user-form-live-check.js"></script>
