@@ -11,7 +11,7 @@ Kintai utilise **Eloquent ORM** (`illuminate/database` ^13.19) comme unique couc
 Amorcé par `DatabaseServiceProvider` (`src/Core/Database/DatabaseServiceProvider.php`) via `Illuminate\Database\Capsule\Manager`.
 
 ### Modèles (`src/Domain/Eloquent/`)
-36 modèles Eloquent `final`, suivant tous le même schéma : `$guarded = []`, `$timestamps = false`, aucun comportement au-delà des relations/casts. Regroupés par domaine :
+40 modèles Eloquent `final`, suivant tous le même schéma : `$guarded = []`, `$timestamps = false`, aucun comportement au-delà des relations/casts. Regroupés par domaine :
 
 - **Tenancy :** `User`, `Store`, `StoreUser`
 - **Planning :** `Shift`, `ShiftType`, `Availability`, `ShiftClaim`, `ShiftSwapRequest`
@@ -19,17 +19,16 @@ Amorcé par `DatabaseServiceProvider` (`src/Core/Database/DatabaseServiceProvide
 - **Rapports journaliers & RH :** `DailyReport`, `HiringReport`, `ResignationReport`, `SalaryReport`, `Feedback`
 - **Communication :** `MessageThread`, `ThreadMessage`, `ThreadParticipant`, `Notification`
 - **Système & paramètres :** `ActivityEntry`, `AppSetting`, `ApiToken`, `CronToken`, `IcalToken`, `PasswordResetToken`, `ImportAlias`, `StoreFeature`, `StoreImportSetting`, `StorePhotoImage`, `StorePhotoSubmission`, `UserDashboardPref`, `UserNavPref`
-- **i18n :** `Language`, `Translation` — modèles legacy, plus lus au runtime : les traductions sont servies depuis `lang/*.json` via `JsonLanguageRepository`/`JsonTranslationRepository`. Dette technique connue, suppression prévue.
 
 La liste complète et à jour reste la source de vérité : `ls src/Domain/Eloquent/`.
 
 ### Pattern Repository
-30 interfaces de repository dans `src/Core/Repositories/`, liées à leur implémentation dans `RepositoryServiceProvider`. Contrôleurs et services ne doivent **jamais** utiliser les modèles Eloquent directement — uniquement via les interfaces de repository injectées. Presque toutes les implémentations encapsulent des modèles Eloquent ; les interfaces `Language`/`Translation` font exception, liées à des repositories basés sur des fichiers JSON à la place (leurs équivalents `Database*Repository` existent encore sur disque mais sont du code mort inutilisé, antérieur à la migration JSON — nettoyage à prévoir).
+34 interfaces de repository dans `src/Core/Repositories/`, liées à leur implémentation dans `RepositoryServiceProvider`. Contrôleurs et services ne doivent **jamais** utiliser les modèles Eloquent directement — uniquement via les interfaces de repository injectées. Presque toutes les implémentations encapsulent des modèles Eloquent ; les interfaces `Language`/`Translation` font exception, liées à des repositories basés sur des fichiers JSON à la place (`JsonLanguageRepository`/`JsonTranslationRepository`, lisant `lang/*.json`) — leurs équivalents `Database*Repository` inutilisés et les modèles Eloquent `Language`/`Translation` sous-jacents ont été supprimés.
 
 ## 🔄 Système de migration
 Basé sur PHP, unifié — un seul fichier de migration couvre SQLite et MySQL, pas de SQL brut ni de duplication par driver.
 
-- **Emplacement :** `database/migrations/php/` (41 migrations)
+- **Emplacement :** `database/migrations/php/` (69 migrations)
 - **Exécuteur :** `php scripts/db-migrate.php` (`--dry-run` pour prévisualiser)
 - **Classe de base :** `kintai\Core\Database\Migration`
 - **Idempotence :** protégée par `$this->schema()->hasTable()` — peut être relancée sans risque
