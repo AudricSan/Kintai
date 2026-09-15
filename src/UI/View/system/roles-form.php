@@ -68,6 +68,14 @@ echo Flash::fromQuery('error', [
                     <label class="form-label"><?= __('description') ?></label>
                     <textarea name="description" class="form-control" rows="2"><?= htmlspecialchars($role['description'] ?? '') ?></textarea>
                 </div>
+                <div class="form-group">
+                    <label class="form-toggle form-toggle--labeled">
+                        <input type="checkbox" name="is_manager" value="1" class="form-toggle__input" <?= !empty($role['is_manager']) ? 'checked' : '' ?>>
+                        <span class="form-toggle__track"></span>
+                        <span><?= __('role_is_manager') ?></span>
+                    </label>
+                    <p class="form-hint"><?= __('role_is_manager_hint') ?></p>
+                </div>
             </div>
         </div>
 

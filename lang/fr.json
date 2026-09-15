@@ -1063,6 +1063,8 @@
     "role_in_use": "Ce rôle est encore attribué à au moins un utilisateur — retire-le d'abord.",
     "role_invalid": "Rôle invalide ou introuvable.",
     "role_invalid_name": "Le nom du rôle est requis.",
+    "role_is_manager": "Afficher la navigation manager",
+    "role_is_manager_hint": "Indépendant des permissions cochées ci-dessous : coche cette case si les utilisateurs de ce rôle doivent voir le tableau de bord et les menus de gestion, plutôt que la navigation employé standard.",
     "role_manager": "Manager",
     "role_owner": "Propriétaire",
     "role_updated": "Rôle mis à jour.",

@@ -206,7 +206,7 @@ final class AuthService
             if ($assignment['scope_type'] !== 'store' || $assignment['scope_id'] === null) {
                 continue;
             }
-            if ($this->roleGrantsAnyPermission((int) $assignment['role_id'])) {
+            if ($this->roleIsManagerType((int) $assignment['role_id'])) {
                 $storeIds[] = (int) $assignment['scope_id'];
             }
         }
@@ -300,35 +300,33 @@ final class AuthService
     }
 
     /**
-     * Vrai si ce rôle accorde au moins une permission RBAC, peu importe laquelle — c'est le
-     * critère utilisé (par PermissionMiddleware, qui a absorbé l'ancien AdminMiddleware
-     * en RBAC-V2) pour décider si un utilisateur accède à /admin/*. Un rôle purement
-     * ".view" (ex. un rôle "lecture seule sur les rapports photos", n'accordant que
-     * photos.view) doit pouvoir y accéder : la permission précise est ensuite vérifiée
-     * par route, et managed_store_ids est toujours resserré à la portée réelle de CETTE
-     * permission (scopedStoreIds), pas à un heuristique global calculé ici.
+     * Vrai si ce rôle doit afficher la navigation manager (dashboard admin, menus de
+     * gestion) — piloté par le champ explicite roles.is_manager, coché par l'Owner sur
+     * /admin/roles, INDÉPENDANT des permissions RBAC que le rôle accorde par ailleurs.
      *
-     * Historique : entre le 06/08/2026 et le 12/09/2026, cette méthode excluait les rôles
-     * n'accordant QUE des permissions .view (voir l'ancien commit "plain employees could
-     * reach /admin/*"), pour empêcher un simple employé (rôle par défaut, shifts.view pour
-     * son propre planning) d'atterrir sur la timeline admin complète avec les taux horaires
-     * visibles. Ce risque précis reste couvert ailleurs : shifts-timeline.php (et les vues
-     * partagées admin/employé similaires) calculent can_manage depuis shifts.update, avec un
-     * défaut à false plutôt que de le déduire de la présence sur /admin/*. L'exclusion
-     * globale des permissions .view ici était devenue trop large : elle bloquait tout rôle en
-     * lecture seule, y compris sur des catégories qui n'ont d'existence que sous /admin
-     * (photos, daily_reports, hiring_reports...), rendant impossible tout rôle "je ne fais
-     * que consulter ce rapport".
+     * Historique : cette méthode s'appelait roleGrantsAnyPermission() et se basait sur
+     * "le rôle accorde-t-il au moins une permission, peu importe laquelle". Ce critère a
+     * posé deux problèmes symétriques au fil du temps :
+     * - Entre le 06/08/2026 et le 12/09/2026, une variante excluait les rôles n'accordant
+     *   QUE des permissions .view, ce qui bloquait à tort tout rôle "lecture seule" légitime
+     *   (ex. un rôle "consulter les rapports photos", n'accordant que photos.view) — il ne
+     *   pouvait jamais atteindre /admin/photos, alors même que sa permission l'y autorisait.
+     * - À partir du 16/09/2026, le problème inverse est apparu : accorder à un rôle "Employé"
+     *   une permission purement en libre-service (ex. photos.create, pour lui permettre de
+     *   poster sa propre photo de store) le faisait basculer en navigation manager complète,
+     *   alors qu'aucune des deux notions n'a de raison d'être liée — un rôle peut légitimement
+     *   accorder une permission sans jamais devoir afficher le tableau de bord admin.
+     * roles.is_manager résout les deux à la fois : la navigation dépend uniquement de ce
+     * champ, jamais du contenu des permissions accordées. PermissionMiddleware reste la
+     * barrière fine qui limite l'accès route par route à la permission réellement requise,
+     * complètement indépendante de ce champ.
      */
-    private function roleGrantsAnyPermission(int $roleId): bool
+    private function roleIsManagerType(int $roleId): bool
     {
         $role = $this->roles->findById($roleId);
         if ($role === null) {
             return false;
         }
-        if (!empty($role['is_system'])) {
-            return true;
-        }
-        return $this->roles->getPermissions($roleId) !== [];
+        return !empty($role['is_system']) || !empty($role['is_manager']);
     }
 }
