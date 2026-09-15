@@ -2,86 +2,221 @@
 use kintai\UI\Components\Badge;
 use kintai\UI\Components\Button;
 
-/** @var array  $shifts */
+/** @var bool|null $can_manage        true = table de gestion multi-employés (Owner ou RBAC shifts.view admin) */
+/** @var array  $shifts            (can_manage) */
 /** @var array  $users_map */
 /** @var array  $stores_map */
 /** @var array  $types_map */
-/** @var array  $users_for_filter */
-/** @var int    $filter_store_id */
-/** @var int    $filter_user_id */
-/** @var string $filter_month */
-/** @var string $sort */
+/** @var array  $users_for_filter  (can_manage) */
+/** @var int    $filter_store_id   (can_manage) */
+/** @var int    $filter_user_id    (can_manage) */
+/** @var string $filter_month      (can_manage) */
+/** @var string $sort              (can_manage) */
+/** @var \DateTimeImmutable[] $days            (employé) */
+/** @var array  $shifts_by_date    (employé) date → shift[] */
+/** @var int    $my_user_id        (employé) */
+/** @var string $prev_week         (employé) YYYY-W */
+/** @var string $next_week         (employé) YYYY-W */
+/** @var string $week_label        (employé) */
+/** @var string $today             (employé) Y-m-d */
 
-$sort            ??= 'date_asc';
-$filter_month    ??= date('Y-m');
-$filter_store_id ??= 0;
-$filter_user_id  ??= 0;
-$types_map       ??= [];
-$users_for_filter ??= [];
+// Défaut à false (pas à true) : cette vue est partagée entre AdminShiftController et
+// EmployeeController, tous deux passent désormais explicitement can_manage — un futur appelant
+// qui oublierait de le faire ne doit pas exposer accidentellement la table de gestion (tous
+// employés, filtres, suppression en masse) à un simple employé.
+$_canManage = $can_manage ?? false;
 
-$activeFilters = array_filter([
-    'month'    => $filter_month,
-    'store_id' => $filter_store_id ?: null,
-    'user_id'  => $filter_user_id  ?: null,
-], fn($v) => $v !== null);
+if ($_canManage) {
+    $sort            ??= 'date_asc';
+    $filter_month    ??= date('Y-m');
+    $filter_store_id ??= 0;
+    $filter_user_id  ??= 0;
+    $types_map       ??= [];
+    $users_for_filter ??= [];
 
-function shiftSortUrl(string $key, string $current, array $filters): string {
-    $next = ($current === $key . '_asc') ? $key . '_desc' : $key . '_asc';
-    $params = array_filter([...$filters, 'sort' => $next], fn($v) => $v !== null && $v !== 0 && $v !== '');
-    return '?' . http_build_query($params);
-}
-function shiftSortIcon(string $key, string $current): string {
-    if (str_starts_with($current, $key . '_asc'))  return ' ↑';
-    if (str_starts_with($current, $key . '_desc')) return ' ↓';
-    return ' ⇅';
-}
+    $activeFilters = array_filter([
+        'month'    => $filter_month,
+        'store_id' => $filter_store_id ?: null,
+        'user_id'  => $filter_user_id  ?: null,
+    ], fn($v) => $v !== null);
 
-$totalShifts = count($shifts);
-$totalMinutes = 0;
-$totalNetMinutes = 0;
-foreach ($shifts as $s) {
-    $dur   = (int) ($s['duration_minutes'] ?? 0);
-    $pause = (int) ($s['pause_minutes']    ?? 0);
-    $totalMinutes    += $dur;
-    $totalNetMinutes += max(0, $dur - $pause);
-}
-$fmtH = fn(int $m) => sprintf('%dh%02d', intdiv($m, 60), $m % 60);
+    function shiftSortUrl(string $key, string $current, array $filters): string {
+        $next = ($current === $key . '_asc') ? $key . '_desc' : $key . '_asc';
+        $params = array_filter([...$filters, 'sort' => $next], fn($v) => $v !== null && $v !== 0 && $v !== '');
+        return '?' . http_build_query($params);
+    }
+    function shiftSortIcon(string $key, string $current): string {
+        if (str_starts_with($current, $key . '_asc'))  return ' ↑';
+        if (str_starts_with($current, $key . '_desc')) return ' ↓';
+        return ' ⇅';
+    }
 
-try {
-    $monthDt    = new \DateTime($filter_month . '-01');
-    $monthLabel = $monthDt->format('F Y');
-} catch (\Exception) {
-    $monthLabel = $filter_month;
-}
+    $totalShifts = count($shifts);
+    $totalMinutes = 0;
+    $totalNetMinutes = 0;
+    foreach ($shifts as $s) {
+        $dur   = (int) ($s['duration_minutes'] ?? 0);
+        $pause = (int) ($s['pause_minutes']    ?? 0);
+        $totalMinutes    += $dur;
+        $totalNetMinutes += max(0, $dur - $pause);
+    }
+    $fmtH = fn(int $m) => sprintf('%dh%02d', intdiv($m, 60), $m % 60);
 
-$shiftsByDate = [];
-foreach ($shifts as $s) {
-    $shiftsByDate[$s['shift_date'] ?? ''][] = $s;
+    try {
+        $monthDt    = new \DateTime($filter_month . '-01');
+        $monthLabel = $monthDt->format('F Y');
+    } catch (\Exception) {
+        $monthLabel = $filter_month;
+    }
+
+    $shiftsByDate = [];
+    foreach ($shifts as $s) {
+        $shiftsByDate[$s['shift_date'] ?? ''][] = $s;
+    }
 }
 ?>
+<?php if ($_canManage): ?>
 <?= \kintai\UI\Components\Flash::fromQuery('success', [
     'created' => __('shift_created'), 'updated' => __('shift_updated'), 'deleted' => __('shift_deleted'),
     'bulk_deleted' => fn() => __('shifts_bulk_deleted', ['n' => (int) ($_GET['count'] ?? 0)]),
     'imported'     => fn() => __('shifts_imported', ['n' => (int) ($_GET['count'] ?? 0)]),
 ])->render() ?>
+<?php endif; ?>
 
 <div class="page-header">
-    <h2 class="page-header__title"><?= __('shifts') ?> <span class="page-count">(<?= $totalShifts ?>)</span></h2>
+    <h2 class="page-header__title">
+        <?php if ($_canManage): ?>
+            <?= __('shifts') ?> <span class="page-count">(<?= $totalShifts ?>)</span>
+        <?php else: ?>
+            <?= __('my_planning') ?>
+        <?php endif; ?>
+    </h2>
 </div>
 
 <div class="shifts-toolbar">
     <div class="btn-group btn-group--switcher btn-group--switcher-3">
         <span class="btn-group__thumb btn-group__thumb--pos-0" aria-hidden="true"></span>
-        <a href="<?= route_url('admin.shifts') ?><?= $filter_store_id ? '?store_id=' . $filter_store_id : '' ?>" class="btn btn--ghost btn--sm btn--active" aria-label="<?= htmlspecialchars(__('list_view')) ?>">☰ <span class="switcher-label"><?= __('list_view') ?></span></a>
-        <a href="<?= route_url('admin.shifts.calendar') ?><?= $filter_store_id ? '?store_id=' . $filter_store_id : '' ?>" class="btn btn--ghost btn--sm" aria-label="<?= htmlspecialchars(__('calendar_view')) ?>">📅 <span class="switcher-label"><?= __('calendar_view') ?></span></a>
-        <a href="<?= route_url('admin.shifts.timeline') ?><?= $filter_store_id ? '?store_id=' . $filter_store_id : '' ?>" class="btn btn--ghost btn--sm" aria-label="<?= htmlspecialchars(__('timeline_view')) ?>"><svg class="gantt-icon icon-inline" width="16" height="16" viewBox="0 0 24 24"><rect x="4" y="2" width="2" height="20" fill="currentColor"/><rect x="10" y="6" width="2" height="16" fill="currentColor"/><rect x="16" y="10" width="2" height="12" fill="currentColor"/></svg> <span class="switcher-label"><?= __('timeline_view') ?></span></a>
+        <a href="<?= route_url($_canManage ? 'admin.shifts' : 'employee.shifts.week') . ($_canManage && $filter_store_id ? '?store_id=' . $filter_store_id : '') ?>" class="btn btn--ghost btn--sm btn--active" aria-label="<?= htmlspecialchars(__('list_view')) ?>">☰ <span class="switcher-label"><?= __('list_view') ?></span></a>
+        <a href="<?= route_url($_canManage ? 'admin.shifts.calendar' : 'employee.shifts.calendar') . ($_canManage && $filter_store_id ? '?store_id=' . $filter_store_id : '') ?>" class="btn btn--ghost btn--sm" aria-label="<?= htmlspecialchars(__('calendar_view')) ?>">📅 <span class="switcher-label"><?= __('calendar_view') ?></span></a>
+        <a href="<?= route_url($_canManage ? 'admin.shifts.timeline' : 'employee.shifts.day') . ($_canManage && $filter_store_id ? '?store_id=' . $filter_store_id : '') ?>" class="btn btn--ghost btn--sm" aria-label="<?= htmlspecialchars(__('timeline_view')) ?>"><svg class="gantt-icon icon-inline" width="16" height="16" viewBox="0 0 24 24"><rect x="4" y="2" width="2" height="20" fill="currentColor"/><rect x="10" y="6" width="2" height="16" fill="currentColor"/><rect x="16" y="10" width="2" height="12" fill="currentColor"/></svg> <span class="switcher-label"><?= __('timeline_view') ?></span></a>
     </div>
     <div class="btn-group">
-        <a href="<?= route_url('admin.shifts.conflicts') ?><?= $filter_store_id ? '?store_id=' . $filter_store_id : '' ?><?= $filter_month ? ($filter_store_id ? '&' : '?') . 'month=' . $filter_month : '' ?>" class="btn btn--ghost btn--sm">⚡ <?= __('conflict_view') ?></a>
-        <a href="<?= route_url('admin.shifts.import') ?>" class="btn btn--ghost btn--sm">↑ <?= __('import_excel') ?></a>
-        <?= Button::make('+ ' . __('new_shift'))->primary()->sm()->link(route_url('admin.shifts.create'))->render() ?>
+        <?php if ($_canManage): ?>
+            <a href="<?= route_url('admin.shifts.conflicts') ?><?= $filter_store_id ? '?store_id=' . $filter_store_id : '' ?><?= $filter_month ? ($filter_store_id ? '&' : '?') . 'month=' . $filter_month : '' ?>" class="btn btn--ghost btn--sm">⚡ <?= __('conflict_view') ?></a>
+            <a href="<?= route_url('admin.shifts.import') ?>" class="btn btn--ghost btn--sm">↑ <?= __('import_excel') ?></a>
+            <?= Button::make('+ ' . __('new_shift'))->primary()->sm()->link(route_url('admin.shifts.create'))->render() ?>
+        <?php elseif (feat_bundle('swaps')): ?>
+            <?= Button::make('⇄ ' . __('request_swap'))->primary()->sm()->link(route_url('employee.swaps.create'))->render() ?>
+        <?php endif; ?>
     </div>
 </div>
+
+<?php if (!$_canManage): ?>
+
+<!-- Navigation semaine -->
+<div class="card card--mb">
+    <div class="card-body week-nav">
+        <a href="<?= route_url('employee.shifts.week') ?>?week=<?= htmlspecialchars($prev_week) ?>" class="btn btn--ghost btn--sm">← <?= __('prev_week') ?></a>
+        <strong class="week-nav__label"><?= htmlspecialchars($week_label) ?></strong>
+        <a href="<?= route_url('employee.shifts.week') ?>?week=<?= htmlspecialchars($next_week) ?>" class="btn btn--ghost btn--sm"><?= __('next_week') ?> →</a>
+    </div>
+</div>
+
+<!-- Légende -->
+<div class="week-legend mb-xs">
+    <span class="week-legend-item">
+        <span class="week-legend-dot week-legend-dot--mine"></span>
+        <?= __('my_shifts') ?>
+    </span>
+    <span class="week-legend-item">
+        <span class="week-legend-dot week-legend-dot--colleague"></span>
+        <?= __('colleagues') ?>
+    </span>
+</div>
+
+<!-- Timeline -->
+<div class="card">
+    <div class="table-wrap">
+        <table class="data-table shifts-table">
+            <thead>
+                <tr>
+                    <th class="col-date"><?= __('date') ?></th>
+                    <th><?= __('shifts') ?></th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($days as $day): ?>
+                    <?php
+                    $dateStr   = $day->format('Y-m-d');
+                    $isToday   = ($dateStr === $today);
+                    $dayShifts = $shifts_by_date[$dateStr] ?? [];
+                    $dayLabel  = __(strtolower($day->format('l')));
+
+                    usort($dayShifts, function($a, $b) use ($my_user_id) {
+                        $aMe = (int)($a['user_id'] ?? 0) === $my_user_id ? 0 : 1;
+                        $bMe = (int)($b['user_id'] ?? 0) === $my_user_id ? 0 : 1;
+                        if ($aMe !== $bMe) return $aMe - $bMe;
+                        return strcmp($a['start_time'] ?? '', $b['start_time'] ?? '');
+                    });
+                    ?>
+                    <tr class="<?= $isToday ? 'tr-today' : '' ?>">
+                        <td class="shifts-td-date shifts-td-date--<?= $isToday ? 'today' : 'normal' ?>">
+                            <a href="<?= route_url('employee.shifts.day') ?>?date=<?= $dateStr ?>" class="link-plain">
+                                <?= $dayLabel ?><br>
+                                <span class="text-sm-muted"><?= $day->format('d M') ?></span>
+                                <?php if ($isToday): ?>
+                                    <br><?= '<span class="badge badge--active badge--mt">' . __('today') . '</span>' ?>
+                                <?php endif; ?>
+                            </a>
+                        </td>
+                        <td class="shifts-td-cells">
+                            <?php if (empty($dayShifts)): ?>
+                                <span class="shifts-empty-cell">—</span>
+                            <?php else: ?>
+                                <div class="shifts-cells">
+                                    <?php foreach ($dayShifts as $s): ?>
+                                        <?php
+                                        $isMe  = (int)($s['user_id'] ?? 0) === $my_user_id;
+                                        $tid   = (int)($s['shift_type_id'] ?? 0);
+                                        $type  = $types_map[$tid] ?? null;
+                                        $color = $isMe ? ($type['color'] ?? '#6366f1') : '#94a3b8';
+                                        $name  = $type['name'] ?? 'Shift';
+                                        $store = $stores_map[(int)($s['store_id'] ?? 0)] ?? '';
+                                        $owner = $isMe ? null : ($users_map[(int)($s['user_id'] ?? 0)] ?? null);
+                                        $opacity = $isMe ? '20' : '15';
+                                        ?>
+                                        <div class="shift-card <?= $isMe ? '' : 'shift-card--other' ?>" style="--shift-color:<?= htmlspecialchars($color) ?>">
+                                            <div class="shift-card__type" style="color:<?= htmlspecialchars($color) ?>">
+                                                <?= htmlspecialchars($name) ?>
+                                                <?php if (!$isMe): ?>
+                                                    <span class="shift-card__detail"> · <?= htmlspecialchars($owner ?? '') ?></span>
+                                                <?php endif; ?>
+                                            </div>
+                                            <div class="shift-card__detail">
+                                                <?= htmlspecialchars(substr($s['start_time'] ?? '', 0, 5)) ?> – <?= htmlspecialchars(substr($s['end_time'] ?? '', 0, 5)) ?>
+                                                <?php if ($s['cross_midnight'] ?? false): ?>
+                                                    <span title="Passe minuit">+1</span>
+                                                <?php endif; ?>
+                                            </div>
+                                            <?php if ($store): ?>
+                                                <div class="shift-card__store"><?= htmlspecialchars($store) ?></div>
+                                            <?php endif; ?>
+                                            <?php if ($isMe && !empty($s['notes'])): ?>
+                                                <div class="shift-card__note"><?= htmlspecialchars($s['notes']) ?></div>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<?php else: ?>
 
 <div class="card card--filters mb-sm">
     <form method="GET" action="" class="filter-bar">
@@ -234,3 +369,5 @@ foreach ($shifts as $s) {
      data-msg-selected="<?= htmlspecialchars(__('selected')) ?>"
      hidden></div>
 <script src="<?= $BASE_URL ?>/assets/js/modules/shifts-bulk.js"></script>
+
+<?php endif; ?>

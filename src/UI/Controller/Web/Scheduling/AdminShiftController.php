@@ -171,6 +171,7 @@ final class AdminShiftController
             'filter_month'     => $filterMonth,
             'filter_user_id'   => $filterUserId,
             'sort'             => $sort,
+            'can_manage'       => true,
         ], 'layout.app'));
     }
 
