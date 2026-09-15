@@ -134,7 +134,7 @@ th { background: #f0f0f0; font-weight: 600; }
 <table>
     <tr>
         <th style="width:50%"><?= __('sr_staff_man_hours') ?></th>
-        <td class="tr td-mono"><?= $fmt($report['staff_man_hours'] ?? null) ?> h</td>
+        <td class="tr td-mono"><?= $fmt($report['staff_man_hours'] ?? null) ?> <?= __('hours_unit') ?></td>
     </tr>
     <tr>
         <th><?= __('sr_staff_total_payment') ?></th>
@@ -142,7 +142,7 @@ th { background: #f0f0f0; font-weight: 600; }
     </tr>
     <tr>
         <th><?= __('sr_staff_avg_hourly_wage') ?></th>
-        <td class="tr td-mono"><?= $cur($report['staff_avg_hourly_wage'] ?? null) ?>/h</td>
+        <td class="tr td-mono"><?= $cur($report['staff_avg_hourly_wage'] ?? null) ?><?= ($report['staff_avg_hourly_wage'] ?? null) !== null && ($report['staff_avg_hourly_wage'] ?? '') !== '' ? __('per_hour_unit') : '' ?></td>
     </tr>
     <tr>
         <th><?= __('sr_employee_work_hours') ?></th>

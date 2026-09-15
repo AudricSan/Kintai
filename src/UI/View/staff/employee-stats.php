@@ -46,7 +46,7 @@ function estatBar(array $data, string $color = 'var(--color-primary)', int $maxH
     $out = '<div class="sstat-bar-chart">';
     foreach ($data as $label => $val) {
         $h = round($val / $max * $maxH);
-        $display = round($val, 1) . 'h';
+        $display = round($val, 1) . __('hours_unit');
         $out .= '<div class="sstat-bar-col" title="' . htmlspecialchars($label) . ': ' . $display . '">'
             . '<div class="sstat-bar-value">' . $display . '</div>'
             . '<div class="sstat-bar" style="height:' . $h . 'px;background:' . $color . '"></div>'
@@ -128,13 +128,13 @@ $reportUrl = $BASE_URL . '/admin/stores/' . (int) $store['id'] . '/employee-repo
     <div class="sstat-card">
       <div class="sstat-card__value"><?= estatHours($grossHours) ?></div>
       <div class="sstat-card__label"><?= __('gross_h_col') ?></div>
-      <div class="sstat-card__sub"><?= number_format($grossHours, 1) ?> h</div>
+      <div class="sstat-card__sub"><?= number_format($grossHours, 1) ?> <?= __('hours_unit') ?></div>
     </div>
 
     <div class="sstat-card">
       <div class="sstat-card__value text-primary"><?= estatHours($netHours) ?></div>
       <div class="sstat-card__label"><?= __('net_h_col') ?></div>
-      <div class="sstat-card__sub"><?= number_format($netHours, 1) ?> h</div>
+      <div class="sstat-card__sub"><?= number_format($netHours, 1) ?> <?= __('hours_unit') ?></div>
     </div>
 
     <?php if ($anyRate): ?>

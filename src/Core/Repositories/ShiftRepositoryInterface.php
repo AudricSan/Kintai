@@ -54,6 +54,16 @@ interface ShiftRepositoryInterface
     public function save(array $data): array;
 
     /**
+     * Attribue le shift à $userId et ferme la bourse (is_open = 0), mais
+     * uniquement si le shift est encore ouvert au moment de l'écriture
+     * (condition portée par l'UPDATE lui-même, pas par une lecture préalable) —
+     * empêche deux approbations concurrentes de la bourse de s'écraser
+     * mutuellement. Retourne le shift à jour, ou null si le shift n'était déjà
+     * plus ouvert (quelqu'un d'autre a gagné la course).
+     */
+    public function closeOpenShiftTo(int $id, int $userId): ?array;
+
+    /**
      * Supprime un shift par son ID.
      * @return int Nombre de lignes supprimées (0 ou 1).
      */

@@ -222,18 +222,29 @@ final class AdminShiftClaimController
         $authUser = $request->getAttribute('auth_user');
         $resolver = (int) ($authUser['id'] ?? 0);
 
-        // Approuver ce candidat → attribuer le shift
-        $savedClaim = $this->shiftClaims->save(array_merge($claim, [
-            'status'      => 'approved',
-            'resolved_at' => $now,
-            'resolved_by' => $resolver,
-        ]));
+        // Écritures conditionnelles (WHERE status/is_open porté par l'UPDATE
+        // lui-même, pas par les lectures ci-dessus) : si un autre admin a
+        // approuvé une autre candidature sur ce même shift entre-temps, l'une
+        // des deux écritures échoue proprement au lieu de s'écraser
+        // silencieusement avec l'autre (race condition sur la bourse).
+        $savedClaim = $this->shiftClaims->approveIfPending((int) $claim['id'], $now, $resolver);
+        if ($savedClaim === null) {
+            return Response::redirect($this->base() . '/admin/open-shifts?error=already_resolved');
+        }
 
         // Affecter le shift au candidat retenu, fermer la bourse
-        $this->shifts->save(array_merge($shift, [
-            'user_id' => (int) $claim['user_id'],
-            'is_open' => 0,
-        ]));
+        $updatedShift = $this->shifts->closeOpenShiftTo((int) $shift['id'], (int) $claim['user_id']);
+        if ($updatedShift === null) {
+            // Le shift a été fermé entre-temps par une autre approbation concurrente :
+            // on annule la nôtre pour ne pas laisser une candidature "approved"
+            // orpheline sur un shift attribué à quelqu'un d'autre.
+            $this->shiftClaims->save(array_merge($savedClaim, [
+                'status'      => 'pending',
+                'resolved_at' => null,
+                'resolved_by' => null,
+            ]));
+            return Response::redirect($this->base() . '/admin/open-shifts?error=already_resolved');
+        }
 
         // Rejeter les autres candidatures encore pending
         foreach ($this->shiftClaims->findByShift((int) $shift['id']) as $other) {
