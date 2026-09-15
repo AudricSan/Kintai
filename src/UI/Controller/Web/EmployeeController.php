@@ -307,7 +307,7 @@ final class EmployeeController
         }
 
 
-        return Response::html($this->view->render('scheduling.employee-shifts', [
+        return Response::html($this->view->render('scheduling.shifts', [
             'title'          => 'Mon planning',
             'days'           => $days,
             'shifts_by_date' => $shiftsByDate,

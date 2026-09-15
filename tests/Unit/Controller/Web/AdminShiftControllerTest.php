@@ -86,6 +86,29 @@ final class AdminShiftControllerTest extends TestCase
         $this->assertSame(200, $response->status());
     }
 
+    /**
+     * scheduling.shifts est désormais partagée avec EmployeeController::shiftsWeek()
+     * (ex-scheduling.employee-shifts, supprimée) — le contrôleur admin doit toujours
+     * passer can_manage=true pour afficher la table de gestion multi-employés et non
+     * la vue personnelle "ma semaine" de l'employé.
+     */
+    public function testShiftsPassesCanManageTrue(): void
+    {
+        $this->writeViewFile('scheduling.shifts', '<?= ($can_manage ?? false) ? "CAN_MANAGE_TRUE" : "CAN_MANAGE_FALSE" ?>');
+
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+
+        $this->shifts->method('findAll')->willReturn([]);
+        $this->shiftTypes->method('findAll')->willReturn([]);
+        $this->stores->method('findAll')->willReturn([]);
+
+        $response = $this->controller->shifts($req);
+
+        $this->assertSame(200, $response->status());
+        $this->assertStringContainsString('CAN_MANAGE_TRUE', $response->body());
+    }
+
     // -------------------------------------------------------------------------
     // quickShift
     // -------------------------------------------------------------------------

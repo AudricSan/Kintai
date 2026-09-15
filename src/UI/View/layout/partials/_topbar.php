@@ -5,12 +5,12 @@ $onCalendar       = str_starts_with($path, '/admin/shifts/calendar');
 $ico              = fn(string $k): string => '<span class="topbar-nav-group__link-icon">' . $svgIcon($k) . '</span>';
 ?>
 <header class="topbar">
-    <a href="<?= route_url('home') ?>" class="topbar-brand"><img src="<?= $BASE_URL ?>/assets/img/mascot/brand-icon.png" alt="" class="topbar-brand__icon">Kintai<?php if (!empty($app_subtitle)): ?><span class="topbar-brand__subtitle"><?= htmlspecialchars($app_subtitle, ENT_QUOTES) ?></span><?php endif; ?></a>
+    <a href="<?= $isManager ? route_url('home') : route_url('employee.dashboard') ?>" class="topbar-brand"><img src="<?= $BASE_URL ?>/assets/img/mascot/brand-icon.png" alt="" class="topbar-brand__icon">Kintai<?php if (!empty($app_subtitle)): ?><span class="topbar-brand__subtitle"><?= htmlspecialchars($app_subtitle, ENT_QUOTES) ?></span><?php endif; ?></a>
 
     <button type="button" class="topbar-nav-toggle" id="topbarNavToggle" aria-label="Menu" aria-expanded="false">☰</button>
 
     <nav class="topbar-nav" id="topbarNav" aria-label="Navigation principale">
-        <?php if ($showAdminMenu && $isOwner): ?>
+        <?php if ($isOwner): ?>
             <?php
             $navHide = fn(string $k): bool => in_array($k, (array)($user_nav_hidden ?? []), true);
             $_defSec = ['planning', 'hr', 'requests', 'statistics', 'system'];
@@ -123,7 +123,7 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
                 endswitch;
             endforeach; ?>
 
-        <?php elseif ($showAdminMenu): ?>
+        <?php elseif ($isManager): ?>
             <?php
             $navHide = fn(string $k): bool => in_array($k, (array)($user_nav_hidden ?? []), true);
             // Visibilité pilotée par la permission réellement déclarée sur la route
@@ -392,7 +392,7 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
 
     <div class="topbar-actions">
 
-        <?php if (!$showAdminMenu && isset($employee_month_stats)): ?>
+        <?php if (!$isManager && isset($employee_month_stats)): ?>
             <?php $ems = $employee_month_stats;
             $emsCur = $ems['currency'] ?? 'JPY';
             $emsStyle = $ems['currency_symbol_style'] ?? 'kanji'; ?>
@@ -583,17 +583,6 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
                         <?php endforeach; ?>
                     </div>
                 </div>
-
-                <?php if (($auth_is_manager ?? $isManager) && !$isOwner): ?>
-                    <hr class="user-dropdown__divider">
-                    <form method="POST" action="<?= route_url('switch.view') ?>" class="form-contents">
-                        <?= csrf_field() ?>
-                        <button type="submit" class="user-dropdown__item" role="menuitem">
-                            <span class="user-dropdown__item-icon">🔄</span>
-                            <?= $viewMode === 'admin' ? __('view_employee') : __('view_admin') ?>
-                        </button>
-                    </form>
-                <?php endif; ?>
 
                 <hr class="user-dropdown__divider">
 
