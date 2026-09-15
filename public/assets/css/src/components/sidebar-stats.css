@@ -67,10 +67,6 @@
     color: var(--color-success);
 }
 
-.sb-stats-value--muted {
-    color: var(--color-text-muted);
-}
-
 .sb-detail-btn {
     background: none;
     border: none;

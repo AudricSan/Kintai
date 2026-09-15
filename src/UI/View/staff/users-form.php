@@ -59,7 +59,7 @@ echo Flash::fromQuery('error', [
 <?php endif; ?>
 
 <form method="POST" action="<?= htmlspecialchars($action) ?>" id="userEditForm" class="form-stack" novalidate<?= ($mode === 'edit' && $canEditUser) ? ' data-autosave="1"' : '' ?>>
-    <fieldset<?= $canEditUser ? '' : ' disabled' ?> style="border:none;padding:0;margin:0">
+    <fieldset<?= $canEditUser ? '' : ' disabled' ?> class="fieldset-reset">
         <?= csrf_field() ?>
         <?php $as_cards = true; include __DIR__ . '/../_partials/_form-user.php'; ?>
     </fieldset>

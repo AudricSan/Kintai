@@ -19,15 +19,8 @@
 <?php
 echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-brand.css');
 echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-preview.css');
+echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-export-table.css');
 ?>
-body { font-family: sans-serif; font-size: 8pt; color: #333; margin: 0; padding: 0; }
-h1 { text-align: center; font-size: 15pt; margin-bottom: 4pt; }
-.subtitle { text-align: center; font-size: 9pt; color: #666; margin-bottom: 16pt; }
-table { width: 100%; border-collapse: collapse; }
-th { background: #eaeaea; padding: 4pt 5pt; text-align: left; font-size: 7.5pt; font-weight: 700; border: 1px solid #ccc; }
-td { padding: 4pt 5pt; border: 1px solid #ccc; font-size: 7.5pt; vertical-align: top; }
-.td-right { text-align: right; }
-.footer { text-align: center; font-size: 8pt; color: #999; margin-top: 16pt; border-top: 1px solid #ccc; padding-top: 8pt; }
 </style>
 </head>
 <body>

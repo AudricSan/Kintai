@@ -28,16 +28,8 @@ $taxLabel = match ($report['tax_classification'] ?? null) {
 <?php
 echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-brand.css');
 echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-preview.css');
+echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-hiring-report.css');
 ?>
-body { font-family: sans-serif; font-size: 10pt; color: #333; margin: 0; padding: 0; }
-h1 { text-align: center; font-size: 16pt; margin-bottom: 4pt; }
-.subtitle { text-align: center; font-size: 9pt; color: #666; margin-bottom: 20pt; }
-table { width: 100%; border-collapse: collapse; margin-bottom: 16pt; }
-th { background: #eaeaea; padding: 6pt 8pt; text-align: left; font-size: 9pt; font-weight: 700; border: 1px solid #ccc; }
-td { padding: 5pt 8pt; border: 1px solid #ccc; font-size: 9pt; }
-.section-title { font-size: 11pt; font-weight: 700; margin-top: 18pt; margin-bottom: 6pt; }
-.label-cell { width: 30%; font-weight: 600; background: #f7f7f7; }
-.footer { text-align: center; font-size: 8pt; color: #999; margin-top: 24pt; border-top: 1px solid #ccc; padding-top: 8pt; }
 </style>
 </head>
 <body>

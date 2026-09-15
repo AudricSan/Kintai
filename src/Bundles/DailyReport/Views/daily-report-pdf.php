@@ -83,7 +83,7 @@ body { font-family: sun-exta, Arial, sans-serif; }
 <hr class="header-sep">
 
 <!-- Auteur -->
-<table class="meta-table" style="margin-bottom:10pt;">
+<table class="meta-table">
   <tbody>
     <tr>
       <td class="label"><?= __('dr_author') ?></td>
@@ -103,7 +103,7 @@ body { font-family: sun-exta, Arial, sans-serif; }
 </table>
 
 <!-- KPI -->
-<div class="section-title" style="margin-top:0;"><?= __('dr_title') ?></div>
+<div class="section-title section-title--no-mt"><?= __('dr_title') ?></div>
 <table class="kpi-table">
   <tbody>
     <tr>
@@ -158,7 +158,7 @@ body { font-family: sun-exta, Arial, sans-serif; }
 
 <!-- Notes -->
 <?php if (!empty($report['notes'])): ?>
-<div style="margin-top:12pt;">
+<div class="notes-section">
   <div class="section-title"><?= __('dr_notes') ?></div>
   <div class="notes-box">
     <?= nl2br(htmlspecialchars($report['notes'])) ?>

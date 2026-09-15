@@ -52,16 +52,6 @@ final class UpdateService
         $this->writeVersion($data);
     }
 
-    public function getInstalledAt(): ?string
-    {
-        return $this->readVersion()['installed_at'] ?? null;
-    }
-
-    public function getUpdatedAt(): ?string
-    {
-        return $this->readVersion()['updated_at'] ?? null;
-    }
-
     public function getLastUpdateDuration(): ?int
     {
         $seconds = $this->readVersion()['duration_seconds'] ?? null;
@@ -74,13 +64,6 @@ final class UpdateService
         $data['duration_seconds'] = $seconds;
         $data['updated_at'] = date('Y-m-d H:i:s');
         $this->writeVersion($data);
-    }
-
-    public function hasPendingMigrations(): bool
-    {
-        $migrated = $this->getExecutedMigrations();
-        $all = $this->getAvailableMigrations();
-        return array_diff($all, $migrated) !== [];
     }
 
     public function getPendingMigrations(): array

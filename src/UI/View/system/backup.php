@@ -36,8 +36,8 @@ ob_start();
 </div>
 <div class="form-group">
     <label class="form-label" for="backup_max_keep"><?= __('backup_max_keep') ?></label>
-    <input type="number" id="backup_max_keep" name="backup_max_keep" class="form-control"
-           min="0" max="365" style="width:100px"
+    <input type="number" id="backup_max_keep" name="backup_max_keep" class="form-control w-100"
+           min="0" max="365"
            value="<?= (int) $backup_max_keep ?>">
     <p class="form-hint"><?= __('backup_max_keep_hint') ?></p>
 </div>

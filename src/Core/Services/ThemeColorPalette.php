@@ -52,11 +52,6 @@ final class ThemeColorPalette
         return (bool) preg_match('/^#[0-9a-fA-F]{6}$/', $hex);
     }
 
-    public static function isKnownGroup(string $group): bool
-    {
-        return array_key_exists($group, self::DEFAULTS);
-    }
-
     /**
      * Teinte sombre calculée automatiquement à partir d'une couleur claire — utilisée pour
      * pré-remplir le sélecteur "variante sombre" du mode manuel avec un point de départ

@@ -6,7 +6,6 @@ namespace kintai\UI\Controller\Web\Scheduling;
 
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
-use kintai\Core\Repositories\ImportAliasRepositoryInterface;
 use kintai\Core\Services\NotificationService;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
@@ -39,7 +38,6 @@ final class AdminShiftController
         private readonly UserShiftTypeRateRepositoryInterface $userRates,
         private readonly AuditLogger $auditLogger,
         private readonly NotificationService $notifs,
-        private readonly ImportAliasRepositoryInterface $importAliases,
         private readonly ShiftServiceInterface $shiftService,
         private readonly TimeoffRequestRepositoryInterface $timeoffRequests,
         private readonly PermissionService $permissions,
@@ -1237,119 +1235,4 @@ final class AdminShiftController
      * Corps JSON : { store_id, user_id, shift_date, start_time, end_time, shift_type_id? }
      * Retourne le shift créé en JSON (201).
      */
-    // -------------------------------------------------------------------------
-    // Helpers import Excel
-    // -------------------------------------------------------------------------
-
-    /**
-     * Fusionne les entrées adjacentes du même employé le même jour.
-     * Deux entrées sont adjacentes si la fin de l'une correspond au début de la suivante.
-     *
-     * @param array<array{date:string, staff_name:string, start_time:string, end_time:string, hours:float}> $entries
-     * @return array
-     */
-    private function mergeAdjacentEntries(array $entries): array
-    {
-        // Grouper par (date, staff_name normalisé — sans espaces superflus, insensible à la casse)
-        $groups = [];
-        foreach ($entries as $e) {
-            $key = trim($e['date']) . '|' . mb_strtolower(trim($e['staff_name']));
-            $groups[$key][] = $e;
-        }
-
-        $result = [];
-        foreach ($groups as $group) {
-            // Trier par heure de début
-            usort($group, fn($a, $b) => strcmp($a['start_time'], $b['start_time']));
-
-            $merged = $group[0];
-            for ($i = 1; $i < count($group); $i++) {
-                $cur = $group[$i];
-                $prevEnd   = $merged['end_time'];
-                $currStart = $cur['start_time'];
-                $currEnd   = $cur['end_time'];
-                // Adjacent (fin préc. = début courant) ou chevauchement (début courant < fin préc.)
-                if ($currStart <= $prevEnd) {
-                    if ($currEnd > $prevEnd) {
-                        $merged['end_time'] = $currEnd;
-                    }
-                    // Fusionner les heures — prendre le max pour éviter le double comptage
-                    $mergedHours = (float) $merged['hours'];
-                    $curHours    = (float) $cur['hours'];
-                    // Si les créneaux se chevauchent, on ne cumule pas totalement
-                    if ($currStart < $prevEnd) {
-                        // Chevauchement : on garde la durée la plus longue des deux
-                        $merged['hours'] = (string) max($mergedHours, $curHours);
-                    } else {
-                        $merged['hours'] = (string) round($mergedHours + $curHours, 1);
-                    }
-                } else {
-                    $result[] = $merged;
-                    $merged   = $cur;
-                }
-            }
-            $result[] = $merged;
-        }
-
-        return $result;
-    }
-
-    private function timeSlotsOverlap(
-        string $dateA, string $startA, string $endA, int $crossA,
-        string $dateB, string $startB, string $endB, int $crossB
-    ): bool {
-        $tsStartA = strtotime($dateA . ' ' . $startA);
-        $tsEndA   = $crossA
-            ? strtotime(date('Y-m-d', strtotime($dateA . ' +1 day')) . ' ' . $endA)
-            : strtotime($dateA . ' ' . $endA);
-        $tsStartB = strtotime($dateB . ' ' . $startB);
-        $tsEndB   = $crossB
-            ? strtotime(date('Y-m-d', strtotime($dateB . ' +1 day')) . ' ' . $endB)
-            : strtotime($dateB . ' ' . $endB);
-        if ($tsStartA === false || $tsEndA === false || $tsStartB === false || $tsEndB === false) return false;
-        return $tsStartA < $tsEndB && $tsStartB < $tsEndA;
-    }
-
-    /** Supprime les fichiers les plus anciens d'un dossier d'uploads de magasin, en ne gardant que $keep fichiers. */
-    private function pruneStoreUploads(string $dir, int $keep = 5): void
-    {
-        $files = glob($dir . 'Upload_*');
-        if ($files === false || count($files) <= $keep) {
-            return;
-        }
-        usort($files, fn($a, $b) => filemtime($a) <=> filemtime($b));
-        foreach (array_slice($files, 0, count($files) - $keep) as $old) {
-            @unlink($old);
-        }
-    }
-
-    /** Retourne le tableau [staffName_lower => user_id] sauvegardé pour ce magasin. */
-    private function loadImportAliases(int $storeId): array
-    {
-        return $this->importAliases->findByStore($storeId);
-    }
-
-    /**
-     * Enregistre les correspondances staff_name → user_id issues de l'import confirmé.
-     * Seules les lignes non ignorées avec un user_id valide sont mémorisées.
-     * Un user_id = 0 sur un nom déjà connu supprime l'alias (désassignation explicite).
-     */
-    private function saveImportAliases(int $storeId, array $shifts): void
-    {
-        foreach ($shifts as $s) {
-            if (($s['skip'] ?? '0') === '1') {
-                continue;
-            }
-            $name   = mb_strtolower(trim($s['staff_name'] ?? ''));
-            $userId = (int) ($s['user_id'] ?? 0);
-            if ($name === '') {
-                continue;
-            }
-            if ($userId > 0) {
-                $this->importAliases->upsert($storeId, $name, $userId);
-            } else {
-                $this->importAliases->deleteAlias($storeId, $name);
-            }
-        }
-    }
 }

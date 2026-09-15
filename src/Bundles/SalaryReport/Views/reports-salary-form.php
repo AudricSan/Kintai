@@ -70,8 +70,8 @@ $hoursLabel = fn(string $key) => __($key) . ' (h)';
              data-currency-style="<?= htmlspecialchars(store_currency_style($store)) ?>">
             <label class="form-label"><?= __('sr_target_month') ?></label>
 
-            <div class="btn-group btn-group--switcher mb-xs" style="--segments:2">
-                <span class="btn-group__thumb" style="--pos:0" aria-hidden="true"></span>
+            <div class="btn-group btn-group--switcher btn-group--switcher-2 mb-xs">
+                <span class="btn-group__thumb btn-group__thumb--pos-0" aria-hidden="true"></span>
                 <button type="button" class="btn btn--ghost btn--sm btn--active" data-period-mode="month"><?= __('sr_period_month') ?></button>
                 <button type="button" class="btn btn--ghost btn--sm" data-period-mode="custom"><?= __('sr_period_custom') ?></button>
             </div>

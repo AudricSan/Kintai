@@ -17,8 +17,8 @@ The Kintai SaaS acts as an orchestrator that automates the deployment of these s
 ### 1. Shared Database Server (Optional)
 While each tenant has a logical database isolation, they may share a physical database server (e.g., a large MySQL cluster) where each tenant has their own schema/database name.
 
-### 2. Physical Container Isolation
-Each tenant runs in its own Docker container, ensuring that resource usage and security vulnerabilities are contained within a single instance.
+### 2. Physical Instance Isolation
+Each tenant runs as its own dedicated application instance, ensuring that resource usage and security vulnerabilities are contained within a single instance.
 
 ## 🔄 Lifecycle Management
 - **Provisioning:** Automated setup of DB, `.env`, and initial Admin user.

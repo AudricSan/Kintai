@@ -15,8 +15,6 @@
 .docs-unavailable__sync-hint { font-size: var(--text-xs-2); color: var(--color-text-muted); margin: 0 0 .75rem; }
 
 /* ── Synchronisation du wiki (owner) ──────────────── */
-.docs-sync h4 { margin-bottom: .4rem; font-weight: 600; }
-.docs-sync p  { font-size: var(--text-xs-2); color: var(--color-text-muted); margin: 0 0 .75rem; }
 .docs-sync__row { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
 .docs-sync__btn { min-width: 200px; }
 .docs-sync__status { font-size: var(--text-xs-2); }

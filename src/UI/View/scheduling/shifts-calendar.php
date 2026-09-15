@@ -101,8 +101,8 @@ endif;
 </div>
 
 <div class="shifts-toolbar">
-    <div class="btn-group btn-group--switcher" style="--segments:3">
-        <span class="btn-group__thumb" style="--pos:1" aria-hidden="true"></span>
+    <div class="btn-group btn-group--switcher btn-group--switcher-3">
+        <span class="btn-group__thumb btn-group__thumb--pos-1" aria-hidden="true"></span>
         <a href="<?= route_url('admin.shifts') ?><?= $filter_store_id ? '?store_id=' . $filter_store_id : '' ?>" class="btn btn--ghost btn--sm" aria-label="<?= htmlspecialchars(__('list_view')) ?>">☰ <span class="switcher-label"><?= __('list_view') ?></span></a>
         <a href="<?= route_url('admin.shifts.calendar') ?><?= $filter_store_id ? '?store_id=' . $filter_store_id : '' ?>" class="btn btn--ghost btn--sm btn--active" aria-label="<?= htmlspecialchars(__('calendar_view')) ?>">📅 <span class="switcher-label"><?= __('calendar_view') ?></span></a>
         <a href="<?= route_url('admin.shifts.timeline') ?><?= $filter_store_id ? '?store_id=' . $filter_store_id : '' ?>" class="btn btn--ghost btn--sm" aria-label="<?= htmlspecialchars(__('timeline_view')) ?>"><svg class="gantt-icon icon-inline" width="16" height="16" viewBox="0 0 24 24"><rect x="4" y="2" width="2" height="20" fill="currentColor"/><rect x="10" y="6" width="2" height="16" fill="currentColor"/><rect x="16" y="10" width="2" height="12" fill="currentColor"/></svg> <span class="switcher-label"><?= __('timeline_view') ?></span></a>
@@ -250,7 +250,7 @@ endif;
                                     $toName = $toUser['display_name'] ?? $toUser['email'] ?? '';
                                     $toTip  = htmlspecialchars($toName . ' · ' . ($typeLabels[$to['type']] ?? $to['type']));
                                     ?>
-                                    <span class="cal-pill cal-pill--timeoff" style="--pill-color:#94a3b8;--pill-bg:#94a3b822" title="<?= $toTip ?>">
+                                    <span class="cal-pill cal-pill--timeoff" title="<?= $toTip ?>">
                                         🏖 <?= htmlspecialchars($toName) ?>
                                     </span>
                                 <?php endforeach; ?>

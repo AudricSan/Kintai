@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Controller\Web;
 
 use kintai\Core\Auth\PermissionService;
-use kintai\Core\Repositories\ImportAliasRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
@@ -67,7 +66,6 @@ final class AdminShiftControllerTest extends TestCase
             $this->createMock(UserShiftTypeRateRepositoryInterface::class),
             $auditLogger,
             $this->notifs,
-            $this->createMock(ImportAliasRepositoryInterface::class),
             $this->shiftService,
             $this->timeoffRequests,
             $permissions,

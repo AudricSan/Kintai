@@ -42,7 +42,7 @@ $thisWeek = date('Y-m-d', strtotime('tuesday this week'));
                    accept="image/jpeg,image/png,image/webp" id="photoInput">
             <div class="photo-preview" id="photoPreview"></div>
             <span class="text-xs text-muted" id="photoCount"></span>
-            <span class="form-error hidden" id="photoSizeError" style="color:var(--color-danger)"><?= __('photo_max_size_error') ?></span>
+            <span class="form-error hidden" id="photoSizeError"><?= __('photo_max_size_error') ?></span>
         </div>
     </div>
 </div>

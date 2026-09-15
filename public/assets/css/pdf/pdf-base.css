@@ -52,6 +52,17 @@ img { max-width: 100%; height: auto; }
 .pdf-small  { font-size: 8.5pt; }
 .pdf-xs     { font-size: 7.5pt; }
 
+.pdf-date-line { font-size: 10pt; color: #666666; }
+
+/* ── Largeurs de colonnes (tableaux) ───────────── */
+.pdf-w-30 { width: 30%; }
+.pdf-w-50 { width: 50%; }
+.pdf-w-70 { width: 70%; }
+
+.pdf-pl-16 { padding-left: 16px; }
+
+.pdf-row-highlight { font-weight: 700; background: #f5f5f5; }
+
 /* ── Préservation couleurs impression ──────────── */
 .pdf-colors {
     print-color-adjust: exact;

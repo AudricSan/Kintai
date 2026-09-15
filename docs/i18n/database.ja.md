@@ -11,7 +11,7 @@ Kintaiは唯一のデータアクセス層として **Eloquent ORM**（`illumina
 `DatabaseServiceProvider`（`src/Core/Database/DatabaseServiceProvider.php`）が `Illuminate\Database\Capsule\Manager` 経由で起動します。
 
 ### モデル（`src/Domain/Eloquent/`）
-36個の `final` Eloquentモデルがあり、いずれも同じパターンに従います：`$guarded = []`、`$timestamps = false`、リレーション/キャスト以外のロジックは持ちません。ドメイン別の分類：
+40個の `final` Eloquentモデルがあり、いずれも同じパターンに従います：`$guarded = []`、`$timestamps = false`、リレーション/キャスト以外のロジックは持ちません。ドメイン別の分類：
 
 - **テナンシー：** `User`、`Store`、`StoreUser`
 - **シフト管理：** `Shift`、`ShiftType`、`Availability`、`ShiftClaim`、`ShiftSwapRequest`
@@ -19,17 +19,16 @@ Kintaiは唯一のデータアクセス層として **Eloquent ORM**（`illumina
 - **日報・人事：** `DailyReport`、`HiringReport`、`ResignationReport`、`SalaryReport`、`Feedback`
 - **コミュニケーション：** `MessageThread`、`ThreadMessage`、`ThreadParticipant`、`Notification`
 - **システム・設定：** `ActivityEntry`、`AppSetting`、`ApiToken`、`CronToken`、`IcalToken`、`PasswordResetToken`、`ImportAlias`、`StoreFeature`、`StoreImportSetting`、`StorePhotoImage`、`StorePhotoSubmission`、`UserDashboardPref`、`UserNavPref`
-- **i18n：** `Language`、`Translation` — レガシーモデル。ランタイムでは読み込まれず、翻訳は `JsonLanguageRepository`/`JsonTranslationRepository` 経由で `lang/*.json` から提供されます。既知の技術的負債であり、削除が予定されています。
 
 常に最新かつ正確な一覧は `ls src/Domain/Eloquent/` を実行して確認してください。
 
 ### リポジトリパターン
-`src/Core/Repositories/` にある30個のリポジトリインターフェースが、`RepositoryServiceProvider` で実装にバインドされています。コントローラーやサービスがEloquentモデルを直接扱うことは**禁止**されており、必ず注入済みのリポジトリインターフェース経由で行います。ほとんどの実装はEloquentモデルをラップしますが、`Language`/`Translation` のインターフェースは例外で、代わりにJSONファイルベースのリポジトリにバインドされています（対応する `Database*Repository` はディスク上に残っていますが、JSON移行以前の未使用のデッドコードであり、今後のクリーンアップ対象です）。
+`src/Core/Repositories/` にある34個のリポジトリインターフェースが、`RepositoryServiceProvider` で実装にバインドされています。コントローラーやサービスがEloquentモデルを直接扱うことは**禁止**されており、必ず注入済みのリポジトリインターフェース経由で行います。ほとんどの実装はEloquentモデルをラップしますが、`Language`/`Translation` のインターフェースは例外で、代わりにJSONファイルベースのリポジトリにバインドされています（`JsonLanguageRepository`/`JsonTranslationRepository`、`lang/*.json` を読み込み）— 対応する未使用の `Database*Repository` と、その下にあった `Language`/`Translation` Eloquentモデルは削除されました。
 
 ## 🔄 マイグレーションシステム
 PHPベースで統一されており、1つのマイグレーションファイルでSQLiteとMySQLの両方をカバーします。生SQLやドライバー別の重複はありません。
 
-- **格納場所：** `database/migrations/php/`（41マイグレーション）
+- **格納場所：** `database/migrations/php/`（69マイグレーション）
 - **実行コマンド：** `php scripts/db-migrate.php`（プレビューは `--dry-run`）
 - **基底クラス：** `kintai\Core\Database\Migration`
 - **冪等性：** `$this->schema()->hasTable()` によるガードにより、何度実行しても安全です。

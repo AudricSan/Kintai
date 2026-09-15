@@ -1,4 +1,4 @@
-const CACHE = 'kintai-v4';
+const CACHE = 'kintai-v5';
 
 // Base de déploiement déduite du scope d'enregistrement (ex. '/kintai') plutôt
 // que codée en dur, pour fonctionner aussi bien à la racine du domaine que
@@ -11,7 +11,6 @@ const ASSETS = [
   BASE + '/assets/js/app.js',
   BASE + '/assets/js/modules/notifications.js',
   BASE + '/assets/js/modules/timeclock.js',
-  BASE + '/assets/js/modules/mobile.js',
   BASE + '/assets/img/kintai-192.png',
   OFFLINE_URL,
 ];

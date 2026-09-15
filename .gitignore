@@ -2,7 +2,6 @@
 # Dépendances & builds
 # =========================
 /vendor
-kintai-laravel/vendor
 /node_modules
 
 # =========================

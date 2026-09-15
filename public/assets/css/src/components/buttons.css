@@ -205,6 +205,12 @@
     z-index: 0;
 }
 
+.btn-group--switcher-2 { --segments: 2; }
+.btn-group--switcher-3 { --segments: 3; }
+.btn-group__thumb--pos-0 { --pos: 0; }
+.btn-group__thumb--pos-1 { --pos: 1; }
+.btn-group__thumb--pos-2 { --pos: 2; }
+
 /* ── Bouton d'action flottant (ex. impression du planning) ───────────── */
 .fab {
     position: fixed;

@@ -190,7 +190,7 @@ $store_stats_hours_by_week ??= [];
     </div>
     <?php if (count($store_stats_rows) === 1): ?>
         <?php $_row = $store_stats_rows[0]; ?>
-        <div class="stat-grid" style="--stat-cols:3">
+        <div class="stat-grid stat-grid--cols-3">
             <div class="stat-card">
                 <div class="stat-card__icon stat-card__icon--primary">⏱️</div>
                 <div class="stat-card__body">
@@ -271,7 +271,7 @@ $hr_stats           ??= null;
         <div class="card-header">
             <span><?= __('widget_financial_overview') ?></span>
         </div>
-        <div class="stat-grid stat-grid--in-card" style="--stat-cols:2">
+        <div class="stat-grid stat-grid--in-card stat-grid--cols-2">
             <div class="stat-card">
                 <div class="stat-card__icon stat-card__icon--primary">💰</div>
                 <div class="stat-card__body">
@@ -314,7 +314,7 @@ $hr_stats           ??= null;
         <div class="card-header">
             <span><?= __('widget_hr_absenteeism') ?></span>
         </div>
-        <div class="stat-grid stat-grid--in-card" style="--stat-cols:2">
+        <div class="stat-grid stat-grid--in-card stat-grid--cols-2">
             <div class="stat-card">
                 <div class="stat-card__icon stat-card__icon--warning">📉</div>
                 <div class="stat-card__body">
