@@ -16,11 +16,4 @@ return [
         \kintai\Core\Middleware\MessageCountMiddleware::class,
         \kintai\Core\Middleware\NotificationMiddleware::class,
     ],
-
-    // Named middleware for route groups
-    'named' => [
-        'auth'  => \kintai\Core\Middleware\AuthMiddleware::class,
-        'json'  => \kintai\Core\Middleware\JsonResponseMiddleware::class,
-        'rate-limit' => \kintai\Core\Middleware\RateLimiterMiddleware::class,
-    ],
 ];

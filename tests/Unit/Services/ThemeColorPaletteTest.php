@@ -19,13 +19,6 @@ final class ThemeColorPaletteTest extends TestCase
         $this->assertFalse(ThemeColorPalette::isValidHex('#gggggg'));
     }
 
-    public function testIsKnownGroup(): void
-    {
-        $this->assertTrue(ThemeColorPalette::isKnownGroup('primary'));
-        $this->assertTrue(ThemeColorPalette::isKnownGroup('table_highlight'));
-        $this->assertFalse(ThemeColorPalette::isKnownGroup('neutral'));
-    }
-
     public function testAutoDarkBaseIsLighterThanTheLightColorItIsDerivedFrom(): void
     {
         $dark = ThemeColorPalette::autoDarkBase('#2f86d6');

@@ -193,11 +193,6 @@ final class BackupService
         return $this->backupDir . '/' . basename($filename);
     }
 
-    public function getBackupDir(): string
-    {
-        return $this->backupDir;
-    }
-
     /**
      * Zippe l'arborescence de l'application (hors storage/, vendor/ et .git/)
      * comme filet de sécurité manuel avant une mise à jour automatique.

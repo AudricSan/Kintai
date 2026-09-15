@@ -99,22 +99,3 @@ function __(string $key, array $replace = []): string
     
     return $key;
 }
-
-/**
- * Convertit une valeur ini comme "8M", "2G" en octets.
- */
-function return_bytes(string $value): int
-{
-    $value = trim($value);
-    if ($value === '' || $value === '-1') {
-        return -1;
-    }
-    $unit = strtolower($value[-1]);
-    $num  = (int) $value;
-    return match ($unit) {
-        'g' => $num * 1073741824,
-        'm' => $num * 1048576,
-        'k' => $num * 1024,
-        default => $num,
-    };
-}

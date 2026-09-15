@@ -15,7 +15,6 @@ interface LogRepositoryInterface
 
     /** Canaux de log */
     public const CHANNEL_AUDIT    = 'audit';
-    public const CHANNEL_ERROR    = 'error';
     public const CHANNEL_ACCESS   = 'access';
     public const CHANNEL_BUSINESS = 'business';
 
