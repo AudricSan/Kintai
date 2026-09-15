@@ -285,6 +285,11 @@
 }
 .cal-pill:hover { opacity: .85; }
 
+.cal-pill--timeoff {
+    --pill-color: #94a3b8;
+    --pill-bg: #94a3b822;
+}
+
 .cal-pill-more {
     font-size: 0.65rem;
     color: var(--color-primary);

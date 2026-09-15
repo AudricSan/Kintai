@@ -29,21 +29,8 @@ $isEmployeeScoped = !empty($report['user_id']);
 echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-base.css');
 echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-brand.css');
 echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-preview.css');
+echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-salary-report.css');
 ?>
-body { font-family: sans-serif; font-size: 10pt; color: #222; padding: 20px; }
-h1 { font-size: 16pt; text-align: center; margin-bottom: 4px; }
-.subtitle { text-align: center; font-size: 10pt; color: #666; margin-bottom: 20px; }
-h2 { font-size: 12pt; border-bottom: 2px solid #333; padding-bottom: 4px; margin-top: 20px; margin-bottom: 10px; }
-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
-th, td { padding: 5px 8px; text-align: left; border: 1px solid #ccc; }
-th { background: #f0f0f0; font-weight: 600; }
-.tr { text-align: right; }
-.td-mono { font-family: 'Courier New', monospace; }
-.sig-section { margin-top: 40px; }
-.sig-section table { border: none; }
-.sig-section td { border: none; padding: 20px 10px; }
-.sig-line { border-top: 1px solid #222; width: 200px; margin-top: 40px; }
-.footer { text-align: center; font-size: 8pt; color: #999; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 8px; }
 </style>
 </head>
 <body>
@@ -61,7 +48,7 @@ th { background: #f0f0f0; font-weight: 600; }
 <h2><?= __('sr_section_basic') ?></h2>
 <table>
     <tr>
-        <th style="width:30%"><?= __('sr_target_month') ?></th>
+        <th class="pdf-w-30"><?= __('sr_target_month') ?></th>
         <td><?= $fmt($report['target_month'] ?? '') ?></td>
     </tr>
     <tr>
@@ -85,7 +72,7 @@ th { background: #f0f0f0; font-weight: 600; }
 <table>
     <?php if (!$isEmployeeScoped): ?>
     <tr>
-        <th style="width:50%"><?= __('sr_total_payment') ?></th>
+        <th class="pdf-w-50"><?= __('sr_total_payment') ?></th>
         <td class="tr td-mono"><?= $cur($report['total_payment'] ?? null) ?></td>
     </tr>
     <?php endif; ?>
@@ -94,22 +81,22 @@ th { background: #f0f0f0; font-weight: 600; }
         <td class="tr td-mono"><?= $cur($report['total_deductions'] ?? null) ?></td>
     </tr>
     <tr>
-        <th style="padding-left:16px"><?= __('sr_income_tax_base') ?></th>
+        <th class="pdf-pl-16"><?= __('sr_income_tax_base') ?></th>
         <td class="tr td-mono"><?= $cur($report['income_tax_base'] ?? null) ?></td>
     </tr>
     <tr>
-        <th style="padding-left:16px"><?= __('sr_withholding_tax') ?></th>
+        <th class="pdf-pl-16"><?= __('sr_withholding_tax') ?></th>
         <td class="tr td-mono"><?= $cur($report['withholding_tax'] ?? null) ?></td>
     </tr>
     <tr>
-        <th style="padding-left:16px"><?= __('sr_residence_tax') ?></th>
+        <th class="pdf-pl-16"><?= __('sr_residence_tax') ?></th>
         <td class="tr td-mono"><?= $cur($report['residence_tax'] ?? null) ?></td>
     </tr>
     <tr>
-        <th style="padding-left:16px"><?= __('sr_other_deductions') ?></th>
+        <th class="pdf-pl-16"><?= __('sr_other_deductions') ?></th>
         <td class="tr td-mono"><?= $cur($report['other_deductions'] ?? null) ?></td>
     </tr>
-    <tr style="font-weight:bold; background:#f5f5f5">
+    <tr class="pdf-row-highlight">
         <th><?= __('sr_net_payment') ?></th>
         <td class="tr td-mono"><?= $cur($report['net_payment'] ?? null) ?></td>
     </tr>
@@ -133,7 +120,7 @@ th { background: #f0f0f0; font-weight: 600; }
 <h2><?= __('sr_section_staff') ?></h2>
 <table>
     <tr>
-        <th style="width:50%"><?= __('sr_staff_man_hours') ?></th>
+        <th class="pdf-w-50"><?= __('sr_staff_man_hours') ?></th>
         <td class="tr td-mono"><?= $fmt($report['staff_man_hours'] ?? null) ?> <?= __('hours_unit') ?></td>
     </tr>
     <tr>
@@ -204,7 +191,7 @@ th { background: #f0f0f0; font-weight: 600; }
         <?php endif; ?>
     </tr>
     <?php endforeach; ?>
-    <tr style="font-weight:bold; background:#f5f5f5">
+    <tr class="pdf-row-highlight">
         <td colspan="4"><?= __('total_row') ?></td>
         <td class="tr td-mono"><?= payslip_hours($totalGrossMin) ?></td>
         <td></td>
@@ -236,23 +223,23 @@ th { background: #f0f0f0; font-weight: 600; }
 <h2><?= __('payslip_summary') ?></h2>
 <table>
     <tr>
-        <th style="width:70%"><?= __('gross_pay') ?></th>
+        <th class="pdf-w-70"><?= __('gross_pay') ?></th>
         <td class="tr td-mono"><?= format_currency($totalCost, $currency, $currencyStyle) ?></td>
     </tr>
     <?php foreach ($deductions as $ded): ?>
     <tr>
-        <th style="width:70%">
+        <th class="pdf-w-70">
             <?= isset($ded['label_key']) ? __($ded['label_key']) : htmlspecialchars($ded['label'] ?? '') ?>
             <?php if (!empty($ded['is_flat'])): ?> (<?= __('monthly_fixed') ?>)<?php elseif (isset($ded['rate'])): ?> (<?= number_format((float) $ded['rate'], 2) ?>%)<?php endif; ?>
         </th>
         <td class="tr td-mono">−<?= format_currency($ded['amount'], $currency, $currencyStyle) ?></td>
     </tr>
     <?php endforeach; ?>
-    <tr style="font-weight:bold">
+    <tr class="pdf-bold">
         <th><?= __('total_deductions') ?></th>
         <td class="tr td-mono">−<?= format_currency($totalDeductions, $currency, $currencyStyle) ?></td>
     </tr>
-    <tr style="font-weight:bold; background:#f5f5f5">
+    <tr class="pdf-row-highlight">
         <th><?= __('net_pay') ?></th>
         <td class="tr td-mono"><?= format_currency($netPay, $currency, $currencyStyle) ?></td>
     </tr>
@@ -271,17 +258,17 @@ th { background: #f0f0f0; font-weight: 600; }
 <div class="sig-section">
     <table>
         <tr>
-            <td style="text-align:center">
+            <td class="pdf-center">
                 <div><?= __('sr_pdf_prepared_by') ?></div>
                 <div class="sig-line"></div>
                 <div><?= $fmt($report['person_in_charge'] ?? '') ?></div>
             </td>
-            <td style="text-align:center">
+            <td class="pdf-center">
                 <div><?= __('sr_pdf_approved_by') ?></div>
                 <div class="sig-line"></div>
                 <div><?= htmlspecialchars($store['name'] ?? '') ?></div>
             </td>
-            <td style="text-align:center">
+            <td class="pdf-center">
                 <div><?= __('sr_pdf_date') ?></div>
                 <div class="sig-line"></div>
                 <div><?= date('Y/m/d') ?></div>

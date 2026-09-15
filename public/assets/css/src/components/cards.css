@@ -237,6 +237,9 @@
     margin-bottom: var(--space-6);
 }
 
+.stat-grid--cols-2 { --stat-cols: 2; }
+.stat-grid--cols-3 { --stat-cols: 3; }
+
 /* Variante nichée directement dans une .card (sans .card-body autour) :
    il lui faut son propre padding pour ne pas coller aux bords de la carte.
    margin left/right/top/bottom négatifs : même annulation du padding de

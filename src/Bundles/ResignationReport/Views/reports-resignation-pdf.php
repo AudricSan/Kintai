@@ -19,13 +19,8 @@
 echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-base.css');
 echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-brand.css');
 echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-preview.css');
+echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-resignation-report.css');
 ?>
-body { font-family: sans-serif; font-size: 12pt; color: #333; }
-h1 { text-align: center; font-size: 18pt; margin-bottom: 20px; }
-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
-th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-th { background: #f5f5f5; font-weight: bold; width: 30%; }
-.footer { text-align: center; font-size: 9pt; color: #999; margin-top: 30px; }
 </style>
 </head>
 <body>
@@ -35,7 +30,7 @@ th { background: #f5f5f5; font-weight: bold; width: 30%; }
 
 <h1><?= __('resignation_report_pdf_title') ?></h1>
 
-<p style="text-align:right;font-size:10pt;color:#666;">
+<p class="pdf-right pdf-date-line">
     <?= __('date') ?>: <?= date('Y-m-d') ?>
 </p>
 

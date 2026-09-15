@@ -78,8 +78,8 @@ echo Flash::fromQuery('success', ['default' => __('save_success')])->render();
 
     <div class="form-group">
         <label class="form-label"><?= __('theme_dark_mode') ?></label>
-        <div class="btn-group btn-group--switcher mb-xs" style="--segments:2" data-theme-dark-mode-switcher>
-            <span class="btn-group__thumb" style="--pos:<?= $theme_dark_mode === 'manual' ? 1 : 0 ?>" aria-hidden="true"></span>
+        <div class="btn-group btn-group--switcher btn-group--switcher-2 mb-xs" data-theme-dark-mode-switcher>
+            <span class="btn-group__thumb btn-group__thumb--pos-<?= $theme_dark_mode === 'manual' ? 1 : 0 ?>" aria-hidden="true"></span>
             <button type="button" class="btn btn--ghost btn--sm <?= $theme_dark_mode !== 'manual' ? 'btn--active' : '' ?>" data-dark-mode-option="auto"><?= __('theme_dark_mode_auto') ?></button>
             <button type="button" class="btn btn--ghost btn--sm <?= $theme_dark_mode === 'manual' ? 'btn--active' : '' ?>" data-dark-mode-option="manual"><?= __('theme_dark_mode_manual') ?></button>
         </div>
