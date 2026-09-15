@@ -43,3 +43,12 @@ Kintaiは唯一のORMとして **スタンドアロン版Eloquent**（`illuminat
 ## 📡 API・連携
 - **API V1：** サードパーティツールとの連携を可能にするRESTful API。
 - **iCal：** トークンで保護された、従業員向けの個人カレンダー連携。
+
+## ⏱ 運用・CLIスクリプト
+`scripts/db-migrate.php`（[データベース戦略](database.ja.md)参照）と `scripts/check-translations.php`（[コントリビュート](CONTRIBUTING.ja.md)参照）に加えて、定期的なメンテナンス作業を担う独立したCLIスクリプトがいくつか存在します——いずれも `Application` 全体を起動し、非対話的な実行（cron、スケジュールタスク、または手動実行）を前提としています：
+- **`photo-retention.php`** — 設定可能な保持期間（`photo_retention_days`／`photo_cleanup_delay` 設定）を過ぎた店舗写真アップロードを削除します。
+- **`consolidate-daily-photo-reports.php`** — 同日・同一店舗の写真投稿を遡って1件のレポートに統合します（`--dry-run` 対応）。詳細は `StorePhotoConsolidationService` を参照。
+- **`auto-validate-reports.php`** — 店舗の締め切り時刻を過ぎても未承認のままの日報を自動承認します。外部スケジューラー向けにトークン保護されたHTTPエンドポイント（`/cron/auto-validate`）としても公開されています。
+- **`migrate-roles.php`** — 旧来の `users.is_admin`／`store_user.role` カラムから `role_assignments` を再構築します（`--dry-run` 対応）。進行中のRBAC移行の一環です。
+- **`create-cron-token.php`** — 汎用cronランナー（`/cron/run/{job}`）用のトークンを発行します。
+- **`seed-demo-data.php`** — ローカルテスト用に、全バンドルを横断したリアルなサンプルデータを生成します（再シードは `--force`）。

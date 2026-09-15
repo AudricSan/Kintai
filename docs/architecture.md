@@ -43,3 +43,12 @@ Multi-tenancy is achieved at the **deployment level**, not the code level.
 ## 📡 API & Integrations
 - **API V1:** A RESTful API allowing integration with third-party tools.
 - **iCal:** Personal calendars for employees, secured via tokens.
+
+## ⏱ Ops & CLI Scripts
+Beyond `scripts/db-migrate.php` (see [Database Strategy](database.md)) and `scripts/check-translations.php` (see [Contributing](../CONTRIBUTING.md)), a few standalone CLI scripts back recurring maintenance jobs — each boots the full `Application` and is meant to be run headless (cron, a scheduled task, or manually):
+- **`photo-retention.php`** — purges store photo uploads past the configurable retention window (`photo_retention_days`/`photo_cleanup_delay` app settings).
+- **`consolidate-daily-photo-reports.php`** — retroactively merges same-day/same-store photo submissions into a single report (`--dry-run` supported); see `StorePhotoConsolidationService`.
+- **`auto-validate-reports.php`** — auto-validates daily reports left unvalidated past their store's cutoff time; also exposed as a token-protected HTTP endpoint (`/cron/auto-validate`) for external schedulers.
+- **`migrate-roles.php`** — backfills `role_assignments` from the legacy `users.is_admin`/`store_user.role` columns (`--dry-run` supported), part of the ongoing RBAC migration.
+- **`create-cron-token.php`** — issues a token for the generic cron runner (`/cron/run/{job}`).
+- **`seed-demo-data.php`** — generates realistic sample data across every bundle for local testing (`--force` to reseed).
