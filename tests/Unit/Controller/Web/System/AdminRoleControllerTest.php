@@ -128,6 +128,29 @@ final class AdminRoleControllerTest extends TestCase
         $this->assertSame(0, $captured['is_system']);
         sort($capturedPermissions);
         $this->assertSame(['employees.view', 'hiring_reports.view'], $capturedPermissions);
+        $this->assertSame(0, $captured['is_manager']);
+    }
+
+    /**
+     * is_manager doit rester indépendant des permissions cochées (voir AuthService::
+     * roleIsManagerType()) : un rôle peut accorder des permissions en libre-service
+     * (ex. photos.create) sans jamais devoir afficher la navigation manager, tant que
+     * cette case n'est pas explicitement cochée.
+     */
+    public function testStoreRoleCapturesIsManagerFlagWhenChecked(): void
+    {
+        $_POST = ['name' => 'Manager Boutique', 'is_manager' => '1'];
+        $this->roles->method('findBySlug')->willReturn(null);
+
+        $captured = null;
+        $this->roles->method('save')->willReturnCallback(function (array $d) use (&$captured) {
+            $captured = $d;
+            return $d + ['id' => 6];
+        });
+
+        $this->controller->storeRole($this->ownerRequest());
+
+        $this->assertSame(1, $captured['is_manager']);
     }
 
     public function testStoreRoleRedirectsWithErrorWhenNameBlank(): void

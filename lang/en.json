@@ -1063,6 +1063,8 @@
     "role_in_use": "This role is still assigned to at least one user — remove it first.",
     "role_invalid": "Invalid or unknown role.",
     "role_invalid_name": "Role name is required.",
+    "role_is_manager": "Show manager navigation",
+    "role_is_manager_hint": "Independent of the permissions checked below: enable this if users with this role should see the admin dashboard and management menus, instead of the standard employee navigation.",
     "role_manager": "Manager",
     "role_owner": "Owner",
     "role_updated": "Role updated.",

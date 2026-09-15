@@ -53,15 +53,22 @@ final class AuthServiceTest extends TestCase
         $this->roles->method('findById')->with(1)->willReturn(['id' => 1, 'slug' => 'owner', 'is_system' => 1]);
     }
 
-    /** Simule une affectation store-scope à un rôle non-système accordant $permissions. */
-    private function grantStoreRole(int $userId, int $storeId, int $roleId, array $permissions): void
+    /**
+     * Simule une affectation store-scope à un rôle non-système accordant $permissions.
+     * $isManager pilote roles.is_manager, INDÉPENDAMMENT de $permissions (voir
+     * AuthService::roleIsManagerType()) — les deux doivent être choisis explicitement
+     * pour chaque test plutôt que de dépendre d'un défaut implicite.
+     */
+    private function grantStoreRole(int $userId, int $storeId, int $roleId, array $permissions, bool $isManager): void
     {
         $this->roleAssignments->method('findByUser')->willReturnCallback(
             fn(int $uid) => $uid === $userId ? [
                 ['id' => 2, 'user_id' => $userId, 'role_id' => $roleId, 'scope_type' => 'store', 'scope_id' => $storeId],
             ] : []
         );
-        $this->roles->method('findById')->with($roleId)->willReturn(['id' => $roleId, 'slug' => 'manager', 'is_system' => 0]);
+        $this->roles->method('findById')->with($roleId)->willReturn([
+            'id' => $roleId, 'slug' => 'manager', 'is_system' => 0, 'is_manager' => $isManager ? 1 : 0,
+        ]);
         $this->roles->method('getPermissions')->with($roleId)->willReturn($permissions);
     }
 
@@ -301,40 +308,56 @@ final class AuthServiceTest extends TestCase
         $this->assertSame([], $this->auth->managedStoreIds());
     }
 
-    public function testManagedStoreIdsForRoleGrantingManagementPermission(): void
+    public function testManagedStoreIdsForRoleFlaggedManager(): void
     {
         $_SESSION['auth_user_id'] = 10;
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
-        $this->grantStoreRole(10, 1, 2, ['employees.view', 'employees.create']);
+        $this->grantStoreRole(10, 1, 2, ['employees.view', 'employees.create'], isManager: true);
 
         $ids = $this->auth->managedStoreIds();
         $this->assertSame([1], $ids);
     }
 
-    public function testManagedStoreIdsEmptyForRoleWithoutPermissions(): void
+    public function testManagedStoreIdsEmptyForRoleWithoutPermissionsNorManagerFlag(): void
     {
         $_SESSION['auth_user_id'] = 10;
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
-        $this->grantStoreRole(10, 1, 3, []); // rôle sans aucune permission (ex. Employé)
+        $this->grantStoreRole(10, 1, 3, [], isManager: false); // rôle sans permission ni flag manager (ex. Employé)
 
         $this->assertSame([], $this->auth->managedStoreIds());
     }
 
     /**
      * Régression (12/09/2026) : un rôle qui n'accorde QUE des permissions .view (ex. un rôle
-     * custom "lecture seule sur les rapports photos", avec seulement photos.view) DOIT compter
-     * comme gestionnaire de ce store — sinon ce rôle ne peut jamais atteindre /admin/*, même
-     * pour consulter exactement ce que sa permission autorise. PermissionMiddleware reste la
-     * barrière fine qui limite ensuite l'accès à cette seule permission. Voir CHANGELOG et le
-     * docblock de roleGrantsAnyPermission().
+     * custom "lecture seule sur les rapports photos", avec seulement photos.view) doit pouvoir
+     * compter comme gestionnaire de ce store QUAND il est explicitement marqué is_manager —
+     * sinon ce rôle ne peut jamais atteindre /admin/*, même pour consulter exactement ce que sa
+     * permission autorise. PermissionMiddleware reste la barrière fine qui limite ensuite
+     * l'accès à cette seule permission.
      */
-    public function testManagedStoreIdsIncludesStoreForRoleGrantingOnlyViewPermissions(): void
+    public function testManagedStoreIdsIncludesStoreForManagerFlaggedRoleGrantingOnlyViewPermissions(): void
     {
         $_SESSION['auth_user_id'] = 10;
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
-        $this->grantStoreRole(10, 1, 3, ['photos.view']);
+        $this->grantStoreRole(10, 1, 3, ['photos.view'], isManager: true);
 
         $this->assertSame([1], $this->auth->managedStoreIds());
+    }
+
+    /**
+     * Régression (16/09/2026) : le problème inverse — un rôle "Employé" auquel on a accordé une
+     * permission purement en libre-service (ex. photos.create, pour poster sa propre photo de
+     * store) ne doit PAS basculer en navigation manager tant que is_manager n'est pas coché
+     * explicitement. Avant roles.is_manager, roleGrantsAnyPermission() faisait cette promotion
+     * par erreur dès qu'une permission quelconque était accordée.
+     */
+    public function testManagedStoreIdsEmptyForRoleGrantingPermissionButNotFlaggedManager(): void
+    {
+        $_SESSION['auth_user_id'] = 10;
+        $this->users->method('findById')->willReturn($this->activeUser(10, false));
+        $this->grantStoreRole(10, 1, 3, ['photos.create'], isManager: false);
+
+        $this->assertSame([], $this->auth->managedStoreIds());
     }
 
     // -------------------------------------------------------------------------
@@ -349,29 +372,38 @@ final class AuthServiceTest extends TestCase
         $this->assertTrue($this->auth->isManager());
     }
 
-    public function testIsManagerTrueForRoleGrantingManagementPermission(): void
+    public function testIsManagerTrueForRoleFlaggedManager(): void
     {
         $_SESSION['auth_user_id'] = 10;
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
-        $this->grantStoreRole(10, 1, 2, ['employees.view', 'employees.create']);
+        $this->grantStoreRole(10, 1, 2, ['employees.view', 'employees.create'], isManager: true);
         $this->assertTrue($this->auth->isManager());
     }
 
-    public function testIsManagerFalseForRoleWithoutPermissions(): void
+    public function testIsManagerFalseForRoleWithoutPermissionsNorManagerFlag(): void
     {
         $_SESSION['auth_user_id'] = 10;
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
-        $this->grantStoreRole(10, 1, 3, []);
+        $this->grantStoreRole(10, 1, 3, [], isManager: false);
         $this->assertFalse($this->auth->isManager());
     }
 
-    /** Régression : voir testManagedStoreIdsIncludesStoreForRoleGrantingOnlyViewPermissions. */
-    public function testIsManagerTrueForRoleGrantingOnlyViewPermissions(): void
+    /** Régression : voir testManagedStoreIdsIncludesStoreForManagerFlaggedRoleGrantingOnlyViewPermissions. */
+    public function testIsManagerTrueForManagerFlaggedRoleGrantingOnlyViewPermissions(): void
     {
         $_SESSION['auth_user_id'] = 10;
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
-        $this->grantStoreRole(10, 1, 3, ['photos.view']);
+        $this->grantStoreRole(10, 1, 3, ['photos.view'], isManager: true);
         $this->assertTrue($this->auth->isManager());
+    }
+
+    /** Régression : voir testManagedStoreIdsEmptyForRoleGrantingPermissionButNotFlaggedManager. */
+    public function testIsManagerFalseForRoleGrantingPermissionButNotFlaggedManager(): void
+    {
+        $_SESSION['auth_user_id'] = 10;
+        $this->users->method('findById')->willReturn($this->activeUser(10, false));
+        $this->grantStoreRole(10, 1, 3, ['photos.create'], isManager: false);
+        $this->assertFalse($this->auth->isManager());
     }
 
     // -------------------------------------------------------------------------

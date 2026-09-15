@@ -18,10 +18,11 @@ use kintai\UI\Controller\Web\HasBaseUrl;
 use kintai\UI\ViewRenderer;
 
 /**
- * Gestion des rôles dynamiques (RBAC). Réservée à l'Owner (task/mermission.md,
- * phase 3) : rien ici n'est encore lu par AuthService/HasAdminAccess — créer,
- * modifier ou supprimer un rôle depuis cette page n'a aucun effet sur les
- * autorisations tant que la bascule n'a pas eu lieu.
+ * Gestion des rôles dynamiques (RBAC). Réservée à l'Owner. Les permissions
+ * cochées ici sont lues par PermissionService pour l'autorisation réelle de
+ * chaque route ; le champ is_manager est lu séparément par AuthService pour
+ * décider si ce rôle affiche la navigation manager (indépendant des
+ * permissions accordées, voir AuthService::roleIsManagerType()).
  */
 final class AdminRoleController
 {
@@ -104,6 +105,7 @@ final class AdminRoleController
             'color'       => $request->post('color', '') ?: null,
             'description' => trim($request->post('description', '')) ?: null,
             'is_system'   => 0,
+            'is_manager'  => $request->post('is_manager') ? 1 : 0,
         ]);
 
         $permissions = $this->postedPermissions($request);
@@ -150,6 +152,7 @@ final class AdminRoleController
             'name'        => $name,
             'color'       => $request->post('color', '') ?: null,
             'description' => trim($request->post('description', '')) ?: null,
+            'is_manager'  => $request->post('is_manager') ? 1 : 0,
         ]);
 
         $oldPermissions = $this->roles->getPermissions((int) $role['id']);
