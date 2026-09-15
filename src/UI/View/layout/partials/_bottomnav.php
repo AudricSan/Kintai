@@ -1,6 +1,6 @@
 <?php
 $_bnActive = '';
-if ($showAdminMenu) {
+if ($isManager) {
     if (str_starts_with($path, '/admin/shifts') && !str_contains($path, 'shift-type')) $_bnActive = 'shifts';
     elseif (str_starts_with($path, '/admin/users') || str_starts_with($path, '/admin/stores')) $_bnActive = 'team';
     elseif (str_starts_with($path, '/admin/timeoff')) $_bnActive = 'requests';
@@ -51,7 +51,7 @@ $_bnEmployeePool = [
     'my_profile'  => ['icon' => 'person',   'label' => __('my_profile'),   'href' => fn() => route_url('profile'),              'feat' => null],
 ];
 
-if ($showAdminMenu) {
+if ($isManager) {
     $_bnPool    = $_bnAdminPool;
     $_bnDefault = ['shifts', 'team', 'requests'];
     $_bnHomeHref = route_url('home');

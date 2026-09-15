@@ -7,6 +7,7 @@ All notable changes to Kintai are documented here.
 ## [Unreleased]
 
 ### Removed
+- The manager-only "switch to employee view" toggle (`_topbar.php` dropdown button, `POST /switch-view`, `$_SESSION['view_mode']`) has been removed. It only ever controlled which nav variant was rendered — every `/admin/*` route is independently gated by `PermissionMiddleware` regardless of this flag, so it carried no access-control effect, just a confusing "am I in employee view?" state disconnected from actual RBAC. The nav (`app.php`, `_topbar.php`, `_bottomnav.php`) now renders purely from the user's real role (Owner/manager/employee), never from a togglable session flag; `DailyReportNavMiddleware` no longer computes the now-unreachable "staff view" daily-report links for admins/managers.
 - Docker support — the app targets Apache/XAMPP-style PHP hosting and the `Dockerfile`, `docker/` (Apache vhost + entrypoint script), and `scripts/docker-setup.php` were unused and unmaintained; removed along with the corresponding README "Docker" section (EN/FR/JA).
 
 ### Fixed
