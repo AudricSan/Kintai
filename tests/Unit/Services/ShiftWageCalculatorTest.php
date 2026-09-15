@@ -200,6 +200,17 @@ final class ShiftWageCalculatorTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
+    // Clé 'name' absente du type (pas de warning, fallback '')
+    // -------------------------------------------------------------------------
+
+    public function testCalculateMissingNameKeyFallsBackToEmptyString(): void
+    {
+        $types  = [['id' => 1, 'start_time' => '08:00', 'end_time' => '14:00', 'hourly_rate' => 1000.0]];
+        $result = $this->calc->calculate('09:00', '12:00', $types);
+        $this->assertSame('', $result['breakdown'][0]['name']);
+    }
+
+    // -------------------------------------------------------------------------
     // costOf() — source unique pour un shift déjà persisté
     // -------------------------------------------------------------------------
 

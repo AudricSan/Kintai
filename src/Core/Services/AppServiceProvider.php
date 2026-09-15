@@ -71,9 +71,13 @@ final class AppServiceProvider extends ServiceProvider
         $this->container->singleton(NotificationService::class, fn(Container $c) => new NotificationService(
             $c->make(NotificationRepositoryInterface::class),
             $c->make(PushNotificationService::class),
+            $c->make(TranslationService::class),
+            $c->make(UserRepositoryInterface::class),
         ));
         
-        $this->container->singleton(IcalService::class, fn() => new IcalService());
+        $this->container->singleton(IcalService::class, fn(Container $c) => new IcalService(
+            $c->make(TranslationService::class),
+        ));
         
         $this->container->singleton(PasswordResetService::class, fn(Container $c) => new PasswordResetService(
             $c->make(PasswordResetRepositoryInterface::class),

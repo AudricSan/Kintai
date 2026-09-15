@@ -181,19 +181,19 @@ final class StorePhotoController
         $submissionId = (int) $request->param('id');
         $submission   = $this->photos->findSubmissionById($submissionId);
         if (!$submission) {
-            return Response::json(['error' => 'Submission not found'], 404);
+            return Response::json(['error' => __('error_submission_not_found')], 404);
         }
         $this->assertStoreAccess($request, (int) $submission['store_id']);
         $this->assertPhotosFeatureEnabled((int) $submission['store_id']);
 
         $file = $request->file('photo');
         if ($file === null || !is_uploaded_file($file['tmp_name'])) {
-            return Response::json(['error' => 'No file uploaded'], 400);
+            return Response::json(['error' => __('error_no_file_uploaded')], 400);
         }
 
         $ext = $this->safeImageExtension($file['name'] ?? '');
         if ($ext === null) {
-            return Response::json(['error' => 'File type not allowed'], 422);
+            return Response::json(['error' => __('error_file_type_not_allowed')], 422);
         }
 
         $storeId = (int) $submission['store_id'];
@@ -206,7 +206,7 @@ final class StorePhotoController
 
         $compressed = $this->imageCompressor->compress($file['tmp_name'], $subDir . 'photo_' . ($index + 1));
         if ($compressed === null) {
-            return Response::json(['error' => 'File type not allowed'], 422);
+            return Response::json(['error' => __('error_file_type_not_allowed')], 422);
         }
         $safe = basename($compressed['path']);
 
@@ -236,7 +236,7 @@ final class StorePhotoController
     private function assertPhotosFeatureEnabled(int $storeId): void
     {
         if (!$this->isPhotosFeatureEnabled($storeId)) {
-            throw new ForbiddenException("La fonctionnalité Photos n'est pas activée pour ce magasin.");
+            throw new ForbiddenException(__('error_photos_feature_disabled'));
         }
     }
 
@@ -394,7 +394,7 @@ final class StorePhotoController
     {
         $authUser = $request->getAttribute('auth_user');
         if (empty($authUser['is_admin'])) {
-            throw new ForbiddenException('Seul le propriétaire peut supprimer un envoi de photos.');
+            throw new ForbiddenException(__('error_owner_only_delete_photos'));
         }
 
         $id = (int) $request->param('id');
@@ -430,7 +430,7 @@ final class StorePhotoController
     {
         $authUser = $request->getAttribute('auth_user');
         if (empty($authUser['is_admin'])) {
-            throw new ForbiddenException();
+            throw new ForbiddenException(__('error_access_denied'));
         }
 
         return Response::html($this->view->render('store-photos::store-photos-settings', [
@@ -444,7 +444,7 @@ final class StorePhotoController
     {
         $authUser = $request->getAttribute('auth_user');
         if (empty($authUser['is_admin'])) {
-            throw new ForbiddenException();
+            throw new ForbiddenException(__('error_access_denied'));
         }
 
         $retentionDays = max(1, (int) ($request->post('photo_retention_days') ?: 14));

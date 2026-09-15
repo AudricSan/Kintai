@@ -16,16 +16,16 @@ final class UpdateService
     }
 
     /**
-     * La version installée est la base X.Y.Z déclarée dans config/app.php
-     * (bumpée à chaque release, et synchronisée par
+     * La version installée est la ligne X.Y.0 déclarée dans config/app.php
+     * (bumpée à l'ouverture d'une nouvelle ligne, et synchronisée par
      * GithubUpdateService::syncFiles() lors d'une mise à jour) — ce fichier
-     * ne contient jamais le suffixe -LN d'une prerelease (voir
-     * docs/releasing.md), qui n'existe que sur le tag Git. On complète donc
-     * avec le tag exact retenu par recordAppliedVersion() lors de la
-     * dernière mise à jour appliquée via l'auto-updater, tant que sa base
-     * correspond toujours à celle de config/app.php (sinon, ce tag est
-     * obsolète — la base a été changée par un autre moyen, ex. un git pull
-     * manuel — et on retombe sur la base seule).
+     * ne contient jamais le Z réel d'une prerelease (voir docs/releasing.md),
+     * qui n'existe que sur le tag Git. On complète donc avec le tag exact
+     * retenu par recordAppliedVersion() lors de la dernière mise à jour
+     * appliquée via l'auto-updater, tant que sa ligne X.Y correspond toujours
+     * à celle de config/app.php (sinon, ce tag est obsolète — la ligne a été
+     * changée par un autre moyen, ex. un git pull manuel — et on retombe sur
+     * la base seule).
      */
     public function getCurrentVersion(): string
     {
@@ -37,14 +37,14 @@ final class UpdateService
         $base = $config['version'] ?? '0.0.0';
 
         $appliedVersion = $this->readVersion()['applied_version'] ?? null;
-        if (is_string($appliedVersion) && VersionScheme::baseOf($appliedVersion) === $base) {
+        if (is_string($appliedVersion) && VersionScheme::lineOf($appliedVersion) === VersionScheme::lineOf($base)) {
             return $appliedVersion;
         }
 
         return $base;
     }
 
-    /** Mémorise le tag exact (avec suffixe -LN éventuel) appliqué par la dernière mise à jour réussie. */
+    /** Mémorise le tag exact (avec le Z réel de la prerelease) appliqué par la dernière mise à jour réussie. */
     public function recordAppliedVersion(string $version): void
     {
         $data = $this->readVersion();

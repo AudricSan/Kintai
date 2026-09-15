@@ -36,7 +36,7 @@
 
     document.querySelectorAll('.translation-delete-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
-            if (!confirm(cfg.confirmDelete || 'Delete?')) return;
+            if (!confirm(cfg.confirmDelete)) return;
             var row = btn.closest('tr');
             var key = row.dataset.key;
             post(BASE + '/admin/languages/' + encodeURIComponent(CODE) + '/edit/delete', { key: key })

@@ -88,4 +88,24 @@ final class DatabaseShiftRepository implements ShiftRepositoryInterface
         }
         return 0;
     }
+
+    public function closeOpenShiftTo(int $id, int $userId): ?array
+    {
+        $shift = EloquentShift::find($id);
+        if ($shift === null) {
+            return null;
+        }
+        $affected = EloquentShift::where('id', $id)
+            ->where('is_open', 1)
+            ->update([
+                'user_id'       => $userId,
+                'is_open'       => 0,
+                'ical_sequence' => ((int) $shift->ical_sequence) + 1,
+                'updated_at'    => date('Y-m-d H:i:s'),
+            ]);
+        if ($affected === 0) {
+            return null;
+        }
+        return EloquentShift::find($id)->toArray();
+    }
 }
