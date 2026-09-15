@@ -263,10 +263,6 @@ select.form-control {
     border-color: var(--color-text-secondary);
 }
 
-.color-preset.is-active {
-    border-color: var(--color-text);
-}
-
 .theme-dark-color {
     margin-top: var(--space-2);
     padding-left: var(--space-4);

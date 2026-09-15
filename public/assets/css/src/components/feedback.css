@@ -80,9 +80,3 @@
     color: var(--color-warning);
 }
 
-.fb-message-cell {
-    max-width: 340px;
-    word-break: break-word;
-    font-size: var(--text-sm);
-}
-

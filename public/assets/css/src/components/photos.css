@@ -207,24 +207,6 @@ a.photo-card {
     }
 }
 
-.photo-dropzone {
-    border: 2px dashed var(--color-border);
-    border-radius: var(--radius);
-    padding: var(--space-6);
-    text-align: center;
-    cursor: pointer;
-    transition: border-color 0.2s;
-    background: var(--color-surface);
-}
-
-.photo-dropzone:hover {
-    border-color: var(--color-primary);
-}
-
-.photo-dropzone input[type="file"] {
-    display: none;
-}
-
 .photo-preview {
     display: flex;
     flex-wrap: wrap;

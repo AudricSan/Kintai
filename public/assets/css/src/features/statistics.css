@@ -22,12 +22,6 @@
     gap: var(--space-4);
 }
 
-.sstat-grid-wide {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: var(--space-4);
-}
-
 .sstat-card {
     background: var(--color-surface);
     border: 1px solid var(--color-border);
@@ -202,11 +196,6 @@
 .sstat-legend-text { font-size: var(--text-xs); line-height: 1.8; color: var(--color-text-muted); }
 
 .sstat-empty       { color: var(--color-text-muted); font-size: 0.8rem; }
-.sstat-member-row  { flex: 1; min-width: 200px; padding: var(--space-2) 0; }
-.sstat-caption     { font-size: 0.8rem; color: var(--color-text-muted); margin-bottom: var(--space-2); }
-.sstat-caption-sm  { font-size: var(--text-xs); line-height: 1.8; color: var(--color-text-muted); }
-.sstat-header-sm   { font-size: 0.8rem; font-weight: 600; margin-bottom: var(--space-3); }
-.sstat-no-data     { color: var(--color-text-muted); font-size: 0.8rem; }
 .sstat-sublabel    { font-size: 0.8rem; color: var(--color-text-muted); margin-bottom: var(--space-2); }
 .sstat-sublabel--strong { font-size: 0.8rem; font-weight: 600; margin-bottom: var(--space-3); }
 

@@ -52,15 +52,6 @@
 }
 
 /* ── Nav Order (Drag & Drop) ──────────────────── */
-.form-section-title {
-    font-size: var(--text-sm);
-    font-weight: 600;
-    color: var(--color-text);
-    margin: 0 0 var(--space-1);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
 .nav-order-list {
     list-style: none;
     margin: 0;
