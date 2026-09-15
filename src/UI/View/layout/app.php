@@ -26,9 +26,6 @@
         $isOwner    = !empty($auth_user['is_admin']);
         // managed_store_ids : null = admin global, array = manager restreint
         $isManager  = $isOwner || isset($managed_store_ids);
-        // Mode de vue : 'admin' (défaut) ou 'employee' (basculé par le manager/admin)
-        $viewMode       = $view_mode ?? 'admin';
-        $showAdminMenu  = $isManager && $viewMode === 'admin';
 
         $feat = fn(string $f): bool =>
             feat_bundle($f) && (
