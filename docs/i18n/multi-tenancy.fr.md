@@ -17,8 +17,8 @@ Le SaaS Kintai agit comme un orchestrateur qui automatise le déploiement de ces
 ### 1. Serveur de base de données partagé (optionnel)
 Bien que chaque tenant dispose d'une isolation logique de sa base de données, ils peuvent partager un serveur de base de données physique (par exemple un large cluster MySQL) où chaque tenant possède son propre schéma/nom de base.
 
-### 2. Isolation physique par conteneur
-Chaque tenant tourne dans son propre conteneur Docker, garantissant que l'utilisation des ressources et les vulnérabilités de sécurité restent confinées à une seule instance.
+### 2. Isolation physique par instance
+Chaque tenant tourne sur sa propre instance applicative dédiée, garantissant que l'utilisation des ressources et les vulnérabilités de sécurité restent confinées à une seule instance.
 
 ## 🔄 Gestion du cycle de vie
 - **Provisioning :** mise en place automatisée de la BDD, du `.env` et du compte admin initial.
