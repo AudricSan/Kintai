@@ -33,7 +33,7 @@ Kintai is the bridge between a spreadsheet and an enterprise ERP: scheduling, cl
 - **You own your data.** No multi-tenant black box: each deployment is a dedicated instance with its own database. Moving from the hosted demo to your own server is a database dump and a `git clone` away — no vendor lock-in.
 - **Built for real multi-store operations.** Store-level timezones, currencies, break rules, understaffing thresholds, and per-store feature toggles — not a single-location tool stretched to fit.
 - **Japan-ready, globally usable.** CJK-safe PDF exports, `姓 名` name ordering, JPY/EUR/USD display, and FR/EN/JA translations out of the box — designed around Japanese retail conventions but usable anywhere.
-- **No framework tax.** A ~600-file custom PHP 8.3 core (no Laravel, no Symfony) with Eloquent as the only borrowed piece. It runs on a €5 VPS or shared hosting just as well as Docker — see [docs/architecture.md](docs/architecture.md).
+- **No framework tax.** A ~600-file custom PHP 8.3 core (no Laravel, no Symfony) with Eloquent as the only borrowed piece. It runs on a €5 VPS or shared hosting — see [docs/architecture.md](docs/architecture.md).
 - **Actually tested.** 589 PHPUnit tests across the core, repositories and controllers, run on every push via GitHub Actions.
 
 ---
@@ -87,15 +87,6 @@ php -S 127.0.0.1:8000 -t public
 ```
 
 Then open `http://127.0.0.1:8000/install.php` — the web installer creates `config/database.local.php`, runs migrations, and creates the admin account.
-
-### Docker
-
-```bash
-docker build -t kintai .
-docker run -p 8080:80 kintai
-```
-
-`scripts/docker-setup.php` prepares SQLite, runs migrations, and optionally seeds demo data (`SEED_DEMO_DATA=true`). See the [Dockerfile](Dockerfile) for all environment variables.
 
 ### Updating
 

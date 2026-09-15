@@ -33,7 +33,7 @@ Kintai est le pont entre le tableur Excel et l'ERP d'entreprise : planning, poin
 - **Vous restez propriétaire de vos données.** Pas de boîte noire multi-tenant : chaque déploiement est une instance dédiée avec sa propre base de données. Passer de la démo hébergée à votre propre serveur, c'est juste un dump de base et un `git clone` — aucun verrouillage propriétaire.
 - **Pensé pour le multi-magasin réel.** Fuseaux horaires, devises, règles de pause et seuils de sous-effectif par magasin, fonctionnalités activables individuellement — pas un outil mono-site étiré pour l'occasion.
 - **Prêt pour le Japon, utilisable partout.** Export PDF compatible CJK, ordre des noms `姓 名`, affichage JPY/EUR/USD, traductions FR/EN/JA incluses — pensé pour les usages du retail japonais mais utilisable ailleurs.
-- **Aucune taxe framework.** Un cœur PHP 8.3 sur mesure d'environ 600 fichiers (pas de Laravel, pas de Symfony), avec Eloquent comme seul emprunt. Tourne aussi bien sur un VPS à 5 € que sous Docker — voir [docs/i18n/architecture.fr.md](architecture.fr.md).
+- **Aucune taxe framework.** Un cœur PHP 8.3 sur mesure d'environ 600 fichiers (pas de Laravel, pas de Symfony), avec Eloquent comme seul emprunt. Tourne aussi bien sur un VPS à 5 € — voir [docs/i18n/architecture.fr.md](architecture.fr.md).
 - **Réellement testé.** 589 tests PHPUnit couvrant le cœur, les repositories et les contrôleurs, exécutés à chaque push via GitHub Actions.
 
 ---
@@ -87,15 +87,6 @@ php -S 127.0.0.1:8000 -t public
 ```
 
 Ouvrir ensuite `http://127.0.0.1:8000/install.php` — l'installateur web crée `config/database.local.php`, exécute les migrations et crée le compte administrateur.
-
-### Docker
-
-```bash
-docker build -t kintai .
-docker run -p 8080:80 kintai
-```
-
-`scripts/docker-setup.php` prépare SQLite, exécute les migrations et peut semer des données de démo (`SEED_DEMO_DATA=true`). Voir le [Dockerfile](Dockerfile) pour toutes les variables d'environnement.
 
 ### Mise à jour
 
