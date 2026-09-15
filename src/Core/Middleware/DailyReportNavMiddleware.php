@@ -32,45 +32,21 @@ final class DailyReportNavMiddleware implements MiddlewareInterface
             return $next($request);
         }
 
-        $user    = $auth->user();
-        $view    = $this->container->make(ViewRenderer::class);
-        $empView = ($_SESSION['view_mode'] ?? 'admin') === 'employee';
+        $user = $auth->user();
+        $view = $this->container->make(ViewRenderer::class);
 
-        // En vue admin, admins et managers ont leur lien daily-reports dans le menu admin.
-        // En vue employé, on leur calcule la liste des stores pour la navigation employé.
+        // Admins et managers ont toujours leur propre lien "rapports journaliers"
+        // dans le menu admin/manager (nav système/statistiques) : ce tableau ne
+        // sert qu'à la nav employé, jamais affichée pour ces rôles.
         if (!empty($user['is_admin'])) {
             $view->share('managed_store_ids', null);
-            if (!$empView) {
-                $view->share('daily_report_staff_stores', []);
-                return $next($request);
-            }
-            $stores      = $this->container->make(StoreRepositoryInterface::class);
-            $permissions = $this->container->make(DailyReportPermissionService::class);
-            $accessible  = array_values(array_filter(
-                $stores->findActive(),
-                fn($s) => $permissions->isEnabled($s),
-            ));
-            $view->share('daily_report_staff_stores', $accessible);
+            $view->share('daily_report_staff_stores', []);
             return $next($request);
         }
 
         if ($auth->isManager()) {
-            $managedIds = $auth->managedStoreIds();
-            $view->share('managed_store_ids', $managedIds);
-            if (!$empView) {
-                $view->share('daily_report_staff_stores', []);
-                return $next($request);
-            }
-            $stores      = $this->container->make(StoreRepositoryInterface::class);
-            $permissions = $this->container->make(DailyReportPermissionService::class);
-            $accessible  = [];
-            foreach ($managedIds as $storeId) {
-                $store = $stores->findById($storeId);
-                if ($store !== null && $permissions->isEnabled($store)) {
-                    $accessible[] = $store;
-                }
-            }
-            $view->share('daily_report_staff_stores', $accessible);
+            $view->share('managed_store_ids', $auth->managedStoreIds());
+            $view->share('daily_report_staff_stores', []);
             return $next($request);
         }
 

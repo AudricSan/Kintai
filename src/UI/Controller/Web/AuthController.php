@@ -130,25 +130,6 @@ final class AuthController
         return Response::redirect($referer);
     }
 
-    /** Bascule entre la vue admin et la vue employé (pour les managers uniquement). */
-    public function switchView(Request $request): Response
-    {
-        $user = $this->auth->user();
-        if ($user && !empty($user['is_admin'])) {
-            return Response::redirect($this->base() . '/');
-        }
-
-        $current = $_SESSION['view_mode'] ?? 'admin';
-        $next    = $current === 'admin' ? 'employee' : 'admin';
-        $_SESSION['view_mode'] = $next;
-
-        $redirectTo = $next === 'employee'
-            ? $this->base() . '/employee'
-            : $this->base() . '/';
-
-        return Response::redirect($redirectTo);
-    }
-
     /** Change la langue de l'utilisateur (session + BD si connecté). */
     public function switchLanguage(Request $request): Response
     {

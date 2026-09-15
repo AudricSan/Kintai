@@ -144,7 +144,6 @@ $router->group('/employee', function ($r) {
 }, middleware: [AuthMiddleware::class]);
 
 // --- Changement de vue / langue ---
-$router->post('/switch-view',   [AuthController::class, 'switchView'],   middleware: [AuthMiddleware::class], name: 'switch.view');
 $router->post('/switch-device', [AuthController::class, 'switchDevice'], middleware: [AuthMiddleware::class], name: 'switch.device');
 $router->get('/lang/{locale}', [AuthController::class, 'switchLanguage'], name: 'lang.switch');
 

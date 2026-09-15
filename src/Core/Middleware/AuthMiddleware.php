@@ -48,7 +48,6 @@ final class AuthMiddleware implements MiddlewareInterface
         // Partage avec toutes les vues (pour le layout)
         $view = $this->container->make(ViewRenderer::class);
         $view->share('auth_user', $user);
-        $view->share('view_mode', $_SESSION['view_mode'] ?? 'admin');
         $view->share('auth_is_manager', $auth->isManager());
 
         // Permissions fines RBAC : l'utilisateur détient-il cette clé quelque
