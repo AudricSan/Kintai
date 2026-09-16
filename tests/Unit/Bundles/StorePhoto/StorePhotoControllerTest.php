@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Bundles\StorePhoto;
 
 use kintai\Bundles\StorePhoto\Controllers\Web\StorePhotoController;
-use kintai\Bundles\StorePhoto\Services\ImageCompressionService;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Repositories\StorePhotoRepositoryInterface;
@@ -13,6 +12,7 @@ use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\ImageCompressionService;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;

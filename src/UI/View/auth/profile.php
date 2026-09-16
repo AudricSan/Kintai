@@ -38,12 +38,15 @@ $defaultClose = '18:00';
 echo Flash::fromQuery('success', [
     'saved'            => __('save_success'),
     'password_changed' => __('password_changed_success'),
+    'avatar_saved'     => __('avatar_saved'),
+    'avatar_removed'   => __('avatar_removed'),
     '1'                => __('operation_success'),
 ])->render();
 $errMsg = match ($_GET['error'] ?? '') {
     'password_mismatch'      => __('password_mismatch'),
     'password_too_short'     => __('password_too_short'),
     'current_password_wrong' => __('current_password_wrong'),
+    'avatar_invalid'         => __('avatar_invalid'),
     default                  => '',
 };
 if ($errMsg !== '') {
@@ -101,6 +104,36 @@ ob_start();
                value="<?= htmlspecialchars($user['email'] ?? '') ?>" disabled>
     </div>
 
+    <h4 class="section-title"><?= __('contact') ?></h4>
+    <div class="form-row">
+        <div class="form-group">
+            <label class="form-label"><?= __('phone') ?></label>
+            <input type="tel" name="phone" class="form-control"
+                   value="<?= htmlspecialchars($user['phone'] ?? '') ?>"
+                   placeholder="+33 6 00 00 00 00">
+        </div>
+        <div class="form-group">
+            <label class="form-label"><?= __('mobile_phone') ?></label>
+            <input type="tel" name="mobile_phone" class="form-control"
+                   value="<?= htmlspecialchars($user['mobile_phone'] ?? '') ?>"
+                   placeholder="090-XXXX-XXXX">
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label class="form-label"><?= __('postal_code') ?></label>
+            <input type="text" name="postal_code" class="form-control"
+                   value="<?= htmlspecialchars($user['postal_code'] ?? '') ?>"
+                   placeholder="123-4567">
+        </div>
+        <div class="form-group">
+            <label class="form-label"><?= __('address') ?></label>
+            <input type="text" name="address" class="form-control"
+                   value="<?= htmlspecialchars($user['address'] ?? '') ?>">
+        </div>
+    </div>
+
     <div class="form-group">
         <label class="form-label form-label--required"><?= __('language') ?></label>
         <select name="language" class="form-control">
@@ -110,12 +143,84 @@ ob_start();
         </select>
     </div>
 
+    <h4 class="section-title"><?= __('profile_enriched') ?></h4>
+    <div class="form-group">
+        <label class="form-label"><?= __('bio') ?></label>
+        <textarea name="bio" class="form-control" rows="3" maxlength="1000"
+                  placeholder="<?= htmlspecialchars(__('bio_placeholder')) ?>"><?= htmlspecialchars($user['bio'] ?? '') ?></textarea>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label class="form-label"><?= __('skills') ?></label>
+            <input type="text" name="skills" class="form-control"
+                   value="<?= htmlspecialchars($user['skills'] ?? '') ?>"
+                   placeholder="<?= htmlspecialchars(__('skills_placeholder')) ?>">
+        </div>
+        <div class="form-group">
+            <label class="form-label"><?= __('languages_spoken') ?></label>
+            <input type="text" name="languages_spoken" class="form-control"
+                   value="<?= htmlspecialchars($user['languages_spoken'] ?? '') ?>"
+                   placeholder="<?= htmlspecialchars(__('languages_spoken_placeholder')) ?>">
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="form-label"><?= __('hobbies') ?></label>
+        <input type="text" name="hobbies" class="form-control"
+               value="<?= htmlspecialchars($user['hobbies'] ?? '') ?>"
+               placeholder="<?= htmlspecialchars(__('hobbies_placeholder')) ?>">
+    </div>
+
+    <?php if (bundle_enabled('team-directory')): ?>
+    <div class="form-group">
+        <label class="form-toggle form-toggle--labeled">
+            <input type="checkbox" name="show_in_directory" value="1" class="form-toggle__input"
+                   <?= (($user['show_in_directory'] ?? 1) != 0) ? 'checked' : '' ?>>
+            <span class="form-toggle__track"></span>
+            <span><?= __('show_in_directory') ?></span>
+        </label>
+        <p class="form-hint"><?= __('show_in_directory_hint') ?></p>
+    </div>
+    <?php endif; ?>
+
     <div class="form-actions">
         <?= Button::make(__('save'))->primary()->submit()->render() ?>
     </div>
 </form>
 <?php $infoBody = ob_get_clean();
 echo Card::make(__('profile_tab_info'))->body($infoBody)->render();
+
+ob_start();
+$_avatarPath = $user['avatar_path'] ?? null;
+$_avatarInitials = htmlspecialchars(strtoupper(
+    mb_substr((string) ($user['last_name'] ?? ''), 0, 1) . mb_substr((string) ($user['first_name'] ?? ''), 0, 1)
+) ?: '··');
+?>
+<div class="profile-avatar-row">
+    <?php if ($_avatarPath): ?>
+        <img src="<?= route_url('user.avatar', ['user_id' => $user['id']]) ?>" alt="" class="profile-avatar-preview">
+    <?php else: ?>
+        <span class="avatar-chip profile-avatar-preview profile-avatar-preview--fallback" style="--chip-bg:<?= htmlspecialchars($user['color'] ?? '#3B82F6') ?>"><?= $_avatarInitials ?></span>
+    <?php endif; ?>
+    <div class="profile-avatar-actions">
+        <form method="POST" action="<?= route_url('profile.avatar') ?>" enctype="multipart/form-data" class="form-inline-flex">
+            <?= csrf_field() ?>
+            <input type="file" name="avatar" accept="image/jpeg,image/png,image/gif,image/webp" required>
+            <?= Button::make(__('avatar_change'))->ghost()->sm()->submit()->render() ?>
+        </form>
+        <?php if ($_avatarPath): ?>
+        <form method="POST" action="<?= route_url('profile.avatar.delete') ?>"
+              data-confirm="<?= htmlspecialchars(__('avatar_remove_confirm'), ENT_QUOTES) ?>">
+            <?= csrf_field() ?>
+            <?= Button::make(__('avatar_remove'))->danger()->sm()->submit()->render() ?>
+        </form>
+        <?php endif; ?>
+    </div>
+</div>
+<?php
+echo Card::make()->header(__('avatar'))->body(ob_get_clean())->render();
+
 ob_start();
 ?>
 <?php if (empty($user['email'])):

@@ -1,0 +1,10 @@
+{
+    "bundle_team_directory": "チーム名簿",
+    "bundle_team_directory_desc": "拡張プロフィール（写真、自己紹介、スキル、話せる言語、趣味）と店舗ごとの同僚名簿。",
+    "error_not_colleague": "このユーザーとは同じ店舗に所属していません。",
+    "team_directory": "チーム",
+    "team_directory_back": "名簿に戻る",
+    "team_directory_empty": "表示できる同僚がまだいません。",
+    "team_directory_empty_profile": "この同僚はまだ拡張プロフィールを入力していません。",
+    "team_directory_view_profile": "プロフィールを見る"
+}

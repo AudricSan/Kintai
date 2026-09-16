@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace kintai\UI\Controller\Web;
 
 use kintai\Core\Auth\AuthService;
+use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\ImageCompressionService;
 use kintai\Core\Repositories\AvailabilityRepositoryInterface;
 use kintai\Core\Repositories\IcalTokenRepositoryInterface;
 use kintai\Core\Repositories\LanguageRepositoryInterface;
@@ -58,7 +60,16 @@ final class AuthController
         private readonly UserNavPrefsRepositoryInterface $navPrefs,
         private readonly AvailabilityRepositoryInterface $availabilities,
         private readonly LanguageRepositoryInterface $languages,
+        private readonly ImageCompressionService $imageCompressor,
     ) {}
+
+    /** @var array<string, string> extension → type MIME (avatars) */
+    private const AVATAR_MIME_TYPES = [
+        'jpg'  => 'image/jpeg',
+        'png'  => 'image/png',
+        'gif'  => 'image/gif',
+        'webp' => 'image/webp',
+    ];
 
     /** Affiche le formulaire de connexion. */
     public function showLogin(Request $request): Response
@@ -301,7 +312,16 @@ final class AuthController
             // migration de création de users (elle ne peut pas manquer si la table existe),
             // et avaler l'échec masquerait un vrai problème derrière un "?success=1" trompeur
             // — l'utilisateur croirait sa préférence enregistrée alors qu'elle ne l'est pas.
-            $dbUser['language'] = $language;
+            $dbUser['language']            = $language;
+            $dbUser['phone']               = trim((string) $request->post('phone', ''));
+            $dbUser['mobile_phone']        = trim((string) $request->post('mobile_phone', ''));
+            $dbUser['postal_code']         = trim((string) $request->post('postal_code', ''));
+            $dbUser['address']             = trim((string) $request->post('address', ''));
+            $dbUser['bio']                 = trim((string) $request->post('bio', ''));
+            $dbUser['skills']              = trim((string) $request->post('skills', ''));
+            $dbUser['languages_spoken']    = trim((string) $request->post('languages_spoken', ''));
+            $dbUser['hobbies']             = trim((string) $request->post('hobbies', ''));
+            $dbUser['show_in_directory']   = $request->post('show_in_directory') === '1' ? 1 : 0;
             $this->users->save($dbUser);
             $_SESSION['auth_user'] = $dbUser;
 
@@ -310,6 +330,112 @@ final class AuthController
         }
 
         return Response::redirect($this->base() . '/profile?success=1');
+    }
+
+    /** Met à jour la photo de profil de l'utilisateur connecté. */
+    public function uploadAvatar(Request $request): Response
+    {
+        $user = $this->auth->user();
+        if (!$user) {
+            return Response::redirect($this->base() . '/login');
+        }
+
+        $userId = (int) $user['id'];
+        $file   = $request->file('avatar');
+        if ($file === null || !is_uploaded_file($file['tmp_name'])) {
+            return Response::redirect($this->base() . '/profile?tab=info&error=avatar_invalid');
+        }
+
+        $dbUser = $this->users->findById($userId);
+        if ($dbUser === null) {
+            return Response::redirect($this->base() . '/profile?tab=info&error=error_generic');
+        }
+
+        $avatarDir = BASE_PATH . '/storage/uploads/avatars/';
+        if (!is_dir($avatarDir)) {
+            mkdir($avatarDir, 0775, true);
+        }
+
+        $compressed = $this->imageCompressor->compress($file['tmp_name'], $avatarDir . 'user_' . $userId);
+        if ($compressed === null) {
+            return Response::redirect($this->base() . '/profile?tab=info&error=avatar_invalid');
+        }
+
+        // Un ancien avatar dans une extension différente (ex. .png → .jpg après
+        // recompression) resterait orphelin sur le disque sans ce nettoyage.
+        $oldFilename = $dbUser['avatar_path'] ?? null;
+        if ($oldFilename !== null) {
+            $oldPath = $avatarDir . basename((string) $oldFilename);
+            if (is_file($oldPath) && $oldPath !== $compressed['path']) {
+                @unlink($oldPath);
+            }
+        }
+
+        $oldUser = $dbUser;
+        $dbUser['avatar_path'] = basename($compressed['path']);
+        $this->users->save($dbUser);
+        $_SESSION['auth_user'] = $dbUser;
+
+        $this->auditLogger->logUpdate($request, 'user.avatar_updated', 'user', $userId, $oldUser, $dbUser, [], null, $userId);
+
+        return Response::redirect($this->base() . '/profile?tab=info&success=avatar_saved');
+    }
+
+    /** Supprime la photo de profil de l'utilisateur connecté. */
+    public function removeAvatar(Request $request): Response
+    {
+        $user = $this->auth->user();
+        if (!$user) {
+            return Response::redirect($this->base() . '/login');
+        }
+
+        $userId = (int) $user['id'];
+        $dbUser = $this->users->findById($userId);
+        if ($dbUser === null || empty($dbUser['avatar_path'])) {
+            return Response::redirect($this->base() . '/profile?tab=info');
+        }
+
+        $path = BASE_PATH . '/storage/uploads/avatars/' . basename((string) $dbUser['avatar_path']);
+        if (is_file($path)) {
+            @unlink($path);
+        }
+
+        $oldUser = $dbUser;
+        $dbUser['avatar_path'] = null;
+        $this->users->save($dbUser);
+        $_SESSION['auth_user'] = $dbUser;
+
+        $this->auditLogger->logUpdate($request, 'user.avatar_removed', 'user', $userId, $oldUser, $dbUser, [], null, $userId);
+
+        return Response::redirect($this->base() . '/profile?tab=info&success=avatar_removed');
+    }
+
+    /**
+     * Sert la photo de profil d'un utilisateur (visible par tout utilisateur
+     * connecté — même logique d'ouverture que le nom/la couleur d'identification,
+     * déjà visibles à l'échelle de l'organisation dans les plannings partagés).
+     */
+    public function avatar(Request $request): Response
+    {
+        $targetId = (int) $request->param('user_id');
+        $target   = $this->users->findById($targetId);
+        $filename = $target['avatar_path'] ?? null;
+        if ($target === null || $filename === null) {
+            throw new NotFoundException(__('error_file_not_found'));
+        }
+
+        $path = BASE_PATH . '/storage/uploads/avatars/' . basename((string) $filename);
+        if (!is_file($path)) {
+            throw new NotFoundException(__('error_file_not_found'));
+        }
+
+        $ext  = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        $mime = self::AVATAR_MIME_TYPES[$ext] ?? 'application/octet-stream';
+
+        return Response::fileStream($path, $mime, basename($path))
+            ->withHeader('Content-Disposition', 'inline; filename="' . basename($path) . '"')
+            ->withHeader('X-Content-Type-Options', 'nosniff')
+            ->withHeader('Cache-Control', 'private, max-age=3600');
     }
 
     /** Change le mot de passe de l'utilisateur. */
@@ -367,10 +493,18 @@ final class AuthController
 
         $data = [
             'personal_info' => [
-                'first_name' => $user['first_name'] ?? null,
-                'last_name'  => $user['last_name'] ?? null,
-                'email'      => $user['email'] ?? null,
-                'language'   => $user['language'] ?? null,
+                'first_name'        => $user['first_name'] ?? null,
+                'last_name'         => $user['last_name'] ?? null,
+                'email'             => $user['email'] ?? null,
+                'phone'             => $user['phone'] ?? null,
+                'mobile_phone'      => $user['mobile_phone'] ?? null,
+                'postal_code'       => $user['postal_code'] ?? null,
+                'address'           => $user['address'] ?? null,
+                'language'          => $user['language'] ?? null,
+                'bio'               => $user['bio'] ?? null,
+                'skills'            => $user['skills'] ?? null,
+                'languages_spoken'  => $user['languages_spoken'] ?? null,
+                'hobbies'           => $user['hobbies'] ?? null,
             ],
             'memberships' => $this->storeUsers->findByUser($userId),
             'availabilities' => $this->availabilities->findByUser($userId),
@@ -401,19 +535,35 @@ final class AuthController
             return Response::redirect($this->base() . '/profile?tab=data&error=current_password_wrong');
         }
 
+        // La photo de profil est un fichier sur disque, pas juste une colonne :
+        // sans ce nettoyage elle survivrait à l'anonymisation du compte.
+        $existing = $this->users->findById($userId);
+        if (!empty($existing['avatar_path'])) {
+            @unlink(BASE_PATH . '/storage/uploads/avatars/' . basename((string) $existing['avatar_path']));
+        }
+
         // Anonymize instead of hard delete: keep related records for data integrity
         $this->users->save([
-            'id'             => $userId,
-            'first_name'     => '[Supprimé]',
-            'last_name'      => '',
-            'display_name'   => 'Utilisateur supprimé',
-            'email'          => 'deleted-' . $userId . '@kintai.local',
-            'employee_code'  => null,
-            'password_hash'  => '',
-            'phone'          => null,
-            'language'       => null,
-            'is_active'      => 0,
-            'updated_at'     => date('Y-m-d H:i:s'),
+            'id'                 => $userId,
+            'first_name'         => '[Supprimé]',
+            'last_name'          => '',
+            'display_name'       => 'Utilisateur supprimé',
+            'email'              => 'deleted-' . $userId . '@kintai.local',
+            'employee_code'      => null,
+            'password_hash'      => '',
+            'phone'              => null,
+            'language'           => null,
+            'is_active'          => 0,
+            'mobile_phone'       => null,
+            'postal_code'        => null,
+            'address'            => null,
+            'avatar_path'        => null,
+            'bio'                => null,
+            'skills'             => null,
+            'languages_spoken'   => null,
+            'hobbies'            => null,
+            'show_in_directory'  => 0,
+            'updated_at'         => date('Y-m-d H:i:s'),
         ]);
 
         $this->auditLogger->log($request, 'user.self_deleted', 'user', $userId, [], null, $userId);

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace kintai\Bundles\StorePhoto\Controllers\Web;
 
 use kintai\UI\Controller\Web\HasAdminAccess;
-use kintai\Bundles\StorePhoto\Services\ImageCompressionService;
+use kintai\Core\Services\ImageCompressionService;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Repositories\StorePhotoRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
