@@ -1,0 +1,15 @@
+{
+    "bundle_timeoff": "Time Off",
+    "bundle_timeoff_desc": "Employee leave requests: submission, approval, tracking.",
+    "confirm_delete_timeoff": "Permanently delete this leave?",
+    "create_timeoff": "Create a leave",
+    "error_not_pending": "This request can no longer be cancelled.",
+    "new_timeoff": "New leave",
+    "no_pending_timeoff": "No pending requests.",
+    "no_timeoff_found": "No time-off requests.",
+    "reason_placeholder": "Ex: wedding, doctor...",
+    "sent_at": "Sent at",
+    "timeoff_created_admin": "The leave has been created and added to the calendar.",
+    "timeoff_deleted": "The leave has been deleted.",
+    "timeoff_request_sent": "Time-off request sent."
+}

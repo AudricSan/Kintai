@@ -1,0 +1,21 @@
+{
+    "bundle_hiring_report": "Rapport d'embauche",
+    "bundle_hiring_report_desc": "Consultation et édition des rapports d'embauche par magasin. Générés automatiquement à la création d'un employé, même si ce bundle est désactivé.",
+    "confirm_delete_hiring_report": "Supprimer définitivement ce rapport d'embauche ?",
+    "edit_hiring_report": "Modifier le rapport d'embauche",
+    "hire_date": "Date d'embauche",
+    "hired_by": "Recruté par",
+    "hiring_report": "Rapport d'embauche",
+    "hiring_reports": "Rapports d'embauche",
+    "new_hiring_report": "Nouveau rapport d'embauche",
+    "no_hiring_reports": "Aucun rapport d'embauche trouvé.",
+    "pdf_generated_by": "Généré par",
+    "report_already_exists": "Un rapport existe déjà pour ce mois.",
+    "section_contact": "Coordonnées",
+    "section_employment": "Emploi",
+    "section_guarantor": "Garant",
+    "section_identity": "Identité",
+    "store_name": "Magasin",
+    "tax_kou": "Kou (甲)",
+    "tax_otsu": "Otsu (乙)"
+}

@@ -1,0 +1,119 @@
+/* ================================================
+   Kintai — Espace employé
+   ================================================ */
+
+/* ── Employee ───────────────────────────────────── */
+.timeoff-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    align-items: flex-end;
+}
+.timeoff-form__date  { flex: 0 0 160px; }
+.timeoff-form__short { flex: 0 0 150px; }
+.timeoff-form__grow  { flex: 1; min-width: 180px; }
+
+.swap-card { border-left: 3px solid var(--color-primary); }
+.swap-card .card-header { background: var(--color-primary-light); }
+
+.swap-card__title {
+    margin: 0;
+    font-size: var(--text-base);
+}
+
+.swap-form-row {
+    display: flex;
+    gap: var(--space-3);
+    align-items: center;
+}
+.swap-form-row select { flex: 1; }
+
+.swap-actions {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.estat-profile {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-3) 0;
+}
+
+.estat-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.estat-profile-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 0.2rem;
+}
+
+.estat-profile-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+
+.estat-code {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    background: var(--color-bg-alt);
+    padding: 0.1rem var(--space-2);
+    border-radius: var(--radius-sm);
+}
+
+.estat-email {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+}
+
+.profile-tabs { margin-bottom: var(--space-4); }
+
+.dash-customize-panel { border: 1px solid var(--color-primary-light); }
+
+.dash-widget-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3) var(--space-6);
+}
+
+.dash-widget-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    cursor: pointer;
+    font-size: var(--text-sm);
+    user-select: none;
+}
+
+.dash-widget-item input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--color-primary);
+    cursor: pointer;
+}
+
+.avail-table th:first-child,
+.avail-table td:first-child { width: 130px; font-weight: 500; }
+
+.avail-table th:nth-child(2),
+.avail-table td:nth-child(2) { width: 90px; text-align: center; }
+
+.avail-table td:nth-child(3),
+.avail-table td:nth-child(4) { width: 130px; }
+
+.avail-table tr.avail-row--off td { opacity: .5; }
+.avail-table tr.avail-row--off .form-control { background: var(--color-bg-alt); }
+
