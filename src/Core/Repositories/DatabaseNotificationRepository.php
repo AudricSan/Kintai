@@ -90,6 +90,11 @@ final class DatabaseNotificationRepository implements NotificationRepositoryInte
         return $record ? ($record->delete() ? 1 : 0) : 0;
     }
 
+    public function deleteAllForUser(int $userId): void
+    {
+        EloquentNotification::where('user_id', $userId)->delete();
+    }
+
     /** Traduit le modèle de lecture (body/reference_id/is_read) vers les vraies colonnes (data/read_at). */
     private function toStorage(array $data): array
     {

@@ -316,6 +316,8 @@
     "deductions_disabled": "Deductions disabled",
     "deductions_enabled": "Enable deductions on pay slips",
     "delete": "Delete",
+    "delete_all_notifications": "Delete all",
+    "delete_all_notifications_confirm": "Delete all notifications? This cannot be undone.",
     "delete_key": "Delete key",
     "delta_hours": "Net hours",
     "delta_mod_rate": "Mod. rate",
