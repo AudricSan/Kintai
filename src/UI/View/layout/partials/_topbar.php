@@ -509,12 +509,20 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
             <div class="notif-dropdown__panel">
                 <div class="notif-dropdown__header">
                     <span><?= __('notifications') ?></span>
-                    <?php if ($_unreadCount > 0): ?>
-                        <form method="POST" action="<?= route_url('notifications.read_all') ?>" class="notif-mark-read-form">
-                            <?= csrf_field() ?>
-                            <button type="submit" class="btn btn--ghost btn--xs"><?= __('mark_all_read') ?></button>
-                        </form>
-                    <?php endif; ?>
+                    <div class="notif-dropdown__header-actions">
+                        <?php if ($_unreadCount > 0): ?>
+                            <form method="POST" action="<?= route_url('notifications.read_all') ?>" class="notif-mark-read-form">
+                                <?= csrf_field() ?>
+                                <button type="submit" class="btn btn--ghost btn--xs"><?= __('mark_all_read') ?></button>
+                            </form>
+                        <?php endif; ?>
+                        <?php if (!empty($_dropdownItems)): ?>
+                            <form method="POST" action="<?= route_url('notifications.delete_all') ?>" class="notif-mark-read-form" onsubmit="return confirm('<?= __('delete_all_notifications_confirm') ?>')">
+                                <?= csrf_field() ?>
+                                <button type="submit" class="btn btn--ghost btn--xs"><?= __('delete_all_notifications') ?></button>
+                            </form>
+                        <?php endif; ?>
+                    </div>
                 </div>
                 <?php if (empty($_dropdownItems)): ?>
                     <div class="notif-dropdown__empty"><?= __('no_notifications') ?></div>

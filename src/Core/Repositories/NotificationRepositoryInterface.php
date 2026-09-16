@@ -29,4 +29,7 @@ interface NotificationRepositoryInterface
     public function markAllRead(int $userId): void;
 
     public function delete(int $id): int;
+
+    /** Supprime toutes les notifications (lues ou non) de l'utilisateur. */
+    public function deleteAllForUser(int $userId): void;
 }

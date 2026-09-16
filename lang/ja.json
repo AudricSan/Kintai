@@ -316,6 +316,8 @@
     "deductions_disabled": "控除無効",
     "deductions_enabled": "給与明細に控除を有効化",
     "delete": "削除",
+    "delete_all_notifications": "すべて削除",
+    "delete_all_notifications_confirm": "すべての通知を削除しますか？この操作は取り消せません。",
     "delete_key": "キーを削除",
     "delta_hours": "純時間",
     "delta_mod_rate": "変更率",

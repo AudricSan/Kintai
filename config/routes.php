@@ -101,6 +101,7 @@ $router->group('/notifications', function ($r) {
     $r->get('',              [NotificationController::class, 'index'],       name: 'notifications.index');
     $r->get('/poll',         [NotificationController::class, 'poll'],        name: 'notifications.poll');
     $r->post('/read-all',    [NotificationController::class, 'markAllRead'], name: 'notifications.read_all');
+    $r->post('/delete-all',  [NotificationController::class, 'deleteAll'],   name: 'notifications.delete_all');
     $r->post('/{id}/read',   [NotificationController::class, 'markRead'],    name: 'notifications.read');
 }, middleware: [AuthMiddleware::class]);
 
