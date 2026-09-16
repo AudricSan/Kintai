@@ -1,0 +1,21 @@
+{
+    "bundle_hiring_report": "採用報告書",
+    "bundle_hiring_report_desc": "店舗ごとの採用報告書の閲覧・編集。このバンドルを無効にしても、従業員作成時の自動生成は継続されます。",
+    "confirm_delete_hiring_report": "この採用報告書を削除しますか？",
+    "edit_hiring_report": "採用報告書を編集",
+    "hire_date": "入社年月日",
+    "hired_by": "採用担当者",
+    "hiring_report": "採用報告書",
+    "hiring_reports": "採用報告書一覧",
+    "new_hiring_report": "新規採用報告書",
+    "no_hiring_reports": "採用報告書はありません。",
+    "pdf_generated_by": "作成者",
+    "report_already_exists": "この月の報告書は既に存在します。",
+    "section_contact": "連絡先",
+    "section_employment": "雇用情報",
+    "section_guarantor": "身元保証人",
+    "section_identity": "基本情報",
+    "store_name": "店舗名",
+    "tax_kou": "甲",
+    "tax_otsu": "乙"
+}
