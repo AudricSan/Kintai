@@ -1,0 +1,19 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    // Applied to every request
+    'global' => [
+        \kintai\Core\Middleware\SessionMiddleware::class,
+        \kintai\Core\Middleware\RememberMeMiddleware::class,
+        \kintai\Core\Middleware\SecurityHeadersMiddleware::class,
+        \kintai\Core\Middleware\CsrfMiddleware::class,
+        \kintai\Core\Middleware\I18nMiddleware::class,
+        \kintai\Core\Middleware\AppSettingsMiddleware::class,
+        \kintai\Core\Middleware\MaintenanceModeMiddleware::class,
+        \kintai\Core\Middleware\DailyReportNavMiddleware::class,
+        \kintai\Core\Middleware\MessageCountMiddleware::class,
+        \kintai\Core\Middleware\NotificationMiddleware::class,
+    ],
+];
