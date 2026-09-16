@@ -1,0 +1,123 @@
+<?php
+
+declare(strict_types=1);
+
+namespace kintai\Core\Services;
+
+final class UpdateService
+{
+    private string $versionFile;
+    private string $basePath;
+
+    public function __construct(?string $basePath = null)
+    {
+        $this->versionFile = storage_path('app/version.json');
+        $this->basePath = $basePath ?? BASE_PATH;
+    }
+
+    /**
+     * La version installée est la ligne X.Y.0 déclarée dans config/app.php
+     * (bumpée à l'ouverture d'une nouvelle ligne, et synchronisée par
+     * GithubUpdateService::syncFiles() lors d'une mise à jour) — ce fichier
+     * ne contient jamais le Z réel d'une prerelease (voir docs/releasing.md),
+     * qui n'existe que sur le tag Git. On complète donc avec le tag exact
+     * retenu par recordAppliedVersion() lors de la dernière mise à jour
+     * appliquée via l'auto-updater, tant que sa ligne X.Y correspond toujours
+     * à celle de config/app.php (sinon, ce tag est obsolète — la ligne a été
+     * changée par un autre moyen, ex. un git pull manuel — et on retombe sur
+     * la base seule).
+     */
+    public function getCurrentVersion(): string
+    {
+        $configFile = $this->basePath . '/config/app.php';
+        if (!file_exists($configFile)) {
+            return '0.0.0';
+        }
+        $config = require $configFile;
+        $base = $config['version'] ?? '0.0.0';
+
+        $appliedVersion = $this->readVersion()['applied_version'] ?? null;
+        if (is_string($appliedVersion) && VersionScheme::lineOf($appliedVersion) === VersionScheme::lineOf($base)) {
+            return $appliedVersion;
+        }
+
+        return $base;
+    }
+
+    /** Mémorise le tag exact (avec le Z réel de la prerelease) appliqué par la dernière mise à jour réussie. */
+    public function recordAppliedVersion(string $version): void
+    {
+        $data = $this->readVersion();
+        $data['applied_version'] = $version;
+        $this->writeVersion($data);
+    }
+
+    public function getLastUpdateDuration(): ?int
+    {
+        $seconds = $this->readVersion()['duration_seconds'] ?? null;
+        return $seconds === null ? null : (int) $seconds;
+    }
+
+    public function recordUpdateDuration(int $seconds): void
+    {
+        $data = $this->readVersion();
+        $data['duration_seconds'] = $seconds;
+        $data['updated_at'] = date('Y-m-d H:i:s');
+        $this->writeVersion($data);
+    }
+
+    public function getPendingMigrations(): array
+    {
+        $migrated = $this->getExecutedMigrations();
+        $all = $this->getAvailableMigrations();
+        return array_values(array_diff($all, $migrated));
+    }
+
+    private function readVersion(): array
+    {
+        if (!file_exists($this->versionFile)) {
+            return [];
+        }
+        $data = json_decode((string) file_get_contents($this->versionFile), true);
+        return is_array($data) ? $data : [];
+    }
+
+    private function writeVersion(array $data): void
+    {
+        $dir = dirname($this->versionFile);
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+        file_put_contents(
+            $this->versionFile,
+            json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+        );
+    }
+
+    private function getExecutedMigrations(): array
+    {
+        try {
+            return \Illuminate\Database\Capsule\Manager::table('migrations')
+                ->pluck('migration')
+                ->toArray();
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    private function getAvailableMigrations(): array
+    {
+        $path = BASE_PATH . '/database/migrations/php';
+        if (!is_dir($path)) {
+            return [];
+        }
+        $files = glob($path . '/*.php');
+        if ($files === false) {
+            return [];
+        }
+        sort($files);
+        return array_map(function (string $f): string {
+            return basename($f, '.php');
+        }, $files);
+    }
+}
