@@ -1,0 +1,234 @@
+<?php
+
+declare(strict_types=1);
+
+namespace kintai\Tests\Unit\Bundles\TimeOff;
+
+use kintai\Bundles\TimeOff\Controllers\Web\AdminTimeoffController;
+use kintai\Core\Exceptions\ForbiddenException;
+use kintai\Core\Repositories\StoreRepositoryInterface;
+use kintai\Core\Repositories\StoreUserRepositoryInterface;
+use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
+use kintai\Core\Repositories\UserRepositoryInterface;
+use kintai\Core\Request;
+use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\NotificationService;
+use kintai\UI\ViewRenderer;
+use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\TestCase;
+
+final class AdminTimeoffControllerTest extends TestCase
+{
+    private TimeoffRequestRepositoryInterface&MockObject $timeoffRequests;
+    private UserRepositoryInterface&MockObject $users;
+    private StoreUserRepositoryInterface&MockObject $storeUsers;
+    private StoreRepositoryInterface&MockObject $stores;
+    private NotificationService&MockObject $notifs;
+    private AdminTimeoffController $controller;
+
+    protected function setUp(): void
+    {
+        $viewDir = sys_get_temp_dir() . '/kintai-timeoff-views';
+        $this->ensureViewFile($viewDir, 'timeoff-form');
+        $this->ensureViewFile(sys_get_temp_dir(), 'layout.app');
+
+        $view = new ViewRenderer(sys_get_temp_dir());
+        $view->addNamespace('timeoff', $viewDir);
+
+        $this->timeoffRequests = $this->createMock(TimeoffRequestRepositoryInterface::class);
+        $this->users = $this->createMock(UserRepositoryInterface::class);
+        $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
+        $this->stores = $this->createMock(StoreRepositoryInterface::class);
+        $this->notifs = $this->createMock(NotificationService::class);
+
+        $this->controller = new AdminTimeoffController(
+            $view,
+            $this->timeoffRequests,
+            new AuditLogger(),
+            $this->notifs,
+            $this->stores,
+            $this->users,
+            $this->storeUsers,
+        );
+    }
+
+    protected function tearDown(): void
+    {
+        $_GET = [];
+        $_POST = [];
+        $_SERVER = [];
+    }
+
+    public function testCreateTimeoffRendersFormForAdmin(): void
+    {
+        $this->users->method('findAll')->willReturn([
+            ['id' => 1, 'last_name' => 'Dupont', 'first_name' => 'Jean'],
+        ]);
+
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+
+        $response = $this->controller->createTimeoff($req);
+
+        $this->assertSame(200, $response->status());
+    }
+
+    public function testStoreTimeoffForEmployeeCreatesApprovedRequestVisibleOnCalendar(): void
+    {
+        $_POST = [
+            'user_id'    => '5',
+            'type'       => 'vacation',
+            'start_date' => '2026-08-01',
+            'end_date'   => '2026-08-03',
+            'reason'     => 'Congés imposés',
+        ];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setAttribute('auth_user', ['id' => 1]);
+
+        $this->users->method('findById')->with(5)->willReturn(['id' => 5, 'display_name' => 'Alice']);
+        $this->storeUsers->method('findByUser')->with(5)->willReturn([['store_id' => 3, 'user_id' => 5]]);
+
+        $captured = null;
+        $this->timeoffRequests->method('save')->willReturnCallback(function (array $d) use (&$captured) {
+            $captured = $d;
+            return $d + ['id' => 99];
+        });
+
+        $this->notifs->expects($this->once())->method('notify')
+            ->with(5, 'timeoff_approved', $this->isString(), $this->anything(), 99);
+
+        $response = $this->controller->storeTimeoffForEmployee($req);
+
+        $this->assertSame(302, $response->status());
+        $this->assertNotNull($captured);
+        $this->assertSame('approved', $captured['status']);
+        $this->assertSame(5, $captured['user_id']);
+        $this->assertSame(3, $captured['store_id']);
+        $this->assertSame('2026-08-01', $captured['start_date']);
+        $this->assertSame('2026-08-03', $captured['end_date']);
+    }
+
+    public function testStoreTimeoffForEmployeeForbiddenWhenEmployeeNotManaged(): void
+    {
+        $_POST = [
+            'user_id'    => '5',
+            'type'       => 'vacation',
+            'start_date' => '2026-08-01',
+            'end_date'   => '2026-08-01',
+        ];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', [1, 2]);
+        $req->setAttribute('auth_user', ['id' => 1]);
+
+        $this->users->method('findById')->with(5)->willReturn(['id' => 5]);
+        $this->storeUsers->method('findByStore')->willReturn([]);
+
+        $this->expectException(ForbiddenException::class);
+        $this->controller->storeTimeoffForEmployee($req);
+    }
+
+    public function testDeleteTimeoffRemovesRecordRegardlessOfStatus(): void
+    {
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '42']);
+
+        $this->timeoffRequests->method('findById')->with(42)->willReturn([
+            'id' => 42, 'store_id' => 3, 'user_id' => 5, 'status' => 'approved',
+        ]);
+        $this->timeoffRequests->expects($this->once())->method('delete')->with(42);
+
+        $response = $this->controller->deleteTimeoff($req);
+
+        $this->assertSame(302, $response->status());
+    }
+
+    public function testTimeoffFiltersByTypeAndStatus(): void
+    {
+        $viewDir = sys_get_temp_dir() . '/kintai-timeoff-views';
+        $this->writeViewContent($viewDir, 'timeoff', "<?php echo json_encode(array_map(fn(\$r) => \$r['id'], \$requests));");
+        $this->writeViewContent(sys_get_temp_dir(), 'layout.app', "<?php echo \$content ?? '';");
+
+        $this->timeoffRequests->method('findAll')->willReturn([
+            ['id' => 1, 'store_id' => 1, 'user_id' => 1, 'type' => 'vacation', 'status' => 'pending', 'start_date' => '2026-08-01'],
+            ['id' => 2, 'store_id' => 1, 'user_id' => 1, 'type' => 'sick', 'status' => 'approved', 'start_date' => '2026-08-02'],
+            ['id' => 3, 'store_id' => 1, 'user_id' => 1, 'type' => 'vacation', 'status' => 'approved', 'start_date' => '2026-08-03'],
+        ]);
+
+        $_GET = ['type' => 'vacation', 'status' => 'approved'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+
+        $response = $this->controller->timeoff($req);
+        $ids = json_decode($response->body(), true);
+
+        $this->assertSame([3], $ids);
+    }
+
+    public function testTimeoffWithoutFiltersShowsAllStatuses(): void
+    {
+        $viewDir = sys_get_temp_dir() . '/kintai-timeoff-views';
+        $this->writeViewContent($viewDir, 'timeoff', "<?php echo json_encode(array_map(fn(\$r) => \$r['id'], \$requests));");
+        $this->writeViewContent(sys_get_temp_dir(), 'layout.app', "<?php echo \$content ?? '';");
+
+        $this->timeoffRequests->method('findAll')->willReturn([
+            ['id' => 1, 'store_id' => 1, 'user_id' => 1, 'type' => 'vacation', 'status' => 'pending', 'start_date' => '2026-08-01'],
+            ['id' => 2, 'store_id' => 1, 'user_id' => 1, 'type' => 'sick', 'status' => 'approved', 'start_date' => '2026-08-02'],
+        ]);
+
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+
+        $response = $this->controller->timeoff($req);
+        $ids = json_decode($response->body(), true);
+
+        $this->assertCount(2, $ids);
+    }
+
+    public function testTimeoffSortsByStoreName(): void
+    {
+        $viewDir = sys_get_temp_dir() . '/kintai-timeoff-views';
+        $this->writeViewContent($viewDir, 'timeoff', "<?php echo json_encode(array_map(fn(\$r) => \$r['id'], \$requests));");
+        $this->writeViewContent(sys_get_temp_dir(), 'layout.app', "<?php echo \$content ?? '';");
+
+        $this->stores->method('findAll')->willReturn([
+            ['id' => 1, 'name' => 'Zoo Store'],
+            ['id' => 2, 'name' => 'Alpha Store'],
+        ]);
+        $this->timeoffRequests->method('findAll')->willReturn([
+            ['id' => 1, 'store_id' => 1, 'user_id' => 1, 'type' => 'vacation', 'status' => 'pending', 'start_date' => '2026-08-01'],
+            ['id' => 2, 'store_id' => 2, 'user_id' => 1, 'type' => 'vacation', 'status' => 'pending', 'start_date' => '2026-08-02'],
+        ]);
+
+        $_GET = ['sort' => 'store_asc'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+
+        $response = $this->controller->timeoff($req);
+        $ids = json_decode($response->body(), true);
+
+        // "Alpha Store" (id 2) doit passer avant "Zoo Store" (id 1) en tri croissant par nom de store.
+        $this->assertSame([2, 1], $ids);
+    }
+
+    private function ensureViewFile(string $dir, string $view): void
+    {
+        $file = $dir . DIRECTORY_SEPARATOR . str_replace('.', DIRECTORY_SEPARATOR, $view) . '.php';
+        $parent = dirname($file);
+        if (!is_dir($parent)) {
+            mkdir($parent, 0777, true);
+        }
+        touch($file);
+    }
+
+    private function writeViewContent(string $dir, string $view, string $content): void
+    {
+        $file = $dir . DIRECTORY_SEPARATOR . str_replace('.', DIRECTORY_SEPARATOR, $view) . '.php';
+        $parent = dirname($file);
+        if (!is_dir($parent)) {
+            mkdir($parent, 0777, true);
+        }
+        file_put_contents($file, $content);
+    }
+}
