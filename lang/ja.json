@@ -537,6 +537,8 @@
     "feedbacks": "フィードバック",
     "female": "女性",
     "first_name": "名",
+    "force_refresh": "強制更新",
+    "force_refresh_busy": "更新中…",
     "forgot_password_intro": "メールアドレスを入力すると、パスワード再設定用のリンクをお送りします。",
     "forgot_password_link": "パスワードをお忘れですか？",
     "forgot_password_sent": "該当するメールアドレスのアカウントが存在する場合、再設定用リンクを送信しました。メール（迷惑メールフォルダも）をご確認ください。",

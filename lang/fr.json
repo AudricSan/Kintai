@@ -537,6 +537,8 @@
     "feedbacks": "Feedbacks",
     "female": "Femme",
     "first_name": "Prénom",
+    "force_refresh": "Forcer la mise à jour",
+    "force_refresh_busy": "Mise à jour…",
     "forgot_password_intro": "Saisissez votre adresse e-mail et nous vous enverrons un lien pour réinitialiser votre mot de passe.",
     "forgot_password_link": "Mot de passe oublié ?",
     "forgot_password_sent": "Si un compte existe pour cette adresse, un lien de réinitialisation a été envoyé. Vérifiez vos e-mails (et vos spams).",

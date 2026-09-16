@@ -600,6 +600,12 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
                     <span class="user-dropdown__item-icon">📖</span><?= __('docs') ?>
                 </a>
 
+                <button id="forceRefreshBtn" class="user-dropdown__item" role="menuitem" type="button"
+                        data-label-default="<?= __('force_refresh') ?>"
+                        data-label-busy="<?= __('force_refresh_busy') ?>">
+                    <span class="user-dropdown__item-icon">🔄</span><span id="force-refresh-label"><?= __('force_refresh') ?></span>
+                </button>
+
                 <hr class="user-dropdown__divider">
 
                 <form method="POST" action="<?= route_url('auth.logout') ?>" class="form-contents">
