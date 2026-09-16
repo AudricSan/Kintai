@@ -55,6 +55,18 @@ final class NotificationController
         return Response::redirect('/notifications');
     }
 
+    public function deleteAll(Request $request): Response
+    {
+        $userId = (int) $this->auth->user()['id'];
+        $this->repo->deleteAllForUser($userId);
+
+        if ($request->isAjax()) {
+            return Response::json(['ok' => true]);
+        }
+
+        return Response::redirect('/notifications');
+    }
+
     /**
      * Endpoint de polling : renvoie les notifications non lues créées après $since.
      * Appelé toutes les 15 s par le JS pour afficher les toasts en temps réel.
