@@ -537,6 +537,8 @@
     "feedbacks": "Feedbacks",
     "female": "Female",
     "first_name": "First name",
+    "force_refresh": "Force update",
+    "force_refresh_busy": "Updating…",
     "forgot_password_intro": "Enter your email address and we'll send you a link to reset your password.",
     "forgot_password_link": "Forgot password?",
     "forgot_password_sent": "If an account exists for this address, a reset link has been sent. Check your email (including your spam folder).",

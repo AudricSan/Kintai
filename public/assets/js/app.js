@@ -217,6 +217,34 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 }());
 
+// ── Force refresh (vide le cache PWA et recharge la page) ─────────
+(function () {
+    var btn   = document.getElementById('forceRefreshBtn');
+    var label = document.getElementById('force-refresh-label');
+    if (!btn) return;
+
+    btn.addEventListener('click', function () {
+        btn.disabled = true;
+        if (label) label.textContent = btn.dataset.labelBusy;
+
+        var unregisterSw = ('serviceWorker' in navigator)
+            ? navigator.serviceWorker.getRegistrations().then(function (regs) {
+                return Promise.all(regs.map(function (r) { return r.unregister(); }));
+            })
+            : Promise.resolve();
+
+        var clearCaches = ('caches' in window)
+            ? caches.keys().then(function (keys) {
+                return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+            })
+            : Promise.resolve();
+
+        Promise.all([unregisterSw, clearCaches]).catch(function () {}).finally(function () {
+            location.reload();
+        });
+    });
+}());
+
 // ── Generic modal open/close ─────────────────────
 window.openModal = function (id) {
     var el = document.getElementById(id);
