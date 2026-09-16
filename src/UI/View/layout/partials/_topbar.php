@@ -21,6 +21,9 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
             )));
             ?>
             <a href="<?= route_url('home') ?>" class="topbar-nav-link<?= ($path === '/' || $path === '') ? ' topbar-nav-link--active' : '' ?>"><?= __('dashboard') ?></a>
+            <?php if (bundle_enabled('team-directory')): ?>
+                <a href="<?= route_url('team.index') ?>" class="topbar-nav-link<?= str_starts_with($path, '/team') ? ' topbar-nav-link--active' : '' ?>"><?= __('team_directory') ?></a>
+            <?php endif; ?>
 
             <?php foreach ($_secOrd as $_sec): switch ($_sec):
                     case 'planning': ?>
@@ -141,6 +144,9 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
                 : $BASE_URL . '/admin/stores';
             ?>
             <a href="<?= route_url('home') ?>" class="topbar-nav-link<?= ($path === '/' || $path === '') ? ' topbar-nav-link--active' : '' ?>"><?= __('dashboard') ?></a>
+            <?php if (bundle_enabled('team-directory')): ?>
+                <a href="<?= route_url('team.index') ?>" class="topbar-nav-link<?= str_starts_with($path, '/team') ? ' topbar-nav-link--active' : '' ?>"><?= __('team_directory') ?></a>
+            <?php endif; ?>
 
             <?php foreach ($_secOrd as $_sec): switch ($_sec):
                     case 'planning': ?>
@@ -260,6 +266,9 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
             )));
             ?>
             <a href="<?= route_url('employee.dashboard') ?>" class="topbar-nav-link<?= $path === '/employee' ? ' topbar-nav-link--active' : '' ?>"><?= __('dashboard') ?></a>
+            <?php if (bundle_enabled('team-directory')): ?>
+                <a href="<?= route_url('team.index') ?>" class="topbar-nav-link<?= str_starts_with($path, '/team') ? ' topbar-nav-link--active' : '' ?>"><?= __('team_directory') ?></a>
+            <?php endif; ?>
 
             <?php foreach ($_secOrd as $_sec): switch ($_sec):
                     case 'planning': ?>
@@ -553,15 +562,26 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
         <div class="user-dropdown" id="user-dropdown">
             <button class="user-dropdown__toggle" id="user-toggle"
                 aria-expanded="false" aria-haspopup="true">
-                <span class="user-dropdown__avatar"><?= htmlspecialchars($initials) ?></span>
+                <?php if (!empty($auth_user['avatar_path'])): ?>
+                    <img src="<?= route_url('user.avatar', ['user_id' => (int) $auth_user['id']]) ?>" alt="" class="user-dropdown__avatar">
+                <?php else: ?>
+                    <span class="user-dropdown__avatar"><?= htmlspecialchars($initials) ?></span>
+                <?php endif; ?>
                 <span class="user-dropdown__label"><?= $displayName ?></span>
                 <span class="user-dropdown__chevron" aria-hidden="true">▾</span>
             </button>
 
             <div class="user-dropdown__panel" role="menu">
                 <div class="user-dropdown__header">
-                    <div class="user-dropdown__hname"><?= $displayName ?></div>
-                    <div class="user-dropdown__hrole"><?= $roleLabel ?></div>
+                    <?php if (!empty($auth_user['avatar_path'])): ?>
+                        <img src="<?= route_url('user.avatar', ['user_id' => (int) $auth_user['id']]) ?>" alt="" class="user-dropdown__header-avatar">
+                    <?php else: ?>
+                        <span class="user-dropdown__avatar user-dropdown__header-avatar"><?= htmlspecialchars($initials) ?></span>
+                    <?php endif; ?>
+                    <div>
+                        <div class="user-dropdown__hname"><?= $displayName ?></div>
+                        <div class="user-dropdown__hrole"><?= $roleLabel ?></div>
+                    </div>
                 </div>
 
                 <a href="<?= route_url('profile') ?>" class="user-dropdown__item" role="menuitem">

@@ -92,10 +92,16 @@ $router->get('/storage/{path*}', [StorageFileController::class, 'serve'], middle
 $router->group('/profile', function ($r) {
     $r->get('',              [AuthController::class, 'showProfile'],          name: 'profile');
     $r->post('',             [AuthController::class, 'updateProfile'],        name: 'profile.post');
+    $r->post('/avatar',      [AuthController::class, 'uploadAvatar'],         name: 'profile.avatar');
+    $r->post('/avatar/delete', [AuthController::class, 'removeAvatar'],       name: 'profile.avatar.delete');
     $r->post('/password',    [AuthController::class, 'saveProfilePassword'],  name: 'profile.password');
     $r->get('/export',       [AuthController::class, 'exportData'],           name: 'profile.export');
     $r->post('/delete',      [AuthController::class, 'deleteAccount'],        name: 'profile.delete');
 }, middleware: [AuthMiddleware::class]);
+
+// Photo de profil : servie hors du groupe /profile pour rester consultable
+// via l'ID d'un autre utilisateur (annuaire collègues, bundle TeamDirectory).
+$router->get('/avatar/{user_id}', [AuthController::class, 'avatar'], middleware: [AuthMiddleware::class], name: 'user.avatar');
 
 $router->group('/notifications', function ($r) {
     $r->get('',              [NotificationController::class, 'index'],       name: 'notifications.index');

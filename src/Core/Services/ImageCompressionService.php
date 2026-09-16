@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace kintai\Bundles\StorePhoto\Services;
+namespace kintai\Core\Services;
 
 /**
  * Compresse les images envoyées par les stores pour rester sous une taille cible
