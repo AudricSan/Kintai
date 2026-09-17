@@ -322,6 +322,9 @@ final class AuthController
             $dbUser['languages_spoken']    = trim((string) $request->post('languages_spoken', ''));
             $dbUser['hobbies']             = trim((string) $request->post('hobbies', ''));
             $dbUser['show_in_directory']   = $request->post('show_in_directory') === '1' ? 1 : 0;
+            $dbUser['share_email']         = $request->post('share_email') === '1' ? 1 : 0;
+            $dbUser['share_phone']         = $request->post('share_phone') === '1' ? 1 : 0;
+            $dbUser['share_mobile_phone']  = $request->post('share_mobile_phone') === '1' ? 1 : 0;
             $this->users->save($dbUser);
             $_SESSION['auth_user'] = $dbUser;
 
@@ -563,6 +566,9 @@ final class AuthController
             'languages_spoken'   => null,
             'hobbies'            => null,
             'show_in_directory'  => 0,
+            'share_email'        => 0,
+            'share_phone'        => 0,
+            'share_mobile_phone' => 0,
             'updated_at'         => date('Y-m-d H:i:s'),
         ]);
 

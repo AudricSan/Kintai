@@ -1125,6 +1125,8 @@
     "send_feedback": "💬 Donner mon avis",
     "set_as_default": "Définir par défaut",
     "settings": "Paramètres",
+    "share_contact_info": "Partager mes coordonnées",
+    "share_contact_info_hint": "Choisissez, information par information, ce que vos collègues peuvent voir sur votre fiche de l'annuaire d'équipe.",
     "shift_conflicts_title": "Conflits de shifts",
     "shift_created": "Shift créé.",
     "shift_deleted": "Shift supprimé.",

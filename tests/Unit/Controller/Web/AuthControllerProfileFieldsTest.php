@@ -85,16 +85,19 @@ final class AuthControllerProfileFieldsTest extends TestCase
     public function testPersistsContactAndEnrichedProfileFields(): void
     {
         $_POST = [
-            'language'          => 'fr',
-            'phone'             => '01 23 45 67 89',
-            'mobile_phone'      => '06 00 00 00 00',
-            'postal_code'       => '75001',
-            'address'           => '1 rue de Test',
-            'bio'               => 'Bonjour, je suis un test.',
-            'skills'            => 'caisse, service client',
-            'languages_spoken'  => 'français, anglais',
-            'hobbies'           => 'lecture',
-            'show_in_directory' => '1',
+            'language'           => 'fr',
+            'phone'              => '01 23 45 67 89',
+            'mobile_phone'       => '06 00 00 00 00',
+            'postal_code'        => '75001',
+            'address'            => '1 rue de Test',
+            'bio'                => 'Bonjour, je suis un test.',
+            'skills'             => 'caisse, service client',
+            'languages_spoken'   => 'français, anglais',
+            'hobbies'            => 'lecture',
+            'show_in_directory'  => '1',
+            'share_email'        => '1',
+            'share_phone'        => '1',
+            'share_mobile_phone' => '1',
         ];
 
         $saved = null;
@@ -115,6 +118,9 @@ final class AuthControllerProfileFieldsTest extends TestCase
         $this->assertSame('français, anglais', $saved['languages_spoken']);
         $this->assertSame('lecture', $saved['hobbies']);
         $this->assertSame(1, $saved['show_in_directory']);
+        $this->assertSame(1, $saved['share_email']);
+        $this->assertSame(1, $saved['share_phone']);
+        $this->assertSame(1, $saved['share_mobile_phone']);
     }
 
     public function testShowInDirectoryDefaultsToDisabledWhenCheckboxUnchecked(): void
@@ -130,5 +136,22 @@ final class AuthControllerProfileFieldsTest extends TestCase
         $this->controller->updateProfile(new Request());
 
         $this->assertSame(0, $saved['show_in_directory']);
+    }
+
+    public function testShareContactFlagsDefaultToDisabledWhenCheckboxesUnchecked(): void
+    {
+        $_POST = ['language' => 'fr'];
+
+        $saved = null;
+        $this->users->method('save')->willReturnCallback(function (array $d) use (&$saved) {
+            $saved = $d;
+            return $d;
+        });
+
+        $this->controller->updateProfile(new Request());
+
+        $this->assertSame(0, $saved['share_email']);
+        $this->assertSame(0, $saved['share_phone']);
+        $this->assertSame(0, $saved['share_mobile_phone']);
     }
 }
