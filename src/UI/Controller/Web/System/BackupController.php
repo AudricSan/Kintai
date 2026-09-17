@@ -9,6 +9,7 @@ use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AppSettingsService;
+use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\BackupService;
 use kintai\Core\Services\GithubUpdateService;
 use kintai\Core\Services\UpdateService;
@@ -23,6 +24,7 @@ final class BackupController
         private readonly GithubUpdateService $githubUpdate,
         private readonly MigrationRunner $migrator,
         private readonly AppSettingsService $settings,
+        private readonly AuditLogger $auditLogger,
     ) {}
 
     /** GET /admin/backup/download?filename= — télécharge une archive de sauvegarde existante. */
@@ -63,6 +65,11 @@ final class BackupController
         $this->settings->setMany([
             'backup_auto_enabled' => $autoEnabled,
             'backup_max_keep'     => (string) $maxKeep,
+        ]);
+
+        $this->auditLogger->log($request, 'backup.settings_updated', 'system', null, [
+            'backup_auto_enabled' => $autoEnabled,
+            'backup_max_keep'     => $maxKeep,
         ]);
 
         return Response::redirect('/admin/backup?success=settings_saved');
@@ -113,6 +120,8 @@ final class BackupController
 
         $this->settings->setMany(['update_channel' => $channel]);
 
+        $this->auditLogger->log($request, 'update.channel_changed', 'system', null, ['channel' => $channel]);
+
         return Response::redirect('/admin/update?success=channel_' . $channel);
     }
 
@@ -144,6 +153,13 @@ final class BackupController
                 $result['migrations_applied'],
                 $result['composer'],
             );
+
+            $this->auditLogger->log($request, 'update.applied', 'system', null, [
+                'version'            => $result['version'],
+                'files_copied'       => $result['files_copied'],
+                'files_deleted'      => $result['files_deleted'],
+                'migrations_applied' => $result['migrations_applied'],
+            ]);
 
             return Response::redirect('/admin/update?success=' . urlencode($summary));
         } finally {
@@ -206,6 +222,13 @@ final class BackupController
             exit(0);
         }
 
+        $this->auditLogger->log($request, 'update.applied', 'system', null, [
+            'version'            => $result['version'] ?? null,
+            'files_copied'       => $result['files_copied'] ?? null,
+            'files_deleted'      => $result['files_deleted'] ?? null,
+            'migrations_applied' => $result['migrations_applied'] ?? null,
+        ]);
+
         $restoreMaintenance();
         $emit('done', $result);
         exit(0);
@@ -219,6 +242,11 @@ final class BackupController
         try {
             $result = $this->backup->create($note ?: null);
             $this->backup->enforceRetention($this->settings->backupMaxKeep());
+            $this->auditLogger->log($request, 'backup.created', 'system', null, [
+                'filename' => $result['filename'],
+                'size'     => $result['size'],
+                'source'   => 'manual',
+            ]);
             return Response::redirect('/admin/backup?success=created_' . urlencode($result['filename']));
         } catch (\Throwable $e) {
             return Response::redirect('/admin/backup?success=error_' . urlencode($e->getMessage()));
@@ -237,6 +265,7 @@ final class BackupController
         try {
             $this->backup->restore($filename);
             $this->backup->enforceRetention($this->settings->backupMaxKeep());
+            $this->auditLogger->log($request, 'backup.restored', 'system', null, ['filename' => $filename]);
             return Response::redirect('/admin/backup?success=restored');
         } catch (\Throwable $e) {
             return Response::redirect('/admin/backup?success=error_' . urlencode($e->getMessage()));
@@ -253,6 +282,7 @@ final class BackupController
         }
 
         $this->backup->delete($filename);
+        $this->auditLogger->log($request, 'backup.deleted', 'system', null, ['filename' => $filename]);
         return Response::redirect('/admin/backup?success=deleted');
     }
 
@@ -267,10 +297,10 @@ final class BackupController
         try {
             try {
                 $count = $this->migrator->run();
-                $request->setAttribute('_log_extra', ['migrations_applied' => $count]);
+                $this->auditLogger->log($request, 'system.migration_applied', 'system', null, ['migrations_applied' => $count]);
                 return Response::redirect('/admin/update?success=migrated');
             } catch (\Throwable $e) {
-                $request->setAttribute('_log_extra', ['migration_error' => $e->getMessage()]);
+                $this->auditLogger->log($request, 'db.migration_failed', 'system', null, ['error' => $e->getMessage()]);
                 return Response::redirect('/admin/update?success=error_' . urlencode($e->getMessage()));
             }
         } finally {
@@ -284,6 +314,7 @@ final class BackupController
     {
 
         $count = $this->backup->deleteAll();
+        $this->auditLogger->log($request, 'backup.deleted_all', 'system', null, ['count' => $count]);
         return Response::redirect('/admin/backup?success=deleted_all_' . $count);
     }
 

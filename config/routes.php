@@ -257,6 +257,7 @@ $router->group('/admin', function ($r) {
 
     // Journal d'activité (unifié)
     $r->get('/activity', [ActivityController::class, 'index'], name: 'admin.activity', permission: 'stores.view');
+    $r->get('/activity/export', [ActivityController::class, 'export'], name: 'admin.activity.export', permission: 'stores.view');
 
     // Feedbacks : voir src/Bundles/Feedback/routes.php
 

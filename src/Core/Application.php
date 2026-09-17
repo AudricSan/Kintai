@@ -9,8 +9,10 @@ use kintai\Core\Exceptions\MethodNotAllowedException;
 use kintai\Core\Exceptions\ValidationException;
 use kintai\Core\Middleware\MiddlewarePipeline;
 use kintai\Core\Repositories\LanguageRepositoryInterface;
+use kintai\Core\Repositories\LogRepositoryInterface;
 use kintai\Core\Repositories\TranslationRepositoryInterface;
 use kintai\UI\ViewRenderer;
+use kintai\Core\Services\AppSettingsService;
 use kintai\Core\Services\Log;
 use kintai\Core\Services\TranslationService;
 use Throwable;
@@ -131,6 +133,7 @@ final class Application
     {
         $request = new Request();
         $this->container->instance(Request::class, $request);
+        $startedAt = microtime(true);
 
         try {
             $response = $this->dispatch($request);
@@ -138,7 +141,55 @@ final class Application
             $response = $this->handleException($e, $request);
         }
 
+        $this->logAccess($request, $response, $startedAt);
+
         $response->send();
+    }
+
+    /**
+     * Chemins exclus du journal d'accès automatique : polling/streaming haute
+     * fréquence (notifications, SSE) qui saturerait activity_log sans valeur
+     * d'audit ajoutée, et le health-check API destiné aux moniteurs externes.
+     */
+    private const ACCESS_LOG_EXCLUDED_URIS = [
+        '/notifications/poll',
+        '/api/v1/ping',
+    ];
+
+    private function logAccess(Request $request, Response $response, float $startedAt): void
+    {
+        $uri = $request->uri();
+        if (str_ends_with($uri, '/stream') || in_array($uri, self::ACCESS_LOG_EXCLUDED_URIS, true)) {
+            return;
+        }
+
+        try {
+            $settings = $this->container->make(AppSettingsService::class);
+            if (!$settings->accessLogEnabled()) {
+                return;
+            }
+
+            $status = $response->status();
+            $level = match (true) {
+                $status >= 500 => LogRepositoryInterface::LEVEL_ERROR,
+                $status >= 400 => LogRepositoryInterface::LEVEL_WARNING,
+                default        => LogRepositoryInterface::LEVEL_INFO,
+            };
+            $durationMs = (int) round((microtime(true) - $startedAt) * 1000);
+
+            Log::write(
+                $level,
+                LogRepositoryInterface::CHANNEL_ACCESS,
+                sprintf('%s %s', $request->method(), $uri),
+                [],
+                null,
+                null,
+                $status,
+                $durationMs,
+            );
+        } catch (Throwable) {
+            // Le logging ne doit jamais faire planter l'application
+        }
     }
 
     /**

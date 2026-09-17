@@ -138,6 +138,46 @@ final class OwnerSettingsControllerTest extends TestCase
         $this->assertSame('', $this->stored['app_primary_color_dark']);
     }
 
+    public function testSaveDefaultsAccessLogEnabledToOffWhenCheckboxUnchecked(): void
+    {
+        $controller = $this->makeController(['access_log_enabled' => '1']);
+        $_POST = [];
+
+        $controller->save(new Request());
+
+        $this->assertSame('0', $this->stored['access_log_enabled']);
+    }
+
+    public function testSavePersistsAccessLogEnabled(): void
+    {
+        $controller = $this->makeController();
+        $_POST = ['access_log_enabled' => '1'];
+
+        $controller->save(new Request());
+
+        $this->assertSame('1', $this->stored['access_log_enabled']);
+    }
+
+    public function testSaveClampsLogRetentionDaysToRange(): void
+    {
+        $controller = $this->makeController();
+        $_POST = ['log_retention_days' => '99999'];
+
+        $controller->save(new Request());
+
+        $this->assertSame('3650', $this->stored['log_retention_days']);
+    }
+
+    public function testSaveAllowsZeroLogRetentionDaysMeaningUnlimited(): void
+    {
+        $controller = $this->makeController();
+        $_POST = ['log_retention_days' => '0'];
+
+        $controller->save(new Request());
+
+        $this->assertSame('0', $this->stored['log_retention_days']);
+    }
+
     public function testSaveRedirectsWithSuccessFlag(): void
     {
         $controller = $this->makeController();

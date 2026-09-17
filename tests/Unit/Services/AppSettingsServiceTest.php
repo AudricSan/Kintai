@@ -120,4 +120,29 @@ final class AppSettingsServiceTest extends TestCase
 
         $this->assertStringContainsString('--dark-danger:#112233;', $style);
     }
+
+    public function testAccessLogEnabledByDefault(): void
+    {
+        $this->assertTrue($this->makeService()->accessLogEnabled());
+    }
+
+    public function testAccessLogEnabledReadsStoredValue(): void
+    {
+        $this->assertFalse($this->makeService(['access_log_enabled' => '0'])->accessLogEnabled());
+    }
+
+    public function testLogRetentionDaysDefaultsTo180(): void
+    {
+        $this->assertSame(180, $this->makeService()->logRetentionDays());
+    }
+
+    public function testLogRetentionDaysReadsStoredValue(): void
+    {
+        $this->assertSame(30, $this->makeService(['log_retention_days' => '30'])->logRetentionDays());
+    }
+
+    public function testLogRetentionDaysNeverNegative(): void
+    {
+        $this->assertSame(0, $this->makeService(['log_retention_days' => '-5'])->logRetentionDays());
+    }
 }
