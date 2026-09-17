@@ -3,14 +3,23 @@
    Build : postcss src/app.css --dir ../ --env production
    ================================================ */
 
-@import url('./variables.css');
-@import url('./src/base.css');
-@import url('./src/components.css');
-@import url('./src/features.css');
-@import url('./src/utilities.css');
+/* Le ?v=... sur chaque @import est indispensable : app.css lui-même est
+   chargé avec un ?v=... côté PHP (asset_version(), cache-busting), mais un
+   navigateur qui a déjà mis en cache un fichier importé (ex. src/responsive.css)
+   sous son URL SANS suffixe continue de le servir tel quel — Apache ne pose
+   aucun Cache-Control sur ces fichiers statiques, et ce fichier n'étant pas
+   passé par PHP, la version ne peut pas être injectée dynamiquement ici.
+   Ce suffixe doit donc être bumpé manuellement, en même temps que
+   asset_version() (src/Core/helpers.php) et CACHE (public/sw.js), à chaque
+   changement sous public/assets/css/. */
+@import url('./variables.css?v=v3');
+@import url('./src/base.css?v=v3');
+@import url('./src/components.css?v=v3');
+@import url('./src/features.css?v=v3');
+@import url('./src/utilities.css?v=v3');
 /* Doit rester le dernier import : à spécificité égale, une règle non
    conditionnelle chargée après une media query dans responsive.css
    l'emporterait sur elle (ex. .dash-two-col dans utilities.css cassait
    le passage à 1 colonne en mobile tant que ce fichier était importé
    après responsive.css). */
-@import url('./src/responsive.css');
+@import url('./src/responsive.css?v=v3');
