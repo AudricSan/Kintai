@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="<?= htmlspecialchars(csrf_token(), ENT_QUOTES) ?>">
     <title><?= htmlspecialchars($title ?? 'Kintai') ?> — Kintai</title>
-    <link rel="stylesheet" href="<?= $BASE_URL ?>/assets/css/app.css">
+    <link rel="stylesheet" href="<?= $BASE_URL ?>/assets/css/app.css?v=<?= asset_version() ?>">
 </head>
 <body class="guest-layout">
     <div class="guest-container">

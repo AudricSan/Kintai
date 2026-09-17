@@ -215,6 +215,23 @@ if (!function_exists('render_markdown')) {
     }
 }
 
+if (!function_exists('asset_version')) {
+    /**
+     * Suffixe de cache-busting (?v=...) pour app.css/app.js. Apache ne pose
+     * aucun Cache-Control sur les fichiers statiques ici, donc sans URL
+     * versionnée le cache HTTP heuristique du navigateur peut continuer à
+     * servir une ancienne version indéfiniment — y compris après un rechargement
+     * classique, et même après le bouton "Forcer la mise à jour" (qui ne vide
+     * que le cache du Service Worker, pas le cache HTTP du navigateur). À
+     * incrémenter à chaque changement sous public/assets/css|js, en même temps
+     * que la constante CACHE de public/sw.js.
+     */
+    function asset_version(): string
+    {
+        return 'v3';
+    }
+}
+
 if (!function_exists('base_url')) {
     /**
      * Calcule la base URL à partir de SCRIPT_NAME.
