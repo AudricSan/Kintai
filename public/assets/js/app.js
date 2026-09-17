@@ -40,10 +40,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!toggle || !nav) return;
 
+    // overflow:hidden est posé sur <html> ET <body> : base.css met déjà
+    // overflow-x:hidden sur <html>, ce qui désactive la propagation normale
+    // du overflow de <body> vers la viewport (règle CSS : cette propagation
+    // ne s'applique que si <html> a un overflow "visible"). <html> devient
+    // donc l'élément qui défile réellement, et poser overflow:hidden sur le
+    // seul <body> n'empêchait pas de faire défiler la page sous le menu
+    // mobile ouvert.
     function closeNav() {
         nav.classList.remove('open');
         toggle.setAttribute('aria-expanded', 'false');
         document.body.style.overflow = '';
+        document.documentElement.style.overflow = '';
     }
 
     toggle.addEventListener('click', () => {
@@ -51,6 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
         nav.classList.toggle('open', opening);
         toggle.setAttribute('aria-expanded', opening ? 'true' : 'false');
         document.body.style.overflow = opening ? 'hidden' : '';
+        document.documentElement.style.overflow = opening ? 'hidden' : '';
     });
 
     // Ferme le menu après un tap sur un lien (couvre le retour arrière du
