@@ -157,6 +157,28 @@ echo Flash::fromQuery('success', ['default' => __('save_success')])->render();
     echo Card::make()->header(__('maintenance_mode'))->body(ob_get_clean())->render();
     ?>
 
+    <?php
+    ob_start();
+    ?>
+    <div class="form-group">
+        <label class="form-label"><?= __('access_log_enabled') ?></label>
+        <label class="form-toggle">
+            <input type="checkbox" name="access_log_enabled" value="1" class="form-toggle__input"
+                   <?= ($settings['access_log_enabled'] ?? '1') === '1' ? 'checked' : '' ?>>
+            <span class="form-toggle__track"></span>
+        </label>
+        <p class="form-hint"><?= __('access_log_enabled_hint') ?></p>
+    </div>
+    <div class="form-group">
+        <label class="form-label"><?= __('log_retention_days') ?></label>
+        <input type="number" name="log_retention_days" class="form-control w-100" min="0" max="3650"
+               value="<?= (int) ($settings['log_retention_days'] ?? 180) ?>">
+        <p class="form-hint"><?= __('log_retention_days_hint') ?></p>
+    </div>
+    <?php
+    echo Card::make()->header(__('activity_log'))->body(ob_get_clean())->render();
+    ?>
+
     <div class="form-actions">
         <?= Button::make(__('save'))->primary()->submit()->render() ?>
         <a href="<?= route_url('home') ?>" class="btn btn--ghost"><?= __('cancel') ?></a>

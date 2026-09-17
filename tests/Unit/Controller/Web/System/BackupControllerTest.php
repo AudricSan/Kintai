@@ -13,6 +13,7 @@ use kintai\Core\Repositories\JsonTranslationRepository;
 use kintai\Core\Repositories\StorePhotoRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Services\AppSettingsService;
+use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\BackupService;
 use kintai\Core\Services\GithubUpdateService;
 use kintai\Core\Services\TranslationService;
@@ -85,6 +86,7 @@ final class BackupControllerTest extends TestCase
         $this->removeDir($this->tmpDir);
         putenv('KINTAI_STORAGE_PATH');
         $_GET = [];
+        \kintai\Core\Services\Log::reset();
 
         $instancesProp = new \ReflectionProperty(Container::class, 'instances');
         $instancesProp->setAccessible(true);
@@ -148,7 +150,7 @@ final class BackupControllerTest extends TestCase
             $zipDownloader,
         );
 
-        return new BackupController($this->view, $this->backup, $this->updateService, $githubUpdate, $this->migrator, $this->settings);
+        return new BackupController($this->view, $this->backup, $this->updateService, $githubUpdate, $this->migrator, $this->settings, new AuditLogger());
     }
 
     private function requestAs(bool $isAdmin): Request
@@ -446,6 +448,56 @@ final class BackupControllerTest extends TestCase
         $this->assertStringContainsString('backup-2026-08-05.zip', $this->describeFlash($controller, 'created_backup-2026-08-05.zip')['text']);
         $this->assertStringContainsString('3', $this->describeFlash($controller, 'deleted_all_3')['text']);
         $this->assertStringContainsString('alpha', $this->describeFlash($controller, 'channel_alpha')['text']);
+    }
+
+    public function testRestoreLogsBackupRestoredAction(): void
+    {
+        $logs = $this->createMock(\kintai\Core\Repositories\LogRepositoryInterface::class);
+        $container = new Container();
+        $container->instance(\kintai\Core\Repositories\LogRepositoryInterface::class, $logs);
+        \kintai\Core\Services\Log::setContainer($container);
+
+        $controller = $this->makeController();
+        $created = $controller->create($this->requestAs(true));
+        $filename = urldecode(substr($this->locationOf($created), strlen('/admin/backup?success=created_')));
+
+        $logs->expects($this->atLeastOnce())
+            ->method('record')
+            ->with($this->anything(), $this->anything(), $this->anything(), $this->callback(
+                fn($action) => in_array($action, ['backup.created', 'backup.restored'], true)
+            ), $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything());
+
+        $_POST = ['filename' => $filename];
+        $response = $controller->restore($this->requestAs(true));
+        $_POST = [];
+
+        $this->assertSame(302, $response->status());
+        $this->assertStringContainsString('success=restored', $this->locationOf($response));
+
+        \kintai\Core\Services\Log::reset();
+    }
+
+    public function testDeleteLogsBackupDeletedAction(): void
+    {
+        $logs = $this->createMock(\kintai\Core\Repositories\LogRepositoryInterface::class);
+        $container = new Container();
+        $container->instance(\kintai\Core\Repositories\LogRepositoryInterface::class, $logs);
+        \kintai\Core\Services\Log::setContainer($container);
+
+        $controller = $this->makeController();
+        $created = $controller->create($this->requestAs(true));
+        $filename = urldecode(substr($this->locationOf($created), strlen('/admin/backup?success=created_')));
+
+        $logs->expects($this->atLeastOnce())->method('record');
+
+        $_POST = ['filename' => $filename];
+        $response = $controller->delete($this->requestAs(true));
+        $_POST = [];
+
+        $this->assertSame(302, $response->status());
+        $this->assertStringContainsString('success=deleted', $this->locationOf($response));
+
+        \kintai\Core\Services\Log::reset();
     }
 
     public function testDescribeFlashParsesUpdateSummary(): void

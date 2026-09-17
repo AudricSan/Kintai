@@ -9,6 +9,7 @@ use kintai\Core\Container;
 use kintai\Core\Cron\AutoValidateJob;
 use kintai\Core\Cron\BackupJob;
 use kintai\Core\Cron\CronRunner;
+use kintai\Core\Cron\LogPurgeJob;
 use kintai\Core\Database\MigrationRunner;
 use kintai\Core\Repositories\CronTokenRepositoryInterface;
 use kintai\Core\Mail\MailerService;
@@ -145,6 +146,7 @@ final class AppServiceProvider extends ServiceProvider
             $runner = new CronRunner($c->make(CronTokenRepositoryInterface::class));
             $runner->register($c->make(AutoValidateJob::class));
             $runner->register($c->make(BackupJob::class));
+            $runner->register($c->make(LogPurgeJob::class));
             return $runner;
         });
     }

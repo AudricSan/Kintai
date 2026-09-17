@@ -45,6 +45,8 @@ final class OwnerSettingsController
                 'app_support_email' => $this->settings->supportEmail(),
                 'maintenance_mode_enabled' => $this->settings->maintenanceModeEnabled() ? '1' : '0',
                 'maintenance_message'      => $this->settings->maintenanceMessage(),
+                'access_log_enabled'       => $this->settings->accessLogEnabled() ? '1' : '0',
+                'log_retention_days'       => $this->settings->logRetentionDays(),
             ],
             'theme_colors'      => $themeColors,
             'theme_colors_dark' => $themeColorsDark,
@@ -91,12 +93,17 @@ final class OwnerSettingsController
         $maintenanceModeEnabled = $request->post('maintenance_mode_enabled', '0') === '1' ? '1' : '0';
         $maintenanceMessage     = substr(trim((string) $request->post('maintenance_message', '')), 0, 500);
 
+        $accessLogEnabled = $request->post('access_log_enabled', '0') === '1' ? '1' : '0';
+        $logRetentionDays = max(0, min(3650, (int) $request->post('log_retention_days', '180')));
+
         $oldData = array_merge([
             'app_subtitle'      => $this->settings->subtitle(),
             'app_login_notice'  => $this->settings->loginNotice(),
             'app_support_email' => $this->settings->supportEmail(),
             'maintenance_mode_enabled' => $this->settings->maintenanceModeEnabled() ? '1' : '0',
             'maintenance_message'      => $this->settings->maintenanceMessage(),
+            'access_log_enabled'      => $this->settings->accessLogEnabled() ? '1' : '0',
+            'log_retention_days'      => (string) $this->settings->logRetentionDays(),
         ], $oldThemeData);
 
         $newData = array_merge([
@@ -105,6 +112,8 @@ final class OwnerSettingsController
             'app_support_email' => $supportEmail,
             'maintenance_mode_enabled' => $maintenanceModeEnabled,
             'maintenance_message'      => $maintenanceMessage,
+            'access_log_enabled'      => $accessLogEnabled,
+            'log_retention_days'      => (string) $logRetentionDays,
         ], $newThemeData);
 
         $this->settings->setMany($newData);
