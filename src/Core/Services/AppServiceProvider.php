@@ -133,6 +133,10 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(StorePhotoRepositoryInterface::class),
         ));
 
+        // Binding explicite requis (même raison que GithubUpdateService juste au-dessus) :
+        // le constructeur a un paramètre ?\Closure.
+        $this->container->singleton(GithubIssueService::class, fn() => new GithubIssueService());
+
         // Binding explicite requis : le constructeur a un paramètre ?\Closure
         // (non "builtin" pour Container::resolveParameter), donc la résolution
         // par réflexion échouerait sinon en essayant d'instancier \Closure.

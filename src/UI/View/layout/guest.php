@@ -25,5 +25,7 @@
             <?= $content ?>
         </div>
     </div>
+
+    <?php include __DIR__ . '/partials/_footer.php'; ?>
 </body>
 </html>

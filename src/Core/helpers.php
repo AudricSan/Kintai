@@ -228,7 +228,7 @@ if (!function_exists('asset_version')) {
      */
     function asset_version(): string
     {
-        return 'v3';
+        return 'v4';
     }
 }
 
