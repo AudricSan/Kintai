@@ -36,7 +36,7 @@ beta   -> v0.13.3, v0.13.4   (same counter, picks up where alpha left off)
 main   -> v0.13.0            (stable, tagged once the line is ready)
 ```
 
-The next line starts at `0.14.1` (`Y` bumped by hand, `Z` back to its `0` placeholder in `composer.json`/`config/app.php` until the workflow computes the real first `Z`).
+The next line starts at `0.14.1` (`Y` bumped by hand, `Z` back to its `0` placeholder in `composer.json`/`.env`'s `APP_VERSION` until the workflow computes the real first `Z`).
 
 This replaces the previous `X.Y.Z-<week letter><sub-version>` suffix scheme (e.g. `0.12.0-ak23`), which encoded three independent per-channel counters plus an ISO-week letter that was hard to read at a glance on `/admin/update`.
 
@@ -44,14 +44,14 @@ This replaces the previous `X.Y.Z-<week letter><sub-version>` suffix scheme (e.g
 
 Unlike a classic semver MAJOR/MINOR/PATCH, `Z` is never bumped by hand — only `X`/`Y` are, and only in these two situations:
 
-- **Opening the first alpha of a new line** → bump **Y** in `composer.json`/`config/app.php` (leave `Z` at its `.0` placeholder — the real per-publish `Z` is computed by the workflow, never stored here).
+- **Opening the first alpha of a new line** → bump **Y** in `composer.json`/`.env`'s `APP_VERSION` (also update `.env.example` for future installs — leave `Z` at its `.0` placeholder — the real per-publish `Z` is computed by the workflow, never stored here).
 - **Breaking change** → bump **X** instead (this also resets `Y` to `0`).
 - **Every later alpha or beta publish on that line** → nothing to bump by hand; `composer.json` keeps reading `X.Y.0`, only `CHANGELOG.md`'s `[Unreleased]` section grows.
 - **Publishing the stable release on `main`** → nothing to bump either; `composer.json` should already read `X.Y.0` from the line's first alpha. The workflow tags exactly `vX.Y.0`, skipped with a log message if that tag already exists (no version bump happened since the last stable release).
 
 ## Publishing a new version (recommended flow)
 
-The base version number (`X.Y` in `composer.json`/`config/app.php`/`CHANGELOG.md`, always written as `X.Y.0`) is still bumped **by hand**, exactly as before, but only when opening a new line (see "Which number to bump" above) — not on every alpha/beta publish. What's automated by `.github/workflows/release.yml` on every push to `alpha`, `beta`, or `main` is *computing `Z` and creating the Git tag + GitHub Release* — you never tag or `gh release create` yourself.
+The base version number (`X.Y` in `composer.json`/`.env`'s `APP_VERSION`/`CHANGELOG.md`, always written as `X.Y.0`) is still bumped **by hand**, exactly as before, but only when opening a new line (see "Which number to bump" above) — not on every alpha/beta publish. What's automated by `.github/workflows/release.yml` on every push to `alpha`, `beta`, or `main` is *computing `Z` and creating the Git tag + GitHub Release* — you never tag or `gh release create` yourself.
 
 1. On a regular working branch, bump the version if you're opening a new line (see "Manual procedure" below, or run `scripts/release.ps1 -DryRun` to preview the CHANGELOG notes — its automated tag/push/`gh release create` steps are superseded by the Action and will simply fail against a protected branch, so don't run it without `-DryRun` anymore).
 2. Open a PR targeting the channel branch you want to publish to (`alpha`, `beta`, or `main`), and merge it once CI is green (required by branch protection).
@@ -68,10 +68,10 @@ To promote a version from one channel to the next (alpha → beta → release), 
 Only needed when opening a new line (or a new major) — see "Which number to bump" above; skip this for every other alpha/beta publish.
 
 1. On a working branch, rename `## [Unreleased]` to `## [0.13.0] - 2026-08-04` in `CHANGELOG.md` (the `X.Y.0` line version — `Z` here is always `0`, the real per-publish `Z` is computed by the workflow) and add a new empty `## [Unreleased]` section right above it.
-2. Update the version in `composer.json` (`"version": "0.13.0"`) and `config/app.php` (`env('APP_VERSION', '0.13.0')`), bumping `Y` (or `X` for a breaking change) and resetting the rest to `0`.
+2. Update the version in `composer.json` (`"version": "0.13.0"`) and `.env`'s `APP_VERSION=0.13.0` (also `.env.example`, so future installs start on the right line), bumping `Y` (or `X` for a breaking change) and resetting the rest to `0`. `.env` is gitignored and deliberately excluded from the self-updater's file sync (`GithubUpdateService::EXCLUDED_PREFIXES`), so it never gets bumped for you — it's the one file in this list you edit locally rather than commit.
 3. Commit, push the branch, and open a PR into `alpha` (new lines always start there):
    ```bash
-   git add CHANGELOG.md composer.json config/app.php
+   git add CHANGELOG.md composer.json .env.example
    git commit -m "core(release): v0.13.0"
    git push -u origin <your-branch>
    gh pr create --base alpha
