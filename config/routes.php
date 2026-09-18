@@ -80,6 +80,7 @@ $router->post('/reset-password/{token}', [PasswordResetController::class, 'reset
 
 // --- PWA ---
 $router->get('/manifest.json', [PwaController::class, 'manifest'], name: 'pwa.manifest');
+$router->get('/sw.js', [PwaController::class, 'serviceWorker'], name: 'pwa.service_worker');
 
 // --- Confidentialité & pages légales (footer) ---
 $router->get('/privacy', [PrivacyController::class, 'show'], name: 'privacy');
