@@ -215,6 +215,46 @@ if (!function_exists('render_markdown')) {
     }
 }
 
+if (!function_exists('asset_version')) {
+    /**
+     * Suffixe de cache-busting (?v=...) pour app.css/app.js/notifications.js,
+     * et valeur reprise telle quelle par la route /sw.js (PwaController) pour
+     * sa constante CACHE. Calculé automatiquement à partir du mtime le plus
+     * récent sous public/assets/css et public/assets/js — plus rien à bumper
+     * à la main : toute modification d'un fichier CSS/JS change la valeur au
+     * prochain appel. Apache ne pose aucun Cache-Control sur les fichiers
+     * statiques servis directement (voir public/.htaccess), donc sans URL
+     * versionnée le cache HTTP heuristique du navigateur pouvait continuer à
+     * servir une ancienne version indéfiniment.
+     */
+    function asset_version(): string
+    {
+        static $version = null;
+        if ($version !== null) {
+            return $version;
+        }
+
+        $latest = 0;
+        foreach (['/public/assets/css', '/public/assets/js'] as $dir) {
+            $path = BASE_PATH . $dir;
+            if (!is_dir($path)) {
+                continue;
+            }
+            $iterator = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($path, \FilesystemIterator::SKIP_DOTS)
+            );
+            foreach ($iterator as $file) {
+                $mtime = $file->getMTime();
+                if ($mtime > $latest) {
+                    $latest = $mtime;
+                }
+            }
+        }
+
+        return $version = substr(md5((string) $latest), 0, 8);
+    }
+}
+
 if (!function_exists('base_url')) {
     /**
      * Calcule la base URL à partir de SCRIPT_NAME.

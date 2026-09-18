@@ -116,6 +116,13 @@
         z-index: 150;
         background: var(--color-surface);
         flex-direction: column;
+        /* flex-wrap: nowrap indispensable : sans ce reset, le wrap:wrap posé
+           en desktop (base.css, pensé pour les pastilles qui retombent à la
+           ligne) reste actif. Combiné à flex-direction:column ici, tout
+           groupe qui dépasse la hauteur du panneau ne redescend pas mais
+           repart dans une deuxième colonne poussée hors écran à droite,
+           provoquant un scroll horizontal du menu mobile. */
+        flex-wrap: nowrap;
         align-items: stretch;
         gap: 0;
         padding: var(--space-2) var(--space-3);

@@ -1,0 +1,112 @@
+/* ================================================
+   Kintai — Footer applicatif
+   ================================================ */
+
+.app-footer {
+    margin-top: var(--space-10);
+    border-top: 1px solid var(--color-border);
+    background: var(--color-surface);
+}
+
+.app-footer__inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: var(--space-8) var(--space-6) var(--space-6);
+    display: grid;
+    grid-template-columns: 1.4fr repeat(4, 1fr);
+    gap: var(--space-6);
+}
+
+.app-footer__brand-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--color-text);
+    text-decoration: none;
+    font-weight: 700;
+    font-size: var(--text-lg);
+}
+
+.app-footer__brand-link:hover {
+    color: var(--color-primary);
+}
+
+.app-footer__logo {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-sm);
+}
+
+.app-footer__copyright {
+    margin-top: var(--space-2);
+    color: var(--color-text-muted);
+    font-size: var(--text-xs-2);
+}
+
+.app-footer__heading {
+    font-size: var(--text-2xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-3);
+}
+
+.app-footer__col {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+    min-width: 0;
+}
+
+.app-footer__link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--color-text-muted);
+    text-decoration: none;
+    font-size: var(--text-xs-2);
+    transition: color var(--duration-fast);
+}
+
+.app-footer__link:hover {
+    color: var(--color-primary);
+    text-decoration: none;
+}
+
+.app-footer__link--btn {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    font-family: inherit;
+    text-align: left;
+}
+
+.app-footer__icon {
+    display: inline-flex;
+    flex-shrink: 0;
+    color: var(--color-text-secondary);
+}
+
+.app-footer__link:hover .app-footer__icon {
+    color: var(--color-primary);
+}
+
+@media (max-width: 900px) {
+    .app-footer__inner {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .app-footer__brand {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 560px) {
+    .app-footer__inner {
+        grid-template-columns: 1fr;
+        padding: var(--space-6) var(--space-4) var(--space-4);
+    }
+}

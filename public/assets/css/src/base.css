@@ -301,9 +301,15 @@ img {
 /* ── Guest Layout ──────────────────────────────── */
 .guest-layout {
     display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.guest-main {
+    display: flex;
+    flex: 1;
     align-items: center;
     justify-content: center;
-    min-height: 100vh;
 }
 
 .guest-container {

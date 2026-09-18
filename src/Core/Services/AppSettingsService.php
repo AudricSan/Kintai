@@ -120,4 +120,18 @@ final class AppSettingsService
     {
         return $this->get('maintenance_message');
     }
+
+    // ── Journal d'activité ────────────────────────────────────────────────────
+
+    /** Journal d'accès HTTP automatique (canal "access") activé pour chaque requête. */
+    public function accessLogEnabled(): bool
+    {
+        return $this->get('access_log_enabled', '1') === '1';
+    }
+
+    /** Nombre de jours de rétention des entrées du journal d'activité (0 = illimité, pas de purge auto). */
+    public function logRetentionDays(): int
+    {
+        return max(0, (int) $this->get('log_retention_days', '180'));
+    }
 }

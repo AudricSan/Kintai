@@ -10,9 +10,11 @@ use kintai\UI\Controller\Web\EmployeeController;
 use kintai\UI\Controller\Web\HomeController;
 use kintai\UI\Controller\Web\IcalController;
 use kintai\UI\Controller\Web\DocsController;
+use kintai\UI\Controller\Web\LegalController;
 use kintai\UI\Controller\Web\PrivacyController;
 use kintai\UI\Controller\Web\PwaController;
 use kintai\UI\Controller\Web\StorageFileController;
+use kintai\UI\Controller\Web\SupportController;
 
 use kintai\UI\Controller\Web\Requests\AdminRequestsController;
 use kintai\UI\Controller\Web\Scheduling\AdminShiftController;
@@ -78,9 +80,13 @@ $router->post('/reset-password/{token}', [PasswordResetController::class, 'reset
 
 // --- PWA ---
 $router->get('/manifest.json', [PwaController::class, 'manifest'], name: 'pwa.manifest');
+$router->get('/sw.js', [PwaController::class, 'serviceWorker'], name: 'pwa.service_worker');
 
-// --- Confidentialité ---
+// --- Confidentialité & pages légales (footer) ---
 $router->get('/privacy', [PrivacyController::class, 'show'], name: 'privacy');
+$router->get('/legal/mentions', [LegalController::class, 'mentions'], name: 'legal.mentions');
+$router->get('/legal/terms', [LegalController::class, 'terms'], name: 'legal.terms');
+$router->get('/legal/license', [LegalController::class, 'license'], name: 'legal.license');
 
 // --- Fichiers uploadés (photos de stores, imports) — réservé aux admins/managers ---
 $router->get('/storage/{path*}', [StorageFileController::class, 'serve'], middleware: [AuthMiddleware::class, PermissionMiddleware::class], name: 'storage.file', permission: 'public');
@@ -110,6 +116,9 @@ $router->group('/notifications', function ($r) {
     $r->post('/delete-all',  [NotificationController::class, 'deleteAll'],   name: 'notifications.delete_all');
     $r->post('/{id}/read',   [NotificationController::class, 'markRead'],    name: 'notifications.read');
 }, middleware: [AuthMiddleware::class]);
+
+// --- Support (footer : "signaler un problème" → issue GitHub) ---
+$router->post('/support/report-issue', [SupportController::class, 'reportIssue'], middleware: [AuthMiddleware::class, RateLimiterMiddleware::class], name: 'support.report_issue');
 
 // --- Documentation ---
 $router->get('/docs', [DocsController::class, 'index'], middleware: [AuthMiddleware::class], name: 'docs.index');
@@ -257,6 +266,7 @@ $router->group('/admin', function ($r) {
 
     // Journal d'activité (unifié)
     $r->get('/activity', [ActivityController::class, 'index'], name: 'admin.activity', permission: 'stores.view');
+    $r->get('/activity/export', [ActivityController::class, 'export'], name: 'admin.activity.export', permission: 'stores.view');
 
     // Feedbacks : voir src/Bundles/Feedback/routes.php
 

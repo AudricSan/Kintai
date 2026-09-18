@@ -379,7 +379,7 @@
     margin: auto;
     background: var(--color-surface);
     color: var(--color-text);
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    border-radius: var(--radius-lg);
     width: 100%;
     max-width: 560px;
     max-height: 90vh;

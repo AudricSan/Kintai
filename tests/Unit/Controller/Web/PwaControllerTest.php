@@ -8,6 +8,10 @@ use kintai\Core\Request;
 use kintai\UI\Controller\Web\PwaController;
 use PHPUnit\Framework\TestCase;
 
+if (!defined('BASE_PATH')) {
+    define('BASE_PATH', dirname(__DIR__, 4));
+}
+
 final class PwaControllerTest extends TestCase
 {
     protected function tearDown(): void
@@ -33,5 +37,17 @@ final class PwaControllerTest extends TestCase
             $this->assertStringEndsWith('.png', $icon['src']);
             $this->assertSame('image/png', $icon['type']);
         }
+    }
+
+    public function testServiceWorkerInjectsAssetVersionAsCacheName(): void
+    {
+        $response = (new PwaController())->serviceWorker(new Request());
+
+        $reflection = new \ReflectionProperty($response, 'headers');
+        $headers = $reflection->getValue($response);
+        $this->assertSame('application/javascript; charset=UTF-8', $headers['Content-Type']);
+
+        $this->assertStringContainsString("const CACHE = 'kintai-" . asset_version() . "';", $response->body());
+        $this->assertStringNotContainsString('__ASSET_VERSION__', $response->body());
     }
 }

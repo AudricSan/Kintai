@@ -9,6 +9,7 @@ use kintai\Core\Container;
 use kintai\Core\Cron\AutoValidateJob;
 use kintai\Core\Cron\BackupJob;
 use kintai\Core\Cron\CronRunner;
+use kintai\Core\Cron\LogPurgeJob;
 use kintai\Core\Database\MigrationRunner;
 use kintai\Core\Repositories\CronTokenRepositoryInterface;
 use kintai\Core\Mail\MailerService;
@@ -132,6 +133,10 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(StorePhotoRepositoryInterface::class),
         ));
 
+        // Binding explicite requis (même raison que GithubUpdateService juste au-dessus) :
+        // le constructeur a un paramètre ?\Closure.
+        $this->container->singleton(GithubIssueService::class, fn() => new GithubIssueService());
+
         // Binding explicite requis : le constructeur a un paramètre ?\Closure
         // (non "builtin" pour Container::resolveParameter), donc la résolution
         // par réflexion échouerait sinon en essayant d'instancier \Closure.
@@ -145,6 +150,7 @@ final class AppServiceProvider extends ServiceProvider
             $runner = new CronRunner($c->make(CronTokenRepositoryInterface::class));
             $runner->register($c->make(AutoValidateJob::class));
             $runner->register($c->make(BackupJob::class));
+            $runner->register($c->make(LogPurgeJob::class));
             return $runner;
         });
     }

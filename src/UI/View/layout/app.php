@@ -9,7 +9,7 @@
     <link rel="manifest" href="<?= route_url('pwa.manifest') ?>">
     <link rel="apple-touch-icon" href="<?= $BASE_URL ?>/assets/img/kintai-192.png">
     <title><?= htmlspecialchars($title ?? 'Kintai') ?> — Kintai</title>
-    <link rel="stylesheet" href="<?= $BASE_URL ?>/assets/css/app.css">
+    <link rel="stylesheet" href="<?= $BASE_URL ?>/assets/css/app.css?v=<?= asset_version() ?>">
     <script>(function(){var t=localStorage.getItem('kintai-theme');if(t)document.documentElement.dataset.theme=t;}());</script>
 </head>
 
@@ -68,11 +68,13 @@
             <?= $content ?>
         </div>
 
+        <?php include __DIR__ . '/partials/_footer.php'; ?>
+
         <?php include __DIR__ . '/partials/_bottomnav.php'; ?>
     </div>
 
-    <script src="<?= $BASE_URL ?>/assets/js/app.js"></script>
-    <script src="<?= $BASE_URL ?>/assets/js/modules/notifications.js"></script>
+    <script src="<?= $BASE_URL ?>/assets/js/app.js?v=<?= asset_version() ?>"></script>
+    <script src="<?= $BASE_URL ?>/assets/js/modules/notifications.js?v=<?= asset_version() ?>"></script>
     <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', function () {
@@ -84,6 +86,10 @@
 
     <?php if ($feedback_enabled ?? true): ?>
         <?php include __DIR__ . '/partials/feedback-modal.php'; ?>
+    <?php endif; ?>
+
+    <?php if (!empty($auth_user['id'] ?? null)): ?>
+        <?php include __DIR__ . '/partials/report-issue-modal.php'; ?>
     <?php endif; ?>
 
     <?php include __DIR__ . '/partials/_confirm-modal.php'; ?>
