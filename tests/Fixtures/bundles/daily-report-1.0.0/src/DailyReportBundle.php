@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace kintai\Bundles\DailyReport;
+namespace kintai\Bundles\Installed\DailyReport;
 
 use kintai\Core\Auth\PermissionService;
-use kintai\Core\Bundle;
+use kintai\Core\BundleContract\Bundle;
 use kintai\Core\Repositories\DailyReportRepositoryInterface;
 use kintai\Core\Repositories\DatabaseDailyReportRepository;
 use kintai\Core\Services\DailyReportAutoValidateService;
@@ -26,6 +26,11 @@ final class DailyReportBundle extends Bundle
     public function getName(): string
     {
         return 'daily-report';
+    }
+
+    public function getVersion(): string
+    {
+        return '1.0.0';
     }
 
     public function getLabel(): string

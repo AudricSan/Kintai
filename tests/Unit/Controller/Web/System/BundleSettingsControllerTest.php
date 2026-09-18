@@ -36,8 +36,9 @@ final class BundleSettingsControllerTest extends TestCase
     }
 
     /**
-     * Utilise le vrai BundleDiscoveryService (scan de src/Bundles réel) : sur cette
-     * branche, seuls daily-report et messaging sont réellement présents sur le disque.
+     * Utilise le vrai BundleDiscoveryService (scan de src/Bundles réel) : messaging
+     * y reste présent sur le disque (contrairement à Feedback/DailyReport, extraits
+     * vers leur propre dépôt — voir docs/architecture.md "Modular Bundles").
      */
     private function makeController(FeatureManager $features): BundleSettingsController
     {
@@ -66,7 +67,7 @@ final class BundleSettingsControllerTest extends TestCase
     {
         $controller = $this->makeController(new FeatureManager(['messaging']));
 
-        $_POST = ['bundle_daily-report' => '1', 'bundle_messaging' => '1'];
+        $_POST = ['bundle_messaging' => '1'];
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
 
@@ -83,7 +84,7 @@ final class BundleSettingsControllerTest extends TestCase
         $this->assertSame(302, $response->status());
         $this->assertNotNull($captured);
         sort($captured);
-        $this->assertSame(['daily-report', 'messaging'], $captured);
+        $this->assertSame(['messaging'], $captured);
     }
 
     public function testOfficialBundlesRegistryListsBundlesShippedWithTheRepo(): void
@@ -100,7 +101,7 @@ final class BundleSettingsControllerTest extends TestCase
 
     public function testSaveWithNoCheckedBundleDisablesAll(): void
     {
-        $controller = $this->makeController(new FeatureManager(['messaging', 'daily-report']));
+        $controller = $this->makeController(new FeatureManager(['messaging']));
 
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);

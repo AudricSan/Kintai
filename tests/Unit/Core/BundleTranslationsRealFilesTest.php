@@ -13,10 +13,15 @@ if (!defined('BASE_PATH')) {
 }
 
 /**
- * Vérifie, sur les vrais fichiers lang/*.json et src/Bundles/<Name>/lang/*.json du
- * dépôt (pas des fixtures synthétiques), que la migration des clés bundle-exclusives
- * hors du Core n'a laissé aucun trou : chaque bundle migré résout bien ses propres
- * clés, et le Core reste accessible en fallback pour les clés partagées.
+ * Vérifie, sur les vrais fichiers lang/*.json (pas des fixtures synthétiques), que la
+ * migration des clés bundle-exclusives hors du Core n'a laissé aucun trou : chaque
+ * bundle migré résout bien ses propres clés, et le Core reste accessible en fallback
+ * pour les clés partagées. Deux familles de bundles ici :
+ *  - legacyBundleKeyProvider() — bundles encore dans le monorepo (src/Bundles/<Name>/lang/) ;
+ *  - distributedBundleKeyProvider() — bundles extraits vers leur propre dépôt (voir
+ *    docs/architecture.md "Modular Bundles"), dont tests/Fixtures/bundles/<slug>-<version>/
+ *    est une copie fidèle utilisée à la fois comme fixture de test et comme source ayant
+ *    servi à peupler le dépôt externe.
  */
 final class BundleTranslationsRealFilesTest extends TestCase
 {
@@ -27,18 +32,10 @@ final class BundleTranslationsRealFilesTest extends TestCase
         $this->repo = new JsonTranslationRepository(BASE_PATH . '/lang', BASE_PATH . '/src/Bundles');
     }
 
-    /**
-     * @return array<string, array{0: string, 1: string}> bundle => [clé migrée, sous-répertoire]
-     *
-     * "Feedback" n'y figure plus : c'est le bundle pilote distribué hors monorepo
-     * (voir docs/architecture.md "Modular Bundles"), ses traductions ne vivent plus
-     * sous src/Bundles/ mais dans tests/Fixtures/bundles/feedback-1.0.0/lang/ (copie
-     * du dépôt externe) et, une fois installé, storage/bundles/feedback/<version>/lang/.
-     */
-    public static function bundleKeyProvider(): array
+    /** @return array<string, array{0: string, 1: string}> bundle => [clé migrée, sous-répertoire sous src/Bundles/] */
+    public static function legacyBundleKeyProvider(): array
     {
         return [
-            'DailyReport'       => ['bundle_daily_report', 'DailyReport'],
             'HiringReport'      => ['bundle_hiring_report', 'HiringReport'],
             'Messaging'         => ['bundle_messaging', 'Messaging'],
             'ResignationReport' => ['bundle_resignation_report', 'ResignationReport'],
@@ -51,8 +48,17 @@ final class BundleTranslationsRealFilesTest extends TestCase
         ];
     }
 
-    #[DataProvider('bundleKeyProvider')]
-    public function testEachBundleOwnsItsMigratedKeyInEveryLocale(string $key, string $bundleDir): void
+    /** @return array<string, array{0: string, 1: string}> bundle => [clé migrée, dossier sous tests/Fixtures/bundles/] */
+    public static function distributedBundleKeyProvider(): array
+    {
+        return [
+            'Feedback'    => ['feedback_deleted', 'feedback-1.0.0'],
+            'DailyReport' => ['bundle_daily_report', 'daily-report-1.0.0'],
+        ];
+    }
+
+    #[DataProvider('legacyBundleKeyProvider')]
+    public function testEachLegacyBundleOwnsItsMigratedKeyInEveryLocale(string $key, string $bundleDir): void
     {
         foreach (['fr', 'en', 'ja'] as $locale) {
             $bundleFile = BASE_PATH . "/src/Bundles/{$bundleDir}/lang/{$locale}.json";
@@ -67,15 +73,33 @@ final class BundleTranslationsRealFilesTest extends TestCase
         }
     }
 
+    #[DataProvider('distributedBundleKeyProvider')]
+    public function testEachDistributedBundleOwnsItsKeyInEveryLocale(string $key, string $fixtureDir): void
+    {
+        $fixtureRoot = BASE_PATH . "/tests/Fixtures/bundles/{$fixtureDir}";
+        $repo = new JsonTranslationRepository(BASE_PATH . '/lang', null, [$fixtureRoot]);
+
+        foreach (['fr', 'en', 'ja'] as $locale) {
+            $bundleFile = $fixtureRoot . "/lang/{$locale}.json";
+            $this->assertFileExists($bundleFile, "Fichier de langue {$locale} manquant pour la fixture {$fixtureDir}");
+
+            $bundleData = json_decode((string) file_get_contents($bundleFile), true);
+            $this->assertArrayHasKey($key, $bundleData, "{$key} absent de {$bundleFile}");
+            $this->assertSame($bundleData[$key], $repo->findValue($locale, $key));
+        }
+    }
+
     public function testCoreLangFilesNoLongerContainMigratedBundleKeys(): void
     {
+        $allKeys = array_merge(self::legacyBundleKeyProvider(), self::distributedBundleKeyProvider());
+
         foreach (['fr', 'en', 'ja'] as $locale) {
             $core = json_decode((string) file_get_contents(BASE_PATH . "/lang/{$locale}.json"), true);
-            foreach (self::bundleKeyProvider() as [$key, $bundleDir]) {
+            foreach ($allKeys as $bundleDir => [$key, $_dir]) {
                 $this->assertArrayNotHasKey(
                     $key,
                     $core,
-                    "{$key} devrait vivre dans src/Bundles/{$bundleDir}/lang/{$locale}.json, pas dans le Core"
+                    "{$key} devrait vivre dans le bundle {$bundleDir}, pas dans le Core"
                 );
             }
         }
@@ -87,25 +111,5 @@ final class BundleTranslationsRealFilesTest extends TestCase
         // (aucun ne la redéfinit) : elle doit rester accessible en fallback.
         $this->assertSame('Enregistrer', $this->repo->findValue('fr', 'save'));
         $this->assertSame('Save', $this->repo->findValue('en', 'save'));
-    }
-
-    /**
-     * Équivalent, pour le bundle pilote Feedback, de testEachBundleOwnsItsMigratedKeyInEveryLocale() :
-     * ses traductions vivent désormais dans la fixture reflétant le dépôt externe, agrégées
-     * par JsonTranslationRepository via installedBundleRoots (voir RepositoryServiceProvider).
-     */
-    public function testFeedbackFixtureOwnsItsKeyInEveryLocale(): void
-    {
-        $fixtureRoot = BASE_PATH . '/tests/Fixtures/bundles/feedback-1.0.0';
-        $repo = new JsonTranslationRepository(BASE_PATH . '/lang', null, [$fixtureRoot]);
-
-        foreach (['fr', 'en', 'ja'] as $locale) {
-            $bundleFile = $fixtureRoot . "/lang/{$locale}.json";
-            $this->assertFileExists($bundleFile, "Fichier de langue {$locale} manquant pour la fixture Feedback");
-
-            $bundleData = json_decode((string) file_get_contents($bundleFile), true);
-            $this->assertArrayHasKey('feedback_deleted', $bundleData);
-            $this->assertSame($bundleData['feedback_deleted'], $repo->findValue($locale, 'feedback_deleted'));
-        }
     }
 }

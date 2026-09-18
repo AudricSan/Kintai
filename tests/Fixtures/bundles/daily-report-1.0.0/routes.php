@@ -6,8 +6,8 @@ use kintai\Core\Middleware\AuthMiddleware;
 use kintai\Core\Middleware\ApiAuthMiddleware;
 use kintai\Core\Middleware\ApiPermissionMiddleware;
 use kintai\Core\Middleware\PermissionMiddleware;
-use kintai\Bundles\DailyReport\Controllers\Web\DailyReportController;
-use kintai\Bundles\DailyReport\Controllers\Api\DailyReportController as ApiDailyReportController;
+use kintai\Bundles\Installed\DailyReport\Controllers\Web\DailyReportController;
+use kintai\Bundles\Installed\DailyReport\Controllers\Api\DailyReportController as ApiDailyReportController;
 
 /** @var kintai\Core\Router $router */
 /** @var kintai\Core\Container $container */

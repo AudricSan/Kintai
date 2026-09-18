@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace kintai\Bundles\DailyReport\Controllers\Api;
+namespace kintai\Bundles\Installed\DailyReport\Controllers\Api;
 
 use kintai\Core\Api\Paginator;
 use kintai\Core\Exceptions\NotFoundException;

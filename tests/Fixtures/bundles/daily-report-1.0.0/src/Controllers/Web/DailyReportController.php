@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace kintai\Bundles\DailyReport\Controllers\Web;
+namespace kintai\Bundles\Installed\DailyReport\Controllers\Web;
 
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ForbiddenException;
