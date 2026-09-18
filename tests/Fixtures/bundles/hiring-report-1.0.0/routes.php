@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use kintai\Core\Middleware\AuthMiddleware;
 use kintai\Core\Middleware\PermissionMiddleware;
-use kintai\Bundles\HiringReport\Controllers\Web\AdminHiringReportController;
+use kintai\Bundles\Installed\HiringReport\Controllers\Web\AdminHiringReportController;
 
 /** @var kintai\Core\Router $router */
 /** @var kintai\Core\Container $container */

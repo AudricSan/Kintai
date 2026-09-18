@@ -222,7 +222,7 @@ $router->group('/admin', function ($r) {
     $r->get('/stores/{id}/employee-report',                      [AdminStoreController::class, 'employeeReport'],    name: 'admin.stores.employee_report', permission: 'payroll.view');
     $r->get('/stores/{id}/employee-report/{uid}/stats',          [AdminStoreController::class, 'employeeStats'],     name: 'admin.stores.employee_stats', permission: 'payroll.view');
 
-    // Rapports d'embauche : voir src/Bundles/HiringReport/routes.php
+    // Rapports d'embauche : bundle distribué hors monorepo, routes chargées depuis storage/bundles/hiring-report/ une fois installé (voir docs/architecture.md)
 
     // Démission : voir src/Bundles/ResignationReport/routes.php
     // Salaire : voir src/Bundles/SalaryReport/routes.php
