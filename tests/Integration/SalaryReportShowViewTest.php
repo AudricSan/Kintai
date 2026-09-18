@@ -7,11 +7,15 @@ namespace kintai\Tests\Integration;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\TestCase;
 
+if (!defined('BASE_PATH')) {
+    define('BASE_PATH', dirname(__DIR__, 2));
+}
+
 final class SalaryReportShowViewTest extends TestCase
 {
     private function renderShow(array $store, array $extra = []): string
     {
-        $viewsDir = dirname(__DIR__, 2) . '/src/Bundles/SalaryReport/Views';
+        $viewsDir = dirname(__DIR__, 2) . '/tests/Fixtures/bundles/salary-report-1.0.0/Views';
         $view = new ViewRenderer(dirname($viewsDir));
         $view->addNamespace('salary-report', $viewsDir);
 
