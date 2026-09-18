@@ -36,6 +36,27 @@ ob_start();
     </div>
 </div>
 
+<?php
+$sharedContact = [];
+if (!empty($colleague['share_email']) && !empty($colleague['email'])) {
+    $sharedContact[__('email')] = $colleague['email'];
+}
+if (!empty($colleague['share_phone']) && !empty($colleague['phone'])) {
+    $sharedContact[__('phone')] = $colleague['phone'];
+}
+if (!empty($colleague['share_mobile_phone']) && !empty($colleague['mobile_phone'])) {
+    $sharedContact[__('mobile_phone')] = $colleague['mobile_phone'];
+}
+?>
+<?php if (!empty($sharedContact)): ?>
+<div class="team-profile-section">
+    <h4 class="section-title"><?= __('contact') ?></h4>
+    <?php foreach ($sharedContact as $label => $value): ?>
+    <p><strong><?= htmlspecialchars($label) ?> :</strong> <?= htmlspecialchars($value) ?></p>
+    <?php endforeach; ?>
+</div>
+<?php endif; ?>
+
 <?php if (!empty($colleague['bio'])): ?>
 <div class="team-profile-section">
     <h4 class="section-title"><?= __('bio') ?></h4>
@@ -64,7 +85,7 @@ ob_start();
 </div>
 <?php endif; ?>
 
-<?php if (empty($colleague['bio']) && empty($colleague['skills']) && empty($colleague['languages_spoken']) && empty($colleague['hobbies'])): ?>
+<?php if (empty($sharedContact) && empty($colleague['bio']) && empty($colleague['skills']) && empty($colleague['languages_spoken']) && empty($colleague['hobbies'])): ?>
 <p class="text-muted"><?= __('team_directory_empty_profile') ?></p>
 <?php endif; ?>
 <?php

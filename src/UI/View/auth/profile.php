@@ -182,6 +182,30 @@ ob_start();
         </label>
         <p class="form-hint"><?= __('show_in_directory_hint') ?></p>
     </div>
+    <div class="form-group">
+        <p class="form-label"><?= __('share_contact_info') ?></p>
+        <p class="form-hint"><?= __('share_contact_info_hint') ?></p>
+        <div class="share-toggle-list">
+            <label class="form-toggle form-toggle--labeled">
+                <input type="checkbox" name="share_email" value="1" class="form-toggle__input"
+                       <?= (($user['share_email'] ?? 0) != 0) ? 'checked' : '' ?>>
+                <span class="form-toggle__track"></span>
+                <span><?= __('email') ?></span>
+            </label>
+            <label class="form-toggle form-toggle--labeled">
+                <input type="checkbox" name="share_phone" value="1" class="form-toggle__input"
+                       <?= (($user['share_phone'] ?? 0) != 0) ? 'checked' : '' ?>>
+                <span class="form-toggle__track"></span>
+                <span><?= __('phone') ?></span>
+            </label>
+            <label class="form-toggle form-toggle--labeled">
+                <input type="checkbox" name="share_mobile_phone" value="1" class="form-toggle__input"
+                       <?= (($user['share_mobile_phone'] ?? 0) != 0) ? 'checked' : '' ?>>
+                <span class="form-toggle__track"></span>
+                <span><?= __('mobile_phone') ?></span>
+            </label>
+        </div>
+    </div>
     <?php endif; ?>
 
     <div class="form-actions">

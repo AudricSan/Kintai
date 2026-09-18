@@ -1141,6 +1141,8 @@
     "send_feedback": "💬 Give feedback",
     "set_as_default": "Set as default",
     "settings": "Settings",
+    "share_contact_info": "Share my contact details",
+    "share_contact_info_hint": "Choose, field by field, what your colleagues can see on your team directory profile.",
     "shift_conflicts_title": "Shift conflicts",
     "shift_created": "Shift created.",
     "shift_deleted": "Shift deleted.",

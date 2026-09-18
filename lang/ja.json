@@ -1141,6 +1141,8 @@
     "send_feedback": "💬 フィードバックを送る",
     "set_as_default": "デフォルトに設定",
     "settings": "設定",
+    "share_contact_info": "連絡先を共有する",
+    "share_contact_info_hint": "チームディレクトリのプロフィールで同僚に表示する項目を、項目ごとに選択できます。",
     "shift_conflicts_title": "シフトの競合",
     "shift_created": "シフトを作成しました。",
     "shift_deleted": "シフトを削除しました。",
