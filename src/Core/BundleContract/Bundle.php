@@ -82,10 +82,27 @@ abstract class Bundle
         return $this->path;
     }
 
+    /**
+     * Racine du bundle sur le disque — le dossier contenant bundle.json,
+     * routes.php, Views/, lang/, PAS forcément celui de la classe elle-même.
+     *
+     * Pour un bundle legacy (monorepo, src/Bundles/{Name}/{Name}Bundle.php),
+     * les deux coïncident. Pour un bundle installé dynamiquement, la classe
+     * d'entrée vit sous src/ (BundleManifest::SOURCE_ROOT) alors que
+     * routes.php/Views/lang vivent à la racine du bundle, un niveau
+     * au-dessus — d'où la détection explicite ci-dessous plutôt qu'un simple
+     * dirname() du fichier de la classe.
+     */
     protected function resolvePath(): string
     {
         $reflector = new \ReflectionClass(static::class);
-        return dirname($reflector->getFileName());
+        $dir = dirname($reflector->getFileName());
+
+        if (basename($dir) === 'src' && is_file(dirname($dir) . '/bundle.json')) {
+            return dirname($dir);
+        }
+
+        return $dir;
     }
 
     /**

@@ -21,6 +21,7 @@ $baseDocs = [
     'SECURITY.md',
     'docs/architecture.md',
     'docs/business-model.md',
+    'docs/creating-a-bundle.md',
     'docs/database.md',
     'docs/multi-tenancy.md',
     'docs/releasing.md',
