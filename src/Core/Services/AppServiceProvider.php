@@ -29,6 +29,9 @@ use kintai\Core\Repositories\StorePhotoRepositoryInterface;
 use kintai\Core\Repositories\LanguageRepositoryInterface;
 use kintai\Core\Repositories\TranslationRepositoryInterface;
 use kintai\Core\Repositories\DevicePushTokenRepositoryInterface;
+use kintai\Core\Repositories\InstalledBundleRepositoryInterface;
+use kintai\Core\Services\BundleInstaller\BundleInstallerService;
+use kintai\Core\Services\BundleRegistry\BundleRegistryClient;
 use Illuminate\Database\Capsule\Manager as Capsule;
 use kintai\UI\ViewRenderer;
 
@@ -136,6 +139,14 @@ final class AppServiceProvider extends ServiceProvider
         // Binding explicite requis (même raison que GithubUpdateService juste au-dessus) :
         // le constructeur a un paramètre ?\Closure.
         $this->container->singleton(GithubIssueService::class, fn() => new GithubIssueService());
+
+        // Même raison (paramètre ?\Closure) : BundleRegistryClient et BundleInstallerService.
+        $this->container->singleton(BundleRegistryClient::class, fn() => new BundleRegistryClient());
+
+        $this->container->singleton(BundleInstallerService::class, fn(Container $c) => new BundleInstallerService(
+            $c->make(UpdateService::class),
+            $c->make(InstalledBundleRepositoryInterface::class),
+        ));
 
         // Binding explicite requis : le constructeur a un paramètre ?\Closure
         // (non "builtin" pour Container::resolveParameter), donc la résolution

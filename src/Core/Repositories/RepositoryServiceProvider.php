@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\Core\Repositories;
 
+use kintai\Core\InstalledBundleManifestStore;
 use kintai\Core\ServiceProvider;
 
 final class RepositoryServiceProvider extends ServiceProvider
@@ -40,6 +41,7 @@ final class RepositoryServiceProvider extends ServiceProvider
         $this->container->singleton(RoleAssignmentRepositoryInterface::class, fn() => new DatabaseRoleAssignmentRepository());
         $this->container->singleton(DevicePushTokenRepositoryInterface::class, fn() => new DatabaseDevicePushTokenRepository());
         $this->container->singleton(BundleRegistryRepositoryInterface::class, fn() => new DatabaseBundleRegistryRepository());
+        $this->container->singleton(InstalledBundleRepositoryInterface::class, fn() => new DatabaseInstalledBundleRepository());
 
         // Rapports
         // HiringReportRepositoryInterface reste ici (contrairement à Resignation/Salary,
@@ -54,9 +56,28 @@ final class RepositoryServiceProvider extends ServiceProvider
         // Feedback : voir src/Bundles/Feedback/FeedbackBundle.php
 
         // Traductions (fichiers JSON, voir lang/languages.json et lang/{code}.json). Chaque
-        // bundle peut définir ses propres src/Bundles/<Name>/lang/{code}.json, fusionnés
-        // par-dessus ceux du Core (fallback Core si le bundle ne redéfinit pas une clé).
+        // bundle legacy peut définir ses propres src/Bundles/<Name>/lang/{code}.json, et
+        // chaque bundle installé dynamiquement son storage/bundles/<slug>/<version>/lang/{code}.json,
+        // tous fusionnés par-dessus ceux du Core (fallback Core si un bundle ne redéfinit pas une clé).
         $this->container->singleton(LanguageRepositoryInterface::class, fn() => new JsonLanguageRepository(BASE_PATH . '/lang'));
-        $this->container->singleton(TranslationRepositoryInterface::class, fn() => new JsonTranslationRepository(BASE_PATH . '/lang', BASE_PATH . '/src/Bundles'));
+        $this->container->singleton(TranslationRepositoryInterface::class, fn() => new JsonTranslationRepository(
+            BASE_PATH . '/lang',
+            BASE_PATH . '/src/Bundles',
+            self::installedBundleRoots(),
+        ));
+    }
+
+    /** @return string[] Chemins absolus (storage/bundles/<slug>/<version>) de chaque bundle installé actif. */
+    private static function installedBundleRoots(): array
+    {
+        $bundlesDir = storage_path('bundles');
+        $roots = [];
+        foreach ((new InstalledBundleManifestStore())->all() as $slug => $info) {
+            $version = $info['active_version'] ?? null;
+            if (is_string($version) && $version !== '') {
+                $roots[] = $bundlesDir . '/' . $slug . '/' . $version;
+            }
+        }
+        return $roots;
     }
 }

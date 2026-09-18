@@ -6,24 +6,32 @@ namespace kintai\Core\Repositories;
 
 /**
  * Fusionne les traductions du Core (lang/*.json) avec celles de chaque bundle
- * détecté sur le disque (src/Bundles/<Name>/lang/*.json). Un bundle ne définit
- * que ses propres clés ; toute clé absente de son fichier retombe naturellement
- * sur celle du Core (elles cohabitent dans le même espace de noms plat, comme
- * avant l'introduction des bundles). Un bundle peut aussi surcharger une clé
- * Core en la redéfinissant chez lui.
+ * détecté sur le disque : les bundles legacy du monorepo
+ * (src/Bundles/<Name>/lang/*.json) et les bundles installés dynamiquement
+ * (storage/bundles/<slug>/<version>/lang/*.json, chemins déjà résolus par
+ * l'appelant — contrairement au dossier legacy, leur profondeur varie selon
+ * la version active, donc pas de glob générique possible ici). Un bundle ne
+ * définit que ses propres clés ; toute clé absente de son fichier retombe
+ * naturellement sur celle du Core (elles cohabitent dans le même espace de
+ * noms plat, comme avant l'introduction des bundles). Un bundle peut aussi
+ * surcharger une clé Core en la redéfinissant chez lui.
  */
 final class JsonTranslationRepository implements TranslationRepositoryInterface
 {
     private string $langPath;
-    private ?string $bundlesDir;
+    private ?string $legacyBundlesDir;
+    /** @var string[] */
+    private array $installedBundleRoots;
 
     /** @var array<string, array<string,string>> Cache des fichiers déjà lus (chemin => données). */
     private array $fileCache = [];
 
-    public function __construct(string $langPath, ?string $bundlesDir = null)
+    /** @param string[] $installedBundleRoots Chemins absolus de chaque bundle installé actif (storage/bundles/<slug>/<version>). */
+    public function __construct(string $langPath, ?string $legacyBundlesDir = null, array $installedBundleRoots = [])
     {
         $this->langPath = rtrim($langPath, '/\\');
-        $this->bundlesDir = $bundlesDir !== null ? rtrim($bundlesDir, '/\\') : null;
+        $this->legacyBundlesDir = $legacyBundlesDir !== null ? rtrim($legacyBundlesDir, '/\\') : null;
+        $this->installedBundleRoots = array_map(fn(string $d) => rtrim($d, '/\\'), $installedBundleRoots);
     }
 
     public function findByLocale(string $locale): array
@@ -98,12 +106,23 @@ final class JsonTranslationRepository implements TranslationRepositoryInterface
     private function layerFiles(string $locale): array
     {
         $files = [$this->filePath($locale)];
-        if ($this->bundlesDir !== null) {
-            $bundleFiles = glob($this->bundlesDir . '/*/lang/' . $locale . '.json') ?: [];
+
+        if ($this->legacyBundlesDir !== null) {
+            $bundleFiles = glob($this->legacyBundlesDir . '/*/lang/' . $locale . '.json') ?: [];
             sort($bundleFiles);
             $files = array_merge($files, $bundleFiles);
         }
-        return $files;
+
+        $installedFiles = [];
+        foreach ($this->installedBundleRoots as $root) {
+            $file = $root . '/lang/' . $locale . '.json';
+            if (is_file($file)) {
+                $installedFiles[] = $file;
+            }
+        }
+        sort($installedFiles);
+
+        return array_merge($files, $installedFiles);
     }
 
     private function filePath(string $locale): string
