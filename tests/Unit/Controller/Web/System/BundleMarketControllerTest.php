@@ -4,9 +4,15 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Controller\Web\System;
 
+use kintai\Core\InstalledBundleManifestStore;
 use kintai\Core\Repositories\BundleRegistryRepositoryInterface;
+use kintai\Core\Repositories\InstalledBundleRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\BundleInstaller\BundleInstallerService;
+use kintai\Core\Services\BundleRegistry\BundleCatalogService;
+use kintai\Core\Services\BundleRegistry\BundleRegistryClient;
+use kintai\Core\Services\UpdateService;
 use kintai\UI\Controller\Web\System\BundleMarketController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -19,12 +25,27 @@ if (!defined('BASE_PATH')) {
 final class BundleMarketControllerTest extends TestCase
 {
     private BundleRegistryRepositoryInterface&MockObject $registries;
+    private InstalledBundleRepositoryInterface&MockObject $installedBundles;
+    private ?\Closure $registryFetcher = null;
+    private ?\Closure $releaseFetcher = null;
+    private ?\Closure $zipDownloader = null;
+    private string $bundlesDir;
+    private string $fakeCoreBasePath;
 
     protected function setUp(): void
     {
         $this->ensureViewFile('system.bundle-registries');
+        $this->ensureViewFile('system.bundle-market');
         $this->ensureViewFile('layout.app');
         $this->registries = $this->createMock(BundleRegistryRepositoryInterface::class);
+        $this->installedBundles = $this->createMock(InstalledBundleRepositoryInterface::class);
+
+        $this->bundlesDir = sys_get_temp_dir() . '/kintai-bundle-market-' . uniqid();
+        mkdir($this->bundlesDir, 0777, true);
+
+        $this->fakeCoreBasePath = sys_get_temp_dir() . '/kintai-fake-core-' . uniqid();
+        mkdir($this->fakeCoreBasePath . '/config', 0777, true);
+        file_put_contents($this->fakeCoreBasePath . '/config/app.php', "<?php\nreturn ['version' => '0.5.0'];\n");
     }
 
     protected function tearDown(): void
@@ -35,9 +56,26 @@ final class BundleMarketControllerTest extends TestCase
 
     private function makeController(): BundleMarketController
     {
+        $catalog = new BundleCatalogService(
+            $this->registries,
+            new BundleRegistryClient($this->registryFetcher),
+        );
+
+        $installer = new BundleInstallerService(
+            new UpdateService($this->fakeCoreBasePath),
+            $this->installedBundles,
+            new InstalledBundleManifestStore($this->bundlesDir . '/installed.json'),
+            $this->bundlesDir,
+            $this->releaseFetcher,
+            $this->zipDownloader,
+        );
+
         return new BundleMarketController(
             new ViewRenderer(sys_get_temp_dir()),
             $this->registries,
+            $catalog,
+            $this->installedBundles,
+            $installer,
             new AuditLogger(),
         );
     }
@@ -123,6 +161,129 @@ final class BundleMarketControllerTest extends TestCase
         $response = $this->makeController()->destroy($req);
 
         $this->assertStringContainsString('success=deleted', $this->locationOf($response));
+    }
+
+    public function testMarketRendersCatalogAggregatedFromRegistries(): void
+    {
+        $this->registries->method('all')->willReturn([
+            ['id' => 1, 'name' => 'Registry officiel', 'url' => 'https://example.test/registry.json', 'is_official' => true],
+        ]);
+        $this->registryFetcher = fn(string $url) => json_encode([
+            'schema_version' => 1,
+            'name'           => 'Registry officiel',
+            'bundles'        => [[
+                'slug'            => 'feedback',
+                'name'            => 'Retours utilisateurs',
+                'description'     => '...',
+                'repository_url'  => 'https://github.com/AudricSan/kintai-bundle-feedback',
+                'versions'        => ['1.1.0', '1.0.0'],
+            ]],
+        ]);
+        $this->installedBundles->method('all')->willReturn([
+            ['slug' => 'feedback', 'active_version' => '1.0.0', 'source_registry_url' => null],
+        ]);
+
+        $response = $this->makeController()->market(new Request());
+
+        $this->assertSame(200, $response->status());
+    }
+
+    public function testDryRunRejectsAnIncompleteRequest(): void
+    {
+        $_POST = ['slug' => '', 'repository_url' => '', 'version' => ''];
+
+        $response = $this->makeController()->dryRun(new Request());
+
+        $this->assertSame(400, $response->status());
+    }
+
+    public function testDryRunReturnsJsonResultFromInstaller(): void
+    {
+        $_POST = [
+            'slug'            => 'fake-bundle',
+            'repository_url'  => 'https://gitlab.com/someone/fake-bundle',
+            'version'         => '1.0.0',
+        ];
+
+        $response = $this->makeController()->dryRun(new Request());
+
+        $this->assertSame(422, $response->status());
+        $data = json_decode($response->body(), true);
+        $this->assertFalse($data['ok']);
+        $this->assertStringContainsString('non reconnue', $data['error']);
+    }
+
+    public function testInstallRedirectsWithErrorWhenRequestIsIncomplete(): void
+    {
+        $_POST = ['slug' => 'feedback'];
+
+        $response = $this->makeController()->install(new Request());
+
+        $this->assertStringContainsString('error=invalid', $this->locationOf($response));
+    }
+
+    public function testInstallRejectsAThirdPartyBundleWithoutExplicitConfirmation(): void
+    {
+        $this->registries->method('all')->willReturn([]);
+        $_POST = [
+            'slug'            => 'unofficial-bundle',
+            'repository_url'  => 'https://github.com/someone/unofficial-bundle',
+            'version'         => '1.0.0',
+            // confirm_third_party volontairement absent
+        ];
+
+        $response = $this->makeController()->install(new Request());
+
+        $this->assertStringContainsString('error=invalid', $this->locationOf($response));
+    }
+
+    public function testInstallSucceedsForAThirdPartyBundleWithExplicitConfirmation(): void
+    {
+        $zipPath = $this->buildFixtureZip();
+        $this->releaseFetcher = fn() => 'https://example.test/fake.zip';
+        $this->zipDownloader = function (string $url, string $dest) use ($zipPath) { return copy($zipPath, $dest); };
+
+        $_POST = [
+            'slug'                => 'fake-bundle',
+            'repository_url'      => 'https://github.com/AudricSan/kintai-bundle-fake',
+            'version'             => '1.0.0',
+            'confirm_third_party' => '1',
+        ];
+
+        $this->installedBundles->expects($this->once())->method('upsert')->with('fake-bundle', '1.0.0', null);
+
+        $response = $this->makeController()->install(new Request());
+
+        $this->assertStringContainsString('success=fake-bundle', $this->locationOf($response));
+    }
+
+    /**
+     * Construit un zip qui imite un zipball GitHub : un unique dossier racine
+     * contenant bundle.json + src/.
+     */
+    private function buildFixtureZip(): string
+    {
+        $manifest = [
+            'slug'        => 'fake-bundle',
+            'name'        => 'Fake Bundle',
+            'version'     => '1.0.0',
+            'namespace'   => 'kintai\\Bundles\\Installed\\FakeBundle',
+            'entry_class' => 'kintai\\Bundles\\Installed\\FakeBundle\\FakeBundleBundle',
+            'kintai_core' => ['min' => '0.1.0', 'max' => '0.9.0'],
+        ];
+
+        $zipPath = sys_get_temp_dir() . '/kintai-market-fixture-' . uniqid() . '.zip';
+        $zip = new \ZipArchive();
+        $zip->open($zipPath, \ZipArchive::CREATE);
+        $root = 'AudricSan-kintai-bundle-fake-abc1234';
+        $zip->addFromString("{$root}/bundle.json", json_encode($manifest, JSON_PRETTY_PRINT));
+        $zip->addFromString(
+            "{$root}/src/FakeBundleBundle.php",
+            "<?php\nnamespace kintai\\Bundles\\Installed\\FakeBundle;\nfinal class FakeBundleBundle {}\n",
+        );
+        $zip->close();
+
+        return $zipPath;
     }
 
     private function locationOf(\kintai\Core\Response $response): string
