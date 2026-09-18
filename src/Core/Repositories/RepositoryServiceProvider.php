@@ -53,8 +53,8 @@ final class RepositoryServiceProvider extends ServiceProvider
         // Rapports
         // HiringReportRepositoryInterface reste ici (contrairement à Resignation/Salary,
         // pas dans le bundle) : AdminUserController en dépend directement pour générer
-        // automatiquement un rapport d'embauche à la création d'un employé. Voir
-        // src/Bundles/HiringReport/HiringReportBundle.php.
+        // automatiquement un rapport d'embauche à la création d'un employé. Bundle
+        // distribué hors monorepo (kintai-bundle-hiring-report) — voir docs/architecture.md.
         $this->container->singleton(HiringReportRepositoryInterface::class, fn() => new DatabaseHiringReportRepository());
         // Démission : voir src/Bundles/ResignationReport/ResignationReportBundle.php
         // Salaire : voir src/Bundles/SalaryReport/SalaryReportBundle.php

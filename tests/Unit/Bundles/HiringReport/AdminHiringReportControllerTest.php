@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Bundles\HiringReport;
 
-use kintai\Bundles\HiringReport\Controllers\Web\AdminHiringReportController;
+require_once dirname(__DIR__, 3) . '/Fixtures/bundles/hiring-report-1.0.0/src/Controllers/Web/AdminHiringReportController.php';
+
+use kintai\Bundles\Installed\HiringReport\Controllers\Web\AdminHiringReportController;
 use kintai\Core\Container;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\HiringReportRepositoryInterface;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace kintai\Bundles\HiringReport\Controllers\Web;
+namespace kintai\Bundles\Installed\HiringReport\Controllers\Web;
 
 use kintai\Core\Repositories\HiringReportRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;

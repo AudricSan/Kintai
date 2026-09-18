@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace kintai\Bundles\HiringReport;
+namespace kintai\Bundles\Installed\HiringReport;
 
-use kintai\Core\Bundle;
+use kintai\Core\BundleContract\Bundle;
 
 /**
  * Contrairement à ResignationReport/SalaryReport/StorePhoto, ce bundle
@@ -13,15 +13,21 @@ use kintai\Core\Bundle;
  * l'utilise directement pour générer automatiquement un rapport d'embauche
  * à chaque création d'employé (formulaire standard et import Excel rapide) —
  * un effet de bord du cœur de la gestion des utilisateurs, qui doit continuer
- * de fonctionner même si ce bundle est désactivé. Désactiver "hiring-report"
- * retire uniquement l'UI de consultation/édition des rapports d'embauche
- * (liste, fiche, PDF), pas la génération automatique ni les données elles-mêmes.
+ * de fonctionner même si ce bundle est désactivé ou désinstallé. Désactiver
+ * "hiring-report" retire uniquement l'UI de consultation/édition des rapports
+ * d'embauche (liste, fiche, PDF), pas la génération automatique ni les
+ * données elles-mêmes.
  */
 final class HiringReportBundle extends Bundle
 {
     public function getName(): string
     {
         return 'hiring-report';
+    }
+
+    public function getVersion(): string
+    {
+        return '1.0.0';
     }
 
     public function getLabel(): string
