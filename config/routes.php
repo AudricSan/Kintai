@@ -29,6 +29,7 @@ use kintai\UI\Controller\Web\System\AdminController;
 use kintai\UI\Controller\Web\System\AdminRoleController;
 use kintai\UI\Controller\Web\System\AppResetController;
 use kintai\UI\Controller\Web\System\BackupController;
+use kintai\UI\Controller\Web\System\BundleMarketController;
 use kintai\UI\Controller\Web\System\BundleSettingsController;
 use kintai\UI\Controller\Web\System\LanguageController;
 use kintai\UI\Controller\Web\System\MailTestController;
@@ -309,6 +310,9 @@ $router->group('/admin', function ($r) {
     // Bundles (Owner uniquement)
     $r->get('/bundles',  [BundleSettingsController::class, 'show'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles', permission: 'public');
     $r->post('/bundles', [BundleSettingsController::class, 'save'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.save', permission: 'public');
+    $r->get('/bundles/registries',              [BundleMarketController::class, 'index'],   middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.registries', permission: 'public');
+    $r->post('/bundles/registries',             [BundleMarketController::class, 'store'],   middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.registries.store', permission: 'public');
+    $r->post('/bundles/registries/{id}/delete', [BundleMarketController::class, 'destroy'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.registries.delete', permission: 'public');
 
     // Rôles & permissions (Owner uniquement) — voir task/mermission.md
     $r->get('/roles',              [AdminRoleController::class, 'roles'],      middleware: [OwnerOnlyMiddleware::class], name: 'admin.roles', permission: 'public');
