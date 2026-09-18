@@ -68,6 +68,8 @@
             <?= $content ?>
         </div>
 
+        <?php include __DIR__ . '/partials/_footer.php'; ?>
+
         <?php include __DIR__ . '/partials/_bottomnav.php'; ?>
     </div>
 
@@ -84,6 +86,10 @@
 
     <?php if ($feedback_enabled ?? true): ?>
         <?php include __DIR__ . '/partials/feedback-modal.php'; ?>
+    <?php endif; ?>
+
+    <?php if (!empty($auth_user['id'] ?? null)): ?>
+        <?php include __DIR__ . '/partials/report-issue-modal.php'; ?>
     <?php endif; ?>
 
     <?php include __DIR__ . '/partials/_confirm-modal.php'; ?>

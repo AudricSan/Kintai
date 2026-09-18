@@ -8,22 +8,26 @@
     <link rel="stylesheet" href="<?= $BASE_URL ?>/assets/css/app.css?v=<?= asset_version() ?>">
 </head>
 <body class="guest-layout">
-    <div class="guest-container">
-        <div class="guest-brand">
-            <img src="<?= $BASE_URL ?>/assets/img/mascot/wave-hello.png" alt="<?= __('mascot_alt') ?>" class="guest-brand__mascot">
-            <h1>Kintai</h1>
-            <?php if (!empty($app_subtitle)): ?>
-                <p class="guest-brand__company"><?= htmlspecialchars($app_subtitle, ENT_QUOTES) ?></p>
-            <?php else: ?>
-                <p>Shift Management</p>
+    <div class="guest-main">
+        <div class="guest-container">
+            <div class="guest-brand">
+                <img src="<?= $BASE_URL ?>/assets/img/mascot/login.png" alt="<?= __('mascot_alt') ?>" class="guest-brand__mascot">
+                <h1>Kintai</h1>
+                <?php if (!empty($app_subtitle)): ?>
+                    <p class="guest-brand__company"><?= htmlspecialchars($app_subtitle, ENT_QUOTES) ?></p>
+                <?php else: ?>
+                    <p>Shift Management</p>
+                <?php endif; ?>
+            </div>
+            <?php if (!empty($app_login_notice)): ?>
+                <div class="guest-notice"><?= htmlspecialchars($app_login_notice, ENT_QUOTES) ?></div>
             <?php endif; ?>
-        </div>
-        <?php if (!empty($app_login_notice)): ?>
-            <div class="guest-notice"><?= htmlspecialchars($app_login_notice, ENT_QUOTES) ?></div>
-        <?php endif; ?>
-        <div class="guest-card">
-            <?= $content ?>
+            <div class="guest-card">
+                <?= $content ?>
+            </div>
         </div>
     </div>
+
+    <?php include __DIR__ . '/partials/_footer.php'; ?>
 </body>
 </html>
