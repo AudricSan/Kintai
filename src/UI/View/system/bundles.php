@@ -4,6 +4,7 @@ use kintai\UI\Components\Flash;
 
 /** @var array $bundles Liste de ['key' => string, 'label' => string, 'desc' => string, 'enabled' => bool, 'official' => bool] */
 /** @var bool  $success */
+/** @var string|null $BASE_URL */
 
 echo Flash::fromQuery('success', ['default' => __('save_success')])->render();
 ?>
@@ -16,6 +17,7 @@ echo Flash::fromQuery('success', ['default' => __('save_success')])->render();
 <div class="card card--mb">
     <div class="card-body">
         <p class="form-hint"><?= __('bundle_settings_hint') ?></p>
+        <a href="<?= $BASE_URL ?>/admin/bundles/registries" class="btn btn--ghost btn--sm"><?= __('bundle_registries') ?></a>
     </div>
 </div>
 
