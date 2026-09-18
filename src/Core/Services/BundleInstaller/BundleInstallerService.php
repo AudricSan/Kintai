@@ -46,9 +46,12 @@ final class BundleInstallerService
         return $this->lastError;
     }
 
-    public function install(string $slug, string $repositoryUrl, string $version, ?string $sourceRegistryUrl = null): BundleInstallResult
+    /**
+     * @param (callable(int, string): void)|null $onProgress reçoit (pourcentage 0-100, libellé de l'étape en cours)
+     */
+    public function install(string $slug, string $repositoryUrl, string $version, ?string $sourceRegistryUrl = null, ?callable $onProgress = null): BundleInstallResult
     {
-        return $this->run($slug, $repositoryUrl, $version, $sourceRegistryUrl, dryRun: false);
+        return $this->run($slug, $repositoryUrl, $version, $sourceRegistryUrl, dryRun: false, onProgress: $onProgress);
     }
 
     public function dryRun(string $slug, string $repositoryUrl, string $version): BundleInstallResult
@@ -75,22 +78,29 @@ final class BundleInstallerService
         return true;
     }
 
-    private function run(string $slug, string $repositoryUrl, string $version, ?string $sourceRegistryUrl, bool $dryRun): BundleInstallResult
+    /**
+     * @param (callable(int, string): void)|null $onProgress
+     */
+    private function run(string $slug, string $repositoryUrl, string $version, ?string $sourceRegistryUrl, bool $dryRun, ?callable $onProgress = null): BundleInstallResult
     {
         $this->lastError = null;
+        $progress = $onProgress ?? function (int $percent, string $label): void {};
 
         $stagingContainer = $this->bundlesDir() . "/{$slug}/.staging/{$version}";
         $zipPath = $stagingContainer . '.zip';
 
+        $progress(10, "Résolution de la release {$version}...");
         $downloadUrl = $this->resolveDownloadUrl($repositoryUrl, $version);
         if ($downloadUrl === null) {
             return BundleInstallResult::failure($this->lastError ?? "Impossible de résoudre la release {$version} pour {$repositoryUrl}.");
         }
 
+        $progress(30, 'Téléchargement de l\'archive...');
         if (!$this->download($downloadUrl, $zipPath)) {
             return BundleInstallResult::failure($this->lastError ?? "Échec du téléchargement de l'archive.");
         }
 
+        $progress(60, 'Vérification du bundle...');
         $verified = $this->verifyAndExtract($zipPath, $slug, $version, $stagingContainer);
         @unlink($zipPath);
 
@@ -103,12 +113,15 @@ final class BundleInstallerService
 
         if ($dryRun) {
             $this->removeDirIfExists($stagingContainer);
+            $progress(100, 'Vérification terminée.');
             return BundleInstallResult::dryRunOk($manifest);
         }
 
+        $progress(90, 'Activation du bundle...');
         $this->activate($slug, $version, $extractedRoot, $sourceRegistryUrl);
         $this->removeDirIfExists($stagingContainer);
 
+        $progress(100, 'Bundle installé.');
         return BundleInstallResult::installed($manifest);
     }
 

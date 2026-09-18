@@ -313,6 +313,10 @@ $router->group('/admin', function ($r) {
     $r->get('/bundles/registries',              [BundleMarketController::class, 'index'],   middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.registries', permission: 'public');
     $r->post('/bundles/registries',             [BundleMarketController::class, 'store'],   middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.registries.store', permission: 'public');
     $r->post('/bundles/registries/{id}/delete', [BundleMarketController::class, 'destroy'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.registries.delete', permission: 'public');
+    $r->get('/bundles/market',                  [BundleMarketController::class, 'market'],        middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.market', permission: 'public');
+    $r->post('/bundles/market/dry-run',         [BundleMarketController::class, 'dryRun'],        middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.market.dry-run', permission: 'public');
+    $r->post('/bundles/market/install',         [BundleMarketController::class, 'install'],       middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.market.install', permission: 'public');
+    $r->post('/bundles/market/install/stream',  [BundleMarketController::class, 'installStream'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.market.install.stream', permission: 'public');
 
     // Rôles & permissions (Owner uniquement) — voir task/mermission.md
     $r->get('/roles',              [AdminRoleController::class, 'roles'],      middleware: [OwnerOnlyMiddleware::class], name: 'admin.roles', permission: 'public');

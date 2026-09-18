@@ -1,0 +1,17 @@
+/* ── Catalogue de bundles (/admin/bundles/market) ──────────────────── */
+.bundle-market-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: var(--space-4);
+}
+
+.bundle-market-card .card-title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+
+.bundle-market-progress.hidden {
+    display: none;
+}
