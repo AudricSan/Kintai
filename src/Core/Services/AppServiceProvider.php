@@ -117,6 +117,41 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(DailyReportRepositoryInterface::class),
         ));
 
+        // DailyReportPermissionService/PdfService/MailService/AutoValidateService liés ici,
+        // pas par le bundle "daily-report" : DailyReportNavMiddleware (middleware global,
+        // partagé sur toute page authentifiée) et AutoValidateJob/CronController en
+        // dépendent directement, et doivent continuer de fonctionner même si ce bundle
+        // est désactivé ou désinstallé — même raison que DailyReportRepositoryInterface
+        // ci-dessus (RepositoryServiceProvider). Liaisons explicites (plutôt que de
+        // compter sur l'auto-résolution par réflexion du Container) pour garder le même
+        // comportement singleton qu'avant, quand le bundle les liait lui-même.
+        $this->container->singleton(DailyReportPermissionService::class, fn(Container $c) => new DailyReportPermissionService(
+            $c->make(\kintai\Core\Auth\PermissionService::class),
+        ));
+
+        $this->container->singleton(DailyReportPdfService::class, fn(Container $c) => new DailyReportPdfService(
+            $c->make(ViewRenderer::class),
+            $c->make(TranslationService::class),
+            $c->make(ShiftRepositoryInterface::class),
+            $c->make(ShiftTypeRepositoryInterface::class),
+            $c->make(UserRepositoryInterface::class),
+        ));
+
+        $this->container->singleton(DailyReportMailService::class, fn(Container $c) => new DailyReportMailService(
+            $c->make(DailyReportPermissionService::class),
+            $c->make(MailerService::class),
+            $c->make(TranslationService::class),
+        ));
+
+        $this->container->singleton(DailyReportAutoValidateService::class, fn(Container $c) => new DailyReportAutoValidateService(
+            $c->make(StoreRepositoryInterface::class),
+            $c->make(DailyReportRepositoryInterface::class),
+            $c->make(UserRepositoryInterface::class),
+            $c->make(DailyReportPermissionService::class),
+            $c->make(DailyReportPdfService::class),
+            $c->make(DailyReportMailService::class),
+        ));
+
         $this->container->singleton(BackupService::class, fn(Container $c) => new BackupService(
             $c->make(Capsule::class),
         ));

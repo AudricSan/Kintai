@@ -113,16 +113,24 @@ if (!function_exists('storage_path')) {
 
 if (!function_exists('bundle_enabled')) {
     /**
-     * Indique si un bundle est activé au niveau de l'instance (FeatureManager).
-     * "Fail open" (true) si le service n'est pas encore prêt, comme __() —
-     * l'accès réel reste de toute façon protégé par les routes elles-mêmes.
+     * Indique si un bundle est réellement actif après le boot — découvert (sur
+     * le disque ou installé dynamiquement) ET activé (BundleManager::isActive(),
+     * pas seulement FeatureManager::isEnabled(), qui ne reflète que le réglage
+     * stocké). Les deux peuvent diverger quand un bundle reste marqué "activé"
+     * dans les réglages existants d'une instance mais disparaît du disque —
+     * exactement ce qui arrive à un bundle qu'on vient d'extraire du monorepo
+     * tant que personne ne l'a réinstallé depuis /admin/bundles/market. Utiliser
+     * l'ancien comportement (FeatureManager seul) ferait générer par les vues
+     * (nav, sidebar) des liens vers des routes qui n'existent plus, plantant la
+     * page entière. "Fail open" (true) si le service n'est pas encore prêt,
+     * comme __() — l'accès réel reste de toute façon protégé par les routes.
      */
     function bundle_enabled(string $slug): bool
     {
         try {
             $container = \kintai\Core\Container::getInstance();
-            if ($container->has(\kintai\Core\FeatureManager::class)) {
-                return $container->make(\kintai\Core\FeatureManager::class)->isEnabled($slug);
+            if ($container->has(\kintai\Core\BundleManager::class)) {
+                return $container->make(\kintai\Core\BundleManager::class)->isActive($slug);
             }
         } catch (\Throwable $e) {
             // En cas d'erreur avant que le service soit prêt

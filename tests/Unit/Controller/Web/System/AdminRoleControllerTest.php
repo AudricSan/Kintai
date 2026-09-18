@@ -4,16 +4,17 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Controller\Web\System;
 
+use kintai\Core\BundleManager;
 use kintai\Core\Container;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
-use kintai\Core\FeatureManager;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Services\AuditLogger;
+use kintai\Tests\Support\FakeBundleManagerFactory;
 use kintai\UI\Controller\Web\System\AdminRoleController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -53,7 +54,7 @@ final class AdminRoleControllerTest extends TestCase
         $_GET = [];
         $_POST = [];
         // Réinitialise le singleton Container pour ne pas propager le
-        // FeatureManager injecté par les tests de bundles désactivés.
+        // BundleManager injecté par les tests de bundles désactivés.
         $instance = new \ReflectionProperty(Container::class, 'instance');
         $instance->setValue(null, null);
     }
@@ -251,7 +252,7 @@ final class AdminRoleControllerTest extends TestCase
         // swaps…) sont masquées du formulaire : leurs cases ne sont ni
         // affichées ni prises en compte, mais les clés déjà accordées
         // survivent à la sauvegarde.
-        Container::getInstance()->instance(FeatureManager::class, new FeatureManager([]));
+        Container::getInstance()->instance(BundleManager::class, FakeBundleManagerFactory::withActiveSlugs([]));
 
         $this->roles->method('findById')->willReturn(['id' => 2, 'name' => 'Manager', 'is_system' => 0]);
         $this->roles->method('getPermissions')->willReturn(['timeoff.view', 'timeoff.approve', 'employees.view']);
@@ -278,7 +279,7 @@ final class AdminRoleControllerTest extends TestCase
 
     public function testUpdateRoleAcceptsBundleCategoryWhenBundleEnabled(): void
     {
-        Container::getInstance()->instance(FeatureManager::class, new FeatureManager(['timeoff']));
+        Container::getInstance()->instance(BundleManager::class, FakeBundleManagerFactory::withActiveSlugs(['timeoff']));
 
         $this->roles->method('findById')->willReturn(['id' => 2, 'name' => 'Manager', 'is_system' => 0]);
         $this->roles->method('getPermissions')->willReturn([]);
