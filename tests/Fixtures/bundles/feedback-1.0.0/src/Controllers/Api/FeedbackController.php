@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace kintai\Bundles\Feedback\Controllers\Api;
+namespace kintai\Bundles\Installed\Feedback\Controllers\Api;
 
 use kintai\Core\Api\Paginator;
 use kintai\Core\Auth\PermissionService;

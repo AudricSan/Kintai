@@ -6,8 +6,8 @@ use kintai\Core\Middleware\AuthMiddleware;
 use kintai\Core\Middleware\ApiAuthMiddleware;
 use kintai\Core\Middleware\ApiPermissionMiddleware;
 use kintai\Core\Middleware\PermissionMiddleware;
-use kintai\Bundles\Feedback\Controllers\Web\FeedbackController;
-use kintai\Bundles\Feedback\Controllers\Api\FeedbackController as ApiFeedbackController;
+use kintai\Bundles\Installed\Feedback\Controllers\Web\FeedbackController;
+use kintai\Bundles\Installed\Feedback\Controllers\Api\FeedbackController as ApiFeedbackController;
 
 /** @var kintai\Core\Router $router */
 /** @var kintai\Core\Container $container */

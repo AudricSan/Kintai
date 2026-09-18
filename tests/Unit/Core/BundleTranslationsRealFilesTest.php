@@ -27,12 +27,18 @@ final class BundleTranslationsRealFilesTest extends TestCase
         $this->repo = new JsonTranslationRepository(BASE_PATH . '/lang', BASE_PATH . '/src/Bundles');
     }
 
-    /** @return array<string, array{0: string, 1: string}> bundle => [clé migrée, sous-répertoire] */
+    /**
+     * @return array<string, array{0: string, 1: string}> bundle => [clé migrée, sous-répertoire]
+     *
+     * "Feedback" n'y figure plus : c'est le bundle pilote distribué hors monorepo
+     * (voir docs/architecture.md "Modular Bundles"), ses traductions ne vivent plus
+     * sous src/Bundles/ mais dans tests/Fixtures/bundles/feedback-1.0.0/lang/ (copie
+     * du dépôt externe) et, une fois installé, storage/bundles/feedback/<version>/lang/.
+     */
     public static function bundleKeyProvider(): array
     {
         return [
             'DailyReport'       => ['bundle_daily_report', 'DailyReport'],
-            'Feedback'          => ['feedback_deleted', 'Feedback'],
             'HiringReport'      => ['bundle_hiring_report', 'HiringReport'],
             'Messaging'         => ['bundle_messaging', 'Messaging'],
             'ResignationReport' => ['bundle_resignation_report', 'ResignationReport'],
@@ -81,5 +87,25 @@ final class BundleTranslationsRealFilesTest extends TestCase
         // (aucun ne la redéfinit) : elle doit rester accessible en fallback.
         $this->assertSame('Enregistrer', $this->repo->findValue('fr', 'save'));
         $this->assertSame('Save', $this->repo->findValue('en', 'save'));
+    }
+
+    /**
+     * Équivalent, pour le bundle pilote Feedback, de testEachBundleOwnsItsMigratedKeyInEveryLocale() :
+     * ses traductions vivent désormais dans la fixture reflétant le dépôt externe, agrégées
+     * par JsonTranslationRepository via installedBundleRoots (voir RepositoryServiceProvider).
+     */
+    public function testFeedbackFixtureOwnsItsKeyInEveryLocale(): void
+    {
+        $fixtureRoot = BASE_PATH . '/tests/Fixtures/bundles/feedback-1.0.0';
+        $repo = new JsonTranslationRepository(BASE_PATH . '/lang', null, [$fixtureRoot]);
+
+        foreach (['fr', 'en', 'ja'] as $locale) {
+            $bundleFile = $fixtureRoot . "/lang/{$locale}.json";
+            $this->assertFileExists($bundleFile, "Fichier de langue {$locale} manquant pour la fixture Feedback");
+
+            $bundleData = json_decode((string) file_get_contents($bundleFile), true);
+            $this->assertArrayHasKey('feedback_deleted', $bundleData);
+            $this->assertSame($bundleData['feedback_deleted'], $repo->findValue($locale, 'feedback_deleted'));
+        }
     }
 }

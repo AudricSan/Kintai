@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace kintai\Bundles\Feedback\Controllers\Web;
+namespace kintai\Bundles\Installed\Feedback\Controllers\Web;
 
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Repositories\FeedbackRepositoryInterface;
