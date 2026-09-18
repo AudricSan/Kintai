@@ -40,6 +40,16 @@ self.addEventListener('fetch', (e) => {
   // jour, dernière version connue en secours, puis une page hors-ligne dédiée si
   // rien n'a jamais été mis en cache pour cette URL (ex. tout premier lancement
   // hors-ligne).
+  //
+  // Les requêtes de navigation non-GET (soumission de <form method="POST">) sont
+  // exclues : le navigateur les expose au Service Worker avec redirect: 'manual',
+  // donc fetch(e.request) résout avec une réponse "opaque redirect" (status 0)
+  // que Chrome ne sait pas suivre pour une navigation POST — respondWith() avec
+  // cette réponse bloque silencieusement la navigation (aucune erreur, la page
+  // reste affichée telle quelle). On laisse le navigateur gérer ces requêtes
+  // nativement, sans interception.
+  if (e.request.mode === 'navigate' && e.request.method !== 'GET') return;
+
   if (e.request.mode === 'navigate') {
     e.respondWith(
       fetch(e.request)
