@@ -37,7 +37,6 @@ final class BundleTranslationsRealFilesTest extends TestCase
     {
         return [
             'HiringReport'      => ['bundle_hiring_report', 'HiringReport'],
-            'Messaging'         => ['bundle_messaging', 'Messaging'],
             'ResignationReport' => ['bundle_resignation_report', 'ResignationReport'],
             'SalaryReport'      => ['sr_pdf', 'SalaryReport'],
             'ShiftClaim'        => ['bundle_shift_claim', 'ShiftClaim'],
@@ -54,6 +53,7 @@ final class BundleTranslationsRealFilesTest extends TestCase
         return [
             'Feedback'    => ['feedback_deleted', 'feedback-1.0.0'],
             'DailyReport' => ['bundle_daily_report', 'daily-report-1.0.0'],
+            'Messaging'   => ['bundle_messaging', 'messaging-1.0.0'],
         ];
     }
 
