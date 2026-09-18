@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Bundles\Feedback\Api;
 
-use kintai\Bundles\Feedback\Controllers\Api\FeedbackController;
+require_once dirname(__DIR__, 4) . '/Fixtures/bundles/feedback-1.0.0/src/Controllers/Api/FeedbackController.php';
+
+use kintai\Bundles\Installed\Feedback\Controllers\Api\FeedbackController;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;

@@ -14,8 +14,13 @@ use kintai\Core\Router;
 
 /**
  * Régression : les routes /employee/feedback*, /admin/feedbacks/* et
- * /api/v1/feedbacks/* du bundle Feedback doivent rester protégées après
- * leur extraction du core.
+ * /api/v1/feedbacks/* du bundle Feedback doivent rester protégées.
+ *
+ * Depuis son extraction du monorepo (voir docs/architecture.md "Modular
+ * Bundles"), le code réel du bundle vit hors de ce dépôt
+ * (kintai-bundle-feedback) ; tests/Fixtures/bundles/feedback-1.0.0/ en est
+ * une copie fidèle, maintenue en même temps que le dépôt externe, utilisée à
+ * la fois ici et par BundleInstallerServiceTest-like fixtures.
  */
 final class FeedbackRoutesTest extends TestCase
 {
@@ -23,7 +28,7 @@ final class FeedbackRoutesTest extends TestCase
     {
         $router = new Router();
         $container = new Container();
-        require dirname(__DIR__, 4) . '/src/Bundles/Feedback/routes.php';
+        require dirname(__DIR__, 4) . '/tests/Fixtures/bundles/feedback-1.0.0/routes.php';
 
         return $router;
     }

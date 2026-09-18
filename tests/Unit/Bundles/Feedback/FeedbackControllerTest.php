@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Bundles\Feedback;
 
-use kintai\Bundles\Feedback\Controllers\Web\FeedbackController;
+require_once dirname(__DIR__, 3) . '/Fixtures/bundles/feedback-1.0.0/src/Controllers/Web/FeedbackController.php';
+
+use kintai\Bundles\Installed\Feedback\Controllers\Web\FeedbackController;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Container;
 use kintai\Core\Repositories\FeedbackRepositoryInterface;

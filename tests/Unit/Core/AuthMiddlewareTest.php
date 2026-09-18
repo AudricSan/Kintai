@@ -6,6 +6,7 @@ namespace kintai\Tests\Unit\Core;
 
 use kintai\Core\Auth\AuthService;
 use kintai\Core\Auth\PermissionService;
+use kintai\Core\BundleManager;
 use kintai\Core\Container;
 use kintai\Core\FeatureManager;
 use kintai\Core\Middleware\AuthMiddleware;
@@ -46,6 +47,10 @@ final class AuthMiddlewareTest extends TestCase
         $this->view      = new ViewRenderer(sys_get_temp_dir());
         $this->container->instance(ViewRenderer::class, $this->view);
         $this->container->instance(FeatureManager::class, new FeatureManager([]));
+        // BundleManager::__construct() exige une vraie Application (lourde à construire
+        // ici, et final) ; isActive() ne lit que $bundles (vide par défaut), donc une
+        // instance sans constructeur suffit pour ce test (aucun bundle réellement actif).
+        $this->container->instance(BundleManager::class, (new \ReflectionClass(BundleManager::class))->newInstanceWithoutConstructor());
 
         $this->container->instance(TranslationService::class, new TranslationService(
             $this->createStub(TranslationRepositoryInterface::class),
