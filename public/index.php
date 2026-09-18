@@ -37,6 +37,10 @@ define('BASE_PATH', dirname(__DIR__));
 require BASE_PATH . '/vendor/autoload.php';
 require BASE_PATH . '/src/Core/helpers.php';
 
+// Bundles installés dynamiquement (storage/bundles/) : hors PSR-4 standard,
+// voir kintai\Core\InstalledBundleAutoloader.
+(new kintai\Core\InstalledBundleAutoloader())->register();
+
 // Check if the application is installed
 $installedLockFile = BASE_PATH . '/storage/installed.lock';
 if (!file_exists($installedLockFile)) {
