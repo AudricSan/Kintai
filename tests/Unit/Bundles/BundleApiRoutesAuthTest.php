@@ -29,7 +29,7 @@ final class BundleApiRoutesAuthTest extends TestCase
     #[DataProvider('messagingApiRoutesProvider')]
     public function testMessagingApiRoutesRequireAuth(string $method, string $path): void
     {
-        $router = $this->loadRoutes(dirname(__DIR__, 3) . '/src/Bundles/Messaging/routes.php');
+        $router = $this->loadRoutes(dirname(__DIR__, 3) . '/tests/Fixtures/bundles/messaging-1.0.0/routes.php');
 
         [$route] = $router->dispatch($method, $path);
 

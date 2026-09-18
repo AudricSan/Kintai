@@ -36,9 +36,9 @@ final class BundleSettingsControllerTest extends TestCase
     }
 
     /**
-     * Utilise le vrai BundleDiscoveryService (scan de src/Bundles réel) : messaging
-     * y reste présent sur le disque (contrairement à Feedback/DailyReport, extraits
-     * vers leur propre dépôt — voir docs/architecture.md "Modular Bundles").
+     * Utilise le vrai BundleDiscoveryService (scan de src/Bundles réel) : shift-claim
+     * y reste présent sur le disque (contrairement à Feedback/DailyReport/Messaging,
+     * extraits vers leur propre dépôt — voir docs/architecture.md "Modular Bundles").
      */
     private function makeController(FeatureManager $features): BundleSettingsController
     {
@@ -53,7 +53,7 @@ final class BundleSettingsControllerTest extends TestCase
 
     public function testShowRendersPageForOwner(): void
     {
-        $controller = $this->makeController(new FeatureManager(['messaging']));
+        $controller = $this->makeController(new FeatureManager(['shift-claim']));
 
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
@@ -65,9 +65,9 @@ final class BundleSettingsControllerTest extends TestCase
 
     public function testSavePersistsSelectedBundlesAsJson(): void
     {
-        $controller = $this->makeController(new FeatureManager(['messaging']));
+        $controller = $this->makeController(new FeatureManager(['shift-claim']));
 
-        $_POST = ['bundle_messaging' => '1'];
+        $_POST = ['bundle_shift-claim' => '1'];
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
 
@@ -84,7 +84,7 @@ final class BundleSettingsControllerTest extends TestCase
         $this->assertSame(302, $response->status());
         $this->assertNotNull($captured);
         sort($captured);
-        $this->assertSame(['messaging'], $captured);
+        $this->assertSame(['shift-claim'], $captured);
     }
 
     public function testOfficialBundlesRegistryListsBundlesShippedWithTheRepo(): void
@@ -95,13 +95,13 @@ final class BundleSettingsControllerTest extends TestCase
         $official = require BASE_PATH . '/config/official-bundles.php';
 
         $this->assertContains('daily-report', $official);
-        $this->assertContains('messaging', $official);
+        $this->assertContains('shift-claim', $official);
         $this->assertNotContains('some-random-third-party-bundle', $official);
     }
 
     public function testSaveWithNoCheckedBundleDisablesAll(): void
     {
-        $controller = $this->makeController(new FeatureManager(['messaging']));
+        $controller = $this->makeController(new FeatureManager(['shift-claim']));
 
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);

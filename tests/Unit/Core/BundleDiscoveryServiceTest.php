@@ -33,10 +33,10 @@ final class BundleDiscoveryServiceTest extends TestCase
 
         $discovered = $service->discover();
 
-        $this->assertArrayHasKey('messaging', $discovered);
-        $this->assertNotSame('', $discovered['messaging']['label']);
-        $this->assertTrue(is_subclass_of($discovered['messaging']['class'], Bundle::class));
-        $this->assertSame('0.0.0', $discovered['messaging']['version']);
+        $this->assertArrayHasKey('shift-claim', $discovered);
+        $this->assertNotSame('', $discovered['shift-claim']['label']);
+        $this->assertTrue(is_subclass_of($discovered['shift-claim']['class'], Bundle::class));
+        $this->assertSame('0.0.0', $discovered['shift-claim']['version']);
     }
 
     public function testIgnoresDirectoriesWithNoMatchingBundleClass(): void
@@ -90,19 +90,19 @@ final class BundleDiscoveryServiceTest extends TestCase
     public function testLegacySlugWinsOverAnInstalledBundleWithTheSameSlug(): void
     {
         $installedDir = sys_get_temp_dir() . '/kintai-installed-' . uniqid();
-        // "messaging" existe déjà en legacy dans src/Bundles/ : une collision ne
+        // "shift-claim" existe déjà en legacy dans src/Bundles/ : une collision ne
         // doit jamais faire gagner la version installée dynamiquement.
-        $this->writeFakeInstalledBundle($installedDir, 'messaging', '9.9.9');
+        $this->writeFakeInstalledBundle($installedDir, 'shift-claim', '9.9.9');
 
         $store = new InstalledBundleManifestStore($installedDir . '/installed.json');
-        $store->setActiveVersion('messaging', '9.9.9');
+        $store->setActiveVersion('shift-claim', '9.9.9');
 
         $service = new BundleDiscoveryService(null, $store, $installedDir);
 
         $discovered = $service->discover();
 
-        $this->assertArrayHasKey('messaging', $discovered);
-        $this->assertNotSame('9.9.9', $discovered['messaging']['version']);
+        $this->assertArrayHasKey('shift-claim', $discovered);
+        $this->assertNotSame('9.9.9', $discovered['shift-claim']['version']);
     }
 
     private function writeFakeInstalledBundle(string $installedDir, string $slug, string $version): void

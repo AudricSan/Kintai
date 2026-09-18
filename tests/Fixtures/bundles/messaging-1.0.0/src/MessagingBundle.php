@@ -2,18 +2,22 @@
 
 declare(strict_types=1);
 
-namespace kintai\Bundles\Messaging;
+namespace kintai\Bundles\Installed\Messaging;
 
-use kintai\Core\Bundle;
+use kintai\Core\BundleContract\Bundle;
 use kintai\Core\Repositories\MessageRepositoryInterface;
 use kintai\Core\Repositories\DatabaseMessageRepository;
-use kintai\Core\Container;
 
 final class MessagingBundle extends Bundle
 {
     public function getName(): string
     {
         return 'messaging';
+    }
+
+    public function getVersion(): string
+    {
+        return '1.0.0';
     }
 
     public function getLabel(): string

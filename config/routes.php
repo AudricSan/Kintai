@@ -156,7 +156,7 @@ $router->group('/employee', function ($r) {
 
     // Bourse aux shifts : voir src/Bundles/ShiftClaim/routes.php
 
-    // Messagerie : voir src/Bundles/Messaging/routes.php (employee.messages*)
+    // Messagerie : bundle distribué hors monorepo, routes chargées depuis storage/bundles/messaging/ une fois installé (employee.messages*, voir docs/architecture.md)
 
 }, middleware: [AuthMiddleware::class]);
 

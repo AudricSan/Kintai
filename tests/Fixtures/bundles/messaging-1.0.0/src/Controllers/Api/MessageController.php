@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace kintai\Bundles\Messaging\Controllers\Api;
+namespace kintai\Bundles\Installed\Messaging\Controllers\Api;
 
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
