@@ -26,6 +26,13 @@ final class RepositoryServiceProvider extends ServiceProvider
         // widgets "pointage en cours", qui doivent continuer de fonctionner même si
         // ce bundle est désactivé. Voir src/Bundles/Timeclock/TimeclockBundle.php.
         $this->container->singleton(TimeclockRepositoryInterface::class, fn() => new DatabaseTimeclockRepository());
+        // DailyReportRepositoryInterface reste ici (même raison que Timeclock ci-dessus,
+        // trouvée en cassant la prod lors de l'extraction du bundle DailyReport hors du
+        // monorepo — voir CHANGELOG) : StoreStatsService en dépend pour ses calculs de
+        // statistiques magasin, qui doivent continuer de fonctionner même si le bundle
+        // "daily-report" est désactivé ou désinstallé. Le bundle lui-même (legacy ou
+        // distribué, voir kintai-bundle-daily-report) n'a plus besoin de la lier.
+        $this->container->singleton(DailyReportRepositoryInterface::class, fn() => new DatabaseDailyReportRepository());
         $this->container->singleton(UserDashboardPrefsRepositoryInterface::class, fn() => new DatabaseUserDashboardPrefsRepository());
         $this->container->singleton(UserNavPrefsRepositoryInterface::class, fn() => new DatabaseUserNavPrefsRepository());
         // ShiftClaim : voir src/Bundles/ShiftClaim/ShiftClaimBundle.php

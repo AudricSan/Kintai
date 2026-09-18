@@ -33,12 +33,10 @@ final class BundleDiscoveryServiceTest extends TestCase
 
         $discovered = $service->discover();
 
-        $this->assertArrayHasKey('daily-report', $discovered);
         $this->assertArrayHasKey('messaging', $discovered);
-        $this->assertNotSame('', $discovered['daily-report']['label']);
         $this->assertNotSame('', $discovered['messaging']['label']);
-        $this->assertTrue(is_subclass_of($discovered['daily-report']['class'], Bundle::class));
-        $this->assertSame('0.0.0', $discovered['daily-report']['version']);
+        $this->assertTrue(is_subclass_of($discovered['messaging']['class'], Bundle::class));
+        $this->assertSame('0.0.0', $discovered['messaging']['version']);
     }
 
     public function testIgnoresDirectoriesWithNoMatchingBundleClass(): void

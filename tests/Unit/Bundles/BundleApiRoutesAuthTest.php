@@ -59,7 +59,7 @@ final class BundleApiRoutesAuthTest extends TestCase
     #[DataProvider('dailyReportApiRoutesProvider')]
     public function testDailyReportApiRoutesRequireAuth(string $method, string $path): void
     {
-        $router = $this->loadRoutes(dirname(__DIR__, 3) . '/src/Bundles/DailyReport/routes.php');
+        $router = $this->loadRoutes(dirname(__DIR__, 3) . '/tests/Fixtures/bundles/daily-report-1.0.0/routes.php');
 
         [$route] = $router->dispatch($method, $path);
 
