@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Bundles\ResignationReport;
 
-use kintai\Bundles\ResignationReport\Controllers\Web\AdminResignationReportController;
+require_once dirname(__DIR__, 3) . '/Fixtures/bundles/resignation-report-1.0.0/src/Controllers/Web/AdminResignationReportController.php';
+
+use kintai\Bundles\Installed\ResignationReport\Controllers\Web\AdminResignationReportController;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Container;
 use kintai\Core\Exceptions\NotFoundException;
