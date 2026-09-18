@@ -80,7 +80,7 @@
     border: none;
     padding: 0;
     cursor: pointer;
-    font: inherit;
+    font-family: inherit;
     text-align: left;
 }
 
