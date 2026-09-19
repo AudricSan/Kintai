@@ -56,7 +56,7 @@ final class RepositoryServiceProvider extends ServiceProvider
         // automatiquement un rapport d'embauche à la création d'un employé. Bundle
         // distribué hors monorepo (kintai-bundle-hiring-report) — voir docs/architecture.md.
         $this->container->singleton(HiringReportRepositoryInterface::class, fn() => new DatabaseHiringReportRepository());
-        // Démission : voir src/Bundles/ResignationReport/ResignationReportBundle.php
+        // Démission : bundle distribué hors monorepo (kintai-bundle-resignation-report), voir docs/architecture.md
         // Salaire : bundle distribué hors monorepo (kintai-bundle-salary-report), voir docs/architecture.md
 
         // Photos : voir src/Bundles/StorePhoto/StorePhotoBundle.php
