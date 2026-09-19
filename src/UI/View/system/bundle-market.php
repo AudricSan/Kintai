@@ -14,6 +14,7 @@ use kintai\UI\Components\Badge;
 </div>
 
 <?php include __DIR__ . '/../_partials/_settings-tabs.php'; ?>
+<?php include __DIR__ . '/_bundle-tabs.php'; ?>
 
 <?php if ($success): ?>
     <div class="alert alert--success mb-sm"><?= htmlspecialchars(__('bundle_market_install_success', ['slug' => $success])) ?></div>
@@ -28,8 +29,6 @@ use kintai\UI\Components\Badge;
 <div class="card card--mb">
     <div class="card-body">
         <p class="form-hint"><?= __('bundle_market_hint') ?></p>
-        <a href="<?= $BASE_URL ?>/admin/bundles/registries" class="btn btn--ghost btn--sm"><?= __('bundle_registries') ?></a>
-        <a href="<?= $BASE_URL ?>/admin/bundles" class="btn btn--ghost btn--sm"><?= __('bundle_settings') ?></a>
     </div>
 </div>
 

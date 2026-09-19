@@ -13,12 +13,11 @@ echo Flash::fromQuery('success', ['default' => __('save_success')])->render();
 </div>
 
 <?php include __DIR__ . '/../_partials/_settings-tabs.php'; ?>
+<?php include __DIR__ . '/_bundle-tabs.php'; ?>
 
 <div class="card card--mb">
     <div class="card-body">
         <p class="form-hint"><?= __('bundle_settings_hint') ?></p>
-        <a href="<?= $BASE_URL ?>/admin/bundles/market" class="btn btn--primary btn--sm"><?= __('bundle_market') ?></a>
-        <a href="<?= $BASE_URL ?>/admin/bundles/registries" class="btn btn--ghost btn--sm"><?= __('bundle_registries') ?></a>
     </div>
 </div>
 
