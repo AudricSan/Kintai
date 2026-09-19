@@ -57,25 +57,21 @@ use kintai\UI\Components\Badge;
                 <?php endif; ?>
 
                 <?php if ($entry['installed_version'] !== null): ?>
-                    <p class="text-sm"><?= __('bundle_market_installed_version', ['version' => $entry['installed_version']]) ?></p>
-                <?php else: ?>
-                    <p class="text-sm form-hint"><?= __('bundle_market_not_installed') ?></p>
-                <?php endif; ?>
-
-                <?php if ($entry['latest_version'] !== null): ?>
                     <p class="text-sm">
-                        <?= __('bundle_market_latest_version', ['version' => $entry['latest_version']]) ?>
+                        <?= __('bundle_market_installed_version', ['version' => $entry['installed_version']]) ?>
                         <?php if ($entry['update_available']): ?>
-                            <?= Badge::make(__('bundle_market_update_available'))->success()->sm()->render() ?>
+                            <?= Badge::make(__('bundle_market_update_available', ['version' => $entry['latest_version']]))->success()->sm()->render() ?>
                         <?php endif; ?>
                     </p>
+                <?php else: ?>
+                    <p class="text-sm form-hint"><?= __('bundle_market_not_installed') ?></p>
                 <?php endif; ?>
 
                 <?php if (!$entry['official']): ?>
                     <p class="form-hint text-danger"><?= __('bundle_market_third_party_warning') ?></p>
                 <?php endif; ?>
 
-                <?php if (!$entry['orphaned']): ?>
+                <?php if (!$entry['orphaned'] && ($entry['installed_version'] === null || $entry['update_available'])): ?>
                 <form method="POST" action="<?= $BASE_URL ?>/admin/bundles/market/install"
                       class="bundle-market-install-form form-stack" data-stream-url="<?= $BASE_URL ?>/admin/bundles/market/install/stream"
                       data-dry-run-url="<?= $BASE_URL ?>/admin/bundles/market/dry-run"
