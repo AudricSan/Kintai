@@ -9,6 +9,7 @@ use kintai\Core\Container;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AppSettingsService;
+use kintai\Core\Services\UpdateService;
 use kintai\UI\ViewRenderer;
 
 final class AppSettingsMiddleware implements MiddlewareInterface
@@ -26,6 +27,7 @@ final class AppSettingsMiddleware implements MiddlewareInterface
             $view->share('app_theme_color_style', $settings->themeColorStyle());
             $view->share('app_support_email', $settings->supportEmail());
             $view->share('app_maintenance_mode_enabled', $settings->maintenanceModeEnabled());
+            $view->share('app_version', $this->container->make(UpdateService::class)->getCurrentVersion());
         } catch (\Throwable) {
             // Table absente (avant migration) ou DB non disponible — on ignore.
         }
