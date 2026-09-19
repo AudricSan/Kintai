@@ -140,7 +140,7 @@ $router->group('/employee', function ($r) {
 
     // Pointage : voir src/Bundles/Timeclock/routes.php
 
-    // Congés : voir src/Bundles/TimeOff/routes.php
+    // Congés : bundle distribué hors monorepo, routes chargées depuis storage/bundles/timeoff/ une fois installé (voir docs/architecture.md)
 
     // Profil : géré par /profile (AuthController, page unique admin/manager/employé)
     $r->get('/profile',                    [EmployeeController::class, 'profile'],               name: 'employee.profile');
@@ -259,7 +259,7 @@ $router->group('/admin', function ($r) {
 
     // Bourse aux shifts : voir src/Bundles/ShiftClaim/routes.php
 
-    // Demandes de congé : voir src/Bundles/TimeOff/routes.php
+    // Demandes de congé : bundle distribué hors monorepo, routes chargées depuis storage/bundles/timeoff/ une fois installé (voir docs/architecture.md)
 
     // Échanges de shifts : voir src/Bundles/ShiftSwap/routes.php
 
@@ -406,7 +406,7 @@ $router->group('/api/v1', function ($r) {
     $r->put('/availabilities/{id}',    [ApiAvailabilityController::class, 'update'],  name: 'api.v1.availabilities.update', permission: 'shifts.update');
     $r->delete('/availabilities/{id}', [ApiAvailabilityController::class, 'destroy'], name: 'api.v1.availabilities.destroy', permission: 'shifts.update');
 
-    // Demandes de congé : voir src/Bundles/TimeOff/routes.php
+    // Demandes de congé : bundle distribué hors monorepo, routes chargées depuis storage/bundles/timeoff/ une fois installé (voir docs/architecture.md)
 
     // Échanges de shifts : voir src/Bundles/ShiftSwap/routes.php
 

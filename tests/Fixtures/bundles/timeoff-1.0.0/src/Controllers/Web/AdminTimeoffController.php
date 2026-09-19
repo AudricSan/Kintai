@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace kintai\Bundles\TimeOff\Controllers\Web;
+namespace kintai\Bundles\Installed\TimeOff\Controllers\Web;
 
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
