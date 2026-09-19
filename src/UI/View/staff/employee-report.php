@@ -55,14 +55,6 @@ function repUserName(array $usersMap, int $uid): string {
     return $name ?: ($u['display_name'] ?? ($u['email'] ?? '#' . $uid));
 }
 
-function repRoleLabel(string $role): string {
-    return match ($role) {
-        'admin'   => __('role_owner'),
-        'manager' => __('role_manager'),
-        default   => __('role_employee'),
-    };
-}
-
 function repHoursFormat(float $hours): string {
     $h = intdiv((int) round($hours * 60), 60);
     $m = (int) round($hours * 60) % 60;
@@ -167,8 +159,9 @@ $currencyStyle = store_currency_style($store);
                 return $html;
             })
             ->column(__('role_col'), function($stat, $uid) use ($membersMap) {
-                $role = $membersMap[$uid]['role'] ?? 'staff';
-                return Badge::make(repRoleLabel($role))->variant($role === 'admin' ? 'primary' : ($role === 'manager' ? 'warning' : 'staff'))->render();
+                $roleName     = $membersMap[$uid]['role_name'] ?? '—';
+                $isManaging   = !empty($membersMap[$uid]['role_is_managing']);
+                return Badge::make($roleName)->variant($isManaging ? 'warning' : 'staff')->render();
             })
             ->column(__('shifts_col'), fn($stat) => '<span class="td-right td-mono">' . ($stat['shifts'] ?? 0) . '</span>', 'td-right')
             ->column(__('work_days_col'), fn($stat) => '<span class="td-right td-mono">' . ($stat['work_days'] ?? 0) . '</span>', 'td-right')

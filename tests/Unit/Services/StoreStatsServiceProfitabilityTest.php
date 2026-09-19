@@ -6,6 +6,8 @@ namespace kintai\Tests\Unit\Services;
 
 use PHPUnit\Framework\TestCase;
 use kintai\Core\Repositories\DailyReportRepositoryInterface;
+use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
+use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
@@ -14,6 +16,7 @@ use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
+use kintai\Core\Services\RoleAssignmentSyncService;
 use kintai\Core\Services\StoreStatsService;
 
 /**
@@ -50,6 +53,10 @@ final class StoreStatsServiceProfitabilityTest extends TestCase
             $userRates,
             $this->createStub(UserRepositoryInterface::class),
             $this->dailyReports,
+            new RoleAssignmentSyncService(
+                $this->createStub(RoleRepositoryInterface::class),
+                $this->createStub(RoleAssignmentRepositoryInterface::class),
+            ),
         );
     }
 

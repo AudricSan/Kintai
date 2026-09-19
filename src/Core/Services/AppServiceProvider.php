@@ -115,6 +115,7 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(UserShiftTypeRateRepositoryInterface::class),
             $c->make(UserRepositoryInterface::class),
             $c->make(DailyReportRepositoryInterface::class),
+            $c->make(RoleAssignmentSyncService::class),
         ));
 
         // DailyReportPermissionService/PdfService/MailService/AutoValidateService liés ici,

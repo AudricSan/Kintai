@@ -136,7 +136,7 @@ final class RoleAssignmentSyncServiceTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
-    // assignableStoreRoles() / defaultStoreRole() / legacyRoleFor()
+    // assignableStoreRoles() / defaultStoreRole()
     // -------------------------------------------------------------------------
 
     public function testAssignableStoreRolesExcludesSystemRolesAndFlagsManaging(): void
@@ -190,17 +190,6 @@ final class RoleAssignmentSyncServiceTest extends TestCase
         ]);
 
         $this->assertNull($this->service->defaultStoreRole());
-    }
-
-    public function testLegacyRoleForMapsByGrantedPermissions(): void
-    {
-        $this->roles->method('getPermissions')->willReturnMap([
-            [2, ['employees.view']],
-            [3, []],
-        ]);
-
-        $this->assertSame('manager', $this->service->legacyRoleFor(2));
-        $this->assertSame('staff', $this->service->legacyRoleFor(3));
     }
 
     // -------------------------------------------------------------------------

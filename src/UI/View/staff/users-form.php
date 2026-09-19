@@ -112,7 +112,7 @@ echo Flash::fromQuery('error', [
                         <?php if (empty($storeTypes)): ?>
                         <tr class="tr--clickable" data-modal="editMembershipModal<?= $mid ?>">
                             <td data-label="<?= htmlspecialchars(__('store')) ?>"><?= htmlspecialchars($m['store_name'] ?? '') ?></td>
-                            <td data-label="<?= htmlspecialchars(__('role')) ?>"><?= Badge::make(htmlspecialchars($m['role_name'] ?? ($m['role'] ?? '—')))->variant(!empty($m['role_is_managing']) ? 'warning' : 'active')->render() ?></td>
+                            <td data-label="<?= htmlspecialchars(__('role')) ?>"><?= Badge::make(htmlspecialchars($m['role_name'] ?? '—'))->variant(!empty($m['role_is_managing']) ? 'warning' : 'active')->render() ?></td>
                             <td data-label="<?= htmlspecialchars(__('social_deductions')) ?>">
                                 <?php if ($storeDedEnabled && $can('payroll.generate')): ?>
                                 <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/members/<?= $mid ?>/deductions" class="form-inline">
@@ -137,7 +137,7 @@ echo Flash::fromQuery('error', [
                         <tr class="tr--clickable" data-modal="editMembershipModal<?= $mid ?>">
                             <?php if ($i === 0): ?>
                             <td rowspan="<?= $rowSpan ?>" data-label="<?= htmlspecialchars(__('store')) ?>"><?= htmlspecialchars($m['store_name'] ?? '') ?></td>
-                            <td rowspan="<?= $rowSpan ?>" data-label="<?= htmlspecialchars(__('role')) ?>"><?= Badge::make(htmlspecialchars($m['role_name'] ?? ($m['role'] ?? '—')))->variant(!empty($m['role_is_managing']) ? 'warning' : 'active')->render() ?></td>
+                            <td rowspan="<?= $rowSpan ?>" data-label="<?= htmlspecialchars(__('role')) ?>"><?= Badge::make(htmlspecialchars($m['role_name'] ?? '—'))->variant(!empty($m['role_is_managing']) ? 'warning' : 'active')->render() ?></td>
                             <td rowspan="<?= $rowSpan ?>" data-label="<?= htmlspecialchars(__('social_deductions')) ?>">
                                 <?php if ($storeDedEnabled && $can('payroll.generate')): ?>
                                 <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/members/<?= $mid ?>/deductions" class="form-inline">

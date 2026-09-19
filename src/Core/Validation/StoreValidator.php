@@ -69,13 +69,4 @@ final class StoreValidator implements ValidatorInterface
 
         return new ValidationResult($errors === [], $errors);
     }
-
-    public function validateRole(string $role, array $allowedRoles): ValidationResult
-    {
-        $errors = [];
-        if (!array_key_exists($role, $allowedRoles)) {
-            $errors[] = __('val_invalid_role_short');
-        }
-        return new ValidationResult($errors === [], $errors);
-    }
 }

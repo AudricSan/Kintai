@@ -120,7 +120,7 @@ final class AdminStoreController
                 'user_name'        => $name ?: ($m['email'] ?? '—'),
                 'user_email'       => $m['email'] ?? '',
                 'role_id'          => $assigned['role_id'] ?? null,
-                'role_name'        => $assigned['name'] ?? ($m['membership']['role'] ?? '—'),
+                'role_name'        => $assigned['name'] ?? '—',
                 'role_is_managing' => !empty($assigned['is_managing']),
             ]);
         }, $this->storeService->getStoreMembers($storeId));
@@ -266,7 +266,7 @@ final class AdminStoreController
 
         if ($userId > 0 && $role !== null) {
             $roleId = (int) $role['id'];
-            $membership = $this->storeService->addMember($storeId, $userId, $this->roleSync->legacyRoleFor($roleId));
+            $membership = $this->storeService->addMember($storeId, $userId);
             if ($membership !== null) {
                 $this->roleSync->syncStoreRoleById($userId, $storeId, $roleId);
             }
@@ -300,9 +300,8 @@ final class AdminStoreController
         }
         $roleId  = (int) $role['id'];
         $userId  = (int) $membership['user_id'];
-        $oldRole = ($this->roleSync->storeRoleMapForStore($storeId)[$userId]['name'] ?? null) ?? $membership['role'];
+        $oldRole = $this->roleSync->storeRoleMapForStore($storeId)[$userId]['name'] ?? '—';
 
-        $this->storeService->updateMemberRole($mid, $storeId, $this->roleSync->legacyRoleFor($roleId));
         $this->roleSync->syncStoreRoleById($userId, $storeId, $roleId);
         $this->auditLogger->logUpdate($request, 'store.member_role_updated', 'store_user', $mid, ['role' => $oldRole], ['role' => $role['name'] ?? null, 'role_id' => $roleId], [
             'store_id' => $storeId,
@@ -544,6 +543,9 @@ final class AdminStoreController
 
         $membership = $this->storeUsers->findMembership($storeId, $userId);
         if ($membership === null) throw new ForbiddenException(__('error_employee_not_store_member'));
+        $roleEntry = $this->roleSync->storeRoleMapForUser($userId)[$storeId] ?? null;
+        $membership['role_name']        = $roleEntry['name'] ?? '—';
+        $membership['role_is_managing'] = !empty($roleEntry['is_managing']);
 
         $period = max(7, min(365, (int) ($request->query('period') ?? 30)));
         $data   = $this->storeStatsService->employeeStats($storeId, $userId, $period);
