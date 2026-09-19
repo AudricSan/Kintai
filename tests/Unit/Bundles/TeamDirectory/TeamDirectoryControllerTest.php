@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Bundles\TeamDirectory;
 
-use kintai\Bundles\TeamDirectory\Controllers\Web\TeamDirectoryController;
+require_once dirname(__DIR__, 3) . '/Fixtures/bundles/team-directory-1.0.0/src/Controllers/Web/TeamDirectoryController.php';
+
+use kintai\Bundles\Installed\TeamDirectory\Controllers\Web\TeamDirectoryController;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\StoreRepositoryInterface;

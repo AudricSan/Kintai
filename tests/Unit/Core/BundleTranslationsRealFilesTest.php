@@ -50,10 +50,11 @@ final class BundleTranslationsRealFilesTest extends TestCase
     public static function distributedBundleKeyProvider(): array
     {
         return [
-            'Feedback'     => ['feedback_deleted', 'feedback-1.0.0'],
-            'DailyReport'  => ['bundle_daily_report', 'daily-report-1.0.0'],
-            'Messaging'    => ['bundle_messaging', 'messaging-1.0.0'],
-            'HiringReport' => ['bundle_hiring_report', 'hiring-report-1.0.0'],
+            'Feedback'      => ['feedback_deleted', 'feedback-1.0.0'],
+            'DailyReport'   => ['bundle_daily_report', 'daily-report-1.0.0'],
+            'Messaging'     => ['bundle_messaging', 'messaging-1.0.0'],
+            'HiringReport'  => ['bundle_hiring_report', 'hiring-report-1.0.0'],
+            'TeamDirectory' => ['bundle_team_directory', 'team-directory-1.0.0'],
         ];
     }
 

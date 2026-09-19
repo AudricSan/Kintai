@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace kintai\Bundles\TeamDirectory\Controllers\Web;
+namespace kintai\Bundles\Installed\TeamDirectory\Controllers\Web;
 
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;

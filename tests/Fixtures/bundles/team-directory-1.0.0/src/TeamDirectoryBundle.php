@@ -2,15 +2,20 @@
 
 declare(strict_types=1);
 
-namespace kintai\Bundles\TeamDirectory;
+namespace kintai\Bundles\Installed\TeamDirectory;
 
-use kintai\Core\Bundle;
+use kintai\Core\BundleContract\Bundle;
 
 final class TeamDirectoryBundle extends Bundle
 {
     public function getName(): string
     {
         return 'team-directory';
+    }
+
+    public function getVersion(): string
+    {
+        return '1.0.0';
     }
 
     public function getLabel(): string

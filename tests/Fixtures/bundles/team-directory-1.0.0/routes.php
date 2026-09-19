@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use kintai\Core\Middleware\AuthMiddleware;
-use kintai\Bundles\TeamDirectory\Controllers\Web\TeamDirectoryController;
+use kintai\Bundles\Installed\TeamDirectory\Controllers\Web\TeamDirectoryController;
 
 /** @var kintai\Core\Router $router */
 /** @var kintai\Core\Container $container */
