@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace kintai\Bundles\ShiftClaim\Controllers\Api;
+namespace kintai\Bundles\Installed\ShiftClaim\Controllers\Api;
 
 use kintai\Core\Api\Paginator;
 use kintai\Core\Auth\PermissionService;
