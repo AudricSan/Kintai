@@ -26,16 +26,16 @@ $isEmployeeScoped = !empty($report['user_id']);
 <meta charset="UTF-8">
 <style>
 <?php
-echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-base.css');
-echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-brand.css');
-echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-preview.css');
-echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-salary-report.css');
+echo file_get_contents(BASE_PATH . '/public/assets/css/pdf/pdf-base.css');
+echo file_get_contents(BASE_PATH . '/public/assets/css/pdf/pdf-brand.css');
+echo file_get_contents(BASE_PATH . '/public/assets/css/pdf/pdf-preview.css');
+echo file_get_contents(BASE_PATH . '/public/assets/css/pdf/pdf-salary-report.css');
 ?>
 </style>
 </head>
 <body>
 
-<?php include __DIR__ . '/../../../UI/View/_partials/_pdf-preview-toolbar.php'; ?>
+<?php include BASE_PATH . '/src/UI/View/_partials/_pdf-preview-toolbar.php'; ?>
 <div class="pdf-preview-page">
 
 <h1><?= __('sr_pdf_title') ?></h1>
@@ -161,7 +161,7 @@ echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-salary-
 <?php if (empty($shiftRows)): ?>
 <p><?= __('payslip_no_shift') ?></p>
 <?php else: ?>
-<?php include __DIR__ . '/../../../UI/View/_partials/_payslip-helpers.php'; ?>
+<?php include BASE_PATH . '/src/UI/View/_partials/_payslip-helpers.php'; ?>
 <table>
     <tr>
         <th><?= __('col_day') ?></th>
