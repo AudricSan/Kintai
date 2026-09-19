@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace kintai\Tests\Unit\Bundles\StorePhoto;
+namespace kintai\Tests\Unit\Core\Services;
 
-use kintai\Bundles\StorePhoto\Services\StorePhotoConsolidationService;
 use kintai\Core\Repositories\StorePhotoRepositoryInterface;
+use kintai\Core\Services\StorePhotoConsolidationService;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 

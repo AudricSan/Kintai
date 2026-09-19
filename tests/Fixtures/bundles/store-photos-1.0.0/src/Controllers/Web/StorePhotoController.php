@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace kintai\Bundles\StorePhoto\Controllers\Web;
+namespace kintai\Bundles\Installed\StorePhoto\Controllers\Web;
 
 use kintai\UI\Controller\Web\HasAdminAccess;
 use kintai\Core\Services\ImageCompressionService;
@@ -199,7 +199,7 @@ final class StorePhotoController
         $storeId = (int) $submission['store_id'];
         $index   = (int) ($submission['image_count'] ?? 0);
 
-        $uploadDir = dirname(__DIR__, 5) . '/storage/uploads/img/';
+        $uploadDir = storage_path('uploads/img/');
         $storeDir  = $uploadDir . $storeId . '/';
         $subDir    = $storeDir . $submissionId . '/';
         if (!is_dir($subDir)) { mkdir($subDir, 0775, true); }
@@ -301,7 +301,7 @@ final class StorePhotoController
     /** Chemin physique sur disque d'une image à partir de son filepath public (storage/img/... → storage/uploads/img/...). */
     private function physicalPath(string $publicFilepath): string
     {
-        return dirname(__DIR__, 5) . '/storage/uploads/' . substr($publicFilepath, strlen('storage/'));
+        return storage_path('uploads/') . substr($publicFilepath, strlen('storage/'));
     }
 
     /**
@@ -330,7 +330,7 @@ final class StorePhotoController
 
     private function saveUploadedFiles(Request $request, int $storeId, int $submissionId, array $files, int $startIndex = 0): void
     {
-        $uploadDir = dirname(__DIR__, 5) . '/storage/uploads/img/';
+        $uploadDir = storage_path('uploads/img/');
         $storeDir  = $uploadDir . $storeId . '/';
         $subDir    = $storeDir . $submissionId . '/';
         if (!is_dir($storeDir)) { mkdir($storeDir, 0775, true); }
@@ -406,7 +406,7 @@ final class StorePhotoController
         $storeId    = (int) $submission['store_id'];
         $backStoreId = $this->resolveBackStoreId($request, $storeId);
 
-        $uploadDir = dirname(__DIR__, 5) . '/storage/uploads/img/' . $storeId . '/' . $id . '/';
+        $uploadDir = storage_path('uploads/img/') . $storeId . '/' . $id . '/';
         if (is_dir($uploadDir)) {
             foreach (glob($uploadDir . '*') as $f) { if (is_file($f)) unlink($f); }
             rmdir($uploadDir);

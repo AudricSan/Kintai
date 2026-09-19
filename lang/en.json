@@ -268,8 +268,6 @@
     "bundle_registry_url": "Listing URL",
     "bundle_settings": "Bundles",
     "bundle_settings_hint": "Turns a feature on or off for the whole instance. Once disabled here, it disappears entirely (routes, menus) even if a store had enabled it in its own settings. The list below is auto-detected from the bundles present on the server — no extra registration step is needed for a new bundle to show up here.",
-    "bundle_store_photos": "Store Photos",
-    "bundle_store_photos_desc": "Weekly sales-floor photo submissions and tracking.",
     "bundle_third_party": "Third-party",
     "bundle_third_party_warning": "This bundle is not developed or maintained by the Kintai project. Only install it if you trust its source.",
     "calendar": "Calendar",
