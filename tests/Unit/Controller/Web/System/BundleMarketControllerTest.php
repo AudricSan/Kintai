@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Controller\Web\System;
 
+use kintai\Core\BundleDiscoveryService;
 use kintai\Core\InstalledBundleManifestStore;
+use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Repositories\BundleRegistryRepositoryInterface;
 use kintai\Core\Repositories\InstalledBundleRepositoryInterface;
 use kintai\Core\Request;
@@ -26,6 +28,7 @@ final class BundleMarketControllerTest extends TestCase
 {
     private BundleRegistryRepositoryInterface&MockObject $registries;
     private InstalledBundleRepositoryInterface&MockObject $installedBundles;
+    private AppSettingsRepositoryInterface&MockObject $appSettings;
     private ?\Closure $registryFetcher = null;
     private ?\Closure $releaseFetcher = null;
     private ?\Closure $zipDownloader = null;
@@ -39,6 +42,7 @@ final class BundleMarketControllerTest extends TestCase
         $this->ensureViewFile('layout.app');
         $this->registries = $this->createMock(BundleRegistryRepositoryInterface::class);
         $this->installedBundles = $this->createMock(InstalledBundleRepositoryInterface::class);
+        $this->appSettings = $this->createMock(AppSettingsRepositoryInterface::class);
 
         $this->bundlesDir = sys_get_temp_dir() . '/kintai-bundle-market-' . uniqid();
         mkdir($this->bundlesDir, 0777, true);
@@ -77,6 +81,12 @@ final class BundleMarketControllerTest extends TestCase
             $this->installedBundles,
             $installer,
             new AuditLogger(),
+            $this->appSettings,
+            new BundleDiscoveryService(
+                $this->bundlesDir . '/no-legacy-bundles-here',
+                new InstalledBundleManifestStore($this->bundlesDir . '/installed.json'),
+                $this->bundlesDir,
+            ),
         );
     }
 
@@ -255,6 +265,45 @@ final class BundleMarketControllerTest extends TestCase
         $response = $this->makeController()->install(new Request());
 
         $this->assertStringContainsString('success=fake-bundle', $this->locationOf($response));
+    }
+
+    public function testUninstallRedirectsWithErrorWhenSlugIsMissing(): void
+    {
+        $_POST = ['slug' => ''];
+
+        $this->installedBundles->expects($this->never())->method('delete');
+
+        $response = $this->makeController()->uninstall(new Request());
+
+        $this->assertStringContainsString('error=invalid', $this->locationOf($response));
+    }
+
+    public function testUninstallFailsForABundleNotManagedByTheInstaller(): void
+    {
+        $_POST = ['slug' => 'daily-report'];
+        $this->installedBundles->method('find')->willReturn(null);
+        $this->installedBundles->expects($this->never())->method('delete');
+        $this->appSettings->expects($this->never())->method('set');
+
+        $response = $this->makeController()->uninstall(new Request());
+
+        $this->assertStringNotContainsString('uninstalled=', $this->locationOf($response));
+    }
+
+    public function testUninstallRemovesTheBundleAndClearsItFromEnabledBundles(): void
+    {
+        mkdir($this->bundlesDir . '/feedback/1.0.0', 0777, true);
+        $_POST = ['slug' => 'feedback'];
+        $this->installedBundles->method('find')->willReturn(['slug' => 'feedback', 'active_version' => '1.0.0', 'source_registry_url' => null]);
+        $this->installedBundles->expects($this->once())->method('delete')->with('feedback');
+        $this->appSettings->method('get')->with('enabled_bundles')->willReturn(json_encode(['feedback', 'messaging']));
+        $this->appSettings->expects($this->once())->method('set')
+            ->with('enabled_bundles', $this->callback(fn(string $json) => json_decode($json, true) === ['messaging']));
+
+        $response = $this->makeController()->uninstall(new Request());
+
+        $this->assertStringContainsString('uninstalled=feedback', $this->locationOf($response));
+        $this->assertDirectoryDoesNotExist($this->bundlesDir . '/feedback');
     }
 
     /**

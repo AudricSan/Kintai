@@ -37,6 +37,7 @@ final class BundleSettingsController
                 'key'      => $key,
                 'label'    => $meta['label'],
                 'desc'     => $meta['description'],
+                'version'  => $meta['version'],
                 'enabled'  => $this->features->isEnabled($key),
                 'official' => in_array($key, $official, true),
             ];

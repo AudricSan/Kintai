@@ -21,6 +21,7 @@ echo Flash::fromQuery('error', [
 </div>
 
 <?php include __DIR__ . '/../_partials/_settings-tabs.php'; ?>
+<?php include __DIR__ . '/_bundle-tabs.php'; ?>
 
 <div class="card card--mb">
     <div class="card-body">

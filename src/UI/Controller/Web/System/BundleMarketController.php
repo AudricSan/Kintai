@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\UI\Controller\Web\System;
 
+use kintai\Core\BundleDiscoveryService;
+use kintai\Core\LicenseServiceProvider;
+use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Repositories\BundleRegistryRepositoryInterface;
 use kintai\Core\Repositories\InstalledBundleRepositoryInterface;
 use kintai\Core\Request;
@@ -32,6 +35,8 @@ final class BundleMarketController
         private readonly InstalledBundleRepositoryInterface $installedBundles,
         private readonly BundleInstallerService $installer,
         private readonly AuditLogger $auditLogger,
+        private readonly AppSettingsRepositoryInterface $appSettings,
+        private readonly BundleDiscoveryService $discovery,
     ) {}
 
     /** GET /admin/bundles/registries */
@@ -100,9 +105,11 @@ final class BundleMarketController
         }
 
         $entries = [];
+        $seenSlugs = [];
         foreach ($this->catalog->listAvailableBundles() as $entry) {
             $latestVersion = $entry->bundle->versions[0] ?? null;
             $installedVersion = $installed[$entry->bundle->slug] ?? null;
+            $seenSlugs[$entry->bundle->slug] = true;
 
             $entries[] = [
                 'slug'             => $entry->bundle->slug,
@@ -117,6 +124,32 @@ final class BundleMarketController
                 'installed_version' => $installedVersion,
                 'update_available' => $installedVersion !== null && $latestVersion !== null
                     && version_compare($latestVersion, $installedVersion, '>'),
+                'orphaned'         => false,
+            ];
+        }
+
+        // Bundle installé dont le registry d'origine ne le liste plus (retiré
+        // ou bundle délisté) : gardé visible pour ne jamais bloquer sa
+        // désinstallation depuis cet écran.
+        $discovered = $this->discovery->discover();
+        foreach ($installed as $slug => $activeVersion) {
+            if (isset($seenSlugs[$slug])) {
+                continue;
+            }
+
+            $entries[] = [
+                'slug'              => $slug,
+                'name'              => $discovered[$slug]['label'] ?? $slug,
+                'description'       => $discovered[$slug]['description'] ?? '',
+                'repository_url'    => null,
+                'versions'          => [],
+                'latest_version'    => null,
+                'registry_name'     => null,
+                'registry_url'      => null,
+                'official'          => $this->catalog->isOfficial($slug),
+                'installed_version' => $activeVersion,
+                'update_available'  => false,
+                'orphaned'          => true,
             ];
         }
 
@@ -125,7 +158,53 @@ final class BundleMarketController
             'entries' => $entries,
             'error'   => $request->query('error'),
             'success' => $request->query('success'),
+            'uninstalled' => $request->query('uninstalled'),
         ], 'layout.app'));
+    }
+
+    /** POST /admin/bundles/market/uninstall — retire un bundle installé (fichiers + base), désactivé au passage. */
+    public function uninstall(Request $request): Response
+    {
+        $slug = trim((string) $request->post('slug', ''));
+        if ($slug === '') {
+            return Response::redirect($this->base() . '/admin/bundles/market?error=invalid');
+        }
+
+        if (!$this->installer->uninstall($slug)) {
+            return Response::redirect($this->base() . '/admin/bundles/market?error=' . urlencode((string) $this->installer->getLastError()));
+        }
+
+        $this->disableBundle($slug);
+
+        $this->auditLogger->log($request, 'bundle.uninstalled', 'bundle', null, [
+            'slug' => $slug,
+        ]);
+
+        return Response::redirect($this->base() . '/admin/bundles/market?uninstalled=' . urlencode($slug));
+    }
+
+    /**
+     * Retire un bundle désinstallé de la liste `enabled_bundles` en base pour
+     * éviter une entrée fantôme — sans effet fonctionnel (BundleServiceProvider
+     * n'enregistre que ce que BundleDiscoveryService trouve encore), mais
+     * évite de laisser un slug obsolète traîner dans le réglage Owner.
+     */
+    private function disableBundle(string $slug): void
+    {
+        $stored = $this->appSettings->get(LicenseServiceProvider::SETTINGS_KEY);
+        if ($stored === null) {
+            return;
+        }
+
+        $enabled = json_decode($stored, true);
+        if (!is_array($enabled) || !in_array($slug, $enabled, true)) {
+            return;
+        }
+
+        $this->appSettings->set(
+            LicenseServiceProvider::SETTINGS_KEY,
+            json_encode(array_values(array_diff($enabled, [$slug])), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+        );
     }
 
     /** POST /admin/bundles/market/dry-run — vérification de compatibilité sans installation, réponse JSON. */
