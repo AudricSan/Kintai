@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Bundles\ResignationReport;
 
+if (!defined('BASE_PATH')) {
+    define('BASE_PATH', dirname(__DIR__, 4));
+}
+
 require_once dirname(__DIR__, 3) . '/Fixtures/bundles/resignation-report-1.0.0/src/Controllers/Web/AdminResignationReportController.php';
 
 use kintai\Bundles\Installed\ResignationReport\Controllers\Web\AdminResignationReportController;

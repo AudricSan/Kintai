@@ -25,7 +25,7 @@ echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-export-
 </head>
 <body>
 
-<?php include __DIR__ . '/../../../UI/View/_partials/_pdf-preview-toolbar.php'; ?>
+<?php include BASE_PATH . '/src/UI/View/_partials/_pdf-preview-toolbar.php'; ?>
 <div class="pdf-preview-page">
 
 <h1><?= __('resignation_reports') ?></h1>
