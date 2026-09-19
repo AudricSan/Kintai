@@ -62,6 +62,16 @@
             return $icons[$name] ?? '';
         };
         ?>
+        <?php if (!empty($app_maintenance_mode_enabled)): ?>
+            <div class="maintenance-banner">
+                <span class="maintenance-banner__icon" aria-hidden="true">⚠</span>
+                <span><?= __('maintenance_banner_active') ?></span>
+                <?php if ($isOwner): ?>
+                    <a href="<?= route_url('admin.owner_settings') ?>" class="maintenance-banner__link"><?= __('maintenance_banner_manage') ?></a>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
+
         <?php include __DIR__ . '/partials/_topbar.php'; ?>
 
         <div class="page-content">
