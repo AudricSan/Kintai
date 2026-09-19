@@ -317,6 +317,7 @@ $router->group('/admin', function ($r) {
     $r->post('/bundles/market/dry-run',         [BundleMarketController::class, 'dryRun'],        middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.market.dry-run', permission: 'public');
     $r->post('/bundles/market/install',         [BundleMarketController::class, 'install'],       middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.market.install', permission: 'public');
     $r->post('/bundles/market/install/stream',  [BundleMarketController::class, 'installStream'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.market.install.stream', permission: 'public');
+    $r->post('/bundles/market/uninstall',       [BundleMarketController::class, 'uninstall'],     middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.market.uninstall', permission: 'public');
 
     // Rôles & permissions (Owner uniquement) — voir task/mermission.md
     $r->get('/roles',              [AdminRoleController::class, 'roles'],      middleware: [OwnerOnlyMiddleware::class], name: 'admin.roles', permission: 'public');

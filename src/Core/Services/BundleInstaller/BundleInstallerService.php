@@ -60,6 +60,31 @@ final class BundleInstallerService
     }
 
     /**
+     * Retire un bundle installé dynamiquement : dossier storage/bundles/{slug}
+     * (toutes versions confondues), entrée du manifeste et ligne en base.
+     * Un bundle du monorepo (src/Bundles/, jamais passé par install()) n'a
+     * pas de ligne dans installedBundles et est donc refusé ici — sa
+     * désactivation reste le rôle de BundleSettingsController, pas de lui.
+     */
+    public function uninstall(string $slug): bool
+    {
+        $this->lastError = null;
+
+        if ($this->installedBundles->find($slug) === null) {
+            $this->lastError = "Le bundle {$slug} n'est pas géré par l'installateur (bundle du monorepo ou déjà désinstallé).";
+            return false;
+        }
+
+        $this->removeDirIfExists($this->bundlesDir() . "/{$slug}");
+        $this->manifestStore->remove($slug);
+        $this->installedBundles->delete($slug);
+
+        Log::info('bundle_uninstalled', ['slug' => $slug]);
+
+        return true;
+    }
+
+    /**
      * Repointe la version active vers une version déjà présente sur disque
      * (pas de retéléchargement) — utile si une mise à jour casse quelque chose.
      */

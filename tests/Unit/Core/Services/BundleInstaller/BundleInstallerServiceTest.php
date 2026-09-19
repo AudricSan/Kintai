@@ -222,4 +222,31 @@ final class BundleInstallerServiceTest extends TestCase
 
         $this->assertFalse($service->rollback('fake-bundle', '9.9.9'));
     }
+
+    public function testUninstallRemovesFilesManifestEntryAndDatabaseRow(): void
+    {
+        mkdir($this->bundlesDir . '/fake-bundle/1.0.0', 0777, true);
+        file_put_contents($this->bundlesDir . '/fake-bundle/1.0.0/bundle.json', '{}');
+        $this->manifestStore->setActiveVersion('fake-bundle', '1.0.0');
+
+        $this->installedBundles->method('find')->willReturn(['slug' => 'fake-bundle', 'active_version' => '1.0.0', 'source_registry_url' => null]);
+        $this->installedBundles->expects($this->once())->method('delete')->with('fake-bundle');
+
+        $service = $this->makeService(null, null);
+
+        $this->assertTrue($service->uninstall('fake-bundle'));
+        $this->assertDirectoryDoesNotExist($this->bundlesDir . '/fake-bundle');
+        $this->assertArrayNotHasKey('fake-bundle', $this->manifestStore->all());
+    }
+
+    public function testUninstallFailsForABundleNotManagedByTheInstaller(): void
+    {
+        $this->installedBundles->method('find')->willReturn(null);
+        $this->installedBundles->expects($this->never())->method('delete');
+
+        $service = $this->makeService(null, null);
+
+        $this->assertFalse($service->uninstall('daily-report'));
+        $this->assertNotNull($service->getLastError());
+    }
 }

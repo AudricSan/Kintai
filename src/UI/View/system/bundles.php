@@ -38,6 +38,7 @@ echo Flash::fromQuery('success', ['default' => __('save_success')])->render();
                         <div class="feature-card__body">
                             <span class="feature-card__title">
                                 <?= htmlspecialchars($b['label']) ?>
+                                <span class="badge badge--neutral badge--sm"><?= htmlspecialchars(__('bundle_version', ['version' => $b['version']])) ?></span>
                                 <?php if (!$b['official']): ?>
                                     <span class="badge badge--warning badge--sm"><?= __('bundle_third_party') ?></span>
                                 <?php endif; ?>
