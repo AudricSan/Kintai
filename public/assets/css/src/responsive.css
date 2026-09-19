@@ -58,7 +58,6 @@
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .card--col-2,
     .card--col-3,
     .card--full {
         grid-column-end: span 1;

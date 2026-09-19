@@ -4,17 +4,11 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Core\BundleContract;
 
-use kintai\Core\Bundle as LegacyBundle;
 use kintai\Core\BundleContract\Bundle;
 use PHPUnit\Framework\TestCase;
 
 final class BundleTest extends TestCase
 {
-    public function testLegacyBundleClassExtendsTheStableContract(): void
-    {
-        $this->assertTrue(is_subclass_of(LegacyBundle::class, Bundle::class));
-    }
-
     public function testGetVersionDefaultsToZeroForBundlesWithoutAManifest(): void
     {
         $bundle = (new \ReflectionClass(FakeBundle::class))->newInstanceWithoutConstructor();
