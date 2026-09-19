@@ -196,15 +196,20 @@ final class AdminResignationReportControllerTest extends TestCase
             ['user_id' => 10, 'store_id' => 1, 'role' => 'manager'],
         ]);
         $this->users->method('findAll')->willReturn([
-            ['id' => 99, 'first_name' => 'Owner', 'last_name' => 'Test', 'is_admin' => 1],
-            ['id' => 10, 'first_name' => 'Jean', 'last_name' => 'Dupont', 'is_admin' => 0],
+            ['id' => 99, 'first_name' => 'Owner', 'last_name' => 'Test'],
+            ['id' => 10, 'first_name' => 'Jean', 'last_name' => 'Dupont'],
         ]);
         $this->users->method('findById')->willReturnMap([
             [10, ['id' => 10, 'first_name' => 'Jean', 'last_name' => 'Dupont', 'employee_code' => 'EMP010']],
         ]);
+        // L'utilisateur 99 détient le rôle système Owner en portée globale (RBAC).
+        $this->roles->method('findBySlug')->with('owner')->willReturn(['id' => 1, 'slug' => 'owner', 'is_system' => 1]);
+        $this->assignments->method('findByRole')->with(1)->willReturn([
+            ['id' => 2, 'user_id' => 99, 'role_id' => 1, 'scope_type' => 'global', 'scope_id' => null],
+        ]);
         // Le rôle RBAC affecté à l'utilisateur 10 accorde employees.update sur le store 1.
         $this->assignments->method('findByUser')->with(10)->willReturn([
-            ['id' => 1, 'user_id' => 10, 'role_id' => 2, 'scope_type' => 'store', 'scope_id' => 1],
+            ['id' => 3, 'user_id' => 10, 'role_id' => 2, 'scope_type' => 'store', 'scope_id' => 1],
         ]);
         $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'is_system' => 0]);
         $this->roles->method('getPermissions')->with(2)->willReturn(['employees.update']);

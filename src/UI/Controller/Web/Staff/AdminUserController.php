@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\UI\Controller\Web\Staff;
 
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
@@ -36,7 +37,23 @@ final class AdminUserController
         private readonly HiringReportRepositoryInterface $hiringReports,
         private readonly AuditLogger $auditLogger,
         private readonly RoleAssignmentSyncService $roleSync,
+        private readonly PermissionService $permissions,
     ) {}
+
+    /**
+     * Enrichit chaque ligne d'un flag `is_admin` calculé depuis le RBAC
+     * dynamique (Owner = affectation globale sur le rôle système), en
+     * remplacement de la colonne historique users.is_admin.
+     */
+    private function enrichIsAdmin(array $users): array
+    {
+        $ownerIds = $this->permissions->ownerUserIds();
+        foreach ($users as &$u) {
+            $u['is_admin'] = in_array((int) $u['id'], $ownerIds, true) ? 1 : 0;
+        }
+        unset($u);
+        return $users;
+    }
 
     // -------------------------------------------------------------------------
     // Users — CRUD
@@ -55,6 +72,7 @@ final class AdminUserController
         } else {
             $users = $this->users->findAll();
         }
+        $users = $this->enrichIsAdmin($users);
 
         // Statistiques du mois en cours — même source que le dashboard employé et le
         // rapport de salaire (ShiftWageCalculator::costOf() via EmployeeStatsService),
@@ -260,6 +278,7 @@ final class AdminUserController
         } else {
             $users = $this->users->findAll();
         }
+        $users = $this->enrichIsAdmin($users);
 
         $availableStores = $this->availableStores($managedIds);
         $availableStoreIds = array_map(fn($s) => (int) $s['id'], $availableStores);
@@ -407,7 +426,6 @@ final class AdminUserController
             'color'              => $request->post('color', '#3B82F6'),
             'employee_code'      => $empCode,
             'password_hash'      => password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]),
-            'is_admin'           => $isOwner ? 1 : 0,
             'is_active'          => 1,
         ]);
         $this->roleSync->syncOwnerRole((int) ($saved['id'] ?? 0), $isOwner);
@@ -421,7 +439,6 @@ final class AdminUserController
             $membership = $this->storeUsers->save([
                 'store_id' => $storeId,
                 'user_id'  => (int) $saved['id'],
-                'role'     => $isOwner ? 'manager' : ($role !== null ? $this->roleSync->legacyRoleFor((int) $role['id']) : 'staff'),
             ]);
             if ($role !== null) {
                 $this->roleSync->syncStoreRoleById((int) $saved['id'], $storeId, (int) $role['id']);
@@ -474,7 +491,7 @@ final class AdminUserController
         $empCode     = strtoupper(trim($request->post('employee_code', ''))) ?: null;
         $password    = $request->post('password', '');
         $color       = $request->post('color', '#3B82F6');
-        $isAdmin     = $request->post('is_admin') === '1' ? 1 : 0;
+        $isAdmin     = $request->post('is_admin') === '1';
         $storeId     = (int) $request->post('store_id', 0);
         $storeRoleId = (int) $request->post('store_role_id', 0);
 
@@ -541,7 +558,6 @@ final class AdminUserController
             'address'       => $request->post('address', '') ?: null,
             'employee_code' => $empCode,
             'password_hash' => password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]),
-            'is_admin'      => $isAdmin,
             'is_active'     => 1,
             'color'         => $color,
         ]);
@@ -549,7 +565,7 @@ final class AdminUserController
         if (empty($saved['id'])) {
             return Response::json(['success' => false, 'error' => __('error_creation_failed')], 500);
         }
-        $this->roleSync->syncOwnerRole((int) $saved['id'], (bool) $isAdmin);
+        $this->roleSync->syncOwnerRole((int) $saved['id'], $isAdmin);
 
         if ($storeId > 0) {
             $this->assertStoreAccess($request, $storeId);
@@ -557,7 +573,6 @@ final class AdminUserController
             $this->storeUsers->save([
                 'store_id' => $storeId,
                 'user_id'  => (int) $saved['id'],
-                'role'     => $role !== null ? $this->roleSync->legacyRoleFor((int) $role['id']) : 'staff',
             ]);
             if ($role !== null) {
                 $this->roleSync->syncStoreRoleById((int) $saved['id'], $storeId, (int) $role['id']);
@@ -624,6 +639,7 @@ final class AdminUserController
         }
 
         $userId = (int) $user['id'];
+        $user['is_admin'] = in_array($userId, $this->permissions->ownerUserIds(), true) ? 1 : 0;
 
         // Shift types des stores où l'utilisateur est membre
         $memberships   = $this->storeUsers->findByUser($userId);
@@ -678,7 +694,7 @@ final class AdminUserController
             $mid = (int) ($m['id'] ?? 0);
             $userMemberships[] = array_merge($m, [
                 'store_name'         => $storesMap[$sid] ?? '#' . $sid,
-                'role_name'          => $roleMap[$sid]['name'] ?? ($m['role'] ?? '—'),
+                'role_name'          => $roleMap[$sid]['name'] ?? '—',
                 'role_id'            => $roleMap[$sid]['role_id'] ?? null,
                 'role_is_managing'   => !empty($roleMap[$sid]['is_managing']),
                 'store_ded_settings' => $this->stores->getDeductionSettings($sid),
@@ -760,7 +776,6 @@ final class AdminUserController
             'guarantor_phone'    => $request->post('guarantor_phone', '') ?: null,
             'color'              => $request->post('color', $user['color'] ?? '#3B82F6'),
             'employee_code'      => $empCode,
-            'is_admin'           => $request->post('is_admin') === '1' ? 1 : 0,
             'is_active'          => $request->post('is_active') === '1' ? 1 : 0,
         ]);
 

@@ -83,7 +83,7 @@ else:
         ->column(__('name'), fn($m) => '<strong>' . htmlspecialchars($m['user_name']) . '</strong>')
         ->column(__('email'), fn($m) => '<span class="text-sm td-muted">' . htmlspecialchars($m['user_email']) . '</span>')
         ->column(__('role'), function($m) {
-            return Badge::make(htmlspecialchars($m['role_name'] ?? ($m['role'] ?? '—')))
+            return Badge::make(htmlspecialchars($m['role_name'] ?? '—'))
                 ->variant(!empty($m['role_is_managing']) ? 'warning' : 'active')
                 ->render();
         })

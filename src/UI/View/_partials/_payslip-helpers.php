@@ -1,16 +1,10 @@
 <?php
 
 /**
- * Helpers partagés entre la fiche de paie écran (employee-payslip.php)
- * et sa déclinaison PDF (employee-payslip-pdf.php).
- *
+ * Helpers de formatage partagés entre la fiche de paie écran
+ * (reports-salary-show.php) et sa déclinaison PDF (reports-salary-pdf.php).
  * Les deux vues gardent des markups distincts (tables pour mPDF, divs pour
- * l'écran) mais partagent le formatage et la résolution du nom / rôle.
- *
- * Variables attendues dans la vue incluante : array $user, array $membership.
- * Définit : $empName (string), $role (string) — seulement si $user/$membership
- * sont fournis (facultatif : les vues qui ne veulent que payslip_hours/date/dow
- * peuvent inclure ce fichier sans les définir, ex. reports-salary-show.php).
+ * l'écran) mais partagent ce formatage.
  */
 
 if (!function_exists('payslip_hours')) {
@@ -37,11 +31,4 @@ if (!function_exists('payslip_dow')) {
         $dt = \DateTime::createFromFormat('Y-m-d', $date);
         return $dt ? $days[(int) $dt->format('w')] : '';
     }
-}
-
-if (isset($user)) {
-    $empName = trim(($user['last_name'] ?? '') . ' ' . ($user['first_name'] ?? ''))
-        ?: ($user['display_name'] ?? ($user['email'] ?? ''));
-
-    $role = __(['admin' => 'role_owner', 'manager' => 'role_manager', 'staff' => 'role_employee'][$membership['role'] ?? 'staff'] ?? 'role_employee');
 }

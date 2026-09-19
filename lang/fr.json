@@ -1327,7 +1327,6 @@
     "val_invalid_email": "Email invalide.",
     "val_invalid_locale": "Langue invalide.",
     "val_invalid_phone": "Numéro de téléphone invalide.",
-    "val_invalid_role_short": "Rôle invalide.",
     "val_invalid_store_type": "Type de magasin invalide.",
     "val_name_max_length_200": "Le nom ne peut pas dépasser 200 caractères.",
     "val_store_code_format": "Le code doit contenir 2 à 20 caractères (A-Z, 0-9, -, _).",

@@ -157,6 +157,28 @@ final class PermissionService
         return $item;
     }
 
+    /**
+     * Identifiants des utilisateurs détenant le rôle système Owner en portée
+     * globale — remplace le filtre historique sur la colonne legacy
+     * users.is_admin (ex. la liste des responsables proposée dans les
+     * formulaires de rapport de démission/salaire).
+     * @return int[]
+     */
+    public function ownerUserIds(): array
+    {
+        $owner = $this->roles->findBySlug('owner');
+        if ($owner === null) {
+            return [];
+        }
+        $ids = [];
+        foreach ($this->assignments->findByRole((int) $owner['id']) as $assignment) {
+            if ($assignment['scope_type'] === 'global') {
+                $ids[] = (int) $assignment['user_id'];
+            }
+        }
+        return array_values(array_unique($ids));
+    }
+
     private function matchesScope(array $assignment, ?int $storeId): bool
     {
         if ($storeId === null) {

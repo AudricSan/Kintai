@@ -1327,7 +1327,6 @@
     "val_invalid_email": "メールアドレスが無効です。",
     "val_invalid_locale": "言語が無効です。",
     "val_invalid_phone": "電話番号が無効です。",
-    "val_invalid_role_short": "ロールが無効です。",
     "val_invalid_store_type": "店舗タイプが無効です。",
     "val_name_max_length_200": "名前は200文字以内で入力してください。",
     "val_store_code_format": "コードは2〜20文字で入力してください（A-Z, 0-9, -, _）。",

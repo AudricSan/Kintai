@@ -13,8 +13,6 @@ use kintai\Core\Validation\StoreValidator;
 
 final class StoreService implements StoreServiceInterface
 {
-    private const ROLES = ['admin' => 'Administrateur', 'manager' => 'Manager', 'staff' => 'Employé'];
-
     public function __construct(
         private readonly StoreRepositoryInterface $stores,
         private readonly StoreUserRepositoryInterface $storeUsers,
@@ -148,11 +146,8 @@ final class StoreService implements StoreServiceInterface
         $this->stores->delete($storeId);
     }
 
-    public function addMember(int $storeId, int $userId, string $role): ?array
+    public function addMember(int $storeId, int $userId): ?array
     {
-        $validator = new StoreValidator($this->languages);
-        $validator->validateRole($role, self::ROLES)->throwIfInvalid();
-
         if ($this->storeUsers->findMembership($storeId, $userId) !== null) {
             return null;
         }
@@ -160,21 +155,7 @@ final class StoreService implements StoreServiceInterface
         return $this->storeUsers->save([
             'store_id' => $storeId,
             'user_id'  => $userId,
-            'role'     => $role,
         ]);
-    }
-
-    public function updateMemberRole(int $membershipId, int $storeId, string $role): array
-    {
-        $membership = $this->storeUsers->findById($membershipId);
-        if ($membership === null || (int) $membership['store_id'] !== $storeId) {
-            throw new NotFoundException(__('error_membership_not_found'));
-        }
-
-        $validator = new StoreValidator($this->languages);
-        $validator->validateRole($role, self::ROLES)->throwIfInvalid();
-
-        return $this->storeUsers->save(array_merge($membership, ['role' => $role]));
     }
 
     public function removeMember(int $membershipId, int $storeId): void

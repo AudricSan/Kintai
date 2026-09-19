@@ -18,9 +18,7 @@ interface StoreServiceInterface
 
     public function deleteStore(int $storeId): void;
 
-    public function addMember(int $storeId, int $userId, string $role): ?array;
-
-    public function updateMemberRole(int $membershipId, int $storeId, string $role): array;
+    public function addMember(int $storeId, int $userId): ?array;
 
     public function removeMember(int $membershipId, int $storeId): void;
 
