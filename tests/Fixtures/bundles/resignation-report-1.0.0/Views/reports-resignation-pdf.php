@@ -16,16 +16,16 @@
 <meta charset="UTF-8">
 <style>
 <?php
-echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-base.css');
-echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-brand.css');
-echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-preview.css');
-echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-resignation-report.css');
+echo file_get_contents(BASE_PATH . '/public/assets/css/pdf/pdf-base.css');
+echo file_get_contents(BASE_PATH . '/public/assets/css/pdf/pdf-brand.css');
+echo file_get_contents(BASE_PATH . '/public/assets/css/pdf/pdf-preview.css');
+echo file_get_contents(BASE_PATH . '/public/assets/css/pdf/pdf-resignation-report.css');
 ?>
 </style>
 </head>
 <body>
 
-<?php include __DIR__ . '/../../../UI/View/_partials/_pdf-preview-toolbar.php'; ?>
+<?php include BASE_PATH . '/src/UI/View/_partials/_pdf-preview-toolbar.php'; ?>
 <div class="pdf-preview-page">
 
 <h1><?= __('resignation_report_pdf_title') ?></h1>
