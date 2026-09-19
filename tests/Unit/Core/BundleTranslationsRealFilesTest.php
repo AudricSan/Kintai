@@ -36,7 +36,6 @@ final class BundleTranslationsRealFilesTest extends TestCase
     public static function legacyBundleKeyProvider(): array
     {
         return [
-            'ResignationReport' => ['bundle_resignation_report', 'ResignationReport'],
             'SalaryReport'      => ['sr_pdf', 'SalaryReport'],
             'ShiftClaim'        => ['bundle_shift_claim', 'ShiftClaim'],
             'StorePhoto'        => ['photo_upload', 'StorePhoto'],
@@ -49,11 +48,12 @@ final class BundleTranslationsRealFilesTest extends TestCase
     public static function distributedBundleKeyProvider(): array
     {
         return [
-            'Feedback'     => ['feedback_deleted', 'feedback-1.0.0'],
-            'DailyReport'  => ['bundle_daily_report', 'daily-report-1.0.0'],
-            'Messaging'    => ['bundle_messaging', 'messaging-1.0.0'],
-            'HiringReport' => ['bundle_hiring_report', 'hiring-report-1.0.0'],
-            'ShiftSwap'    => ['bundle_shift_swap', 'shift-swap-1.0.0'],
+            'Feedback'          => ['feedback_deleted', 'feedback-1.0.0'],
+            'DailyReport'       => ['bundle_daily_report', 'daily-report-1.0.0'],
+            'Messaging'         => ['bundle_messaging', 'messaging-1.0.0'],
+            'HiringReport'      => ['bundle_hiring_report', 'hiring-report-1.0.0'],
+            'ResignationReport' => ['bundle_resignation_report', 'resignation-report-1.0.0'],
+            'ShiftSwap'         => ['bundle_shift_swap', 'shift-swap-1.0.0'],
         ];
     }
 
