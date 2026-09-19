@@ -76,10 +76,6 @@
     width: 110px;
     height: auto;
     margin-bottom: calc(-1 * var(--space-6));
-    /* Les poses sources regardent vers la droite ; en bord droit du footer,
-       ça la fait regarder hors de la page. Retournée pour qu'elle regarde
-       vers le contenu du footer. */
-    transform: scaleX(-1);
     pointer-events: none;
     user-select: none;
 }
@@ -130,7 +126,6 @@
        grid-column explicite, cette colonne glisserait dans la piste
        "Code source" et chevaucherait ses liens dès que la colonne Support
        est absente (footer invité / page de connexion). */
-    grid-column: -1;
     align-items: flex-end;
     justify-content: flex-end;
 }
