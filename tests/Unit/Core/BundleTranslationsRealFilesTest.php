@@ -37,7 +37,6 @@ final class BundleTranslationsRealFilesTest extends TestCase
     {
         return [
             'SalaryReport'      => ['sr_pdf', 'SalaryReport'],
-            'ShiftSwap'         => ['bundle_shift_swap', 'ShiftSwap'],
             'StorePhoto'        => ['photo_upload', 'StorePhoto'],
             'TimeOff'           => ['bundle_timeoff', 'TimeOff'],
             'Timeclock'         => ['bundle_timeclock', 'Timeclock'],
@@ -53,6 +52,7 @@ final class BundleTranslationsRealFilesTest extends TestCase
             'Messaging'         => ['bundle_messaging', 'messaging-1.0.0'],
             'HiringReport'      => ['bundle_hiring_report', 'hiring-report-1.0.0'],
             'ResignationReport' => ['bundle_resignation_report', 'resignation-report-1.0.0'],
+            'ShiftSwap'         => ['bundle_shift_swap', 'shift-swap-1.0.0'],
             'ShiftClaim'        => ['bundle_shift_claim', 'shift-claim-1.0.0'],
         ];
     }

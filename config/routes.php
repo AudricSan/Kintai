@@ -152,7 +152,7 @@ $router->group('/employee', function ($r) {
 
     // Feedback : bundle pilote distribué hors monorepo, routes chargées depuis storage/bundles/feedback/ une fois installé (voir docs/architecture.md)
 
-    // Échanges de shifts : voir src/Bundles/ShiftSwap/routes.php
+    // Échanges de shifts : bundle distribué hors monorepo, routes chargées depuis storage/bundles/shift-swap/ une fois installé (voir docs/architecture.md)
 
     // Bourse aux shifts : bundle distribué hors monorepo, routes chargées depuis storage/bundles/shift-claim/ une fois installé (voir docs/architecture.md)
 
@@ -261,7 +261,7 @@ $router->group('/admin', function ($r) {
 
     // Demandes de congé : voir src/Bundles/TimeOff/routes.php
 
-    // Échanges de shifts : voir src/Bundles/ShiftSwap/routes.php
+    // Échanges de shifts : bundle distribué hors monorepo, routes chargées depuis storage/bundles/shift-swap/ une fois installé (voir docs/architecture.md)
 
     // Pointage : voir src/Bundles/Timeclock/routes.php
 
@@ -408,7 +408,7 @@ $router->group('/api/v1', function ($r) {
 
     // Demandes de congé : voir src/Bundles/TimeOff/routes.php
 
-    // Échanges de shifts : voir src/Bundles/ShiftSwap/routes.php
+    // Échanges de shifts : bundle distribué hors monorepo, routes chargées depuis storage/bundles/shift-swap/ une fois installé (voir docs/architecture.md)
 
     // Pointage : voir src/Bundles/Timeclock/routes.php
 
