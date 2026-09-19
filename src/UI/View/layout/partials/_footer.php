@@ -48,6 +48,14 @@ $_ftIcon = static function (string $name): string {
             <?php endif; ?>
         </nav>
 
+        <nav class="app-footer__col" aria-label="<?= __('footer_legal_heading') ?>">
+            <h4 class="app-footer__heading"><?= __('footer_legal_heading') ?></h4>
+            <a href="<?= route_url('legal.mentions') ?>" class="app-footer__link"><?= __('legal_notice') ?></a>
+            <a href="<?= route_url('privacy') ?>" class="app-footer__link"><?= __('privacy_policy_title') ?></a>
+            <a href="<?= route_url('legal.terms') ?>" class="app-footer__link"><?= __('terms_of_use') ?></a>
+            <a href="<?= route_url('legal.license') ?>" class="app-footer__link"><?= __('license') ?></a>
+        </nav>
+
         <?php if ($_ftAuthed): ?>
         <div class="app-footer__col">
             <h4 class="app-footer__heading"><?= __('footer_support_heading') ?></h4>
@@ -59,14 +67,6 @@ $_ftIcon = static function (string $name): string {
             </button>
         </div>
         <?php endif; ?>
-
-        <nav class="app-footer__col" aria-label="<?= __('footer_legal_heading') ?>">
-            <h4 class="app-footer__heading"><?= __('footer_legal_heading') ?></h4>
-            <a href="<?= route_url('legal.mentions') ?>" class="app-footer__link"><?= __('legal_notice') ?></a>
-            <a href="<?= route_url('privacy') ?>" class="app-footer__link"><?= __('privacy_policy_title') ?></a>
-            <a href="<?= route_url('legal.terms') ?>" class="app-footer__link"><?= __('terms_of_use') ?></a>
-            <a href="<?= route_url('legal.license') ?>" class="app-footer__link"><?= __('license') ?></a>
-        </nav>
 
         <nav class="app-footer__col" aria-label="<?= __('footer_source_heading') ?>">
             <h4 class="app-footer__heading"><?= __('footer_source_heading') ?></h4>
