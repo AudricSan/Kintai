@@ -567,7 +567,7 @@ final class EmployeeController
         return Response::redirect($this->base() . '/employee?success=prefs');
     }
 
-    // Bourse aux shifts : voir src/Bundles/ShiftClaim/Controllers/Web/EmployeeShiftClaimController.php
+    // Bourse aux shifts : bundle distribué hors monorepo (kintai-bundle-shift-claim), voir docs/architecture.md
 
     // -------------------------------------------------------------------------
     // Paramètres du menu de navigation (employé)

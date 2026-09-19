@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Bundles\Timeclock\Api;
 
-use kintai\Bundles\Timeclock\Controllers\Api\TimeclockController;
+require_once dirname(__DIR__, 4) . '/Fixtures/bundles/timeclock-1.0.0/src/Controllers/Api/TimeclockController.php';
+
+use kintai\Bundles\Installed\Timeclock\Controllers\Api\TimeclockController;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ConflictException;
 use kintai\Core\Exceptions\ForbiddenException;
