@@ -757,6 +757,8 @@
     "mailtest_title": "メール送信テスト",
     "mailtest_unknown_error": "不明なエラー",
     "mailtest_username": "ユーザー名",
+    "maintenance_banner_active": "サイトはメンテナンスモードです。他のユーザーはアクセスできません。",
+    "maintenance_banner_manage": "管理",
     "maintenance_message": "メンテナンスメッセージ",
     "maintenance_message_hint": "メンテナンス中にユーザーへ表示されます。空欄の場合はデフォルトの汎用メッセージを表示します。",
     "maintenance_message_placeholder": "例：メンテナンス中です。数分後に再開します。",

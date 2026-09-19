@@ -757,6 +757,8 @@
     "mailtest_title": "Test d'envoi de mail",
     "mailtest_unknown_error": "Erreur inconnue",
     "mailtest_username": "Username",
+    "maintenance_banner_active": "Le site est en mode maintenance : les autres utilisateurs n'y ont pas accès.",
+    "maintenance_banner_manage": "Gérer",
     "maintenance_message": "Message de maintenance",
     "maintenance_message_hint": "Affiché aux utilisateurs pendant la maintenance. Laisser vide pour afficher le message générique par défaut.",
     "maintenance_message_placeholder": "ex : Maintenance en cours, de retour dans quelques minutes.",

@@ -62,7 +62,32 @@
             return $icons[$name] ?? '';
         };
         ?>
-        <?php include __DIR__ . '/partials/_topbar.php'; ?>
+        <div class="app-sticky-header">
+            <?php if (!empty($app_maintenance_mode_enabled)): ?>
+                <div class="maintenance-banner">
+                    <span class="maintenance-banner__icon" aria-hidden="true">⚠</span>
+                    <span><?= __('maintenance_banner_active') ?></span>
+                    <?php if ($isOwner): ?>
+                        <a href="<?= route_url('admin.owner_settings') ?>" class="maintenance-banner__link"><?= __('maintenance_banner_manage') ?></a>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+
+            <?php include __DIR__ . '/partials/_topbar.php'; ?>
+        </div>
+        <?php if (!empty($app_maintenance_mode_enabled)): ?>
+            <script>
+            (function () {
+                var banner = document.querySelector('.maintenance-banner');
+                if (!banner) return;
+                var setOffset = function () {
+                    document.documentElement.style.setProperty('--maintenance-banner-h', banner.offsetHeight + 'px');
+                };
+                setOffset();
+                window.addEventListener('resize', setOffset);
+            }());
+            </script>
+        <?php endif; ?>
 
         <div class="page-content">
             <?= $content ?>

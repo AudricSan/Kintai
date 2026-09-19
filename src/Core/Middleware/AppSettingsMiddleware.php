@@ -25,6 +25,7 @@ final class AppSettingsMiddleware implements MiddlewareInterface
             $view->share('app_login_notice', $settings->loginNotice());
             $view->share('app_theme_color_style', $settings->themeColorStyle());
             $view->share('app_support_email', $settings->supportEmail());
+            $view->share('app_maintenance_mode_enabled', $settings->maintenanceModeEnabled());
         } catch (\Throwable) {
             // Table absente (avant migration) ou DB non disponible — on ignore.
         }

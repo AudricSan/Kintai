@@ -109,7 +109,7 @@
     .topbar-nav {
         display: none;
         position: fixed;
-        top: var(--topbar-height);
+        top: calc(var(--topbar-height) + var(--maintenance-banner-h));
         left: 0;
         right: 0;
         bottom: 0;
@@ -203,7 +203,7 @@
        en position fixed, ancré aux marges de la topbar plutôt qu'au bouton. */
     .notif-dropdown__panel {
         position: fixed;
-        top: calc(var(--topbar-height) + 6px);
+        top: calc(var(--topbar-height) + var(--maintenance-banner-h) + 6px);
         left: var(--space-4);
         right: var(--space-4);
         width: auto;

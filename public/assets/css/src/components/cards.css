@@ -9,6 +9,7 @@
     border-radius: var(--radius);
     box-shadow: var(--shadow);
     padding: var(--space-4);
+    margin-bottom: var(--space-5);
 }
 
 .photo-grid > .card {
