@@ -36,7 +36,7 @@ final class BundleSettingsControllerTest extends TestCase
     }
 
     /**
-     * Utilise le vrai BundleDiscoveryService (scan de src/Bundles réel) : timeclock
+     * Utilise le vrai BundleDiscoveryService (scan de src/Bundles réel) : timeoff
      * y reste présent sur le disque (contrairement aux bundles déjà extraits vers
      * leur propre dépôt — voir docs/architecture.md "Modular Bundles").
      */
@@ -53,7 +53,7 @@ final class BundleSettingsControllerTest extends TestCase
 
     public function testShowRendersPageForOwner(): void
     {
-        $controller = $this->makeController(new FeatureManager(['timeclock']));
+        $controller = $this->makeController(new FeatureManager(['timeoff']));
 
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
@@ -65,9 +65,9 @@ final class BundleSettingsControllerTest extends TestCase
 
     public function testSavePersistsSelectedBundlesAsJson(): void
     {
-        $controller = $this->makeController(new FeatureManager(['timeclock']));
+        $controller = $this->makeController(new FeatureManager(['timeoff']));
 
-        $_POST = ['bundle_timeclock' => '1'];
+        $_POST = ['bundle_timeoff' => '1'];
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
 
@@ -84,7 +84,7 @@ final class BundleSettingsControllerTest extends TestCase
         $this->assertSame(302, $response->status());
         $this->assertNotNull($captured);
         sort($captured);
-        $this->assertSame(['timeclock'], $captured);
+        $this->assertSame(['timeoff'], $captured);
     }
 
     public function testOfficialBundlesRegistryListsBundlesShippedWithTheRepo(): void

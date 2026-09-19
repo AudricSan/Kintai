@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace kintai\Bundles\Timeclock\Controllers\Web;
+namespace kintai\Bundles\Installed\Timeclock\Controllers\Web;
 
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\StoreRepositoryInterface;

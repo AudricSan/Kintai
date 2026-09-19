@@ -138,7 +138,7 @@ $router->group('/employee', function ($r) {
     $r->get('/shifts/day',      [EmployeeController::class, 'shiftDay'],       name: 'employee.shifts.day');
     $r->get('/shifts/week',     [EmployeeController::class, 'shiftsWeek'],     name: 'employee.shifts.week');
 
-    // Pointage : voir src/Bundles/Timeclock/routes.php
+    // Pointage : bundle distribué hors monorepo, routes chargées depuis storage/bundles/timeclock/ une fois installé (voir docs/architecture.md)
 
     // Congés : voir src/Bundles/TimeOff/routes.php
 
@@ -263,7 +263,7 @@ $router->group('/admin', function ($r) {
 
     // Échanges de shifts : bundle distribué hors monorepo, routes chargées depuis storage/bundles/shift-swap/ une fois installé (voir docs/architecture.md)
 
-    // Pointage : voir src/Bundles/Timeclock/routes.php
+    // Pointage : bundle distribué hors monorepo, routes chargées depuis storage/bundles/timeclock/ une fois installé (voir docs/architecture.md)
 
     // Journal d'activité (unifié)
     $r->get('/activity', [ActivityController::class, 'index'], name: 'admin.activity', permission: 'stores.view');
@@ -410,7 +410,7 @@ $router->group('/api/v1', function ($r) {
 
     // Échanges de shifts : bundle distribué hors monorepo, routes chargées depuis storage/bundles/shift-swap/ une fois installé (voir docs/architecture.md)
 
-    // Pointage : voir src/Bundles/Timeclock/routes.php
+    // Pointage : bundle distribué hors monorepo, routes chargées depuis storage/bundles/timeclock/ une fois installé (voir docs/architecture.md)
 
     // Bourse aux shifts : bundle distribué hors monorepo, routes chargées depuis storage/bundles/shift-claim/ une fois installé (voir docs/architecture.md)
 

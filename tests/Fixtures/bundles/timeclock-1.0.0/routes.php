@@ -6,9 +6,9 @@ use kintai\Core\Middleware\AuthMiddleware;
 use kintai\Core\Middleware\ApiAuthMiddleware;
 use kintai\Core\Middleware\ApiPermissionMiddleware;
 use kintai\Core\Middleware\PermissionMiddleware;
-use kintai\Bundles\Timeclock\Controllers\Web\EmployeeTimeclockController;
-use kintai\Bundles\Timeclock\Controllers\Web\AdminTimeclockController;
-use kintai\Bundles\Timeclock\Controllers\Api\TimeclockController as ApiTimeclockController;
+use kintai\Bundles\Installed\Timeclock\Controllers\Web\EmployeeTimeclockController;
+use kintai\Bundles\Installed\Timeclock\Controllers\Web\AdminTimeclockController;
+use kintai\Bundles\Installed\Timeclock\Controllers\Api\TimeclockController as ApiTimeclockController;
 
 /** @var kintai\Core\Router $router */
 /** @var kintai\Core\Container $container */

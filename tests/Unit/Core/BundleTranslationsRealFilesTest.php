@@ -37,7 +37,6 @@ final class BundleTranslationsRealFilesTest extends TestCase
     {
         return [
             'TimeOff'           => ['bundle_timeoff', 'TimeOff'],
-            'Timeclock'         => ['bundle_timeclock', 'Timeclock'],
         ];
     }
 
@@ -54,6 +53,7 @@ final class BundleTranslationsRealFilesTest extends TestCase
             'SalaryReport'      => ['sr_pdf', 'salary-report-1.0.0'],
             'ShiftClaim'        => ['bundle_shift_claim', 'shift-claim-1.0.0'],
             'StorePhoto'        => ['photo_upload', 'store-photos-1.0.0'],
+            'Timeclock'         => ['bundle_timeclock', 'timeclock-1.0.0'],
         ];
     }
 
