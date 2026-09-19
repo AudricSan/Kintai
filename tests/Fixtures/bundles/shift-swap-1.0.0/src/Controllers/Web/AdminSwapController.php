@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace kintai\Bundles\ShiftSwap\Controllers\Web;
+namespace kintai\Bundles\Installed\ShiftSwap\Controllers\Web;
 
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;

@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace kintai\Bundles\ShiftSwap;
+namespace kintai\Bundles\Installed\ShiftSwap;
 
-use kintai\Core\Bundle;
+use kintai\Core\BundleContract\Bundle;
 
 /**
- * Comme TimeOff, ce bundle n'enregistre pas son propre repository :
- * ShiftSwapRequestRepositoryInterface reste un service Core
+ * Comme TimeOff et HiringReport, ce bundle n'enregistre pas son propre
+ * repository : ShiftSwapRequestRepositoryInterface reste un service Core
  * (RepositoryServiceProvider), car StoreStatsService, HomeController et
  * le tableau de bord d'EmployeeController en dépendent pour des calculs
  * qui doivent continuer de fonctionner même si ce bundle est désactivé.
@@ -20,6 +20,11 @@ final class ShiftSwapBundle extends Bundle
     public function getName(): string
     {
         return 'shift-swap';
+    }
+
+    public function getVersion(): string
+    {
+        return '1.0.0';
     }
 
     public function getLabel(): string
