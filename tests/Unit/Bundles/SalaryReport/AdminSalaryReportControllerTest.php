@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Bundles\SalaryReport;
 
-use kintai\Bundles\SalaryReport\Controllers\Web\AdminSalaryReportController;
+require_once dirname(__DIR__, 3) . '/Fixtures/bundles/salary-report-1.0.0/src/Controllers/Web/AdminSalaryReportController.php';
+
+use kintai\Bundles\Installed\SalaryReport\Controllers\Web\AdminSalaryReportController;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Container;
 use kintai\Core\Exceptions\NotFoundException;

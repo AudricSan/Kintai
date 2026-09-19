@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Bundles\StorePhoto;
 
-use kintai\Bundles\StorePhoto\Controllers\Web\StorePhotoController;
+require_once dirname(__DIR__, 3) . '/Fixtures/bundles/store-photos-1.0.0/src/Controllers/Web/StorePhotoController.php';
+
+use kintai\Bundles\Installed\StorePhoto\Controllers\Web\StorePhotoController;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Repositories\StorePhotoRepositoryInterface;

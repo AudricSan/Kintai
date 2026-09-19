@@ -23,7 +23,7 @@ final class StorePhotoRoutesTest extends TestCase
     {
         $router = new Router();
         $container = new Container();
-        require dirname(__DIR__, 4) . '/src/Bundles/StorePhoto/routes.php';
+        require dirname(__DIR__, 4) . '/tests/Fixtures/bundles/store-photos-1.0.0/routes.php';
 
         [$route] = $router->dispatch($method, $path);
 
