@@ -2,23 +2,28 @@
 
 declare(strict_types=1);
 
-namespace kintai\Bundles\ResignationReport;
+namespace kintai\Bundles\Installed\ResignationReport;
 
-use kintai\Core\Bundle;
+use kintai\Core\BundleContract\Bundle;
 use kintai\Core\Repositories\ResignationReportRepositoryInterface;
 use kintai\Core\Repositories\DatabaseResignationReportRepository;
 
 /**
  * Comme ShiftClaim/StorePhoto, aucun autre composant Core ne dépend de
  * ResignationReportRepositoryInterface : le repository est enregistré par ce
- * bundle, pas par le Core. Désactiver "resignation-report" retire entièrement
- * la fonctionnalité.
+ * bundle, pas par le Core. Désactiver ou désinstaller "resignation-report"
+ * retire entièrement la fonctionnalité.
  */
 final class ResignationReportBundle extends Bundle
 {
     public function getName(): string
     {
         return 'resignation-report';
+    }
+
+    public function getVersion(): string
+    {
+        return '1.0.0';
     }
 
     public function getLabel(): string

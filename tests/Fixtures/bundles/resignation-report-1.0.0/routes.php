@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use kintai\Core\Middleware\AuthMiddleware;
 use kintai\Core\Middleware\PermissionMiddleware;
-use kintai\Bundles\ResignationReport\Controllers\Web\AdminResignationReportController;
+use kintai\Bundles\Installed\ResignationReport\Controllers\Web\AdminResignationReportController;
 
 /** @var kintai\Core\Router $router */
 /** @var kintai\Core\Container $container */
