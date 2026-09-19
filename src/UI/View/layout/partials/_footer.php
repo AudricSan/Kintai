@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Footer global de l'application — inclus par layout/app.php (utilisateur
  * connecté) et layout/guest.php (page de connexion / pages publiques).
@@ -16,6 +17,10 @@ $_ftHomeHref = $_ftAuthed
 $_ftVersionHref = $_ftIsOwner
     ? route_url('admin.update')
     : 'https://github.com/AudricSan/Kintai#changelog';
+
+// Petite variation d'affichage : une pose différente de Foxy tirée au sort à
+// chaque chargement de page plutôt qu'une image toujours identique.
+$_ftMascotPose = random_int(1, 4);
 
 $_ftIcon = static function (string $name): string {
     $icons = [
@@ -67,15 +72,15 @@ $_ftIcon = static function (string $name): string {
         </nav>
 
         <?php if ($_ftAuthed): ?>
-        <div class="app-footer__col">
-            <h4 class="app-footer__heading"><?= __('footer_support_heading') ?></h4>
-            <?php if ($feedback_enabled ?? true): ?>
-                <button type="button" class="app-footer__link app-footer__link--btn" onclick="fbOpen()"><?= __('send_feedback') ?></button>
-            <?php endif; ?>
-            <button type="button" class="app-footer__link app-footer__link--btn" onclick="riOpen()">
-                <span class="app-footer__icon"><?= $_ftIcon('bug') ?></span><?= __('report_issue') ?>
-            </button>
-        </div>
+            <div class="app-footer__col">
+                <h4 class="app-footer__heading"><?= __('footer_support_heading') ?></h4>
+                <?php if ($feedback_enabled ?? true): ?>
+                    <button type="button" class="app-footer__link app-footer__link--btn" onclick="fbOpen()"><?= __('send_feedback') ?></button>
+                <?php endif; ?>
+                <button type="button" class="app-footer__link app-footer__link--btn" onclick="riOpen()">
+                    <span class="app-footer__icon"><?= $_ftIcon('bug') ?></span><?= __('report_issue') ?>
+                </button>
+            </div>
         <?php endif; ?>
 
         <nav class="app-footer__col" aria-label="<?= __('footer_source_heading') ?>">
@@ -94,7 +99,9 @@ $_ftIcon = static function (string $name): string {
             </a>
         </nav>
 
-        <img src="<?= $BASE_URL ?>/assets/img/mascot/footer-fox.png" alt="" class="app-footer__mascot">
+        <nav class="app-footer__col app-footer__col--mascot">
+            <img src="<?= $BASE_URL ?>/assets/img/mascot/footer-fox-<?= $_ftMascotPose ?>.png" alt="" class="app-footer__mascot">
+        </nav>
 
     </div>
 </footer>

@@ -71,19 +71,14 @@
 }
 
 .app-footer__mascot {
-    /* Ancré à la dernière piste de la grille par index explicite, pas par
-       ordre du DOM : la colonne "Support" n'est rendue que pour un
-       utilisateur connecté ($_ftAuthed dans _footer.php), donc l'élément
-       suivant la mascotte dans le DOM n'est pas toujours le même — sans
-       grid-column explicite, la mascotte glisse dans la piste "Code source"
-       et chevauche ses liens dès que la colonne Support est absente
-       (footer invité / page de connexion). */
-    grid-column: -1;
-    align-self: end;
-    justify-self: end;
+    display: block;
     width: 110px;
     height: auto;
     margin-bottom: calc(-1 * var(--space-6));
+    /* Les poses sources regardent vers la droite ; en bord droit du footer,
+       ça la fait regarder hors de la page. Retournée pour qu'elle regarde
+       vers le contenu du footer. */
+    transform: scaleX(-1);
     pointer-events: none;
     user-select: none;
 }
@@ -126,6 +121,19 @@
     border-left: 1px solid var(--color-border-light);
 }
 
+.app-footer__col--mascot {
+    /* Ancrée à la dernière piste de la grille par index explicite, pas par
+       ordre du DOM : la colonne "Support" n'est rendue que pour un
+       utilisateur connecté ($_ftAuthed dans _footer.php), donc l'élément
+       suivant la mascotte dans le DOM n'est pas toujours le même — sans
+       grid-column explicite, cette colonne glisserait dans la piste
+       "Code source" et chevaucherait ses liens dès que la colonne Support
+       est absente (footer invité / page de connexion). */
+    grid-column: -1;
+    align-items: flex-end;
+    justify-content: flex-end;
+}
+
 .app-footer__link {
     display: inline-flex;
     align-items: center;
@@ -161,7 +169,7 @@
 }
 
 @media (max-width: 1100px) {
-    .app-footer__mascot {
+    .app-footer__col--mascot {
         display: none;
     }
 }
