@@ -71,6 +71,14 @@
 }
 
 .app-footer__mascot {
+    /* Ancré à la dernière piste de la grille par index explicite, pas par
+       ordre du DOM : la colonne "Support" n'est rendue que pour un
+       utilisateur connecté ($_ftAuthed dans _footer.php), donc l'élément
+       suivant la mascotte dans le DOM n'est pas toujours le même — sans
+       grid-column explicite, la mascotte glisse dans la piste "Code source"
+       et chevauche ses liens dès que la colonne Support est absente
+       (footer invité / page de connexion). */
+    grid-column: -1;
     align-self: end;
     justify-self: end;
     width: 110px;
