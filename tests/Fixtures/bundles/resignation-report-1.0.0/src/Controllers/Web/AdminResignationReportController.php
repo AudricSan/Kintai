@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace kintai\Bundles\ResignationReport\Controllers\Web;
+namespace kintai\Bundles\Installed\ResignationReport\Controllers\Web;
 
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Repositories\ResignationReportRepositoryInterface;
