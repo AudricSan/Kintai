@@ -2,24 +2,35 @@
 
 declare(strict_types=1);
 
-namespace kintai\Bundles\ShiftClaim;
+namespace kintai\Bundles\Installed\ShiftClaim;
 
-use kintai\Core\Bundle;
+use kintai\Core\BundleContract\Bundle;
 use kintai\Core\Repositories\ShiftClaimRepositoryInterface;
 use kintai\Core\Repositories\DatabaseShiftClaimRepository;
 
 /**
- * Contrairement à TimeOff/ShiftSwap, aucun composant Core ne dépend de
- * ShiftClaimRepositoryInterface en dehors de la bourse aux shifts elle-même
- * (pas de lecture depuis les stats, l'iCal ou le dashboard) : le repository
- * peut donc être enregistré par ce bundle, comme DailyReport/Messaging/
- * StorePhoto. Désactiver "shift-claim" retire entièrement la fonctionnalité.
+ * ShiftClaimRepositoryInterface reste enregistré par ce bundle, pas par le
+ * Core — mais contrairement à TimeOff/ShiftSwap, deux composants Core en
+ * lisent quand même les données (HomeController, pour le KPI "demandes en
+ * attente" du dashboard ; AdminRequestsController, pour la section
+ * candidatures de la page /admin/requests). Les deux résolvent
+ * ShiftClaimRepositoryInterface de façon différée (jamais en dépendance de
+ * constructeur), gardée par feat_bundle('open_shifts') ET
+ * Container::has(ShiftClaimRepositoryInterface::class) avant tout appel —
+ * donc aucune liaison Core n'est nécessaire ici : ces deux contrôleurs
+ * dégradent déjà proprement (section absente) quand ce bundle est désactivé
+ * ou désinstallé, au lieu de planter.
  */
 final class ShiftClaimBundle extends Bundle
 {
     public function getName(): string
     {
         return 'shift-claim';
+    }
+
+    public function getVersion(): string
+    {
+        return '1.0.0';
     }
 
     public function getLabel(): string

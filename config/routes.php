@@ -154,7 +154,7 @@ $router->group('/employee', function ($r) {
 
     // Échanges de shifts : voir src/Bundles/ShiftSwap/routes.php
 
-    // Bourse aux shifts : voir src/Bundles/ShiftClaim/routes.php
+    // Bourse aux shifts : bundle distribué hors monorepo, routes chargées depuis storage/bundles/shift-claim/ une fois installé (voir docs/architecture.md)
 
     // Messagerie : bundle distribué hors monorepo, routes chargées depuis storage/bundles/messaging/ une fois installé (employee.messages*, voir docs/architecture.md)
 
@@ -257,7 +257,7 @@ $router->group('/admin', function ($r) {
     $r->post('/shifts/{id}/delete', [AdminShiftController::class, 'deleteShift'],          name: 'admin.shifts.delete', permission: 'shifts.delete');
     $r->post('/shifts/{id}/move',   [AdminShiftController::class, 'moveShift'],            name: 'admin.shifts.move', permission: 'shifts.update');
 
-    // Bourse aux shifts : voir src/Bundles/ShiftClaim/routes.php
+    // Bourse aux shifts : bundle distribué hors monorepo, routes chargées depuis storage/bundles/shift-claim/ une fois installé (voir docs/architecture.md)
 
     // Demandes de congé : voir src/Bundles/TimeOff/routes.php
 
@@ -412,7 +412,7 @@ $router->group('/api/v1', function ($r) {
 
     // Pointage : voir src/Bundles/Timeclock/routes.php
 
-    // Bourse aux shifts : voir src/Bundles/ShiftClaim/routes.php
+    // Bourse aux shifts : bundle distribué hors monorepo, routes chargées depuis storage/bundles/shift-claim/ une fois installé (voir docs/architecture.md)
 
     // Notifications
     $r->post('/notifications/read-all',    [ApiNotificationController::class, 'markAllRead'], name: 'api.v1.notifications.read_all', permission: 'public');
