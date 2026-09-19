@@ -22,9 +22,10 @@ final class RepositoryServiceProvider extends ServiceProvider
         $this->container->singleton(UserShiftTypeRateRepositoryInterface::class, fn() => new DatabaseUserShiftTypeRateRepository());
         $this->container->singleton(IcalTokenRepositoryInterface::class, fn() => new DatabaseIcalTokenRepository());
         // TimeclockRepositoryInterface reste ici (bundle "timeclock" = UI seulement) :
-        // HomeController et EmployeeController::dashboard() en dépendent pour leurs
-        // widgets "pointage en cours", qui doivent continuer de fonctionner même si
-        // ce bundle est désactivé. Voir src/Bundles/Timeclock/TimeclockBundle.php.
+        // HomeController, EmployeeController::dashboard() et DashboardAlertService en
+        // dépendent pour leurs widgets "pointage en cours", qui doivent continuer de
+        // fonctionner même si ce bundle est désactivé ou désinstallé. Le bundle lui-même
+        // (legacy ou distribué, voir kintai-bundle-timeclock) n'a plus besoin de la lier.
         $this->container->singleton(TimeclockRepositoryInterface::class, fn() => new DatabaseTimeclockRepository());
         // DailyReportRepositoryInterface reste ici (même raison que Timeclock ci-dessus,
         // trouvée en cassant la prod lors de l'extraction du bundle DailyReport hors du
