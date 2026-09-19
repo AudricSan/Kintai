@@ -17,6 +17,12 @@ final class RepositoryServiceProvider extends ServiceProvider
         $this->container->singleton(ShiftTypeRepositoryInterface::class, fn() => new DatabaseShiftTypeRepository());
         $this->container->singleton(ShiftRepositoryInterface::class, fn() => new DatabaseShiftRepository());
         $this->container->singleton(AvailabilityRepositoryInterface::class, fn() => new DatabaseAvailabilityRepository());
+        // TimeoffRequestRepositoryInterface reste ici (même raison que Timeclock/ShiftSwap
+        // ci-dessus) : StoreStatsService, ShiftService, AdminShiftController,
+        // IcalController et HomeController en dépendent tous pour des calculs qui doivent
+        // continuer de fonctionner même si le bundle "timeoff" est désactivé ou
+        // désinstallé. Le bundle lui-même (legacy ou distribué, voir kintai-bundle-timeoff)
+        // n'a plus besoin de la lier.
         $this->container->singleton(TimeoffRequestRepositoryInterface::class, fn() => new DatabaseTimeoffRequestRepository());
         // ShiftSwapRequestRepositoryInterface reste ici (même raison que Timeclock/
         // DailyReport ci-dessus) : StoreStatsService, HomeController et le tableau de
@@ -28,9 +34,10 @@ final class RepositoryServiceProvider extends ServiceProvider
         $this->container->singleton(UserShiftTypeRateRepositoryInterface::class, fn() => new DatabaseUserShiftTypeRateRepository());
         $this->container->singleton(IcalTokenRepositoryInterface::class, fn() => new DatabaseIcalTokenRepository());
         // TimeclockRepositoryInterface reste ici (bundle "timeclock" = UI seulement) :
-        // HomeController et EmployeeController::dashboard() en dépendent pour leurs
-        // widgets "pointage en cours", qui doivent continuer de fonctionner même si
-        // ce bundle est désactivé. Voir src/Bundles/Timeclock/TimeclockBundle.php.
+        // HomeController, EmployeeController::dashboard() et DashboardAlertService en
+        // dépendent pour leurs widgets "pointage en cours", qui doivent continuer de
+        // fonctionner même si ce bundle est désactivé ou désinstallé. Le bundle lui-même
+        // (legacy ou distribué, voir kintai-bundle-timeclock) n'a plus besoin de la lier.
         $this->container->singleton(TimeclockRepositoryInterface::class, fn() => new DatabaseTimeclockRepository());
         // DailyReportRepositoryInterface reste ici (même raison que Timeclock ci-dessus,
         // trouvée en cassant la prod lors de l'extraction du bundle DailyReport hors du
@@ -41,7 +48,7 @@ final class RepositoryServiceProvider extends ServiceProvider
         $this->container->singleton(DailyReportRepositoryInterface::class, fn() => new DatabaseDailyReportRepository());
         $this->container->singleton(UserDashboardPrefsRepositoryInterface::class, fn() => new DatabaseUserDashboardPrefsRepository());
         $this->container->singleton(UserNavPrefsRepositoryInterface::class, fn() => new DatabaseUserNavPrefsRepository());
-        // ShiftClaim : voir src/Bundles/ShiftClaim/ShiftClaimBundle.php
+        // Bourse aux shifts : bundle distribué hors monorepo (kintai-bundle-shift-claim), voir docs/architecture.md
         $this->container->singleton(NotificationRepositoryInterface::class, fn() => new DatabaseNotificationRepository());
         $this->container->singleton(ApiTokenRepositoryInterface::class, fn() => new DatabaseApiTokenRepository());
         $this->container->singleton(ImportAliasRepositoryInterface::class, fn() => new DatabaseImportAliasRepository());
@@ -63,9 +70,15 @@ final class RepositoryServiceProvider extends ServiceProvider
         // distribué hors monorepo (kintai-bundle-hiring-report) — voir docs/architecture.md.
         $this->container->singleton(HiringReportRepositoryInterface::class, fn() => new DatabaseHiringReportRepository());
         // Démission : bundle distribué hors monorepo (kintai-bundle-resignation-report), voir docs/architecture.md
-        // Salaire : voir src/Bundles/SalaryReport/SalaryReportBundle.php
+        // Salaire : bundle distribué hors monorepo (kintai-bundle-salary-report), voir docs/architecture.md
 
-        // Photos : voir src/Bundles/StorePhoto/StorePhotoBundle.php
+        // StorePhotoRepositoryInterface reste ici (même raison que Timeclock/DailyReport/
+        // ShiftSwap ci-dessus) : GithubUpdateService et le script CLI
+        // consolidate-daily-photo-reports.php en dépendent directement, et ne doivent pas
+        // cesser de fonctionner si le bundle "store-photos" est désactivé ou désinstallé.
+        // Le bundle lui-même (legacy ou distribué, voir kintai-bundle-store-photos) n'a
+        // plus besoin de la lier.
+        $this->container->singleton(StorePhotoRepositoryInterface::class, fn() => new DatabaseStorePhotoRepository());
         // Feedback : bundle pilote distribué hors monorepo (voir docs/architecture.md
         // "Modular Bundles") — le binding est fait par FeedbackBundle::register() lui-même,
         // une fois le bundle installé dans storage/bundles/feedback/.

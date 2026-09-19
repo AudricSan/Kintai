@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Bundles\ShiftClaim;
 
-use kintai\Bundles\ShiftClaim\Controllers\Web\EmployeeShiftClaimController;
+require_once dirname(__DIR__, 3) . '/Fixtures/bundles/shift-claim-1.0.0/src/Controllers/Web/EmployeeShiftClaimController.php';
+
+use kintai\Bundles\Installed\ShiftClaim\Controllers\Web\EmployeeShiftClaimController;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace kintai\Core\Services;
 
-use kintai\Bundles\StorePhoto\Services\StorePhotoConsolidationService;
 use kintai\Core\Database\MigrationRunner;
 use kintai\Core\Repositories\StorePhotoRepositoryInterface;
 

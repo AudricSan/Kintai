@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Bundles\ShiftClaim\Api;
 
-use kintai\Bundles\ShiftClaim\Controllers\Api\ShiftClaimController;
+require_once dirname(__DIR__, 4) . '/Fixtures/bundles/shift-claim-1.0.0/src/Controllers/Api/ShiftClaimController.php';
+
+use kintai\Bundles\Installed\ShiftClaim\Controllers\Api\ShiftClaimController;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
