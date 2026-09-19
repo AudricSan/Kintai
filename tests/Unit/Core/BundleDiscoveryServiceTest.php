@@ -33,10 +33,10 @@ final class BundleDiscoveryServiceTest extends TestCase
 
         $discovered = $service->discover();
 
-        $this->assertArrayHasKey('timeoff', $discovered);
-        $this->assertNotSame('', $discovered['timeoff']['label']);
-        $this->assertTrue(is_subclass_of($discovered['timeoff']['class'], Bundle::class));
-        $this->assertSame('0.0.0', $discovered['timeoff']['version']);
+        $this->assertArrayHasKey('team-directory', $discovered);
+        $this->assertNotSame('', $discovered['team-directory']['label']);
+        $this->assertTrue(is_subclass_of($discovered['team-directory']['class'], Bundle::class));
+        $this->assertSame('0.0.0', $discovered['team-directory']['version']);
     }
 
     public function testIgnoresDirectoriesWithNoMatchingBundleClass(): void
@@ -90,19 +90,19 @@ final class BundleDiscoveryServiceTest extends TestCase
     public function testLegacySlugWinsOverAnInstalledBundleWithTheSameSlug(): void
     {
         $installedDir = sys_get_temp_dir() . '/kintai-installed-' . uniqid();
-        // "timeoff" existe déjà en legacy dans src/Bundles/ : une collision ne
+        // "team-directory" existe déjà en legacy dans src/Bundles/ : une collision ne
         // doit jamais faire gagner la version installée dynamiquement.
-        $this->writeFakeInstalledBundle($installedDir, 'timeoff', '9.9.9');
+        $this->writeFakeInstalledBundle($installedDir, 'team-directory', '9.9.9');
 
         $store = new InstalledBundleManifestStore($installedDir . '/installed.json');
-        $store->setActiveVersion('timeoff', '9.9.9');
+        $store->setActiveVersion('team-directory', '9.9.9');
 
         $service = new BundleDiscoveryService(null, $store, $installedDir);
 
         $discovered = $service->discover();
 
-        $this->assertArrayHasKey('timeoff', $discovered);
-        $this->assertNotSame('9.9.9', $discovered['timeoff']['version']);
+        $this->assertArrayHasKey('team-directory', $discovered);
+        $this->assertNotSame('9.9.9', $discovered['team-directory']['version']);
     }
 
     private function writeFakeInstalledBundle(string $installedDir, string $slug, string $version): void

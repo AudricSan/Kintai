@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace kintai\Bundles\TimeOff;
+namespace kintai\Bundles\Installed\TimeOff;
 
-use kintai\Core\Bundle;
+use kintai\Core\BundleContract\Bundle;
 
 /**
  * Contrairement aux autres bundles, TimeOff n'enregistre pas son propre
@@ -12,14 +12,20 @@ use kintai\Core\Bundle;
  * (RepositoryServiceProvider), car StoreStatsService, ShiftService,
  * AdminShiftController, IcalController et HomeController en dépendent tous
  * pour des calculs qui doivent continuer de fonctionner même si ce bundle
- * est désactivé. Désactiver "timeoff" retire uniquement l'UI de gestion des
- * congés (créer/approuver/consulter une demande), pas les données elles-mêmes.
+ * est désactivé ou désinstallé. Désactiver "timeoff" retire uniquement l'UI
+ * de gestion des congés (créer/approuver/consulter une demande), pas les
+ * données elles-mêmes.
  */
 final class TimeOffBundle extends Bundle
 {
     public function getName(): string
     {
         return 'timeoff';
+    }
+
+    public function getVersion(): string
+    {
+        return '1.0.0';
     }
 
     public function getLabel(): string

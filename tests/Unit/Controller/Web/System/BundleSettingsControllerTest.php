@@ -36,7 +36,7 @@ final class BundleSettingsControllerTest extends TestCase
     }
 
     /**
-     * Utilise le vrai BundleDiscoveryService (scan de src/Bundles réel) : timeoff
+     * Utilise le vrai BundleDiscoveryService (scan de src/Bundles réel) : team-directory
      * y reste présent sur le disque (contrairement aux bundles déjà extraits vers
      * leur propre dépôt — voir docs/architecture.md "Modular Bundles").
      */
@@ -53,7 +53,7 @@ final class BundleSettingsControllerTest extends TestCase
 
     public function testShowRendersPageForOwner(): void
     {
-        $controller = $this->makeController(new FeatureManager(['timeoff']));
+        $controller = $this->makeController(new FeatureManager(['team-directory']));
 
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
@@ -65,9 +65,9 @@ final class BundleSettingsControllerTest extends TestCase
 
     public function testSavePersistsSelectedBundlesAsJson(): void
     {
-        $controller = $this->makeController(new FeatureManager(['timeoff']));
+        $controller = $this->makeController(new FeatureManager(['team-directory']));
 
-        $_POST = ['bundle_timeoff' => '1'];
+        $_POST = ['bundle_team-directory' => '1'];
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
 
@@ -84,7 +84,7 @@ final class BundleSettingsControllerTest extends TestCase
         $this->assertSame(302, $response->status());
         $this->assertNotNull($captured);
         sort($captured);
-        $this->assertSame(['timeoff'], $captured);
+        $this->assertSame(['team-directory'], $captured);
     }
 
     public function testOfficialBundlesRegistryListsBundlesShippedWithTheRepo(): void
@@ -101,7 +101,7 @@ final class BundleSettingsControllerTest extends TestCase
 
     public function testSaveWithNoCheckedBundleDisablesAll(): void
     {
-        $controller = $this->makeController(new FeatureManager(['timeclock']));
+        $controller = $this->makeController(new FeatureManager(['team-directory']));
 
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);

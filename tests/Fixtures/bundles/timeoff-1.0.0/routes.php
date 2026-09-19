@@ -6,9 +6,9 @@ use kintai\Core\Middleware\AuthMiddleware;
 use kintai\Core\Middleware\ApiAuthMiddleware;
 use kintai\Core\Middleware\ApiPermissionMiddleware;
 use kintai\Core\Middleware\PermissionMiddleware;
-use kintai\Bundles\TimeOff\Controllers\Web\EmployeeTimeoffController;
-use kintai\Bundles\TimeOff\Controllers\Web\AdminTimeoffController;
-use kintai\Bundles\TimeOff\Controllers\Api\TimeoffRequestController as ApiTimeoffRequestController;
+use kintai\Bundles\Installed\TimeOff\Controllers\Web\EmployeeTimeoffController;
+use kintai\Bundles\Installed\TimeOff\Controllers\Web\AdminTimeoffController;
+use kintai\Bundles\Installed\TimeOff\Controllers\Api\TimeoffRequestController as ApiTimeoffRequestController;
 
 /** @var kintai\Core\Router $router */
 /** @var kintai\Core\Container $container */

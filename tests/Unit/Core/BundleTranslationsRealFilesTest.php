@@ -36,7 +36,7 @@ final class BundleTranslationsRealFilesTest extends TestCase
     public static function legacyBundleKeyProvider(): array
     {
         return [
-            'TimeOff'           => ['bundle_timeoff', 'TimeOff'],
+            'TeamDirectory'     => ['bundle_team_directory', 'TeamDirectory'],
         ];
     }
 
@@ -54,6 +54,7 @@ final class BundleTranslationsRealFilesTest extends TestCase
             'ShiftClaim'        => ['bundle_shift_claim', 'shift-claim-1.0.0'],
             'StorePhoto'        => ['photo_upload', 'store-photos-1.0.0'],
             'Timeclock'         => ['bundle_timeclock', 'timeclock-1.0.0'],
+            'TimeOff'           => ['bundle_timeoff', 'timeoff-1.0.0'],
         ];
     }
 
