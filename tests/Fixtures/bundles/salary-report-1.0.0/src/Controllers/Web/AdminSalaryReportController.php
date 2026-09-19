@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace kintai\Bundles\SalaryReport\Controllers\Web;
+namespace kintai\Bundles\Installed\SalaryReport\Controllers\Web;
 
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Repositories\DailyReportRepositoryInterface;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace kintai\Bundles\ShiftClaim\Controllers\Web;
+namespace kintai\Bundles\Installed\ShiftClaim\Controllers\Web;
 
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\ShiftClaimRepositoryInterface;

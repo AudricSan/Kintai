@@ -33,10 +33,10 @@ final class BundleDiscoveryServiceTest extends TestCase
 
         $discovered = $service->discover();
 
-        $this->assertArrayHasKey('shift-claim', $discovered);
-        $this->assertNotSame('', $discovered['shift-claim']['label']);
-        $this->assertTrue(is_subclass_of($discovered['shift-claim']['class'], Bundle::class));
-        $this->assertSame('0.0.0', $discovered['shift-claim']['version']);
+        $this->assertArrayHasKey('timeclock', $discovered);
+        $this->assertNotSame('', $discovered['timeclock']['label']);
+        $this->assertTrue(is_subclass_of($discovered['timeclock']['class'], Bundle::class));
+        $this->assertSame('0.0.0', $discovered['timeclock']['version']);
     }
 
     public function testIgnoresDirectoriesWithNoMatchingBundleClass(): void
@@ -90,19 +90,19 @@ final class BundleDiscoveryServiceTest extends TestCase
     public function testLegacySlugWinsOverAnInstalledBundleWithTheSameSlug(): void
     {
         $installedDir = sys_get_temp_dir() . '/kintai-installed-' . uniqid();
-        // "shift-claim" existe déjà en legacy dans src/Bundles/ : une collision ne
+        // "timeclock" existe déjà en legacy dans src/Bundles/ : une collision ne
         // doit jamais faire gagner la version installée dynamiquement.
-        $this->writeFakeInstalledBundle($installedDir, 'shift-claim', '9.9.9');
+        $this->writeFakeInstalledBundle($installedDir, 'timeclock', '9.9.9');
 
         $store = new InstalledBundleManifestStore($installedDir . '/installed.json');
-        $store->setActiveVersion('shift-claim', '9.9.9');
+        $store->setActiveVersion('timeclock', '9.9.9');
 
         $service = new BundleDiscoveryService(null, $store, $installedDir);
 
         $discovered = $service->discover();
 
-        $this->assertArrayHasKey('shift-claim', $discovered);
-        $this->assertNotSame('9.9.9', $discovered['shift-claim']['version']);
+        $this->assertArrayHasKey('timeclock', $discovered);
+        $this->assertNotSame('9.9.9', $discovered['timeclock']['version']);
     }
 
     private function writeFakeInstalledBundle(string $installedDir, string $slug, string $version): void

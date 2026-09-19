@@ -41,7 +41,7 @@ final class RepositoryServiceProvider extends ServiceProvider
         $this->container->singleton(DailyReportRepositoryInterface::class, fn() => new DatabaseDailyReportRepository());
         $this->container->singleton(UserDashboardPrefsRepositoryInterface::class, fn() => new DatabaseUserDashboardPrefsRepository());
         $this->container->singleton(UserNavPrefsRepositoryInterface::class, fn() => new DatabaseUserNavPrefsRepository());
-        // ShiftClaim : voir src/Bundles/ShiftClaim/ShiftClaimBundle.php
+        // Bourse aux shifts : bundle distribué hors monorepo (kintai-bundle-shift-claim), voir docs/architecture.md
         $this->container->singleton(NotificationRepositoryInterface::class, fn() => new DatabaseNotificationRepository());
         $this->container->singleton(ApiTokenRepositoryInterface::class, fn() => new DatabaseApiTokenRepository());
         $this->container->singleton(ImportAliasRepositoryInterface::class, fn() => new DatabaseImportAliasRepository());
@@ -63,7 +63,7 @@ final class RepositoryServiceProvider extends ServiceProvider
         // distribué hors monorepo (kintai-bundle-hiring-report) — voir docs/architecture.md.
         $this->container->singleton(HiringReportRepositoryInterface::class, fn() => new DatabaseHiringReportRepository());
         // Démission : bundle distribué hors monorepo (kintai-bundle-resignation-report), voir docs/architecture.md
-        // Salaire : voir src/Bundles/SalaryReport/SalaryReportBundle.php
+        // Salaire : bundle distribué hors monorepo (kintai-bundle-salary-report), voir docs/architecture.md
 
         // StorePhotoRepositoryInterface reste ici (même raison que Timeclock/DailyReport/
         // ShiftSwap ci-dessus) : GithubUpdateService et le script CLI

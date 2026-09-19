@@ -36,8 +36,6 @@ final class BundleTranslationsRealFilesTest extends TestCase
     public static function legacyBundleKeyProvider(): array
     {
         return [
-            'SalaryReport'      => ['sr_pdf', 'SalaryReport'],
-            'ShiftClaim'        => ['bundle_shift_claim', 'ShiftClaim'],
             'TimeOff'           => ['bundle_timeoff', 'TimeOff'],
             'Timeclock'         => ['bundle_timeclock', 'Timeclock'],
         ];
@@ -53,6 +51,8 @@ final class BundleTranslationsRealFilesTest extends TestCase
             'HiringReport'      => ['bundle_hiring_report', 'hiring-report-1.0.0'],
             'ResignationReport' => ['bundle_resignation_report', 'resignation-report-1.0.0'],
             'ShiftSwap'         => ['bundle_shift_swap', 'shift-swap-1.0.0'],
+            'SalaryReport'      => ['sr_pdf', 'salary-report-1.0.0'],
+            'ShiftClaim'        => ['bundle_shift_claim', 'shift-claim-1.0.0'],
             'StorePhoto'        => ['photo_upload', 'store-photos-1.0.0'],
         ];
     }
