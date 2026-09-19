@@ -202,16 +202,18 @@ final class AdminResignationReportControllerTest extends TestCase
         $this->users->method('findById')->willReturnMap([
             [10, ['id' => 10, 'first_name' => 'Jean', 'last_name' => 'Dupont', 'employee_code' => 'EMP010']],
         ]);
-        // L'utilisateur 99 détient le rôle système Owner en portée globale (RBAC).
-        $this->roles->method('findBySlug')->with('owner')->willReturn(['id' => 1, 'slug' => 'owner', 'is_system' => 1]);
-        $this->assignments->method('findByRole')->with(1)->willReturn([
+        // L'utilisateur 99 détient un rôle système (Owner) en portée globale (RBAC).
+        $this->assignments->method('findByScope')->with('global', null)->willReturn([
             ['id' => 2, 'user_id' => 99, 'role_id' => 1, 'scope_type' => 'global', 'scope_id' => null],
         ]);
         // Le rôle RBAC affecté à l'utilisateur 10 accorde employees.update sur le store 1.
         $this->assignments->method('findByUser')->with(10)->willReturn([
             ['id' => 3, 'user_id' => 10, 'role_id' => 2, 'scope_type' => 'store', 'scope_id' => 1],
         ]);
-        $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'is_system' => 0]);
+        $this->roles->method('findById')->willReturnMap([
+            [1, ['id' => 1, 'slug' => 'owner', 'is_system' => 1]],
+            [2, ['id' => 2, 'is_system' => 0]],
+        ]);
         $this->roles->method('getPermissions')->with(2)->willReturn(['employees.update']);
 
         $method = new \ReflectionMethod($this->controller, 'getManagersForReportForm');

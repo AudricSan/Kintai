@@ -53,6 +53,5 @@ Au-delà de `scripts/db-migrate.php` (voir [Stratégie de base de données](data
 - **`photo-retention.php`** — purge les photos de magasin uploadées au-delà de la fenêtre de rétention configurable (réglages `photo_retention_days`/`photo_cleanup_delay`).
 - **`consolidate-daily-photo-reports.php`** — fusionne rétroactivement les envois de photos du même jour/magasin en un seul rapport (`--dry-run` disponible) ; voir `StorePhotoConsolidationService`.
 - **`auto-validate-reports.php`** — valide automatiquement les rapports journaliers restés non validés après l'heure limite du magasin ; aussi exposé comme endpoint HTTP protégé par token (`/cron/auto-validate`) pour les planificateurs externes.
-- **`migrate-roles.php`** — reconstitue `role_assignments` à partir des colonnes historiques `users.is_admin`/`store_user.role` (`--dry-run` disponible), dans le cadre de la migration RBAC en cours.
 - **`create-cron-token.php`** — émet un token pour le lanceur cron générique (`/cron/run/{job}`).
 - **`seed-demo-data.php`** — génère des données d'exemple réalistes sur l'ensemble des bundles pour les tests locaux (`--force` pour reseeder).

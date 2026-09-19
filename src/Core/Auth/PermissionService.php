@@ -158,21 +158,21 @@ final class PermissionService
     }
 
     /**
-     * Identifiants des utilisateurs détenant le rôle système Owner en portée
-     * globale — remplace le filtre historique sur la colonne legacy
+     * Identifiants des utilisateurs détenant un rôle système (Owner) en
+     * portée globale — remplace le filtre historique sur la colonne legacy
      * users.is_admin (ex. la liste des responsables proposée dans les
-     * formulaires de rapport de démission/salaire).
+     * formulaires de rapport de démission/salaire). Même définition que
+     * AuthService::hasOwnerRole() (rôle is_system en portée globale, pas un
+     * slug codé en dur) pour ne jamais diverger de ce qui fait réellement foi
+     * pour l'autorisation.
      * @return int[]
      */
     public function ownerUserIds(): array
     {
-        $owner = $this->roles->findBySlug('owner');
-        if ($owner === null) {
-            return [];
-        }
         $ids = [];
-        foreach ($this->assignments->findByRole((int) $owner['id']) as $assignment) {
-            if ($assignment['scope_type'] === 'global') {
+        foreach ($this->assignments->findByScope('global', null) as $assignment) {
+            $role = $this->role((int) $assignment['role_id']);
+            if ($role !== null && !empty($role['is_system'])) {
                 $ids[] = (int) $assignment['user_id'];
             }
         }
