@@ -41,7 +41,7 @@ final class BundleSettingsControllerTest extends TestCase
         <?php
         declare(strict_types=1);
         namespace kintai\Bundles\TeamDirectory;
-        use kintai\Core\Bundle;
+        use kintai\Core\BundleContract\Bundle;
         final class TeamDirectoryBundle extends Bundle {
             public function getName(): string { return 'team-directory'; }
             public function getLabel(): string { return 'Fake Team Directory'; }
