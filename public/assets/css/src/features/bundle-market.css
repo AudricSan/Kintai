@@ -12,6 +12,10 @@
     flex-wrap: wrap;
 }
 
+.bundle-market-card {
+    margin-bottom: 0;
+}
+
 .bundle-market-progress.hidden {
     display: none;
 }
