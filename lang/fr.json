@@ -1363,6 +1363,7 @@
     "without_store": "Sans magasin",
     "work_days_col": "J. trav.",
 
+    "footer_tagline": "Plannings, pointage et paie pour équipes multi-boutiques.",
     "footer_nav_heading": "Navigation",
     "footer_legal_heading": "Légal",
     "footer_source_heading": "Code source",
@@ -1373,6 +1374,7 @@
     "footer_contributing": "Contribuer",
     "footer_roadmap": "Roadmap",
     "footer_changelog": "Changelog",
+    "footer_version_title": "Voir les notes de version",
 
     "legal_notice": "Mentions légales",
     "legal_editor_title": "Éditeur",

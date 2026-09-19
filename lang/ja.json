@@ -1363,6 +1363,7 @@
     "without_store": "店舗なし",
     "work_days_col": "勤務日",
 
+    "footer_tagline": "複数店舗のチームのための、シフト管理・勤怠・給与ツール。",
     "footer_nav_heading": "ナビゲーション",
     "footer_legal_heading": "法的情報",
     "footer_source_heading": "ソースコード",
@@ -1373,6 +1374,7 @@
     "footer_contributing": "コントリビュート",
     "footer_roadmap": "ロードマップ",
     "footer_changelog": "更新履歴",
+    "footer_version_title": "リリースノートを見る",
 
     "legal_notice": "法的表示",
     "legal_editor_title": "提供元",

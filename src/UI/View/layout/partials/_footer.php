@@ -3,15 +3,19 @@
  * Footer global de l'application — inclus par layout/app.php (utilisateur
  * connecté) et layout/guest.php (page de connexion / pages publiques).
  * Variables disponibles via ViewRenderer::share() : $BASE_URL, $auth_user,
- * $isManager, $app_subtitle, $app_support_email, $feedback_enabled.
+ * $isManager, $app_subtitle, $app_support_email, $feedback_enabled, $app_version.
  *
  * @var string $BASE_URL
  */
 
 $_ftAuthed = !empty($auth_user['id'] ?? null);
+$_ftIsOwner = !empty($auth_user['is_admin'] ?? null);
 $_ftHomeHref = $_ftAuthed
     ? (!empty($isManager) ? route_url('home') : route_url('employee.dashboard'))
     : route_url('auth.login');
+$_ftVersionHref = $_ftIsOwner
+    ? route_url('admin.update')
+    : 'https://github.com/AudricSan/Kintai#changelog';
 
 $_ftIcon = static function (string $name): string {
     $icons = [
@@ -32,9 +36,15 @@ $_ftIcon = static function (string $name): string {
                 <img src="<?= $BASE_URL ?>/assets/img/mascot/brand-icon.png" alt="" class="app-footer__logo">
                 <span class="app-footer__name">Kintai</span>
             </a>
-            <p class="app-footer__copyright">
-                &copy; <?= date('Y') ?> Kintai<?php if (!empty($app_subtitle)): ?> — <?= htmlspecialchars($app_subtitle, ENT_QUOTES) ?><?php endif; ?>
-            </p>
+            <p class="app-footer__tagline"><?= __('footer_tagline') ?></p>
+            <div class="app-footer__meta">
+                <p class="app-footer__copyright">
+                    &copy; <?= date('Y') ?> Kintai<?php if (!empty($app_subtitle)): ?> — <?= htmlspecialchars($app_subtitle, ENT_QUOTES) ?><?php endif; ?>
+                </p>
+                <?php if (!empty($app_version)): ?>
+                    <a href="<?= $_ftVersionHref ?>" <?= $_ftIsOwner ? '' : 'target="_blank" rel="noopener noreferrer" ' ?>class="app-footer__version" title="<?= __('footer_version_title') ?>">v<?= htmlspecialchars($app_version, ENT_QUOTES) ?></a>
+                <?php endif; ?>
+            </div>
         </div>
 
         <nav class="app-footer__col" aria-label="<?= __('footer_nav_heading') ?>">
@@ -83,6 +93,8 @@ $_ftIcon = static function (string $name): string {
                 <span class="app-footer__icon"><?= $_ftIcon('history') ?></span><?= __('footer_changelog') ?>
             </a>
         </nav>
+
+        <img src="<?= $BASE_URL ?>/assets/img/mascot/footer-fox.png" alt="" class="app-footer__mascot">
 
     </div>
 </footer>

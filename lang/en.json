@@ -1363,6 +1363,7 @@
     "without_store": "Without store",
     "work_days_col": "Work days",
 
+    "footer_tagline": "Scheduling, time tracking and payroll for multi-store teams.",
     "footer_nav_heading": "Navigation",
     "footer_legal_heading": "Legal",
     "footer_source_heading": "Source code",
@@ -1373,6 +1374,7 @@
     "footer_contributing": "Contribute",
     "footer_roadmap": "Roadmap",
     "footer_changelog": "Changelog",
+    "footer_version_title": "View release notes",
 
     "legal_notice": "Legal notice",
     "legal_editor_title": "Publisher",

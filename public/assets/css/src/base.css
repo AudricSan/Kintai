@@ -379,15 +379,6 @@ img {
     margin: 0 0 var(--space-3);
 }
 
-/* ── App Footer ────────────────────────────────── */
-.app-footer {
-    border-top: 1px solid var(--color-border);
-    padding: var(--space-2) var(--space-6);
-    background: var(--color-surface);
-    display: flex;
-    justify-content: flex-end;
-}
-
 /* ── Empty State ───────────────────────────────── */
 .empty-state {
     padding: var(--space-8) var(--space-4);
