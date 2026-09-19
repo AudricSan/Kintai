@@ -17,9 +17,9 @@
 <meta charset="UTF-8">
 <style>
 <?php
-echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-brand.css');
-echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-preview.css');
-echo file_get_contents(dirname(__DIR__, 4) . '/public/assets/css/pdf/pdf-export-table.css');
+echo file_get_contents(BASE_PATH . '/public/assets/css/pdf/pdf-brand.css');
+echo file_get_contents(BASE_PATH . '/public/assets/css/pdf/pdf-preview.css');
+echo file_get_contents(BASE_PATH . '/public/assets/css/pdf/pdf-export-table.css');
 ?>
 </style>
 </head>
