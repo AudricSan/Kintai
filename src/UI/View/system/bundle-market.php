@@ -57,14 +57,18 @@ use kintai\UI\Components\Badge;
                 <?php endif; ?>
 
                 <?php if ($entry['installed_version'] !== null): ?>
-                    <p class="text-sm">
-                        <?= __('bundle_market_installed_version', ['version' => $entry['installed_version']]) ?>
-                        <?php if ($entry['update_available']): ?>
-                            <?= Badge::make(__('bundle_market_update_available', ['version' => $entry['latest_version']]))->success()->sm()->render() ?>
-                        <?php endif; ?>
-                    </p>
+                    <p class="text-sm"><?= __('bundle_market_installed_version', ['version' => $entry['installed_version']]) ?></p>
                 <?php else: ?>
                     <p class="text-sm form-hint"><?= __('bundle_market_not_installed') ?></p>
+                <?php endif; ?>
+
+                <?php if ($entry['latest_version'] !== null): ?>
+                    <p class="text-sm">
+                        <?= __('bundle_market_latest_version', ['version' => $entry['latest_version']]) ?>
+                        <?php if ($entry['update_available']): ?>
+                            <?= Badge::make(__('bundle_market_update_available'))->success()->sm()->render() ?>
+                        <?php endif; ?>
+                    </p>
                 <?php endif; ?>
 
                 <?php if (!$entry['official']): ?>
