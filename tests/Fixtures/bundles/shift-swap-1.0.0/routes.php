@@ -6,9 +6,9 @@ use kintai\Core\Middleware\AuthMiddleware;
 use kintai\Core\Middleware\ApiAuthMiddleware;
 use kintai\Core\Middleware\ApiPermissionMiddleware;
 use kintai\Core\Middleware\PermissionMiddleware;
-use kintai\Bundles\ShiftSwap\Controllers\Web\EmployeeSwapController;
-use kintai\Bundles\ShiftSwap\Controllers\Web\AdminSwapController;
-use kintai\Bundles\ShiftSwap\Controllers\Api\ShiftSwapRequestController as ApiShiftSwapRequestController;
+use kintai\Bundles\Installed\ShiftSwap\Controllers\Web\EmployeeSwapController;
+use kintai\Bundles\Installed\ShiftSwap\Controllers\Web\AdminSwapController;
+use kintai\Bundles\Installed\ShiftSwap\Controllers\Api\ShiftSwapRequestController as ApiShiftSwapRequestController;
 
 /** @var kintai\Core\Router $router */
 /** @var kintai\Core\Container $container */
