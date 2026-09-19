@@ -140,6 +140,8 @@
 
     /* ── Layout ──────────────────────────────────── */
     --topbar-height:    64px;
+    /* Hauteur réelle du bandeau maintenance, mesurée en JS (layout/app.php) — 0 quand il est absent. */
+    --maintenance-banner-h: 0px;
     /* Chip "toujours sombre" (tooltips, etc.) — indépendant du thème clair/sombre de l'appli. */
     --color-sidebar-bg: #1d1b2e;
 

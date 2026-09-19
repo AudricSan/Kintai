@@ -78,6 +78,15 @@ img {
     min-height: 100vh;
 }
 
+/* ── En-tête collant : bandeau maintenance + topbar ───
+   Un seul wrapper sticky pour que le bandeau reste visible au scroll
+   en même temps que la topbar, empilés dans l'ordre du flux. */
+.app-sticky-header {
+    position: sticky;
+    top: 0;
+    z-index: 200;
+}
+
 /* ── Topbar : marque + navigation + actions ───────
    Remplace l'ancien duo sidebar fixe + topbar : une seule barre
    horizontale, toute la largeur de l'écran reste au contenu. */
@@ -89,9 +98,6 @@ img {
     align-items: center;
     gap: var(--space-2);
     padding: 0 var(--space-6);
-    position: sticky;
-    top: 0;
-    z-index: 200;
 }
 
 .topbar-brand {
