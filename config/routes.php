@@ -224,7 +224,7 @@ $router->group('/admin', function ($r) {
 
     // Rapports d'embauche : bundle distribué hors monorepo, routes chargées depuis storage/bundles/hiring-report/ une fois installé (voir docs/architecture.md)
 
-    // Démission : voir src/Bundles/ResignationReport/routes.php
+    // Démission : bundle distribué hors monorepo, routes chargées depuis storage/bundles/resignation-report/ une fois installé (voir docs/architecture.md)
     // Salaire : voir src/Bundles/SalaryReport/routes.php
 
     // Shift types
