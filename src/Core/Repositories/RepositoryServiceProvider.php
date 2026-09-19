@@ -59,7 +59,13 @@ final class RepositoryServiceProvider extends ServiceProvider
         // Démission : voir src/Bundles/ResignationReport/ResignationReportBundle.php
         // Salaire : voir src/Bundles/SalaryReport/SalaryReportBundle.php
 
-        // Photos : voir src/Bundles/StorePhoto/StorePhotoBundle.php
+        // StorePhotoRepositoryInterface reste ici (même raison que Timeclock/DailyReport/
+        // ShiftSwap ci-dessus) : GithubUpdateService et le script CLI
+        // consolidate-daily-photo-reports.php en dépendent directement, et ne doivent pas
+        // cesser de fonctionner si le bundle "store-photos" est désactivé ou désinstallé.
+        // Le bundle lui-même (legacy ou distribué, voir kintai-bundle-store-photos) n'a
+        // plus besoin de la lier.
+        $this->container->singleton(StorePhotoRepositoryInterface::class, fn() => new DatabaseStorePhotoRepository());
         // Feedback : bundle pilote distribué hors monorepo (voir docs/architecture.md
         // "Modular Bundles") — le binding est fait par FeedbackBundle::register() lui-même,
         // une fois le bundle installé dans storage/bundles/feedback/.

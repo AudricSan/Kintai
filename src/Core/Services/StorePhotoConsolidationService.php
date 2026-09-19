@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace kintai\Bundles\StorePhoto\Services;
+namespace kintai\Core\Services;
 
 use kintai\Core\Repositories\StorePhotoRepositoryInterface;
 
@@ -12,7 +12,12 @@ use kintai\Core\Repositories\StorePhotoRepositoryInterface;
  * StorePhotoController::store() applique désormais aux nouveaux envois (voir
  * StorePhotoRepositoryInterface::findTodaySubmission()) n'a d'effet qu'à partir
  * de son déploiement ; ce service applique la même règle une fois aux envois
- * déjà existants (utilisé par scripts/consolidate-daily-photo-reports.php).
+ * déjà existants (utilisé par scripts/consolidate-daily-photo-reports.php et
+ * par GithubUpdateService::performUpdate()).
+ *
+ * Vit dans Core (et non dans le bundle StorePhoto, comme avant son extraction
+ * hors du monorepo) car ses deux seuls appelants sont Core-résidents ; le
+ * bundle lui-même (StorePhotoController) ne l'utilise pas.
  *
  * Pour chaque groupe (store_id, jour de created_at) comptant plusieurs envois,
  * le plus ancien devient le rapport unique du jour ; les photos et notes des

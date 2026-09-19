@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use kintai\Core\Middleware\AuthMiddleware;
 use kintai\Core\Middleware\PermissionMiddleware;
-use kintai\Bundles\StorePhoto\Controllers\Web\StorePhotoController;
+use kintai\Bundles\Installed\StorePhoto\Controllers\Web\StorePhotoController;
 
 /** @var kintai\Core\Router $router */
 /** @var kintai\Core\Container $container */

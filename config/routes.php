@@ -295,7 +295,7 @@ $router->group('/admin', function ($r) {
     $r->post('/update/migrate',      [BackupController::class, 'migrate'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.update.migrate', permission: 'public');
     $r->post('/update/channel',      [BackupController::class, 'saveChannel'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.update.channel', permission: 'public');
 
-    // Photos : voir src/Bundles/StorePhoto/routes.php
+    // Photos : bundle distribué hors monorepo, routes chargées depuis storage/bundles/store-photos/ une fois installé (voir docs/architecture.md)
 
     // Langues & traductions (Owner uniquement)
     $r->get('/languages',                       [LanguageController::class, 'index'],        middleware: [OwnerOnlyMiddleware::class], name: 'admin.languages', permission: 'public');

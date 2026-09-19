@@ -1,4 +1,6 @@
 {
+    "bundle_store_photos": "店舗写真",
+    "bundle_store_photos_desc": "売場の週次写真の提出と管理。",
     "photo_cleanup_delay": "クリーンアップ遅延（日）",
     "photo_cleanup_delay_hint": "圧縮後、完全削除までの日数。",
     "photo_confirm_delete": "この投稿を削除してもよろしいですか？",

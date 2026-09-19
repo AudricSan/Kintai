@@ -1,4 +1,6 @@
 {
+    "bundle_store_photos": "Photos de magasin",
+    "bundle_store_photos_desc": "Envoi et suivi de photos hebdomadaires de l'espace de vente.",
     "photo_cleanup_delay": "Délai de nettoyage (jours)",
     "photo_cleanup_delay_hint": "Jours après compression avant suppression définitive.",
     "photo_confirm_delete": "Êtes-vous sûr de vouloir supprimer cet envoi ?",
