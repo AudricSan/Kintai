@@ -16,12 +16,12 @@ if (!defined('BASE_PATH')) {
  * Vérifie, sur les vrais fichiers lang/*.json (pas des fixtures synthétiques), que la
  * migration des clés bundle-exclusives hors du Core n'a laissé aucun trou : chaque
  * bundle migré résout bien ses propres clés, et le Core reste accessible en fallback
- * pour les clés partagées. Deux familles de bundles ici :
- *  - legacyBundleKeyProvider() — bundles encore dans le monorepo (src/Bundles/<Name>/lang/) ;
- *  - distributedBundleKeyProvider() — bundles extraits vers leur propre dépôt (voir
- *    docs/architecture.md "Modular Bundles"), dont tests/Fixtures/bundles/<slug>-<version>/
- *    est une copie fidèle utilisée à la fois comme fixture de test et comme source ayant
- *    servi à peupler le dépôt externe.
+ * pour les clés partagées. Depuis que TeamDirectory (le dernier bundle du monorepo) a
+ * été extrait vers son propre dépôt, plus aucun bundle n'est en legacy dans
+ * src/Bundles/ : tous sont couverts par distributedBundleKeyProvider() (voir
+ * docs/architecture.md "Modular Bundles"), dont tests/Fixtures/bundles/<slug>-<version>/
+ * est une copie fidèle utilisée à la fois comme fixture de test et comme source ayant
+ * servi à peupler le dépôt externe.
  */
 final class BundleTranslationsRealFilesTest extends TestCase
 {
@@ -30,14 +30,6 @@ final class BundleTranslationsRealFilesTest extends TestCase
     protected function setUp(): void
     {
         $this->repo = new JsonTranslationRepository(BASE_PATH . '/lang', BASE_PATH . '/src/Bundles');
-    }
-
-    /** @return array<string, array{0: string, 1: string}> bundle => [clé migrée, sous-répertoire sous src/Bundles/] */
-    public static function legacyBundleKeyProvider(): array
-    {
-        return [
-            'TeamDirectory'     => ['bundle_team_directory', 'TeamDirectory'],
-        ];
     }
 
     /** @return array<string, array{0: string, 1: string}> bundle => [clé migrée, dossier sous tests/Fixtures/bundles/] */
@@ -55,23 +47,8 @@ final class BundleTranslationsRealFilesTest extends TestCase
             'StorePhoto'        => ['photo_upload', 'store-photos-1.0.0'],
             'Timeclock'         => ['bundle_timeclock', 'timeclock-1.0.0'],
             'TimeOff'           => ['bundle_timeoff', 'timeoff-1.0.0'],
+            'TeamDirectory'     => ['bundle_team_directory', 'team-directory-1.0.0'],
         ];
-    }
-
-    #[DataProvider('legacyBundleKeyProvider')]
-    public function testEachLegacyBundleOwnsItsMigratedKeyInEveryLocale(string $key, string $bundleDir): void
-    {
-        foreach (['fr', 'en', 'ja'] as $locale) {
-            $bundleFile = BASE_PATH . "/src/Bundles/{$bundleDir}/lang/{$locale}.json";
-            $this->assertFileExists($bundleFile, "Fichier de langue {$locale} manquant pour {$bundleDir}");
-
-            $bundleData = json_decode((string) file_get_contents($bundleFile), true);
-            $this->assertArrayHasKey($key, $bundleData, "{$key} absent de {$bundleFile}");
-            $this->assertNotSame('', $bundleData[$key]);
-
-            // Et la clé doit rester résolvable via le dépôt agrégé (Core + bundles).
-            $this->assertSame($bundleData[$key], $this->repo->findValue($locale, $key));
-        }
     }
 
     #[DataProvider('distributedBundleKeyProvider')]
@@ -92,7 +69,7 @@ final class BundleTranslationsRealFilesTest extends TestCase
 
     public function testCoreLangFilesNoLongerContainMigratedBundleKeys(): void
     {
-        $allKeys = array_merge(self::legacyBundleKeyProvider(), self::distributedBundleKeyProvider());
+        $allKeys = self::distributedBundleKeyProvider();
 
         foreach (['fr', 'en', 'ja'] as $locale) {
             $core = json_decode((string) file_get_contents(BASE_PATH . "/lang/{$locale}.json"), true);

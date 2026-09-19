@@ -27,16 +27,24 @@ final class BundleDiscoveryServiceTest extends TestCase
         $this->emptyInstalledStore = new InstalledBundleManifestStore($this->emptyInstalledDir . '/installed.json');
     }
 
-    public function testDiscoversRealBundlesShippedWithTheRepo(): void
+    public function testDiscoversALegacyBundleFromTheGivenDirectory(): void
     {
-        $service = new BundleDiscoveryService(null, $this->emptyInstalledStore, $this->emptyInstalledDir);
+        // Depuis que TeamDirectory (le dernier bundle du monorepo) a été extrait vers
+        // son propre dépôt, plus aucun bundle legacy n'est réellement présent dans
+        // src/Bundles/ : ce test vérifie le mécanisme via un bundle synthétique plutôt
+        // que contre le vrai dossier du dépôt. La découverte legacy reste utile pour un
+        // bundle tiers déposé manuellement dans src/Bundles/ (voir BundleDiscoveryService).
+        $dir = sys_get_temp_dir() . '/kintai-bundle-discovery-' . uniqid();
+        $this->writeFakeLegacyBundle($dir, 'FakeLegacyBundle', 'fake-legacy-bundle');
+
+        $service = new BundleDiscoveryService($dir, $this->emptyInstalledStore, $this->emptyInstalledDir);
 
         $discovered = $service->discover();
 
-        $this->assertArrayHasKey('team-directory', $discovered);
-        $this->assertNotSame('', $discovered['team-directory']['label']);
-        $this->assertTrue(is_subclass_of($discovered['team-directory']['class'], Bundle::class));
-        $this->assertSame('0.0.0', $discovered['team-directory']['version']);
+        $this->assertArrayHasKey('fake-legacy-bundle', $discovered);
+        $this->assertNotSame('', $discovered['fake-legacy-bundle']['label']);
+        $this->assertTrue(is_subclass_of($discovered['fake-legacy-bundle']['class'], Bundle::class));
+        $this->assertSame('0.0.0', $discovered['fake-legacy-bundle']['version']);
     }
 
     public function testIgnoresDirectoriesWithNoMatchingBundleClass(): void
@@ -89,20 +97,23 @@ final class BundleDiscoveryServiceTest extends TestCase
 
     public function testLegacySlugWinsOverAnInstalledBundleWithTheSameSlug(): void
     {
+        $legacyDir = sys_get_temp_dir() . '/kintai-bundle-discovery-' . uniqid();
+        $this->writeFakeLegacyBundle($legacyDir, 'FakeCollisionBundle', 'fake-collision-bundle');
+
         $installedDir = sys_get_temp_dir() . '/kintai-installed-' . uniqid();
-        // "team-directory" existe déjà en legacy dans src/Bundles/ : une collision ne
-        // doit jamais faire gagner la version installée dynamiquement.
-        $this->writeFakeInstalledBundle($installedDir, 'team-directory', '9.9.9');
+        // Une collision entre un slug legacy et un slug installé dynamiquement ne
+        // doit jamais faire gagner la version installée.
+        $this->writeFakeInstalledBundle($installedDir, 'fake-collision-bundle', '9.9.9');
 
         $store = new InstalledBundleManifestStore($installedDir . '/installed.json');
-        $store->setActiveVersion('team-directory', '9.9.9');
+        $store->setActiveVersion('fake-collision-bundle', '9.9.9');
 
-        $service = new BundleDiscoveryService(null, $store, $installedDir);
+        $service = new BundleDiscoveryService($legacyDir, $store, $installedDir);
 
         $discovered = $service->discover();
 
-        $this->assertArrayHasKey('team-directory', $discovered);
-        $this->assertNotSame('9.9.9', $discovered['team-directory']['version']);
+        $this->assertArrayHasKey('fake-collision-bundle', $discovered);
+        $this->assertNotSame('9.9.9', $discovered['fake-collision-bundle']['version']);
     }
 
     private function writeFakeInstalledBundle(string $installedDir, string $slug, string $version): void
@@ -133,5 +144,26 @@ final class BundleDiscoveryServiceTest extends TestCase
         PHP);
 
         require $bundleRoot . '/src/' . $className . 'Bundle.php';
+    }
+
+    private function writeFakeLegacyBundle(string $legacyDir, string $dirName, string $slug): void
+    {
+        $namespace = 'kintai\\Bundles\\' . $dirName;
+        $bundleRoot = $legacyDir . '/' . $dirName;
+        mkdir($bundleRoot, 0777, true);
+
+        file_put_contents($bundleRoot . '/' . $dirName . 'Bundle.php', <<<PHP
+        <?php
+        declare(strict_types=1);
+        namespace {$namespace};
+        use kintai\Core\Bundle;
+        final class {$dirName}Bundle extends Bundle {
+            public function getName(): string { return '{$slug}'; }
+            public function getLabel(): string { return 'Fake Legacy Bundle'; }
+            public function register(): void {}
+        }
+        PHP);
+
+        require $bundleRoot . '/' . $dirName . 'Bundle.php';
     }
 }

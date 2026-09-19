@@ -20,7 +20,37 @@ if (!defined('BASE_PATH')) {
 
 final class BundleSettingsControllerTest extends TestCase
 {
+    private static string $legacyBundlesDir;
+
     private AppSettingsRepositoryInterface&MockObject $appSettings;
+
+    /**
+     * Depuis que TeamDirectory (le dernier bundle du monorepo) a été extrait vers son
+     * propre dépôt, plus aucun bundle legacy n'est réellement présent dans src/Bundles/ :
+     * ce test scanne un dossier synthétique contenant un faux bundle "team-directory"
+     * plutôt que le vrai dossier du dépôt (voir docs/architecture.md "Modular Bundles").
+     */
+    public static function setUpBeforeClass(): void
+    {
+        self::$legacyBundlesDir = sys_get_temp_dir() . '/kintai-bundle-settings-legacy-' . uniqid();
+        $bundleRoot = self::$legacyBundlesDir . '/TeamDirectory';
+        mkdir($bundleRoot, 0777, true);
+
+        $file = $bundleRoot . '/TeamDirectoryBundle.php';
+        file_put_contents($file, <<<'PHP'
+        <?php
+        declare(strict_types=1);
+        namespace kintai\Bundles\TeamDirectory;
+        use kintai\Core\Bundle;
+        final class TeamDirectoryBundle extends Bundle {
+            public function getName(): string { return 'team-directory'; }
+            public function getLabel(): string { return 'Fake Team Directory'; }
+            public function register(): void {}
+        }
+        PHP);
+
+        require $file;
+    }
 
     protected function setUp(): void
     {
@@ -35,11 +65,6 @@ final class BundleSettingsControllerTest extends TestCase
         $_POST = [];
     }
 
-    /**
-     * Utilise le vrai BundleDiscoveryService (scan de src/Bundles réel) : team-directory
-     * y reste présent sur le disque (contrairement aux bundles déjà extraits vers
-     * leur propre dépôt — voir docs/architecture.md "Modular Bundles").
-     */
     private function makeController(FeatureManager $features): BundleSettingsController
     {
         return new BundleSettingsController(
@@ -47,7 +72,7 @@ final class BundleSettingsControllerTest extends TestCase
             $this->appSettings,
             $features,
             new AuditLogger(),
-            new BundleDiscoveryService(),
+            new BundleDiscoveryService(self::$legacyBundlesDir),
         );
     }
 
