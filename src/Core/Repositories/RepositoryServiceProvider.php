@@ -63,7 +63,7 @@ final class RepositoryServiceProvider extends ServiceProvider
         // distribué hors monorepo (kintai-bundle-hiring-report) — voir docs/architecture.md.
         $this->container->singleton(HiringReportRepositoryInterface::class, fn() => new DatabaseHiringReportRepository());
         // Démission : bundle distribué hors monorepo (kintai-bundle-resignation-report), voir docs/architecture.md
-        // Salaire : voir src/Bundles/SalaryReport/SalaryReportBundle.php
+        // Salaire : bundle distribué hors monorepo (kintai-bundle-salary-report), voir docs/architecture.md
 
         // Photos : voir src/Bundles/StorePhoto/StorePhotoBundle.php
         // Feedback : bundle pilote distribué hors monorepo (voir docs/architecture.md

@@ -107,7 +107,7 @@ ob_start();
 // (données fournies par reportShowExtras()/StoreStatsService::buildPayslipData(),
 // recalculées à la volée, comme l'ancienne fiche de paie autonome).
 if (isset($shiftRows)):
-    include __DIR__ . '/../../../UI/View/_partials/_payslip-helpers.php';
+    include BASE_PATH . '/src/UI/View/_partials/_payslip-helpers.php';
     ob_start();
     ?>
     <?php if (empty($shiftRows)): ?>
