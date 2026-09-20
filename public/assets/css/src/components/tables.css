@@ -346,6 +346,8 @@ th.td-center {
     display: flex;
     justify-content: center;
     padding: var(--space-4) 0;
+    margin-top: var(--space-2);
+    border-top: 1px solid var(--color-border);
 }
 
 .pagination {
