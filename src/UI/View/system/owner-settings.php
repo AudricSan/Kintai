@@ -50,7 +50,7 @@ echo Flash::fromQuery('success', ['default' => __('save_success')])->render();
 
 <?php include __DIR__ . '/../_partials/_settings-tabs.php'; ?>
 
-< method="POST" action="<?= route_url('admin.owner_settings') ?>">
+<form method="POST" action="<?= route_url('admin.owner_settings') ?>">
     <?= csrf_field() ?>
 
     <?php
