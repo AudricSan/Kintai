@@ -7,8 +7,11 @@ namespace kintai\Tests\Unit\Controller\Web\System;
 use kintai\Core\BundleDiscoveryService;
 use kintai\Core\FeatureManager;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
+use kintai\Core\Repositories\StoreRepositoryInterface;
+use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\PlanLimitService;
 use kintai\UI\Controller\Web\System\BundleSettingsController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -27,15 +30,18 @@ final class BundleSettingsControllerTest extends TestCase
     /**
      * Depuis que TeamDirectory (le dernier bundle du monorepo) a été extrait vers son
      * propre dépôt, plus aucun bundle legacy n'est réellement présent dans src/Bundles/ :
-     * ce test scanne un dossier synthétique contenant un faux bundle "team-directory"
-     * plutôt que le vrai dossier du dépôt (voir docs/architecture.md "Modular Bundles").
+     * ce test scanne un dossier synthétique contenant de faux bundles plutôt que le vrai
+     * dossier du dépôt (voir docs/architecture.md "Modular Bundles"). Cinq bundles sont
+     * créés (team-directory + fake-bundle-{2..5}) pour pouvoir tester le quota freemium
+     * (4 bundles actifs max) avec de vrais slugs découverts, sans mocker PlanLimitService
+     * (classe `final`, non mockable).
      */
     public static function setUpBeforeClass(): void
     {
         self::$legacyBundlesDir = sys_get_temp_dir() . '/kintai-bundle-settings-legacy-' . uniqid();
+
         $bundleRoot = self::$legacyBundlesDir . '/TeamDirectory';
         mkdir($bundleRoot, 0777, true);
-
         $file = $bundleRoot . '/TeamDirectoryBundle.php';
         file_put_contents($file, <<<'PHP'
         <?php
@@ -48,8 +54,25 @@ final class BundleSettingsControllerTest extends TestCase
             public function register(): void {}
         }
         PHP);
-
         require $file;
+
+        for ($i = 2; $i <= 5; $i++) {
+            $bundleRoot = self::$legacyBundlesDir . '/FakeBundle' . $i;
+            mkdir($bundleRoot, 0777, true);
+            $file = $bundleRoot . '/FakeBundle' . $i . 'Bundle.php';
+            file_put_contents($file, <<<PHP
+            <?php
+            declare(strict_types=1);
+            namespace kintai\Bundles\FakeBundle{$i};
+            use kintai\Core\BundleContract\Bundle;
+            final class FakeBundle{$i}Bundle extends Bundle {
+                public function getName(): string { return 'fake-bundle-{$i}'; }
+                public function getLabel(): string { return 'Fake Bundle {$i}'; }
+                public function register(): void {}
+            }
+            PHP);
+            require $file;
+        }
     }
 
     protected function setUp(): void
@@ -65,7 +88,7 @@ final class BundleSettingsControllerTest extends TestCase
         $_POST = [];
     }
 
-    private function makeController(FeatureManager $features): BundleSettingsController
+    private function makeController(FeatureManager $features, ?PlanLimitService $planLimits = null): BundleSettingsController
     {
         return new BundleSettingsController(
             new ViewRenderer(sys_get_temp_dir()),
@@ -73,6 +96,10 @@ final class BundleSettingsControllerTest extends TestCase
             $features,
             new AuditLogger(),
             new BundleDiscoveryService(self::$legacyBundlesDir),
+            $planLimits ?? new PlanLimitService(
+                $this->createMock(StoreRepositoryInterface::class),
+                $this->createMock(UserRepositoryInterface::class),
+            ),
         );
     }
 
@@ -110,6 +137,49 @@ final class BundleSettingsControllerTest extends TestCase
         $this->assertNotNull($captured);
         sort($captured);
         $this->assertSame(['team-directory'], $captured);
+    }
+
+    public function testSaveBlocksWhenFreePlanBundleQuotaExceeded(): void
+    {
+        // Plan gratuit = 4 bundles actifs max (PlanLimitService) ; 5 sont découverts dans
+        // le fixture (team-directory + fake-bundle-{2..5}), donc tout cocher dépasse le quota.
+        $controller = $this->makeController(new FeatureManager([]));
+
+        $_POST = [
+            'bundle_team-directory' => '1',
+            'bundle_fake-bundle-2'  => '1',
+            'bundle_fake-bundle-3'  => '1',
+            'bundle_fake-bundle-4'  => '1',
+            'bundle_fake-bundle-5'  => '1',
+        ];
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+
+        $this->appSettings->expects($this->never())->method('set');
+
+        $response = $controller->save($req);
+
+        $this->assertSame(302, $response->status());
+    }
+
+    public function testSaveAllowsExactlyFourBundlesOnFreePlan(): void
+    {
+        $controller = $this->makeController(new FeatureManager([]));
+
+        $_POST = [
+            'bundle_team-directory' => '1',
+            'bundle_fake-bundle-2'  => '1',
+            'bundle_fake-bundle-3'  => '1',
+            'bundle_fake-bundle-4'  => '1',
+        ];
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+
+        $this->appSettings->expects($this->once())->method('set');
+
+        $response = $controller->save($req);
+
+        $this->assertSame(302, $response->status());
     }
 
     public function testOfficialBundlesRegistryListsBundlesShippedWithTheRepo(): void

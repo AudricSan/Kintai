@@ -124,6 +124,19 @@ final class DatabaseStoreRepositoryTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
+    // countActive()
+    // -------------------------------------------------------------------------
+
+    public function testCountActiveCountsOnlyActiveStores(): void
+    {
+        EloquentStore::create(['name' => 'S1', 'code' => 'S1', 'is_active' => 1]);
+        EloquentStore::create(['name' => 'S2', 'code' => 'S2', 'is_active' => 0]);
+        EloquentStore::create(['name' => 'S3', 'code' => 'S3', 'is_active' => 1, 'deleted_at' => date('Y-m-d H:i:s')]);
+
+        $this->assertSame(1, $this->repo->countActive());
+    }
+
+    // -------------------------------------------------------------------------
     // save()
     // -------------------------------------------------------------------------
 

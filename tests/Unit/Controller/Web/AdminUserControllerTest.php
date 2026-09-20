@@ -23,6 +23,7 @@ use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\Log;
+use kintai\Core\Services\PlanLimitService;
 use kintai\Core\Services\RoleAssignmentSyncService;
 use kintai\UI\Controller\Web\Staff\AdminUserController;
 use kintai\UI\ViewRenderer;
@@ -73,6 +74,7 @@ final class AdminUserControllerTest extends TestCase
             new AuditLogger(),
             new RoleAssignmentSyncService($this->roles, $this->roleAssignments),
             new PermissionService($this->roleAssignments, $this->roles),
+            new PlanLimitService($this->stores, $this->users),
         );
     }
 
@@ -272,6 +274,26 @@ final class AdminUserControllerTest extends TestCase
         $data = json_decode($response->body(), true);
         $this->assertTrue($data['success']);
         $this->assertSame(7, $data['user']['id']);
+    }
+
+    public function testQuickCreateUserFailsWhenFreePlanEmployeeLimitReached(): void
+    {
+        $this->users->method('countActive')->willReturn(15);
+        $req = $this->makePostRequest([
+            'display_name' => 'John Doe',
+            'first_name'   => 'John',
+            'last_name'    => 'Doe',
+            'furigana_last_name'  => 'ドウ',
+            'furigana_first_name' => 'ジョン',
+        ]);
+        $this->users->expects($this->never())->method('save');
+
+        $response = $this->controller->quickCreateUser($req);
+
+        $this->assertSame(403, $response->status());
+        $data = json_decode($response->body(), true);
+        $this->assertFalse($data['success']);
+        $this->assertSame('plan_limit_employees', $data['error']);
     }
 
     public function testQuickCreateUserFailsWhenNameMissing(): void
@@ -634,6 +656,24 @@ final class AdminUserControllerTest extends TestCase
     // -------------------------------------------------------------------------
     // storeUser / updateUser — conflit d'email
     // -------------------------------------------------------------------------
+
+    public function testStoreUserRedirectsWithErrorWhenFreePlanEmployeeLimitReached(): void
+    {
+        $this->users->method('countActive')->willReturn(15);
+        $req = $this->makePostRequest([
+            'display_name' => 'John',
+            'last_name'    => 'Doe',
+            'first_name'   => 'John',
+            'furigana_last_name'  => 'ドウ',
+            'furigana_first_name' => 'ジョン',
+            'email'        => 'new@example.com',
+        ]);
+        $this->users->expects($this->never())->method('save');
+
+        $response = $this->controller->storeUser($req);
+
+        $this->assertSame(302, $response->status());
+    }
 
     public function testStoreUserRedirectsWithErrorOnEmailConflict(): void
     {

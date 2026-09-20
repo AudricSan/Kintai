@@ -7,6 +7,7 @@ namespace kintai\UI\Controller\Web\Staff;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
+use kintai\Core\Exceptions\PlanLimitExceededException;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
@@ -19,6 +20,7 @@ use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\EmployeeStatsService;
 use kintai\Core\Services\PdfCjkFontResolver;
+use kintai\Core\Services\PlanLimitService;
 use kintai\Core\Services\RoleAssignmentSyncService;
 use kintai\UI\ViewRenderer;
 use kintai\UI\Controller\Web\HasAdminAccess;
@@ -38,6 +40,7 @@ final class AdminUserController
         private readonly AuditLogger $auditLogger,
         private readonly RoleAssignmentSyncService $roleSync,
         private readonly PermissionService $permissions,
+        private readonly PlanLimitService $planLimits,
     ) {}
 
     /**
@@ -376,6 +379,12 @@ final class AdminUserController
 
     public function storeUser(Request $request): Response
     {
+        try {
+            $this->planLimits->assertCanCreateEmployee();
+        } catch (PlanLimitExceededException) {
+            return Response::redirect($this->base() . '/admin/users/create?error=plan_limit_employees');
+        }
+
         $email = trim($request->post('email', ''));
         if ($email !== '' && $this->users->findByEmail($email) !== null) {
             return Response::redirect($this->base() . '/admin/users/create?error=email_taken');
@@ -483,6 +492,12 @@ final class AdminUserController
      */
     public function quickCreateUser(Request $request): Response
     {
+        try {
+            $this->planLimits->assertCanCreateEmployee();
+        } catch (PlanLimitExceededException) {
+            return Response::json(['success' => false, 'error' => 'plan_limit_employees'], 403);
+        }
+
         $displayName = trim($request->post('display_name', ''));
         $firstName   = trim($request->post('first_name', ''));
         $lastName    = trim($request->post('last_name', ''));
