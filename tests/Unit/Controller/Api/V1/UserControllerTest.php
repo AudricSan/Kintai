@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Controller\Api\V1;
 
 use kintai\Core\Exceptions\PlanLimitExceededException;
+use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\LicenseClientService;
 use kintai\Core\Services\Log;
 use kintai\Core\Services\PlanLimitService;
 use kintai\UI\Controller\Api\V1\UserController;
@@ -27,7 +29,11 @@ final class UserControllerTest extends TestCase
         $this->controller = new UserController(
             $this->users,
             new AuditLogger(),
-            new PlanLimitService($stores, $this->users),
+            new PlanLimitService(
+                $stores,
+                $this->users,
+                new LicenseClientService($this->createMock(AppSettingsRepositoryInterface::class), ['base_url' => '', 'api_key' => '']),
+            ),
         );
     }
 

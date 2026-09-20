@@ -28,6 +28,20 @@ final class HttpFetcher
         return $this->getViaStreamWrapper($url, $headers, $timeoutSeconds);
     }
 
+    public function post(string $url, array $headers, string $jsonBody, int $timeoutSeconds = 10): ?string
+    {
+        if (function_exists('curl_init')) {
+            return $this->postViaCurl($url, $headers, $jsonBody, $timeoutSeconds);
+        }
+
+        if (!(bool) ini_get('allow_url_fopen')) {
+            Log::warning('http_fetcher_no_method', ['url' => $url]);
+            return null;
+        }
+
+        return $this->postViaStreamWrapper($url, $headers, $jsonBody, $timeoutSeconds);
+    }
+
     public function downloadToFile(string $url, string $destination, array $headers = [], int $timeoutSeconds = 60): bool
     {
         $dir = dirname($destination);
@@ -82,6 +96,63 @@ final class HttpFetcher
             'http' => [
                 'method'        => 'GET',
                 'header'        => implode("\r\n", $headers),
+                'timeout'       => $timeoutSeconds,
+                'ignore_errors' => true,
+            ],
+            'ssl' => [
+                'verify_peer'      => true,
+                'verify_peer_name' => true,
+            ],
+        ]);
+
+        $response = @file_get_contents($url, false, $context);
+        if ($response === false) {
+            $error = error_get_last();
+            Log::warning('http_fetcher_stream_failed', ['url' => $url, 'php_error' => $error['message'] ?? 'raison inconnue']);
+            return null;
+        }
+
+        return $response;
+    }
+
+    private function postViaCurl(string $url, array $headers, string $jsonBody, int $timeoutSeconds): ?string
+    {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $jsonBody,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTPHEADER     => array_merge(['Content-Type: application/json'], $headers),
+            CURLOPT_TIMEOUT        => $timeoutSeconds,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+        ]);
+        $body = curl_exec($ch);
+        if ($body === false) {
+            $error = curl_error($ch);
+            curl_close($ch);
+            Log::warning('http_fetcher_curl_failed', ['url' => $url, 'curl_error' => $error]);
+            return null;
+        }
+        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($status >= 400) {
+            Log::warning('http_fetcher_http_error', ['url' => $url, 'status' => $status]);
+            return null;
+        }
+
+        return (string) $body;
+    }
+
+    private function postViaStreamWrapper(string $url, array $headers, string $jsonBody, int $timeoutSeconds): ?string
+    {
+        $context = stream_context_create([
+            'http' => [
+                'method'        => 'POST',
+                'header'        => implode("\r\n", array_merge(['Content-Type: application/json'], $headers)),
+                'content'       => $jsonBody,
                 'timeout'       => $timeoutSeconds,
                 'ignore_errors' => true,
             ],

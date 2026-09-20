@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Core\Services;
 
+use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Repositories\LanguageRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Exceptions\PlanLimitExceededException;
+use kintai\Core\Services\LicenseClientService;
 use kintai\Core\Services\PlanLimitService;
 use kintai\Core\Services\StoreService;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -31,7 +33,11 @@ final class StoreServiceTest extends TestCase
             $this->createMock(StoreUserRepositoryInterface::class),
             $this->createMock(UserRepositoryInterface::class),
             $languages,
-            new PlanLimitService($this->stores, $this->createMock(UserRepositoryInterface::class)),
+            new PlanLimitService(
+                $this->stores,
+                $this->createMock(UserRepositoryInterface::class),
+                new LicenseClientService($this->createMock(AppSettingsRepositoryInterface::class), ['base_url' => '', 'api_key' => '']),
+            ),
         );
     }
 

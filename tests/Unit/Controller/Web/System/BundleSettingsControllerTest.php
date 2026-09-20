@@ -11,6 +11,7 @@ use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\LicenseClientService;
 use kintai\Core\Services\PlanLimitService;
 use kintai\UI\Controller\Web\System\BundleSettingsController;
 use kintai\UI\ViewRenderer;
@@ -99,6 +100,7 @@ final class BundleSettingsControllerTest extends TestCase
             $planLimits ?? new PlanLimitService(
                 $this->createMock(StoreRepositoryInterface::class),
                 $this->createMock(UserRepositoryInterface::class),
+                new LicenseClientService($this->createMock(AppSettingsRepositoryInterface::class), ['base_url' => '', 'api_key' => '']),
             ),
         );
     }

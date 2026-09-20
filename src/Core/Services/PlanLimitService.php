@@ -9,9 +9,11 @@ use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 
 /**
- * Applique les limites du plan gratuit (freemium). Phase 1 : plan "free" codé
- * en dur, sans licence distante — un futur client de licence (phase 2) pourra
- * remonter un plan payant qui lève ces limites, sans changer les points d'appel.
+ * Applique les limites du plan gratuit (freemium). Une licence payante active
+ * (`LicenseClientService::isPaidPlanActive()`, lecture locale sans réseau)
+ * lève toutes les limites ci-dessous — le serveur de licence distant ne
+ * renvoie pas de quotas par plan (voir docs/architecture.md "Licensing &
+ * Freemium"), donc tout plan payant vaut illimité pour l'instant.
  */
 final class PlanLimitService
 {
@@ -22,6 +24,7 @@ final class PlanLimitService
     public function __construct(
         private readonly StoreRepositoryInterface $stores,
         private readonly UserRepositoryInterface $users,
+        private readonly LicenseClientService $license,
     ) {
     }
 
@@ -30,11 +33,14 @@ final class PlanLimitService
      */
     public function maxActiveBundles(): ?int
     {
-        return self::FREE_MAX_ACTIVE_BUNDLES;
+        return $this->license->isPaidPlanActive() ? null : self::FREE_MAX_ACTIVE_BUNDLES;
     }
 
     public function assertCanCreateStore(): void
     {
+        if ($this->license->isPaidPlanActive()) {
+            return;
+        }
         if ($this->stores->countActive() >= self::FREE_MAX_STORES) {
             throw new PlanLimitExceededException(__('plan_limit_stores'));
         }
@@ -42,6 +48,9 @@ final class PlanLimitService
 
     public function assertCanCreateEmployee(): void
     {
+        if ($this->license->isPaidPlanActive()) {
+            return;
+        }
         if ($this->users->countActive() >= self::FREE_MAX_EMPLOYEES) {
             throw new PlanLimitExceededException(__('plan_limit_employees'));
         }

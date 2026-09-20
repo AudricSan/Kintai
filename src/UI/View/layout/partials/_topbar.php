@@ -111,14 +111,14 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
                         <?php endif; ?>
                     <?php break;
                     case 'system': ?>
-                        <div class="topbar-nav-group<?= (str_starts_with($path, '/admin/activity') || str_starts_with($path, '/admin/owner-settings') || str_starts_with($path, '/admin/feedbacks') || str_starts_with($path, '/admin/backup') || str_starts_with($path, '/admin/update') || str_starts_with($path, '/admin/languages') || str_starts_with($path, '/admin/bundles')) ? ' topbar-nav-group--active' : '' ?>">
+                        <div class="topbar-nav-group<?= (str_starts_with($path, '/admin/activity') || str_starts_with($path, '/admin/owner-settings') || str_starts_with($path, '/admin/feedbacks') || str_starts_with($path, '/admin/backup') || str_starts_with($path, '/admin/update') || str_starts_with($path, '/admin/languages') || str_starts_with($path, '/admin/bundles') || str_starts_with($path, '/admin/license')) ? ' topbar-nav-group--active' : '' ?>">
                             <button type="button" class="topbar-nav-group__trigger"><?= __('system') ?> <span class="topbar-nav-group__caret">▾</span></button>
                             <div class="topbar-nav-group__panel">
                                 <?php if (!$navHide('audit_log')): ?>
                                     <a href="<?= route_url('admin.activity') ?>" class="topbar-nav-group__link<?= str_starts_with($path, '/admin/activity') ? ' topbar-nav-group__link--active' : '' ?>"><?= $ico('history') ?><?= __('activity_log') ?></a>
                                 <?php endif; ?>
                                 <?php if ($isOwner): ?>
-                                    <a href="<?= route_url('admin.owner_settings') ?>" class="topbar-nav-group__link<?= (str_starts_with($path, '/admin/owner-settings') || str_starts_with($path, '/admin/feedbacks') || str_starts_with($path, '/admin/backup') || str_starts_with($path, '/admin/update') || str_starts_with($path, '/admin/languages') || str_starts_with($path, '/admin/bundles')) ? ' topbar-nav-group__link--active' : '' ?>"><?= $ico('gear') ?><?= __('settings') ?></a>
+                                    <a href="<?= route_url('admin.owner_settings') ?>" class="topbar-nav-group__link<?= (str_starts_with($path, '/admin/owner-settings') || str_starts_with($path, '/admin/feedbacks') || str_starts_with($path, '/admin/backup') || str_starts_with($path, '/admin/update') || str_starts_with($path, '/admin/languages') || str_starts_with($path, '/admin/bundles') || str_starts_with($path, '/admin/license')) ? ' topbar-nav-group__link--active' : '' ?>"><?= $ico('gear') ?><?= __('settings') ?></a>
                                 <?php endif; ?>
                             </div>
                         </div>

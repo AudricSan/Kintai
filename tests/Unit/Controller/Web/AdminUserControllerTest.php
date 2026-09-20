@@ -6,6 +6,7 @@ namespace kintai\Tests\Unit\Controller\Web;
 
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Container;
+use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Repositories\DailyReportRepositoryInterface;
 use kintai\Core\Repositories\LogRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
@@ -22,6 +23,7 @@ use kintai\Core\Repositories\HiringReportRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\LicenseClientService;
 use kintai\Core\Services\Log;
 use kintai\Core\Services\PlanLimitService;
 use kintai\Core\Services\RoleAssignmentSyncService;
@@ -74,7 +76,11 @@ final class AdminUserControllerTest extends TestCase
             new AuditLogger(),
             new RoleAssignmentSyncService($this->roles, $this->roleAssignments),
             new PermissionService($this->roleAssignments, $this->roles),
-            new PlanLimitService($this->stores, $this->users),
+            new PlanLimitService(
+                $this->stores,
+                $this->users,
+                new LicenseClientService($this->createMock(AppSettingsRepositoryInterface::class), ['base_url' => '', 'api_key' => '']),
+            ),
         );
     }
 

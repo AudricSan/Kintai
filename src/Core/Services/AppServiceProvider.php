@@ -9,6 +9,7 @@ use kintai\Core\Container;
 use kintai\Core\Cron\AutoValidateJob;
 use kintai\Core\Cron\BackupJob;
 use kintai\Core\Cron\CronRunner;
+use kintai\Core\Cron\LicenseCheckJob;
 use kintai\Core\Cron\LogPurgeJob;
 use kintai\Core\Database\MigrationRunner;
 use kintai\Core\Repositories\CronTokenRepositoryInterface;
@@ -98,9 +99,16 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(TimeoffRequestRepositoryInterface::class),
         ));
 
+        $this->container->singleton(LicenseClientService::class, function (Container $c) {
+            $path = dirname(dirname(dirname(__DIR__))) . '/config/license_server.php';
+            $config = file_exists($path) ? require $path : [];
+            return new LicenseClientService($c->make(AppSettingsRepositoryInterface::class), $config);
+        });
+
         $this->container->singleton(PlanLimitService::class, fn(Container $c) => new PlanLimitService(
             $c->make(StoreRepositoryInterface::class),
             $c->make(UserRepositoryInterface::class),
+            $c->make(LicenseClientService::class),
         ));
 
         $this->container->singleton(StoreServiceInterface::class, fn(Container $c) => new StoreService(
@@ -204,6 +212,7 @@ final class AppServiceProvider extends ServiceProvider
             $runner->register($c->make(AutoValidateJob::class));
             $runner->register($c->make(BackupJob::class));
             $runner->register($c->make(LogPurgeJob::class));
+            $runner->register($c->make(LicenseCheckJob::class));
             return $runner;
         });
     }
