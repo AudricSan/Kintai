@@ -10,11 +10,13 @@ use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\StoreServiceInterface;
 
 final class StoreController
 {
     public function __construct(
         private readonly StoreRepositoryInterface $stores,
+        private readonly StoreServiceInterface $storeService,
         private readonly AuditLogger $auditLogger,
     ) {}
 
@@ -39,7 +41,7 @@ final class StoreController
     public function store(Request $request): Response
     {
         $data  = $request->json() ?? [];
-        $saved = $this->stores->save($data);
+        $saved = $this->storeService->createStore($data);
         $this->auditLogger->log($request, 'store.created', 'store', resourceId: (int) ($saved['id'] ?? 0) ?: null, details: $data);
         return Response::json($saved, 201);
     }

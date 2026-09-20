@@ -98,11 +98,17 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(TimeoffRequestRepositoryInterface::class),
         ));
 
+        $this->container->singleton(PlanLimitService::class, fn(Container $c) => new PlanLimitService(
+            $c->make(StoreRepositoryInterface::class),
+            $c->make(UserRepositoryInterface::class),
+        ));
+
         $this->container->singleton(StoreServiceInterface::class, fn(Container $c) => new StoreService(
             $c->make(StoreRepositoryInterface::class),
             $c->make(StoreUserRepositoryInterface::class),
             $c->make(UserRepositoryInterface::class),
             $c->make(LanguageRepositoryInterface::class),
+            $c->make(PlanLimitService::class),
         ));
 
         $this->container->singleton(StoreStatsServiceInterface::class, fn(Container $c) => new StoreStatsService(

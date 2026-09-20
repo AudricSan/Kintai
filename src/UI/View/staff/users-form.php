@@ -42,9 +42,10 @@ echo Flash::fromQuery('success', [
     'password_reset' => __('password_reset_success'),
 ])->render();
 echo Flash::fromQuery('error', [
-    'email_taken'        => __('email_taken'),
-    'name_required'      => __('name_required'),
-    'furigana_required'  => __('furigana_required'),
+    'email_taken'          => __('email_taken'),
+    'name_required'        => __('name_required'),
+    'furigana_required'    => __('furigana_required'),
+    'plan_limit_employees' => __('plan_limit_employees'),
 ])->render();
 ?>
 <div class="page-header">

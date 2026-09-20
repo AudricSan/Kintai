@@ -8,6 +8,8 @@ use kintai\Core\Repositories\LanguageRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
+use kintai\Core\Exceptions\PlanLimitExceededException;
+use kintai\Core\Services\PlanLimitService;
 use kintai\Core\Services\StoreService;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -29,6 +31,7 @@ final class StoreServiceTest extends TestCase
             $this->createMock(StoreUserRepositoryInterface::class),
             $this->createMock(UserRepositoryInterface::class),
             $languages,
+            new PlanLimitService($this->stores, $this->createMock(UserRepositoryInterface::class)),
         );
     }
 
@@ -80,6 +83,15 @@ final class StoreServiceTest extends TestCase
         )->willReturn(['id' => 1]);
 
         $this->service->createStore(['code' => 'ST01', 'name' => 'Store A', 'currency_symbol_style' => 'international']);
+    }
+
+    public function testCreateStoreThrowsWhenFreePlanStoreLimitReached(): void
+    {
+        $this->stores->method('countActive')->willReturn(1);
+        $this->stores->expects($this->never())->method('save');
+
+        $this->expectException(PlanLimitExceededException::class);
+        $this->service->createStore(['code' => 'ST01', 'name' => 'Store A']);
     }
 
     public function testUpdateStoreKeepsExistingCurrencySymbolStyleWhenNotProvided(): void

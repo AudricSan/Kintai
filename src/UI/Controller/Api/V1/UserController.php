@@ -10,12 +10,14 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\PlanLimitService;
 
 final class UserController
 {
     public function __construct(
         private readonly UserRepositoryInterface $users,
         private readonly AuditLogger $auditLogger,
+        private readonly PlanLimitService $planLimits,
     ) {}
 
     /** GET /api/v1/users?page=1&limit=20 */
@@ -38,6 +40,8 @@ final class UserController
     /** POST /api/v1/users */
     public function store(Request $request): Response
     {
+        $this->planLimits->assertCanCreateEmployee();
+
         $data  = $request->json() ?? [];
         $saved = $this->users->save($data);
         $this->auditLogger->log($request, 'user.created', 'user', resourceId: (int) ($saved['id'] ?? 0) ?: null, details: $data);

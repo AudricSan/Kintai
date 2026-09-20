@@ -49,6 +49,16 @@ final class DatabaseUserRepository implements UserRepositoryInterface
     }
 
     /**
+     * Compte les utilisateurs actifs (is_active = 1, deleted_at IS NULL).
+     */
+    public function countActive(): int
+    {
+        return EloquentUser::where('is_active', 1)
+            ->whereNull('deleted_at')
+            ->count();
+    }
+
+    /**
      * Saves a user record. Creates if no ID, updates if ID exists.
      * @param array $userData
      * @return array The saved user data.

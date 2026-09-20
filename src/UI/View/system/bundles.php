@@ -4,9 +4,17 @@ use kintai\UI\Components\Flash;
 
 /** @var array $bundles Liste de ['key' => string, 'label' => string, 'desc' => string, 'enabled' => bool, 'official' => bool] */
 /** @var bool  $success */
+/** @var int|null $maxActiveBundles */
+/** @var int  $activeCount */
 /** @var string|null $BASE_URL */
 
+$maxActiveBundles ??= null;
+$activeCount      ??= 0;
+
 echo Flash::fromQuery('success', ['default' => __('save_success')])->render();
+echo Flash::fromQuery('error', [
+    'bundle_quota_exceeded' => __('bundle_quota_exceeded', ['max' => $maxActiveBundles]),
+])->render();
 ?>
 <div class="page-header">
     <h2 class="page-header__title"><?= __('bundle_settings') ?></h2>
@@ -18,6 +26,9 @@ echo Flash::fromQuery('success', ['default' => __('save_success')])->render();
 <div class="card card--mb">
     <div class="card-body">
         <p class="form-hint"><?= __('bundle_settings_hint') ?></p>
+        <?php if ($maxActiveBundles !== null): ?>
+            <p class="form-hint"><?= __('bundle_active_count', ['count' => $activeCount, 'max' => $maxActiveBundles]) ?></p>
+        <?php endif; ?>
     </div>
 </div>
 

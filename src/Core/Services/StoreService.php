@@ -18,6 +18,7 @@ final class StoreService implements StoreServiceInterface
         private readonly StoreUserRepositoryInterface $storeUsers,
         private readonly UserRepositoryInterface $users,
         private readonly LanguageRepositoryInterface $languages,
+        private readonly PlanLimitService $planLimits,
     ) {}
 
     public function getStoresForAdmin(?array $managedIds, string $sort = 'name_asc'): array
@@ -73,6 +74,8 @@ final class StoreService implements StoreServiceInterface
 
     public function createStore(array $data): array
     {
+        $this->planLimits->assertCanCreateStore();
+
         $validator = new StoreValidator($this->languages);
         $validator->validate($data)->throwIfInvalid();
 

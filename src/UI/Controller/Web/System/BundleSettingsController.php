@@ -11,6 +11,7 @@ use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\PlanLimitService;
 use kintai\UI\Controller\Web\HasBaseUrl;
 use kintai\UI\ViewRenderer;
 
@@ -24,6 +25,7 @@ final class BundleSettingsController
         private readonly FeatureManager $features,
         private readonly AuditLogger $auditLogger,
         private readonly BundleDiscoveryService $discovery,
+        private readonly PlanLimitService $planLimits,
     ) {}
 
     /** GET /admin/bundles */
@@ -43,10 +45,15 @@ final class BundleSettingsController
             ];
         }
 
+        $maxActiveBundles = $this->planLimits->maxActiveBundles();
+        $activeCount = count(array_filter($bundles, fn(array $b) => $b['enabled']));
+
         return Response::html($this->view->render('system.bundles', [
-            'title'   => __('bundle_settings'),
-            'bundles' => $bundles,
-            'success' => isset($_GET['success']),
+            'title'            => __('bundle_settings'),
+            'bundles'          => $bundles,
+            'success'          => isset($_GET['success']),
+            'maxActiveBundles' => $maxActiveBundles,
+            'activeCount'      => $activeCount,
         ], 'layout.app'));
     }
 
@@ -66,6 +73,11 @@ final class BundleSettingsController
             if ($request->post('bundle_' . $key)) {
                 $enabled[] = $key;
             }
+        }
+
+        $maxActiveBundles = $this->planLimits->maxActiveBundles();
+        if ($maxActiveBundles !== null && count($enabled) > $maxActiveBundles) {
+            return Response::redirect($this->base() . '/admin/bundles?error=bundle_quota_exceeded');
         }
 
         $this->appSettings->set(
