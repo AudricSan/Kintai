@@ -64,11 +64,20 @@ final class MascotResolverTest extends TestCase
         $this->assertSame('mascot/kitsune/brand-icon.png', $resolver->path('brand-icon'));
     }
 
-    public function testPathFallsBackToKitsuneWhenTanukiAssetMissing(): void
+    public function testPathReturnsTanukiFileWhenItExists(): void
     {
         $resolver = $this->makeResolver(['app_mascot_mode' => 'tanuki']);
 
-        // mascot/tanuki/ n'a aucun asset pour l'instant (dossier vide, .gitkeep only).
-        $this->assertSame('mascot/kitsune/brand-icon.png', $resolver->path('brand-icon'));
+        $this->assertSame('mascot/tanuki/brand-icon.png', $resolver->path('brand-icon'));
+    }
+
+    public function testPathFallsBackToKitsuneWhenTanukiAssetMissingForThisContext(): void
+    {
+        $resolver = $this->makeResolver(['app_mascot_mode' => 'tanuki']);
+
+        // Contexte volontairement inexistant des deux côtés : path() ne doit
+        // jamais renvoyer un fichier absent, même en cas de futur écart entre
+        // les deux jeux (voir docs/brand/mascot.md section 4).
+        $this->assertSame('mascot/kitsune/some-context-that-does-not-exist.png', $resolver->path('some-context-that-does-not-exist'));
     }
 }

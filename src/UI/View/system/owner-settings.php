@@ -33,6 +33,15 @@ $foxyPalette = [
     ['css' => 'highlight', 'color' => '#dff5e1', 'label' => 'theme_foxy_swatch_highlight'],
 ];
 
+/** Palette officielle de la mascotte Tanuki (docs/brand/Tanuki/tanuki_planche_reference_character_design.png). */
+$tanukiPalette = [
+    ['css' => 'fur',       'color' => '#8b6b4f', 'label' => 'theme_tanuki_swatch_fur'],
+    ['css' => 'nose',      'color' => '#5a4636', 'label' => 'theme_tanuki_swatch_nose'],
+    ['css' => 'belly',     'color' => '#f7f3e7', 'label' => 'theme_tanuki_swatch_belly'],
+    ['css' => 'bag',       'color' => '#4caf50', 'label' => 'theme_tanuki_swatch_bag'],
+    ['css' => 'highlight', 'color' => '#e8f5e9', 'label' => 'theme_tanuki_swatch_highlight'],
+];
+
 echo Flash::fromQuery('success', ['default' => __('save_success')])->render();
 ?>
 <div class="page-header">
@@ -63,19 +72,32 @@ echo Flash::fromQuery('success', ['default' => __('save_success')])->render();
     ob_start();
     ?>
 
-    <div class="theme-foxy-palette">
-        <img src="<?= $BASE_URL ?>/assets/img/mascot/kitsune/brand-icon.png" alt="<?= __('mascot_alt') ?>" class="theme-foxy-palette__icon">
-        <div>
-            <p class="theme-foxy-palette__title"><?= __('theme_foxy_palette_title') ?> <span class="badge badge--success badge--xs"><?= __('theme_color_recommended') ?></span></p>
-            <!-- <p class="text-sm-muted"><?= __('theme_foxy_palette_hint') ?></p> -->
-            <div class="color-presets">
-                <?php foreach ($foxyPalette as $swatch): ?>
-                <span class="color-preset theme-foxy-palette__swatch--<?= $swatch['css'] ?>" title="<?= __($swatch['label']) ?> — <?= $swatch['color'] ?>"></span>
-                <?php endforeach; ?>
+    <div class="theme-container">
+        <div class="theme-foxy-palette">
+            <img src="<?= $BASE_URL ?>/assets/img/mascot/kitsune/brand-icon.png" alt="<?= __('mascot_alt') ?>" class="theme-foxy-palette__icon">
+            <div>
+                <p class="theme-foxy-palette__title"><?= __('theme_foxy_palette_title') ?> <span class="badge badge--success badge--xs"><?= __('theme_color_recommended') ?></span></p>
+                <!-- <p class="text-sm-muted"><?= __('theme_foxy_palette_hint') ?></p> -->
+                <div class="color-presets">
+                    <?php foreach ($foxyPalette as $swatch): ?>
+                    <span class="color-preset theme-foxy-palette__swatch--<?= $swatch['css'] ?>" title="<?= __($swatch['label']) ?> — <?= $swatch['color'] ?>"></span>
+                    <?php endforeach; ?>
+                </div>
             </div>
         </div>
-    </div>
 
+        <div class="theme-foxy-palette">
+            <img src="<?= $BASE_URL ?>/assets/img/mascot/tanuki/brand-icon.png" alt="<?= __('mascot_alt') ?>" class="theme-foxy-palette__icon">
+            <div>
+                <p class="theme-foxy-palette__title"><?= __('theme_tanuki_palette_title') ?> <span class="badge badge--success badge--xs"><?= __('theme_color_recommended') ?></span></p>
+                <div class="color-presets">
+                    <?php foreach ($tanukiPalette as $swatch): ?>
+                    <span class="color-preset theme-tanuki-palette__swatch--<?= $swatch['css'] ?>" title="<?= __($swatch['label']) ?> — <?= $swatch['color'] ?>"></span>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
+</div>
     <div class="form-group">
         <label class="form-label" for="app_mascot_mode"><?= __('mascot_mode_label') ?></label>
         <select id="app_mascot_mode" name="app_mascot_mode" class="form-control">

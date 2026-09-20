@@ -296,12 +296,17 @@ select.form-control {
     margin-bottom: 0;
 }
 
+.theme-container {
+    display: flex;
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
+}
+
 .theme-foxy-palette {
     display: flex;
     align-items: center;
     gap: var(--space-4);
     padding: var(--space-4);
-    margin-bottom: var(--space-4);
     background: var(--color-bg-subtle);
     border-radius: var(--radius);
 }
@@ -327,6 +332,14 @@ select.form-control {
 .theme-foxy-palette__swatch--belly     { background-color: #fff5e6; }
 .theme-foxy-palette__swatch--bag       { background-color: #4caf50; }
 .theme-foxy-palette__swatch--highlight { background-color: #dff5e1; }
+
+/* Teintes fixes de la palette officielle de Tanuki
+   (docs/brand/Tanuki/tanuki_planche_reference_character_design.png). */
+.theme-tanuki-palette__swatch--fur       { background-color: #8b6b4f; }
+.theme-tanuki-palette__swatch--nose      { background-color: #5a4636; }
+.theme-tanuki-palette__swatch--belly     { background-color: #f7f3e7; }
+.theme-tanuki-palette__swatch--bag       { background-color: #4caf50; }
+.theme-tanuki-palette__swatch--highlight { background-color: #e8f5e9; }
 
 /* .input-group{display:flex} a la même spécificité que le [hidden] du UA stylesheet
    et le déclare après lui dans la cascade : sans ce sélecteur plus spécifique, un
