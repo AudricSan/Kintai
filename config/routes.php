@@ -32,6 +32,7 @@ use kintai\UI\Controller\Web\System\BackupController;
 use kintai\UI\Controller\Web\System\BundleMarketController;
 use kintai\UI\Controller\Web\System\BundleSettingsController;
 use kintai\UI\Controller\Web\System\LanguageController;
+use kintai\UI\Controller\Web\System\LicenseController;
 use kintai\UI\Controller\Web\System\MailTestController;
 use kintai\UI\Controller\Web\System\OwnerSettingsController;
 use kintai\Core\Middleware\AuthMiddleware;
@@ -318,6 +319,12 @@ $router->group('/admin', function ($r) {
     $r->post('/bundles/market/install',         [BundleMarketController::class, 'install'],       middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.market.install', permission: 'public');
     $r->post('/bundles/market/install/stream',  [BundleMarketController::class, 'installStream'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.market.install.stream', permission: 'public');
     $r->post('/bundles/market/uninstall',       [BundleMarketController::class, 'uninstall'],     middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.market.uninstall', permission: 'public');
+
+    // Licence (déblocage du plan payant, Owner uniquement)
+    $r->get('/license',           [LicenseController::class, 'show'],       middleware: [OwnerOnlyMiddleware::class], name: 'admin.license', permission: 'public');
+    $r->post('/license/activate', [LicenseController::class, 'activate'],   middleware: [OwnerOnlyMiddleware::class], name: 'admin.license.activate', permission: 'public');
+    $r->post('/license/refresh',  [LicenseController::class, 'refresh'],    middleware: [OwnerOnlyMiddleware::class], name: 'admin.license.refresh', permission: 'public');
+    $r->post('/license/deactivate', [LicenseController::class, 'deactivate'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.license.deactivate', permission: 'public');
 
     // Rôles & permissions (Owner uniquement) — voir task/mermission.md
     $r->get('/roles',              [AdminRoleController::class, 'roles'],      middleware: [OwnerOnlyMiddleware::class], name: 'admin.roles', permission: 'public');
