@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="<?= htmlspecialchars($locale ?? 'en') ?>" style="<?= htmlspecialchars($app_theme_color_style ?? '', ENT_QUOTES) ?>">
+<html lang="<?= htmlspecialchars($locale ?? 'en') ?>" data-mascot="<?= htmlspecialchars(mascot_active(), ENT_QUOTES) ?>" style="<?= htmlspecialchars($app_theme_color_style ?? '', ENT_QUOTES) ?>">
 
 <head>
     <meta charset="UTF-8">

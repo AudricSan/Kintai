@@ -164,21 +164,36 @@ couvre des contextes sans usage actuel dans l'app :
 | `kitsune_recherche_vide.png`         | 検索（空）, variante de `http404`              | "Aucun résultat" sur une liste avec recherche/filtre                          |
 | `kitsune_lit_livre.png`              | Assis, lit un livre                            | Voir section 4 (piste pour combler l'absence de pose "dort")                  |
 
-## 3. Poses Tanuki disponibles (nouvelle mascotte, rien de câblé)
+## 3. Poses Tanuki disponibles (mécanisme de choix câblé, aucun asset exporté)
+
+**Mise à jour (20/09/2026)** : le mécanisme de choix qui manquait ci-dessous
+existe désormais — `public/assets/img/mascot/` est réparti en
+`mascot/kitsune/` et `mascot/tanuki/` (même arborescence dans chaque,
+y compris `http-error/`), résolu par `kintai\Core\Services\MascotResolver`
+(réglage Owner `app_mascot_mode` sur `/admin/owner-settings` : `mix` par
+défaut — tirage aléatoire par requête, aucune persistance —, ou figé sur
+`kitsune`/`tanuki`). Les 13 emplacements de vues passent par le helper
+`mascot_path(string $context): string` plutôt que de construire leur
+chemin en dur ; les 4 icônes d'état vide en CSS (`base.css`) réagissent à
+un attribut `data-mascot` posé sur `<html>` par les layouts. **Mais aucun
+asset Tanuki n'existe encore** dans `mascot/tanuki/` (dossier vide, juste
+un `.gitkeep`) : `MascotResolver::path()` retombe systématiquement sur
+Kitsune tant que la Phase 2 ci-dessous (export réel des PNG Tanuki) n'a
+pas eu lieu — donc `mix` se comporte comme `kitsune` en pratique
+aujourd'hui, sans rien casser.
 
 Aucune pose Tanuki n'est utilisée dans l'app à ce jour. Liste complète en
 section "Sources — Tanuki" ci-dessus (couverture HTTP + poses de scène).
-Deux points à traiter avant tout câblage :
+Deux points restent à traiter avant l'export (Phase 2) :
 
 - **Choisir entre les variantes `_v2`/`_v3`** là où elles existent — ce
   sont de vraies alternatives (composition différente), pas des doublons à
   fusionner (voir Sources ci-dessus).
-- **Décider du rôle relatif à Kitsune** : les deux mascottes sont
-  utilisées, mais sans qu'un mécanisme de choix (thème, réglage Owner,
-  etc.) n'existe dans l'app aujourd'hui — `public/assets/img/mascot/` ne
-  contient que des poses Kitsune. Intégrer Tanuki suppose de définir
-  d'abord *où* (à la place de Kitsune, en complément, sélectionnable) avant
-  de détourer/exporter quoi que ce soit.
+- **Gérer les écarts entre les deux jeux** (section 4 ci-dessous) — un
+  contexte présent chez un seul des deux (ex. `docs-hero`/smartphone,
+  actuellement Tanuki seulement) doit soit obtenir un équivalent dans
+  l'autre jeu, soit rester couvert par le repli automatique de
+  `MascotResolver::path()` sur Kitsune indéfiniment.
 
 ## 4. Écarts entre les deux jeux
 
@@ -231,7 +246,9 @@ Deux points à traiter avant tout câblage :
    ventre/pattes de l'animal.
 3. Exporter en PNG transparent, hauteur standard 240px (480px pour les
    pages d'erreur HTTP, voir section 1), dans
-   `public/assets/img/mascot/<contexte>.png`.
+   `public/assets/img/mascot/<kitsune|tanuki>/<contexte>.png` (même nom de
+   contexte des deux côtés — `http-error/<code>.png` garde son
+   sous-dossier — c'est ce nom que `mascot_path($context)` reçoit).
 4. Utiliser la clé de traduction `mascot_alt` (déjà présente en fr/en/ja)
    pour l'attribut `alt`.
 5. Pour une icône réutilisée par un CSS `background: url(...)` (cas de

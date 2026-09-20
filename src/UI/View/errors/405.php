@@ -8,7 +8,7 @@
 </head>
 <body class="error-body">
     <div class="error-page">
-        <img src="<?= ($BASE_URL ?? '') ?>/assets/img/mascot/http-error/405.png" alt="<?= __('mascot_alt') ?>" class="error-mascot">
+        <img src="<?= ($BASE_URL ?? '') ?>/assets/img/<?= mascot_path('http-error/405') ?>" alt="<?= __('mascot_alt') ?>" class="error-mascot">
         <div class="error-code">405</div>
         <p class="error-message"><?= htmlspecialchars($message ?? __('error_405_message')) ?></p>
         <a href="/" class="error-link">← <?= __('back_to_dashboard') ?></a>

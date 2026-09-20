@@ -145,4 +145,20 @@ final class AppSettingsServiceTest extends TestCase
     {
         $this->assertSame(0, $this->makeService(['log_retention_days' => '-5'])->logRetentionDays());
     }
+
+    public function testMascotModeDefaultsToMix(): void
+    {
+        $this->assertSame('mix', $this->makeService()->mascotMode());
+    }
+
+    public function testMascotModeReadsStoredValue(): void
+    {
+        $this->assertSame('kitsune', $this->makeService(['app_mascot_mode' => 'kitsune'])->mascotMode());
+        $this->assertSame('tanuki', $this->makeService(['app_mascot_mode' => 'tanuki'])->mascotMode());
+    }
+
+    public function testMascotModeRejectsUnknownValue(): void
+    {
+        $this->assertSame('mix', $this->makeService(['app_mascot_mode' => 'foxy'])->mascotMode());
+    }
 }
