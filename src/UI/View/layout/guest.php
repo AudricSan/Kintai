@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" style="<?= htmlspecialchars($app_theme_color_style ?? '', ENT_QUOTES) ?>">
+<html lang="en" data-mascot="<?= htmlspecialchars(mascot_active(), ENT_QUOTES) ?>" style="<?= htmlspecialchars($app_theme_color_style ?? '', ENT_QUOTES) ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,7 +11,7 @@
     <div class="guest-main">
         <div class="guest-container">
             <div class="guest-brand">
-                <img src="<?= $BASE_URL ?>/assets/img/mascot/login.png" alt="<?= __('mascot_alt') ?>" class="guest-brand__mascot">
+                <img src="<?= $BASE_URL ?>/assets/img/<?= mascot_path('login') ?>" alt="<?= __('mascot_alt') ?>" class="guest-brand__mascot">
                 <h1>Kintai</h1>
                 <?php if (!empty($app_subtitle)): ?>
                     <p class="guest-brand__company"><?= htmlspecialchars($app_subtitle, ENT_QUOTES) ?></p>

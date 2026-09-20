@@ -263,6 +263,44 @@ if (!function_exists('asset_version')) {
     }
 }
 
+if (!function_exists('mascot_path')) {
+    /**
+     * Chemin relatif (depuis public/assets/img/) d'une pose de mascotte pour
+     * le contexte donné (ex. 'login', 'http-error/404', 'footer-fox-2'),
+     * résolu via MascotResolver (mémoïsé par requête, replie sur kitsune si
+     * l'asset de la mascotte active n'existe pas). Fail-open sur kitsune si
+     * le service n'est pas encore prêt, comme bundle_enabled()/__().
+     */
+    function mascot_path(string $context): string
+    {
+        try {
+            $container = \kintai\Core\Container::getInstance();
+            if ($container->has(\kintai\Core\Services\MascotResolver::class)) {
+                return $container->make(\kintai\Core\Services\MascotResolver::class)->path($context);
+            }
+        } catch (\Throwable $e) {
+            // En cas d'erreur avant que le service soit prêt
+        }
+        return "mascot/kitsune/{$context}.png";
+    }
+}
+
+if (!function_exists('mascot_active')) {
+    /** Mascotte active pour cette requête ('kitsune' ou 'tanuki') — voir mascot_path(). */
+    function mascot_active(): string
+    {
+        try {
+            $container = \kintai\Core\Container::getInstance();
+            if ($container->has(\kintai\Core\Services\MascotResolver::class)) {
+                return $container->make(\kintai\Core\Services\MascotResolver::class)->active();
+            }
+        } catch (\Throwable $e) {
+            // En cas d'erreur avant que le service soit prêt
+        }
+        return 'kitsune';
+    }
+}
+
 if (!function_exists('base_url')) {
     /**
      * Calcule la base URL à partir de SCRIPT_NAME.

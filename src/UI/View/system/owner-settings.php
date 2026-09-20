@@ -64,7 +64,7 @@ echo Flash::fromQuery('success', ['default' => __('save_success')])->render();
     ?>
 
     <div class="theme-foxy-palette">
-        <img src="<?= $BASE_URL ?>/assets/img/mascot/brand-icon.png" alt="<?= __('mascot_alt') ?>" class="theme-foxy-palette__icon">
+        <img src="<?= $BASE_URL ?>/assets/img/mascot/kitsune/brand-icon.png" alt="<?= __('mascot_alt') ?>" class="theme-foxy-palette__icon">
         <div>
             <p class="theme-foxy-palette__title"><?= __('theme_foxy_palette_title') ?> <span class="badge badge--success badge--xs"><?= __('theme_color_recommended') ?></span></p>
             <!-- <p class="text-sm-muted"><?= __('theme_foxy_palette_hint') ?></p> -->
@@ -74,6 +74,16 @@ echo Flash::fromQuery('success', ['default' => __('save_success')])->render();
                 <?php endforeach; ?>
             </div>
         </div>
+    </div>
+
+    <div class="form-group">
+        <label class="form-label" for="app_mascot_mode"><?= __('mascot_mode_label') ?></label>
+        <select id="app_mascot_mode" name="app_mascot_mode" class="form-control">
+            <option value="mix" <?= ($settings['app_mascot_mode'] ?? 'mix') === 'mix' ? 'selected' : '' ?>><?= __('mascot_mode_mix') ?></option>
+            <option value="kitsune" <?= ($settings['app_mascot_mode'] ?? '') === 'kitsune' ? 'selected' : '' ?>><?= __('mascot_mode_kitsune') ?></option>
+            <option value="tanuki" <?= ($settings['app_mascot_mode'] ?? '') === 'tanuki' ? 'selected' : '' ?>><?= __('mascot_mode_tanuki') ?></option>
+        </select>
+        <p class="form-hint"><?= __('mascot_mode_hint') ?></p>
     </div>
 
     <div class="form-group">

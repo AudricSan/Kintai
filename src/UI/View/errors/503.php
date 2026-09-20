@@ -8,7 +8,7 @@
 </head>
 <body class="error-body">
     <div class="error-page">
-        <img src="<?= ($BASE_URL ?? '') ?>/assets/img/mascot/http-error/503.png" alt="<?= __('mascot_alt') ?>" class="error-mascot">
+        <img src="<?= ($BASE_URL ?? '') ?>/assets/img/<?= mascot_path('http-error/503') ?>" alt="<?= __('mascot_alt') ?>" class="error-mascot">
         <div class="error-code">503</div>
         <p class="error-message"><?= htmlspecialchars($message ?? __('error_503_message')) ?></p>
     </div>

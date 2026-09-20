@@ -107,6 +107,15 @@ final class AppSettingsService
         return in_array($channel, ['alpha', 'beta', 'release'], true) ? $channel : 'release';
     }
 
+    // ── Mascotte ───────────────────────────────────────────────────────────────
+
+    /** Mode d'affichage de la mascotte : mix (défaut, tirée au sort par requête), kitsune, ou tanuki. */
+    public function mascotMode(): string
+    {
+        $mode = $this->get('app_mascot_mode', 'mix');
+        return in_array($mode, ['mix', 'kitsune', 'tanuki'], true) ? $mode : 'mix';
+    }
+
     // ── Mode maintenance ──────────────────────────────────────────────────────
 
     /** Mode maintenance activé : seul l'Owner peut accéder aux pages web. */
