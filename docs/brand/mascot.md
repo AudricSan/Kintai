@@ -1,242 +1,236 @@
-# Mascotte Foxy — inventaire des poses
+# Mascottes Kintai — inventaire des poses
 
-Ce document liste les poses de Foxy (la mascotte de Kintai) déjà intégrées à
+Ce document liste les poses des mascottes de Kintai déjà intégrées à
 l'application, celles disponibles mais pas encore utilisées, et les
 éventuels manques restants.
 
-## Sources
+Depuis le 18-19/09/2026, il y a **deux** mascottes : Kitsune (le renard,
+anciennement appelé "Foxy") et Tanuki (le tanuki), toutes deux personnelles
+à AudricSan en tant que développeur (utilisables sur tous ses projets, pas
+seulement Kintai — voir [[user_foxy_personal_brand]]) et toutes deux
+utilisées pour Kintai. **Seule Kitsune est pour l'instant câblée dans
+l'app** (`public/assets/img/mascot/`, voir section 1) ; Tanuki est un jeu
+de sources complet mais encore entièrement non intégré (section 3).
 
-Documents de travail, à ne jamais utiliser directement dans l'app — chaque
-pose utilisée en est extraite/détourée et exportée en PNG dans
-`public/assets/img/mascot/` :
+## Organisation du dossier `docs/brand/`
 
-- `docs/brand/foxy-style-guide.png` — planche d'origine (15 poses + 9
-  expressions seules, visage rond sans corps). Foxy n'y porte pas le sac
-  "K". Reste la **seule source** pour les 9 expressions seules (考える n'y
-  figure pas — voir `25_question.png` ci-dessous pour cette pose).
-- `docs/brand/foxy_pose.png` (v1) et `docs/brand/foxy-pose-sheet-v2.png`
-  (v2, avec expressions + scènes bonus) — planches consolidées 24 poses,
-  Foxy y porte le sac "K". Un upscale ×4 de la v1 a été comparé à
-  l'original et écarté (qualité inégale, aucun gain à la taille d'export
-  utilisée, 240px de haut).
-- **`docs/brand/NN_nom.png`** — depuis le 12/09/2026, source à privilégier :
-  poses générées individuellement en HD, fond blanc uni (pas de carte, pas
-  de légende), qualité et détail nettement supérieurs aux planches en
-  grille. Numérotation alignée sur celle de `foxy_pose.png`/`foxy-pose-
-sheet-v2.png` (1 à 24), poursuivie au-delà (25, 26) pour de nouvelles
-  poses sans équivalent dans les planches en grille. C'est la source
-  utilisée pour toute pose disponible en HD ; les planches en grille ne
-  servent plus que pour les poses pas encore régénérées individuellement
-  (2, 16).
-- **`docs/brand/25_question.png`** (考える, ajouté le 16/09/2026) — comble le
-  manque HD de 考える signalé en section 3 depuis le 12/09/2026 (patte sur
-  le menton, bulle "?"). Envisagé un temps pour `error-404.png`, finalement
-  non retenu (voir section 2) — 404 est resté sur `17_recherche_vide.png`.
-- **`docs/brand/26_surpris.png`** (びっくり, ajouté le 16/09/2026) — variante
-  de `01_surpris.png` avec points d'exclamation jaunes. Envisagé un temps
-  pour `error-403.png`, finalement non retenu (voir section 2) — 403 est
-  passé sur `27_reffu.png` à la place.
-- **`docs/brand/27_reffu.png`** (拒否・refuse, ajouté le 16/09/2026) — patte
-  levée en geste "stop", regard sévère, "!!" rouges. Pose finalement
-  retenue pour `error-403.png`, plus parlante pour un accès refusé que les
-  poses "surprise" (01/26).
-- **`docs/brand/28_soupir.png`** (soupir content, assis, ajouté le
-  16/09/2026 *a posteriori*) — archive de la pose utilisée pour
-  `brand-icon.png` (voir section 1). Contrairement aux autres `NN_nom.png`,
-  déjà détourée (fond transparent) et non recadrée : la version fournie
-  par l'utilisateur a été écrasée par le recadrage final avant d'être
-  sauvegardée séparément.
-- **`docs/brand/405.png`** (composition dédiée, ajoutée le 16/09/2026) — à la
-  différence des autres fichiers de cette liste, ce n'est pas une pose
-  seule mais une scène complète (renard + panneau "sens interdit" + cartes
-  GET/POST/PUT/DELETE/PATCH + bulle de dialogue), avec le texte "405 /
-  Method Not Allowed" et des phrases japonaises **gravés dans l'image**.
-  Ne suit pas la convention `NN_nom.png` car elle ne réutilise pas une
-  pose de la bibliothèque. Voir section 4 pour l'arbitrage sur le texte en
-  dur.
-- **`docs/brand/expr-*-hd.png`** — même jour, mêmes propriétés (fond blanc
-  uni à détourer) que `NN_nom.png` mais pour 5 des 9 expressions seules
-  (jusque-là uniquement en basse résolution depuis `foxy-style-guide.png`) :
-  `expr-normal-hd.png` (通常), `expr-smile-hd.png` (にっこり),
-  `expr-wink-hd.png` (ウインク), `expr-worried-hd.png` (困る),
-  `expr-angry-hd.png` (怒る). `docs/brand/foxy-expressions-sheet-hd.png`
-  est la planche de référence dont elles sont extraites (8 expressions au
-  total — びっくり/照れる/??? y figurent aussi mais n'ont pas encore été
-  découpées individuellement ; 悲しい et 考える n'y figurent pas).
+Depuis le 18-19/09/2026, les sources ne sont plus à plat dans
+`docs/brand/` mais réparties en deux sous-dossiers, un par mascotte :
 
-Les fichiers `ChatGPT Image..._02_12_30.png` (mockup publicitaire parodiant
-Suica/JR East, hors-scope) et `ChatGPT Image..._08_26_29.png` (aperçu à 2
-cases "考える"/"びっくり", contenait la seule version HD connue de 考える)
-mentionnés ici jusqu'au 12/09/2026 ont depuis disparu du dossier ; 考える
-est resté sans source HD jusqu'à l'ajout de `25_question.png` le
-16/09/2026 (voir ci-dessus et section 3).
+- `docs/brand/Kitsune/` — tous les fichiers historiquement à la racine
+  (`foxy-style-guide.png`, `foxy_pose.png`, `foxy-pose-sheet-v2.png`,
+  `foxy-expressions-sheet-hd.png`, `expr-*-hd.png`) y ont été déplacés, et
+  l'ensemble des poses individuelles numérotées (`NN_nom.png`, ex.
+  `27_reffu.png`, `17_recherche_vide.png`, `21_Maintenance.png`, `405.png`,
+  etc. — tout ce que décrivait ce document jusqu'au 16/09/2026) a été
+  **supprimé et remplacé** par un nouveau jeu régénéré, nommé
+  sémantiquement `kitsune_<contexte>.png` plutôt que par numéro (voir
+  Sources ci-dessous). Le style (renard orange, sac "K" vert) reste le
+  même.
+- `docs/brand/Tanuki/` — nouveau, jeu de sources complet pour la mascotte
+  Tanuki (voir Sources ci-dessous). Rien n'y a d'équivalent avant le
+  18-19/09/2026.
 
-## 1. Poses intégrées dans l'app
+Comme avant, **ces deux dossiers restent des documents de travail, à ne
+jamais utiliser directement dans l'app** — chaque pose utilisée doit être
+détourée/recadrée et exportée en PNG transparent dans
+`public/assets/img/mascot/` (process en section 6). Aucun fichier sous
+`public/assets/img/mascot/` n'a été modifié par cette réorganisation :
+l'app affiche toujours exactement les mêmes images qu'avant le 18/09/2026.
 
-| Pose                                 | Source actuelle                                                     | Fichier exporté      | Contexte d'usage                                                                                  |
-| ------------------------------------ | ------------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------- |
-| 拒否・refuse (patte levée, "stop")   | `27_reffu.png` (HD, ajouté 16/09/2026)                              | `http-error/403.png`    | Page 403                                                                                           |
-| 検索（空） (loupe + bulle "?")       | `17_recherche_vide.png` (HD)                                        | `http-error/404.png`    | Page 404                                                                                           |
-| Scène dédiée (renard + panneau interdit + texte JP en dur) | `405.png` (composition, ajoutée 16/09/2026)          | `http-error/405.png`       | Page 405 — pas de correspondance directe avec une pose de la bibliothèque (voir Sources et section 4) |
-| 振り返る (se retourne)               | `03_se_retourne.png` (HD)                                           | `http-error/422.png`    | Page 422                                                                                          |
-| ツール・メンテナンス (outils, casquette K) | `21_Maintenance.png` (HD)                                     | `http-error/500.png`    | Page 500 (depuis le 16/09/2026 ; remplace がっかり `04_decu.png`, désormais disponible non câblé) |
-| 寝る (dort)                          | `05_dort.png` (HD)                                                  | `http-error/503.png`    | Page 503 (maintenance)                                                                            |
-| スマホを見る (regarde son téléphone) | `06_telephone.png` (HD)                                             | `docs-hero.png`  | Sidebar wiki + page "wiki non cloné" (`/docs`)                                                    |
-| Salut / accueil                      | foxy_pose #16 (grille, pas encore en HD)                            | `wave-hello.png` | Bandeau des pages invité (`layout/guest.php` : login, mot de passe oublié, réinitialisation)      |
-| ボックス（空）, penché sur le carton | `18_boite_vide_penche.png` (HD, ajouté 16/09/2026)                  | `box-empty.png`  | Icône par défaut de **tout** `.empty-state` (CSS `::before`) — couvre ~25 emplacements dans l'app |
-| 通知・ベル                           | `22_cloche.png` (HD, ajouté 16/09/2026)                             | `bell.png`       | Variante `.empty-state--bell`, utilisée sur `/notifications`                                      |
-| タイムカード・時計, pointeuse "08:59" | `19_pointeuse.png` (HD, ajouté 16/09/2026)                          | `timeclock-empty.png` | Variante `.empty-state--timeclock`, utilisée sur `employee-timeclock.php` ("aucun pointage cette semaine") |
-| 給与明細 (texte JP gravé dans l'image) | `20_fiche_paie.png` (HD, ajouté 16/09/2026)                       | `salary-empty.png` | Variante `.empty-state--salary`, utilisée sur `reports-salary.php` ("sr_empty") — texte japonais figé gardé délibérément, voir section 4 |
+## Sources — Kitsune (renard)
 
-**Emplacement et nommage final (16/09/2026)** : après un essai avec un
-préfixe `<numéro de pose>-` dans `public/assets/img/mascot/` (abandonné),
-les 6 images d'erreur vivent dans leur propre sous-dossier
-`public/assets/img/mascot/http-error/`, nommées uniquement par le code
-HTTP (`403.png`, `404.png`, `405.png`, `422.png`, `500.png`, `503.png`) —
-plus simple à référencer et à faire correspondre aux pages. Les 6 vues
-`src/UI/View/errors/{403,404,405,422,500,503}.php` pointent vers
-`/assets/img/mascot/http-error/<code>.png`.
+- `docs/brand/Kitsune/foxy-style-guide.png`, `foxy_pose.png`,
+  `foxy-pose-sheet-v2.png`, `foxy-expressions-sheet-hd.png`,
+  `expr-{normal,smile,wink,worried,angry}-hd.png` — planches historiques,
+  conservées pour référence (voir l'ancien historique détaillé dans
+  l'historique git de ce fichier si besoin) mais plus la source active
+  pour aucune pose depuis la régénération ci-dessous.
+- **`docs/brand/Kitsune/kitsune_<contexte>.png`** — nouvelle source à
+  privilégier : poses régénérées individuellement, fond blanc uni, nommées
+  par contexte plutôt que par numéro (`kitsune_http404.png`,
+  `kitsune_boite_vide.png`, `kitsune_salut_accueil.png`, etc.). Couvre les
+  codes HTTP 401/403/404/405/408/409/413/422/429/500/501/502/504 (401,
+  429, 501, 502, 504 pas encore utilisés dans l'app — voir section 2), plus
+  les scènes déjà câblées (accueil, boîte vide, cloche, pointeuse,
+  enveloppe de paie, etc.) et quelques nouvelles (fête/jalon, fatigue,
+  déçu, saute, s'étire, court, assis, lit + livre).
+- Plusieurs fichiers `kitsune_<contexte>_Dub.png` existent en doublon quasi
+  identique du fichier sans suffixe (vérifié visuellement sur
+  `kitsune_http404.png`/`kitsune_http404_Dub.png` — pixel pour pixel la
+  même image) : contrairement aux variantes `_v2`/`_v3` de Tanuki
+  (ci-dessous), ce ne sont **pas** des variantes alternatives à choisir,
+  juste des doublons — le fichier sans suffixe suffit.
+- `ChatGPT Image 18 sept. 2026...png` (×3) et `image-gen-*.png` (×2) —
+  sorties brutes de génération, non renommées. Au moins une
+  (`image-gen-6(5).png`) est une variante écartée de `kitsune_http422.png`
+  (même pose, tourbillon de confusion à la place du point d'interrogation
+  vert) : à garder pour référence si la version retenue doit être
+  retravaillée, sinon sans usage direct.
 
-**État final des images (16/09/2026)** : les 6 fichiers ont été détourés
-(fond transparent) par l'utilisateur lui-même à partir des sources HD,
-puis recadrés à la boîte englobante du contenu opaque (+ marge de 8px) et
-exportés en PNG hauteur 480px (au lieu des 240px historiques — le CSS
-(`error-mascot { width: 140px; height: auto }`) redimensionne de toute
-façon à l'affichage, les 480px donnent une meilleure netteté sur écran
-retina). `box-empty.png`, `bell.png`, `timeclock-empty.png` et
-`salary-empty.png` ont été détourés/recadrés le même jour, avec le même
-process (voir section 5) ; `docs-hero.png` et `wave-hello.png` restent
-inchangés, à re-découper depuis les HD listées en section 2 quand on
-retouchera ces pages.
+## Sources — Tanuki (tanuki)
 
-**Pages de secours statiques (16/09/2026)** : en complément des vues PHP
-(`src/UI/View/errors/*.php`, qui gèrent les erreurs normales de l'app —
-403/404/405/422/500/503 levées par le routeur/les contrôleurs), 6 pages
-HTML autonomes existent maintenant sous `public/errors/<code>.html`
-(CSS inlined avec valeurs de repli, même image `http-error/<code>.png`,
-pas de dépendance PHP) et sont déclarées via `ErrorDocument` dans
-`public/.htaccess`. Elles ne remplacent **jamais** les pages PHP tant que
-PHP répond normalement — Apache n'invoque `ErrorDocument` que lorsqu'il
-génère lui-même l'erreur (PHP plante sans sortie, module PHP désactivé,
-fichier statique sous `/assets/` réellement absent), donc c'est un filet
-de secours pour le cas "le serveur (PHP) meurt", pas un doublon du flux
-normal. Vérifié en conditions réelles sur le XAMPP local (`127.0.0.7`) :
-une vraie 404 Apache (fichier statique manquant) sert bien
-`public/errors/404.html`, tandis qu'une 404 applicative normale
-(`Router::dispatch()` ne trouve pas de route) continue d'afficher la vue
-PHP habituelle sans interférence.
+Nouveau depuis le 18-19/09/2026, aucun équivalent avant.
 
-## 2. Poses disponibles en HD, pas encore câblées dans l'app
+- **`docs/brand/Tanuki/tanuki_planche_reference_character_design.png`** —
+  planche de référence officielle "Kintai マスコットキャラクター Tanuki".
+  Contient le concept (texte JP : présence bienveillante, rythme tranquille
+  mais encourageant, silhouette ronde et attachante, lien avec la nature et
+  les gens, partenaire de Kintai), la palette officielle (`#8B6B4F`
+  brun clair, `#D9B896` beige, `#F7F3E7` crème, `#5A4636` brun foncé,
+  `#4CAF50` vert — **identique au vert de Kitsune**, cohérence de marque
+  Kintai —, `#E8F5E9` vert très clair), la structure/proportions (grosse
+  tête ronde ~moitié de la hauteur totale, oreilles petites et rondes,
+  corps trapu, queue à rayures ~moitié de la hauteur du corps), 4 variations
+  de visage (通常/normal, にっこり/sourire, びっくり/surpris, ウインク/clin
+  d'œil), la liste complète des poses et expressions prévues (voir
+  ci-dessous), des exemples d'usage (icône d'app, écran de démarrage,
+  illustration in-app, icône de notification) et des interdits (ne pas
+  déformer, ne pas faire pivoter, ne pas utiliser en traits seuls, ne pas
+  utiliser en basse résolution).
+- `docs/brand/Tanuki/tanuki_planche_reference_poses.png` — variante centrée
+  sur la grille de poses (non détaillée individuellement ici).
+- **`docs/brand/Tanuki/tanuki_<contexte>.png`** (et variantes `_v2`/`_v3`)
+  — poses individuelles fond blanc, même logique que les `kitsune_*.png`.
+  Contrairement aux `_Dub` de Kitsune, les suffixes `_v2`/`_v3` sont ici de
+  **vraies variantes alternatives**, pas des doublons (vérifié sur
+  `tanuki_http404.png` vs `tanuki_http404_v2.png` : deux compositions
+  différentes — loupe simple avec "?" jaune vs bulle de dialogue verte
+  "recherche" + "?" vert) — à choisir/trancher au moment de l'export, pas à
+  fusionner automatiquement.
+- Couverture HTTP nettement plus large que Kitsune : 400, 401, 403, 404
+  (+v2), 405, 408, 409, 410, 413, 422 (+v2), 429, 500, 501, 502, 503, 504 —
+  inclut notamment **400, 410 et 503**, absents du jeu Kitsune actuel (voir
+  section 4).
+- Poses "scène" hors codes HTTP : assis, assis au repos, attente normale
+  (+v2), boîte vide (+v2, +v3), cloche/notification (+v2), court (+v2,
+  +v3), déçu, dort, encourage (+v2, court), enveloppe de paie (+v2),
+  fatigue debout (+v2), fête/jalon (+v2), heureux, lit + livre, marche
+  (+v2), outils/maintenance (+v2, +v3), pointeuse/horloge (+v2), recherche
+  vide, réfléchit, salut/accueil (+v2, +v3), saute (+v2, +v3), se retourne,
+  s'étire, smartphone, surpris.
 
-Fichiers `docs/brand/NN_nom.png`, fond blanc à détourer avant export vers
-`public/assets/img/mascot/` (process en section 4).
+## 1. Poses Kitsune intégrées dans l'app
 
-| Fichier                    | Pose                                               | Contexte suggéré                                                                                                                                                 |
-| -------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `07_marche.png`            | 歩く, marche de profil                             | Étapes d'un assistant/wizard (installeur), indicateur de progression                                                                                             |
-| `08_assis.png`             | 座る, assis neutre                                 | État vide alternatif si on veut varier `box-empty`                                                                                                               |
-| `09_court.png`             | 走る, course                                       | Traitement en cours (import Excel, sauvegarde, sync du wiki)                                                                                                     |
-| `10_saute.png`             | ジャンプ, saut joyeux                              | Confirmation de succès après une action (shift créé, congé approuvé)                                                                                             |
-| `11_etirement.png`         | のび, étirement                                    | Accueil dashboard ("Bonjour" du matin)                                                                                                                           |
-| `12_repos.png`             | 座って休憩, assis détendu                          | Statut "en congé" (bundle TimeOff)                                                                                                                               |
-| `13_encourage.png`         | 応援する, pompons                                  | Fin d'assistant d'installation, jalon atteint                                                                                                                    |
-| `14_content.png`           | 嬉しい, saute de joie                              | Écran de remerciement (bundle Feedback), échange de shift accepté                                                                                                |
-| `15_encourage_court.png`   | 応援・走る, court en brandissant un drapeau K      | Mise à jour / sauvegarde en cours (variante dynamique de #9)                                                                                                     |
-| `17_recherche_vide.png`    | 検索（空）, loupe + bulle "?"                      | "Aucun résultat" sur une liste avec recherche/filtre — pas encore câblé faute d'un point d'accroche CSS générique équivalent à `.empty-state` pour ce cas précis |
-| `18_boite_vide_assis.png`  | ボックス（空）, assis dans le carton               | Variante alternative à `box-empty.png` (voir section 1, qui utilise `18_boite_vide_penche.png`) si on veut varier l'icône par défaut                            |
-| `23_fete.png`              | 祝う・節目, confettis (déjà fond transparent !)    | Jalon célébré (mise à jour réussie, sauvegarde terminée)                                                                                                         |
-| `24_fatigue.png`           | 疲れてるけど立ってる, debout, goutte de sueur      | Alerte douce sur charge de travail (proche du max de jours consécutifs)                                                                                          |
-| `04_decu.png`              | がっかり, déçu                                     | Libéré le 16/09/2026 (`error-500.png` utilise désormais `21_Maintenance.png`) — contexte à retrouver : refus/rejet d'une demande ?                              |
-| `01_surpris.png`           | びっくり, "!!" traits verts                        | Non retenu pour error-403 (voir `27_reffu.png` en section 1) — alternative si on veut varier le ton des traits d'exclamation                                    |
-| `25_question.png`          | 考える, patte sur le menton + bulle "?"            | Non retenu pour error-404 (resté sur `17_recherche_vide.png`) — pose disponible pour un autre contexte de réflexion/attente                                     |
-| `26_surpris.png`           | びっくり, "!!" jaunes                              | Non retenu pour error-403 (voir `27_reffu.png` en section 1) — variante supplémentaire de surprise si besoin                                                    |
+Ce tableau documente ce que l'app affiche **aujourd'hui** — inchangé par
+cette réorganisation, puisque `public/assets/img/mascot/` n'a pas bougé.
+La colonne "Source d'origine" pointe vers des fichiers `NN_nom.png`
+**supprimés** depuis le 18-19/09/2026 (voir Sources ci-dessus) ; elle est
+gardée à titre d'historique. La colonne "Équivalent Kitsune actuel" liste
+le fichier du nouveau jeu régénéré qui semble correspondre le mieux (vérifié
+visuellement quand indiqué), pour le jour où ces exports seront
+retravaillés à partir des nouvelles sources — **rien n'a été re-exporté ni
+re-câblé**, c'est une piste, pas un changement effectif.
 
-`21_Maintenance.png` (ツール・メンテナンス, casquette K + boîte à outils),
-initialement suggérée ci-dessus pour la page de mise à jour admin
-(`system/update.php`), est utilisée depuis le 16/09/2026 pour
-`error-500.png` (voir section 1) — reste réutilisable pour `system/update.php`
-si besoin, un même export pouvant servir plusieurs contextes.
+| Pose                                  | Source d'origine (supprimée)     | Équivalent Kitsune actuel (non câblé)                                                                 | Fichier exporté (inchangé) | Contexte d'usage                                                                                  |
+| -------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------ | --------------------------- | -------------------------------------------------------------------------------------------------- |
+| 拒否・refuse (patte levée, "stop")     | `27_reffu.png`                    | `kitsune_http403.png` — vérifié, même idée (barrière + panneau sens interdit)                          | `http-error/403.png`        | Page 403                                                                                            |
+| 検索（空） (loupe + bulle "?")         | `17_recherche_vide.png`           | `kitsune_http404.png` — vérifié, quasi identique (loupe + "K" + "?")                                   | `http-error/404.png`        | Page 404                                                                                            |
+| Scène dédiée (texte JP en dur)         | `405.png`                         | `kitsune_http405.png` — vérifié, composition redessinée bien plus simple ; texte JP réduit à un seul mot ("送信"/envoyer sur le bouton) au lieu de plusieurs phrases | `http-error/405.png`        | Page 405                                                                                             |
+| 振り返る (se retourne)                 | `03_se_retourne.png`              | `kitsune_http422.png` — vérifié, mais pose totalement différente (renard perplexe devant un formulaire avec champs en erreur, plus parlant pour une 422)         | `http-error/422.png`        | Page 422                                                                                            |
+| ツール・メンテナンス (outils)          | `21_Maintenance.png`              | `kitsune_outils_maintenance.png` — vérifié, même idée (clé + tournevis) ; **`kitsune_http500.png` existe aussi séparément** (renard agitant une clochette, vérifié — sémantique différente, "alerte") | `http-error/500.png`        | Page 500                                                                                             |
+| 寝る (dort)                            | `05_dort.png`                     | **aucun équivalent direct** — le plus proche est `kitsune_lit_livre.png` (assis, lit un livre, vérifié : ne dort pas, juste calme) ; voir section 4                | `http-error/503.png`        | Page 503 (maintenance)                                                                              |
+| スマホを見る (regarde son téléphone)   | `06_telephone.png`                | **aucun équivalent** dans le nouveau jeu Kitsune — voir section 4 (Tanuki en a un : `tanuki_smartphone.png`) | `docs-hero.png`             | Sidebar wiki + page "wiki non cloné" (`/docs`)                                                       |
+| Salut / accueil                        | foxy_pose #16 (grille, basse résolution) | `kitsune_salut_accueil.png` — vérifié, pose "salue de la main, tire la langue"                    | `wave-hello.png`            | Bandeau des pages invité (`layout/guest.php`)                                                       |
+| ボックス（空）, penché sur le carton   | `18_boite_vide_penche.png`        | `kitsune_boite_vide.png` — probable (pas de distinction "penché"/"assis" dans le nouveau jeu)          | `box-empty.png`             | Icône par défaut de **tout** `.empty-state` (CSS `::before`)                                        |
+| 通知・ベル                             | `22_cloche.png`                   | `kitsune_cloche_notification.png` — vérifié, même idée                                                  | `bell.png`                  | Variante `.empty-state--bell`, `/notifications`                                                     |
+| タイムカード・時計, pointeuse "08:59"  | `19_pointeuse.png`                | `kitsune_pointeuse_horloge.png` — probable                                                              | `timeclock-empty.png`       | Variante `.empty-state--timeclock`, `employee-timeclock.php`                                        |
+| 給与明細 (texte JP gravé dans l'image) | `20_fiche_paie.png`               | `kitsune_enveloppe_paie.png` — vérifié, **même problème persistant** : "給与明細書" toujours gravé dans le dessin | `salary-empty.png`          | Variante `.empty-state--salary`, `reports-salary.php` — voir section 5                              |
 
-Des 9 expressions seules de l'ancienne planche (通常/normal, にっこり/sourire,
-ウインク/clin d'œil, びっくり/surpris, 困る/embêté, 照れる/gêné, 怒る/fâché,
-悲しい/triste, ???/perplexe), utiles pour des contextes compacts, 5 sont
-maintenant disponibles en HD individuellement (通常, にっこり, ウインク,
-困る, 怒る — voir `expr-*-hd.png` en Sources) ; びっくり/照れる/??? restent
-en basse résolution malgré leur présence dans `foxy-expressions-sheet-hd.png`
-(pas encore découpées) ; 悲しい reste sans aucune source HD. 考える dispose
-désormais d'une source HD dédiée, `25_question.png` (voir Sources) — distincte
-de ces 9 expressions seules (pose avec corps, pas juste un visage).
+Le reste de la section 1 (emplacement final `public/assets/img/mascot/`,
+sous-dossier `http-error/`, nommage par code HTTP, détourage/recadrage
+480px, pages de secours statiques `public/errors/<code>.html`) est
+inchangé par cette réorganisation — voir l'historique git de ce fichier
+pour le détail si besoin.
 
-`public/assets/img/mascot/brand-icon.png` (visage de Foxy dans la topbar,
-`.topbar-brand__icon`, et sur la carte de palette de `/admin/settings` -
-appearance) était détouré et recadré depuis `expr-wink-hd.png` (clin
-d'œil) ; remplacé le 16/09/2026 par un recadrage serré (tête + oreilles,
-160×160, fond transparent) d'une nouvelle pose assise (soupir content,
-yeux fermés), fournie directement sous le nom `brand-icon.png` (donc déjà
-écrasée par le recadrage final) — la pose complète est archivée a
-posteriori sous `docs/brand/28_soupir.png` (fond déjà transparent, pas
-blanc comme les autres `NN_nom.png`, faute d'avoir gardé l'original avant
-recadrage) si un recadrage différent est voulu plus tard.
+## 2. Poses Kitsune disponibles, pas encore câblées
 
-## 3. Poses encore manquantes en HD
+En plus des équivalents de la section 1, le nouveau jeu `kitsune_*.png`
+couvre des contextes sans usage actuel dans l'app :
 
-- **#2 待機・通常** (idle debout, neutre) — plus utilisée nulle part depuis
-  que `error-405.png` est passé à une composition dédiée (voir section 1),
-  toujours en basse résolution si besoin ailleurs.
-- **#16 Salut / accueil** — utilisé par `wave-hello.png`, toujours en basse
-  résolution.
+| Fichier                             | Pose                                          | Contexte suggéré                                                             |
+| ------------------------------------ | ---------------------------------------------- | ------------------------------------------------------------------------------ |
+| `kitsune_http401.png`                | Accès non authentifié                          | Page 401 (pas de vue dédiée actuellement dans `src/UI/View/errors/`)          |
+| `kitsune_http429.png`                | Trop de requêtes                               | Page 429 (idem, pas de vue dédiée actuellement)                                |
+| `kitsune_http501.png`, `502.png`, `504.png` | Erreurs serveur/passerelle               | Pas de vues dédiées actuellement                                               |
+| `kitsune_fete_jalon.png`             | 祝う・節目, célébration                        | Jalon atteint (mise à jour réussie, sauvegarde terminée)                      |
+| `kitsune_decu.png`                   | がっかり, déçu                                 | Refus/rejet d'une demande                                                     |
+| `kitsune_heureux.png`                | Heureux                                        | Confirmation de succès (shift créé, congé approuvé)                          |
+| `kitsune_saute.png`                  | ジャンプ, saut joyeux                          | Confirmation de succès (variante de `heureux`)                                |
+| `kitsune_setire.png`                 | のび, étirement                                | Accueil dashboard ("Bonjour" du matin)                                       |
+| `kitsune_court.png`                  | 走る, course                                   | Traitement en cours (import Excel, sauvegarde, sync du wiki)                  |
+| `kitsune_encourage.png`              | 応援する, encourage                            | Fin d'assistant d'installation, jalon atteint                                 |
+| `kitsune_assis.png`                  | 座る, assis neutre                             | État vide alternatif si on veut varier `box-empty`                            |
+| `kitsune_recherche_vide.png`         | 検索（空）, variante de `http404`              | "Aucun résultat" sur une liste avec recherche/filtre                          |
+| `kitsune_lit_livre.png`              | Assis, lit un livre                            | Voir section 4 (piste pour combler l'absence de pose "dort")                  |
 
-考える (réfléchit) a rejoint la liste des poses résolues le 16/09/2026 avec
-l'ajout de `25_question.png` (voir Sources et section 1) — après avoir été
-sans source HD connue depuis la disparition de son unique aperçu (voir
-historique en Sources).
+## 3. Poses Tanuki disponibles (nouvelle mascotte, rien de câblé)
 
-## 4. Points d'attention
+Aucune pose Tanuki n'est utilisée dans l'app à ce jour. Liste complète en
+section "Sources — Tanuki" ci-dessus (couverture HTTP + poses de scène).
+Deux points à traiter avant tout câblage :
 
-- **`error-405.png` : texte japonais gravé dans l'image, gardé délibérément
-  (16/09/2026)**. Contrairement à toutes les autres poses, cette
-  composition contient "405", "Method Not Allowed" et plusieurs phrases en
-  japonais directement dans les pixels (pas de calque texte détachable),
-  alors que le titre/message de la page sont déjà rendus séparément par
-  `error_405_title`/`error_405_message` (fr/en/ja) — un visiteur FR ou EN
-  verra donc du texte japonais figé sous le titre traduit. Signalé à
-  l'utilisateur, qui a explicitement choisi de le garder tel quel plutôt
-  que de simplifier la pose. Si ça pose problème plus tard (retours
-  utilisateurs, incohérence visuelle), la piste de repli est une version
-  simplifiée : juste le renard + le panneau "interdit", sans texte gravé,
-  cohérente avec le style des 5 autres pages.
-- **`salary-empty.png` (#20 給与明細) : texte japonais gravé, gardé
-  délibérément (16/09/2026)**. Même situation que `error-405.png` : le
-  renard tient une feuille où "給与明細" est écrit directement dans le
-  dessin, pas détachable — un visiteur FR/EN verra ce texte japonais figé
-  sur l'état vide de `reports-salary.php`. Signalé à l'utilisateur, qui a
-  choisi de l'utiliser quand même plutôt que d'attendre une regénération
-  sans texte gravé.
-- **Pose 15, variante "salue de la main" perdue (12/09/2026)** : la planche
-  HD comptait deux prises pour 応援・走る — une avec un drapeau K, une avec
-  un simple signe de la main (sans accessoire). En renommant les deux, la
-  seconde a été écrasée par erreur par la première (`mv` vers un nom déjà
-  pris) avant d'avoir un nom distinct, et n'est pas récupérable localement
-  (pas de corbeille, dossier non synchronisé). Il ne reste que la version
-  au drapeau (`15_encourage_court.png`). Si la variante "salue de la main"
-  est encore utile, elle doit être régénérée (probablement encore présente
-  dans l'historique de conversation ChatGPT d'origine).
+- **Choisir entre les variantes `_v2`/`_v3`** là où elles existent — ce
+  sont de vraies alternatives (composition différente), pas des doublons à
+  fusionner (voir Sources ci-dessus).
+- **Décider du rôle relatif à Kitsune** : les deux mascottes sont
+  utilisées, mais sans qu'un mécanisme de choix (thème, réglage Owner,
+  etc.) n'existe dans l'app aujourd'hui — `public/assets/img/mascot/` ne
+  contient que des poses Kitsune. Intégrer Tanuki suppose de définir
+  d'abord *où* (à la place de Kitsune, en complément, sélectionnable) avant
+  de détourer/exporter quoi que ce soit.
 
-## 5. Process technique (rappel)
+## 4. Écarts entre les deux jeux
 
-1. Repérer la grille de la planche source : `foxy-style-guide.png` = 8
-   colonnes × 2 lignes (légende **en dessous** de chaque pose) ;
-   `foxy_pose.png`/`foxy-pose-sheet-v2.png` = 6 colonnes × 4 lignes (légende
-   **au-dessus**, à exclure du recadrage — largeur de cellule fixe 256px,
-   la légende occupe les ~70 premiers pixels de hauteur de cellule). Les
-   fichiers `NN_nom.png` individuels n'ont ni grille ni légende à exclure.
+- **503 (maintenance)** : Kitsune n'a pas de pose "dort" dans le nouveau
+  jeu (la plus proche, `kitsune_lit_livre.png`, lit calmement plutôt que de
+  dormir) ; Tanuki, lui, a `tanuki_dort.png`, une correspondance directe.
+- **`docs-hero.png` (regarde son téléphone)** : aucun équivalent Kitsune
+  dans le nouveau jeu ; Tanuki a `tanuki_smartphone.png`.
+- **400 et 410** : présents uniquement chez Tanuki (`tanuki_http400.png`,
+  `tanuki_http410.png`), absents des deux côtés en pratique puisqu'aucune
+  vue dédiée n'existe pour ces codes dans `src/UI/View/errors/`.
+
+## 5. Points d'attention
+
+- **`error-405.png` : texte japonais gravé dans l'image, réduit mais pas
+  éliminé.** L'ancienne composition (`405.png`, supprimée) contenait
+  plusieurs phrases en japonais gravées ; le nouvel équivalent
+  (`kitsune_http405.png`) ne garde plus qu'un seul mot japonais ("送信" sur
+  le bouton d'un formulaire simulé) — nette amélioration, mais toujours pas
+  neutre pour un visiteur FR/EN. Non re-exporté/re-câblé à ce jour ; à
+  garder en tête si cette pose est retravaillée.
+- **`salary-empty.png` (給与明細) : texte japonais gravé, toujours présent
+  dans le nouveau jeu.** `kitsune_enveloppe_paie.png` reprend le même
+  problème que l'ancien `20_fiche_paie.png` : "給与明細書" est gravé
+  directement dans le dessin, pas détachable. Si cette pose est un jour
+  re-exportée à partir de la nouvelle source, le problème signalé à
+  l'utilisateur (voir historique git) reste entier.
+- **Pose 15 (Kitsune), variante "salue de la main" perdue (12/09/2026,
+  historique)** : toujours non récupérable — voir historique git de ce
+  fichier pour le détail de l'incident. Sans objet pour le nouveau jeu
+  `kitsune_*.png` qui ne reprend pas la numérotation.
+- **Aucun fichier `public/assets/img/mascot/` n'a changé** avec cette
+  réorganisation : c'est un renommage/complément des *sources*
+  (`docs/brand/`) uniquement. Toute correspondance indiquée en section 1
+  est une piste pour un futur re-export, pas un changement déjà effectif.
+
+## 6. Process technique (rappel)
+
+1. Repérer si la pose vient d'une planche à grille (`foxy-style-guide.png`
+   = 8 colonnes × 2 lignes légende dessous ; `foxy_pose.png`/`foxy-pose-
+   sheet-v2.png` = 6 colonnes × 4 lignes légende dessus, largeur de cellule
+   256px) ou d'un fichier individuel fond blanc (`kitsune_*.png`,
+   `tanuki_*.png` — pas de grille ni légende à exclure, comme les anciens
+   `NN_nom.png`).
 2. Détourer le fond par flood-fill **depuis les bords uniquement**, avec un
    critère "clair et peu saturé" (`min(r,g,b) > 205` et écart max-min
    `< 32`) plutôt qu'une simple distance à une couleur de fond fixe. Un
    recadrage par différence de couleur simple, ou un flood-fill qui ne part
-   pas des bords, rend aussi transparentes les zones blanches du
-   ventre/pattes du renard.
-3. Exporter en PNG transparent, hauteur standard 240px, dans
+   pas des bords, rend aussi transparentes les zones claires du
+   ventre/pattes de l'animal.
+3. Exporter en PNG transparent, hauteur standard 240px (480px pour les
+   pages d'erreur HTTP, voir section 1), dans
    `public/assets/img/mascot/<contexte>.png`.
 4. Utiliser la clé de traduction `mascot_alt` (déjà présente en fr/en/ja)
    pour l'attribut `alt`.
