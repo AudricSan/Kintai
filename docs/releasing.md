@@ -15,6 +15,12 @@ Each instance follows one of three **update channels**, chosen by the Owner on `
 
 A release's channel is determined by its `target_commitish` (the source branch, set by `.github/workflows/release.yml` — see `GithubUpdateService::selectReleaseForChannel()`), not by inspecting the tag. Within the releases visible to its channel, the instance picks the highest version (semver-aware). `alpha`, `beta`, and `main` are protected branches (PR + passing CI required, no direct push) — see `.github/workflows/release.yml`.
 
+## `develop`: the non-release integration branch
+
+`.github/workflows/release.yml` only triggers on a push to `alpha`, `beta`, or `main` — nothing else. `develop` is a fourth long-lived branch, based on `alpha`, that sits outside that trigger on purpose: it's where day-to-day feature/fix branches merge by default (see [CONTRIBUTING.md](../CONTRIBUTING.md)), so a normal batch of PRs during a work session never tags and publishes a release. It isn't a protected release-channel branch — no branch protection, no CI-gated merge requirement beyond what the team chooses to enforce by convention.
+
+When a batch of work on `develop` is ready to actually ship, promote it forward with an ordinary PR from `develop` into `alpha` (same "merge the branch forward" mechanic described below for alpha → beta → main) — *that* merge is what starts the release cascade. `develop` itself never gets a Git tag or a GitHub Release.
+
 Consequences:
 - Only **GitHub Releases** count (not bare tags, not commits). Until a matching Release exists for the instance's channel, `checkLatestRelease()` returns `null`.
 - No `v` prefix in config files (the `v` prefix only exists on the Git tag — `GithubUpdateService` strips it before comparing versions).
@@ -61,7 +67,7 @@ The base version number (`X.Y` in `composer.json`/`.env`'s `APP_VERSION`/`CHANGE
    - on `main`, tags `vX.Y.0` as a normal (non-prerelease) Release — skipped with a log message if that exact tag already exists (i.e. the line was already shipped stable);
    - extracts the release notes from `CHANGELOG.md` (the dated `## [X.Y.0]` section for `main`, the `## [Unreleased]` section for `alpha`/`beta`).
 
-To promote a version from one channel to the next (alpha → beta → release), merge the corresponding branch forward (e.g. `alpha` into `beta`, then `beta` into `main`) via PR, same as any other branch promotion.
+To promote a version forward (develop → alpha → beta → release), merge the corresponding branch forward (e.g. `develop` into `alpha`, then `alpha` into `beta`, then `beta` into `main`) via PR, same as any other branch promotion. Only the `alpha`/`beta`/`main` steps actually publish a release — merging into `develop` itself never does (see "`develop`: the non-release integration branch" above).
 
 ## Manual procedure (bumping the version)
 
