@@ -41,9 +41,11 @@ ob_start();
         <?= Badge::make(__('license_status_degraded'))->warning()->render() ?>
     <?php endif; ?>
 </p>
-<p class="text-muted text-sm">
-    <?= __('license_free_plan_limits') ?>
-</p>
+<?php if (!$isPaidActive): ?>
+    <p class="text-muted text-sm">
+        <?= __('license_free_plan_limits') ?>
+    </p>
+<?php endif; ?>
 <?php if ($state !== null): ?>
     <ul class="text-sm">
         <?php if (!empty($state['type'])): ?>
