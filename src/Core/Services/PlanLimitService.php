@@ -36,6 +36,28 @@ final class PlanLimitService
         return $this->license->isPaidPlanActive() ? null : self::FREE_MAX_ACTIVE_BUNDLES;
     }
 
+    /** Nombre max de magasins, ou null si illimité (licence payante active). */
+    public function maxStores(): ?int
+    {
+        return $this->license->isPaidPlanActive() ? null : self::FREE_MAX_STORES;
+    }
+
+    /** Nombre max d'employés actifs, ou null si illimité (licence payante active). */
+    public function maxEmployees(): ?int
+    {
+        return $this->license->isPaidPlanActive() ? null : self::FREE_MAX_EMPLOYEES;
+    }
+
+    public function currentStoreCount(): int
+    {
+        return $this->stores->countActive();
+    }
+
+    public function currentEmployeeCount(): int
+    {
+        return $this->users->countActive();
+    }
+
     public function assertCanCreateStore(): void
     {
         if ($this->license->isPaidPlanActive()) {

@@ -201,23 +201,29 @@ final class LicenseClientService
             // Serveur injoignable : on garde le dernier état connu, en le marquant
             // "degraded" pour activer la logique de grâce dans isPaidPlanActive().
             $this->writeState([
-                'status'        => ($previous['status'] ?? null) === 'active' || ($previous['status'] ?? null) === 'degraded' ? 'degraded' : 'inactive',
-                'type'          => $previous['type'] ?? null,
-                'expires_at'    => $previous['expires_at'] ?? null,
-                'last_valid_at' => $previous['last_valid_at'] ?? null,
-                'checked_at'    => $now,
+                'status'             => ($previous['status'] ?? null) === 'active' || ($previous['status'] ?? null) === 'degraded' ? 'degraded' : 'inactive',
+                'type'               => $previous['type'] ?? null,
+                'issued_at'          => $previous['issued_at'] ?? null,
+                'expires_at'         => $previous['expires_at'] ?? null,
+                'max_activations'    => $previous['max_activations'] ?? null,
+                'active_activations' => $previous['active_activations'] ?? null,
+                'last_valid_at'      => $previous['last_valid_at'] ?? null,
+                'checked_at'         => $now,
             ]);
             return;
         }
 
         $valid = (bool) ($result['valid'] ?? false);
         $this->writeState([
-            'status'        => $valid ? 'active' : 'inactive',
-            'type'          => $result['type'] ?? null,
-            'expires_at'    => $result['expires_at'] ?? null,
-            'error'         => $valid ? null : ($result['error'] ?? null),
-            'last_valid_at' => $valid ? $now : ($previous['last_valid_at'] ?? null),
-            'checked_at'    => $now,
+            'status'             => $valid ? 'active' : 'inactive',
+            'type'               => $result['type'] ?? null,
+            'issued_at'          => $result['issued_at'] ?? ($previous['issued_at'] ?? null),
+            'expires_at'         => $result['expires_at'] ?? null,
+            'max_activations'    => $result['max_activations'] ?? ($previous['max_activations'] ?? null),
+            'active_activations' => $result['active_activations'] ?? ($previous['active_activations'] ?? null),
+            'error'              => $valid ? null : ($result['error'] ?? null),
+            'last_valid_at'      => $valid ? $now : ($previous['last_valid_at'] ?? null),
+            'checked_at'         => $now,
         ]);
     }
 

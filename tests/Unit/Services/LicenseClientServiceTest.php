@@ -77,6 +77,41 @@ final class LicenseClientServiceTest extends TestCase
         $this->assertSame('KEY-1', $service->licenseKey());
     }
 
+    /** issued_at/max_activations/active_activations viennent enrichir la réponse activate/validate côté serveur (License Manager) — vérifie qu'ils sont bien persistés dans l'état local pour l'affichage sur /admin/license. */
+    public function testActivateStoresPlanDetailsFromServerResponse(): void
+    {
+        $service = $this->makeService([], fn(): string => json_encode([
+            'valid' => true, 'status' => 'active', 'type' => 'yearly',
+            'issued_at' => '2026-01-01 00:00:00', 'expires_at' => '2027-01-01 00:00:00',
+            'max_activations' => 3, 'active_activations' => 1,
+        ]));
+
+        $service->activate('KEY-1');
+        $state = $service->state();
+
+        $this->assertSame('2026-01-01 00:00:00', $state['issued_at']);
+        $this->assertSame(3, $state['max_activations']);
+        $this->assertSame(1, $state['active_activations']);
+    }
+
+    public function testRefreshDegradedStateKeepsPreviousPlanDetails(): void
+    {
+        $callCount = 0;
+        $service = $this->makeService([], function () use (&$callCount): ?string {
+            $callCount++;
+            return $callCount === 1
+                ? json_encode(['valid' => true, 'status' => 'active', 'max_activations' => 3, 'active_activations' => 1])
+                : null;
+        });
+
+        $service->activate('KEY-1');
+        $service->refresh();
+
+        $state = $service->state();
+        $this->assertSame(3, $state['max_activations']);
+        $this->assertSame(1, $state['active_activations']);
+    }
+
     public function testActivateWithInvalidKeyKeepsFreePlan(): void
     {
         $service = $this->makeService([], fn(): string => json_encode(['valid' => false, 'error' => 'license_not_found']));

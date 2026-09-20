@@ -40,6 +40,21 @@ final class PlanLimitServiceTest extends TestCase
         $this->assertSame(4, $this->service->maxActiveBundles());
     }
 
+    public function testMaxStoresAndEmployeesOnFreePlan(): void
+    {
+        $this->assertSame(1, $this->service->maxStores());
+        $this->assertSame(15, $this->service->maxEmployees());
+    }
+
+    public function testCurrentCountsDelegateToRepositories(): void
+    {
+        $this->stores->method('countActive')->willReturn(1);
+        $this->users->method('countActive')->willReturn(7);
+
+        $this->assertSame(1, $this->service->currentStoreCount());
+        $this->assertSame(7, $this->service->currentEmployeeCount());
+    }
+
     public function testAssertCanCreateStoreAllowsWhenBelowLimit(): void
     {
         $this->stores->method('countActive')->willReturn(0);
@@ -98,6 +113,14 @@ final class PlanLimitServiceTest extends TestCase
     public function testMaxActiveBundlesIsUnlimitedOnPaidPlan(): void
     {
         $this->assertNull($this->makePaidService()->maxActiveBundles());
+    }
+
+    public function testMaxStoresAndEmployeesAreUnlimitedOnPaidPlan(): void
+    {
+        $service = $this->makePaidService();
+
+        $this->assertNull($service->maxStores());
+        $this->assertNull($service->maxEmployees());
     }
 
     public function testAssertCanCreateStoreNeverThrowsOnPaidPlan(): void
