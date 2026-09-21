@@ -193,6 +193,49 @@ final class PermissionMiddlewareTest extends TestCase
         $this->assertNull(json_decode($response->body(), true)['managed']);
     }
 
+    /**
+     * Un rôle store-scope (ex. Manager sur le store 3) peut accorder une
+     * permission précise en portée globale (case "Toutes les boutiques"
+     * cochée dans l'éditeur de rôle) : managed_store_ids devient null pour
+     * CETTE permission uniquement, sans changer la portée de l'affectation.
+     */
+    public function testPerPermissionGlobalScopeOnRoleNarrowsToNullForThatKey(): void
+    {
+        $this->assignments->method('findByUser')->with(10)->willReturn([
+            ['id' => 1, 'user_id' => 10, 'role_id' => 2, 'scope_type' => 'store', 'scope_id' => 3],
+        ]);
+        $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'is_system' => 0]);
+        $this->roles->method('getPermissions')->with(2)->willReturn(['shifts.view']);
+        $this->roles->method('getGlobalPermissionKeys')->with(2)->willReturn(['shifts.view']);
+
+        $request  = $this->makeRequest('shifts.view', ['id' => 10], [3]);
+        $response = $this->middleware->handle($request, function (Request $r) {
+            return Response::json(['managed' => $r->getAttribute('managed_store_ids')]);
+        });
+
+        $this->assertSame(200, $response->status());
+        $this->assertNull(json_decode($response->body(), true)['managed']);
+    }
+
+    /** La même affectation reste restreinte à son store pour une permission non global-flaggée. */
+    public function testPerPermissionGlobalScopeDoesNotLeakToOtherPermissionsOnTheSameRole(): void
+    {
+        $this->assignments->method('findByUser')->with(10)->willReturn([
+            ['id' => 1, 'user_id' => 10, 'role_id' => 2, 'scope_type' => 'store', 'scope_id' => 3],
+        ]);
+        $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'is_system' => 0]);
+        $this->roles->method('getPermissions')->with(2)->willReturn(['shifts.view', 'shifts.update']);
+        $this->roles->method('getGlobalPermissionKeys')->with(2)->willReturn(['shifts.view']);
+
+        $request  = $this->makeRequest('shifts.update', ['id' => 10], [3]);
+        $response = $this->middleware->handle($request, function (Request $r) {
+            return Response::json(['managed' => $r->getAttribute('managed_store_ids')]);
+        });
+
+        $this->assertSame(200, $response->status());
+        $this->assertSame([3], json_decode($response->body(), true)['managed']);
+    }
+
     // -------------------------------------------------------------------------
     // Règle 'membership' (bundle DailyReport) : accès en libre-service pour
     // tout membre du store ciblé (paramètre de route 'id'), sans permission
