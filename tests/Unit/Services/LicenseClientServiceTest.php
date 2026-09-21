@@ -8,13 +8,13 @@ use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Services\HttpFetcher;
 use kintai\Core\Services\LicenseClientService;
 use kintai\Core\Services\LicenseTokenVerifier;
-use kintai\Tests\Support\TestEd25519Keypair;
+use kintai\Tests\Support\TestSigningKeypair;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 final class LicenseClientServiceTest extends TestCase
 {
-    /** @var array{private: string, public: string} Paire jetable, generee a la volee — voir TestEd25519Keypair. */
+    /** @var array{private: string, public: string} Paire jetable, generee a la volee — voir TestSigningKeypair. */
     private static array $keypair;
 
     private array $store = [];
@@ -22,7 +22,7 @@ final class LicenseClientServiceTest extends TestCase
 
     public static function setUpBeforeClass(): void
     {
-        self::$keypair = TestEd25519Keypair::generate();
+        self::$keypair = TestSigningKeypair::generate();
     }
 
     protected function setUp(): void
@@ -59,7 +59,7 @@ final class LicenseClientServiceTest extends TestCase
         $encode = static fn(string $s) => rtrim(strtr(base64_encode($s), '+/', '-_'), '=');
 
         $encodedPayload = $encode(json_encode($payload, JSON_THROW_ON_ERROR));
-        openssl_sign($encodedPayload, $signature, $privateKey, 0);
+        openssl_sign($encodedPayload, $signature, $privateKey, OPENSSL_ALGO_SHA256);
 
         return $encodedPayload . '.' . $encode($signature);
     }

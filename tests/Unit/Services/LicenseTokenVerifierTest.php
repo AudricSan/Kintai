@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Services;
 
 use kintai\Core\Services\LicenseTokenVerifier;
-use kintai\Tests\Support\TestEd25519Keypair;
+use kintai\Tests\Support\TestSigningKeypair;
 use PHPUnit\Framework\TestCase;
 
 final class LicenseTokenVerifierTest extends TestCase
@@ -17,8 +17,8 @@ final class LicenseTokenVerifierTest extends TestCase
 
     public static function setUpBeforeClass(): void
     {
-        self::$keypair = TestEd25519Keypair::generate();
-        self::$otherKeypair = TestEd25519Keypair::generate();
+        self::$keypair = TestSigningKeypair::generate();
+        self::$otherKeypair = TestSigningKeypair::generate();
     }
 
     private function sign(array $payload): string
@@ -27,7 +27,7 @@ final class LicenseTokenVerifierTest extends TestCase
         $encode = static fn(string $s) => rtrim(strtr(base64_encode($s), '+/', '-_'), '=');
 
         $encodedPayload = $encode(json_encode($payload, JSON_THROW_ON_ERROR));
-        openssl_sign($encodedPayload, $signature, $privateKey, 0);
+        openssl_sign($encodedPayload, $signature, $privateKey, OPENSSL_ALGO_SHA256);
 
         return $encodedPayload . '.' . $encode($signature);
     }

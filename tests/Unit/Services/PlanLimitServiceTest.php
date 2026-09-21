@@ -11,13 +11,13 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Services\LicenseClientService;
 use kintai\Core\Services\LicenseTokenVerifier;
 use kintai\Core\Services\PlanLimitService;
-use kintai\Tests\Support\TestEd25519Keypair;
+use kintai\Tests\Support\TestSigningKeypair;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 final class PlanLimitServiceTest extends TestCase
 {
-    /** @var array{private: string, public: string} Paire jetable, generee a la volee — voir TestEd25519Keypair. */
+    /** @var array{private: string, public: string} Paire jetable, generee a la volee — voir TestSigningKeypair. */
     private static array $keypair;
 
     private StoreRepositoryInterface&MockObject $stores;
@@ -26,7 +26,7 @@ final class PlanLimitServiceTest extends TestCase
 
     public static function setUpBeforeClass(): void
     {
-        self::$keypair = TestEd25519Keypair::generate();
+        self::$keypair = TestSigningKeypair::generate();
     }
 
     protected function setUp(): void
@@ -158,7 +158,7 @@ final class PlanLimitServiceTest extends TestCase
         $privateKey = openssl_pkey_get_private(self::$keypair['private']);
         $encode = static fn(string $s) => rtrim(strtr(base64_encode($s), '+/', '-_'), '=');
         $encodedPayload = $encode(json_encode(['limits' => $limits], JSON_THROW_ON_ERROR));
-        openssl_sign($encodedPayload, $signature, $privateKey, 0);
+        openssl_sign($encodedPayload, $signature, $privateKey, OPENSSL_ALGO_SHA256);
         $token = $encodedPayload . '.' . $encode($signature);
 
         $store = [];

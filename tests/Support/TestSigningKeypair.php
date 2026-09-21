@@ -5,23 +5,22 @@ declare(strict_types=1);
 namespace kintai\Tests\Support;
 
 /**
- * Génère une paire de clés Ed25519 jetable pour les tests qui exercent la
- * vérification de license_token (voir LicenseTokenVerifier) — jamais une clé
- * codée en dur dans le code source : outre le risque de sécurité (repéré par
- * GitGuardian sur toute clé PRIVÉE committée, même de test), une clé générée
- * à la volée via l'exécutable `openssl` évite aussi les soucis de portabilité
- * d'un PEM fige entre environnements (fins de ligne, version d'OpenSSL liée à
- * l'extension PHP).
+ * Génère une paire de clés RSA 2048 bits jetable pour les tests qui exercent
+ * la vérification de license_token (voir LicenseTokenVerifier, RSA-SHA256) —
+ * jamais une clé codée en dur dans le code source : outre le risque de
+ * sécurité (repéré par GitGuardian sur toute clé PRIVÉE committée, même de
+ * test), une clé générée à la volée via l'exécutable `openssl` évite aussi
+ * les soucis de portabilité d'un PEM fige entre environnements.
  */
-final class TestEd25519Keypair
+final class TestSigningKeypair
 {
     /** @return array{private: string, public: string} PEM des deux clés. */
     public static function generate(): array
     {
-        $privPath = tempnam(sys_get_temp_dir(), 'ed25519_priv_');
-        $pubPath = tempnam(sys_get_temp_dir(), 'ed25519_pub_');
+        $privPath = tempnam(sys_get_temp_dir(), 'rsa_priv_');
+        $pubPath = tempnam(sys_get_temp_dir(), 'rsa_pub_');
 
-        exec('openssl genpkey -algorithm ed25519 -out ' . escapeshellarg($privPath) . ' 2>&1', $out, $code);
+        exec('openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out ' . escapeshellarg($privPath) . ' 2>&1', $out, $code);
         if ($code !== 0) {
             unlink($privPath);
             unlink($pubPath);
