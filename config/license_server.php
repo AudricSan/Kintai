@@ -13,7 +13,7 @@
  *
  *   LICENSE_SERVER_URL=https://exemple.com/LicenseManager/public/api/v1
  *   LICENSE_SERVER_API_KEY=lm_xxx...
- *   LICENSE_SERVER_PUBLIC_KEY_B64=... (cle Ed25519 publique, voir ci-dessous)
+ *   LICENSE_SERVER_PUBLIC_KEY_B64=... (cle RSA publique, voir ci-dessous)
  *
  * Tant que LICENSE_SERVER_URL est vide, LicenseClientService ne fait rien
  * (no-op silencieux) — l'app reste utilisable en plan gratuit sans configuration.

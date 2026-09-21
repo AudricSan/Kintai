@@ -6,12 +6,15 @@ namespace kintai\Core\Services;
 
 /**
  * Verifie localement le `license_token` signe renvoye par le serveur de
- * licence (voir config/license_server.php pour le pourquoi). Ed25519 via
- * l'extension openssl (pas sodium, indisponible sur certains environnements
- * XAMPP), avec l'algo "0" (EdDSA fait son propre hachage). C'est cette
- * verification, pas la simple presence d'un champ en base, qui fait foi pour
- * PlanLimitService : sans cle publique configuree ou avec une signature
- * invalide, verify() renvoie null et l'appelant retombe sur le plan gratuit.
+ * licence (voir config/license_server.php pour le pourquoi). RSA-SHA256 via
+ * l'extension openssl : Ed25519 (openssl_sign() avec algo "0") echoue
+ * silencieusement sur certains environnements (repere sur les runners Ubuntu
+ * de GitHub Actions — le chargement de la cle reussit, seule la signature
+ * echoue), alors que RSA+SHA256 est la combinaison la plus universellement
+ * supportee. C'est cette verification, pas la simple presence d'un champ en
+ * base, qui fait foi pour PlanLimitService : sans cle publique configuree ou
+ * avec une signature invalide, verify() renvoie null et l'appelant retombe
+ * sur le plan gratuit.
  */
 final class LicenseTokenVerifier
 {
@@ -47,7 +50,7 @@ final class LicenseTokenVerifier
             return null;
         }
 
-        if (openssl_verify($encodedPayload, $signature, $publicKey, 0) !== 1) {
+        if (openssl_verify($encodedPayload, $signature, $publicKey, OPENSSL_ALGO_SHA256) !== 1) {
             return null;
         }
 
