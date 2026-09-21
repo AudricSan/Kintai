@@ -9,12 +9,17 @@ use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Services\LicenseClientService;
+use kintai\Core\Services\LicenseTokenVerifier;
 use kintai\Core\Services\PlanLimitService;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 final class PlanLimitServiceTest extends TestCase
 {
+    /** Paire de cles generee uniquement pour ce test, distincte de la cle reelle en .env. */
+    private const TEST_PRIVATE_KEY_B64 = 'LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tDQpNQzRDQVFBd0JRWURLMlZ3QkNJRUlEUVZIVmVQSCs2aUtkc2E3Z0daTGR0NVJaNDRNLzMrbnNXNjgxRmxJUnpXDQotLS0tLUVORCBQUklWQVRFIEtFWS0tLS0tDQo=';
+    private const TEST_PUBLIC_KEY_B64 = 'LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUNvd0JRWURLMlZ3QXlFQUkzcFdnWks4WUlDWG95MzFNakpiZUhJUkpIVGdxdmxuanlDRDUrVEVZMlk9Ci0tLS0tRU5EIFBVQkxJQyBLRVktLS0tLQo=';
+
     private StoreRepositoryInterface&MockObject $stores;
     private UserRepositoryInterface&MockObject $users;
     private PlanLimitService $service;
@@ -135,5 +140,71 @@ final class PlanLimitServiceTest extends TestCase
         $this->users->method('countActive')->willReturn(999);
         $this->makePaidService()->assertCanCreateEmployee();
         $this->addToAssertionCount(1);
+    }
+
+    // -------------------------------------------------------------------------
+    // Palier avec limites specifiques (license_token verifie) — remplace le
+    // "tout illimite" par defaut du plan payant par les chiffres propres a la
+    // licence, ex: palier "Pro" a 10 magasins / 200 employes / bundles illimites.
+    // -------------------------------------------------------------------------
+
+    private function makeTieredService(array $limits): PlanLimitService
+    {
+        $privateKey = openssl_pkey_get_private(base64_decode(self::TEST_PRIVATE_KEY_B64));
+        $encode = static fn(string $s) => rtrim(strtr(base64_encode($s), '+/', '-_'), '=');
+        $encodedPayload = $encode(json_encode(['limits' => $limits], JSON_THROW_ON_ERROR));
+        openssl_sign($encodedPayload, $signature, $privateKey, 0);
+        $token = $encodedPayload . '.' . $encode($signature);
+
+        $store = [];
+        $appSettings = $this->createMock(AppSettingsRepositoryInterface::class);
+        $appSettings->method('get')->willReturnCallback(function (string $k) use (&$store) {
+            return $store[$k] ?? null;
+        });
+        $appSettings->method('set')->willReturnCallback(function (string $k, string $v) use (&$store): void {
+            $store[$k] = $v;
+        });
+
+        $license = new LicenseClientService(
+            $appSettings,
+            ['base_url' => 'https://license.test/api/v1', 'api_key' => 'kintai-key', 'grace_period_days' => 14],
+            transport: fn(): string => json_encode(['valid' => true, 'status' => 'active', 'license_token' => $token]),
+            tokenVerifier: new LicenseTokenVerifier(base64_decode(self::TEST_PUBLIC_KEY_B64)),
+        );
+        $license->activate('KEY-1');
+
+        return new PlanLimitService($this->stores, $this->users, $license);
+    }
+
+    public function testTierWithExplicitLimitsAppliesThemInsteadOfUnlimited(): void
+    {
+        $service = $this->makeTieredService(['max_stores' => 10, 'max_employees' => 200]);
+
+        $this->assertSame(10, $service->maxStores());
+        $this->assertSame(200, $service->maxEmployees());
+    }
+
+    public function testTierWithMissingKeyStaysUnlimitedForThatDimension(): void
+    {
+        // "Business" par ex. : magasins limites, mais aucune limite sur les bundles (cle absente).
+        $service = $this->makeTieredService(['max_stores' => 50]);
+
+        $this->assertNull($service->maxActiveBundles());
+    }
+
+    public function testTierWithExplicitNullStaysUnlimited(): void
+    {
+        $service = $this->makeTieredService(['max_bundles' => null]);
+
+        $this->assertNull($service->maxActiveBundles());
+    }
+
+    public function testAssertCanCreateStoreThrowsWhenTierLimitReached(): void
+    {
+        $service = $this->makeTieredService(['max_stores' => 3]);
+        $this->stores->method('countActive')->willReturn(3);
+
+        $this->expectException(PlanLimitExceededException::class);
+        $service->assertCanCreateStore();
     }
 }

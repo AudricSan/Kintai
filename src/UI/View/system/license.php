@@ -9,6 +9,7 @@ use kintai\UI\Components\Flash;
  * @var string|null $licenseKey
  * @var string      $instanceId
  * @var array|null  $state
+ * @var array|null  $entitlements
  * @var bool        $isPaidActive
  * @var int|null    $maxStores
  * @var int         $currentStores
@@ -56,6 +57,9 @@ ob_start();
     <ul class="text-sm">
         <?php if (!empty($state['type'])): ?>
             <li><?= __('license_type') ?> : <?= htmlspecialchars((string) $state['type']) ?></li>
+        <?php endif; ?>
+        <?php if (!empty($entitlements['plan_tier'])): ?>
+            <li><?= __('license_plan_tier') ?> : <?= htmlspecialchars((string) $entitlements['plan_tier']) ?></li>
         <?php endif; ?>
         <?php
         $issuedAtTs = !empty($state['issued_at']) ? strtotime((string) $state['issued_at']) : false;

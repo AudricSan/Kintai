@@ -1434,6 +1434,7 @@
     "license_none_registered": "No license registered on this instance.",
     "license_plan_free": "Free",
     "license_plan_paid": "Paid",
+    "license_plan_tier": "Plan tier",
     "license_refresh_btn": "Check now",
     "license_refreshed_success": "License re-checked.",
     "license_seats": "Seats used",

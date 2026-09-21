@@ -29,6 +29,7 @@ final class LicenseClientService
         private readonly array $config,
         private readonly HttpFetcher $http = new HttpFetcher(),
         ?callable $transport = null,
+        private readonly LicenseTokenVerifier $tokenVerifier = new LicenseTokenVerifier(null),
     ) {
         $this->transport = $transport;
     }
@@ -207,6 +208,7 @@ final class LicenseClientService
                 'expires_at'         => $previous['expires_at'] ?? null,
                 'max_activations'    => $previous['max_activations'] ?? null,
                 'active_activations' => $previous['active_activations'] ?? null,
+                'license_token'      => $previous['license_token'] ?? null,
                 'last_valid_at'      => $previous['last_valid_at'] ?? null,
                 'checked_at'         => $now,
             ]);
@@ -221,10 +223,29 @@ final class LicenseClientService
             'expires_at'         => $result['expires_at'] ?? null,
             'max_activations'    => $result['max_activations'] ?? ($previous['max_activations'] ?? null),
             'active_activations' => $result['active_activations'] ?? ($previous['active_activations'] ?? null),
+            'license_token'      => $result['license_token'] ?? ($previous['license_token'] ?? null),
             'error'              => $valid ? null : ($result['error'] ?? null),
             'last_valid_at'      => $valid ? $now : ($previous['last_valid_at'] ?? null),
             'checked_at'         => $now,
         ]);
+    }
+
+    /**
+     * Entitlements verifies cryptographiquement (type/palier/limites/expiration/
+     * sieges), decodes depuis le license_token signe stocke localement — jamais
+     * depuis les champs plats de state(), qu'une base self-hosted editee a la
+     * main pourrait avoir falsifies. Null si aucun token n'est enregistre ou si
+     * sa signature ne verifie pas (cle publique absente, token corrompu ou emis
+     * par une autre cle) : l'appelant doit alors retomber sur le plan gratuit.
+     */
+    public function entitlements(): ?array
+    {
+        $token = $this->state()['license_token'] ?? null;
+        if (!is_string($token) || $token === '') {
+            return null;
+        }
+
+        return $this->tokenVerifier->verify($token);
     }
 
     private function writeState(array $state): void

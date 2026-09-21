@@ -101,10 +101,20 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(TimeoffRequestRepositoryInterface::class),
         ));
 
+        $this->container->singleton(LicenseTokenVerifier::class, function (Container $c) {
+            $path = dirname(dirname(dirname(__DIR__))) . '/config/license_server.php';
+            $config = file_exists($path) ? require $path : [];
+            return new LicenseTokenVerifier($config['public_key_pem'] ?? null);
+        });
+
         $this->container->singleton(LicenseClientService::class, function (Container $c) {
             $path = dirname(dirname(dirname(__DIR__))) . '/config/license_server.php';
             $config = file_exists($path) ? require $path : [];
-            return new LicenseClientService($c->make(AppSettingsRepositoryInterface::class), $config);
+            return new LicenseClientService(
+                $c->make(AppSettingsRepositoryInterface::class),
+                $config,
+                tokenVerifier: $c->make(LicenseTokenVerifier::class),
+            );
         });
 
         $this->container->singleton(PlanLimitService::class, fn(Container $c) => new PlanLimitService(

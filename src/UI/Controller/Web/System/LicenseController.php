@@ -43,6 +43,7 @@ final class LicenseController
             'licenseKey'       => $this->license->licenseKey(),
             'instanceId'       => $this->license->instanceId(),
             'state'            => $this->license->state(),
+            'entitlements'     => $this->license->entitlements(),
             'isPaidActive'     => $this->license->isPaidPlanActive(),
             'maxStores'        => $this->planLimits->maxStores(),
             'currentStores'    => $this->planLimits->currentStoreCount(),

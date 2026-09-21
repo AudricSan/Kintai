@@ -1434,6 +1434,7 @@
     "license_none_registered": "Aucune licence enregistrée sur cette instance.",
     "license_plan_free": "Gratuit",
     "license_plan_paid": "Payant",
+    "license_plan_tier": "Palier",
     "license_refresh_btn": "Vérifier maintenant",
     "license_refreshed_success": "Licence revérifiée.",
     "license_seats": "Sièges utilisés",

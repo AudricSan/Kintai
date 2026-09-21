@@ -1434,6 +1434,7 @@
     "license_none_registered": "このインスタンスに登録されたライセンスはありません。",
     "license_plan_free": "無料",
     "license_plan_paid": "有料",
+    "license_plan_tier": "プラン階層",
     "license_refresh_btn": "今すぐ確認",
     "license_refreshed_success": "ライセンスを再確認しました。",
     "license_seats": "使用中のシート数",
