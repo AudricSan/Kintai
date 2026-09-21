@@ -393,19 +393,40 @@ img {
     width: 88px;
     height: 88px;
     margin: 0 auto var(--space-2);
-    background: url('../../img/mascot/box-empty.png') center / contain no-repeat;
+    background: url('../../img/mascot/kitsune/box-empty.png') center / contain no-repeat;
 }
 
 .empty-state--bell::before {
-    background-image: url('../../img/mascot/bell.png');
+    background-image: url('../../img/mascot/kitsune/bell.png');
 }
 
 .empty-state--timeclock::before {
-    background-image: url('../../img/mascot/timeclock-empty.png');
+    background-image: url('../../img/mascot/kitsune/timeclock-empty.png');
 }
 
 .empty-state--salary::before {
-    background-image: url('../../img/mascot/salary-empty.png');
+    background-image: url('../../img/mascot/kitsune/salary-empty.png');
+}
+
+/* Mascotte "mix"/"tanuki" (réglage Owner, voir MascotResolver) : tant que
+   les assets tanuki correspondants n'existent pas encore sous
+   mascot/tanuki/, ces règles pointent vers un fichier absent — un
+   background-image manquant ne casse rien visuellement (pas de glyphe
+   d'image cassée), juste un carré vide en attendant leur export. */
+[data-mascot="tanuki"] .empty-state::before {
+    background-image: url('../../img/mascot/tanuki/box-empty.png');
+}
+
+[data-mascot="tanuki"] .empty-state--bell::before {
+    background-image: url('../../img/mascot/tanuki/bell.png');
+}
+
+[data-mascot="tanuki"] .empty-state--timeclock::before {
+    background-image: url('../../img/mascot/tanuki/timeclock-empty.png');
+}
+
+[data-mascot="tanuki"] .empty-state--salary::before {
+    background-image: url('../../img/mascot/tanuki/salary-empty.png');
 }
 
 .empty-state__icon {

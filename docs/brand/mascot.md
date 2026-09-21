@@ -164,21 +164,50 @@ couvre des contextes sans usage actuel dans l'app :
 | `kitsune_recherche_vide.png`         | 検索（空）, variante de `http404`              | "Aucun résultat" sur une liste avec recherche/filtre                          |
 | `kitsune_lit_livre.png`              | Assis, lit un livre                            | Voir section 4 (piste pour combler l'absence de pose "dort")                  |
 
-## 3. Poses Tanuki disponibles (nouvelle mascotte, rien de câblé)
+## 3. Poses Tanuki intégrées dans l'app
 
-Aucune pose Tanuki n'est utilisée dans l'app à ce jour. Liste complète en
-section "Sources — Tanuki" ci-dessus (couverture HTTP + poses de scène).
-Deux points à traiter avant tout câblage :
+**Mise à jour (20/09/2026)** : `public/assets/img/mascot/` est réparti en
+`mascot/kitsune/` et `mascot/tanuki/` (même arborescence dans chaque, y
+compris `http-error/`), résolu par `kintai\Core\Services\MascotResolver`
+(réglage Owner `app_mascot_mode` sur `/admin/owner-settings` : `mix` par
+défaut — tirage aléatoire par requête, aucune persistance —, ou figé sur
+`kitsune`/`tanuki`). Les 13 emplacements de vues passent par le helper
+`mascot_path(string $context): string` plutôt que de construire leur
+chemin en dur ; les 4 icônes d'état vide en CSS (`base.css`) réagissent à
+un attribut `data-mascot` posé sur `<html>` par les layouts.
 
-- **Choisir entre les variantes `_v2`/`_v3`** là où elles existent — ce
-  sont de vraies alternatives (composition différente), pas des doublons à
-  fusionner (voir Sources ci-dessus).
-- **Décider du rôle relatif à Kitsune** : les deux mascottes sont
-  utilisées, mais sans qu'un mécanisme de choix (thème, réglage Owner,
-  etc.) n'existe dans l'app aujourd'hui — `public/assets/img/mascot/` ne
-  contient que des poses Kitsune. Intégrer Tanuki suppose de définir
-  d'abord *où* (à la place de Kitsune, en complément, sélectionnable) avant
-  de détourer/exporter quoi que ce soit.
+Les 17 poses Tanuki sont désormais exportées (sources fournies déjà
+détourées — fond transparent — plutôt que via le flood-fill documenté en
+section 6, qui reste la méthode de repli si une future pose arrive sans
+fond déjà retiré) :
+
+| Contexte (`mascot_path()`) | Source Tanuki                       | Hauteur |
+| --------------------------- | ------------------------------------ | ------- |
+| `brand-icon`                 | `tanuki_salut_accueil.png`           | 240px   |
+| `login`                      | `tanuki_setire.png`                  | 240px   |
+| `footer-fox-1`                | `tanuki_assis.png`                   | 240px   |
+| `footer-fox-2`                | `tanuki_se_retourne.png`             | 240px   |
+| `footer-fox-3`                | `tanuki_heureux.png`                 | 240px   |
+| `footer-fox-4`                | `tanuki_assis_repos.png`             | 240px   |
+| `http-error/403`             | `tanuki_http403.png`                 | 480px   |
+| `http-error/404`             | `tanuki_http404.png`                 | 480px   |
+| `http-error/405`             | `tanuki_http405.png`                 | 480px   |
+| `http-error/422`             | `tanuki_http422.png`                 | 480px   |
+| `http-error/500`             | `tanuki_http500.png`                 | 480px   |
+| `http-error/503`             | `tanuki_http503.png`                 | 480px   |
+| `docs-hero`                   | `tanuki_smartphone.png`              | 240px   |
+| `box-empty`                   | `tanuki_boite_vide.png`              | 240px   |
+| `bell`                        | `tanuki_cloche_notification.png`     | 240px   |
+| `timeclock-empty`             | `tanuki_pointeuse_horloge.png`       | 240px   |
+| `salary-empty`                | `tanuki_enveloppe_paie.png`          | 240px   |
+
+Variantes `_v2`/`_v3` : non retenues pour cette première passe (base
+`tanuki_<contexte>.png` utilisée partout où une variante existait) — à
+revisiter au cas par cas si une des bases s'avère moins lisible en usage
+réel. Les contextes 400/410/408/409/413/429/501/502/504 (Tanuki en a des
+poses dédiées, Kitsune non, et aucun des deux côtés n'a de vue HTTP
+dédiée dans `src/UI/View/errors/`) restent non exportés — à réévaluer si
+ces codes gagnent une vue dédiée un jour.
 
 ## 4. Écarts entre les deux jeux
 
@@ -231,7 +260,9 @@ Deux points à traiter avant tout câblage :
    ventre/pattes de l'animal.
 3. Exporter en PNG transparent, hauteur standard 240px (480px pour les
    pages d'erreur HTTP, voir section 1), dans
-   `public/assets/img/mascot/<contexte>.png`.
+   `public/assets/img/mascot/<kitsune|tanuki>/<contexte>.png` (même nom de
+   contexte des deux côtés — `http-error/<code>.png` garde son
+   sous-dossier — c'est ce nom que `mascot_path($context)` reçoit).
 4. Utiliser la clé de traduction `mascot_alt` (déjà présente en fr/en/ja)
    pour l'attribut `alt`.
 5. Pour une icône réutilisée par un CSS `background: url(...)` (cas de

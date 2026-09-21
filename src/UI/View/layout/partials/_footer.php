@@ -38,7 +38,7 @@ $_ftIcon = static function (string $name): string {
 
         <div class="app-footer__brand">
             <a href="<?= $_ftHomeHref ?>" class="app-footer__brand-link">
-                <img src="<?= $BASE_URL ?>/assets/img/mascot/brand-icon.png" alt="" class="app-footer__logo">
+                <img src="<?= $BASE_URL ?>/assets/img/<?= mascot_path('brand-icon') ?>" alt="" class="app-footer__logo">
                 <span class="app-footer__name">Kintai</span>
             </a>
             <p class="app-footer__tagline"><?= __('footer_tagline') ?></p>
@@ -100,7 +100,7 @@ $_ftIcon = static function (string $name): string {
         </nav>
 
         <nav class="app-footer__col app-footer__col--mascot">
-            <img src="<?= $BASE_URL ?>/assets/img/mascot/footer-fox-<?= $_ftMascotPose ?>.png" alt="" class="app-footer__mascot">
+            <img src="<?= $BASE_URL ?>/assets/img/<?= mascot_path('footer-fox-' . $_ftMascotPose) ?>" alt="" class="app-footer__mascot">
         </nav>
 
     </div>

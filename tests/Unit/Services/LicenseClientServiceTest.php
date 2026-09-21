@@ -7,13 +7,23 @@ namespace kintai\Tests\Unit\Services;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Services\HttpFetcher;
 use kintai\Core\Services\LicenseClientService;
+use kintai\Core\Services\LicenseTokenVerifier;
+use kintai\Tests\Support\TestSigningKeypair;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 final class LicenseClientServiceTest extends TestCase
 {
+    /** @var array{private: string, public: string} Paire jetable, generee a la volee — voir TestSigningKeypair. */
+    private static array $keypair;
+
     private array $store = [];
     private AppSettingsRepositoryInterface&MockObject $appSettings;
+
+    public static function setUpBeforeClass(): void
+    {
+        self::$keypair = TestSigningKeypair::generate();
+    }
 
     protected function setUp(): void
     {
@@ -25,7 +35,7 @@ final class LicenseClientServiceTest extends TestCase
         });
     }
 
-    private function makeService(array $config = [], ?callable $transport = null): LicenseClientService
+    private function makeService(array $config = [], ?callable $transport = null, ?LicenseTokenVerifier $tokenVerifier = null): LicenseClientService
     {
         $config = array_merge([
             'base_url'          => 'https://license.test/api/v1',
@@ -33,7 +43,25 @@ final class LicenseClientServiceTest extends TestCase
             'grace_period_days' => 14,
         ], $config);
 
-        return new LicenseClientService($this->appSettings, $config, new HttpFetcher(), $transport);
+        return new LicenseClientService(
+            $this->appSettings,
+            $config,
+            new HttpFetcher(),
+            $transport,
+            $tokenVerifier ?? new LicenseTokenVerifier(null),
+        );
+    }
+
+    /** Signe un token comme le ferait LicenseTokenSigner cote serveur (License Manager). */
+    private function signToken(array $payload): string
+    {
+        $privateKey = openssl_pkey_get_private(self::$keypair['private']);
+        $encode = static fn(string $s) => rtrim(strtr(base64_encode($s), '+/', '-_'), '=');
+
+        $encodedPayload = $encode(json_encode($payload, JSON_THROW_ON_ERROR));
+        openssl_sign($encodedPayload, $signature, $privateKey, OPENSSL_ALGO_SHA256);
+
+        return $encodedPayload . '.' . $encode($signature);
     }
 
     // -------------------------------------------------------------------------
@@ -75,6 +103,41 @@ final class LicenseClientServiceTest extends TestCase
         $this->assertTrue($result['valid']);
         $this->assertTrue($service->isPaidPlanActive());
         $this->assertSame('KEY-1', $service->licenseKey());
+    }
+
+    /** issued_at/max_activations/active_activations viennent enrichir la réponse activate/validate côté serveur (License Manager) — vérifie qu'ils sont bien persistés dans l'état local pour l'affichage sur /admin/license. */
+    public function testActivateStoresPlanDetailsFromServerResponse(): void
+    {
+        $service = $this->makeService([], fn(): string => json_encode([
+            'valid' => true, 'status' => 'active', 'type' => 'yearly',
+            'issued_at' => '2026-01-01 00:00:00', 'expires_at' => '2027-01-01 00:00:00',
+            'max_activations' => 3, 'active_activations' => 1,
+        ]));
+
+        $service->activate('KEY-1');
+        $state = $service->state();
+
+        $this->assertSame('2026-01-01 00:00:00', $state['issued_at']);
+        $this->assertSame(3, $state['max_activations']);
+        $this->assertSame(1, $state['active_activations']);
+    }
+
+    public function testRefreshDegradedStateKeepsPreviousPlanDetails(): void
+    {
+        $callCount = 0;
+        $service = $this->makeService([], function () use (&$callCount): ?string {
+            $callCount++;
+            return $callCount === 1
+                ? json_encode(['valid' => true, 'status' => 'active', 'max_activations' => 3, 'active_activations' => 1])
+                : null;
+        });
+
+        $service->activate('KEY-1');
+        $service->refresh();
+
+        $state = $service->state();
+        $this->assertSame(3, $state['max_activations']);
+        $this->assertSame(1, $state['active_activations']);
     }
 
     public function testActivateWithInvalidKeyKeepsFreePlan(): void
@@ -205,5 +268,61 @@ final class LicenseClientServiceTest extends TestCase
 
         $this->assertNull($service->licenseKey());
         $this->assertFalse($service->isPaidPlanActive());
+    }
+
+    // -------------------------------------------------------------------------
+    // entitlements() — decode le license_token signe, jamais les champs plats
+    // -------------------------------------------------------------------------
+
+    public function testEntitlementsReturnsVerifiedTokenPayload(): void
+    {
+        $tokenVerifier = new LicenseTokenVerifier(self::$keypair['public']);
+        $token = $this->signToken(['limits' => ['max_stores' => 3, 'max_employees' => 50]]);
+
+        $service = $this->makeService([], fn(): string => json_encode([
+            'valid' => true, 'status' => 'active', 'license_token' => $token,
+        ]), $tokenVerifier);
+        $service->activate('KEY-1');
+
+        $this->assertSame(['max_stores' => 3, 'max_employees' => 50], $service->entitlements()['limits']);
+    }
+
+    public function testEntitlementsNullWithoutAnyToken(): void
+    {
+        $service = $this->makeService([], fn(): string => json_encode(['valid' => true, 'status' => 'active']));
+        $service->activate('KEY-1');
+
+        $this->assertNull($service->entitlements());
+    }
+
+    /** Une base editee a la main avec un faux token (mauvaise signature) ne doit jamais etre prise en compte. */
+    public function testEntitlementsNullWhenPublicKeyNotConfigured(): void
+    {
+        $token = $this->signToken(['limits' => ['max_stores' => 999]]);
+        $service = $this->makeService([], fn(): string => json_encode([
+            'valid' => true, 'status' => 'active', 'license_token' => $token,
+        ]));
+        $service->activate('KEY-1');
+
+        $this->assertNull($service->entitlements());
+    }
+
+    public function testEntitlementsSurviveDegradedRefreshServerUnreachable(): void
+    {
+        $tokenVerifier = new LicenseTokenVerifier(self::$keypair['public']);
+        $token = $this->signToken(['limits' => ['max_stores' => 3]]);
+
+        $callCount = 0;
+        $service = $this->makeService([], function () use (&$callCount, $token): ?string {
+            $callCount++;
+            return $callCount === 1
+                ? json_encode(['valid' => true, 'status' => 'active', 'license_token' => $token])
+                : null;
+        }, $tokenVerifier);
+
+        $service->activate('KEY-1');
+        $service->refresh();
+
+        $this->assertSame(['max_stores' => 3], $service->entitlements()['limits']);
     }
 }
