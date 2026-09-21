@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace kintai\UI\Controller\Web\System;
 
+use kintai\Core\BundleDiscoveryService;
+use kintai\Core\FeatureManager;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\LicenseClientService;
+use kintai\Core\Services\PlanLimitService;
 use kintai\UI\Controller\Web\HasBaseUrl;
 use kintai\UI\ViewRenderer;
 
@@ -19,6 +22,9 @@ final class LicenseController
         private readonly ViewRenderer $view,
         private readonly LicenseClientService $license,
         private readonly AuditLogger $auditLogger,
+        private readonly PlanLimitService $planLimits,
+        private readonly BundleDiscoveryService $discovery,
+        private readonly FeatureManager $features,
     ) {}
 
     /** GET /admin/license */
@@ -26,13 +32,25 @@ final class LicenseController
     {
         $this->license->refreshIfStale();
 
+        $activeBundleCount = count(array_filter(
+            array_keys($this->discovery->discover()),
+            fn(string $slug) => $this->features->isEnabled($slug),
+        ));
+
         return Response::html($this->view->render('system.license', [
-            'title'        => __('license'),
-            'configured'   => $this->license->isConfigured(),
-            'licenseKey'   => $this->license->licenseKey(),
-            'instanceId'   => $this->license->instanceId(),
-            'state'        => $this->license->state(),
-            'isPaidActive' => $this->license->isPaidPlanActive(),
+            'title'            => __('license'),
+            'configured'       => $this->license->isConfigured(),
+            'licenseKey'       => $this->license->licenseKey(),
+            'instanceId'       => $this->license->instanceId(),
+            'state'            => $this->license->state(),
+            'entitlements'     => $this->license->entitlements(),
+            'isPaidActive'     => $this->license->isPaidPlanActive(),
+            'maxStores'        => $this->planLimits->maxStores(),
+            'currentStores'    => $this->planLimits->currentStoreCount(),
+            'maxEmployees'     => $this->planLimits->maxEmployees(),
+            'currentEmployees' => $this->planLimits->currentEmployeeCount(),
+            'maxBundles'       => $this->planLimits->maxActiveBundles(),
+            'currentBundles'   => $activeBundleCount,
         ], 'layout.app'));
     }
 

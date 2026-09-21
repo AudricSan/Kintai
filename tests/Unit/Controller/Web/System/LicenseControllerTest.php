@@ -4,13 +4,22 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Controller\Web\System;
 
+use kintai\Core\BundleDiscoveryService;
+use kintai\Core\FeatureManager;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
+use kintai\Core\Repositories\StoreRepositoryInterface;
+use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\LicenseClientService;
+use kintai\Core\Services\PlanLimitService;
 use kintai\UI\Controller\Web\System\LicenseController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\TestCase;
+
+if (!defined('BASE_PATH')) {
+    define('BASE_PATH', dirname(__DIR__, 5));
+}
 
 final class LicenseControllerTest extends TestCase
 {
@@ -40,7 +49,20 @@ final class LicenseControllerTest extends TestCase
         $config = array_merge(['base_url' => 'https://license.test/api/v1', 'api_key' => 'kintai-key', 'grace_period_days' => 14], $config);
         $license = new LicenseClientService($appSettings, $config, transport: $transport);
 
-        return new LicenseController(new ViewRenderer(sys_get_temp_dir()), $license, new AuditLogger());
+        $planLimits = new PlanLimitService(
+            $this->createMock(StoreRepositoryInterface::class),
+            $this->createMock(UserRepositoryInterface::class),
+            $license,
+        );
+
+        return new LicenseController(
+            new ViewRenderer(sys_get_temp_dir()),
+            $license,
+            new AuditLogger(),
+            $planLimits,
+            new BundleDiscoveryService(sys_get_temp_dir() . '/kintai-license-controller-test-empty-bundles-dir'),
+            new FeatureManager([]),
+        );
     }
 
     public function testShowRendersPage(): void

@@ -9,7 +9,14 @@ use kintai\UI\Components\Flash;
  * @var string|null $licenseKey
  * @var string      $instanceId
  * @var array|null  $state
+ * @var array|null  $entitlements
  * @var bool        $isPaidActive
+ * @var int|null    $maxStores
+ * @var int         $currentStores
+ * @var int|null    $maxEmployees
+ * @var int         $currentEmployees
+ * @var int|null    $maxBundles
+ * @var int         $currentBundles
  * @var string|null $BASE_URL
  */
 
@@ -51,8 +58,31 @@ ob_start();
         <?php if (!empty($state['type'])): ?>
             <li><?= __('license_type') ?> : <?= htmlspecialchars((string) $state['type']) ?></li>
         <?php endif; ?>
-        <?php if (!empty($state['expires_at'])): ?>
-            <li><?= __('license_expires_at') ?> : <?= htmlspecialchars((string) $state['expires_at']) ?></li>
+        <?php if (!empty($entitlements['plan_tier'])): ?>
+            <li><?= __('license_plan_tier') ?> : <?= htmlspecialchars((string) $entitlements['plan_tier']) ?></li>
+        <?php endif; ?>
+        <?php
+        $issuedAtTs = !empty($state['issued_at']) ? strtotime((string) $state['issued_at']) : false;
+        $expiresAtTs = !empty($state['expires_at']) ? strtotime((string) $state['expires_at']) : false;
+        ?>
+        <?php if ($issuedAtTs !== false): ?>
+            <li><?= __('license_issued_at') ?> : <?= htmlspecialchars(date('d/m/Y', $issuedAtTs)) ?></li>
+        <?php endif; ?>
+        <?php if ($expiresAtTs !== false): ?>
+            <li><?= __('license_expires_at') ?> : <?= htmlspecialchars(date('d/m/Y', $expiresAtTs)) ?></li>
+        <?php endif; ?>
+        <?php if ($issuedAtTs !== false): ?>
+            <li>
+                <?= __('license_duration') ?> :
+                <?php if ($issuedAtTs !== false && $expiresAtTs !== false): ?>
+                    <?= __('license_duration_days', ['n' => (int) round(($expiresAtTs - $issuedAtTs) / 86400)]) ?>
+                <?php else: ?>
+                    <?= __('license_duration_unlimited') ?>
+                <?php endif; ?>
+            </li>
+        <?php endif; ?>
+        <?php if (!empty($state['max_activations'])): ?>
+            <li><?= __('license_seats') ?> : <?= __('license_seats_value', ['active' => (int) ($state['active_activations'] ?? 0), 'max' => (int) $state['max_activations']]) ?></li>
         <?php endif; ?>
         <?php if (!empty($state['checked_at'])): ?>
             <li><?= __('license_last_checked') ?> : <?= htmlspecialchars(date('d/m/Y H:i', (int) $state['checked_at'])) ?></li>
@@ -70,6 +100,33 @@ ob_start();
 <?php endif; ?>
 <?php
 echo Card::make()->header(__('license_status_title'))->body(ob_get_clean())->render();
+?>
+
+<?php
+ob_start();
+?>
+<ul class="text-sm">
+    <li>
+        <?= __('license_limit_stores_label') ?> :
+        <?= $maxStores !== null
+            ? __('license_limit_count_of_max', ['count' => $currentStores, 'max' => $maxStores])
+            : __('license_limit_unlimited_count', ['count' => $currentStores]) ?>
+    </li>
+    <li>
+        <?= __('license_limit_employees_label') ?> :
+        <?= $maxEmployees !== null
+            ? __('license_limit_count_of_max', ['count' => $currentEmployees, 'max' => $maxEmployees])
+            : __('license_limit_unlimited_count', ['count' => $currentEmployees]) ?>
+    </li>
+    <li>
+        <?= __('license_limit_bundles_label') ?> :
+        <?= $maxBundles !== null
+            ? __('license_limit_count_of_max', ['count' => $currentBundles, 'max' => $maxBundles])
+            : __('license_limit_unlimited_count', ['count' => $currentBundles]) ?>
+    </li>
+</ul>
+<?php
+echo Card::make()->header(__('license_limits_title'))->body(ob_get_clean())->render();
 ?>
 
 <?php
