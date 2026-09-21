@@ -989,6 +989,8 @@
     "perm_category_swaps": "Échanges de shifts",
     "perm_category_timeclock": "Pointage",
     "perm_category_timeoff": "Congés",
+    "perm_scope_global": "Toutes les boutiques",
+    "perm_scope_global_hint": "Cette permission s'applique à toutes les boutiques, quelle que soit la boutique d'affectation de l'utilisateur pour ce rôle.",
     "permissions": "Permissions",
     "personal": "Personnel",
     "personal_details": "Informations personnelles",

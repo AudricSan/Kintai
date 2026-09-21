@@ -7,8 +7,10 @@ use kintai\UI\Components\Flash;
 /** @var array  $permission_categories Catégorie => [actions] (PermissionCatalog::CATEGORIES) */
 /** @var array  $action_label_keys    Action => clé de traduction */
 /** @var array  $granted_permissions  Clés de permission déjà accordées (mode edit) */
+/** @var array  $granted_global_permissions Sous-ensemble de $granted_permissions en portée "toutes les boutiques" (mode edit) */
 /** @var array  $holders              ['assignment_id','user_name','initials','color','scope_label'][] (mode edit) */
 $mode ??= 'create';
+$granted_global_permissions ??= [];
 $isSystem = !empty($role['is_system']);
 
 echo Flash::fromQuery('error', [
@@ -114,17 +116,29 @@ echo Flash::fromQuery('error', [
                         <div class="perm-card__list">
                             <?php foreach ($actions as $action): ?>
                             <?php
-                                $key       = $category . '.' . $action;
-                                $fieldName = 'perm_' . str_replace('.', '_', $key);
-                                $labelKey  = $action_label_keys[$action] ?? $action;
-                                $checked   = in_array($key, $granted_permissions, true);
+                                $key            = $category . '.' . $action;
+                                $fieldSuffix    = str_replace('.', '_', $key);
+                                $fieldName      = 'perm_' . $fieldSuffix;
+                                $scopeFieldName = 'scope_' . $fieldSuffix;
+                                $scopeFieldId   = 'scope-' . str_replace('_', '-', $fieldSuffix);
+                                $labelKey       = $action_label_keys[$action] ?? $action;
+                                $checked        = in_array($key, $granted_permissions, true);
+                                $globalChecked  = in_array($key, $granted_global_permissions, true);
                             ?>
-                            <label class="perm-toggle">
-                                <span class="perm-toggle__text"><?= __($labelKey) ?></span>
-                                <input type="checkbox" name="<?= htmlspecialchars($fieldName) ?>" value="1" class="perm-toggle__input" data-perm-checkbox
-                                       <?= $checked ? 'checked' : '' ?>>
-                                <span class="perm-toggle__track"></span>
-                            </label>
+                            <div class="perm-row" data-perm-row>
+                                <label class="perm-toggle">
+                                    <span class="perm-toggle__text"><?= __($labelKey) ?></span>
+                                    <input type="checkbox" name="<?= htmlspecialchars($fieldName) ?>" value="1" class="perm-toggle__input" data-perm-checkbox
+                                           <?= $checked ? 'checked' : '' ?>>
+                                    <span class="perm-toggle__track"></span>
+                                </label>
+                                <span class="perm-scope">
+                                    <input type="checkbox" id="<?= htmlspecialchars($scopeFieldId) ?>" name="<?= htmlspecialchars($scopeFieldName) ?>" value="global"
+                                           class="perm-scope__input" data-perm-scope-checkbox
+                                           <?= $globalChecked ? 'checked' : '' ?> <?= $checked ? '' : 'disabled' ?>>
+                                    <label for="<?= htmlspecialchars($scopeFieldId) ?>" class="perm-scope__label" title="<?= htmlspecialchars(__('perm_scope_global_hint')) ?>"><?= __('perm_scope_global') ?></label>
+                                </span>
+                            </div>
                             <?php endforeach; ?>
                         </div>
                     </div>

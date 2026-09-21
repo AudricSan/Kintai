@@ -85,6 +85,7 @@ final class AdminRoleController
             'permission_categories' => $this->visiblePermissionCategories(),
             'action_label_keys'     => self::ACTION_LABEL_KEYS,
             'granted_permissions'   => [],
+            'granted_global_permissions' => [],
             'holders'               => [],
         ], 'layout.app'));
     }
@@ -109,11 +110,13 @@ final class AdminRoleController
         ]);
 
         $permissions = $this->postedPermissions($request);
-        $this->roles->savePermissions((int) $saved['id'], $permissions);
+        $globalPermissions = $this->postedGlobalScopeKeys($request);
+        $this->roles->savePermissions((int) $saved['id'], $permissions, $globalPermissions);
 
         $this->auditLogger->log($request, 'role.created', 'role', (int) $saved['id'], [
-            'name'        => $name,
-            'permissions' => $permissions,
+            'name'              => $name,
+            'permissions'       => $permissions,
+            'global_permissions' => $globalPermissions,
         ]);
         return Response::redirect($this->base() . '/admin/roles?success=created');
     }
@@ -130,6 +133,7 @@ final class AdminRoleController
             'permission_categories' => $this->visiblePermissionCategories(),
             'action_label_keys'     => self::ACTION_LABEL_KEYS,
             'granted_permissions'   => $this->roles->getPermissions((int) $role['id']),
+            'granted_global_permissions' => $this->roles->getGlobalPermissionKeys((int) $role['id']),
             'holders'               => $this->roleHolders((int) $role['id']),
         ], 'layout.app'));
     }
@@ -156,23 +160,27 @@ final class AdminRoleController
         ]);
 
         $oldPermissions = $this->roles->getPermissions((int) $role['id']);
+        $oldGlobalPermissions = $this->roles->getGlobalPermissionKeys((int) $role['id']);
         // Les catégories des bundles désactivés sont masquées du formulaire :
-        // leurs clés déjà accordées sont préservées telles quelles, pour
-        // réapparaître si le bundle est réactivé.
+        // leurs clés déjà accordées (et leur portée globale/locale) sont
+        // préservées telles quelles, pour réapparaître si le bundle est
+        // réactivé.
         $hiddenKeys = array_values(array_filter(
             $oldPermissions,
             fn(string $key): bool => !$this->isCategoryVisible(explode('.', $key)[0])
         ));
+        $hiddenGlobalKeys = array_intersect($oldGlobalPermissions, $hiddenKeys);
         $newPermissions = array_values(array_unique(array_merge($this->postedPermissions($request), $hiddenKeys)));
-        $this->roles->savePermissions((int) $role['id'], $newPermissions);
+        $newGlobalPermissions = array_values(array_unique(array_merge($this->postedGlobalScopeKeys($request), $hiddenGlobalKeys)));
+        $this->roles->savePermissions((int) $role['id'], $newPermissions, $newGlobalPermissions);
 
         $this->auditLogger->logUpdate(
             $request,
             'role.updated',
             'role',
             (int) $role['id'],
-            $role + ['permissions' => $oldPermissions],
-            $newRole + ['permissions' => $newPermissions],
+            $role + ['permissions' => $oldPermissions, 'global_permissions' => $oldGlobalPermissions],
+            $newRole + ['permissions' => $newPermissions, 'global_permissions' => $newGlobalPermissions],
             [],
         );
         return Response::redirect($this->base() . '/admin/roles?success=updated');
@@ -219,6 +227,28 @@ final class AdminRoleController
             }
         }
         return $granted;
+    }
+
+    /**
+     * Clés de permission cochées "Toutes les boutiques" dans le formulaire —
+     * ignore toute case de portée cochée pour une permission qui n'est pas
+     * elle-même accordée (défense en profondeur, en plus du grisage JS côté
+     * client, voir permission-editor.js).
+     * @return string[]
+     */
+    private function postedGlobalScopeKeys(Request $request): array
+    {
+        $global = [];
+        foreach ($this->visiblePermissionCategories() as $category => $actions) {
+            foreach ($actions as $action) {
+                $key = $category . '.' . $action;
+                $fieldSuffix = str_replace('.', '_', $key);
+                if ($request->post('perm_' . $fieldSuffix) && $request->post('scope_' . $fieldSuffix)) {
+                    $global[] = $key;
+                }
+            }
+        }
+        return $global;
     }
 
     /**
