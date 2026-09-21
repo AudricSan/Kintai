@@ -5,18 +5,25 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Services;
 
 use kintai\Core\Services\LicenseTokenVerifier;
+use kintai\Tests\Support\TestEd25519Keypair;
 use PHPUnit\Framework\TestCase;
 
-/** Paire de cles generee uniquement pour ce test, distincte de la cle reelle en .env. */
 final class LicenseTokenVerifierTest extends TestCase
 {
-    private const TEST_PRIVATE_KEY_B64 = 'LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tDQpNQzRDQVFBd0JRWURLMlZ3QkNJRUlEUVZIVmVQSCs2aUtkc2E3Z0daTGR0NVJaNDRNLzMrbnNXNjgxRmxJUnpXDQotLS0tLUVORCBQUklWQVRFIEtFWS0tLS0tDQo=';
-    private const TEST_PUBLIC_KEY_B64 = 'LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUNvd0JRWURLMlZ3QXlFQUkzcFdnWks4WUlDWG95MzFNakpiZUhJUkpIVGdxdmxuanlDRDUrVEVZMlk9Ci0tLS0tRU5EIFBVQkxJQyBLRVktLS0tLQo=';
-    private const OTHER_PUBLIC_KEY_B64 = 'LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0NCk1Db3dCUVlESzJWd0F5RUFHWFZ3THNwbUdhNmxYZ2ZOa081b1J0YVJZT1RJYXNFT3dwZ1FWRDltNGFJPQ0KLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tDQo=';
+    /** @var array{private: string, public: string} */
+    private static array $keypair;
+    /** @var array{private: string, public: string} Paire non liee, pour tester le rejet d'une mauvaise cle. */
+    private static array $otherKeypair;
+
+    public static function setUpBeforeClass(): void
+    {
+        self::$keypair = TestEd25519Keypair::generate();
+        self::$otherKeypair = TestEd25519Keypair::generate();
+    }
 
     private function sign(array $payload): string
     {
-        $privateKey = openssl_pkey_get_private(base64_decode(self::TEST_PRIVATE_KEY_B64));
+        $privateKey = openssl_pkey_get_private(self::$keypair['private']);
         $encode = static fn(string $s) => rtrim(strtr(base64_encode($s), '+/', '-_'), '=');
 
         $encodedPayload = $encode(json_encode($payload, JSON_THROW_ON_ERROR));
@@ -35,7 +42,7 @@ final class LicenseTokenVerifierTest extends TestCase
 
     public function testVerifyDecodesAValidToken(): void
     {
-        $verifier = new LicenseTokenVerifier(base64_decode(self::TEST_PUBLIC_KEY_B64));
+        $verifier = new LicenseTokenVerifier(self::$keypair['public']);
 
         $payload = $verifier->verify($this->sign(['lic_id' => 42, 'limits' => ['max_stores' => 3]]));
 
@@ -44,14 +51,14 @@ final class LicenseTokenVerifierTest extends TestCase
 
     public function testVerifyRejectsTokenSignedByADifferentKey(): void
     {
-        $verifier = new LicenseTokenVerifier(base64_decode(self::OTHER_PUBLIC_KEY_B64));
+        $verifier = new LicenseTokenVerifier(self::$otherKeypair['public']);
 
         $this->assertNull($verifier->verify($this->sign(['lic_id' => 42])));
     }
 
     public function testVerifyRejectsTamperedPayload(): void
     {
-        $verifier = new LicenseTokenVerifier(base64_decode(self::TEST_PUBLIC_KEY_B64));
+        $verifier = new LicenseTokenVerifier(self::$keypair['public']);
         $token = $this->sign(['limits' => ['max_stores' => 1]]);
         [$payload, $signature] = explode('.', $token, 2);
 
@@ -62,7 +69,7 @@ final class LicenseTokenVerifierTest extends TestCase
 
     public function testVerifyRejectsMalformedToken(): void
     {
-        $verifier = new LicenseTokenVerifier(base64_decode(self::TEST_PUBLIC_KEY_B64));
+        $verifier = new LicenseTokenVerifier(self::$keypair['public']);
 
         $this->assertNull($verifier->verify('not-a-valid-token'));
         $this->assertNull($verifier->verify(''));

@@ -8,17 +8,22 @@ use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Services\HttpFetcher;
 use kintai\Core\Services\LicenseClientService;
 use kintai\Core\Services\LicenseTokenVerifier;
+use kintai\Tests\Support\TestEd25519Keypair;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 final class LicenseClientServiceTest extends TestCase
 {
-    /** Paire de cles generee uniquement pour ce test, distincte de la cle reelle en .env. */
-    private const TEST_PRIVATE_KEY_B64 = 'LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tDQpNQzRDQVFBd0JRWURLMlZ3QkNJRUlEUVZIVmVQSCs2aUtkc2E3Z0daTGR0NVJaNDRNLzMrbnNXNjgxRmxJUnpXDQotLS0tLUVORCBQUklWQVRFIEtFWS0tLS0tDQo=';
-    private const TEST_PUBLIC_KEY_B64 = 'LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUNvd0JRWURLMlZ3QXlFQUkzcFdnWks4WUlDWG95MzFNakpiZUhJUkpIVGdxdmxuanlDRDUrVEVZMlk9Ci0tLS0tRU5EIFBVQkxJQyBLRVktLS0tLQo=';
+    /** @var array{private: string, public: string} Paire jetable, generee a la volee — voir TestEd25519Keypair. */
+    private static array $keypair;
 
     private array $store = [];
     private AppSettingsRepositoryInterface&MockObject $appSettings;
+
+    public static function setUpBeforeClass(): void
+    {
+        self::$keypair = TestEd25519Keypair::generate();
+    }
 
     protected function setUp(): void
     {
@@ -50,7 +55,7 @@ final class LicenseClientServiceTest extends TestCase
     /** Signe un token comme le ferait LicenseTokenSigner cote serveur (License Manager). */
     private function signToken(array $payload): string
     {
-        $privateKey = openssl_pkey_get_private(base64_decode(self::TEST_PRIVATE_KEY_B64));
+        $privateKey = openssl_pkey_get_private(self::$keypair['private']);
         $encode = static fn(string $s) => rtrim(strtr(base64_encode($s), '+/', '-_'), '=');
 
         $encodedPayload = $encode(json_encode($payload, JSON_THROW_ON_ERROR));
@@ -271,7 +276,7 @@ final class LicenseClientServiceTest extends TestCase
 
     public function testEntitlementsReturnsVerifiedTokenPayload(): void
     {
-        $tokenVerifier = new LicenseTokenVerifier(base64_decode(self::TEST_PUBLIC_KEY_B64));
+        $tokenVerifier = new LicenseTokenVerifier(self::$keypair['public']);
         $token = $this->signToken(['limits' => ['max_stores' => 3, 'max_employees' => 50]]);
 
         $service = $this->makeService([], fn(): string => json_encode([
@@ -304,7 +309,7 @@ final class LicenseClientServiceTest extends TestCase
 
     public function testEntitlementsSurviveDegradedRefreshServerUnreachable(): void
     {
-        $tokenVerifier = new LicenseTokenVerifier(base64_decode(self::TEST_PUBLIC_KEY_B64));
+        $tokenVerifier = new LicenseTokenVerifier(self::$keypair['public']);
         $token = $this->signToken(['limits' => ['max_stores' => 3]]);
 
         $callCount = 0;
