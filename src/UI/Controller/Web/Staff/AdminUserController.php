@@ -411,8 +411,12 @@ final class AdminUserController
 
         // Un seul sélecteur "Rôle" (Owner + rôles par store) remplace l'ancien
         // couple "Rôle global" (is_admin) / "Rôle dans le store" (store_role_id).
+        // Seul un requérant déjà Owner peut créer un compte Owner : sinon un
+        // simple détenteur de employees.create pourrait s'auto-élever en
+        // sélectionnant le rôle système dans ce formulaire.
+        $isRequesterOwner = !empty($request->getAttribute('auth_user')['is_admin']);
         $selectedRole = $this->roleSync->findRole((int) $request->post('role_id', 0));
-        $isOwner      = $selectedRole !== null && !empty($selectedRole['is_system']);
+        $isOwner      = $isRequesterOwner && $selectedRole !== null && !empty($selectedRole['is_system']);
 
         $saved    = $this->users->save([
             'display_name'       => $request->post('display_name', ''),
@@ -506,7 +510,9 @@ final class AdminUserController
         $empCode     = strtoupper(trim($request->post('employee_code', ''))) ?: null;
         $password    = $request->post('password', '');
         $color       = $request->post('color', '#3B82F6');
-        $isAdmin     = $request->post('is_admin') === '1';
+        // Seul un requérant déjà Owner peut créer un autre compte Owner (voir
+        // storeUser()/updateUser() pour la même garde).
+        $isAdmin     = !empty($request->getAttribute('auth_user')['is_admin']) && $request->post('is_admin') === '1';
         $storeId     = (int) $request->post('store_id', 0);
         $storeRoleId = (int) $request->post('store_role_id', 0);
 
@@ -801,7 +807,14 @@ final class AdminUserController
         }
 
         $this->users->save($data);
-        $this->roleSync->syncOwnerRole((int) $user['id'], $request->post('is_admin') === '1');
+        // Seul un requérant déjà Owner peut accorder ou retirer le statut Owner
+        // d'un compte (y compris le sien) — sinon n'importe quel détenteur de
+        // employees.update pourrait s'auto-promouvoir en postant is_admin=1.
+        // Un non-Owner ne touche donc jamais au statut Owner de la cible, ni
+        // dans un sens ni dans l'autre.
+        if (!empty($request->getAttribute('auth_user')['is_admin'])) {
+            $this->roleSync->syncOwnerRole((int) $user['id'], $request->post('is_admin') === '1');
+        }
         $this->auditLogger->logUpdate($request, 'user.updated', 'user', (int) $user['id'], $user, $data, [], null, null);
 
         // L'auto-save de la page d'édition (voir user-form-autosave.js) soumet ce même

@@ -989,6 +989,8 @@
     "perm_category_swaps": "Shift Swaps",
     "perm_category_timeclock": "Time Clock",
     "perm_category_timeoff": "Time-off",
+    "perm_scope_global": "All stores",
+    "perm_scope_global_hint": "This permission applies to every store, regardless of which store the user is assigned to for this role.",
     "permissions": "Permissions",
     "personal": "Personal",
     "personal_details": "Personal details",

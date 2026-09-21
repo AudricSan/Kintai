@@ -670,6 +670,27 @@ select.form-control {
     gap: 2px;
 }
 
+/* .perm-row porte la ligne complète (fond au survol, padding) ; .perm-toggle
+   (libellé + slider Ok/NG) et .perm-scope (case "Toutes les boutiques") sont
+   deux éléments frères empilés verticalement — pas de <label> imbriqué, qui
+   rendrait le forwarding de clic ambigu entre les deux cases à cocher, et pas
+   côte à côte non plus : les cartes de permission sont trop étroites pour
+   loger le slider ET le libellé "Toutes les boutiques" sur une seule ligne
+   sans déborder (constaté visuellement, corrigé en empilant plutôt qu'en
+   compressant davantage le slider). */
+.perm-row {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    transition: background var(--duration-fast);
+}
+
+.perm-row:hover {
+    background: var(--color-surface);
+}
+
 /* Slider Ok/NG façon Discord : rouge = refusé, vert = accordé — piste et
    pastille via un sélecteur de fratrie (input:checked + track), pas de
    classe JS à maintenir pour l'état visuel. */
@@ -678,14 +699,42 @@ select.form-control {
     align-items: center;
     justify-content: space-between;
     gap: var(--space-3);
-    padding: var(--space-1) var(--space-2);
-    border-radius: var(--radius-sm);
     cursor: pointer;
-    transition: background var(--duration-fast);
 }
 
-.perm-toggle:hover {
-    background: var(--color-surface);
+.perm-scope {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding-left: 2px;
+}
+
+.perm-scope__input {
+    accent-color: var(--color-primary);
+    cursor: pointer;
+}
+
+.perm-scope__input:disabled {
+    cursor: not-allowed;
+}
+
+.perm-scope__label {
+    font-size: var(--text-xs-2);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.perm-scope__input:disabled + .perm-scope__label {
+    cursor: not-allowed;
+}
+
+/* Grisé (mais toujours visible/inspectable, pas display:none) tant que la
+   permission principale n'est pas cochée — cohérent avec le fait que le
+   contrôleur ignore de toute façon un scope "global" posté pour une
+   permission non accordée (défense en profondeur si le JS ne s'exécute pas). */
+.perm-row:not(:has(.perm-toggle__input:checked)) .perm-scope {
+    opacity: .4;
 }
 
 .perm-toggle__text {

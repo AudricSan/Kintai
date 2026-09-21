@@ -154,6 +154,30 @@ final class AdminRoleControllerTest extends TestCase
         $this->assertSame(1, $captured['is_manager']);
     }
 
+    public function testStoreRoleCapturesGlobalScopeOnlyForGrantedPermissions(): void
+    {
+        $_POST = [
+            'name'                => 'Auditor',
+            'perm_shifts_view'    => '1',
+            'scope_shifts_view'   => 'global',
+            'perm_employees_view' => '1',
+            // scope_employees_view absent : reste local.
+            'scope_shifts_update' => 'global', // permission non cochée : doit être ignorée.
+        ];
+        $this->roles->method('findBySlug')->willReturn(null);
+        $this->roles->method('save')->willReturnCallback(fn(array $d) => $d + ['id' => 5]);
+
+        $capturedGlobal = null;
+        $this->roles->expects($this->once())->method('savePermissions')
+            ->willReturnCallback(function (int $roleId, array $perms, array $global = []) use (&$capturedGlobal) {
+                $capturedGlobal = $global;
+            });
+
+        $this->controller->storeRole($this->ownerRequest());
+
+        $this->assertSame(['shifts.view'], $capturedGlobal);
+    }
+
     public function testStoreRoleRedirectsWithErrorWhenNameBlank(): void
     {
         $_POST = ['name' => '   '];
@@ -275,6 +299,33 @@ final class AdminRoleControllerTest extends TestCase
         // (catégorie masquée, cochée par manipulation du POST) est ignorée ;
         // les clés timeoff.* déjà en base sont préservées.
         $this->assertSame(['shifts.view', 'timeoff.approve', 'timeoff.view'], $capturedPermissions);
+    }
+
+    public function testUpdateRolePreservesGlobalScopeOfDisabledBundlePermissions(): void
+    {
+        // Même scénario que testUpdateRolePreservesPermissionsOfDisabledBundles,
+        // mais timeoff.view était en plus marquée "Toutes les boutiques" avant
+        // cette édition : ce flag doit lui aussi survivre, pas seulement la clé.
+        Container::getInstance()->instance(BundleManager::class, FakeBundleManagerFactory::withActiveSlugs([]));
+
+        $this->roles->method('findById')->willReturn(['id' => 2, 'name' => 'Manager', 'is_system' => 0]);
+        $this->roles->method('getPermissions')->willReturn(['timeoff.view', 'employees.view']);
+        $this->roles->method('getGlobalPermissionKeys')->willReturn(['timeoff.view']);
+        $this->roles->method('save')->willReturnCallback(fn(array $d) => $d);
+
+        $capturedGlobal = null;
+        $this->roles->expects($this->once())->method('savePermissions')
+            ->willReturnCallback(function (int $roleId, array $perms, array $global = []) use (&$capturedGlobal) {
+                $capturedGlobal = $global;
+            });
+
+        $_POST = ['name' => 'Manager', 'perm_shifts_view' => '1'];
+        $req = $this->ownerRequest();
+        $req->setRouteParams(['id' => 2]);
+
+        $this->controller->updateRole($req);
+
+        $this->assertSame(['timeoff.view'], $capturedGlobal);
     }
 
     public function testUpdateRoleAcceptsBundleCategoryWhenBundleEnabled(): void

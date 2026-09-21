@@ -989,6 +989,8 @@
     "perm_category_swaps": "シフト交換",
     "perm_category_timeclock": "打刻",
     "perm_category_timeoff": "休暇",
+    "perm_scope_global": "すべての店舗",
+    "perm_scope_global_hint": "この権限は、この役割でのユーザーの割り当て店舗にかかわらず、すべての店舗に適用されます。",
     "permissions": "権限",
     "personal": "私用",
     "personal_details": "個人情報",
