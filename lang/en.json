@@ -214,8 +214,6 @@
     "backup_update_check_failed": "Update check failed: %s",
     "backup_update_confirm": "This will download and apply the latest version from GitHub, deleting obsolete files. A full backup (database, files, code) is created first. Continue?",
     "backup_update_done_summary": "v{version} — {copied} file(s) copied, {deleted} deleted, {migrations} migration(s)",
-    "backup_update_last_duration": "Last update took about %d s. The next one should be similar.",
-    "backup_update_no_estimate": "This can take anywhere from a few seconds to a few minutes depending on the update size and your connection.",
     "backup_update_now_btn": "Update now",
     "backup_update_step_backup": "Safety backup (database, uploads, code)",
     "backup_update_step_check": "Checking the release",

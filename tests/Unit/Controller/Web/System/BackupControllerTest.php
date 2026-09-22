@@ -53,7 +53,6 @@ final class BackupControllerTest extends TestCase
         $this->setPrivate($this->migrator, 'migrationsPath', $this->tmpDir . '/no-migrations');
 
         $this->updateService = new UpdateService($this->tmpDir);
-        $this->setPrivate($this->updateService, 'versionFile', $this->tmpDir . '/storage/app/version.json');
 
         $this->backup = new BackupService($capsule);
         $this->setPrivate($this->backup, 'backupDir', $this->tmpDir . '/storage/backups');

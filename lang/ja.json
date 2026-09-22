@@ -214,8 +214,6 @@
     "backup_update_check_failed": "アップデートの確認に失敗しました：%s",
     "backup_update_confirm": "GitHubから最新バージョンをダウンロードして適用し、不要になったファイルを削除します。事前に完全なバックアップ（データベース、ファイル、コード）が作成されます。続行しますか？",
     "backup_update_done_summary": "v{version} — {copied} 件コピー、{deleted} 件削除、{migrations} 件のマイグレーション",
-    "backup_update_last_duration": "前回のアップデートは約 %d 秒でした。次回も同程度と予想されます。",
-    "backup_update_no_estimate": "アップデートのサイズと回線状況によって、数秒から数分かかることがあります。",
     "backup_update_now_btn": "今すぐアップデート",
     "backup_update_step_backup": "安全のためのバックアップ（データベース、アップロード、コード）",
     "backup_update_step_check": "リリースを確認中",
