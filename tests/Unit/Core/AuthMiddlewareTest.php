@@ -82,7 +82,7 @@ final class AuthMiddlewareTest extends TestCase
      * Câble AuthService + PermissionService : l'utilisateur 10 est connecté,
      * affecté au rôle 2 (portée store 1) accordant $permissions.
      */
-    private function bindAuthenticatedUser(array $permissions, bool $isSystemRole = false): void
+    private function bindAuthenticatedUser(array $permissions, bool $isSystemRole = false, bool $isManagerRole = false): void
     {
         $_SESSION['auth_user_id'] = 10;
 
@@ -90,7 +90,7 @@ final class AuthMiddlewareTest extends TestCase
         $users->method('findById')->willReturn(['id' => 10, 'display_name' => 'Test']);
 
         $roles = $this->createStub(RoleRepositoryInterface::class);
-        $roles->method('findById')->willReturn(['id' => 2, 'is_system' => $isSystemRole ? 1 : 0]);
+        $roles->method('findById')->willReturn(['id' => 2, 'is_system' => $isSystemRole ? 1 : 0, 'is_manager' => $isManagerRole ? 1 : 0]);
         $roles->method('getPermissions')->willReturn($permissions);
 
         $assignments = $this->createStub(RoleAssignmentRepositoryInterface::class);
@@ -145,6 +145,47 @@ final class AuthMiddlewareTest extends TestCase
         $can = $this->view->get('user_can');
         $this->assertTrue($can('employees.view'));
         $this->assertTrue($can('stores.delete'));
+    }
+
+    /**
+     * auth_is_manager doit refléter le rôle réel de l'utilisateur, pas la route
+     * visitée — c'est ce qui permet à app.php d'afficher la même topbar/bottomnav
+     * sur /admin/* et sur les pages sans PermissionMiddleware (/employee, /profile...).
+     */
+    public function testSharesAuthIsManagerTrueForManagerRoleRegardlessOfRoute(): void
+    {
+        $this->bindAuthenticatedUser([], isManagerRole: true);
+
+        $this->handle();
+
+        $this->assertTrue($this->view->get('auth_is_manager'));
+    }
+
+    public function testSharesAuthIsManagerFalseForPlainEmployee(): void
+    {
+        $this->bindAuthenticatedUser([]);
+
+        $this->handle();
+
+        $this->assertFalse($this->view->get('auth_is_manager'));
+    }
+
+    public function testSharesManagedStoreIdsDefaultForManagerWhenNotAlreadySet(): void
+    {
+        $this->bindAuthenticatedUser([], isManagerRole: true);
+
+        $this->handle();
+
+        $this->assertSame([1], $this->view->get('managed_store_ids'));
+    }
+
+    public function testDoesNotShareManagedStoreIdsForPlainEmployee(): void
+    {
+        $this->bindAuthenticatedUser([]);
+
+        $this->handle();
+
+        $this->assertNull($this->view->get('managed_store_ids'));
     }
 
     /**
