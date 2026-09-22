@@ -133,12 +133,10 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
                     $_canResignation       = bundle_enabled('resignation-report') && $routeVisible('admin.reports.resignation');
                     $_canSalary            = bundle_enabled('salary-report') && $routeVisible('admin.reports.salary');
                     $_canPhotos            = $feat('photos') && $routeVisible('admin.photos.index');
-                    // Gaté par la permission réelle, pas par $isManager : un employé à qui
-                    // cette permission serait accordée doit voir le lien comme n'importe qui
-                    // d'autre. Repli générique "/admin/stores" absent pour un Owner (qui gère
-                    // déjà tous les stores via HR > Stores) : conserve le menu Owner identique
-                    // à avant la fusion de ce bloc avec la branche Manager.
-                    $_canEmployeeReport    = !$isOwner && $routeVisible('admin.stores.employee_report');
+                    // Gaté uniquement par la permission réelle (payroll.view), plus de garde
+                    // de rôle : un Owner la voit aussi désormais (repli sur la liste des
+                    // stores puisqu'il n'a jamais exactement "un seul" magasin géré).
+                    $_canEmployeeReport    = $routeVisible('admin.stores.employee_report');
                     // daily_reports : gaté par la permission réelle (admin.daily_reports.all),
                     // pas par $isManager — un employé auquel cette permission serait accordée
                     // voit le lien unique "toutes les stores" comme n'importe qui d'autre.
@@ -186,14 +184,26 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
                     <?php endif; ?>
                 <?php break;
                 case 'system': ?>
-                    <?php if ($isOwner): ?>
+                    <?php
+                    // "Activity log" a déjà une vraie permission RBAC (stores.view) sur sa
+                    // route — gaté par $routeVisible() comme le reste, plus par $isOwner :
+                    // un Manager qui détient stores.view (très courant) doit le voir.
+                    // "Settings" (réglages instance, backup/update/license/bundles/langues,
+                    // gestion des rôles) reste exclusivement Owner : OwnerOnlyMiddleware,
+                    // pas une permission RBAC — voir note dans le CHANGELOG/discussion sur
+                    // le pourquoi (ces pages ne sont délibérément pas déléguables via RBAC).
+                    $_canActivity = $routeVisible('admin.activity');
+                    ?>
+                    <?php if (($_canActivity && !$navHide('audit_log')) || $isOwner): ?>
                         <div class="topbar-nav-group<?= (str_starts_with($path, '/admin/activity') || str_starts_with($path, '/admin/owner-settings') || str_starts_with($path, '/admin/feedbacks') || str_starts_with($path, '/admin/backup') || str_starts_with($path, '/admin/update') || str_starts_with($path, '/admin/languages') || str_starts_with($path, '/admin/bundles') || str_starts_with($path, '/admin/license')) ? ' topbar-nav-group--active' : '' ?>">
                             <button type="button" class="topbar-nav-group__trigger"><?= __('system') ?> <span class="topbar-nav-group__caret">▾</span></button>
                             <div class="topbar-nav-group__panel">
-                                <?php if (!$navHide('audit_log')): ?>
+                                <?php if ($_canActivity && !$navHide('audit_log')): ?>
                                     <a href="<?= route_url('admin.activity') ?>" class="topbar-nav-group__link<?= str_starts_with($path, '/admin/activity') ? ' topbar-nav-group__link--active' : '' ?>"><?= $ico('history') ?><?= __('activity_log') ?></a>
                                 <?php endif; ?>
-                                <a href="<?= route_url('admin.owner_settings') ?>" class="topbar-nav-group__link<?= (str_starts_with($path, '/admin/owner-settings') || str_starts_with($path, '/admin/feedbacks') || str_starts_with($path, '/admin/backup') || str_starts_with($path, '/admin/update') || str_starts_with($path, '/admin/languages') || str_starts_with($path, '/admin/bundles') || str_starts_with($path, '/admin/license')) ? ' topbar-nav-group__link--active' : '' ?>"><?= $ico('gear') ?><?= __('settings') ?></a>
+                                <?php if ($isOwner): ?>
+                                    <a href="<?= route_url('admin.owner_settings') ?>" class="topbar-nav-group__link<?= (str_starts_with($path, '/admin/owner-settings') || str_starts_with($path, '/admin/feedbacks') || str_starts_with($path, '/admin/backup') || str_starts_with($path, '/admin/update') || str_starts_with($path, '/admin/languages') || str_starts_with($path, '/admin/bundles') || str_starts_with($path, '/admin/license')) ? ' topbar-nav-group__link--active' : '' ?>"><?= $ico('gear') ?><?= __('settings') ?></a>
+                                <?php endif; ?>
                             </div>
                         </div>
                     <?php endif; ?>
