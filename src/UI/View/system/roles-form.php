@@ -1,6 +1,7 @@
 <?php
 use kintai\UI\Components\Button;
 use kintai\UI\Components\Flash;
+use kintai\UI\Components\Modal;
 
 /** @var string $mode                 'create'|'edit' */
 /** @var array  $role                 Données du rôle */
@@ -11,10 +12,16 @@ use kintai\UI\Components\Flash;
 /** @var array  $holders              ['assignment_id','user_name','initials','color','scope_label'][] (mode edit) */
 $mode ??= 'create';
 $granted_global_permissions ??= [];
+$assignable_users ??= [];
 $isSystem = !empty($role['is_system']);
 
+echo Flash::fromQuery('success', [
+    'holder_added'   => __('role_holder_added'),
+    'holder_removed' => __('role_holder_removed'),
+])->render();
 echo Flash::fromQuery('error', [
-    'invalid_name' => __('role_invalid_name'),
+    'invalid_name'   => __('role_invalid_name'),
+    'invalid_holder' => __('role_invalid_holder'),
 ])->render();
 ?>
 
@@ -48,7 +55,10 @@ echo Flash::fromQuery('error', [
     <div class="card card--mb">
         <div class="card-body">
             <h4 class="section-title"><?= __('role_holders') ?> <span class="page-count">(<?= count($holders) ?>)</span></h4>
-            <?php include __DIR__ . '/../_partials/_role-holders-list.php'; ?>
+            <?php $removable = true; include __DIR__ . '/../_partials/_role-holders-list.php'; ?>
+            <?php if (!empty($assignable_users)): ?>
+            <?= Button::make(__('add'))->outline()->sm()->attrs(['type' => 'button', 'onclick' => "openModal('addRoleHolderModal')"])->render() ?>
+            <?php endif; ?>
         </div>
     </div>
     <?php else: ?>
@@ -85,7 +95,11 @@ echo Flash::fromQuery('error', [
         <div class="card rf-holders">
             <div class="card-body">
                 <h4 class="section-title"><?= __('role_holders') ?> <span class="page-count">(<?= count($holders) ?>)</span></h4>
-                <?php include __DIR__ . '/../_partials/_role-holders-list.php'; ?>
+                <?php $removable = true; include __DIR__ . '/../_partials/_role-holders-list.php'; ?>
+
+                <?php if (!empty($assignable_users)): ?>
+                <?= Button::make(__('add'))->outline()->sm()->attrs(['type' => 'button', 'onclick' => "openModal('addRoleHolderModal')"])->render() ?>
+                <?php endif; ?>
             </div>
         </div>
         <?php endif; ?>
@@ -154,6 +168,41 @@ echo Flash::fromQuery('error', [
     </div>
     <?php endif; ?>
 </form>
+
+<?php if ($hasHolders): ?>
+<!-- Formulaire de retrait vide et partagé : chaque bouton "×" de
+     _role-holders-list.php le cible via form=/formaction (voir ce partiel). -->
+<form id="roleHolderRemoveForm" method="POST">
+    <?= csrf_field() ?>
+</form>
+
+<?php if (!empty($assignable_users)):
+    ob_start(); ?>
+    <form id="roleHolderAddForm" method="POST" action="<?= route_url('admin.roles.holders.add', ['id' => (int) $role['id']]) ?>">
+        <?= csrf_field() ?>
+        <div class="store-toggle-list">
+            <?php foreach ($assignable_users as $u): ?>
+                <?php $uName = trim(($u['last_name'] ?? '') . ' ' . ($u['first_name'] ?? '')) ?: ($u['email'] ?? '#' . $u['id']); ?>
+                <div class="store-toggle-list__item check-label">
+                    <label class="form-toggle">
+                        <input type="checkbox" name="user_ids[]" value="<?= (int) $u['id'] ?>" class="form-toggle__input">
+                        <span class="form-toggle__track"></span>
+                    </label>
+                    <span><?= htmlspecialchars($uName) ?><?php if (!empty($u['store_names'])): ?> <span class="text-sm-muted">(<?= htmlspecialchars($u['store_names']) ?>)</span><?php endif; ?></span>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    </form>
+    <?php
+    $addRoleHolderFooter = Button::make(__('add'))->primary()->submit()->attrs(['form' => 'roleHolderAddForm'])->render()
+        . ' ' . Button::make(__('cancel'))->ghost()->attrs(['type' => 'button', 'onclick' => "closeModal('addRoleHolderModal')"])->render();
+    echo Modal::make('addRoleHolderModal')
+        ->title(__('role_add_holders_hint'))
+        ->body(ob_get_clean())
+        ->footer($addRoleHolderFooter)
+        ->render();
+endif; ?>
+<?php endif; ?>
 
 <?php if (!$isSystem): ?>
 <script src="<?= $BASE_URL ?>/assets/js/modules/permission-editor.js"></script>

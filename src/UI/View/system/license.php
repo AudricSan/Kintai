@@ -99,7 +99,7 @@ ob_start();
     <div class="alert alert--info mt-sm"><?= __('license_server_not_configured_hint') ?></div>
 <?php endif; ?>
 <?php
-echo Card::make()->header(__('license_status_title'))->body(ob_get_clean())->render();
+$statusCard = Card::make()->header(__('license_status_title'))->body(ob_get_clean())->render();
 ?>
 
 <?php
@@ -126,7 +126,7 @@ ob_start();
     </li>
 </ul>
 <?php
-echo Card::make()->header(__('license_limits_title'))->body(ob_get_clean())->render();
+$limitsCard = Card::make()->header(__('license_limits_title'))->body(ob_get_clean())->render();
 ?>
 
 <?php
@@ -158,5 +158,11 @@ ob_start();
     </div>
 <?php endif; ?>
 <?php
-echo Card::make()->header(__('license_activate_title'))->body(ob_get_clean())->render();
+$activateCard = Card::make()->header(__('license_activate_title'))->body(ob_get_clean())->attrs(['class' => 'settings-grid__full'])->render();
 ?>
+
+<div class="settings-grid">
+    <?= $statusCard ?>
+    <?= $limitsCard ?>
+    <?= $activateCard ?>
+</div>
