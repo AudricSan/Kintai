@@ -50,6 +50,18 @@ final class AuthMiddleware implements MiddlewareInterface
         $view->share('auth_user', $user);
         $view->share('auth_is_manager', $auth->isManager());
 
+        // Valeur par défaut de managed_store_ids pour les routes sans PermissionMiddleware
+        // (/employee/*, /profile, /docs...), où il ne serait sinon jamais défini. Sur les
+        // routes couvertes par PermissionMiddleware, celui-ci s'exécute après et écrase
+        // toujours cette valeur avec son propre calcul, plus fin (scope de LA permission
+        // réellement requise par la route) — ce repli ne sert donc qu'ailleurs.
+        if (empty($user['is_admin'])) {
+            $managedStoreIds = $auth->managedStoreIds();
+            if ($managedStoreIds !== []) {
+                $view->share('managed_store_ids', $managedStoreIds);
+            }
+        }
+
         // Permissions fines RBAC : l'utilisateur détient-il cette clé quelque
         // part ? Partagé ici (et non par PermissionMiddleware) pour que la
         // navigation (sidebar, bottom-nav) soit identique sur TOUTES les pages
