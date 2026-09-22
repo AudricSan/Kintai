@@ -22,7 +22,7 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
         // (route_visible, RBAC-V2) plutôt qu'une clé recopiée à la main à côté du
         // lien — absent sur les pages hors /admin : tout est visible par défaut.
         $routeVisible = $route_visible ?? fn(string $r): bool => true;
-        $_defSec = ['planning', 'hr', 'requests', 'statistics', 'system', 'account'];
+        $_defSec = ['planning', 'hr', 'requests', 'statistics', 'system'];
         $_rawOrd = (array)($user_nav_section_order ?? []);
         $_secOrd = array_values(array_unique(array_merge(
             array_intersect($_rawOrd, $_defSec),
@@ -206,11 +206,6 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
                                 <?php endif; ?>
                             </div>
                         </div>
-                    <?php endif; ?>
-                <?php break;
-                case 'account': ?>
-                    <?php if (!$navHide('my_profile')): ?>
-                        <a href="<?= route_url('profile') ?>" class="topbar-nav-link<?= (str_starts_with($path, '/profile') && ($_GET['tab'] ?? 'info') !== 'nav') ? ' topbar-nav-link--active' : '' ?>"><?= __('my_profile') ?></a>
                     <?php endif; ?>
         <?php break;
             endswitch;
