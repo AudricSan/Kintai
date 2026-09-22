@@ -249,6 +249,25 @@ final class AdminRoleControllerTest extends TestCase
         $this->assertSame(200, $response->status());
     }
 
+    public function testEditRoleForOwnerRoleListsActiveUsersWithoutStoreMembership(): void
+    {
+        $this->roles->method('findById')->willReturn(['id' => 1, 'name' => 'Owner', 'slug' => 'owner', 'is_system' => 1]);
+        $this->assignments->method('findByRole')->willReturn([]);
+        $this->users->method('findAll')->willReturn([
+            ['id' => 7, 'display_name' => 'Jane', 'is_active' => 1],
+        ]);
+        // Contrairement à un rôle store-scope, la liste des candidats du rôle
+        // Owner ne doit jamais interroger les appartenances aux magasins.
+        $this->storeUsers->expects($this->never())->method('findByUser');
+
+        $req = $this->ownerRequest();
+        $req->setRouteParams(['id' => 1]);
+
+        $response = $this->controller->editRole($req);
+
+        $this->assertSame(200, $response->status());
+    }
+
     public function testUpdateRoleThrowsForbiddenOnSystemRole(): void
     {
         $this->roles->method('findById')->willReturn(['id' => 1, 'name' => 'Owner', 'is_system' => 1]);
@@ -408,14 +427,44 @@ final class AdminRoleControllerTest extends TestCase
     // addHolder() / removeHolder()
     // -------------------------------------------------------------------------
 
-    public function testAddHolderThrowsForbiddenOnSystemRole(): void
+    public function testAddHolderThrowsForbiddenOnNonOwnerSystemRole(): void
     {
-        $this->roles->method('findById')->willReturn(['id' => 1, 'name' => 'Owner', 'is_system' => 1]);
+        // Owner est aujourd'hui le seul rôle système, mais la garde ne doit
+        // lever l'exception que pour un rôle système qui n'est PAS Owner
+        // (hypothétique) — Owner lui-même est géré en portée globale, voir
+        // testAddHolderAppliesOwnerRoleGloballyWithoutStoreCheck ci-dessous.
+        $this->roles->method('findById')->willReturn(['id' => 1, 'name' => 'Weird', 'slug' => 'weird-system', 'is_system' => 1]);
         $req = $this->ownerRequest();
         $req->setRouteParams(['id' => 1]);
 
         $this->expectException(ForbiddenException::class);
         $this->controller->addHolder($req);
+    }
+
+    public function testAddHolderAppliesOwnerRoleGloballyWithoutStoreCheck(): void
+    {
+        $this->roles->method('findById')->willReturn(['id' => 1, 'name' => 'Owner', 'slug' => 'owner', 'is_system' => 1]);
+        $this->roles->method('findBySlug')->with('owner')->willReturn(['id' => 1, 'name' => 'Owner', 'slug' => 'owner', 'is_system' => 1]);
+        $this->users->method('findById')->with(7)->willReturn(['id' => 7]);
+        $this->assignments->method('findByUser')->willReturn([]);
+        $this->storeUsers->expects($this->never())->method('findByUser');
+
+        $assigned = [];
+        $this->assignments->expects($this->once())->method('assign')
+            ->willReturnCallback(function (int $userId, int $roleId, string $scopeType, ?int $scopeId) use (&$assigned) {
+                $assigned[] = [$userId, $roleId, $scopeType, $scopeId];
+                return ['id' => 100];
+            });
+
+        $_POST = ['user_ids' => ['7']];
+        $req = $this->ownerRequest();
+        $req->setRouteParams(['id' => 1]);
+
+        $response = $this->controller->addHolder($req);
+
+        $this->assertSame(302, $response->status());
+        $this->assertStringContainsString('success=holder_added', $this->redirectLocation($response));
+        $this->assertSame([[7, 1, 'global', null]], $assigned);
     }
 
     public function testAddHolderRedirectsWithErrorWhenNoUserSelected(): void
@@ -486,14 +535,33 @@ final class AdminRoleControllerTest extends TestCase
         ], $assigned);
     }
 
-    public function testRemoveHolderThrowsForbiddenOnSystemRole(): void
+    public function testRemoveHolderThrowsForbiddenOnNonOwnerSystemRole(): void
     {
-        $this->roles->method('findById')->willReturn(['id' => 1, 'name' => 'Owner', 'is_system' => 1]);
+        $this->roles->method('findById')->willReturn(['id' => 1, 'name' => 'Weird', 'slug' => 'weird-system', 'is_system' => 1]);
         $req = $this->ownerRequest();
         $req->setRouteParams(['id' => 1, 'assignmentId' => 5]);
 
         $this->expectException(ForbiddenException::class);
         $this->controller->removeHolder($req);
+    }
+
+    public function testRemoveHolderRevokesOwnerRoleGlobally(): void
+    {
+        $this->roles->method('findById')->willReturn(['id' => 1, 'name' => 'Owner', 'slug' => 'owner', 'is_system' => 1]);
+        $this->roles->method('findBySlug')->with('owner')->willReturn(['id' => 1, 'name' => 'Owner', 'slug' => 'owner', 'is_system' => 1]);
+        $this->assignments->method('findById')->willReturn(['id' => 5, 'role_id' => 1, 'user_id' => 7, 'scope_type' => 'global', 'scope_id' => null]);
+        $this->assignments->method('findByUser')->willReturn([
+            ['id' => 5, 'role_id' => 1, 'user_id' => 7, 'scope_type' => 'global', 'scope_id' => null],
+        ]);
+        $this->assignments->expects($this->once())->method('revoke')->with(5);
+
+        $req = $this->ownerRequest();
+        $req->setRouteParams(['id' => 1, 'assignmentId' => 5]);
+
+        $response = $this->controller->removeHolder($req);
+
+        $this->assertSame(302, $response->status());
+        $this->assertStringContainsString('success=holder_removed', $this->redirectLocation($response));
     }
 
     public function testRemoveHolderThrowsNotFoundWhenAssignmentMissing(): void
@@ -534,6 +602,19 @@ final class AdminRoleControllerTest extends TestCase
 
         $this->assertSame(302, $response->status());
         $this->assertStringContainsString('success=holder_removed', $this->redirectLocation($response));
+    }
+
+    // -------------------------------------------------------------------------
+    // resolveDescription()
+    // -------------------------------------------------------------------------
+
+    public function testResolveDescriptionTranslatesOwnerRoleDescriptionOnly(): void
+    {
+        $method = new \ReflectionMethod(AdminRoleController::class, 'resolveDescription');
+        $method->setAccessible(true);
+
+        $this->assertSame(__('role_owner_description'), $method->invoke($this->controller, ['slug' => 'owner', 'description' => 'Valeur en base']));
+        $this->assertSame('Description personnalisée', $method->invoke($this->controller, ['slug' => 'manager', 'description' => 'Description personnalisée']));
     }
 
     private function redirectLocation(\kintai\Core\Response $response): string

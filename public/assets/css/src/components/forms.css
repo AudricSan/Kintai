@@ -49,6 +49,15 @@
     width: 100%;
 }
 
+textarea.form-control {
+    min-height: 100px;
+    resize: none;
+}
+
+textarea[name="maintenance_message"] {
+  resize: vertical;
+}
+
 .form-control:focus {
     outline: none;
     border-color: var(--color-primary);
@@ -871,5 +880,12 @@ select.form-control {
 
 .role-holder-chip__remove {
     margin-left: auto;
+}
+
+.app-settings{
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(5, 1fr);
+    gap: 8px;
 }
 

@@ -55,7 +55,10 @@ echo Flash::fromQuery('error', [
     <div class="card card--mb">
         <div class="card-body">
             <h4 class="section-title"><?= __('role_holders') ?> <span class="page-count">(<?= count($holders) ?>)</span></h4>
-            <?php include __DIR__ . '/../_partials/_role-holders-list.php'; ?>
+            <?php $removable = true; include __DIR__ . '/../_partials/_role-holders-list.php'; ?>
+            <?php if (!empty($assignable_users)): ?>
+            <?= Button::make(__('add'))->outline()->sm()->attrs(['type' => 'button', 'onclick' => "openModal('addRoleHolderModal')"])->render() ?>
+            <?php endif; ?>
         </div>
     </div>
     <?php else: ?>
@@ -166,7 +169,7 @@ echo Flash::fromQuery('error', [
     <?php endif; ?>
 </form>
 
-<?php if ($hasHolders && !$isSystem): ?>
+<?php if ($hasHolders): ?>
 <!-- Formulaire de retrait vide et partagé : chaque bouton "×" de
      _role-holders-list.php le cible via form=/formaction (voir ce partiel). -->
 <form id="roleHolderRemoveForm" method="POST">

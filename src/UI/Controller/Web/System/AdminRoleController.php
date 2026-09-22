@@ -66,9 +66,11 @@ final class AdminRoleController
 
         $roles = $this->roles->findAll();
         $counts = [];
-        foreach ($roles as $role) {
+        foreach ($roles as &$role) {
             $counts[(int) $role['id']] = count($this->assignments->findByRole((int) $role['id']));
+            $role['description'] = $this->resolveDescription($role);
         }
+        unset($role);
 
         return Response::html($this->view->render('system.roles', [
             'title'             => __('roles'),
@@ -129,6 +131,8 @@ final class AdminRoleController
     public function editRole(Request $request): Response
     {
         $role = $this->findRoleOrFail($request);
+        $role['description'] = $this->resolveDescription($role);
+        $isOwnerRole = ($role['slug'] ?? null) === 'owner';
 
         return Response::html($this->view->render('system.roles-form', [
             'title'                 => 'Modifier ' . htmlspecialchars($role['name'] ?? ''),
@@ -139,7 +143,7 @@ final class AdminRoleController
             'granted_permissions'   => $this->roles->getPermissions((int) $role['id']),
             'granted_global_permissions' => $this->roles->getGlobalPermissionKeys((int) $role['id']),
             'holders'               => $this->roleHolders((int) $role['id']),
-            'assignable_users'      => $this->assignableHolderCandidates(),
+            'assignable_users'      => $isOwnerRole ? $this->activeUsers() : $this->assignableHolderCandidates(),
         ], 'layout.app'));
     }
 
@@ -212,16 +216,19 @@ final class AdminRoleController
 
     /**
      * POST /admin/roles/{id}/holders — ajoute un ou plusieurs employés à ce
-     * rôle, sans sélection de magasin : le rôle est appliqué à chaque magasin
-     * dont l'employé est déjà membre (remplace toute autre affectation
-     * store-scope qu'il y détenait — voir RoleAssignmentSyncService::
-     * syncStoreRoleById()). Un employé sans aucun magasin est ignoré : il faut
-     * d'abord l'affecter à un magasin depuis sa fiche.
+     * rôle. Cas du rôle système Owner (portée globale) : délègue à
+     * RoleAssignmentSyncService::syncOwnerRole(), la même logique que la case
+     * "Owner" du formulaire employé — aucune notion de magasin. Pour tout
+     * autre rôle (store-scope) : appliqué à chaque magasin dont l'employé est
+     * déjà membre (remplace toute autre affectation qu'il y détenait — voir
+     * RoleAssignmentSyncService::syncStoreRoleById()) ; un employé sans aucun
+     * magasin est ignoré, il faut d'abord l'y affecter depuis sa fiche.
      */
     public function addHolder(Request $request): Response
     {
         $role = $this->findRoleOrFail($request);
-        if (!empty($role['is_system'])) {
+        $isOwnerRole = ($role['slug'] ?? null) === 'owner';
+        if (!empty($role['is_system']) && !$isOwnerRole) {
             throw new ForbiddenException(__('error_owner_role_immutable'));
         }
 
@@ -229,6 +236,11 @@ final class AdminRoleController
         $validUserIds = [];
         foreach ($userIds as $userId) {
             if ($this->users->findById($userId) === null) {
+                continue;
+            }
+            if ($isOwnerRole) {
+                $this->roleSync->syncOwnerRole($userId, true);
+                $validUserIds[] = $userId;
                 continue;
             }
             $memberships = $this->storeUsers->findByUser($userId);
@@ -256,7 +268,8 @@ final class AdminRoleController
     public function removeHolder(Request $request): Response
     {
         $role = $this->findRoleOrFail($request);
-        if (!empty($role['is_system'])) {
+        $isOwnerRole = ($role['slug'] ?? null) === 'owner';
+        if (!empty($role['is_system']) && !$isOwnerRole) {
             throw new ForbiddenException(__('error_owner_role_immutable'));
         }
 
@@ -266,28 +279,52 @@ final class AdminRoleController
         }
 
         $userId = (int) $assignment['user_id'];
-        $storeId = (int) $assignment['scope_id'];
-        $this->roleSync->revokeStoreRole($userId, $storeId);
+        if ($isOwnerRole) {
+            $this->roleSync->syncOwnerRole($userId, false);
+        } else {
+            $this->roleSync->revokeStoreRole($userId, (int) $assignment['scope_id']);
+        }
         $this->auditLogger->log($request, 'role.holder_removed', 'role', (int) $role['id'], [
             'user_id'  => $userId,
-            'store_id' => $storeId,
-        ], $storeId);
+            'store_id' => $assignment['scope_id'],
+        ]);
 
         return Response::redirect($this->base() . '/admin/roles/' . $role['id'] . '/edit?success=holder_removed');
     }
 
     /**
-     * Employés actifs déjà membres d'au moins un magasin (un rôle ne peut être
-     * accordé que sur un magasin dont l'employé fait déjà partie), enrichis
-     * d'un `store_names` affiché en aide dans le formulaire d'ajout.
+     * Description affichée pour un rôle : celle en base pour un rôle
+     * personnalisé, ou une clé de traduction pour le rôle système Owner —
+     * dont la description est structurelle (non modifiable par l'Owner) et ne
+     * doit donc pas rester figée dans la langue de la donnée seedée en base.
+     */
+    private function resolveDescription(array $role): string
+    {
+        if (($role['slug'] ?? null) === 'owner') {
+            return __('role_owner_description');
+        }
+        return $role['description'] ?? '';
+    }
+
+    /** @return array Utilisateurs actifs (tous magasins confondus). */
+    private function activeUsers(): array
+    {
+        return array_values(array_filter(
+            $this->users->findAll(),
+            fn(array $u): bool => !empty($u['is_active'])
+        ));
+    }
+
+    /**
+     * Employés actifs déjà membres d'au moins un magasin (un rôle store-scope
+     * ne peut être accordé que sur un magasin dont l'employé fait déjà
+     * partie), enrichis d'un `store_names` affiché en aide dans le formulaire
+     * d'ajout.
      */
     private function assignableHolderCandidates(): array
     {
         $out = [];
-        foreach ($this->users->findAll() as $user) {
-            if (empty($user['is_active'])) {
-                continue;
-            }
+        foreach ($this->activeUsers() as $user) {
             $memberships = $this->storeUsers->findByUser((int) $user['id']);
             if ($memberships === []) {
                 continue;

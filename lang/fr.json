@@ -1158,6 +1158,7 @@
     "role_is_manager_hint": "Indépendant des permissions cochées ci-dessous : coche cette case si les utilisateurs de ce rôle doivent voir le tableau de bord et les menus de gestion, plutôt que la navigation employé standard.",
     "role_manager": "Manager",
     "role_owner": "Propriétaire",
+    "role_owner_description": "Propriétaire de l'organisation. Tous les droits, rôle non modifiable.",
     "role_updated": "Rôle mis à jour.",
     "roles": "Rôles",
     "salary_report": "Rapport de salaire",

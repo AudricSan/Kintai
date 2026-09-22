@@ -1158,6 +1158,7 @@
     "role_is_manager_hint": "Independent of the permissions checked below: enable this if users with this role should see the admin dashboard and management menus, instead of the standard employee navigation.",
     "role_manager": "Manager",
     "role_owner": "Owner",
+    "role_owner_description": "Organization owner. Full rights, this role cannot be edited.",
     "role_updated": "Role updated.",
     "roles": "Roles",
     "salary_report": "Salary Report",
