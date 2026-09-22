@@ -24,8 +24,12 @@
             : $uri;
         $path = '/' . trim($path, '/') ?: '/';
         $isOwner    = !empty($auth_user['is_admin']);
-        // managed_store_ids : null = admin global, array = manager restreint
-        $isManager  = $isOwner || isset($managed_store_ids);
+        // auth_is_manager (AuthService::isManager(), partagé par AuthMiddleware sur TOUTE
+        // page authentifiée) plutôt que isset($managed_store_ids) : ce dernier n'est jamais
+        // défini sur les routes sans PermissionMiddleware (/employee/*, /profile, /docs...),
+        // ce qui faisait basculer un Manager sur la nav employé réduite dès qu'il quittait
+        // une page /admin/* — même rôle, menu different selon la route visitée.
+        $isManager  = $auth_is_manager ?? $isOwner;
 
         $feat = fn(string $f): bool =>
             feat_bundle($f) && (

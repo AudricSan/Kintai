@@ -50,6 +50,18 @@ final class AuthMiddleware implements MiddlewareInterface
         $view->share('auth_user', $user);
         $view->share('auth_is_manager', $auth->isManager());
 
+        // Valeur par défaut de managed_store_ids pour les routes sans PermissionMiddleware
+        // (/employee/*, /profile, /docs...), où il ne serait sinon jamais défini. Sur les
+        // routes couvertes par PermissionMiddleware, celui-ci s'exécute après et écrase
+        // toujours cette valeur avec son propre calcul, plus fin (scope de LA permission
+        // réellement requise par la route) — ce repli ne sert donc qu'ailleurs.
+        if (empty($user['is_admin'])) {
+            $managedStoreIds = $auth->managedStoreIds();
+            if ($managedStoreIds !== []) {
+                $view->share('managed_store_ids', $managedStoreIds);
+            }
+        }
+
         // Permissions fines RBAC : l'utilisateur détient-il cette clé quelque
         // part ? Partagé ici (et non par PermissionMiddleware) pour que la
         // navigation (sidebar, bottom-nav) soit identique sur TOUTES les pages
@@ -105,12 +117,14 @@ final class AuthMiddleware implements MiddlewareInterface
         $view->share('feedback_enabled', $this->container->make(BundleManager::class)->isActive('feedback'));
 
         // Statistiques du mois (widget salaire estimé, barre latérale vue employé) —
-        // partagées sur toutes les pages, pas seulement celles qui le calculaient explicitement.
-        if (empty($user['is_admin'])) {
-            $employeeStats = $this->container->make(EmployeeStatsService::class);
-            $month = (string) ($request->query('month') ?? '');
-            $view->share('employee_month_stats', $employeeStats->calculate((int) ($user['id'] ?? 0), $month));
-        }
+        // partagées sur toutes les pages, pour tout le monde y compris l'Owner : un
+        // Owner qui prend lui-même des shifts doit voir ses propres heures/paie comme
+        // n'importe qui d'autre. calculate() dégrade proprement (0h, pas de détails)
+        // pour qui n'a aucun shift ce mois-ci — le widget lui-même (_topbar.php) ne
+        // s'affiche de toute façon que si la donnée existe.
+        $employeeStats = $this->container->make(EmployeeStatsService::class);
+        $month = (string) ($request->query('month') ?? '');
+        $view->share('employee_month_stats', $employeeStats->calculate((int) ($user['id'] ?? 0), $month));
 
         // Préférences de navigation (tous les utilisateurs)
         $navPrefs = $this->container->make(UserNavPrefsRepositoryInterface::class);
