@@ -46,18 +46,25 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
                     $_canTimeclock    = $feat('timeclock') && $routeVisible($_timeclockRoute);
                     $_shiftsActive    = $isManager ? $onShifts : str_starts_with($path, '/employee/shifts');
                     $_timeclockActive = str_starts_with($path, $isManager ? '/admin/timeclocks' : '/employee/timeclock');
+                    // Gatés par la permission réelle sur la route admin, pas par $isManager :
+                    // sans équivalent employé, ces deux liens n'ont de toute façon jamais été
+                    // visibles pour un employé sans droit dessus (routeVisible() y est déjà
+                    // false), mais un employé auquel la permission serait accordée doit
+                    // pouvoir les voir comme n'importe qui d'autre.
+                    $_canCalendar    = $routeVisible('admin.shifts.calendar');
+                    $_canShiftTypes  = $routeVisible('admin.shift_types');
                     ?>
-                    <?php if (($_canShifts && !$navHide('shifts')) || ($isManager && $_canShifts && !$navHide('calendar')) || ($isManager && $_canShifts && !$navHide('shift_types')) || ($_canTimeclock && !$navHide('timeclocks'))): ?>
+                    <?php if (($_canShifts && !$navHide('shifts')) || ($_canCalendar && !$navHide('calendar')) || ($_canShiftTypes && !$navHide('shift_types')) || ($_canTimeclock && !$navHide('timeclocks'))): ?>
                         <div class="topbar-nav-group<?= ($_shiftsActive || $onCalendar || str_starts_with($path, '/admin/shift-types') || $_timeclockActive) ? ' topbar-nav-group--active' : '' ?>">
                             <button type="button" class="topbar-nav-group__trigger"><?= __('planning') ?> <span class="topbar-nav-group__caret">▾</span></button>
                             <div class="topbar-nav-group__panel">
                                 <?php if ($_canShifts && !$navHide('shifts')): ?>
                                     <a href="<?= route_url($_shiftsRoute) ?>" class="topbar-nav-group__link<?= $_shiftsActive ? ' topbar-nav-group__link--active' : '' ?>"><?= $ico('calendar') ?><?= $isManager ? __('shifts') : __('my_planning') ?></a>
                                 <?php endif; ?>
-                                <?php if ($isManager && $_canShifts && !$navHide('calendar')): ?>
+                                <?php if ($_canCalendar && !$navHide('calendar')): ?>
                                     <a href="<?= route_url('admin.shifts.calendar') ?>" class="topbar-nav-group__link<?= $onCalendar ? ' topbar-nav-group__link--active' : '' ?>"><?= $ico('calendar') ?><?= __('calendar') ?></a>
                                 <?php endif; ?>
-                                <?php if ($isManager && $_canShifts && !$navHide('shift_types')): ?>
+                                <?php if ($_canShiftTypes && !$navHide('shift_types')): ?>
                                     <a href="<?= route_url('admin.shift_types') ?>" class="topbar-nav-group__link<?= str_starts_with($path, '/admin/shift-types') ? ' topbar-nav-group__link--active' : '' ?>"><?= $ico('tag') ?><?= __('shift_types') ?></a>
                                 <?php endif; ?>
                                 <?php if ($_canTimeclock && !$navHide('timeclocks')): ?>
@@ -126,15 +133,20 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
                     $_canResignation       = bundle_enabled('resignation-report') && $routeVisible('admin.reports.resignation');
                     $_canSalary            = bundle_enabled('salary-report') && $routeVisible('admin.reports.salary');
                     $_canPhotos            = $feat('photos') && $routeVisible('admin.photos.index');
-                    // Repli générique "/admin/stores" absent pour un Owner (qui gère déjà
-                    // tous les stores via HR > Stores) : conserve le menu Owner identique
+                    // Gaté par la permission réelle, pas par $isManager : un employé à qui
+                    // cette permission serait accordée doit voir le lien comme n'importe qui
+                    // d'autre. Repli générique "/admin/stores" absent pour un Owner (qui gère
+                    // déjà tous les stores via HR > Stores) : conserve le menu Owner identique
                     // à avant la fusion de ce bloc avec la branche Manager.
-                    $_canEmployeeReport    = $isManager && !$isOwner && $routeVisible('admin.stores.employee_report');
-                    // daily_reports : un admin/manager a un lien unique (toutes les stores),
-                    // un employé peut en avoir plusieurs (un par store où il est staff) — seul
-                    // item dont la FORME diffère réellement, pas juste la destination.
-                    $_canDailyReportsAdmin    = $isManager && $feat('daily_reports') && $routeVisible('admin.daily_reports.all');
-                    $_canDailyReportsEmployee = !$isManager && $feat('daily_reports') && !empty($daily_report_staff_stores);
+                    $_canEmployeeReport    = !$isOwner && $routeVisible('admin.stores.employee_report');
+                    // daily_reports : gaté par la permission réelle (admin.daily_reports.all),
+                    // pas par $isManager — un employé auquel cette permission serait accordée
+                    // voit le lien unique "toutes les stores" comme n'importe qui d'autre.
+                    // Repli sur la liste par store (self-service, $daily_report_staff_stores)
+                    // seulement s'il n'a pas cette permission plus large — seul item dont la
+                    // FORME diffère réellement (1 lien vs N), pas juste la destination.
+                    $_canDailyReportsAdmin    = $feat('daily_reports') && $routeVisible('admin.daily_reports.all');
+                    $_canDailyReportsEmployee = !$_canDailyReportsAdmin && $feat('daily_reports') && !empty($daily_report_staff_stores);
                     $_canDailyReports         = $_canDailyReportsAdmin || $_canDailyReportsEmployee;
                     ?>
                     <?php if ($_canHiring || ($_canEmployeeReport && !$navHide('employee_report')) || ($_canDailyReports && !$navHide('daily_reports')) || ($_canResignation && !$navHide('resignation_report')) || ($_canSalary && !$navHide('salary_report')) || ($_canPhotos && !$navHide('photos'))): ?>
@@ -260,7 +272,11 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
 
     <div class="topbar-actions">
 
-        <?php if (!$isManager && isset($employee_month_stats)): ?>
+        <?php // Gaté par la donnée elle-même (calculée par AuthMiddleware pour tout
+        // non-Owner, Manager compris), pas par le rôle : un Manager qui a lui-même
+        // des shifts/un taux horaire doit voir ses propres stats comme n'importe
+        // quel employé, pas en être exclu parce qu'il gère aussi un store. ?>
+        <?php if (isset($employee_month_stats)): ?>
             <?php $ems = $employee_month_stats;
             $emsCur = $ems['currency'] ?? 'JPY';
             $emsStyle = $ems['currency_symbol_style'] ?? 'kanji'; ?>
