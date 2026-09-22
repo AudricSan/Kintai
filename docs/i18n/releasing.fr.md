@@ -36,7 +36,9 @@ beta   -> v0.13.3, v0.13.4   (même compteur, reprend où alpha s'est arrêté)
 main   -> v0.13.0            (stable, taguée une fois la ligne prête)
 ```
 
-La ligne suivante démarre à `0.14.1` (`Y` bumpé à la main, `Z` revenu à son placeholder `0` dans `composer.json`/`APP_VERSION` de `.env` jusqu'à ce que le workflow calcule le vrai premier `Z`).
+La ligne suivante démarre à `0.14.1` (`Y` bumpé à la main, `Z` revenu à son placeholder `0` dans `composer.json`/`config/app.php` jusqu'à ce que le workflow calcule le vrai premier `Z`).
+
+Le champ `version` de `config/app.php` est un littéral de chaîne simple (plus d'indirection par variable d'environnement) — le dépôt lui-même ne publie jamais que `X.Y.0`, mais dès qu'une instance applique une mise à jour automatique, `GithubUpdateService::applyUpdate()` réécrit ce même champ avec le tag exact qui vient d'être appliqué (vrai `Z` inclus), de sorte que `UpdateService::getCurrentVersion()` affiche la version réellement installée plutôt que juste la ligne. C'est le seul fichier qui la mémorise ; il n'y a plus de `storage/app/version.json` séparé.
 
 Ceci remplace l'ancien schéma de suffixe `X.Y.Z-<lettre de semaine><sous-version>` (ex. `0.12.0-ak23`), qui encodait trois compteurs indépendants par canal plus une lettre de semaine ISO difficile à lire d'un coup d'œil sur `/admin/update`.
 
@@ -44,14 +46,14 @@ Ceci remplace l'ancien schéma de suffixe `X.Y.Z-<lettre de semaine><sous-versio
 
 Contrairement à un semver classique MAJEUR/MINEUR/CORRECTIF, `Z` n'est jamais bumpé à la main — seuls `X`/`Y` le sont, et seulement dans ces deux cas :
 
-- **Ouvrir le premier alpha d'une nouvelle ligne** → bump **Y** dans `composer.json`/`APP_VERSION` de `.env` (mettre aussi à jour `.env.example` pour les futures installations — laisser `Z` à son placeholder `.0` — le vrai `Z` de chaque publication est calculé par le workflow, jamais stocké ici).
+- **Ouvrir le premier alpha d'une nouvelle ligne** → bump **Y** dans `composer.json`/`config/app.php` (laisser `Z` à son placeholder `.0` — le vrai `Z` de chaque publication est calculé par le workflow, jamais stocké ici).
 - **Changement cassant** → bump **X** à la place (ce qui remet aussi `Y` à `0`).
 - **Chaque publication alpha ou beta suivante sur cette ligne** → rien à bumper à la main ; `composer.json` continue d'afficher `X.Y.0`, seule la section `[Unreleased]` de `CHANGELOG.md` grossit.
 - **Publier la release stable sur `main`** → rien à bumper non plus ; `composer.json` doit déjà afficher `X.Y.0` depuis le premier alpha de la ligne. Le workflow tague exactement `vX.Y.0`, ignoré avec un message de log si ce tag existe déjà (aucun bump de version n'a eu lieu depuis la dernière release stable).
 
 ## Publier une nouvelle version (flux recommandé)
 
-Le numéro de base (`X.Y` dans `composer.json`/`APP_VERSION` de `.env`/`CHANGELOG.md`, toujours écrit `X.Y.0`) reste bumpé **à la main**, exactement comme avant, mais uniquement à l'ouverture d'une nouvelle ligne (voir « Quel nombre bumper » ci-dessus) — pas à chaque publication alpha/beta. Ce qui est automatisé par `.github/workflows/release.yml` à chaque push sur `alpha`, `beta` ou `main`, c'est *le calcul de `Z` et la création du tag Git + de la Release GitHub* — vous ne taguez jamais et n'appelez jamais `gh release create` vous-même.
+Le numéro de base (`X.Y` dans `composer.json`/`config/app.php`/`CHANGELOG.md`, toujours écrit `X.Y.0`) reste bumpé **à la main**, exactement comme avant, mais uniquement à l'ouverture d'une nouvelle ligne (voir « Quel nombre bumper » ci-dessus) — pas à chaque publication alpha/beta. Ce qui est automatisé par `.github/workflows/release.yml` à chaque push sur `alpha`, `beta` ou `main`, c'est *le calcul de `Z` et la création du tag Git + de la Release GitHub* — vous ne taguez jamais et n'appelez jamais `gh release create` vous-même.
 
 1. Sur une branche de travail classique, bumpez la version si vous ouvrez une nouvelle ligne (voir « Procédure manuelle » ci-dessous, ou lancez `scripts/release.ps1 -DryRun` pour prévisualiser les notes du changelog — ses étapes automatisées de tag/push/`gh release create` sont remplacées par la Action et échoueront simplement contre une branche protégée ; ne le lancez donc plus sans `-DryRun`).
 2. Ouvrez une PR ciblant la branche du canal à publier (`alpha`, `beta` ou `main`), et fusionnez-la une fois la CI verte (exigée par la protection de branche).
@@ -68,10 +70,10 @@ Pour faire progresser une version d'un canal au suivant (alpha → beta → rele
 Uniquement nécessaire à l'ouverture d'une nouvelle ligne (ou d'un nouveau majeur) — voir « Quel nombre bumper » ci-dessus ; à ignorer pour toute autre publication alpha/beta.
 
 1. Sur une branche de travail, renommer `## [Unreleased]` en `## [0.13.0] - 2026-08-04` dans `CHANGELOG.md` (la version de ligne `X.Y.0` — `Z` vaut toujours `0` ici, le vrai `Z` de chaque publication étant calculé par le workflow) et ajouter une nouvelle section `## [Unreleased]` vide juste au-dessus.
-2. Mettre à jour la version dans `composer.json` (`"version": "0.13.0"`) et `APP_VERSION=0.13.0` de `.env` (ainsi que `.env.example`, pour que les futures installations démarrent sur la bonne ligne), en bumpant `Y` (ou `X` pour un changement cassant) et en remettant le reste à `0`. `.env` est ignoré par git et volontairement exclu de la synchronisation de fichiers du self-updater (`GithubUpdateService::EXCLUDED_PREFIXES`), donc il n'est jamais bumpé automatiquement — c'est le seul fichier de cette liste que vous éditez localement plutôt que de le committer.
+2. Mettre à jour la version dans `composer.json` (`"version": "0.13.0"`) et le champ `'version'` de `config/app.php` avec la même chaîne, en bumpant `Y` (ou `X` pour un changement cassant) et en remettant le reste à `0`.
 3. Committer, pousser la branche, et ouvrir une PR vers `alpha` (les nouvelles lignes démarrent toujours là) :
    ```bash
-   git add CHANGELOG.md composer.json .env.example
+   git add CHANGELOG.md composer.json config/app.php
    git commit -m "core(release): v0.13.0"
    git push -u origin <votre-branche>
    gh pr create --base alpha
