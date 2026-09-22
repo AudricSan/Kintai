@@ -869,3 +869,7 @@ select.form-control {
     text-overflow: ellipsis;
 }
 
+.role-holder-chip__remove {
+    margin-left: auto;
+}
+

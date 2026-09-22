@@ -333,6 +333,8 @@ $router->group('/admin', function ($r) {
     $r->get('/roles/{id}/edit',    [AdminRoleController::class, 'editRole'],   middleware: [OwnerOnlyMiddleware::class], name: 'admin.roles.edit', permission: 'public');
     $r->post('/roles/{id}/edit',   [AdminRoleController::class, 'updateRole'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.roles.update', permission: 'public');
     $r->post('/roles/{id}/delete', [AdminRoleController::class, 'deleteRole'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.roles.delete', permission: 'public');
+    $r->post('/roles/{id}/holders',                       [AdminRoleController::class, 'addHolder'],    middleware: [OwnerOnlyMiddleware::class], name: 'admin.roles.holders.add',    permission: 'public');
+    $r->post('/roles/{id}/holders/{assignmentId}/delete', [AdminRoleController::class, 'removeHolder'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.roles.holders.delete', permission: 'public');
 
 }, middleware: [AuthMiddleware::class, PermissionMiddleware::class]);
 
