@@ -214,8 +214,6 @@
     "backup_update_check_failed": "La vérification des mises à jour a échoué : %s",
     "backup_update_confirm": "Cette action va télécharger et appliquer la dernière version depuis GitHub, en supprimant les fichiers obsolètes. Un backup complet (base de données, fichiers, code) est créé avant. Continuer ?",
     "backup_update_done_summary": "v{version} — {copied} fichier(s) copié(s), {deleted} supprimé(s), {migrations} migration(s)",
-    "backup_update_last_duration": "Dernière mise à jour : environ %d s. La prochaine devrait être similaire.",
-    "backup_update_no_estimate": "Cette opération peut prendre de quelques secondes à quelques minutes selon la taille de la mise à jour et votre connexion.",
     "backup_update_now_btn": "Mettre à jour maintenant",
     "backup_update_step_backup": "Sauvegarde de sécurité (base de données, uploads, code)",
     "backup_update_step_check": "Vérification de la release",

@@ -15,14 +15,9 @@ final class UpdateServiceTest extends TestCase
     protected function setUp(): void
     {
         $this->tmpDir = sys_get_temp_dir() . '/kintai_update_test_' . bin2hex(random_bytes(4));
-        mkdir($this->tmpDir . '/storage/app', 0775, true);
         mkdir($this->tmpDir . '/config', 0775, true);
-        putenv('KINTAI_STORAGE_PATH=' . $this->tmpDir . '/storage');
 
         $this->service = new UpdateService($this->tmpDir);
-        $ref = new \ReflectionProperty(UpdateService::class, 'versionFile');
-        $ref->setAccessible(true);
-        $ref->setValue($this->service, $this->tmpDir . '/storage/app/version.json');
     }
 
     protected function tearDown(): void
@@ -33,7 +28,6 @@ final class UpdateServiceTest extends TestCase
             $f->isDir() ? rmdir($f->getPathname()) : unlink($f->getPathname());
         }
         rmdir($this->tmpDir);
-        putenv('KINTAI_STORAGE_PATH');
     }
 
     private function writeAppVersion(string $version): void
@@ -65,45 +59,27 @@ final class UpdateServiceTest extends TestCase
         $this->assertSame('2.0.0', $this->service->getCurrentVersion());
     }
 
-    public function testGetLastUpdateDurationReturnsNullByDefault(): void
-    {
-        $this->assertNull($this->service->getLastUpdateDuration());
-    }
-
-    public function testRecordUpdateDurationPersists(): void
-    {
-        $this->service->recordUpdateDuration(42);
-        $this->assertSame(42, $this->service->getLastUpdateDuration());
-    }
-
-    public function testRecordUpdateDurationOverwritesPrevious(): void
-    {
-        $this->service->recordUpdateDuration(42);
-        $this->service->recordUpdateDuration(7);
-        $this->assertSame(7, $this->service->getLastUpdateDuration());
-    }
-
     /**
-     * Régression : après application d'une prerelease, config/app.php ne
-     * conserve que la ligne "X.Y.0" (voir docs/releasing.md) — sans mémoire
-     * du tag exact appliqué (avec le vrai Z), l'instance se croirait
-     * perpétuellement en retard sur cette même prerelease.
+     * setCurrentVersion() est ce que GithubUpdateService appelle après une
+     * mise à jour appliquée, avec le tag exact (vrai Z inclus) — config/app.php
+     * devient la seule source de vérité, sans fichier annexe.
      */
-    public function testGetCurrentVersionPrefersAppliedVersionWhenLineMatches(): void
+    public function testSetCurrentVersionRewritesConfigAppPhp(): void
     {
         $this->writeAppVersion('0.11.0');
-        $this->service->recordAppliedVersion('0.11.10');
+
+        $this->service->setCurrentVersion('0.11.10');
 
         $this->assertSame('0.11.10', $this->service->getCurrentVersion());
     }
 
-    public function testGetCurrentVersionIgnoresStaleAppliedVersionWhenLineChanged(): void
+    public function testSetCurrentVersionCanBeCalledRepeatedly(): void
     {
         $this->writeAppVersion('0.11.0');
-        $this->service->recordAppliedVersion('0.11.10');
 
-        $this->writeAppVersion('0.12.0');
+        $this->service->setCurrentVersion('0.11.10');
+        $this->service->setCurrentVersion('0.11.11');
 
-        $this->assertSame('0.12.0', $this->service->getCurrentVersion());
+        $this->assertSame('0.11.11', $this->service->getCurrentVersion());
     }
 }

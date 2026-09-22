@@ -6,26 +6,19 @@ namespace kintai\Core\Services;
 
 final class UpdateService
 {
-    private string $versionFile;
     private string $basePath;
 
     public function __construct(?string $basePath = null)
     {
-        $this->versionFile = storage_path('app/version.json');
         $this->basePath = $basePath ?? BASE_PATH;
     }
 
     /**
-     * La version installée est la ligne X.Y.0 déclarée dans config/app.php
-     * (bumpée à l'ouverture d'une nouvelle ligne, et synchronisée par
-     * GithubUpdateService::syncFiles() lors d'une mise à jour) — ce fichier
-     * ne contient jamais le Z réel d'une prerelease (voir docs/releasing.md),
-     * qui n'existe que sur le tag Git. On complète donc avec le tag exact
-     * retenu par recordAppliedVersion() lors de la dernière mise à jour
-     * appliquée via l'auto-updater, tant que sa ligne X.Y correspond toujours
-     * à celle de config/app.php (sinon, ce tag est obsolète — la ligne a été
-     * changée par un autre moyen, ex. un git pull manuel — et on retombe sur
-     * la base seule).
+     * Lit la version installée directement depuis config/app.php — seule
+     * source de vérité, sans indirection ni fichier annexe. Le champ 'version'
+     * y est un littéral simple (plus de env('APP_VERSION', ...)) que
+     * GithubUpdateService::applyUpdate() réécrit lui-même avec le tag exact
+     * (vrai Z inclus) à chaque mise à jour appliquée — voir setCurrentVersion().
      */
     public function getCurrentVersion(): string
     {
@@ -34,36 +27,22 @@ final class UpdateService
             return '0.0.0';
         }
         $config = require $configFile;
-        $base = $config['version'] ?? '0.0.0';
 
-        $appliedVersion = $this->readVersion()['applied_version'] ?? null;
-        if (is_string($appliedVersion) && VersionScheme::lineOf($appliedVersion) === VersionScheme::lineOf($base)) {
-            return $appliedVersion;
-        }
-
-        return $base;
+        return $config['version'] ?? '0.0.0';
     }
 
-    /** Mémorise le tag exact (avec le Z réel de la prerelease) appliqué par la dernière mise à jour réussie. */
-    public function recordAppliedVersion(string $version): void
+    /** Réécrit le champ 'version' de config/app.php avec le tag exact appliqué par la mise à jour. */
+    public function setCurrentVersion(string $version): void
     {
-        $data = $this->readVersion();
-        $data['applied_version'] = $version;
-        $this->writeVersion($data);
-    }
-
-    public function getLastUpdateDuration(): ?int
-    {
-        $seconds = $this->readVersion()['duration_seconds'] ?? null;
-        return $seconds === null ? null : (int) $seconds;
-    }
-
-    public function recordUpdateDuration(int $seconds): void
-    {
-        $data = $this->readVersion();
-        $data['duration_seconds'] = $seconds;
-        $data['updated_at'] = date('Y-m-d H:i:s');
-        $this->writeVersion($data);
+        $configFile = $this->basePath . '/config/app.php';
+        $contents = (string) file_get_contents($configFile);
+        $updated = preg_replace(
+            "/'version'\s*=>\s*'[^']*'/",
+            "'version' => '" . addslashes($version) . "'",
+            $contents,
+            1
+        );
+        file_put_contents($configFile, $updated);
     }
 
     public function getPendingMigrations(): array
@@ -71,27 +50,6 @@ final class UpdateService
         $migrated = $this->getExecutedMigrations();
         $all = $this->getAvailableMigrations();
         return array_values(array_diff($all, $migrated));
-    }
-
-    private function readVersion(): array
-    {
-        if (!file_exists($this->versionFile)) {
-            return [];
-        }
-        $data = json_decode((string) file_get_contents($this->versionFile), true);
-        return is_array($data) ? $data : [];
-    }
-
-    private function writeVersion(array $data): void
-    {
-        $dir = dirname($this->versionFile);
-        if (!is_dir($dir)) {
-            mkdir($dir, 0755, true);
-        }
-        file_put_contents(
-            $this->versionFile,
-            json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
-        );
     }
 
     private function getExecutedMigrations(): array

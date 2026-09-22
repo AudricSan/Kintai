@@ -102,7 +102,6 @@ final class BackupController
             'updateChannel'             => $currentChannel,
             'otherChannelsHistory'      => $otherChannelsHistory,
             'pendingMigs'               => $this->update->getPendingMigrations(),
-            'lastUpdateDurationSeconds' => $this->update->getLastUpdateDuration(),
             'releaseNotesCondensed'     => $releaseNotesCondensed,
             'repoReleasesUrl'           => $this->githubUpdate->getRepoReleasesUrl(),
             'flash'                     => $flash,
