@@ -237,6 +237,8 @@
     "bulk_max_warning": "Selection limited to :n shifts at a time.",
     "bundle_active_count": ":count/:max active bundles (free plan).",
     "bundle_market": "Bundle catalog",
+    "bundle_market_channel_label": "Bundle update channel:",
+    "bundle_market_channel_saved": "Bundle update channel set to: :channel.",
     "bundle_market_confirm_third_party": "I understand this bundle is not official and I accept installing it at my own risk.",
     "bundle_market_dry_run_ok": "Check passed: this bundle is compatible.",
     "bundle_market_from_registry": "From registry: :registry",

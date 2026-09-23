@@ -107,6 +107,17 @@ final class AppSettingsService
         return in_array($channel, ['alpha', 'beta', 'release'], true) ? $channel : 'release';
     }
 
+    /**
+     * Canal de mise à jour des bundles : release (défaut), beta, ou alpha —
+     * réglage global, s'applique à tous les bundles installés (pas un canal
+     * par bundle). Indépendant de updateChannel() (celui du Core lui-même).
+     */
+    public function bundleUpdateChannel(): string
+    {
+        $channel = $this->get('bundle_update_channel', 'release');
+        return in_array($channel, ['alpha', 'beta', 'release'], true) ? $channel : 'release';
+    }
+
     // ── Mascotte ───────────────────────────────────────────────────────────────
 
     /** Mode d'affichage de la mascotte : mix (défaut, tirée au sort par requête), kitsune, ou tanuki. */

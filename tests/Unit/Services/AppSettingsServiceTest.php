@@ -33,6 +33,30 @@ final class AppSettingsServiceTest extends TestCase
         $this->assertSame('release', $this->makeService(['update_channel' => 'nightly'])->updateChannel());
     }
 
+    public function testBundleUpdateChannelDefaultsToRelease(): void
+    {
+        $this->assertSame('release', $this->makeService()->bundleUpdateChannel());
+    }
+
+    public function testBundleUpdateChannelReadsStoredValue(): void
+    {
+        $this->assertSame('alpha', $this->makeService(['bundle_update_channel' => 'alpha'])->bundleUpdateChannel());
+        $this->assertSame('beta', $this->makeService(['bundle_update_channel' => 'beta'])->bundleUpdateChannel());
+    }
+
+    public function testBundleUpdateChannelRejectsUnknownValue(): void
+    {
+        $this->assertSame('release', $this->makeService(['bundle_update_channel' => 'nightly'])->bundleUpdateChannel());
+    }
+
+    /** Réglage indépendant de updateChannel() (Core) : canal des bundles distinct de celui du Core. */
+    public function testBundleUpdateChannelIsIndependentFromCoreUpdateChannel(): void
+    {
+        $service = $this->makeService(['update_channel' => 'alpha', 'bundle_update_channel' => 'release']);
+        $this->assertSame('alpha', $service->updateChannel());
+        $this->assertSame('release', $service->bundleUpdateChannel());
+    }
+
     public function testMaintenanceModeDisabledByDefault(): void
     {
         $this->assertFalse($this->makeService()->maintenanceModeEnabled());

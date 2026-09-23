@@ -148,7 +148,7 @@ Un **registry** n'est rien de plus qu'un fichier statique `registry.json` servi 
 
 ```json
 {
-    "schema_version": 1,
+    "schema_version": 2,
     "name": "Mon registry",
     "bundles": [
         {
@@ -156,15 +156,20 @@ Un **registry** n'est rien de plus qu'un fichier statique `registry.json` servi 
             "name": "Votre Bundle",
             "description": "...",
             "repository_url": "https://github.com/vous/votre-bundle",
-            "versions": ["1.0.0"]
+            "versions": {
+                "release": ["1.0.0"],
+                "beta": ["1.1.0", "1.0.0"],
+                "alpha": ["1.1.0", "1.0.0"]
+            }
         }
     ]
 }
 ```
 
-- `schema_version` doit valoir `1` — une instance qui ne comprend pas un schéma plus récent rejette proprement le listing (avec une entrée de log) plutôt que de le mal interpréter.
+- `schema_version` — Kintai comprend actuellement `1` et `2` ; une instance qui ne comprend pas un schéma plus récent rejette proprement le listing (avec une entrée de log) plutôt que de le mal interpréter.
 - `repository_url` doit être un simple `https://github.com/{owner}/{repo}` — l'installateur en dérive l'URL de l'API GitHub pour retrouver la release.
-- `versions` est une indication pour l'UI du catalogue (quelles versions proposer) ; le `bundle.json` de votre dépôt reste la source de vérité réelle, lue au moment de l'installation.
+- `versions` (schema 2) est indexé par canal de mise à jour — `release` (uniquement les releases non-prerelease publiées depuis `main`), `beta` (`main` ou `beta`, exclut `alpha`), `alpha` (tout) — chacun une liste de versions installables, la plus récente en premier. Ça reflète le canal choisi une seule fois pour tous les bundles installés sur `/admin/bundles/market` (`AppSettingsService::bundleUpdateChannel()`, indépendant du canal de mise à jour du Core lui-même sur `/admin/update`) : la liste correspondant à ce canal est ce que l'UI du catalogue propose comme "dernière version" et ce qu'une simple mise à jour installe. **Le schema 1** (`versions` en liste plate, sans clé de canal) reste accepté pour compatibilité — Kintai propose alors cette même liste plate sur les trois canaux, faute de moyen de savoir de quelle branche vient chaque release. Le registry officiel calcule ces trois listes du schema 2 automatiquement à partir des vraies Releases GitHub de chaque bundle (`target_commitish`/`prerelease`, même règle que les canaux de release de Kintai lui-même) — voir `scripts/sync-versions.js` de [`AudricSan/KintaiBundle`](https://github.com/AudricSan/KintaiBundle), qui tourne toutes les heures et ouvre une PR dès qu'une nouvelle release change les listes de versions d'un bundle ; vous n'éditez jamais `versions` à la main.
+- Le `bundle.json` de votre dépôt reste la source de vérité réelle pour la compatibilité (`kintai_core.min`/`max`) et tout le reste, lue au moment de l'installation — `versions` ici n'est jamais qu'une indication pour l'UI du catalogue sur ce qui est installable et sur quel canal.
 
 Deux façons d'être découvert :
 - **Votre propre registry** — écrivez et hébergez vous-même un `registry.json` (n'importe où accessible en HTTPS), puis n'importe qui peut ajouter son URL depuis `/admin/bundles/registries`. Aucune approbation nécessaire de quiconque.

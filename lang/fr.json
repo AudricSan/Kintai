@@ -237,6 +237,8 @@
     "bulk_max_warning": "Sélection limitée à :n shifts à la fois.",
     "bundle_active_count": ":count/:max bundles actifs (plan gratuit).",
     "bundle_market": "Catalogue de bundles",
+    "bundle_market_channel_label": "Canal de mise à jour des bundles :",
+    "bundle_market_channel_saved": "Canal de mise à jour des bundles réglé sur : :channel.",
     "bundle_market_confirm_third_party": "Je comprends que ce bundle n'est pas officiel et j'accepte de l'installer à mes risques.",
     "bundle_market_dry_run_ok": "Vérification réussie : ce bundle est compatible.",
     "bundle_market_from_registry": "Depuis le registry : :registry",

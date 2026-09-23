@@ -1,5 +1,6 @@
 <?php
 use kintai\UI\Components\Badge;
+use kintai\UI\Components\Button;
 
 /**
  * @var array $entries Liste de bundles catalogués, voir BundleMarketController::market().
@@ -7,7 +8,12 @@ use kintai\UI\Components\Badge;
  * @var string|null $error
  * @var string|null $success
  * @var string|null $uninstalled
+ * @var string $bundleUpdateChannel
+ * @var string|null $channelSaved
  */
+
+$channelAction = route_url('admin.bundles.market.channel');
+$channels = ['release' => __('update_channel_release'), 'beta' => __('update_channel_beta'), 'alpha' => __('update_channel_alpha')];
 ?>
 <div class="page-header">
     <h2 class="page-header__title"><?= __('bundle_market') ?> <span class="page-count">(<?= count($entries) ?>)</span></h2>
@@ -22,13 +28,29 @@ use kintai\UI\Components\Badge;
 <?php if ($uninstalled): ?>
     <div class="alert alert--success mb-sm"><?= htmlspecialchars(__('bundle_market_uninstall_success', ['slug' => $uninstalled])) ?></div>
 <?php endif; ?>
+<?php if ($channelSaved): ?>
+    <div class="alert alert--success mb-sm"><?= htmlspecialchars(__('bundle_market_channel_saved', ['channel' => $channels[$channelSaved] ?? $channelSaved])) ?></div>
+<?php endif; ?>
 <?php if ($error): ?>
     <div class="alert alert--danger mb-sm"><?= htmlspecialchars(urldecode($error)) ?></div>
 <?php endif; ?>
 
 <div class="card card--mb">
     <div class="card-body">
-        <p class="form-hint"><?= __('bundle_market_hint') ?></p>
+        <p class="form-hint mb-sm"><?= __('bundle_market_hint') ?></p>
+        <p class="mb-0">
+            <?= __('bundle_market_channel_label') ?>
+            <span class="btn-group">
+                <?php foreach ($channels as $value => $label): ?>
+                    <?php $needsConfirm = $value !== 'release' && $value !== $bundleUpdateChannel; ?>
+                    <form method="POST" action="<?= htmlspecialchars($channelAction) ?>" class="d-inline"<?= $needsConfirm ? " onsubmit=\"return confirm('" . __('update_channel_switch_confirm') . "')\"" : '' ?>>
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="channel" value="<?= htmlspecialchars($value) ?>">
+                        <?= Button::make($label)->sm()->{$value === $bundleUpdateChannel ? 'primary' : 'outline'}()->submit()->disabled($value === $bundleUpdateChannel)->render() ?>
+                    </form>
+                <?php endforeach; ?>
+            </span>
+        </p>
     </div>
 </div>
 

@@ -237,6 +237,8 @@
     "bulk_max_warning": "一度に選択できるシフトは :n 件までです。",
     "bundle_active_count": "アクティブなバンドル :count/:max（無料プラン）",
     "bundle_market": "バンドルカタログ",
+    "bundle_market_channel_label": "バンドルの更新チャンネル：",
+    "bundle_market_channel_saved": "バンドルの更新チャンネルを :channel に設定しました。",
     "bundle_market_confirm_third_party": "このバンドルが非公式であることを理解し、自己責任でインストールすることに同意します。",
     "bundle_market_dry_run_ok": "検証に成功しました。このバンドルは互換性があります。",
     "bundle_market_from_registry": "レジストリ元：:registry",

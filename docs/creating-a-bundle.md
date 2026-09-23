@@ -148,7 +148,7 @@ A **registry** is nothing more than a static `registry.json` file served over pl
 
 ```json
 {
-    "schema_version": 1,
+    "schema_version": 2,
     "name": "My registry",
     "bundles": [
         {
@@ -156,15 +156,20 @@ A **registry** is nothing more than a static `registry.json` file served over pl
             "name": "Your Bundle",
             "description": "...",
             "repository_url": "https://github.com/you/your-bundle",
-            "versions": ["1.0.0"]
+            "versions": {
+                "release": ["1.0.0"],
+                "beta": ["1.1.0", "1.0.0"],
+                "alpha": ["1.1.0", "1.0.0"]
+            }
         }
     ]
 }
 ```
 
-- `schema_version` must be `1` — an instance that doesn't understand a newer schema rejects the listing cleanly (with a log entry) instead of misinterpreting it.
+- `schema_version` — Kintai currently understands `1` and `2`; an instance that doesn't understand a newer schema rejects the listing cleanly (with a log entry) instead of misinterpreting it.
 - `repository_url` must be a plain `https://github.com/{owner}/{repo}` — the installer derives the GitHub API release-lookup URL from it.
-- `versions` is a hint for the catalog UI (which versions to offer); `bundle.json` inside your repository remains the actual source of truth read at install time.
+- `versions` (schema 2) is keyed by update channel — `release` (only non-prerelease releases published from `main`), `beta` (`main` or `beta`, excludes `alpha`), `alpha` (everything) — each a list of installable versions, newest first. This mirrors the channel an Owner picks once for every installed bundle on `/admin/bundles/market` (`AppSettingsService::bundleUpdateChannel()`, independent of the Core's own `/admin/update` channel): whichever list matches that channel is what the catalog UI offers as "latest" and what a plain update installs. **Schema 1** (`versions` as a flat array, no channel key) is still accepted for backward compatibility — Kintai then offers that same flat list on every channel, since there's no way to tell which release came from which branch. The official registry computes schema 2's three lists automatically from each bundle's actual GitHub Releases (`target_commitish`/`prerelease`, same rule as Kintai's own release channels) — see [`AudricSan/KintaiBundle`](https://github.com/AudricSan/KintaiBundle)'s `scripts/sync-versions.js`, which runs hourly and opens a PR whenever a new release changes any bundle's version lists; you don't hand-edit `versions` yourself.
+- `bundle.json` inside your repository remains the actual source of truth for compatibility (`kintai_core.min`/`max`) and everything else read at install time — `versions` here is only ever a hint for the catalog UI about what's installable and on which channel.
 
 Two ways to get discovered:
 - **Your own registry** — write and host a `registry.json` yourself (anywhere reachable over HTTPS), then anyone can add its URL from `/admin/bundles/registries`. No approval needed from anyone.
