@@ -249,7 +249,7 @@
     "bundle_market_installed_version": "Version installée : :version",
     "bundle_market_invalid_request": "Requête invalide ou confirmation manquante pour un bundle tiers.",
     "bundle_market_none_found": "Aucun bundle disponible. Ajoutez un registry pour en découvrir.",
-    "bundle_market_not_installed": "Non installé.",
+    "bundle_market_not_installed": "Non installé",
     "bundle_market_orphaned_hint": "Ce bundle est installé mais n'est plus proposé par aucun registry actif — vous pouvez toutefois le désinstaller.",
     "bundle_market_test": "Tester",
     "bundle_market_third_party_warning": "Ce bundle n'est pas développé ni maintenu par le projet Kintai. Installez-le uniquement si vous faites confiance à sa source.",

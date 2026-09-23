@@ -247,6 +247,15 @@ th.td-center {
     flex-shrink: 0;
 }
 
+/* Variante plus grande — repère visuel en tête de carte (ex. catalogue de
+   bundles) plutôt qu'en cellule de tableau dense. */
+.avatar-chip--lg {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius);
+    font-size: var(--text-sm);
+}
+
 /* ── Menu d'actions de ligne (remplace une rangée de boutons par un
    déclencheur unique + panneau) — ex. colonne Actions du tableau
    employés. Le panneau est en position:fixed (positionné par JS,
