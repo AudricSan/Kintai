@@ -92,6 +92,19 @@ Your namespace can be anything — by convention, installed bundles use `kintai\
 
 **A repository and interface pair from `src/Core/Repositories/*Interface.php` is also part of the stable surface** you're allowed to depend on (e.g. `FeedbackRepositoryInterface` above) — those are already a stable contract by construction, unrelated to `BundleContract`.
 
+## The RBAC scope contract: `managed_store_ids`
+
+Every Web route your bundle registers under `middleware: [AuthMiddleware::class, PermissionMiddleware::class]` must declare a `permission:` — either a precise key from `PermissionCatalog`, or `'public'` (a route intentionally left ungated, e.g. self-service/aggregate pages; omitting `permission:` entirely behaves the same way). `PermissionMiddleware` resolves this into a request attribute, `managed_store_ids`, that every controller down the line is expected to read rather than re-deriving:
+
+- **`null`** — unrestricted. Either the user is Owner, or their role grants your route's permission key with the "all stores" scope checked (`role_permissions.scope = 'global'`) — which can happen even when the *assignment* linking them to that role is itself store-scoped to their home store. Both cases mean the exact same thing: no store filtering.
+- **`int[]`** — restricted to exactly these store IDs.
+
+**The one mistake that reintroduces this bug every time**: writing `$request->getAttribute('managed_store_ids') ?? []` instead of branching on `=== null`. It looks harmless because several Core repository methods treat an *empty* filter array as "no filter" — so a list query downstream can keep "working" by coincidence — but the next thing reading the same collapsed value (a store-picker dropdown, an `in_array($storeId, $managedIds)` access check) sees "zero stores", not "every store", and breaks. This exact mistake shipped in `kintai-bundle-daily-report`'s `DailyReportController::indexAll()` (fixed in `fix/global-scope-permission-store-filter`) — always handle `null` as its own branch, mirroring `is_admin`, not as something a `??` fallback can absorb.
+
+Don't re-derive this resolution logic yourself. Reuse Core's `kintai\UI\Controller\Web\HasAdminAccess` trait — `managedIds(Request $request): ?array`, `availableStores(?array $managedIds): array`, `assertStoreAccess(Request $request, int $storeId): void`, `assertAnyStoreAccess(Request $request, array $storeIds): void` — the same trait every official bundle's admin controller uses (see `StorePhotoController` in `kintai-bundle-store-photos` for a real example). It already gets the `null` case right; a hand-rolled equivalent in your own controller is exactly how this class of bug gets reintroduced, one bundle at a time.
+
+If your bundle needs to serve an **uploaded file** (an image, a PDF, an attachment) behind this same authorization, don't build your own file-serving route for it — link into Kintai's own `/storage/{path*}` (route name `storage.file`), which already applies `managed_store_ids` (`StorageFileController::assertPathStoreAccess()`) plus its own upload-path confinement and MIME allow-list. A parallel file-serving route duplicates authorization logic Core already owns, outside of Core's own test coverage.
+
 ## The `bundle.json` manifest
 
 Required at the bundle's repository root:
