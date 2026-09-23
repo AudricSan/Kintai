@@ -137,6 +137,44 @@ final class PermissionService
     }
 
     /**
+     * Vrai si l'utilisateur détient, via N'IMPORTE QUELLE affectation (peu importe son
+     * scope_type), un rôle système, OU un rôle marquant au moins une permission en
+     * portée globale (case "Toutes les boutiques" cochée sur au moins une clé de ce
+     * rôle — voir permissionIsGlobalOnRole()). Complète anyGrantedStoreIds() pour
+     * PermissionMiddleware : celle-ci ne collecte que les scope_id des affectations
+     * scope_type='store' et ne consulte jamais getGlobalPermissionKeys(), donc ne peut
+     * pas détecter qu'une affectation store-scope porte, via son rôle, une permission
+     * volontairement rendue illimitée. Sans ce signal, la porte grossière des routes
+     * 'public' (self-service/agrégats, et notamment /storage/{path*} qui sert tous les
+     * fichiers uploadés) restait à tort bornée au store d'origine de l'affectation —
+     * bug reproduit avec photos.view marquée globale sur un rôle affecté en store-scope :
+     * la liste des rapports (route à permission précise) montrait tous les magasins,
+     * mais leurs images (servies via /storage/{path*}, route 'public') non.
+     * @param array $authUser Utilisateur authentifié (au minimum ['id' => int])
+     */
+    public function hasAnyGlobalPermissionGrant(array $authUser): bool
+    {
+        $userId = (int) ($authUser['id'] ?? 0);
+        if ($userId <= 0) {
+            return false;
+        }
+        foreach ($this->assignments->findByUser($userId) as $assignment) {
+            $roleId = (int) $assignment['role_id'];
+            $role   = $this->role($roleId);
+            if ($role === null) {
+                continue;
+            }
+            if (!empty($role['is_system'])) {
+                return true;
+            }
+            if ($this->roles->getGlobalPermissionKeys($roleId) !== []) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Charge une ressource par id via $finder, vérifie que $permissionKey est accordée
      * sur son store RÉEL (jamais celui, optionnel, fourni par le client) — le pattern
      * "findById() + can()" que chaque contrôleur de ressource {id} devait ré-écrire à la

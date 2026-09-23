@@ -41,7 +41,13 @@ use kintai\UI\ViewRenderer;
  *   l'ensemble de ces stores), sinon redirigé vers /employee — remplace
  *   l'ancien filtre grossier d'AdminMiddleware pour ces pages self-service/
  *   agrégats (ex. admin.requests, chaque section s'auto-filtrant ensuite par
- *   permission dans son propre contrôleur).
+ *   permission dans son propre contrôleur). Si l'utilisateur détient un rôle
+ *   système ou un rôle marquant au moins une permission en portée globale
+ *   (peu importe laquelle), managed_store_ids = null plutôt que la liste
+ *   forcément incomplète d'anyGrantedStoreIds() — sinon une permission comme
+ *   photos.view rendue globale sur un rôle store-scope restait, sur ces
+ *   routes 'public' (ex. /storage/{path*}, qui sert tous les fichiers
+ *   uploadés), à tort bornée au store d'origine de l'affectation.
  *
  * tests/Unit/Core/PermissionMapsTest fait échouer la suite si une route sous
  * ce middleware n'a ni permission précise ni marqueur 'public' explicite.
@@ -99,11 +105,23 @@ final class PermissionMiddleware implements MiddlewareInterface
         // Ni permission précise accordée pour cette route (ni membership), ni route
         // 'public'/sans règle : porte d'entrée grossière — au moins une permission
         // RBAC quelque part (remplace l'ancien AdminMiddleware), sinon /employee.
-        $managedIds = $this->permissions->anyGrantedStoreIds($user);
-        if ($managedIds === []) {
-            return Response::redirect(base_url() . '/employee');
+        //
+        // Un rôle système, ou un rôle marquant au moins une permission "Toutes les
+        // boutiques", rend cette porte grossière illimitée — anyGrantedStoreIds() ne
+        // peut pas le détecter (voir son docblock). Sans ce court-circuit, un
+        // utilisateur affecté en scope_type='store' mais dont le rôle accorde une
+        // permission comme photos.view en portée globale restait à tort limité à son
+        // store d'origine sur toute route 'public' (ex. /storage/{path*}, qui sert
+        // aussi bien les images de rapports photo que les fichiers d'import Excel).
+        if ($this->permissions->hasAnyGlobalPermissionGrant($user)) {
+            $this->setManagedStoreIds($request, null);
+        } else {
+            $managedIds = $this->permissions->anyGrantedStoreIds($user);
+            if ($managedIds === []) {
+                return Response::redirect(base_url() . '/employee');
+            }
+            $this->setManagedStoreIds($request, $managedIds);
         }
-        $this->setManagedStoreIds($request, $managedIds);
 
         if ($key === null || $key === 'public') {
             return $next($request);

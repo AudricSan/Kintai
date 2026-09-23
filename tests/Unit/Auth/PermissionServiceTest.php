@@ -267,4 +267,64 @@ final class PermissionServiceTest extends TestCase
 
         $this->assertTrue($this->service->can(['id' => 1], 'shifts.update', 999));
     }
+
+    // -------------------------------------------------------------------------
+    // hasAnyGlobalPermissionGrant() — porte grossière des routes 'public', doit
+    // détecter qu'un rôle rend AU MOINS UNE permission globale, peu importe le
+    // scope_type de l'affectation qui relie l'utilisateur à ce rôle. Complète
+    // anyGrantedStoreIds(), qui ignore complètement getGlobalPermissionKeys().
+    // -------------------------------------------------------------------------
+
+    public function testHasAnyGlobalPermissionGrantTrueForStoreScopedAssignmentWithGloballyFlaggedPermission(): void
+    {
+        // Repro directe du bug : photos.view marquée globale sur un rôle dont
+        // l'affectation reste store-scope sur le magasin d'origine.
+        $this->assignments->method('findByUser')->with(2)->willReturn([
+            ['id' => 1, 'user_id' => 2, 'role_id' => 20, 'scope_type' => 'store', 'scope_id' => 3],
+        ]);
+        $this->roles->method('findById')->with(20)->willReturn($this->role(20));
+        $this->roles->method('getGlobalPermissionKeys')->with(20)->willReturn(['photos.view']);
+
+        $this->assertTrue($this->service->hasAnyGlobalPermissionGrant(['id' => 2]));
+    }
+
+    public function testHasAnyGlobalPermissionGrantTrueForSystemRole(): void
+    {
+        $this->assignments->method('findByUser')->with(1)->willReturn([
+            ['id' => 1, 'user_id' => 1, 'role_id' => 10, 'scope_type' => 'store', 'scope_id' => 3],
+        ]);
+        $this->roles->method('findById')->with(10)->willReturn($this->role(10, isSystem: true));
+        $this->roles->expects($this->never())->method('getGlobalPermissionKeys');
+
+        $this->assertTrue($this->service->hasAnyGlobalPermissionGrant(['id' => 1]));
+    }
+
+    public function testHasAnyGlobalPermissionGrantTrueRegardlessOfAssignmentScopeType(): void
+    {
+        $this->assignments->method('findByUser')->with(2)->willReturn([
+            ['id' => 1, 'user_id' => 2, 'role_id' => 20, 'scope_type' => 'global', 'scope_id' => null],
+        ]);
+        $this->roles->method('findById')->with(20)->willReturn($this->role(20));
+        $this->roles->method('getGlobalPermissionKeys')->with(20)->willReturn(['photos.view']);
+
+        $this->assertTrue($this->service->hasAnyGlobalPermissionGrant(['id' => 2]));
+    }
+
+    public function testHasAnyGlobalPermissionGrantFalseWithoutAnyGlobalPermissionOrSystemRole(): void
+    {
+        $this->assignments->method('findByUser')->with(2)->willReturn([
+            ['id' => 1, 'user_id' => 2, 'role_id' => 20, 'scope_type' => 'store', 'scope_id' => 3],
+        ]);
+        $this->roles->method('findById')->with(20)->willReturn($this->role(20));
+        $this->roles->method('getGlobalPermissionKeys')->with(20)->willReturn([]);
+
+        $this->assertFalse($this->service->hasAnyGlobalPermissionGrant(['id' => 2]));
+    }
+
+    public function testHasAnyGlobalPermissionGrantFalseWithoutAnyAssignment(): void
+    {
+        $this->assignments->method('findByUser')->with(2)->willReturn([]);
+
+        $this->assertFalse($this->service->hasAnyGlobalPermissionGrant(['id' => 2]));
+    }
 }

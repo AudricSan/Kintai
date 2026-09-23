@@ -92,6 +92,19 @@ Votre namespace peut être n'importe quoi — par convention, les bundles instal
 
 **Une paire repository/interface de `src/Core/Repositories/*Interface.php` fait aussi partie de la surface stable** dont vous pouvez dépendre (ex. `FeedbackRepositoryInterface` ci-dessus) — celles-ci sont déjà un contrat stable par construction, indépendamment de `BundleContract`.
 
+## Le contrat de portée RBAC : `managed_store_ids`
+
+Toute route Web enregistrée par votre bundle sous `middleware: [AuthMiddleware::class, PermissionMiddleware::class]` doit déclarer un `permission:` — soit une clé précise de `PermissionCatalog`, soit `'public'` (une route volontairement non gatée finement, ex. self-service/agrégat ; omettre `permission:` a le même effet). `PermissionMiddleware` résout cette règle en un attribut de requête, `managed_store_ids`, que chaque contrôleur en aval doit lire plutôt que de le recalculer lui-même :
+
+- **`null`** — illimité. Soit l'utilisateur est Owner, soit son rôle accorde la clé de permission de votre route avec la case "Toutes les boutiques" cochée (`role_permissions.scope = 'global'`) — ce qui peut arriver même quand l'*affectation* qui relie cet utilisateur à ce rôle reste elle-même limitée à son magasin d'origine. Les deux cas signifient exactement la même chose : aucun filtrage par magasin.
+- **`int[]`** — restreint exactement à ces identifiants de magasin.
+
+**L'erreur qui réintroduit ce bug à chaque fois** : écrire `$request->getAttribute('managed_store_ids') ?? []` au lieu de tester explicitement `=== null`. Ça paraît anodin car plusieurs méthodes de repository du Core traitent un tableau de filtre *vide* comme "aucun filtre" — une requête de liste en aval peut donc continuer à "fonctionner" par coïncidence — mais le prochain code qui relit cette même valeur écrasée (un sélecteur de magasin, une vérification d'accès `in_array($storeId, $managedIds)`) voit "zéro magasin", pas "tous les magasins", et casse. Cette erreur exacte s'est retrouvée dans `DailyReportController::indexAll()` de `kintai-bundle-daily-report` (corrigée dans `fix/global-scope-permission-store-filter`) — traitez toujours `null` comme sa propre branche, à l'image de `is_admin`, jamais comme quelque chose qu'un `??` peut absorber.
+
+Ne recalculez pas cette résolution vous-même. Réutilisez le trait `kintai\UI\Controller\Web\HasAdminAccess` du Core — `managedIds(Request $request): ?array`, `availableStores(?array $managedIds): array`, `assertStoreAccess(Request $request, int $storeId): void`, `assertAnyStoreAccess(Request $request, array $storeIds): void` — le même trait qu'utilise le contrôleur admin de chaque bundle officiel (voir `StorePhotoController` dans `kintai-bundle-store-photos` pour un exemple réel). Il traite déjà correctement le cas `null` ; un équivalent réécrit à la main dans votre propre contrôleur est exactement la façon dont cette catégorie de bug se réintroduit, un bundle à la fois.
+
+Si votre bundle doit servir un **fichier uploadé** (une image, un PDF, une pièce jointe) derrière cette même autorisation, ne construisez pas votre propre route de service de fichier — appuyez-vous sur `/storage/{path*}` (nom de route `storage.file`) de Kintai lui-même, qui applique déjà `managed_store_ids` (`StorageFileController::assertPathStoreAccess()`) ainsi que son propre confinement de chemin d'upload et sa liste blanche de types MIME. Une route de service de fichier parallèle duplique une logique d'autorisation que le Core possède déjà, hors de sa propre couverture de tests.
+
 ## Le manifeste `bundle.json`
 
 Obligatoire à la racine du dépôt du bundle :

@@ -92,6 +92,19 @@ namespaceは何でも構いません——慣例として、インストール�
 
 **`src/Core/Repositories/*Interface.php` のリポジトリ/インターフェースのペアも、依存してよい安定した領域の一部です**（上記の`FeedbackRepositoryInterface`など）——これらは`BundleContract`とは無関係に、構造上すでに安定した契約です。
 
+## RBACスコープの契約：`managed_store_ids`
+
+バンドルが `middleware: [AuthMiddleware::class, PermissionMiddleware::class]` の下に登録するすべてのWebルートは、`permission:` を宣言しなければなりません——`PermissionCatalog`の正確なキー、または`'public'`（意図的に細かいゲートをかけないルート。例：セルフサービス/集計ページ。`permission:`を省略しても同じ扱いになります）のいずれかです。`PermissionMiddleware`はこの規則を`managed_store_ids`というリクエスト属性に解決し、それ以降のすべてのコントローラは自分で再計算するのではなく、この属性を読むことが期待されています：
+
+- **`null`** — 無制限。ユーザーがOwnerである場合、またはそのロールがこのルートの権限キーを「全店舗」スコープ（`role_permissions.scope = 'global'`）付きで付与している場合——これは、そのユーザーをそのロールに結びつけている*割り当て（assignment）*自体が本人の所属店舗にスコープされていても発生し得ます。どちらの場合も意味は同じです：店舗による絞り込みは一切なし。
+- **`int[]`** — これらの店舗IDのみに制限。
+
+**このバグを毎回再発させる、たった一つの間違い**：`=== null` で明示的に分岐する代わりに `$request->getAttribute('managed_store_ids') ?? []` と書いてしまうことです。Coreのリポジトリメソッドの多くが*空の*フィルタ配列を「フィルタなし」として扱うため、これは無害に見えます——下流のリスト取得は偶然「動作し続ける」ことがあります——しかし、同じ値を読む次のコード（店舗選択ドロップダウン、`in_array($storeId, $managedIds)`によるアクセスチェックなど）は「店舗ゼロ」を見てしまい、「全店舗」ではないため破綻します。この間違いはまさに`kintai-bundle-daily-report`の`DailyReportController::indexAll()`で発生していました（`fix/global-scope-permission-store-filter`で修正済み）——`null`は常に`is_admin`と同様、独立した分岐として扱い、`??`で吸収させてはいけません。
+
+この解決ロジックを自分で再実装しないでください。Coreの`kintai\UI\Controller\Web\HasAdminAccess`トレイト——`managedIds(Request $request): ?array`、`availableStores(?array $managedIds): array`、`assertStoreAccess(Request $request, int $storeId): void`、`assertAnyStoreAccess(Request $request, array $storeIds): void`——を再利用してください。これは公式バンドルの各管理コントローラが使っているのと同じトレイトです（実例として`kintai-bundle-store-photos`の`StorePhotoController`を参照）。すでに`null`のケースを正しく処理しています。自分のコントローラで手作りした同等品を書くことは、まさにこの種のバグがバンドルごとに再導入される原因です。
+
+バンドルが同じ認可の下で**アップロードされたファイル**（画像、PDF、添付ファイル）を配信する必要がある場合、そのための独自のファイル配信ルートを作らないでください。Kintai自身の`/storage/{path*}`（ルート名`storage.file`）にリンクしてください。これは`managed_store_ids`（`StorageFileController::assertPathStoreAccess()`）に加え、独自のアップロードパス制限とMIMEホワイトリストをすでに適用しています。並行するファイル配信ルートは、Coreが既に持っている認可ロジックを、その自身のテストカバレッジの外側で複製することになります。
+
 ## `bundle.json` マニフェスト
 
 バンドルのリポジトリのルートに必須：
