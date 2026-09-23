@@ -7,7 +7,10 @@
     <meta name="csrf-token" content="<?= htmlspecialchars(csrf_token(), ENT_QUOTES) ?>">
     <meta name="theme-color" content="#1a5c8c">
     <link rel="manifest" href="<?= route_url('pwa.manifest') ?>">
-    <link rel="apple-touch-icon" href="<?= $BASE_URL ?>/assets/img/kintai-192.png">
+    <link rel="icon" href="<?= $BASE_URL ?>/assets/img/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= $BASE_URL ?>/assets/img/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="<?= $BASE_URL ?>/assets/img/favicon-16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= $BASE_URL ?>/assets/img/apple-touch-icon.png">
     <title><?= htmlspecialchars($title ?? 'Kintai') ?> — Kintai</title>
     <link rel="stylesheet" href="<?= $BASE_URL ?>/assets/css/app.css?v=<?= asset_version() ?>">
     <script>(function(){var t=localStorage.getItem('kintai-theme');if(t)document.documentElement.dataset.theme=t;}());</script>
