@@ -109,6 +109,9 @@ final class AuthController
             $authUser = $this->auth->user();
             $userId   = $authUser ? (int) ($authUser['id'] ?? 0) : null;
             $this->auditLogger->log($request, 'auth.login', 'user', $userId, ['mode' => $mode], null, $userId);
+            if ($userId !== null) {
+                $this->users->save(['id' => $userId, 'last_login_at' => date('Y-m-d H:i:s')]);
+            }
 
             // Laisser la préférence BD de l'utilisateur prendre effet (I18nMiddleware)
             unset($_SESSION['locale']);
