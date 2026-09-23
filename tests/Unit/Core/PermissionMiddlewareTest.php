@@ -78,10 +78,82 @@ final class PermissionMiddlewareTest extends TestCase
         ]);
         $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'is_system' => 0]);
         $this->roles->method('getPermissions')->with(2)->willReturn(['photos.view']);
+        $this->roles->method('getGlobalPermissionKeys')->with(2)->willReturn([]);
 
         $request = $this->makeRequest('public', ['id' => 10], [1]);
+        $response = $this->middleware->handle($request, function (Request $r) {
+            return Response::json(['managed' => $r->getAttribute('managed_store_ids')]);
+        });
 
-        $this->assertSame(200, $this->middleware->handle($request, $this->next())->status());
+        // Non-régression : sans permission globale, managed_store_ids reste borné au
+        // store réel — le fix ci-dessous ne doit pas sur-octroyer un accès illimité.
+        $this->assertSame(200, $response->status());
+        $this->assertSame([1], json_decode($response->body(), true)['managed']);
+    }
+
+    /**
+     * Repro du bug rapporté : photos.view marquée globale ("Toutes les boutiques") sur
+     * un rôle dont l'affectation reste store-scope. anyGrantedStoreIds() (utilisée par
+     * la porte grossière ci-dessus) ne consulte jamais getGlobalPermissionKeys() et
+     * aurait borné managed_store_ids au seul store d'origine — exactement ce qui faisait
+     * échouer le chargement des photos des autres magasins sur /storage/{path*} ('public')
+     * alors que la liste des rapports (route à permission précise photos.view) les
+     * montrait déjà correctement.
+     */
+    public function testPublicRoutePassesWithUnlimitedScopeWhenRoleHasGlobalPermissionOnStoreScopedAssignment(): void
+    {
+        $this->assignments->method('findByUser')->with(10)->willReturn([
+            ['id' => 1, 'user_id' => 10, 'role_id' => 2, 'scope_type' => 'store', 'scope_id' => 1],
+        ]);
+        $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'is_system' => 0]);
+        $this->roles->method('getPermissions')->with(2)->willReturn(['photos.view']);
+        $this->roles->method('getGlobalPermissionKeys')->with(2)->willReturn(['photos.view']);
+
+        $request  = $this->makeRequest('public', ['id' => 10], [1]);
+        $response = $this->middleware->handle($request, function (Request $r) {
+            return Response::json(['managed' => $r->getAttribute('managed_store_ids')]);
+        });
+
+        $this->assertSame(200, $response->status());
+        $this->assertNull(json_decode($response->body(), true)['managed']);
+    }
+
+    /** Même scénario que ci-dessus mais pour une route sans permission déclarée du tout ($key = null). */
+    public function testRouteWithoutPermissionDeclaredPassesWithUnlimitedScopeForGlobalPermissionOnRole(): void
+    {
+        $this->assignments->method('findByUser')->with(10)->willReturn([
+            ['id' => 1, 'user_id' => 10, 'role_id' => 2, 'scope_type' => 'store', 'scope_id' => 1],
+        ]);
+        $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'is_system' => 0]);
+        $this->roles->method('getPermissions')->with(2)->willReturn(['photos.view']);
+        $this->roles->method('getGlobalPermissionKeys')->with(2)->willReturn(['photos.view']);
+
+        $request  = $this->makeRequest(null, ['id' => 10], [1]);
+        $response = $this->middleware->handle($request, function (Request $r) {
+            return Response::json(['managed' => $r->getAttribute('managed_store_ids')]);
+        });
+
+        $this->assertSame(200, $response->status());
+        $this->assertNull(json_decode($response->body(), true)['managed']);
+    }
+
+    /**
+     * Non-régression critique : le court-circuit "permission globale" ne doit jamais
+     * contourner le refus d'une clé de permission PRÉCISE non accordée. Le rôle rend
+     * employees.view globale (donc hasAnyGlobalPermissionGrant() = true), mais la route
+     * exige stores.view, jamais accordée — doit toujours lever ForbiddenException.
+     */
+    public function testForbiddenWithoutTheDeclaredPermissionStaysForbiddenEvenWithUnrelatedGlobalPermission(): void
+    {
+        $this->assignments->method('findByUser')->with(10)->willReturn([
+            ['id' => 1, 'user_id' => 10, 'role_id' => 2, 'scope_type' => 'store', 'scope_id' => 3],
+        ]);
+        $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'is_system' => 0]);
+        $this->roles->method('getPermissions')->with(2)->willReturn(['employees.view']);
+        $this->roles->method('getGlobalPermissionKeys')->with(2)->willReturn(['employees.view']);
+
+        $this->expectException(ForbiddenException::class);
+        $this->middleware->handle($this->makeRequest('stores.view', ['id' => 10], [3]), $this->next());
     }
 
     /** Sans aucune permission RBAC nulle part, la porte grossière redirige vers /employee. */
