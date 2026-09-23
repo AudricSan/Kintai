@@ -9,7 +9,7 @@ use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
-use kintai\Core\Services\ImageCompressionService;
+use kintai\Core\Services\AvatarImageOptimizer;
 use kintai\Core\Repositories\AvailabilityRepositoryInterface;
 use kintai\Core\Repositories\IcalTokenRepositoryInterface;
 use kintai\Core\Repositories\LanguageRepositoryInterface;
@@ -60,7 +60,7 @@ final class AuthController
         private readonly UserNavPrefsRepositoryInterface $navPrefs,
         private readonly AvailabilityRepositoryInterface $availabilities,
         private readonly LanguageRepositoryInterface $languages,
-        private readonly ImageCompressionService $imageCompressor,
+        private readonly AvatarImageOptimizer $avatarOptimizer,
     ) {}
 
     /** @var array<string, string> extension → type MIME (avatars) */
@@ -362,7 +362,7 @@ final class AuthController
             mkdir($avatarDir, 0775, true);
         }
 
-        $compressed = $this->imageCompressor->compress($file['tmp_name'], $avatarDir . 'user_' . $userId);
+        $compressed = $this->avatarOptimizer->optimize($file['tmp_name'], $avatarDir . 'user_' . $userId);
         if ($compressed === null) {
             return Response::redirect($this->base() . '/profile?tab=info&error=avatar_invalid');
         }
