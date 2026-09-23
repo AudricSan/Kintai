@@ -11,6 +11,7 @@ use kintai\Core\Repositories\BundleRegistryRepositoryInterface;
 use kintai\Core\Repositories\InstalledBundleRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\Services\AppSettingsService;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\BundleInstaller\BundleInstallerService;
 use kintai\Core\Services\BundleRegistry\BundleCatalogService;
@@ -37,6 +38,7 @@ final class BundleMarketController
         private readonly AuditLogger $auditLogger,
         private readonly AppSettingsRepositoryInterface $appSettings,
         private readonly BundleDiscoveryService $discovery,
+        private readonly AppSettingsService $settings,
     ) {}
 
     /** GET /admin/bundles/registries */
@@ -104,10 +106,13 @@ final class BundleMarketController
             $installed[$row['slug']] = $row['active_version'];
         }
 
+        $channel = $this->settings->bundleUpdateChannel();
+
         $entries = [];
         $seenSlugs = [];
         foreach ($this->catalog->listAvailableBundles() as $entry) {
-            $latestVersion = $entry->bundle->versions[0] ?? null;
+            $versionsForChannel = $entry->bundle->versionsForChannel($channel);
+            $latestVersion = $versionsForChannel[0] ?? null;
             $installedVersion = $installed[$entry->bundle->slug] ?? null;
             $seenSlugs[$entry->bundle->slug] = true;
 
@@ -116,7 +121,7 @@ final class BundleMarketController
                 'name'             => $entry->bundle->name,
                 'description'      => $entry->bundle->description,
                 'repository_url'   => $entry->bundle->repositoryUrl,
-                'versions'         => $entry->bundle->versions,
+                'versions'         => $versionsForChannel,
                 'latest_version'   => $latestVersion,
                 'registry_name'    => $entry->registryName,
                 'registry_url'     => $entry->registryUrl,
@@ -159,7 +164,28 @@ final class BundleMarketController
             'error'   => $request->query('error'),
             'success' => $request->query('success'),
             'uninstalled' => $request->query('uninstalled'),
+            'bundleUpdateChannel' => $channel,
+            'channelSaved' => $request->query('channel_saved'),
         ], 'layout.app'));
+    }
+
+    /**
+     * POST /admin/bundles/market/channel — change le canal de mise à jour suivi
+     * pour TOUS les bundles (release/beta/alpha), réglage global — indépendant
+     * du canal d'auto-update du Core (voir BackupController::saveChannel()).
+     */
+    public function saveChannel(Request $request): Response
+    {
+        $channel = (string) $request->post('channel', 'release');
+        if (!in_array($channel, ['alpha', 'beta', 'release'], true)) {
+            $channel = 'release';
+        }
+
+        $this->settings->setMany(['bundle_update_channel' => $channel]);
+
+        $this->auditLogger->log($request, 'bundle_market.channel_changed', 'system', null, ['channel' => $channel]);
+
+        return Response::redirect($this->base() . '/admin/bundles/market?channel_saved=' . $channel);
     }
 
     /** POST /admin/bundles/market/uninstall — retire un bundle installé (fichiers + base), désactivé au passage. */

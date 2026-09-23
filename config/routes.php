@@ -319,6 +319,7 @@ $router->group('/admin', function ($r) {
     $r->post('/bundles/market/install',         [BundleMarketController::class, 'install'],       middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.market.install', permission: 'public');
     $r->post('/bundles/market/install/stream',  [BundleMarketController::class, 'installStream'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.market.install.stream', permission: 'public');
     $r->post('/bundles/market/uninstall',       [BundleMarketController::class, 'uninstall'],     middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.market.uninstall', permission: 'public');
+    $r->post('/bundles/market/channel',         [BundleMarketController::class, 'saveChannel'],   middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.market.channel', permission: 'public');
 
     // Licence (déblocage du plan payant, Owner uniquement)
     $r->get('/license',           [LicenseController::class, 'show'],       middleware: [OwnerOnlyMiddleware::class], name: 'admin.license', permission: 'public');

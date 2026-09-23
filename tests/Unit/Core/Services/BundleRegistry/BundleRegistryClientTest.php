@@ -34,6 +34,41 @@ final class BundleRegistryClientTest extends TestCase
         $this->assertCount(1, $listing->bundles);
         $this->assertSame('feedback', $listing->bundles[0]->slug);
         $this->assertSame(['1.0.0'], $listing->bundles[0]->versions);
+        // Schema 1 (liste plate) : offerte à l'identique sur les trois canaux, faute de mieux.
+        $this->assertSame(['1.0.0'], $listing->bundles[0]->versionsForChannel('alpha'));
+    }
+
+    public function testFetchListingParsesSchema2WithPerChannelVersions(): void
+    {
+        $body = json_encode([
+            'schema_version' => 2,
+            'name'           => 'Registry officiel Kintai',
+            'bundles'        => [
+                [
+                    'slug'           => 'daily-report',
+                    'name'           => 'Rapports journaliers',
+                    'description'    => '...',
+                    'repository_url' => 'https://github.com/AudricSan/kintai-bundle-daily-report',
+                    'versions'       => [
+                        'release' => ['1.0.0'],
+                        'beta'    => ['1.1.1', '1.0.0'],
+                        'alpha'   => ['1.1.1', '1.0.0'],
+                    ],
+                ],
+            ],
+        ]);
+
+        $client = new BundleRegistryClient(fn(string $url) => $body);
+
+        $listing = $client->fetchListing('https://example.test/registry.json');
+
+        $this->assertNotNull($listing);
+        $entry = $listing->bundles[0];
+        // Compat : ->versions retombe sur le canal release.
+        $this->assertSame(['1.0.0'], $entry->versions);
+        $this->assertSame(['1.0.0'], $entry->versionsForChannel('release'));
+        $this->assertSame(['1.1.1', '1.0.0'], $entry->versionsForChannel('beta'));
+        $this->assertSame(['1.1.1', '1.0.0'], $entry->versionsForChannel('alpha'));
     }
 
     public function testFetchListingReturnsNullWhenFetchFails(): void
@@ -52,7 +87,7 @@ final class BundleRegistryClientTest extends TestCase
 
     public function testFetchListingRejectsUnsupportedSchemaVersion(): void
     {
-        $body = json_encode(['schema_version' => 2, 'name' => 'Futur registry', 'bundles' => []]);
+        $body = json_encode(['schema_version' => 3, 'name' => 'Futur registry', 'bundles' => []]);
 
         $client = new BundleRegistryClient(fn(string $url) => $body);
 
