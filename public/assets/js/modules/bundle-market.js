@@ -16,7 +16,12 @@
         const progressBox = form.querySelector('[data-progress]');
         const fill        = form.querySelector('[data-progress-fill]');
         const label       = form.querySelector('[data-progress-label]');
-        const submitBtn   = form.querySelector('button[type="submit"]');
+        // Le bouton submit vit désormais hors du <form> (rangée commune avec
+        // Désinstaller en bas de carte), associé via l'attribut form="id" —
+        // form.querySelector() ne le trouve plus, il faut chercher dans le document.
+        const submitBtn = form.id
+            ? document.querySelector('button[type="submit"][form="' + form.id + '"]')
+            : form.querySelector('button[type="submit"]');
 
         function setProgress(percent, text) {
             if (fill) fill.style.width = percent + '%';

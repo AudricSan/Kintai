@@ -85,17 +85,22 @@
     margin-bottom: 0;
 }
 
-.bundle-market-card__buttons {
+/* Rangée finale d'une carte : Installer/Mettre à jour (son <button> vit hors
+   du <form>, associé via l'attribut form="…" — voir bundle-market.php) et
+   Désinstaller côte à côte. margin-left: auto sur __uninstall-form (plutôt
+   qu'un justify-content sur ce conteneur) pousse Désinstaller à droite aussi
+   bien quand Installer/Mettre à jour est présent à sa gauche que lorsqu'il
+   est seul (bundle déjà à jour, ou orphelin) — jamais plus une barre rouge
+   pleine largeur en dessous des actions principales. */
+.bundle-market-card__bottom-row {
     display: flex;
+    align-items: center;
     gap: var(--space-2);
 }
 
-/* Désinstaller reste accessible mais discret : plus jamais une barre rouge
-   pleine largeur en dessous des actions principales, un simple bouton
-   compact aligné à droite de la carte. */
 .bundle-market-card__uninstall-form {
     display: flex;
-    justify-content: flex-end;
+    margin-left: auto;
 }
 
 .bundle-market-card__uninstall-form .btn {

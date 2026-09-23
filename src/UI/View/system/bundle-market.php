@@ -111,9 +111,13 @@ $bundleChipColor = function (string $seed): string {
                     <?php endif; ?>
                 </div>
 
+                <?php
+                    $showInstallForm = !$entry['orphaned'] && ($entry['installed_version'] === null || $entry['update_available']);
+                    $installFormId = 'bundle-install-' . htmlspecialchars($entry['slug']);
+                ?>
                 <div class="bundle-market-card__actions">
-                    <?php if (!$entry['orphaned'] && ($entry['installed_version'] === null || $entry['update_available'])): ?>
-                    <form method="POST" action="<?= $BASE_URL ?>/admin/bundles/market/install"
+                    <?php if ($showInstallForm): ?>
+                    <form id="<?= $installFormId ?>" method="POST" action="<?= $BASE_URL ?>/admin/bundles/market/install"
                           class="bundle-market-install-form" data-stream-url="<?= $BASE_URL ?>/admin/bundles/market/install/stream"
                           data-dry-run-url="<?= $BASE_URL ?>/admin/bundles/market/dry-run"
                           data-dry-run-ok-label="<?= htmlspecialchars(__('bundle_market_dry_run_ok'), ENT_QUOTES) ?>"
@@ -137,12 +141,7 @@ $bundleChipColor = function (string $seed): string {
                                 <input type="hidden" name="version" value="<?= htmlspecialchars($entry['latest_version'] ?? '') ?>">
                             <?php endif; ?>
 
-                            <div class="bundle-market-card__buttons">
-                                <button type="button" class="btn btn--ghost btn--sm" data-dry-run-btn><?= __('bundle_market_test') ?></button>
-                                <button type="submit" class="btn btn--primary btn--sm">
-                                    <?= $entry['installed_version'] !== null ? __('bundle_market_update') : __('bundle_market_install') ?>
-                                </button>
-                            </div>
+                            <button type="button" class="btn btn--ghost btn--sm" data-dry-run-btn><?= __('bundle_market_test') ?></button>
                         </div>
 
                         <?php if (!$entry['official']): ?>
@@ -159,13 +158,23 @@ $bundleChipColor = function (string $seed): string {
                     </form>
                     <?php endif; ?>
 
-                    <?php if ($entry['installed_version'] !== null): ?>
-                        <form method="POST" action="<?= $BASE_URL ?>/admin/bundles/market/uninstall" class="bundle-market-card__uninstall-form"
-                              data-confirm="<?= htmlspecialchars(__('bundle_market_uninstall_confirm', ['name' => $entry['name']]), ENT_QUOTES) ?>">
-                            <?= csrf_field() ?>
-                            <input type="hidden" name="slug" value="<?= htmlspecialchars($entry['slug']) ?>">
-                            <button type="submit" class="btn btn--danger btn--sm"><?= __('bundle_market_uninstall') ?></button>
-                        </form>
+                    <?php if ($showInstallForm || $entry['installed_version'] !== null): ?>
+                    <div class="bundle-market-card__bottom-row">
+                        <?php if ($showInstallForm): ?>
+                            <button type="submit" form="<?= $installFormId ?>" class="btn btn--primary btn--sm">
+                                <?= $entry['installed_version'] !== null ? __('bundle_market_update') : __('bundle_market_install') ?>
+                            </button>
+                        <?php endif; ?>
+
+                        <?php if ($entry['installed_version'] !== null): ?>
+                            <form method="POST" action="<?= $BASE_URL ?>/admin/bundles/market/uninstall" class="bundle-market-card__uninstall-form"
+                                  data-confirm="<?= htmlspecialchars(__('bundle_market_uninstall_confirm', ['name' => $entry['name']]), ENT_QUOTES) ?>">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="slug" value="<?= htmlspecialchars($entry['slug']) ?>">
+                                <button type="submit" class="btn btn--danger btn--sm"><?= __('bundle_market_uninstall') ?></button>
+                            </form>
+                        <?php endif; ?>
+                    </div>
                     <?php endif; ?>
                 </div>
             </div>
