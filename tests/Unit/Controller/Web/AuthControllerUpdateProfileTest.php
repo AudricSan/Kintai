@@ -17,7 +17,7 @@ use kintai\Core\Repositories\UserNavPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Services\AuditLogger;
-use kintai\Core\Services\ImageCompressionService;
+use kintai\Core\Services\AvatarImageOptimizer;
 use kintai\UI\Controller\Web\AuthController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\TestCase;
@@ -80,7 +80,7 @@ final class AuthControllerUpdateProfileTest extends TestCase
             $this->createMock(UserNavPrefsRepositoryInterface::class),
             $this->createMock(AvailabilityRepositoryInterface::class),
             $languages,
-            new ImageCompressionService(),
+            new AvatarImageOptimizer(),
         );
 
         $_POST = ['language' => 'en'];

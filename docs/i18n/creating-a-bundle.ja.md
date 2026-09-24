@@ -148,7 +148,7 @@ namespaceは何でも構いません——慣例として、インストール�
 
 ```json
 {
-    "schema_version": 1,
+    "schema_version": 2,
     "name": "My registry",
     "bundles": [
         {
@@ -156,15 +156,20 @@ namespaceは何でも構いません——慣例として、インストール�
             "name": "Your Bundle",
             "description": "...",
             "repository_url": "https://github.com/you/your-bundle",
-            "versions": ["1.0.0"]
+            "versions": {
+                "release": ["1.0.0"],
+                "beta": ["1.1.0", "1.0.0"],
+                "alpha": ["1.1.0", "1.0.0"]
+            }
         }
     ]
 }
 ```
 
-- `schema_version`は`1`である必要があります——より新しいスキーマを理解できないインスタンスは、誤って解釈するのではなく、そのリスティングを（ログを記録した上で）きれいに拒否します。
+- `schema_version` — Kintaiは現在`1`と`2`を理解します。より新しいスキーマを理解できないインスタンスは、誤って解釈するのではなく、そのリスティングを（ログを記録した上で）きれいに拒否します。
 - `repository_url`は単純な`https://github.com/{owner}/{repo}`である必要があります——インストーラーはここからGitHub APIのリリース検索URLを導出します。
-- `versions`はカタログUIへのヒントです（どのバージョンを提示するか）。実際の情報源はあなたのリポジトリ内の`bundle.json`であり、インストール時に読み取られます。
+- `versions`（schema 2）は更新チャンネルごとにキー分けされます——`release`（`main`から公開された非プレリリースのみ）、`beta`（`main`または`beta`、`alpha`を除く）、`alpha`（すべて）——それぞれ最新順のインストール可能なバージョンのリストです。これは`/admin/bundles/market`でインストール済みのすべてのバンドルに対して一度だけ選ぶチャンネル（`AppSettingsService::bundleUpdateChannel()`、`/admin/update`のCore自身のチャンネルとは独立）と対応しており、そのチャンネルに一致するリストがカタログUIで「最新」として提示され、通常の更新でインストールされる内容になります。**schema 1**（`versions`がチャンネルキーのないフラットな配列）も後方互換性のため引き続き受け付けられます——その場合Kintaiは三つのチャンネルすべてに同じフラットなリストを提示します。どのリリースがどのブランチから来たか判別する手段がないためです。公式レジストリはこのschema 2の3つのリストを、各バンドルの実際のGitHub Releases（`target_commitish`/`prerelease`、Kintai自身のリリースチャンネルと同じ規則）から自動的に算出します——[`AudricSan/KintaiBundle`](https://github.com/AudricSan/KintaiBundle)の`scripts/sync-versions.js`を参照してください。これは1時間ごとに実行され、新しいリリースでいずれかのバンドルのバージョンリストが変わるたびにPRを開きます。`versions`を手動で編集することはありません。
+- あなたのリポジトリ内の`bundle.json`は、互換性（`kintai_core.min`/`max`）やその他すべてに関する実際の情報源であり続け、インストール時に読み取られます——ここでの`versions`はカタログUIへの、何がインストール可能でどのチャンネルにあるかというヒントに過ぎません。
 
 見つけてもらう方法は2つあります：
 - **自分のレジストリ** — 自分で`registry.json`を書いてホストし（HTTPSでアクセスできればどこでも構いません）、そのURLを誰でも`/admin/bundles/registries`から追加できます。誰の承認も不要です。

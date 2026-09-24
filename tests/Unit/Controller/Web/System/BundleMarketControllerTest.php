@@ -10,6 +10,7 @@ use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Repositories\BundleRegistryRepositoryInterface;
 use kintai\Core\Repositories\InstalledBundleRepositoryInterface;
 use kintai\Core\Request;
+use kintai\Core\Services\AppSettingsService;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\BundleInstaller\BundleInstallerService;
 use kintai\Core\Services\BundleRegistry\BundleCatalogService;
@@ -43,6 +44,7 @@ final class BundleMarketControllerTest extends TestCase
         $this->registries = $this->createMock(BundleRegistryRepositoryInterface::class);
         $this->installedBundles = $this->createMock(InstalledBundleRepositoryInterface::class);
         $this->appSettings = $this->createMock(AppSettingsRepositoryInterface::class);
+        $this->appSettings->method('all')->willReturn([]);
 
         $this->bundlesDir = sys_get_temp_dir() . '/kintai-bundle-market-' . uniqid();
         mkdir($this->bundlesDir, 0777, true);
@@ -87,6 +89,7 @@ final class BundleMarketControllerTest extends TestCase
                 new InstalledBundleManifestStore($this->bundlesDir . '/installed.json'),
                 $this->bundlesDir,
             ),
+            new AppSettingsService($this->appSettings),
         );
     }
 
@@ -196,6 +199,65 @@ final class BundleMarketControllerTest extends TestCase
         $response = $this->makeController()->market(new Request());
 
         $this->assertSame(200, $response->status());
+    }
+
+    /**
+     * Un registry schema 2 (versions par canal) ne doit jamais faire échouer la
+     * résolution même quand le canal configuré (bundle_update_channel) diffère
+     * du canal par défaut ('release') — cf. AppSettingsService::bundleUpdateChannel().
+     */
+    public function testMarketResolvesLatestVersionFromConfiguredChannelWithSchema2Registry(): void
+    {
+        $this->appSettings = $this->createMock(AppSettingsRepositoryInterface::class);
+        $this->appSettings->method('all')->willReturn(['bundle_update_channel' => 'alpha']);
+
+        $this->registries->method('all')->willReturn([
+            ['id' => 1, 'name' => 'Registry officiel', 'url' => 'https://example.test/registry.json', 'is_official' => true],
+        ]);
+        $this->registryFetcher = fn(string $url) => json_encode([
+            'schema_version' => 2,
+            'name'           => 'Registry officiel',
+            'bundles'        => [[
+                'slug'            => 'daily-report',
+                'name'            => 'Rapports journaliers',
+                'description'     => '...',
+                'repository_url'  => 'https://github.com/AudricSan/kintai-bundle-daily-report',
+                'versions'        => [
+                    'release' => ['1.0.0'],
+                    'beta'    => ['1.1.1', '1.0.0'],
+                    'alpha'   => ['1.1.1', '1.0.0'],
+                ],
+            ]],
+        ]);
+        $this->installedBundles->method('all')->willReturn([
+            ['slug' => 'daily-report', 'active_version' => '1.0.0', 'source_registry_url' => null],
+        ]);
+
+        $response = $this->makeController()->market(new Request());
+
+        $this->assertSame(200, $response->status());
+    }
+
+    public function testSaveChannelPersistsChannelAndRedirects(): void
+    {
+        $_POST = ['channel' => 'beta'];
+
+        $this->appSettings->expects($this->once())->method('setMany')->with(['bundle_update_channel' => 'beta']);
+
+        $response = $this->makeController()->saveChannel(new Request());
+
+        $this->assertStringContainsString('channel_saved=beta', $this->locationOf($response));
+    }
+
+    public function testSaveChannelRejectsUnknownValueAndFallsBackToRelease(): void
+    {
+        $_POST = ['channel' => 'nightly'];
+
+        $this->appSettings->expects($this->once())->method('setMany')->with(['bundle_update_channel' => 'release']);
+
+        $response = $this->makeController()->saveChannel(new Request());
+
+        $this->assertStringContainsString('channel_saved=release', $this->locationOf($response));
     }
 
     public function testDryRunRejectsAnIncompleteRequest(): void
