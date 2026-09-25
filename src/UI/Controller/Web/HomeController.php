@@ -6,6 +6,7 @@ namespace kintai\UI\Controller\Web;
 
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Container;
+use kintai\Core\Repositories\NotebookEntryRepositoryInterface;
 use kintai\Core\Repositories\ShiftClaimRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
@@ -36,7 +37,11 @@ final class HomeController
         'pending_timeoff',
         'pending_swaps',
         'timeclocks_today',
+        'team_notes',
     ];
+
+    /** Nombre maximum de notes affichées dans le widget dashboard (épinglées + récentes confondues). */
+    private const NOTEBOOK_WIDGET_LIMIT = 5;
 
     /** Fenêtre glissante (jours) du widget "Aperçu statistiques", alignée sur la période "30 jours" des pages analytics. */
     private const STATS_WIDGET_PERIOD_DAYS = 30;
@@ -175,6 +180,40 @@ final class HomeController
                 : self::ADMIN_WIDGETS
         ));
 
+        // Notes d'équipe épinglées/récentes (organisation entière + stores en scope) — même
+        // garde que pendingClaims plus haut : NotebookEntryRepositoryInterface n'est lié au
+        // container que si le bundle "notebook" est actif (voir NotebookBundle), résolution
+        // différée et jamais en dépendance de constructeur ici.
+        $notebookEntries = [];
+        if (
+            feat_bundle('notes')
+            && array_key_exists('team_notes', $enabledWidgets)
+            && $this->permissions->can($user, 'notebook.view', null)
+        ) {
+            $container = Container::getInstance();
+            if ($container->has(NotebookEntryRepositoryInterface::class)) {
+                $notebook = $container->make(NotebookEntryRepositoryInterface::class);
+                $now = date('Y-m-d H:i:s');
+                $notebookEntries = array_values(array_filter(
+                    $notebook->findVisibleForStores($managedStoreIds ?? array_column($allStores, 'id')),
+                    fn($n) => empty($n['expires_at']) || $n['expires_at'] > $now
+                ));
+                usort($notebookEntries, function ($a, $b) {
+                    $pinCmp = (int) ($b['pinned'] ?? 0) <=> (int) ($a['pinned'] ?? 0);
+                    return $pinCmp !== 0 ? $pinCmp : strcmp($b['created_at'] ?? '', $a['created_at'] ?? '');
+                });
+                $notebookEntries = array_slice($notebookEntries, 0, self::NOTEBOOK_WIDGET_LIMIT);
+                $notebookEntries = array_map(function (array $n) use ($storesMap): array {
+                    $author = $n['author_id'] !== null ? $this->users->findById((int) $n['author_id']) : null;
+                    $n['author_name'] = $author !== null
+                        ? trim(($author['last_name'] ?? '') . ' ' . ($author['first_name'] ?? '')) ?: ($author['email'] ?? '#' . $n['author_id'])
+                        : null;
+                    $n['store_name'] = $n['store_id'] !== null ? ($storesMap[(int) $n['store_id']] ?? null) : null;
+                    return $n;
+                }, $notebookEntries);
+            }
+        }
+
         // Aperçu statistiques (heures, coût, scores) : même permission que les pages analytics
         // complètes (admin.stores.stats), calculé uniquement si le widget est actif pour éviter
         // le coût de multiStoreComparison() sur chaque chargement du dashboard.
@@ -234,6 +273,8 @@ final class HomeController
             'dashboard_alerts'   => $dashboardAlerts,
             'financial_overview' => $financialOverview,
             'hr_stats'           => $hrStats,
+            'notebook_entries'   => $notebookEntries,
+            'user_can'           => fn(string $perm) => $this->permissions->can($user, $perm, null),
 
             'enabled_widgets'    => $enabledWidgets,
             'all_widgets'        => self::ADMIN_WIDGETS,
