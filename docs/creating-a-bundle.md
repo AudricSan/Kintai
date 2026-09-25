@@ -24,6 +24,7 @@ your-bundle/
     YourBundle.php            # entry class, extends kintai\Core\BundleContract\Bundle
     Controllers/Web/...
     Controllers/Api/...
+  database/migrations/        # optional — see "Database migrations" below
   Views/                      # optional — loaded via loadViewsFrom()
   lang/{en,fr,ja}.json         # optional — bundle-specific translation keys
   routes.php                  # optional — loaded via loadRoutesFrom()
@@ -105,6 +106,47 @@ Don't re-derive this resolution logic yourself. Reuse Core's `kintai\UI\Controll
 
 If your bundle needs to serve an **uploaded file** (an image, a PDF, an attachment) behind this same authorization, don't build your own file-serving route for it — link into Kintai's own `/storage/{path*}` (route name `storage.file`), which already applies `managed_store_ids` (`StorageFileController::assertPathStoreAccess()`) plus its own upload-path confinement and MIME allow-list. A parallel file-serving route duplicates authorization logic Core already owns, outside of Core's own test coverage.
 
+## Database migrations
+
+A bundle can own its own table(s) — a dedicated PR against Kintai's own repository is **not** required just to create a schema anymore. Drop an optional `database/migrations/` directory at your bundle's root (a sibling of `src/`, same rule as `Views/`/`routes.php`), containing files in the **exact same format** as Kintai's own Core migrations (`database/migrations/php/*.php`):
+
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace kintai\Database\Migrations;
+
+use kintai\Core\Database\Migration;
+use Illuminate\Database\Schema\Blueprint;
+
+return new class($this->capsule) extends Migration {
+    public function up(): void
+    {
+        if ($this->schema()->hasTable('your_bundle_table')) {
+            return;
+        }
+        $this->schema()->create('your_bundle_table', function (Blueprint $table) {
+            $table->increments('id');
+            // ...
+        });
+    }
+
+    public function down(): void
+    {
+        $this->schema()->dropIfExists('your_bundle_table');
+    }
+};
+```
+
+Name files `YYYY_MM_DD_NNNNNN_description.php` — alphabetical sort is execution order, exactly like Core migrations. Always guard `up()` with `hasTable()`/`hasColumn()` (as above): migrations must be idempotent, since they can be replayed by a manual re-sync (see below).
+
+**When they run**: automatically, right after your bundle's files land on disk during install or update from `/admin/bundles/market` (`BundleInstallerService::activate()`) — before the bundle is marked active, so a failing migration aborts the whole install/update rather than activating a bundle with an incomplete schema. They can also be re-synced manually, for every installed bundle at once, with `php scripts/db-migrate.php` (`--dry-run` previews what's pending, same flag as for Core migrations).
+
+**Tracking**: applied bundle migrations are recorded in a `bundle_migrations` table (`bundle_slug` + `migration` name, unique together) — separate from Core's own `migrations` table, so two different bundles can never collide on a migration file name, and so `BundleMigrationRunner::forgetBundle()` can clear just your bundle's tracking rows on uninstall. Business tables themselves are **not** dropped on uninstall (see Limitations) — only the tracking rows are, so a later reinstall replays your `up()` methods cleanly (their `hasTable()` guards make that a no-op if the tables are still there).
+
+This mechanism is deliberately Core-agnostic: your repository interface and Eloquent model can live in your own bundle's namespace, or in `src/Core/Repositories/*Interface.php` if you'd rather follow the convention every official bundle currently uses (see "The stable contract" above) — the migration itself doesn't care either way.
+
 ## The `bundle.json` manifest
 
 Required at the bundle's repository root:
@@ -183,7 +225,7 @@ Two ways to get discovered:
 
 - **One process, one Composer autoloader.** There's no per-bundle `composer.json` or dependency isolation — your bundle runs in the same PHP process and namespace tree as Kintai's own `kintai\` root. Depend only on `BundleContract\Bundle`, `src/Core/Repositories/*Interface.php`, and other Core classes you're comfortable coupling to across Kintai versions.
 - **`requires_bundles` isn't enforced yet.** Declaring a dependency on another bundle's slug/version is accepted and stored, but nothing currently blocks installation if it's missing or too old — treat it as documentation for now, not a guarantee.
-- **No uninstall flow yet.** `/admin/bundles/market` can install and update; removing a bundle's files and its database rows isn't wired up yet.
+- **No uninstall flow for business data.** `/admin/bundles/market` can install, update, and uninstall a bundle's files/manifest entry/migration tracking rows — but the tables your migrations created (and their data) are never dropped or touched on uninstall. Cleaning those up, if desired, is a manual DB operation for now.
 - **GitHub only.** `repository_url` must point at a GitHub repository — no GitLab, no self-hosted Git server, no non-Git archive source.
 
 ## Reference implementation
