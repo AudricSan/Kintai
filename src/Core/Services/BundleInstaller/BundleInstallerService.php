@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace kintai\Core\Services\BundleInstaller;
 
 use kintai\Core\BundleContract\BundleManifest;
+use kintai\Core\Database\BundleMigrationRunner;
 use kintai\Core\InstalledBundleManifestStore;
 use kintai\Core\Repositories\InstalledBundleRepositoryInterface;
 use kintai\Core\Services\HttpFetcher;
@@ -38,6 +39,7 @@ final class BundleInstallerService
         private readonly ?\Closure $releaseFetcher = null,
         private readonly ?\Closure $zipDownloader = null,
         private readonly HttpFetcher $http = new HttpFetcher(),
+        private readonly ?BundleMigrationRunner $migrationRunner = null,
     ) {
     }
 
@@ -78,6 +80,7 @@ final class BundleInstallerService
         $this->removeDirIfExists($this->bundlesDir() . "/{$slug}");
         $this->manifestStore->remove($slug);
         $this->installedBundles->delete($slug);
+        $this->migrationRunner?->forgetBundle($slug);
 
         Log::info('bundle_uninstalled', ['slug' => $slug]);
 
@@ -143,7 +146,13 @@ final class BundleInstallerService
         }
 
         $progress(90, 'Activation du bundle...');
-        $this->activate($slug, $version, $extractedRoot, $sourceRegistryUrl);
+        try {
+            $this->activate($slug, $version, $extractedRoot, $sourceRegistryUrl);
+        } catch (\Throwable $e) {
+            $this->removeDirIfExists($stagingContainer);
+            $this->lastError = "Les migrations du bundle ont échoué : " . $e->getMessage();
+            return BundleInstallResult::failure($this->lastError);
+        }
         $this->removeDirIfExists($stagingContainer);
 
         $progress(100, 'Bundle installé.');
@@ -250,6 +259,17 @@ final class BundleInstallerService
         }
 
         rename($extractedRoot, $finalDir);
+
+        $migrationsPath = $finalDir . '/database/migrations';
+        if ($this->migrationRunner !== null && is_dir($migrationsPath)) {
+            try {
+                $this->migrationRunner->runPendingFor($slug, $migrationsPath);
+            } catch (\Throwable $e) {
+                // Schéma incomplet : on n'active pas un bundle dont les migrations ont échoué.
+                $this->removeDirIfExists($finalDir);
+                throw $e;
+            }
+        }
 
         $this->manifestStore->setActiveVersion($slug, $version);
         $this->installedBundles->upsert($slug, $version, $sourceRegistryUrl);
