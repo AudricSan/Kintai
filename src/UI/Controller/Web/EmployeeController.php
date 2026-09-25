@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace kintai\UI\Controller\Web;
 
+use kintai\Core\Container;
 use kintai\Core\Repositories\AvailabilityRepositoryInterface;
 use kintai\Core\Repositories\IcalTokenRepositoryInterface;
+use kintai\Core\Repositories\NotebookEntryRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
@@ -37,8 +39,11 @@ final class EmployeeController
         'monthly_stats',
         'pending_timeoff',
         'pending_swaps',
+        'team_notes',
     ];
 
+    /** Nombre maximum de notes affichées dans le widget dashboard (épinglées + récentes confondues). */
+    private const NOTEBOOK_WIDGET_LIMIT = 5;
 
     public function __construct(
         private readonly ViewRenderer $view,
@@ -111,6 +116,40 @@ final class EmployeeController
                 : self::EMPLOYEE_WIDGETS
         ));
 
+        // Notes d'équipe épinglées/récentes (organisation entière + mes stores) — même garde
+        // que le widget "Bourse aux shifts" du dashboard admin : NotebookEntryRepositoryInterface
+        // n'est lié au container que si le bundle "notebook" est actif, résolution différée.
+        $notebookEntries = [];
+        if (
+            feat_bundle('notes')
+            && array_key_exists('team_notes', $enabledWidgets)
+            && $this->permissions->can($user, 'notebook.view', null)
+        ) {
+            $container = Container::getInstance();
+            if ($container->has(NotebookEntryRepositoryInterface::class)) {
+                $notebook   = $container->make(NotebookEntryRepositoryInterface::class);
+                $myStoreIds = array_map(fn($m) => (int) $m['store_id'], $this->storeUsers->findByUser($userId));
+                $now        = date('Y-m-d H:i:s');
+                $notebookEntries = array_values(array_filter(
+                    $notebook->findVisibleForStores($myStoreIds),
+                    fn($n) => empty($n['expires_at']) || $n['expires_at'] > $now
+                ));
+                usort($notebookEntries, function ($a, $b) {
+                    $pinCmp = (int) ($b['pinned'] ?? 0) <=> (int) ($a['pinned'] ?? 0);
+                    return $pinCmp !== 0 ? $pinCmp : strcmp($b['created_at'] ?? '', $a['created_at'] ?? '');
+                });
+                $notebookEntries = array_slice($notebookEntries, 0, self::NOTEBOOK_WIDGET_LIMIT);
+                $notebookEntries = array_map(function (array $n) use ($storesMap): array {
+                    $author = $n['author_id'] !== null ? $this->users->findById((int) $n['author_id']) : null;
+                    $n['author_name'] = $author !== null
+                        ? trim(($author['last_name'] ?? '') . ' ' . ($author['first_name'] ?? '')) ?: ($author['email'] ?? '#' . $n['author_id'])
+                        : null;
+                    $n['store_name'] = $n['store_id'] !== null ? ($storesMap[(int) $n['store_id']] ?? null) : null;
+                    return $n;
+                }, $notebookEntries);
+            }
+        }
+
         return Response::html($this->view->render('employee.dashboard', [
             'title'            => __('dashboard'),
             'user'             => $user,
@@ -121,6 +160,8 @@ final class EmployeeController
             'pending_swaps'    => $pendingSwaps,
             'stores_map'       => $storesMap,
             'active_clock'     => $activeClock,
+            'notebook_entries' => $notebookEntries,
+            'user_can'         => fn(string $perm) => $this->permissions->can($user, $perm, null),
             'enabled_widgets'  => $enabledWidgets,
             'all_widgets'      => self::EMPLOYEE_WIDGETS,
         ], 'layout.app'));

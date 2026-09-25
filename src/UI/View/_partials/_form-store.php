@@ -319,6 +319,7 @@ $dedResidentTax = $ded['resident_tax_monthly'] ?? 0;
                 'messages'      => ['label' => __('feature_messages'),       'desc' => __('feature_messages_desc'),       'icon' => '💬'],
                 'daily_reports' => ['label' => __('feature_daily_reports'),  'desc' => __('feature_daily_reports_desc'),  'icon' => '📊'],
                 'photos'        => ['label' => __('feature_photos'),        'desc' => __('feature_photos_desc'),        'icon' => '📷'],
+                'notes'         => ['label' => __('feature_notes'),          'desc' => __('feature_notes_desc'),          'icon' => '📝'],
             ];
             $enabledFeatures ??= null;
             $isEnabled = fn(string $slug): bool => $enabledFeatures === null || in_array($slug, $enabledFeatures, true);
