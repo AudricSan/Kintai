@@ -340,6 +340,7 @@ if (!function_exists('notification_type_catalog')) {
             'message_received'       => ['label' => __('notif_message_received'), 'icon' => '✉'],
             'timeoff_approved'       => ['label' => __('notif_timeoff_approved'), 'icon' => '✓'],
             'timeoff_refused'        => ['label' => __('notif_timeoff_refused'), 'icon' => '✗'],
+            'timeoff_submitted'      => ['label' => __('notif_timeoff_submitted'), 'icon' => '🏖'],
             'swap_accepted'          => ['label' => __('notif_swap_accepted'), 'icon' => '⇄'],
             'swap_refused'           => ['label' => __('notif_swap_refused'), 'icon' => '⇄'],
             'shift_assigned'         => ['label' => __('notif_shift_assigned'), 'icon' => '📅'],
