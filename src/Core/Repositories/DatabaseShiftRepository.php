@@ -6,6 +6,7 @@ declare(strict_types=1);
 namespace kintai\Core\Repositories;
 
 use kintai\Domain\Eloquent\Shift as EloquentShift;
+use kintai\Domain\Eloquent\ShiftDeletionLog as EloquentShiftDeletionLog;
 
 final class DatabaseShiftRepository implements ShiftRepositoryInterface
 {
@@ -83,10 +84,50 @@ final class DatabaseShiftRepository implements ShiftRepositoryInterface
     public function delete(int $id): int
     {
         $shift = EloquentShift::find($id);
-        if ($shift) {
-            return $shift->delete() ? 1 : 0;
+        if (!$shift) {
+            return 0;
         }
-        return 0;
+
+        // Trace la suppression avant le hard delete, pour que le flux iCal de
+        // l'employé puisse émettre un VEVENT CANCELLED (voir IcalController::feed()).
+        EloquentShiftDeletionLog::create([
+            'shift_id'         => $shift->id,
+            'store_id'         => $shift->store_id,
+            'user_id'          => $shift->user_id,
+            'shift_date'       => $shift->shift_date,
+            'start_time'       => $shift->start_time,
+            'end_time'         => $shift->end_time,
+            'cross_midnight'   => $shift->cross_midnight ?? 0,
+            'shift_type_id'    => $shift->shift_type_id,
+            'pause_minutes'    => $shift->pause_minutes ?? 0,
+            'ical_sequence'    => ((int) ($shift->ical_sequence ?? 0)) + 1,
+            'shift_created_at' => $shift->created_at,
+            'deleted_at'       => date('Y-m-d H:i:s'),
+        ]);
+
+        return $shift->delete() ? 1 : 0;
+    }
+
+    public function findRecentDeletionsByUserAndStore(int $userId, int $storeId, string $since): array
+    {
+        return EloquentShiftDeletionLog::where('user_id', $userId)
+            ->where('store_id', $storeId)
+            ->where('deleted_at', '>=', $since)
+            ->get()
+            ->map(fn (EloquentShiftDeletionLog $log) => [
+                'id'             => $log->shift_id,
+                'shift_type_id'  => $log->shift_type_id,
+                'shift_date'     => $log->shift_date,
+                'start_time'     => $log->start_time,
+                'end_time'       => $log->end_time,
+                'cross_midnight' => $log->cross_midnight,
+                'pause_minutes'  => $log->pause_minutes,
+                'ical_sequence'  => $log->ical_sequence,
+                'created_at'     => $log->shift_created_at,
+                'updated_at'     => $log->deleted_at,
+                'deleted_at'     => $log->deleted_at,
+            ])
+            ->all();
     }
 
     public function closeOpenShiftTo(int $id, int $userId): ?array
