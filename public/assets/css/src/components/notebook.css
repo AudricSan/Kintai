@@ -47,4 +47,14 @@
     gap: var(--space-1);
     font-size: 0.8rem;
     color: var(--color-text-muted);
+    flex-direction: row-reverse;
+}
+
+.notebook-widget-item__actions{
+    display: flex;
+    flex-direction: row-reverse;
+    align-items: center;
+    align-content: center;
+    flex-wrap: nowrap;
+    gap: var(--space-2);
 }
