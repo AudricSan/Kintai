@@ -795,6 +795,27 @@ final class AdminShiftController
             } catch (\Throwable $e) {
                 Log::warning('shift_notify_failed', ['shift_id' => (int) $shift['id'], 'user_id' => $newUid, 'error' => $e->getMessage()]);
             }
+        } elseif (!$isOpen && $newUid > 0 && $newUid === $prevUid) {
+            // Même employé conservé : le prévenir quand même si la date/l'horaire/le
+            // store a réellement changé — un shift déplacé sans réassignation restait
+            // jusqu'ici silencieux (seul un changement d'employé notifiait).
+            $rescheduled = $old['shift_date'] !== $saved['shift_date']
+                || $old['start_time'] !== $saved['start_time']
+                || $old['end_time'] !== $saved['end_time']
+                || (int) ($old['store_id'] ?? 0) !== (int) ($saved['store_id'] ?? 0);
+            if ($rescheduled) {
+                try {
+                    $this->notifs->notify(
+                        $newUid,
+                        'shift_updated',
+                        'notif_shift_updated_body',
+                        ['date' => $shiftDate],
+                        (int) $shift['id']
+                    );
+                } catch (\Throwable $e) {
+                    Log::warning('shift_notify_failed', ['shift_id' => (int) $shift['id'], 'user_id' => $newUid, 'error' => $e->getMessage()]);
+                }
+            }
         }
 
         $redirectTo = trim($request->post('redirect_to', ''));
@@ -817,6 +838,22 @@ final class AdminShiftController
         $this->auditLogger->log($request, 'shift.deleted', 'shift', $id, [
             'shift_date' => $shift['shift_date'] ?? null,
         ], $shift ? (int) $shift['store_id'] : null);
+
+        // Le shift est déjà supprimé (et audité) à ce stade : un échec de notification
+        // ne doit pas transformer une action réussie en 500 générique côté utilisateur.
+        if ($shift !== null && !empty($shift['user_id'])) {
+            try {
+                $this->notifs->notify(
+                    (int) $shift['user_id'],
+                    'shift_deleted',
+                    'notif_shift_deleted_body',
+                    ['date' => $shift['shift_date'] ?? ''],
+                    $id
+                );
+            } catch (\Throwable $e) {
+                Log::warning('shift_notify_failed', ['shift_id' => $id, 'user_id' => $shift['user_id'], 'error' => $e->getMessage()]);
+            }
+        }
 
         $redirectTo = trim($request->post('redirect_to', ''));
         if ($redirectTo !== '' && str_starts_with($redirectTo, '/') && !str_starts_with($redirectTo, '//')) {
@@ -853,6 +890,20 @@ final class AdminShiftController
             $this->shifts->delete($id);
             $deletedIds[] = $id;
             $deleted++;
+
+            if (!empty($shift['user_id'])) {
+                try {
+                    $this->notifs->notify(
+                        (int) $shift['user_id'],
+                        'shift_deleted',
+                        'notif_shift_deleted_body',
+                        ['date' => $shift['shift_date'] ?? ''],
+                        $id
+                    );
+                } catch (\Throwable $e) {
+                    Log::warning('shift_notify_failed', ['shift_id' => $id, 'user_id' => $shift['user_id'], 'error' => $e->getMessage()]);
+                }
+            }
         }
 
         if ($deleted > 0) {

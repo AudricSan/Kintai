@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Controller\Web;
 
 use kintai\Core\Auth\AuthService;
+use kintai\Core\Repositories\DevicePushTokenRepositoryInterface;
 use kintai\Core\Repositories\NotificationRepositoryInterface;
 use kintai\Core\Repositories\RememberTokenRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
@@ -21,6 +22,7 @@ use PHPUnit\Framework\TestCase;
 final class NotificationControllerTest extends TestCase
 {
     private NotificationRepositoryInterface&MockObject $notifications;
+    private DevicePushTokenRepositoryInterface&MockObject $pushTokens;
     private RoleAssignmentRepositoryInterface&MockObject $roleAssignments;
     private AuthService $auth;
     private NotificationController $controller;
@@ -48,10 +50,12 @@ final class NotificationControllerTest extends TestCase
         );
 
         $this->notifications = $this->createMock(NotificationRepositoryInterface::class);
+        $this->pushTokens    = $this->createMock(DevicePushTokenRepositoryInterface::class);
 
         $this->controller = new NotificationController(
             $this->auth,
             $this->notifications,
+            $this->pushTokens,
             new ViewRenderer(sys_get_temp_dir()),
         );
     }
@@ -73,6 +77,18 @@ final class NotificationControllerTest extends TestCase
         return new Request();
     }
 
+    /** Simule un corps JSON (php://input non mockable en test unitaire) — même technique que Api/V1/AuthControllerTest. */
+    private function makeJsonRequest(array $json): Request
+    {
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        unset($_SERVER['HTTP_X_REQUESTED_WITH']);
+        $req = new Request();
+        $ref = new \ReflectionProperty(Request::class, 'jsonBody');
+        $ref->setAccessible(true);
+        $ref->setValue($req, $json);
+        return $req;
+    }
+
     /**
      * Régression : marquer comme lu ne retire pas les notifications de la liste,
      * il faut un moyen de tout supprimer d'un coup pour l'utilisateur courant.
@@ -91,6 +107,49 @@ final class NotificationControllerTest extends TestCase
         $this->notifications->expects($this->once())->method('deleteAllForUser')->with(5);
 
         $response = $this->controller->deleteAll($this->makeRequest(ajax: true));
+
+        $this->assertSame(200, $response->status());
+    }
+
+    // -------------------------------------------------------------------------
+    // pushSubscribe() / pushUnsubscribe()
+    // -------------------------------------------------------------------------
+
+    public function testPushSubscribeSavesTokenForCurrentUserAsWebPlatform(): void
+    {
+        $this->pushTokens->expects($this->once())->method('save')->with([
+            'user_id'  => 5,
+            'token'    => 'fcm-token-abc',
+            'platform' => 'web',
+        ]);
+
+        $response = $this->controller->pushSubscribe($this->makeJsonRequest(['token' => 'fcm-token-abc']));
+
+        $this->assertSame(200, $response->status());
+    }
+
+    public function testPushSubscribeRejectsEmptyToken(): void
+    {
+        $this->pushTokens->expects($this->never())->method('save');
+
+        $this->expectException(\kintai\Core\Exceptions\ValidationException::class);
+        $this->controller->pushSubscribe($this->makeJsonRequest(['token' => '']));
+    }
+
+    public function testPushUnsubscribeDeletesToken(): void
+    {
+        $this->pushTokens->expects($this->once())->method('deleteByToken')->with('fcm-token-abc');
+
+        $response = $this->controller->pushUnsubscribe($this->makeJsonRequest(['token' => 'fcm-token-abc']));
+
+        $this->assertSame(200, $response->status());
+    }
+
+    public function testPushUnsubscribeIsNoopWithoutToken(): void
+    {
+        $this->pushTokens->expects($this->never())->method('deleteByToken');
+
+        $response = $this->controller->pushUnsubscribe($this->makeJsonRequest([]));
 
         $this->assertSame(200, $response->status());
     }

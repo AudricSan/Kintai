@@ -536,6 +536,139 @@ final class AdminShiftControllerTest extends TestCase
         $this->assertStringContainsString('success=updated', $headersRef->getValue($response)['Location'] ?? '');
     }
 
+    /**
+     * Régression : updateShift() ne notifiait qu'un changement d'employé assigné
+     * (5 → 6). Un manager qui déplace le shift du même employé (autre date/horaire)
+     * restait totalement silencieux — l'employé n'apprenait le changement qu'en
+     * consultant son planning.
+     */
+    public function testUpdateShiftNotifiesSameEmployeeWhenRescheduled(): void
+    {
+        $existing = [
+            'id' => 10, 'store_id' => 1, 'user_id' => 5, 'shift_date' => '2026-08-02',
+            'start_time' => '09:00', 'end_time' => '17:00', 'is_open' => 0,
+        ];
+        $this->shifts->method('findById')->with(10)->willReturn($existing);
+
+        $_POST = [
+            'store_id'   => '1',
+            'user_id'    => '5',
+            'shift_date' => '2026-08-03',
+            'start_time' => '09:00',
+            'end_time'   => '17:00',
+        ];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => 10]);
+
+        $this->shifts->method('save')->willReturnCallback(fn(array $d) => $d + ['id' => 10]);
+        $this->notifs->expects($this->once())->method('notify')->with(
+            5, 'shift_updated', 'notif_shift_updated_body', ['date' => '2026-08-03'], 10
+        );
+
+        $response = $this->controller->updateShift($req);
+
+        $this->assertSame(302, $response->status());
+    }
+
+    // -------------------------------------------------------------------------
+    // deleteShift() / bulkDeleteShifts() — notification à la suppression
+    // -------------------------------------------------------------------------
+
+    /**
+     * Régression : supprimer un shift déjà assigné restait totalement silencieux
+     * pour l'employé (seul le flux iCal reflétait la suppression) — deleteShift()
+     * n'appelait jamais notify().
+     */
+    public function testDeleteShiftNotifiesAssignedUser(): void
+    {
+        $existing = [
+            'id' => 10, 'store_id' => 1, 'user_id' => 5, 'shift_date' => '2026-08-02',
+        ];
+        $this->shifts->method('findById')->with(10)->willReturn($existing);
+        $this->shifts->expects($this->once())->method('delete')->with(10)->willReturn(1);
+
+        $this->notifs->expects($this->once())->method('notify')->with(
+            5, 'shift_deleted', 'notif_shift_deleted_body', ['date' => '2026-08-02'], 10
+        );
+
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => 10]);
+
+        $response = $this->controller->deleteShift($req);
+
+        $this->assertSame(302, $response->status());
+    }
+
+    public function testDeleteShiftDoesNotNotifyForOpenShift(): void
+    {
+        $existing = [
+            'id' => 11, 'store_id' => 1, 'user_id' => null, 'shift_date' => '2026-08-02', 'is_open' => 1,
+        ];
+        $this->shifts->method('findById')->with(11)->willReturn($existing);
+        $this->shifts->method('delete')->with(11)->willReturn(1);
+
+        $this->notifs->expects($this->never())->method('notify');
+
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => 11]);
+
+        $response = $this->controller->deleteShift($req);
+
+        $this->assertSame(302, $response->status());
+    }
+
+    public function testBulkDeleteShiftsNotifiesEachAssignedUser(): void
+    {
+        $shiftA = ['id' => 10, 'store_id' => 1, 'user_id' => 5, 'shift_date' => '2026-08-02'];
+        $shiftB = ['id' => 11, 'store_id' => 1, 'user_id' => 6, 'shift_date' => '2026-08-03'];
+        $this->shifts->method('findById')->willReturnMap([
+            [10, $shiftA],
+            [11, $shiftB],
+        ]);
+        $this->shifts->method('delete')->willReturn(1);
+
+        $this->notifs->expects($this->exactly(2))->method('notify');
+
+        $_POST = ['ids' => [10, 11]];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+
+        $response = $this->controller->bulkDeleteShifts($req);
+
+        $this->assertSame(302, $response->status());
+    }
+
+    public function testUpdateShiftDoesNotNotifyWhenSameEmployeeAndNothingRelevantChanged(): void
+    {
+        $existing = [
+            'id' => 10, 'store_id' => 1, 'user_id' => 5, 'shift_date' => '2026-08-02',
+            'start_time' => '09:00', 'end_time' => '17:00', 'is_open' => 0,
+        ];
+        $this->shifts->method('findById')->with(10)->willReturn($existing);
+
+        $_POST = [
+            'store_id'   => '1',
+            'user_id'    => '5',
+            'shift_date' => '2026-08-02',
+            'start_time' => '09:00',
+            'end_time'   => '17:00',
+            'notes'      => 'Juste une note ajoutée',
+        ];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => 10]);
+
+        $this->shifts->method('save')->willReturnCallback(fn(array $d) => $d + ['id' => 10]);
+        $this->notifs->expects($this->never())->method('notify');
+
+        $response = $this->controller->updateShift($req);
+
+        $this->assertSame(302, $response->status());
+    }
+
     public function testUpdateShiftRejectsShiftTypeNotEnabledForStore(): void
     {
         $existing = [

@@ -234,6 +234,8 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
         'swap_accepted'         => __('notif_swap_accepted'),
         'swap_refused'          => __('notif_swap_refused'),
         'shift_assigned'        => __('notif_shift_assigned'),
+        'shift_updated'         => __('notif_shift_updated'),
+        'shift_deleted'         => __('notif_shift_deleted'),
         'open_shift_published'  => __('notif_open_shift_published'),
         'shift_claim_submitted' => __('notif_shift_claim_submitted'),
         'shift_claim_approved'  => __('notif_shift_claim_approved'),
@@ -246,6 +248,7 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
         'swap_peer_accepted'    => __('notif_swap_peer_accepted'),
         'swap_peer_refused'     => __('notif_swap_peer_refused'),
         'swap_cancelled'        => __('notif_swap_cancelled'),
+        'notebook_entry_created' => __('notif_notebook_entry_created'),
     ];
     $_notifIcons = [
         'message_received'      => '✉',
@@ -254,6 +257,8 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
         'swap_accepted'         => '⇄',
         'swap_refused'          => '⇄',
         'shift_assigned'        => '📅',
+        'shift_updated'         => '🔄',
+        'shift_deleted'         => '🗑',
         'open_shift_published'  => '📢',
         'shift_claim_submitted' => '🙋',
         'shift_claim_approved'  => '✓',
@@ -266,6 +271,7 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
         'swap_peer_accepted'    => '⇄',
         'swap_peer_refused'     => '⇄',
         'swap_cancelled'        => '⇄',
+        'notebook_entry_created' => '📓',
     ];
     $_dropdownItems = $notifications_dropdown ?? [];
     $_unreadCount   = (int) ($unread_notifications_count ?? 0);

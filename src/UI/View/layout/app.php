@@ -107,6 +107,17 @@
 
     <script src="<?= $BASE_URL ?>/assets/js/app.js?v=<?= asset_version() ?>"></script>
     <script src="<?= $BASE_URL ?>/assets/js/modules/notifications.js?v=<?= asset_version() ?>"></script>
+    <?php if (!empty($push_web_config) && !empty($auth_user['id'] ?? null) && ($tab ?? '') === 'push'): ?>
+        <div id="push-meta"
+             data-project-id="<?= htmlspecialchars($push_web_config['project_id']) ?>"
+             data-api-key="<?= htmlspecialchars($push_web_config['api_key']) ?>"
+             data-app-id="<?= htmlspecialchars($push_web_config['app_id']) ?>"
+             data-vapid-key="<?= htmlspecialchars($push_web_config['vapid_key']) ?>"
+             data-subscribe-url="<?= route_url('notifications.push_subscribe') ?>"
+             data-unsubscribe-url="<?= route_url('notifications.push_unsubscribe') ?>"
+             hidden></div>
+        <script src="<?= $BASE_URL ?>/assets/js/modules/push.js?v=<?= asset_version() ?>"></script>
+    <?php endif; ?>
     <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', function () {

@@ -54,6 +54,25 @@ final class NotificationMiddleware implements MiddlewareInterface
         $view->share('notifications_dropdown', $dropdown);
         $view->share('recent_notifications', $recent);
 
+        // Config publique du web push (clé API/app id/clé VAPID — voir config/push.php) :
+        // partagée partout comme le reste, mais uniquement lue/rendue si un onglet en a
+        // besoin. Vide tant que l'Owner n'a pas renseigné PUSH_FCM_WEB_VAPID_KEY, pour que
+        // push.js ne charge/exécute rien sur une instance qui n'a pas configuré ce canal.
+        $pushWebConfig = [];
+        if ($auth->check()) {
+            $pushConfig = file_exists(BASE_PATH . '/config/push.php') ? require BASE_PATH . '/config/push.php' : [];
+            $web        = $pushConfig['fcm']['web'] ?? [];
+            if (!empty($web['vapid_key']) && !empty($pushConfig['fcm']['project_id'])) {
+                $pushWebConfig = [
+                    'project_id' => $pushConfig['fcm']['project_id'],
+                    'api_key'    => $web['api_key'] ?? '',
+                    'app_id'     => $web['app_id'] ?? '',
+                    'vapid_key'  => $web['vapid_key'],
+                ];
+            }
+        }
+        $view->share('push_web_config', $pushWebConfig);
+
         $response = $next($request);
 
         // Mettre à jour le timestamp après que la réponse est générée

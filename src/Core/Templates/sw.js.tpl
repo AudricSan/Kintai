@@ -100,6 +100,47 @@ async function networkFirst(req) {
   }
 }
 
+// ── Web push (FCM) ──────────────────────────────────────────────────────────
+// PushNotificationService (côté serveur) envoie { notification: {title, body},
+// data: {type, reference_id} } via l'API HTTP v1 de FCM — c'est le format brut
+// reçu ici, sans dépendance au SDK JS Firebase.
+self.addEventListener('push', (e) => {
+  let payload = {};
+  try { payload = e.data ? e.data.json() : {}; } catch (err) { payload = {}; }
+
+  const notif = payload.notification || {};
+  const data  = payload.data || {};
+  const title = notif.title || 'Kintai';
+  const body  = notif.body || '';
+
+  e.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon: BASE + '/assets/img/kintai-192.png',
+      badge: BASE + '/assets/img/kintai-192.png',
+      data,
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const target = BASE + '/notifications';
+
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if (client.url.indexOf(target) !== -1 && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(target);
+      }
+    })
+  );
+});
+
 async function cacheFirst(req) {
   const cached = await caches.match(req);
   if (cached) return cached;

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace kintai\UI\Controller\Web;
 
 use kintai\Core\Auth\AuthService;
+use kintai\Core\Exceptions\ValidationException;
+use kintai\Core\Repositories\DevicePushTokenRepositoryInterface;
 use kintai\Core\Repositories\NotificationRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
@@ -15,6 +17,7 @@ final class NotificationController
     public function __construct(
         private readonly AuthService $auth,
         private readonly NotificationRepositoryInterface $repo,
+        private readonly DevicePushTokenRepositoryInterface $pushTokens,
         private readonly ViewRenderer $view,
     ) {}
 
@@ -65,6 +68,44 @@ final class NotificationController
         }
 
         return Response::redirect('/notifications');
+    }
+
+    /**
+     * POST /notifications/push-subscribe
+     * Enregistre le jeton FCM obtenu par push.js pour ce navigateur (web push).
+     * Distinct de l'API Bearer /api/v1/users/{id}/push-tokens : ici l'appelant
+     * est le navigateur dans une session authentifiée, pas un client externe.
+     */
+    public function pushSubscribe(Request $request): Response
+    {
+        $userId = (int) $this->auth->user()['id'];
+        $token  = trim((string) ($request->json('token') ?? ''));
+        if ($token === '') {
+            throw new ValidationException(['token' => [__('validation_device_token_required')]]);
+        }
+
+        $this->pushTokens->save([
+            'user_id'  => $userId,
+            'token'    => $token,
+            'platform' => 'web',
+        ]);
+
+        return Response::json(['ok' => true]);
+    }
+
+    /**
+     * POST /notifications/push-unsubscribe
+     * Désenregistre le jeton (l'utilisateur a désactivé les notifications push
+     * sur ce navigateur).
+     */
+    public function pushUnsubscribe(Request $request): Response
+    {
+        $token = trim((string) ($request->json('token') ?? ''));
+        if ($token !== '') {
+            $this->pushTokens->deleteByToken($token);
+        }
+
+        return Response::json(['ok' => true]);
     }
 
     /**
