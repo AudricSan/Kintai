@@ -153,4 +153,80 @@ final class NotificationControllerTest extends TestCase
 
         $this->assertSame(200, $response->status());
     }
+
+    // -------------------------------------------------------------------------
+    // open() — clic sur une notification : marquer lu + rediriger vers sa cible
+    // -------------------------------------------------------------------------
+
+    private function makeGetRequest(int $id): Request
+    {
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_SERVER['SCRIPT_NAME']    = '/index.php';
+        unset($_SERVER['HTTP_X_REQUESTED_WITH']);
+        $req = new Request();
+        $req->setRouteParams(['id' => $id]);
+        return $req;
+    }
+
+    /**
+     * Régression : une notification "nouveau shift" ne disait pas lequel et ne
+     * menait nulle part. open() doit marquer lu puis rediriger vers le lien stocké
+     * (voir NotificationService::notify()).
+     */
+    public function testOpenMarksReadAndRedirectsToStoredLink(): void
+    {
+        $this->notifications->method('findById')->with(10)->willReturn([
+            'id' => 10, 'user_id' => 5, 'link' => '/employee/shifts/day?start=2026-08-03',
+        ]);
+        $this->notifications->expects($this->once())->method('markRead')->with(10, 5);
+
+        $response = $this->controller->open($this->makeGetRequest(10));
+
+        $this->assertSame(302, $response->status());
+        $headersRef = new \ReflectionProperty($response, 'headers');
+        $headersRef->setAccessible(true);
+        $this->assertSame('/employee/shifts/day?start=2026-08-03', $headersRef->getValue($response)['Location'] ?? null);
+    }
+
+    public function testOpenFallsBackToNotificationsListWhenNoLink(): void
+    {
+        $this->notifications->method('findById')->with(10)->willReturn(['id' => 10, 'user_id' => 5, 'link' => null]);
+        $this->notifications->expects($this->once())->method('markRead')->with(10, 5);
+
+        $response = $this->controller->open($this->makeGetRequest(10));
+
+        $headersRef = new \ReflectionProperty($response, 'headers');
+        $headersRef->setAccessible(true);
+        $this->assertSame('/notifications', $headersRef->getValue($response)['Location'] ?? null);
+    }
+
+    /** Un lien stocké absolu/protocole-relatif (jamais généré par ce code, mais défensif) est ignoré. */
+    public function testOpenIgnoresProtocolRelativeLink(): void
+    {
+        $this->notifications->method('findById')->with(10)->willReturn(['id' => 10, 'user_id' => 5, 'link' => '//evil.example.com']);
+        $this->notifications->method('markRead');
+
+        $response = $this->controller->open($this->makeGetRequest(10));
+
+        $headersRef = new \ReflectionProperty($response, 'headers');
+        $headersRef->setAccessible(true);
+        $this->assertSame('/notifications', $headersRef->getValue($response)['Location'] ?? null);
+    }
+
+    public function testOpenThrowsNotFoundForAnotherUsersNotification(): void
+    {
+        $this->notifications->method('findById')->with(10)->willReturn(['id' => 10, 'user_id' => 999, 'link' => null]);
+        $this->notifications->expects($this->never())->method('markRead');
+
+        $this->expectException(\kintai\Core\Exceptions\NotFoundException::class);
+        $this->controller->open($this->makeGetRequest(10));
+    }
+
+    public function testOpenThrowsNotFoundWhenNotificationDoesNotExist(): void
+    {
+        $this->notifications->method('findById')->with(10)->willReturn(null);
+
+        $this->expectException(\kintai\Core\Exceptions\NotFoundException::class);
+        $this->controller->open($this->makeGetRequest(10));
+    }
 }

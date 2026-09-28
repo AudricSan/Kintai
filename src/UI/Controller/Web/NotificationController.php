@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace kintai\UI\Controller\Web;
 
 use kintai\Core\Auth\AuthService;
+use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Exceptions\ValidationException;
 use kintai\Core\Repositories\DevicePushTokenRepositoryInterface;
 use kintai\Core\Repositories\NotificationRepositoryInterface;
@@ -14,6 +15,8 @@ use kintai\UI\ViewRenderer;
 
 final class NotificationController
 {
+    use HasBaseUrl;
+
     public function __construct(
         private readonly AuthService $auth,
         private readonly NotificationRepositoryInterface $repo,
@@ -30,6 +33,34 @@ final class NotificationController
             'title'         => __('notifications'),
             'notifications' => $notifications,
         ], 'layout.app'));
+    }
+
+    /**
+     * GET /notifications/{id}/open
+     * Marque la notification comme lue puis redirige vers sa destination (link) —
+     * permet de cliquer une notification pour aller directement voir ce qu'elle
+     * concerne (le shift, la demande...) au lieu de devoir le retrouver soi-même.
+     * Sans destination stockée (notifications créées avant ce champ, ou type qui
+     * n'en fournit pas), retombe simplement sur la liste des notifications.
+     */
+    public function open(Request $request): Response
+    {
+        $userId = (int) $this->auth->user()['id'];
+        $id     = (int) $request->param('id');
+
+        $notification = $this->repo->findById($id);
+        if ($notification === null || (int) ($notification['user_id'] ?? 0) !== $userId) {
+            throw new NotFoundException(__('error_resource_not_found'));
+        }
+
+        $this->repo->markRead($id, $userId);
+
+        $link = (string) ($notification['link'] ?? '');
+        if ($link === '' || !str_starts_with($link, '/') || str_starts_with($link, '//')) {
+            $link = '/notifications';
+        }
+
+        return Response::redirect($this->base() . $link);
     }
 
     public function markRead(Request $request): Response
@@ -130,9 +161,11 @@ final class NotificationController
 
         return Response::json([
             'notifications' => array_map(fn($n) => [
-                'id'   => (int) $n['id'],
-                'type' => $n['type'] ?? '',
-                'body' => $n['body'] ?? '',
+                'id'    => (int) $n['id'],
+                'type'  => $n['type'] ?? '',
+                'title' => notification_type_label($n['type'] ?? ''),
+                'body'  => $n['body'] ?? '',
+                'link'  => route_url('notifications.open', ['id' => (int) $n['id']]),
             ], $recent),
             'unread_count' => $count,
         ]);

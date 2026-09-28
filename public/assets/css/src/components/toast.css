@@ -28,6 +28,16 @@
     max-width: 340px;
     pointer-events: all;
     animation: toast-in 0.25s ease;
+    color: inherit;
+    text-decoration: none;
+}
+
+a.toast {
+    cursor: pointer;
+}
+
+a.toast:hover {
+    border-left-color: var(--color-primary-hover, var(--color-primary));
 }
 
 .toast--fading {

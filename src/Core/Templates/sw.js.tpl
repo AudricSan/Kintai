@@ -125,14 +125,22 @@ self.addEventListener('push', (e) => {
 
 self.addEventListener('notificationclick', (e) => {
   e.notification.close();
-  const target = BASE + '/notifications';
+  const data = e.notification.data || {};
+  // notification_id présent : passe par /notifications/{id}/open pour marquer la
+  // notification comme lue avant de rediriger (même mécanisme que le clic dans le
+  // dropdown web). Sans ça (notification système ancienne, ou notification_id
+  // absent), retombe sur le lien brut, puis sur la liste des notifications.
+  const target = data.notification_id
+    ? BASE + '/notifications/' + encodeURIComponent(data.notification_id) + '/open'
+    : (data.link ? BASE + data.link : BASE + '/notifications');
 
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
-      for (const client of clients) {
-        if (client.url.indexOf(target) !== -1 && 'focus' in client) {
-          return client.focus();
-        }
+      // Réutilise un onglet déjà ouvert de l'app s'il y en a un, plutôt que d'en
+      // empiler un nouveau à chaque notification cliquée.
+      const existing = clients.find((c) => 'navigate' in c && 'focus' in c);
+      if (existing) {
+        return existing.navigate(target).then((c) => c && c.focus());
       }
       if (self.clients.openWindow) {
         return self.clients.openWindow(target);

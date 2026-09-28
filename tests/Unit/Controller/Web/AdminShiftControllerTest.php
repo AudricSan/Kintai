@@ -562,8 +562,14 @@ final class AdminShiftControllerTest extends TestCase
         $req->setRouteParams(['id' => 10]);
 
         $this->shifts->method('save')->willReturnCallback(fn(array $d) => $d + ['id' => 10]);
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Boutique Test']);
         $this->notifs->expects($this->once())->method('notify')->with(
-            5, 'shift_updated', 'notif_shift_updated_body', ['date' => '2026-08-03'], 10
+            5,
+            'shift_updated',
+            'notif_shift_updated_body',
+            ['date' => '2026-08-03', 'start' => '09:00', 'end' => '17:00', 'store' => 'Boutique Test'],
+            10,
+            '/employee/shifts/day?start=2026-08-03'
         );
 
         $response = $this->controller->updateShift($req);
@@ -584,12 +590,19 @@ final class AdminShiftControllerTest extends TestCase
     {
         $existing = [
             'id' => 10, 'store_id' => 1, 'user_id' => 5, 'shift_date' => '2026-08-02',
+            'start_time' => '09:00', 'end_time' => '17:00',
         ];
         $this->shifts->method('findById')->with(10)->willReturn($existing);
         $this->shifts->expects($this->once())->method('delete')->with(10)->willReturn(1);
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Boutique Test']);
 
         $this->notifs->expects($this->once())->method('notify')->with(
-            5, 'shift_deleted', 'notif_shift_deleted_body', ['date' => '2026-08-02'], 10
+            5,
+            'shift_deleted',
+            'notif_shift_deleted_body',
+            ['date' => '2026-08-02', 'start' => '09:00', 'end' => '17:00', 'store' => 'Boutique Test'],
+            10,
+            '/employee/shifts/day?start=2026-08-02'
         );
 
         $req = new Request();
