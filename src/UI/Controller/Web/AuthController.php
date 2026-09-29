@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace kintai\UI\Controller\Web;
 
 use kintai\Core\Auth\AuthService;
+use kintai\Core\Auth\CredentialRevoker;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Request;
 use kintai\Core\Response;
@@ -61,6 +62,9 @@ final class AuthController
         private readonly AvailabilityRepositoryInterface $availabilities,
         private readonly LanguageRepositoryInterface $languages,
         private readonly AvatarImageOptimizer $avatarOptimizer,
+        // Optionnel pour ne pas casser les tests qui construisent le contrôleur à la main ;
+        // le conteneur l'injecte toujours en production.
+        private readonly ?CredentialRevoker $revoker = null,
     ) {}
 
     /** @var array<string, string> extension → type MIME (avatars) */
@@ -475,6 +479,11 @@ final class AuthController
         $dbUser['password_hash'] = password_hash($newPass, PASSWORD_DEFAULT);
         try {
             $this->users->save($dbUser);
+            // La session courante reste valide ; toutes les autres (autres appareils, cookie
+            // « rester connecté », jetons d'API) sont révoquées : c'est le but d'un changement
+            // de mot de passe après une compromission.
+            $this->auth->refreshSessionAfterPasswordChange($dbUser);
+            $this->revoker?->revokeAllFor($userId);
             $this->auditLogger->logUpdate($request, 'user.change_password', 'user', $userId, $oldUser, $dbUser, [], null, $userId);
         } catch (\Throwable) {
             return Response::redirect($this->base() . '/profile?tab=info&error=error_generic');
@@ -574,6 +583,9 @@ final class AuthController
 
         $this->auditLogger->log($request, 'user.self_deleted', 'user', $userId, [], null, $userId);
 
+        // Le compte est désormais inactif (les sessions et cookies sont de toute façon refusés) :
+        // on purge quand même ses cookies « rester connecté » et jetons d'API.
+        $this->revoker?->revokeAllFor($userId);
         $this->auth->logout();
         return Response::redirect($this->base() . '/login?deleted=1');
     }
