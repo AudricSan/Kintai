@@ -139,6 +139,57 @@ if (!function_exists('bundle_enabled')) {
     }
 }
 
+if (!function_exists('bundle_asset')) {
+    /**
+     * URL publique d'un asset statique (CSS/JS) déclaré par le bundle actif
+     * $slug via Bundle::loadAssetsFrom(), pour un <link>/<script> dans une
+     * vue. $path est relatif au dossier d'assets du bundle (ex. 'css/notebook.css').
+     * Retourne null (jamais d'exception) si le bundle est inactif ou n'a
+     * pas déclaré d'assets — chaque vue appelante doit donc faire
+     * `if ($css = bundle_asset(...)): <link ...>`.
+     */
+    function bundle_asset(string $slug, string $path): ?string
+    {
+        try {
+            $container = \kintai\Core\Container::getInstance();
+            if (!$container->has(\kintai\Core\BundleManager::class)) {
+                return null;
+            }
+            $manager = $container->make(\kintai\Core\BundleManager::class);
+            if ($manager->assetsPathFor($slug) === null) {
+                return null;
+            }
+            $version = $manager->versionOf($slug) ?? '0';
+            return base_url() . '/bundle-assets/' . rawurlencode($slug) . '/' . ltrim($path, '/') . '?v=' . urlencode($version);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+}
+
+if (!function_exists('bundle_asset_path')) {
+    /**
+     * Chemin filesystem absolu d'un asset statique déclaré par le bundle
+     * actif $slug via Bundle::loadAssetsFrom() — pour les vues qui ont
+     * besoin du contenu du fichier directement (ex. file_get_contents()
+     * dans un export PDF), plutôt que d'une URL. Mêmes règles que
+     * bundle_asset() : null si le bundle est inactif ou sans assets.
+     */
+    function bundle_asset_path(string $slug, string $path): ?string
+    {
+        try {
+            $container = \kintai\Core\Container::getInstance();
+            if (!$container->has(\kintai\Core\BundleManager::class)) {
+                return null;
+            }
+            $root = $container->make(\kintai\Core\BundleManager::class)->assetsPathFor($slug);
+        } catch (\Throwable) {
+            return null;
+        }
+        return $root === null ? null : rtrim($root, '/\\') . '/' . ltrim($path, '/');
+    }
+}
+
 if (!function_exists('feat_bundle')) {
     /**
      * Pour un slug de feature par-store (ex: 'timeoff', 'swaps'), indique si le
