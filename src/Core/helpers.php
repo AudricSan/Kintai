@@ -376,3 +376,50 @@ if (!function_exists('base_url')) {
         return base_url() . $router->url($name, $params);
     }
 }
+
+if (!function_exists('notification_type_catalog')) {
+    /**
+     * Libellé + icône par type de notification, seule source pour le dropdown
+     * (_topbar.php) et la liste complète (notifications/index.php) — ces deux vues
+     * maintenaient chacune leur propre copie de ce tableau, et un type ajouté d'un
+     * côté sans l'autre s'affichait avec sa clé technique brute au lieu d'un libellé
+     * traduit (ex. notebook_entry_created, initialement oublié dans l'un des deux).
+     */
+    function notification_type_catalog(): array
+    {
+        return [
+            'message_received'       => ['label' => __('notif_message_received'), 'icon' => '✉'],
+            'timeoff_approved'       => ['label' => __('notif_timeoff_approved'), 'icon' => '✓'],
+            'timeoff_refused'        => ['label' => __('notif_timeoff_refused'), 'icon' => '✗'],
+            'timeoff_submitted'      => ['label' => __('notif_timeoff_submitted'), 'icon' => '🏖'],
+            'swap_accepted'          => ['label' => __('notif_swap_accepted'), 'icon' => '⇄'],
+            'swap_refused'           => ['label' => __('notif_swap_refused'), 'icon' => '⇄'],
+            'shift_assigned'         => ['label' => __('notif_shift_assigned'), 'icon' => '📅'],
+            'shift_updated'          => ['label' => __('notif_shift_updated'), 'icon' => '🔄'],
+            'shift_deleted'          => ['label' => __('notif_shift_deleted'), 'icon' => '🗑'],
+            'open_shift_published'   => ['label' => __('notif_open_shift_published'), 'icon' => '📢'],
+            'shift_claim_submitted'  => ['label' => __('notif_shift_claim_submitted'), 'icon' => '🙋'],
+            'shift_claim_approved'   => ['label' => __('notif_shift_claim_approved'), 'icon' => '✓'],
+            'shift_claim_rejected'   => ['label' => __('notif_shift_claim_rejected'), 'icon' => '✗'],
+            'shift_claim_withdrawn'  => ['label' => __('notif_shift_claim_withdrawn'), 'icon' => '⊘'],
+            'daily_report_submitted' => ['label' => __('notif_daily_report_submitted'), 'icon' => '📝'],
+            'daily_report_validated' => ['label' => __('notif_daily_report_validated'), 'icon' => '✓'],
+            'feedback_submitted'     => ['label' => __('notif_feedback_submitted'), 'icon' => '💬'],
+            'swap_requested'         => ['label' => __('notif_swap_requested'), 'icon' => '⇄'],
+            'swap_peer_accepted'     => ['label' => __('notif_swap_peer_accepted'), 'icon' => '⇄'],
+            'swap_peer_refused'      => ['label' => __('notif_swap_peer_refused'), 'icon' => '⇄'],
+            'swap_cancelled'         => ['label' => __('notif_swap_cancelled'), 'icon' => '⇄'],
+            'notebook_entry_created' => ['label' => __('notif_notebook_entry_created'), 'icon' => '📓'],
+        ];
+    }
+
+    function notification_type_label(string $type): string
+    {
+        return notification_type_catalog()[$type]['label'] ?? $type;
+    }
+
+    function notification_type_icon(string $type): string
+    {
+        return notification_type_catalog()[$type]['icon'] ?? '•';
+    }
+}

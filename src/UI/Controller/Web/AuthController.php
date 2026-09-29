@@ -197,7 +197,7 @@ final class AuthController
         }
 
         // Onglet courant
-        $tab = in_array((string) $request->query('tab'), ['info', 'availability', 'ical', 'nav', 'data'], true)
+        $tab = in_array((string) $request->query('tab'), ['info', 'availability', 'ical', 'push', 'nav', 'data'], true)
             ? $request->query('tab')
             : 'info';
 

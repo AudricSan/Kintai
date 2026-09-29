@@ -68,6 +68,10 @@ if ($errMsg !== '') {
        class="profile-tab<?= $tab === 'ical' ? ' profile-tab--active' : '' ?>">
         <?= __('profile_tab_ical') ?>
     </a>
+    <a href="<?= route_url('profile') ?>?tab=push"
+       class="profile-tab<?= $tab === 'push' ? ' profile-tab--active' : '' ?>">
+        <?= __('profile_tab_push') ?>
+    </a>
     <a href="<?= route_url('profile') ?>?tab=nav"
        class="profile-tab<?= $tab === 'nav' ? ' profile-tab--active' : '' ?>">
         <?= __('profile_tab_nav') ?>
@@ -584,6 +588,30 @@ ob_start();
 <?php endif; ?>
 <?php
 echo Card::make(__('ical_feeds'))->body(ob_get_clean())->render();
+?>
+
+<!-- ═══ TAB : NOTIFICATIONS PUSH ═══ -->
+<?php elseif ($tab === 'push'): ?>
+
+<?php
+ob_start();
+?>
+<?php if (empty($push_web_config)): ?>
+    <p class="text-muted"><?= __('push_not_configured') ?></p>
+<?php else: ?>
+    <p id="push-status-unsupported" class="text-muted" hidden><?= __('push_unsupported') ?></p>
+    <p id="push-status-denied" class="text-muted" hidden><?= __('push_permission_denied') ?></p>
+    <div id="push-status-disabled" hidden>
+        <p class="text-muted mb-sm"><?= __('push_notifications_description') ?></p>
+        <?= Button::make(__('push_enable'))->primary()->sm()->attrs(['id' => 'push-enable-btn'])->render() ?>
+    </div>
+    <div id="push-status-enabled" hidden>
+        <p class="text-muted mb-sm"><?= __('push_status_enabled_description') ?></p>
+        <?= Button::make(__('push_disable'))->ghost()->sm()->attrs(['id' => 'push-disable-btn'])->render() ?>
+    </div>
+<?php endif; ?>
+<?php
+echo Card::make(__('push_notifications'))->body(ob_get_clean())->render();
 ?>
 
 <!-- ═══ TAB : CONFIDENTIALITÉ & DONNÉES ═══ -->
