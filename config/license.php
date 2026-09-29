@@ -16,5 +16,6 @@ return [
         'feedback',
         'timeclock',
         'team-directory',
+        'notebook',
     ],
 ];

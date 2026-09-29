@@ -243,16 +243,7 @@ final class EmployeeController
         $base      = $this->base();
         $icalLinks = [];
         foreach ($myStoreIds as $sid) {
-            $tokenRow = $this->icalTokens->findByUserAndStore($userId, $sid);
-            if (!$tokenRow) {
-                $this->icalTokens->save([
-                    'user_id'    => $userId,
-                    'store_id'   => $sid,
-                    'token'      => bin2hex(random_bytes(32)),
-                    'created_at' => date('Y-m-d H:i:s'),
-                ]);
-                $tokenRow = $this->icalTokens->findByUserAndStore($userId, $sid);
-            }
+            $tokenRow = $this->icalTokens->findOrCreateForUserAndStore($userId, $sid);
             if ($tokenRow) {
                 $icalLinks[$sid] = "{$scheme}://{$host}{$base}/ical/{$tokenRow['token']}/{$sid}/shifts.ics";
             }

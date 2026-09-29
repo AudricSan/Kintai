@@ -26,6 +26,7 @@ your-bundle/
     Controllers/Api/...
   database/migrations/        # optional — see "Database migrations" below
   Views/                      # optional — loaded via loadViewsFrom()
+  public/{css,js}/...         # optional — see "Assets" below, loaded via loadAssetsFrom()
   lang/{en,fr,ja}.json         # optional — bundle-specific translation keys
   routes.php                  # optional — loaded via loadRoutesFrom()
   README.md
@@ -54,6 +55,7 @@ abstract class Bundle
 
     protected function loadRoutesFrom(string $path): void;
     protected function loadViewsFrom(string $path, string $namespace): void;
+    protected function loadAssetsFrom(string $relativeDir): void;  // see "Assets" below
 }
 ```
 
@@ -146,6 +148,44 @@ Name files `YYYY_MM_DD_NNNNNN_description.php` — alphabetical sort is executio
 **Tracking**: applied bundle migrations are recorded in a `bundle_migrations` table (`bundle_slug` + `migration` name, unique together) — separate from Core's own `migrations` table, so two different bundles can never collide on a migration file name, and so `BundleMigrationRunner::forgetBundle()` can clear just your bundle's tracking rows on uninstall. Business tables themselves are **not** dropped on uninstall (see Limitations) — only the tracking rows are, so a later reinstall replays your `up()` methods cleanly (their `hasTable()` guards make that a no-op if the tables are still there).
 
 This mechanism is deliberately Core-agnostic: your repository interface and Eloquent model can live in your own bundle's namespace, or in `src/Core/Repositories/*Interface.php` if you'd rather follow the convention every official bundle currently uses (see "The stable contract" above) — the migration itself doesn't care either way.
+
+## Assets
+
+**Requires `kintai_core.min: "0.2.0"` or later.** If your bundle needs its own CSS or JS, don't ask for it to be added to Kintai's own `public/assets/` — that was the situation for every bundle before this mechanism existed, and it defeated the entire point of distributing bundles as separate repositories (a CSS tweak meant a Core PR). Ship it yourself, from your own `public/` directory (a sibling of `src/`, `Views/`, `routes.php` — same rule as everything else in the required layout above):
+
+```
+your-bundle/
+  public/
+    css/your-bundle.css
+    js/your-bundle.js
+```
+
+Register it in `register()`, exactly like `loadViewsFrom()`/`loadRoutesFrom()`:
+
+```php
+public function register(): void
+{
+    $this->loadViewsFrom($this->getPath() . '/Views', 'your-namespace');
+    $this->loadRoutesFrom($this->getPath() . '/routes.php');
+    $this->loadAssetsFrom('public');
+}
+```
+
+From any of your bundle's views, reference the file through the `bundle_asset()` helper — never a hardcoded path, since the actual filesystem location depends on which version is currently installed:
+
+```php
+<?php if ($css = bundle_asset('your-slug', 'css/your-bundle.css')): ?>
+<link rel="stylesheet" href="<?= $css ?>">
+<?php endif; ?>
+```
+
+`bundle_asset()` returns `null` (never throws) when your bundle isn't active — always guard the `<link>`/`<script>` with an `if`, as above, rather than assuming it always resolves. The URL it builds (`GET /bundle-assets/{slug}/{path}?v={version}`) is served by a dedicated, unauthenticated route (`BundleAssetController`) — these are public static files, not gated behind `AuthMiddleware`/`PermissionMiddleware` like your bundle's own pages — confined to your declared `public/` directory and limited to a fixed extension whitelist (`css`, `js`, `svg`, `png`, `webp`). Anything outside that whitelist, or any attempt to traverse above your `public/` directory, is rejected (`403`); a request for a bundle that's inactive, or one that never called `loadAssetsFrom()`, is a plain `404`.
+
+If a view needs the file's **contents** directly rather than a URL — the common case being a PDF export that inlines its stylesheet via `file_get_contents()` — use `bundle_asset_path()` instead, which resolves to the same file's absolute filesystem path (again `null` if inactive):
+
+```php
+$css = file_get_contents(bundle_asset_path('your-slug', 'css/pdf-your-bundle.css') ?? '');
+```
 
 ## The `bundle.json` manifest
 

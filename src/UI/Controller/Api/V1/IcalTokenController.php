@@ -49,12 +49,10 @@ final class IcalTokenController
         $data    = $request->json() ?? [];
         $storeId = (int) ($data['store_id'] ?? 0);
 
-        $saved = $this->icalTokens->save([
-            'user_id'    => $userId,
-            'store_id'   => $storeId,
-            'token'      => bin2hex(random_bytes(32)),
-            'created_at' => date('Y-m-d H:i:s'),
-        ]);
+        // findOrCreate plutôt qu'un save() inconditionnel : un second appel pour le
+        // même user+store percuterait sinon la contrainte unique (user_id, store_id)
+        // en base et remonterait en 500 au lieu de simplement rendre le token existant.
+        $saved = $this->icalTokens->findOrCreateForUserAndStore($userId, $storeId);
 
         return Response::json($saved, 201);
     }

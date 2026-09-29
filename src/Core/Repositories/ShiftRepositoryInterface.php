@@ -64,8 +64,17 @@ interface ShiftRepositoryInterface
     public function closeOpenShiftTo(int $id, int $userId): ?array;
 
     /**
-     * Supprime un shift par son ID.
+     * Supprime un shift par son ID (hard delete — voir shift_deletion_log pour la
+     * trace conservée à des fins de synchronisation iCal).
      * @return int Nombre de lignes supprimées (0 ou 1).
      */
     public function delete(int $id): int;
+
+    /**
+     * Retourne les suppressions récentes (depuis $since, format Y-m-d H:i:s) de shifts
+     * d'un utilisateur dans un store, sous forme de tableaux façon "shift" avec
+     * deleted_at renseigné — utilisé par IcalController pour émettre les VEVENT
+     * STATUS:CANCELLED correspondants dans le flux de l'employé.
+     */
+    public function findRecentDeletionsByUserAndStore(int $userId, int $storeId, string $since): array;
 }

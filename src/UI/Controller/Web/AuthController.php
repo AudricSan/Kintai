@@ -210,16 +210,7 @@ final class AuthController
                 continue;
             }
 
-            $tokenRow = $this->icalTokens->findByUserAndStore($userId, $storeId);
-            if (!$tokenRow) {
-                $this->icalTokens->save([
-                    'user_id'    => $userId,
-                    'store_id'   => $storeId,
-                    'token'      => bin2hex(random_bytes(32)),
-                    'created_at' => date('Y-m-d H:i:s'),
-                ]);
-                $tokenRow = $this->icalTokens->findByUserAndStore($userId, $storeId);
-            }
+            $tokenRow = $this->icalTokens->findOrCreateForUserAndStore($userId, $storeId);
 
             $icalLinks[] = [
                 'store_id'   => $storeId,

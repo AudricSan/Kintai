@@ -4,6 +4,9 @@
  * Variables disponibles via ViewRenderer::share() : $BASE_URL, $auth_user
  */
 ?>
+<?php if ($feedbackCss = bundle_asset('feedback', 'css/feedback.css')): ?>
+<link rel="stylesheet" href="<?= $feedbackCss ?>">
+<?php endif; ?>
 
 <!-- Overlay + modale -->
 <div id="fb-overlay" class="fb-overlay" onclick="fbClose()" role="dialog" aria-modal="true" aria-labelledby="fb-modal-title">
@@ -116,4 +119,6 @@
         'networkError'           => __('network_error'),
     ],
 ], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?></script>
-<script src="<?= $BASE_URL ?>/assets/js/modules/feedback.js"></script>
+<?php if ($feedbackJs = bundle_asset('feedback', 'js/feedback.js')): ?>
+<script src="<?= $feedbackJs ?>"></script>
+<?php endif; ?>
