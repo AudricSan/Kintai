@@ -638,6 +638,9 @@ $hasMultipleStores = count($shiftsByStore) > 1;
 <?php endif; ?>
 
 <?php if (admin_widget_on('team_notes', $enabled_widgets) && $feat('notes') && $can('notebook.view')): ?>
+<?php if ($notebookCss = bundle_asset('notebook', 'css/notebook.css')): ?>
+<link rel="stylesheet" href="<?= $notebookCss ?>">
+<?php endif; ?>
 <!-- Carnet de notes d'équipe -->
 <div class="card card--mt">
     <div class="card-header">

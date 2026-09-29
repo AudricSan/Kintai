@@ -93,15 +93,12 @@ final class IcalService
         $summary  = $typeName . ' — ' . ($store['name'] ?? '');
 
         $shiftDate = $shift['shift_date'] ?? date('Y-m-d');
-        $startTime = str_replace(':', '', substr($shift['start_time'] ?? '00:00', 0, 5));
-        $endTime   = str_replace(':', '', substr($shift['end_time'] ?? '00:00', 0, 5));
+        $startTime = substr($shift['start_time'] ?? '00:00', 0, 5);
+        $endTime   = substr($shift['end_time'] ?? '00:00', 0, 5);
 
-        $startDate = str_replace('-', '', $shiftDate);
-        if (!empty($shift['cross_midnight'])) {
-            $endDate = date('Ymd', strtotime($shiftDate . ' +1 day'));
-        } else {
-            $endDate = $startDate;
-        }
+        $endDateStr = !empty($shift['cross_midnight'])
+            ? date('Y-m-d', strtotime($shiftDate . ' +1 day'))
+            : $shiftDate;
 
         $uid      = 'shift-' . ($shift['id'] ?? uniqid()) . '@kintai';
         $sequence = (int) ($shift['ical_sequence'] ?? 0);
@@ -123,8 +120,8 @@ final class IcalService
             'SEQUENCE:' . $sequence,
             'CREATED:' . $created,
             'LAST-MODIFIED:' . $modified,
-            'DTSTART;TZID=' . $tz . ':' . $startDate . 'T' . $startTime . '00',
-            'DTEND;TZID=' . $tz . ':' . $endDate . 'T' . $endTime . '00',
+            'DTSTART:' . $this->localToIcalUtc($shiftDate, $startTime, $tz),
+            'DTEND:' . $this->localToIcalUtc($endDateStr, $endTime, $tz),
             'SUMMARY:' . $this->escapeText($summary),
             'LOCATION:' . $this->escapeText($store['name'] ?? ''),
             'STATUS:' . ($cancelled ? 'CANCELLED' : 'CONFIRMED'),
@@ -160,6 +157,24 @@ final class IcalService
         ];
 
         return implode("\r\n", array_map(fn($l) => $this->foldLine($l), $eventLines));
+    }
+
+    /**
+     * Convertit une date+heure locale (dans le fuseau du store) en UTC au format iCal
+     * `YYYYMMDDTHHmmssZ`. On exporte directement en UTC plutôt qu'en `DTSTART;TZID=...`
+     * pour éviter d'avoir à fournir un bloc VTIMEZONE (RFC 5545 §3.6.5) — la plupart des
+     * clients le tolèrent en résolvant le TZID IANA eux-mêmes, mais ce n'est pas garanti
+     * partout ; l'UTC est non ambigu pour tout le monde.
+     */
+    private function localToIcalUtc(string $date, string $time, string $tz): string
+    {
+        try {
+            $dt = new \DateTime($date . ' ' . $time, new \DateTimeZone($tz));
+        } catch (\Exception) {
+            $dt = new \DateTime($date . ' ' . $time, new \DateTimeZone('UTC'));
+        }
+        $dt->setTimezone(new \DateTimeZone('UTC'));
+        return $dt->format('Ymd\THis\Z');
     }
 
     /** Convertit un datetime `Y-m-d H:i:s` (UTC) en format iCal UTC `YYYYMMDDTHHmmssZ`. */

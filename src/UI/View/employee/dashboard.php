@@ -339,6 +339,9 @@ echo Card::make()
 <?php endif; ?>
 
 <?php if (widget_on('team_notes', $widgets)): ?>
+<?php if ($notebookCss = bundle_asset('notebook', 'css/notebook.css')): ?>
+<link rel="stylesheet" href="<?= $notebookCss ?>">
+<?php endif; ?>
 <?php
 ob_start();
 if (empty($notebook_entries)):

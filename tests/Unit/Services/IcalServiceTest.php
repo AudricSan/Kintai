@@ -131,4 +131,47 @@ final class IcalServiceTest extends TestCase
 
         $this->assertStringContainsString('SUMMARY:Shift — Boutique Centrale', $content);
     }
+
+    /**
+     * Régression : le flux exportait DTSTART/DTEND en heure locale avec un simple
+     * `TZID=Europe/Paris` sans bloc VTIMEZONE associé (non conforme RFC 5545
+     * §3.6.5). On exporte maintenant directement en UTC, non ambigu pour tout
+     * client. 2026-09-21 est en heure d'été (Europe/Paris = UTC+2) : 09:00/17:00
+     * locaux deviennent 07:00/15:00 UTC.
+     */
+    public function testBuildConvertsShiftTimesToUtc(): void
+    {
+        $user    = ['id' => 8, 'first_name' => 'John', 'last_name' => 'Smith', 'language' => 'en'];
+        $content = $this->service->build([$this->shift()], [], $this->store(), $user, []);
+
+        $this->assertStringContainsString('DTSTART:20260921T070000Z', $content);
+        $this->assertStringContainsString('DTEND:20260921T150000Z', $content);
+        $this->assertStringNotContainsString('TZID', $content);
+    }
+
+    public function testBuildConvertsCrossMidnightShiftEndDateCorrectly(): void
+    {
+        $user  = ['id' => 9, 'first_name' => 'John', 'last_name' => 'Smith', 'language' => 'en'];
+        $shift = [
+            'id'             => 11,
+            'shift_date'     => '2026-09-21',
+            'start_time'     => '22:00',
+            'end_time'       => '06:00',
+            'cross_midnight' => 1,
+        ];
+        $content = $this->service->build([$shift], [], $this->store(), $user, []);
+
+        $this->assertStringContainsString('DTSTART:20260921T200000Z', $content);
+        $this->assertStringContainsString('DTEND:20260922T040000Z', $content);
+    }
+
+    public function testBuildFallsBackToUtcWhenStoreTimezoneIsInvalid(): void
+    {
+        $user    = ['id' => 10, 'first_name' => 'John', 'last_name' => 'Smith', 'language' => 'en'];
+        $store   = $this->store();
+        $store['timezone'] = 'Not/ATimezone';
+        $content = $this->service->build([$this->shift()], [], $store, $user, []);
+
+        $this->assertStringContainsString('DTSTART:20260921T090000Z', $content);
+    }
 }
