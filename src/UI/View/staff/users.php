@@ -115,7 +115,7 @@ $exportQuery = $filter_store_id !== 0 ? '?store_id=' . $filter_store_id : '';
             . ($full !== $name ? '<div class="text-hint">' . $full . '</div>' : '')
             . '</div></div>';
     })
-    ->sortable(__('email'), 'email', fn($u) => htmlspecialchars($u['email'] ?? ''))
+    ->sortableText(__('email'), 'email', fn($u) => $u['email'] ?? '')
     ->sortable(__('role'), 'role', fn($u) => !empty($u['is_admin']) ? Badge::make('Admin')->admin()->render() : Badge::make('Staff')->staff()->render())
     ->column(__('store'), function($u) use ($user_store_ids, $store_names) {
         $uStoreIds = $user_store_ids[(int) $u['id']] ?? [];
@@ -123,7 +123,7 @@ $exportQuery = $filter_store_id !== 0 ? '?store_id=' . $filter_store_id : '';
         $html = '';
         foreach ($uStoreIds as $usid) {
             $sname = $store_names[$usid] ?? '';
-            if ($sname) $html .= Badge::make(htmlspecialchars($sname))->store()->render() . ' ';
+            if ($sname) $html .= Badge::make($sname)->store()->render() . ' ';
         }
         return $html;
     })

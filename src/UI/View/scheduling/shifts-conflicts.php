@@ -255,7 +255,7 @@ $tsTable = Table::make()
         return $h > 0 ? "{$h}h{$m}min" : "{$m}min";
     });
 if (count($stores_map) > 1):
-    $tsTable->column(__('store'), fn($s) => htmlspecialchars($stores_map[(int) ($s['store_id'] ?? 0)] ?? '#' . (int)($s['store_id'] ?? 0)));
+    $tsTable->text(__('store'), fn($s) => $stores_map[(int) ($s['store_id'] ?? 0)] ?? '#' . (int)($s['store_id'] ?? 0));
 endif;
 $tsTable->column('', function($s) use ($BASE_URL) {
     $id = (int) $s['id'];
