@@ -3,36 +3,6 @@
    ================================================ */
 
 /* ── Employee ───────────────────────────────────── */
-.timeoff-form {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-4);
-    align-items: flex-end;
-}
-.timeoff-form__date  { flex: 0 0 160px; }
-.timeoff-form__short { flex: 0 0 150px; }
-.timeoff-form__grow  { flex: 1; min-width: 180px; }
-
-.swap-card { border-left: 3px solid var(--color-primary); }
-.swap-card .card-header { background: var(--color-primary-light); }
-
-.swap-card__title {
-    margin: 0;
-    font-size: var(--text-base);
-}
-
-.swap-form-row {
-    display: flex;
-    gap: var(--space-3);
-    align-items: center;
-}
-.swap-form-row select { flex: 1; }
-
-.swap-actions {
-    display: flex;
-    gap: var(--space-2);
-}
-
 .estat-profile {
     display: flex;
     align-items: center;
