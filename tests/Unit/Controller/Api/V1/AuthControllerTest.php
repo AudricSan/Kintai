@@ -107,11 +107,14 @@ final class AuthControllerTest extends TestCase
             'is_active'     => true,
             'deleted_at'    => null,
         ]);
+        // Comme en base : findById() et findByEmail() renvoient la même ligne, hash compris
+        // (la session est liée à l'empreinte de ce hash).
         $this->users->method('findById')->willReturn([
-            'id'         => 7,
-            'email'      => 'alice@example.com',
-            'is_active'  => true,
-            'deleted_at' => null,
+            'id'            => 7,
+            'email'         => 'alice@example.com',
+            'password_hash' => $hash,
+            'is_active'     => true,
+            'deleted_at'    => null,
         ]);
         $this->tokens->method('save')->willReturn([
             'id'         => 1,
@@ -144,7 +147,7 @@ final class AuthControllerTest extends TestCase
             'deleted_at'    => null,
         ]);
         $this->users->method('findById')->willReturn([
-            'id' => 1, 'email' => 'x@x.com', 'is_active' => true, 'deleted_at' => null,
+            'id' => 1, 'email' => 'x@x.com', 'password_hash' => $hash, 'is_active' => true, 'deleted_at' => null,
         ]);
 
         $capturedToken = null;

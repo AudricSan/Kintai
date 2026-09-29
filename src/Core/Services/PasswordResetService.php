@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\Core\Services;
 
+use kintai\Core\Auth\CredentialRevoker;
 use kintai\Core\Mail\MailerService;
 use kintai\Core\Repositories\PasswordResetRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
@@ -16,6 +17,8 @@ final class PasswordResetService
         private readonly PasswordResetRepositoryInterface $resets,
         private readonly UserRepositoryInterface $users,
         private readonly MailerService $mailer,
+        // Optionnel pour les tests qui construisent le service à la main.
+        private readonly ?CredentialRevoker $revoker = null,
     ) {}
 
     /**
@@ -89,6 +92,9 @@ final class PasswordResetService
         ]));
 
         $this->resets->deleteByEmail($record['email']);
+        // Un cookie « rester connecté » ou un jeton d'API volé ne doit pas survivre à la réinitialisation.
+        // Les sessions déjà ouvertes tombent d'elles-mêmes (l'empreinte du mot de passe a changé).
+        $this->revoker?->revokeAllFor((int) $user['id']);
 
         return true;
     }
