@@ -20,6 +20,28 @@ final class FakeIsActiveBundle extends Bundle
     }
 }
 
+final class FakeAssetBundle extends Bundle
+{
+    public function getName(): string
+    {
+        return 'fake-bundle';
+    }
+
+    public function getVersion(): string
+    {
+        return '1.2.3';
+    }
+
+    public function register(): void
+    {
+    }
+
+    public function getAssetsPath(): ?string
+    {
+        return '/fake/assets/path';
+    }
+}
+
 /**
  * BundleManager::isActive() reflète l'état réel après boot (découvert ET activé),
  * contrairement à FeatureManager::isEnabled() qui ne reflète que le réglage stocké
@@ -47,5 +69,51 @@ final class BundleManagerTest extends TestCase
 
         $this->assertTrue($manager->isActive('fake-bundle'));
         $this->assertFalse($manager->isActive('some-other-slug'));
+    }
+
+    public function testAssetsPathForReturnsNullWhenBundleInactive(): void
+    {
+        $manager = (new \ReflectionClass(BundleManager::class))->newInstanceWithoutConstructor();
+
+        $this->assertNull($manager->assetsPathFor('fake-bundle'));
+    }
+
+    public function testAssetsPathForReturnsBundlePathWhenActive(): void
+    {
+        $manager = (new \ReflectionClass(BundleManager::class))->newInstanceWithoutConstructor();
+        $bundle  = (new \ReflectionClass(FakeAssetBundle::class))->newInstanceWithoutConstructor();
+
+        $bundlesProperty = new \ReflectionProperty(BundleManager::class, 'bundles');
+        $bundlesProperty->setAccessible(true);
+        $bundlesProperty->setValue($manager, [FakeAssetBundle::class => $bundle]);
+
+        $this->assertSame('/fake/assets/path', $manager->assetsPathFor('fake-bundle'));
+        $this->assertNull($manager->assetsPathFor('some-other-slug'));
+    }
+
+    public function testAssetsPathForReturnsNullWhenBundleActiveButNeverDeclaredAssets(): void
+    {
+        $manager = (new \ReflectionClass(BundleManager::class))->newInstanceWithoutConstructor();
+        $bundle  = (new \ReflectionClass(FakeIsActiveBundle::class))->newInstanceWithoutConstructor();
+
+        $bundlesProperty = new \ReflectionProperty(BundleManager::class, 'bundles');
+        $bundlesProperty->setAccessible(true);
+        $bundlesProperty->setValue($manager, [FakeIsActiveBundle::class => $bundle]);
+
+        $this->assertNull($manager->assetsPathFor('fake-bundle'));
+    }
+
+    public function testVersionOfReturnsNullWhenInactiveAndVersionWhenActive(): void
+    {
+        $manager = (new \ReflectionClass(BundleManager::class))->newInstanceWithoutConstructor();
+        $bundle  = (new \ReflectionClass(FakeAssetBundle::class))->newInstanceWithoutConstructor();
+
+        $this->assertNull($manager->versionOf('fake-bundle'));
+
+        $bundlesProperty = new \ReflectionProperty(BundleManager::class, 'bundles');
+        $bundlesProperty->setAccessible(true);
+        $bundlesProperty->setValue($manager, [FakeAssetBundle::class => $bundle]);
+
+        $this->assertSame('1.2.3', $manager->versionOf('fake-bundle'));
     }
 }

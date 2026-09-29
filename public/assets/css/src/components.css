@@ -16,15 +16,11 @@
 @import url('./components/maintenance-banner.css');
 @import url('./components/notifications.css');
 @import url('./components/sidebar-stats.css');
-@import url('./components/feedback.css');
-@import url('./components/messaging.css');
 @import url('./components/modals.css');
 @import url('./components/toast.css');
 @import url('./components/tabs.css');
 @import url('./components/error-log.css');
-@import url('./components/photos.css');
-@import url('./components/team-directory.css');
-@import url('./components/notebook.css');
+@import url('./components/progress-bar.css');
 @import url('./components/translations.css');
 @import url('./components/store-picker.css');
 @import url('./components/footer.css');
