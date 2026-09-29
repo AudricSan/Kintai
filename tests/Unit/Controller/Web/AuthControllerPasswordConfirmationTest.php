@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Controller\Web;
 
 use kintai\Core\Auth\AuthService;
+use kintai\Core\Auth\PasswordPolicy;
 use kintai\Core\Repositories\AvailabilityRepositoryInterface;
 use kintai\Core\Repositories\IcalTokenRepositoryInterface;
 use kintai\Core\Repositories\LanguageRepositoryInterface;
@@ -117,6 +118,53 @@ final class AuthControllerPasswordConfirmationTest extends TestCase
 
         $_POST = ['current_password' => $this->rightPassword, 'new_password' => $this->newPassword, 'confirm_password' => $this->newPassword];
         $this->controller->saveProfilePassword(new Request());
+    }
+
+    private function changePasswordTo(string $new): \kintai\Core\Response
+    {
+        $this->users->method('findById')->willReturn([
+            'id' => self::USER_ID, 'password_hash' => password_hash($this->rightPassword, PASSWORD_BCRYPT, ['cost' => 4]),
+        ]);
+        $_POST = ['current_password' => $this->rightPassword, 'new_password' => $new, 'confirm_password' => $new];
+
+        return $this->controller->saveProfilePassword(new Request());
+    }
+
+    private function locationOf(\kintai\Core\Response $response): string
+    {
+        $ref = new \ReflectionProperty($response, 'headers');
+        $ref->setAccessible(true);
+
+        return $ref->getValue($response)['Location'] ?? '';
+    }
+
+    public function testANewPasswordShorterThanThePolicyIsRefused(): void
+    {
+        // 7 caractères : un de moins que le minimum, le même que celui exigé à la réinitialisation par e-mail.
+        $this->users->expects($this->never())->method('save');
+
+        $location = $this->locationOf($this->changePasswordTo(substr(bin2hex(random_bytes(8)), 0, PasswordPolicy::MIN_LENGTH - 1)));
+
+        $this->assertStringContainsString('error=password_too_short', $location);
+    }
+
+    public function testFourCharactersNoLongerPass(): void
+    {
+        // Ancien seuil du profil (4) : c'est précisément l'incohérence corrigée.
+        $this->users->expects($this->never())->method('save');
+
+        $location = $this->locationOf($this->changePasswordTo(substr(bin2hex(random_bytes(4)), 0, 4)));
+
+        $this->assertStringContainsString('error=password_too_short', $location);
+    }
+
+    public function testAPasswordOfExactlyTheMinimumLengthIsAccepted(): void
+    {
+        $this->users->expects($this->once())->method('save');
+
+        $location = $this->locationOf($this->changePasswordTo(substr(bin2hex(random_bytes(8)), 0, PasswordPolicy::MIN_LENGTH)));
+
+        $this->assertStringNotContainsString('error=', $location);
     }
 
     public function testAccountDeletionRefusedWhenStoredHashIsEmpty(): void

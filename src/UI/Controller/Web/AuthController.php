@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace kintai\UI\Controller\Web;
 
 use kintai\Core\Auth\AuthService;
+use kintai\Core\Auth\PasswordPolicy;
 use kintai\Core\Auth\CredentialRevoker;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Request;
@@ -460,7 +461,7 @@ final class AuthController
             return Response::redirect($this->base() . '/profile?tab=info&error=password_mismatch');
         }
 
-        if (mb_strlen($newPass) < 4) {
+        if (!PasswordPolicy::isLongEnough($newPass)) {
             return Response::redirect($this->base() . '/profile?tab=info&error=password_too_short');
         }
 
