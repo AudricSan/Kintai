@@ -23,7 +23,7 @@ final class ShiftSwapRoutesTest extends TestCase
     {
         $router = new Router();
         $container = new Container();
-        require dirname(__DIR__, 4) . '/src/Bundles/ShiftSwap/routes.php';
+        require dirname(__DIR__, 4) . '/tests/Fixtures/bundles/shift-swap-1.0.0/routes.php';
 
         return $router;
     }

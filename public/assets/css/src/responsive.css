@@ -58,7 +58,6 @@
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .card--col-2,
     .card--col-3,
     .card--full {
         grid-column-end: span 1;
@@ -79,6 +78,10 @@
     }
 
     .role-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .settings-grid {
         grid-template-columns: 1fr;
     }
 
@@ -109,13 +112,20 @@
     .topbar-nav {
         display: none;
         position: fixed;
-        top: var(--topbar-height);
+        top: calc(var(--topbar-height) + var(--maintenance-banner-h));
         left: 0;
         right: 0;
         bottom: 0;
         z-index: 150;
         background: var(--color-surface);
         flex-direction: column;
+        /* flex-wrap: nowrap indispensable : sans ce reset, le wrap:wrap posé
+           en desktop (base.css, pensé pour les pastilles qui retombent à la
+           ligne) reste actif. Combiné à flex-direction:column ici, tout
+           groupe qui dépasse la hauteur du panneau ne redescend pas mais
+           repart dans une deuxième colonne poussée hors écran à droite,
+           provoquant un scroll horizontal du menu mobile. */
+        flex-wrap: nowrap;
         align-items: stretch;
         gap: 0;
         padding: var(--space-2) var(--space-3);
@@ -196,7 +206,7 @@
        en position fixed, ancré aux marges de la topbar plutôt qu'au bouton. */
     .notif-dropdown__panel {
         position: fixed;
-        top: calc(var(--topbar-height) + 6px);
+        top: calc(var(--topbar-height) + var(--maintenance-banner-h) + 6px);
         left: var(--space-4);
         right: var(--space-4);
         width: auto;
@@ -221,12 +231,6 @@
 
 /* ── Mobile form compact (<640px) ───────────────── */
 @media (max-width: 640px) {
-    .timeoff-form {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-4);
-    }
-
     .dash-stats-body {
         flex-wrap: wrap;
         gap: var(--space-3);
@@ -234,16 +238,6 @@
 
     .dash-stat {
         min-width: 45%;
-    }
-
-    .swap-form-row {
-        flex-direction: column;
-        align-items: stretch;
-        gap: var(--space-2);
-    }
-
-    .swap-form-row .form-control {
-        width: 100%;
     }
 
     .form-row {
@@ -460,23 +454,6 @@
         margin-left: var(--space-2);
     }
 
-    .dr-show-grid {
-        grid-template-columns: 1fr !important;
-        gap: var(--space-4) !important;
-    }
-
-    .dr-kpi-table th,
-    .dr-meta-table th {
-        width: 55%;
-        font-weight: 600;
-        font-size: 0.875rem;
-        white-space: nowrap;
-    }
-
-    .dr-kpi-table td,
-    .dr-meta-table td {
-        font-size: 0.9375rem;
-    }
 }
 
 /* ── Touch-friendly controls (coarse pointer) ──── */

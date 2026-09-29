@@ -17,7 +17,6 @@ final class AppResetService
     /** Jamais vidées en mode "données" : identité de l'installation + configuration essentielle. */
     private const ALWAYS_PRESERVED = [
         'migrations', 'users', 'roles', 'role_permissions', 'role_assignments', 'app_settings',
-        'languages', 'translations',
     ];
 
     /** Catégories optionnelles du mode "données" : cochées = conservées, décochées (défaut) = vidées. */

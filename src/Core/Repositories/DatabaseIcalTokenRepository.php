@@ -46,4 +46,27 @@ final class DatabaseIcalTokenRepository implements IcalTokenRepositoryInterface
             ->where('store_id', $storeId)
             ->delete();
     }
+
+    public function findOrCreateForUserAndStore(int $userId, int $storeId): array
+    {
+        $existing = $this->findByUserAndStore($userId, $storeId);
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        try {
+            return $this->save([
+                'user_id'    => $userId,
+                'store_id'   => $storeId,
+                'token'      => bin2hex(random_bytes(32)),
+                'created_at' => date('Y-m-d H:i:s'),
+            ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            $existing = $this->findByUserAndStore($userId, $storeId);
+            if ($existing !== null) {
+                return $existing;
+            }
+            throw $e;
+        }
+    }
 }

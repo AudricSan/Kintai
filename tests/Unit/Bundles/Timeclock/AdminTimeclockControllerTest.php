@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Bundles\Timeclock;
 
-use kintai\Bundles\Timeclock\Controllers\Web\AdminTimeclockController;
+require_once dirname(__DIR__, 3) . '/Fixtures/bundles/timeclock-1.0.0/src/Controllers/Web/AdminTimeclockController.php';
+
+use kintai\Bundles\Installed\Timeclock\Controllers\Web\AdminTimeclockController;
 use kintai\Core\Container;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\LogRepositoryInterface;

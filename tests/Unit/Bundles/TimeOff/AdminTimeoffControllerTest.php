@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Bundles\TimeOff;
 
-use kintai\Bundles\TimeOff\Controllers\Web\AdminTimeoffController;
+require_once dirname(__DIR__, 3) . '/Fixtures/bundles/timeoff-1.0.0/src/Controllers/Web/AdminTimeoffController.php';
+
+use kintai\Bundles\Installed\TimeOff\Controllers\Web\AdminTimeoffController;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;

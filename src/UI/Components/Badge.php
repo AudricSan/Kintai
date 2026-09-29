@@ -31,7 +31,6 @@ final class Badge implements ComponentInterface
     public function info(): self      { $this->variant = 'info'; return $this; }
     public function neutral(): self   { $this->variant = 'neutral'; return $this; }
     public function admin(): self     { $this->variant = 'admin'; return $this; }
-    public function manager(): self   { $this->variant = 'manager'; return $this; }
     public function staff(): self     { $this->variant = 'staff'; return $this; }
     public function store(): self     { $this->variant = 'store'; return $this; }
     public function primary(): self   { $this->variant = 'primary'; return $this; }

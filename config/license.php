@@ -15,5 +15,7 @@ return [
         'hiring-report',
         'feedback',
         'timeclock',
+        'team-directory',
+        'notebook',
     ],
 ];

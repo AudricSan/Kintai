@@ -197,4 +197,24 @@ final class DatabaseLogRepositoryTest extends TestCase
 
         $this->assertSame(1, $this->repo->countAll(['store_ids' => [1]]));
     }
+
+    public function testPurgeOlderThanDeletesOnlyOlderEntries(): void
+    {
+        ActivityEntry::create(['level' => 'info', 'channel' => 'test', 'message' => 'old', 'created_at' => '2025-01-01 00:00:00']);
+        ActivityEntry::create(['level' => 'info', 'channel' => 'test', 'message' => 'recent', 'created_at' => '2026-06-01 00:00:00']);
+
+        $deleted = $this->repo->purgeOlderThan('2026-01-01 00:00:00');
+
+        $this->assertSame(1, $deleted);
+        $this->assertSame(1, ActivityEntry::count());
+        $this->assertSame('recent', ActivityEntry::first()->message);
+    }
+
+    public function testPurgeOlderThanReturnsZeroWhenNothingMatches(): void
+    {
+        ActivityEntry::create(['level' => 'info', 'channel' => 'test', 'message' => 'recent', 'created_at' => '2026-06-01 00:00:00']);
+
+        $this->assertSame(0, $this->repo->purgeOlderThan('2020-01-01 00:00:00'));
+        $this->assertSame(1, ActivityEntry::count());
+    }
 }

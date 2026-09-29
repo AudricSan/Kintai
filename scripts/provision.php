@@ -197,17 +197,7 @@ $userRepo->save([
 ]);
 echo "[Kintai] Admin '{$adminEmail}' créé.\n";
 
-// ─── Step 7 : Write version.json ─────────────────────────────────────────
-
-$versionPath = BASE_PATH . '/storage/app/version.json';
-$versionData = [
-    'version'      => env('APP_VERSION', '2.0.0'),
-    'installed_at' => date('Y-m-d H:i:s'),
-    'updated_at'   => date('Y-m-d H:i:s'),
-];
-file_put_contents($versionPath, json_encode($versionData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-
-// ─── Step 8 : Lock installation ─────────────────────────────────────────
+// ─── Step 7 : Lock installation ─────────────────────────────────────────
 
 file_put_contents(BASE_PATH . '/storage/installed.lock', bin2hex(random_bytes(32)));
 echo "[Kintai] Installation verrouillée.\n";

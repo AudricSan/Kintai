@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\Core\Repositories;
 
+use kintai\Core\InstalledBundleManifestStore;
 use kintai\Core\ServiceProvider;
 
 final class RepositoryServiceProvider extends ServiceProvider
@@ -16,18 +17,38 @@ final class RepositoryServiceProvider extends ServiceProvider
         $this->container->singleton(ShiftTypeRepositoryInterface::class, fn() => new DatabaseShiftTypeRepository());
         $this->container->singleton(ShiftRepositoryInterface::class, fn() => new DatabaseShiftRepository());
         $this->container->singleton(AvailabilityRepositoryInterface::class, fn() => new DatabaseAvailabilityRepository());
+        // TimeoffRequestRepositoryInterface reste ici (même raison que Timeclock/ShiftSwap
+        // ci-dessus) : StoreStatsService, ShiftService, AdminShiftController,
+        // IcalController et HomeController en dépendent tous pour des calculs qui doivent
+        // continuer de fonctionner même si le bundle "timeoff" est désactivé ou
+        // désinstallé. Le bundle lui-même (legacy ou distribué, voir kintai-bundle-timeoff)
+        // n'a plus besoin de la lier.
         $this->container->singleton(TimeoffRequestRepositoryInterface::class, fn() => new DatabaseTimeoffRequestRepository());
+        // ShiftSwapRequestRepositoryInterface reste ici (même raison que Timeclock/
+        // DailyReport ci-dessus) : StoreStatsService, HomeController et le tableau de
+        // bord d'EmployeeController en dépendent pour des calculs qui doivent continuer
+        // de fonctionner même si le bundle "shift-swap" est désactivé ou désinstallé.
+        // Le bundle lui-même (legacy ou distribué, voir kintai-bundle-shift-swap) n'a
+        // plus besoin de la lier.
         $this->container->singleton(ShiftSwapRequestRepositoryInterface::class, fn() => new DatabaseShiftSwapRequestRepository());
         $this->container->singleton(UserShiftTypeRateRepositoryInterface::class, fn() => new DatabaseUserShiftTypeRateRepository());
         $this->container->singleton(IcalTokenRepositoryInterface::class, fn() => new DatabaseIcalTokenRepository());
         // TimeclockRepositoryInterface reste ici (bundle "timeclock" = UI seulement) :
-        // HomeController et EmployeeController::dashboard() en dépendent pour leurs
-        // widgets "pointage en cours", qui doivent continuer de fonctionner même si
-        // ce bundle est désactivé. Voir src/Bundles/Timeclock/TimeclockBundle.php.
+        // HomeController, EmployeeController::dashboard() et DashboardAlertService en
+        // dépendent pour leurs widgets "pointage en cours", qui doivent continuer de
+        // fonctionner même si ce bundle est désactivé ou désinstallé. Le bundle lui-même
+        // (legacy ou distribué, voir kintai-bundle-timeclock) n'a plus besoin de la lier.
         $this->container->singleton(TimeclockRepositoryInterface::class, fn() => new DatabaseTimeclockRepository());
+        // DailyReportRepositoryInterface reste ici (même raison que Timeclock ci-dessus,
+        // trouvée en cassant la prod lors de l'extraction du bundle DailyReport hors du
+        // monorepo — voir CHANGELOG) : StoreStatsService en dépend pour ses calculs de
+        // statistiques magasin, qui doivent continuer de fonctionner même si le bundle
+        // "daily-report" est désactivé ou désinstallé. Le bundle lui-même (legacy ou
+        // distribué, voir kintai-bundle-daily-report) n'a plus besoin de la lier.
+        $this->container->singleton(DailyReportRepositoryInterface::class, fn() => new DatabaseDailyReportRepository());
         $this->container->singleton(UserDashboardPrefsRepositoryInterface::class, fn() => new DatabaseUserDashboardPrefsRepository());
         $this->container->singleton(UserNavPrefsRepositoryInterface::class, fn() => new DatabaseUserNavPrefsRepository());
-        // ShiftClaim : voir src/Bundles/ShiftClaim/ShiftClaimBundle.php
+        // Bourse aux shifts : bundle distribué hors monorepo (kintai-bundle-shift-claim), voir docs/architecture.md
         $this->container->singleton(NotificationRepositoryInterface::class, fn() => new DatabaseNotificationRepository());
         $this->container->singleton(ApiTokenRepositoryInterface::class, fn() => new DatabaseApiTokenRepository());
         $this->container->singleton(ImportAliasRepositoryInterface::class, fn() => new DatabaseImportAliasRepository());
@@ -39,23 +60,52 @@ final class RepositoryServiceProvider extends ServiceProvider
         $this->container->singleton(RoleRepositoryInterface::class, fn() => new DatabaseRoleRepository());
         $this->container->singleton(RoleAssignmentRepositoryInterface::class, fn() => new DatabaseRoleAssignmentRepository());
         $this->container->singleton(DevicePushTokenRepositoryInterface::class, fn() => new DatabaseDevicePushTokenRepository());
+        $this->container->singleton(BundleRegistryRepositoryInterface::class, fn() => new DatabaseBundleRegistryRepository());
+        $this->container->singleton(InstalledBundleRepositoryInterface::class, fn() => new DatabaseInstalledBundleRepository());
 
         // Rapports
         // HiringReportRepositoryInterface reste ici (contrairement à Resignation/Salary,
         // pas dans le bundle) : AdminUserController en dépend directement pour générer
-        // automatiquement un rapport d'embauche à la création d'un employé. Voir
-        // src/Bundles/HiringReport/HiringReportBundle.php.
+        // automatiquement un rapport d'embauche à la création d'un employé. Bundle
+        // distribué hors monorepo (kintai-bundle-hiring-report) — voir docs/architecture.md.
         $this->container->singleton(HiringReportRepositoryInterface::class, fn() => new DatabaseHiringReportRepository());
-        // Démission : voir src/Bundles/ResignationReport/ResignationReportBundle.php
-        // Salaire : voir src/Bundles/SalaryReport/SalaryReportBundle.php
+        // Démission : bundle distribué hors monorepo (kintai-bundle-resignation-report), voir docs/architecture.md
+        // Salaire : bundle distribué hors monorepo (kintai-bundle-salary-report), voir docs/architecture.md
 
-        // Photos : voir src/Bundles/StorePhoto/StorePhotoBundle.php
-        // Feedback : voir src/Bundles/Feedback/FeedbackBundle.php
+        // StorePhotoRepositoryInterface reste ici (même raison que Timeclock/DailyReport/
+        // ShiftSwap ci-dessus) : GithubUpdateService et le script CLI
+        // consolidate-daily-photo-reports.php en dépendent directement, et ne doivent pas
+        // cesser de fonctionner si le bundle "store-photos" est désactivé ou désinstallé.
+        // Le bundle lui-même (legacy ou distribué, voir kintai-bundle-store-photos) n'a
+        // plus besoin de la lier.
+        $this->container->singleton(StorePhotoRepositoryInterface::class, fn() => new DatabaseStorePhotoRepository());
+        // Feedback : bundle pilote distribué hors monorepo (voir docs/architecture.md
+        // "Modular Bundles") — le binding est fait par FeedbackBundle::register() lui-même,
+        // une fois le bundle installé dans storage/bundles/feedback/.
 
         // Traductions (fichiers JSON, voir lang/languages.json et lang/{code}.json). Chaque
-        // bundle peut définir ses propres src/Bundles/<Name>/lang/{code}.json, fusionnés
-        // par-dessus ceux du Core (fallback Core si le bundle ne redéfinit pas une clé).
+        // bundle legacy peut définir ses propres src/Bundles/<Name>/lang/{code}.json, et
+        // chaque bundle installé dynamiquement son storage/bundles/<slug>/<version>/lang/{code}.json,
+        // tous fusionnés par-dessus ceux du Core (fallback Core si un bundle ne redéfinit pas une clé).
         $this->container->singleton(LanguageRepositoryInterface::class, fn() => new JsonLanguageRepository(BASE_PATH . '/lang'));
-        $this->container->singleton(TranslationRepositoryInterface::class, fn() => new JsonTranslationRepository(BASE_PATH . '/lang', BASE_PATH . '/src/Bundles'));
+        $this->container->singleton(TranslationRepositoryInterface::class, fn() => new JsonTranslationRepository(
+            BASE_PATH . '/lang',
+            BASE_PATH . '/src/Bundles',
+            self::installedBundleRoots(),
+        ));
+    }
+
+    /** @return string[] Chemins absolus (storage/bundles/<slug>/<version>) de chaque bundle installé actif. */
+    private static function installedBundleRoots(): array
+    {
+        $bundlesDir = storage_path('bundles');
+        $roots = [];
+        foreach ((new InstalledBundleManifestStore())->all() as $slug => $info) {
+            $version = $info['active_version'] ?? null;
+            if (is_string($version) && $version !== '') {
+                $roots[] = $bundlesDir . '/' . $slug . '/' . $version;
+            }
+        }
+        return $roots;
     }
 }

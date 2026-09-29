@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Bundles\Messaging\Api;
 
-use kintai\Bundles\Messaging\Controllers\Api\MessageController;
+require_once dirname(__DIR__, 4) . '/Fixtures/bundles/messaging-1.0.0/src/Controllers/Api/MessageController.php';
+
+use kintai\Bundles\Installed\Messaging\Controllers\Api\MessageController;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\MessageRepositoryInterface;

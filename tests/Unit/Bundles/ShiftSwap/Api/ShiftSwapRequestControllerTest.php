@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Bundles\ShiftSwap\Api;
 
-use kintai\Bundles\ShiftSwap\Controllers\Api\ShiftSwapRequestController;
+require_once dirname(__DIR__, 4) . '/Fixtures/bundles/shift-swap-1.0.0/src/Controllers/Api/ShiftSwapRequestController.php';
+
+use kintai\Bundles\Installed\ShiftSwap\Controllers\Api\ShiftSwapRequestController;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;

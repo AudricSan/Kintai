@@ -38,6 +38,8 @@ main   -> v0.13.0            (stable, taguée une fois la ligne prête)
 
 La ligne suivante démarre à `0.14.1` (`Y` bumpé à la main, `Z` revenu à son placeholder `0` dans `composer.json`/`config/app.php` jusqu'à ce que le workflow calcule le vrai premier `Z`).
 
+Le champ `version` de `config/app.php` est un littéral de chaîne simple (plus d'indirection par variable d'environnement) — le dépôt lui-même ne publie jamais que `X.Y.0`, mais dès qu'une instance applique une mise à jour automatique, `GithubUpdateService::applyUpdate()` réécrit ce même champ avec le tag exact qui vient d'être appliqué (vrai `Z` inclus), de sorte que `UpdateService::getCurrentVersion()` affiche la version réellement installée plutôt que juste la ligne. C'est le seul fichier qui la mémorise ; il n'y a plus de `storage/app/version.json` séparé.
+
 Ceci remplace l'ancien schéma de suffixe `X.Y.Z-<lettre de semaine><sous-version>` (ex. `0.12.0-ak23`), qui encodait trois compteurs indépendants par canal plus une lettre de semaine ISO difficile à lire d'un coup d'œil sur `/admin/update`.
 
 ## Quel nombre bumper
@@ -68,7 +70,7 @@ Pour faire progresser une version d'un canal au suivant (alpha → beta → rele
 Uniquement nécessaire à l'ouverture d'une nouvelle ligne (ou d'un nouveau majeur) — voir « Quel nombre bumper » ci-dessus ; à ignorer pour toute autre publication alpha/beta.
 
 1. Sur une branche de travail, renommer `## [Unreleased]` en `## [0.13.0] - 2026-08-04` dans `CHANGELOG.md` (la version de ligne `X.Y.0` — `Z` vaut toujours `0` ici, le vrai `Z` de chaque publication étant calculé par le workflow) et ajouter une nouvelle section `## [Unreleased]` vide juste au-dessus.
-2. Mettre à jour la version dans `composer.json` (`"version": "0.13.0"`) et `config/app.php` (`env('APP_VERSION', '0.13.0')`), en bumpant `Y` (ou `X` pour un changement cassant) et en remettant le reste à `0`.
+2. Mettre à jour la version dans `composer.json` (`"version": "0.13.0"`) et le champ `'version'` de `config/app.php` avec la même chaîne, en bumpant `Y` (ou `X` pour un changement cassant) et en remettant le reste à `0`.
 3. Committer, pousser la branche, et ouvrir une PR vers `alpha` (les nouvelles lignes démarrent toujours là) :
    ```bash
    git add CHANGELOG.md composer.json config/app.php

@@ -4,27 +4,41 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Core;
 
+use kintai\Core\BundleManager;
 use kintai\Core\Container;
-use kintai\Core\FeatureManager;
+use kintai\Tests\Support\FakeBundleManagerFactory;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Régression : désactiver un bundle (ex. shift-swap) ne doit jamais faire planter
- * les vues qui génèrent des route_url() vers ses routes (sidebar, bottom nav,
- * dashboards). bundle_enabled()/feat_bundle() sont le garde-fou utilisé par ces
- * vues ; ce test vérifie qu'ils reflètent bien l'état réel de FeatureManager.
+ * Régression : désactiver ou désinstaller un bundle (ex. shift-swap) ne doit
+ * jamais faire planter les vues qui génèrent des route_url() vers ses routes
+ * (sidebar, bottom nav, dashboards). bundle_enabled()/feat_bundle() sont le
+ * garde-fou utilisé par ces vues ; ce test vérifie qu'ils reflètent l'état
+ * réel après boot (BundleManager::isActive() — découvert ET activé), pas
+ * seulement le réglage stocké (FeatureManager::isEnabled()), qui peut rester
+ * "activé" pour un bundle disparu du disque (voir CHANGELOG : c'est
+ * exactement ce qui a cassé la nav en production lors de l'extraction du
+ * bundle DailyReport hors du monorepo).
  */
 final class HelpersFeatBundleTest extends TestCase
 {
     protected function setUp(): void
     {
         Container::getInstance()->instance(
-            FeatureManager::class,
-            new FeatureManager(['daily-report', 'messaging', 'timeoff', 'timeclock'])
+            BundleManager::class,
+            FakeBundleManagerFactory::withActiveSlugs(['daily-report', 'messaging', 'timeoff', 'timeclock']),
         );
     }
 
-    public function testBundleEnabledReflectsFeatureManagerState(): void
+    protected function tearDown(): void
+    {
+        // Réinitialise le singleton Container pour ne pas propager le
+        // BundleManager injecté ici vers d'autres tests.
+        $instance = new \ReflectionProperty(Container::class, 'instance');
+        $instance->setValue(null, null);
+    }
+
+    public function testBundleEnabledReflectsBundleManagerState(): void
     {
         $this->assertTrue(bundle_enabled('timeoff'));
         $this->assertFalse(bundle_enabled('shift-swap'));
@@ -32,9 +46,9 @@ final class HelpersFeatBundleTest extends TestCase
 
     public function testFeatBundleResolvesStoreFeatureSlugToItsOwningBundle(): void
     {
-        // 'swaps' (store_features) dépend du bundle 'shift-swap', désactivé ici.
+        // 'swaps' (store_features) dépend du bundle 'shift-swap', absent ici.
         $this->assertFalse(feat_bundle('swaps'));
-        // 'timeoff' est activé.
+        // 'timeoff' est actif.
         $this->assertTrue(feat_bundle('timeoff'));
     }
 

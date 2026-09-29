@@ -61,11 +61,23 @@ final class DatabaseRoleRepository implements RoleRepositoryInterface
             ->toArray();
     }
 
-    public function savePermissions(int $roleId, array $permissionKeys): void
+    public function getGlobalPermissionKeys(int $roleId): array
+    {
+        return RolePermission::where('role_id', $roleId)
+            ->where('scope', 'global')
+            ->pluck('permission_key')
+            ->toArray();
+    }
+
+    public function savePermissions(int $roleId, array $permissionKeys, array $globalScopeKeys = []): void
     {
         RolePermission::where('role_id', $roleId)->delete();
         foreach ($permissionKeys as $key) {
-            RolePermission::create(['role_id' => $roleId, 'permission_key' => $key]);
+            RolePermission::create([
+                'role_id'        => $roleId,
+                'permission_key' => $key,
+                'scope'          => in_array($key, $globalScopeKeys, true) ? 'global' : 'local',
+            ]);
         }
     }
 }

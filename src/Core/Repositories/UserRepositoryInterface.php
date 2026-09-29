@@ -33,6 +33,11 @@ interface UserRepositoryInterface
     public function findAll(): array;
 
     /**
+     * Compte les utilisateurs actifs (is_active = 1, deleted_at IS NULL).
+     */
+    public function countActive(): int;
+
+    /**
      * Saves a user record. Creates if no ID, updates if ID exists.
      * @param array $userData
      * @return array The saved user data.

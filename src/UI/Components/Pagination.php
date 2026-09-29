@@ -29,13 +29,6 @@ final class Pagination implements ComponentInterface
         return $this;
     }
 
-    /** @deprecated Use queryParams() instead */
-    public function withParams(array $params): self
-    {
-        trigger_error(__METHOD__ . ' is deprecated, use queryParams() instead', E_USER_DEPRECATED);
-        return $this->queryParams($params);
-    }
-
     public function render(): string
     {
         if ($this->totalPages <= 1) {

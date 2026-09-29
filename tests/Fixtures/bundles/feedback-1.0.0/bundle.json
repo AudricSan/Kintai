@@ -1,0 +1,13 @@
+{
+    "slug": "feedback",
+    "name": "Retours utilisateurs",
+    "version": "1.0.0",
+    "description": "Remontées des employés (bugs, suggestions) — modale de soumission, liste et suppression côté admin.",
+    "author": { "name": "AudricSan", "url": "https://github.com/AudricSan" },
+    "kintai_core": { "min": "0.1.0", "max": "999.999.999" },
+    "requires_bundles": {},
+    "namespace": "kintai\\Bundles\\Installed\\Feedback",
+    "entry_class": "kintai\\Bundles\\Installed\\Feedback\\FeedbackBundle",
+    "license": "AGPL-3.0-only",
+    "homepage": "https://github.com/AudricSan/kintai-bundle-feedback"
+}

@@ -17,9 +17,9 @@ define('BASE_PATH', dirname(__DIR__));
 require BASE_PATH . '/vendor/autoload.php';
 require BASE_PATH . '/src/Core/helpers.php';
 
-use kintai\Bundles\StorePhoto\Services\StorePhotoConsolidationService;
 use kintai\Core\Application;
 use kintai\Core\Repositories\StorePhotoRepositoryInterface;
+use kintai\Core\Services\StorePhotoConsolidationService;
 
 $dryRun = in_array('--dry-run', $argv, true);
 

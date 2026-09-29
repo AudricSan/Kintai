@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Bundles\ShiftClaim;
 
-use kintai\Bundles\ShiftClaim\Controllers\Web\AdminShiftClaimController;
+require_once dirname(__DIR__, 3) . '/Fixtures/bundles/shift-claim-1.0.0/src/Controllers/Web/AdminShiftClaimController.php';
+
+use kintai\Bundles\Installed\ShiftClaim\Controllers\Web\AdminShiftClaimController;
 use kintai\Core\Repositories\ShiftClaimRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;

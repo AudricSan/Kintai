@@ -74,6 +74,7 @@ final class CronRunner
             $label = match ($name) {
                 'auto-validate'  => 'Validation auto des rapports',
                 'backup'         => 'Backup de la base de données',
+                'log-purge'      => 'Purge du journal d\'activité',
 
                 default          => $name,
             };

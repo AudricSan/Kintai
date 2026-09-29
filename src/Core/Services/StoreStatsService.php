@@ -26,6 +26,7 @@ final class StoreStatsService implements StoreStatsServiceInterface
         private readonly UserShiftTypeRateRepositoryInterface $userRates,
         private readonly UserRepositoryInterface $users,
         private readonly DailyReportRepositoryInterface $dailyReports,
+        private readonly RoleAssignmentSyncService $roleSync,
     ) {}
 
     public function storeStats(int $storeId, int $period, int $minShiftMin = 0, int $maxShiftMin = 0): array
@@ -731,9 +732,13 @@ final class StoreStatsService implements StoreStatsServiceInterface
         $members   = $this->storeUsers->findByStore($storeId);
         $memberIds = array_map(fn($m) => (int) $m['user_id'], $members);
 
+        $roleMap = $this->roleSync->storeRoleMapForStore($storeId);
         $membersMap = [];
         foreach ($members as $m) {
-            $membersMap[(int) $m['user_id']] = $m;
+            $uid = (int) $m['user_id'];
+            $m['role_name']        = $roleMap[$uid]['name'] ?? '—';
+            $m['role_is_managing'] = !empty($roleMap[$uid]['is_managing']);
+            $membersMap[$uid] = $m;
         }
 
         $usersMap = [];

@@ -1,0 +1,13 @@
+{
+    "slug": "timeoff",
+    "name": "Congés",
+    "version": "1.0.0",
+    "description": "Créer, approuver et consulter des demandes de congés.",
+    "author": { "name": "AudricSan", "url": "https://github.com/AudricSan" },
+    "kintai_core": { "min": "0.1.0", "max": "999.999.999" },
+    "requires_bundles": {},
+    "namespace": "kintai\\Bundles\\Installed\\TimeOff",
+    "entry_class": "kintai\\Bundles\\Installed\\TimeOff\\TimeOffBundle",
+    "license": "AGPL-3.0-only",
+    "homepage": "https://github.com/AudricSan/kintai-bundle-timeoff"
+}

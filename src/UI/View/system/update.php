@@ -10,7 +10,6 @@ use kintai\UI\Components\Modal;
  * @var string|null $updateCheckError
  * @var string      $updateChannel
  * @var array       $pendingMigs
- * @var int|null    $lastUpdateDurationSeconds
  * @var string      $releaseNotesCondensed
  * @var array<string, array<int, array{version:string, notes:string, release_url:?string, published_at:?string}>> $otherChannelsHistory
  * @var string      $repoReleasesUrl
@@ -69,13 +68,6 @@ ob_start();
             <?php if ($updateInfo['release_url']): ?>
                 <br><a href="<?= htmlspecialchars($updateInfo['release_url']) ?>" target="_blank" rel="noopener"><?= __('backup_release_notes') ?></a>
             <?php endif; ?>
-            <p class="text-muted text-sm mt-sm">
-                <?php if ($lastUpdateDurationSeconds !== null): ?>
-                    <?= sprintf(__('backup_update_last_duration'), $lastUpdateDurationSeconds) ?>
-                <?php else: ?>
-                    <?= __('backup_update_no_estimate') ?>
-                <?php endif; ?>
-            </p>
             <form id="backup-update-form" method="POST" action="<?= htmlspecialchars($action) ?>/apply" class="mt-sm" data-stream-url="<?= htmlspecialchars($action) ?>/stream" onsubmit="return confirm('<?= __('backup_update_confirm') ?>')">
                 <?= csrf_field() ?>
                 <?= Button::make(__('backup_update_now_btn'))->danger()->submit()->render() ?>

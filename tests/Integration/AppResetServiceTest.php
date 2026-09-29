@@ -61,7 +61,7 @@ final class AppResetServiceTest extends TestCase
         $now = date('Y-m-d H:i:s');
         $this->capsule->table('users')->insert([
             'first_name' => 'Owner', 'last_name' => 'Test', 'display_name' => 'Owner Test',
-            'email' => 'owner@test.com', 'password_hash' => 'x', 'is_admin' => 1, 'is_active' => 1,
+            'email' => 'owner@test.com', 'password_hash' => 'x', 'is_active' => 1,
             'created_at' => $now, 'updated_at' => $now,
         ]);
         $this->capsule->table('stores')->insert([

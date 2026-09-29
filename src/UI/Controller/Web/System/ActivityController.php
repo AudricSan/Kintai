@@ -8,14 +8,19 @@ use kintai\Core\Repositories\LogRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\Services\AuditLogger;
 use kintai\UI\ViewRenderer;
 
 final class ActivityController
 {
+    /** Plafond de lignes exportées, pour ne pas charger un CSV en mémoire sans limite. */
+    private const EXPORT_MAX_ROWS = 20000;
+
     public function __construct(
         private readonly ViewRenderer $view,
         private readonly LogRepositoryInterface $logs,
         private readonly UserRepositoryInterface $users,
+        private readonly AuditLogger $auditLogger,
     ) {}
 
     public function index(Request $request): Response
@@ -26,20 +31,7 @@ final class ActivityController
             return $this->errorLogTab($request);
         }
 
-        $managedIds = $request->getAttribute('managed_store_ids');
-
-        $filters = [
-            'level'         => $request->query('level'),
-            'channel'       => $request->query('channel'),
-            'action'        => $request->query('action'),
-            'resource_type' => $request->query('resource_type'),
-            'user_id'       => (int) ($request->query('user_id') ?? 0) ?: null,
-            'from'          => $request->query('from'),
-            'to'            => $request->query('to'),
-            'query'         => $request->query('query'),
-            'store_ids'     => $managedIds,
-        ];
-        $filters = array_filter($filters, fn($v) => $v !== null && $v !== '');
+        $filters = $this->buildFilters($request);
 
         $page    = max(1, (int) ($request->query('page') ?? 1));
         $perPage = 100;
@@ -81,6 +73,74 @@ final class ActivityController
             'users_map'      => $usersMap,
             'filters'        => $filters,
         ], 'layout.app'));
+    }
+
+    /** GET /admin/activity/export — export CSV du journal, avec les mêmes filtres que index(). */
+    public function export(Request $request): Response
+    {
+        $filters = $this->buildFilters($request);
+        $rows    = $this->logs->findAll(1, self::EXPORT_MAX_ROWS, $filters);
+
+        $usersMap = [];
+        foreach ($this->users->findAll() as $u) {
+            $uid = (int) $u['id'];
+            $name = $u['display_name'] ?? trim(($u['last_name'] ?? '') . ' ' . ($u['first_name'] ?? ''));
+            $usersMap[$uid] = $name ?: ($u['email'] ?? sprintf('#%d', $uid));
+        }
+
+        $buf = fopen('php://memory', 'r+');
+        fprintf($buf, "\xEF\xBB\xBF");
+        $put = fn(array $row) => fputcsv($buf, $row, ';', '"', '\\');
+
+        $put(['Date', 'Niveau', 'Canal', 'Action', 'Ressource', 'Ressource ID', 'Message', 'Utilisateur', 'Store ID', 'IP', 'Méthode', 'URI', 'Statut', 'Durée (ms)']);
+        foreach ($rows as $row) {
+            $uid = (int) ($row['user_id'] ?? 0);
+            $put([
+                $row['created_at'] ?? '',
+                $row['level'] ?? '',
+                $row['channel'] ?? '',
+                $row['action'] ?? '',
+                $row['resource_type'] ?? '',
+                $row['resource_id'] ?? '',
+                $row['message'] ?? '',
+                $uid > 0 ? ($usersMap[$uid] ?? '#' . $uid) : '',
+                $row['store_id'] ?? '',
+                $row['ip_address'] ?? '',
+                $row['request_method'] ?? '',
+                $row['request_uri'] ?? '',
+                $row['response_status'] ?? '',
+                $row['duration_ms'] ?? '',
+            ]);
+        }
+
+        rewind($buf);
+        $csv = stream_get_contents($buf);
+        fclose($buf);
+
+        $this->auditLogger->log($request, 'activity_log.exported', 'system', null, [
+            'filters' => $filters,
+            'rows'    => count($rows),
+        ]);
+
+        return Response::csv($csv, 'journal-activite-' . date('Y-m-d') . '.csv');
+    }
+
+    /** @return array<string, mixed> */
+    private function buildFilters(Request $request): array
+    {
+        $filters = [
+            'level'         => $request->query('level'),
+            'channel'       => $request->query('channel'),
+            'action'        => $request->query('action'),
+            'resource_type' => $request->query('resource_type'),
+            'user_id'       => (int) ($request->query('user_id') ?? 0) ?: null,
+            'from'          => $request->query('from'),
+            'to'            => $request->query('to'),
+            'query'         => $request->query('query'),
+            'store_ids'     => $request->getAttribute('managed_store_ids'),
+        ];
+
+        return array_filter($filters, fn($v) => $v !== null && $v !== '');
     }
 
     private function errorLogTab(Request $request): Response

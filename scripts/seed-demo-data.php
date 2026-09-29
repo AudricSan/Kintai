@@ -527,7 +527,6 @@ foreach ($syntheticResignees as $idx => $person) {
             'display_name'  => $displayName,
             'email'         => $person['email'],
             'password_hash' => password_hash(bin2hex(random_bytes(8)), PASSWORD_BCRYPT, ['cost' => 12]),
-            'is_admin'      => 0,
             'is_active'     => 0,
             'created_at'    => $now,
             'updated_at'    => $now,

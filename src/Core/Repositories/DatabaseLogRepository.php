@@ -111,6 +111,11 @@ final class DatabaseLogRepository implements LogRepositoryInterface
             ->toArray();
     }
 
+    public function purgeOlderThan(string $before): int
+    {
+        return EloquentActivityEntry::where('created_at', '<', $before)->delete();
+    }
+
     private function buildFilterQuery(array $filters): Builder
     {
         $query = EloquentActivityEntry::query();

@@ -42,9 +42,10 @@ echo Flash::fromQuery('success', [
     'password_reset' => __('password_reset_success'),
 ])->render();
 echo Flash::fromQuery('error', [
-    'email_taken'        => __('email_taken'),
-    'name_required'      => __('name_required'),
-    'furigana_required'  => __('furigana_required'),
+    'email_taken'          => __('email_taken'),
+    'name_required'        => __('name_required'),
+    'furigana_required'    => __('furigana_required'),
+    'plan_limit_employees' => __('plan_limit_employees'),
 ])->render();
 ?>
 <div class="page-header">
@@ -112,7 +113,7 @@ echo Flash::fromQuery('error', [
                         <?php if (empty($storeTypes)): ?>
                         <tr class="tr--clickable" data-modal="editMembershipModal<?= $mid ?>">
                             <td data-label="<?= htmlspecialchars(__('store')) ?>"><?= htmlspecialchars($m['store_name'] ?? '') ?></td>
-                            <td data-label="<?= htmlspecialchars(__('role')) ?>"><?= Badge::make(htmlspecialchars($m['role_name'] ?? ($m['role'] ?? '—')))->variant(!empty($m['role_is_managing']) ? 'warning' : 'active')->render() ?></td>
+                            <td data-label="<?= htmlspecialchars(__('role')) ?>"><?= Badge::make(htmlspecialchars($m['role_name'] ?? '—'))->variant(!empty($m['role_is_managing']) ? 'warning' : 'active')->render() ?></td>
                             <td data-label="<?= htmlspecialchars(__('social_deductions')) ?>">
                                 <?php if ($storeDedEnabled && $can('payroll.generate')): ?>
                                 <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/members/<?= $mid ?>/deductions" class="form-inline">
@@ -137,7 +138,7 @@ echo Flash::fromQuery('error', [
                         <tr class="tr--clickable" data-modal="editMembershipModal<?= $mid ?>">
                             <?php if ($i === 0): ?>
                             <td rowspan="<?= $rowSpan ?>" data-label="<?= htmlspecialchars(__('store')) ?>"><?= htmlspecialchars($m['store_name'] ?? '') ?></td>
-                            <td rowspan="<?= $rowSpan ?>" data-label="<?= htmlspecialchars(__('role')) ?>"><?= Badge::make(htmlspecialchars($m['role_name'] ?? ($m['role'] ?? '—')))->variant(!empty($m['role_is_managing']) ? 'warning' : 'active')->render() ?></td>
+                            <td rowspan="<?= $rowSpan ?>" data-label="<?= htmlspecialchars(__('role')) ?>"><?= Badge::make(htmlspecialchars($m['role_name'] ?? '—'))->variant(!empty($m['role_is_managing']) ? 'warning' : 'active')->render() ?></td>
                             <td rowspan="<?= $rowSpan ?>" data-label="<?= htmlspecialchars(__('social_deductions')) ?>">
                                 <?php if ($storeDedEnabled && $can('payroll.generate')): ?>
                                 <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/members/<?= $mid ?>/deductions" class="form-inline">
@@ -281,7 +282,7 @@ endforeach;
                     <?php if ($can('resignation_reports.create')): ?>
                     <a href="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/reports/resignation/create?user_id=<?= (int)$user['id'] ?>" class="btn btn--danger btn--sm"><?= __('resign') ?> — <?= htmlspecialchars($m['store_name'] ?? '') ?></a>
                     <?php endif; ?>
-                    <?php if ($can('payroll.generate')): ?>
+                    <?php if ($can('payroll.generate') && bundle_enabled('salary-report')): ?>
                     <a href="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/reports/salary/create?user_id=<?= (int)$user['id'] ?>" class="btn btn--ghost btn--sm"><?= __('salary_report') ?> — <?= htmlspecialchars($m['store_name'] ?? '') ?></a>
                     <?php endif; ?>
                 </div>

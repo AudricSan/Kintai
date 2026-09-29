@@ -34,7 +34,7 @@ use kintai\Core\Services\DailyReportAutoValidateService;
  * 2. `/cron/run/{job}` (générique, via CronRunner) : protégé par un token
  *    par job, stocké (haché) dans la table `cron_tokens`, passé en `?token=`
  *    ou en en-tête `Authorization: Bearer <token>`. Jobs disponibles :
- *    `auto-validate`, `backup`. Générer un token avec :
+ *    `auto-validate`, `backup`, `log-purge`. Générer un token avec :
  *    `php scripts/create-cron-token.php --user-id=1 --job=backup`
  *
  *     0 3 * * * curl -s "https://votresite.com/cron/run/backup?token=VOTRE_TOKEN" >> /var/log/kintai-cron.log

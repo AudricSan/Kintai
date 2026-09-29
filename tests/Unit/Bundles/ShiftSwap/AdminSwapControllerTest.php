@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Bundles\ShiftSwap;
 
-use kintai\Bundles\ShiftSwap\Controllers\Web\AdminSwapController;
+require_once dirname(__DIR__, 3) . '/Fixtures/bundles/shift-swap-1.0.0/src/Controllers/Web/AdminSwapController.php';
+
+use kintai\Bundles\Installed\ShiftSwap\Controllers\Web\AdminSwapController;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;

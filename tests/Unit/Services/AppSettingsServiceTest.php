@@ -33,6 +33,30 @@ final class AppSettingsServiceTest extends TestCase
         $this->assertSame('release', $this->makeService(['update_channel' => 'nightly'])->updateChannel());
     }
 
+    public function testBundleUpdateChannelDefaultsToRelease(): void
+    {
+        $this->assertSame('release', $this->makeService()->bundleUpdateChannel());
+    }
+
+    public function testBundleUpdateChannelReadsStoredValue(): void
+    {
+        $this->assertSame('alpha', $this->makeService(['bundle_update_channel' => 'alpha'])->bundleUpdateChannel());
+        $this->assertSame('beta', $this->makeService(['bundle_update_channel' => 'beta'])->bundleUpdateChannel());
+    }
+
+    public function testBundleUpdateChannelRejectsUnknownValue(): void
+    {
+        $this->assertSame('release', $this->makeService(['bundle_update_channel' => 'nightly'])->bundleUpdateChannel());
+    }
+
+    /** Réglage indépendant de updateChannel() (Core) : canal des bundles distinct de celui du Core. */
+    public function testBundleUpdateChannelIsIndependentFromCoreUpdateChannel(): void
+    {
+        $service = $this->makeService(['update_channel' => 'alpha', 'bundle_update_channel' => 'release']);
+        $this->assertSame('alpha', $service->updateChannel());
+        $this->assertSame('release', $service->bundleUpdateChannel());
+    }
+
     public function testMaintenanceModeDisabledByDefault(): void
     {
         $this->assertFalse($this->makeService()->maintenanceModeEnabled());
@@ -119,5 +143,46 @@ final class AppSettingsServiceTest extends TestCase
         ])->themeColorStyle();
 
         $this->assertStringContainsString('--dark-danger:#112233;', $style);
+    }
+
+    public function testAccessLogEnabledByDefault(): void
+    {
+        $this->assertTrue($this->makeService()->accessLogEnabled());
+    }
+
+    public function testAccessLogEnabledReadsStoredValue(): void
+    {
+        $this->assertFalse($this->makeService(['access_log_enabled' => '0'])->accessLogEnabled());
+    }
+
+    public function testLogRetentionDaysDefaultsTo180(): void
+    {
+        $this->assertSame(180, $this->makeService()->logRetentionDays());
+    }
+
+    public function testLogRetentionDaysReadsStoredValue(): void
+    {
+        $this->assertSame(30, $this->makeService(['log_retention_days' => '30'])->logRetentionDays());
+    }
+
+    public function testLogRetentionDaysNeverNegative(): void
+    {
+        $this->assertSame(0, $this->makeService(['log_retention_days' => '-5'])->logRetentionDays());
+    }
+
+    public function testMascotModeDefaultsToMix(): void
+    {
+        $this->assertSame('mix', $this->makeService()->mascotMode());
+    }
+
+    public function testMascotModeReadsStoredValue(): void
+    {
+        $this->assertSame('kitsune', $this->makeService(['app_mascot_mode' => 'kitsune'])->mascotMode());
+        $this->assertSame('tanuki', $this->makeService(['app_mascot_mode' => 'tanuki'])->mascotMode());
+    }
+
+    public function testMascotModeRejectsUnknownValue(): void
+    {
+        $this->assertSame('mix', $this->makeService(['app_mascot_mode' => 'foxy'])->mascotMode());
     }
 }

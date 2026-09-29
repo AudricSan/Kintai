@@ -37,6 +37,7 @@ final class DatabaseRoleRepositoryTest extends TestCase
         $schema->create('role_permissions', function ($table) {
             $table->integer('role_id');
             $table->string('permission_key');
+            $table->string('scope')->default('local');
         });
         $schema->create('role_assignments', function ($table) {
             $table->increments('id');
@@ -160,5 +161,48 @@ final class DatabaseRoleRepositoryTest extends TestCase
         $this->assertCount(2, $keys);
         $this->assertNotContains('employees.view', $keys);
         $this->assertContains('shifts.create', $keys);
+    }
+
+    // -------------------------------------------------------------------------
+    // getGlobalPermissionKeys() / savePermissions() avec portée globale
+    // -------------------------------------------------------------------------
+
+    public function testGetGlobalPermissionKeysReturnsOnlyGlobalScopedKeys(): void
+    {
+        $r = EloquentRole::create(['name' => 'Manager', 'slug' => 'manager']);
+        RolePermission::create(['role_id' => $r->id, 'permission_key' => 'shifts.view', 'scope' => 'global']);
+        RolePermission::create(['role_id' => $r->id, 'permission_key' => 'shifts.update', 'scope' => 'local']);
+
+        $keys = $this->repo->getGlobalPermissionKeys($r->id);
+        $this->assertSame(['shifts.view'], $keys);
+    }
+
+    public function testSavePermissionsMarksListedKeysAsGlobal(): void
+    {
+        $r = EloquentRole::create(['name' => 'Manager', 'slug' => 'manager']);
+
+        $this->repo->savePermissions($r->id, ['shifts.view', 'shifts.update'], ['shifts.view']);
+
+        $this->assertSame(['shifts.view'], $this->repo->getGlobalPermissionKeys($r->id));
+        $this->assertCount(2, $this->repo->getPermissions($r->id));
+    }
+
+    public function testSavePermissionsIgnoresGlobalKeyNotInPermissionKeys(): void
+    {
+        $r = EloquentRole::create(['name' => 'Manager', 'slug' => 'manager']);
+
+        $this->repo->savePermissions($r->id, ['shifts.view'], ['shifts.view', 'employees.view']);
+
+        $this->assertSame(['shifts.view'], $this->repo->getGlobalPermissionKeys($r->id));
+        $this->assertSame(['shifts.view'], $this->repo->getPermissions($r->id));
+    }
+
+    public function testSavePermissionsDefaultsToLocalScopeWithoutThirdArgument(): void
+    {
+        $r = EloquentRole::create(['name' => 'Manager', 'slug' => 'manager']);
+
+        $this->repo->savePermissions($r->id, ['shifts.view']);
+
+        $this->assertSame([], $this->repo->getGlobalPermissionKeys($r->id));
     }
 }

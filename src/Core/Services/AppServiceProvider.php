@@ -9,6 +9,9 @@ use kintai\Core\Container;
 use kintai\Core\Cron\AutoValidateJob;
 use kintai\Core\Cron\BackupJob;
 use kintai\Core\Cron\CronRunner;
+use kintai\Core\Cron\LicenseCheckJob;
+use kintai\Core\Cron\LogPurgeJob;
+use kintai\Core\Database\BundleMigrationRunner;
 use kintai\Core\Database\MigrationRunner;
 use kintai\Core\Repositories\CronTokenRepositoryInterface;
 use kintai\Core\Mail\MailerService;
@@ -28,6 +31,9 @@ use kintai\Core\Repositories\StorePhotoRepositoryInterface;
 use kintai\Core\Repositories\LanguageRepositoryInterface;
 use kintai\Core\Repositories\TranslationRepositoryInterface;
 use kintai\Core\Repositories\DevicePushTokenRepositoryInterface;
+use kintai\Core\Repositories\InstalledBundleRepositoryInterface;
+use kintai\Core\Services\BundleInstaller\BundleInstallerService;
+use kintai\Core\Services\BundleRegistry\BundleRegistryClient;
 use Illuminate\Database\Capsule\Manager as Capsule;
 use kintai\UI\ViewRenderer;
 
@@ -87,6 +93,8 @@ final class AppServiceProvider extends ServiceProvider
 
         $this->container->singleton(AppSettingsService::class, fn(Container $c) => new AppSettingsService($c->make(AppSettingsRepositoryInterface::class)));
 
+        $this->container->singleton(MascotResolver::class, fn(Container $c) => new MascotResolver($c->make(AppSettingsService::class)));
+
         $this->container->singleton(ShiftServiceInterface::class, fn(Container $c) => new ShiftService(
             $c->make(ShiftRepositoryInterface::class),
             $c->make(ShiftTypeRepositoryInterface::class),
@@ -94,11 +102,34 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(TimeoffRequestRepositoryInterface::class),
         ));
 
+        $this->container->singleton(LicenseTokenVerifier::class, function (Container $c) {
+            $path = dirname(dirname(dirname(__DIR__))) . '/config/license_server.php';
+            $config = file_exists($path) ? require $path : [];
+            return new LicenseTokenVerifier($config['public_key_pem'] ?? null);
+        });
+
+        $this->container->singleton(LicenseClientService::class, function (Container $c) {
+            $path = dirname(dirname(dirname(__DIR__))) . '/config/license_server.php';
+            $config = file_exists($path) ? require $path : [];
+            return new LicenseClientService(
+                $c->make(AppSettingsRepositoryInterface::class),
+                $config,
+                tokenVerifier: $c->make(LicenseTokenVerifier::class),
+            );
+        });
+
+        $this->container->singleton(PlanLimitService::class, fn(Container $c) => new PlanLimitService(
+            $c->make(StoreRepositoryInterface::class),
+            $c->make(UserRepositoryInterface::class),
+            $c->make(LicenseClientService::class),
+        ));
+
         $this->container->singleton(StoreServiceInterface::class, fn(Container $c) => new StoreService(
             $c->make(StoreRepositoryInterface::class),
             $c->make(StoreUserRepositoryInterface::class),
             $c->make(UserRepositoryInterface::class),
             $c->make(LanguageRepositoryInterface::class),
+            $c->make(PlanLimitService::class),
         ));
 
         $this->container->singleton(StoreStatsServiceInterface::class, fn(Container $c) => new StoreStatsService(
@@ -111,6 +142,42 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(UserShiftTypeRateRepositoryInterface::class),
             $c->make(UserRepositoryInterface::class),
             $c->make(DailyReportRepositoryInterface::class),
+            $c->make(RoleAssignmentSyncService::class),
+        ));
+
+        // DailyReportPermissionService/PdfService/MailService/AutoValidateService liés ici,
+        // pas par le bundle "daily-report" : DailyReportNavMiddleware (middleware global,
+        // partagé sur toute page authentifiée) et AutoValidateJob/CronController en
+        // dépendent directement, et doivent continuer de fonctionner même si ce bundle
+        // est désactivé ou désinstallé — même raison que DailyReportRepositoryInterface
+        // ci-dessus (RepositoryServiceProvider). Liaisons explicites (plutôt que de
+        // compter sur l'auto-résolution par réflexion du Container) pour garder le même
+        // comportement singleton qu'avant, quand le bundle les liait lui-même.
+        $this->container->singleton(DailyReportPermissionService::class, fn(Container $c) => new DailyReportPermissionService(
+            $c->make(\kintai\Core\Auth\PermissionService::class),
+        ));
+
+        $this->container->singleton(DailyReportPdfService::class, fn(Container $c) => new DailyReportPdfService(
+            $c->make(ViewRenderer::class),
+            $c->make(TranslationService::class),
+            $c->make(ShiftRepositoryInterface::class),
+            $c->make(ShiftTypeRepositoryInterface::class),
+            $c->make(UserRepositoryInterface::class),
+        ));
+
+        $this->container->singleton(DailyReportMailService::class, fn(Container $c) => new DailyReportMailService(
+            $c->make(DailyReportPermissionService::class),
+            $c->make(MailerService::class),
+            $c->make(TranslationService::class),
+        ));
+
+        $this->container->singleton(DailyReportAutoValidateService::class, fn(Container $c) => new DailyReportAutoValidateService(
+            $c->make(StoreRepositoryInterface::class),
+            $c->make(DailyReportRepositoryInterface::class),
+            $c->make(UserRepositoryInterface::class),
+            $c->make(DailyReportPermissionService::class),
+            $c->make(DailyReportPdfService::class),
+            $c->make(DailyReportMailService::class),
         ));
 
         $this->container->singleton(BackupService::class, fn(Container $c) => new BackupService(
@@ -132,6 +199,19 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(StorePhotoRepositoryInterface::class),
         ));
 
+        // Binding explicite requis (même raison que GithubUpdateService juste au-dessus) :
+        // le constructeur a un paramètre ?\Closure.
+        $this->container->singleton(GithubIssueService::class, fn() => new GithubIssueService());
+
+        // Même raison (paramètre ?\Closure) : BundleRegistryClient et BundleInstallerService.
+        $this->container->singleton(BundleRegistryClient::class, fn() => new BundleRegistryClient());
+
+        $this->container->singleton(BundleInstallerService::class, fn(Container $c) => new BundleInstallerService(
+            $c->make(UpdateService::class),
+            $c->make(InstalledBundleRepositoryInterface::class),
+            migrationRunner: $c->make(BundleMigrationRunner::class),
+        ));
+
         // Binding explicite requis : le constructeur a un paramètre ?\Closure
         // (non "builtin" pour Container::resolveParameter), donc la résolution
         // par réflexion échouerait sinon en essayant d'instancier \Closure.
@@ -145,6 +225,8 @@ final class AppServiceProvider extends ServiceProvider
             $runner = new CronRunner($c->make(CronTokenRepositoryInterface::class));
             $runner->register($c->make(AutoValidateJob::class));
             $runner->register($c->make(BackupJob::class));
+            $runner->register($c->make(LogPurgeJob::class));
+            $runner->register($c->make(LicenseCheckJob::class));
             return $runner;
         });
     }

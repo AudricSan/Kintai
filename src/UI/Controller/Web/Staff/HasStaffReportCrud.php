@@ -315,10 +315,11 @@ trait HasStaffReportCrud
             }
         }
 
+        $ownerIds = $this->permissions->ownerUserIds();
         $seenIds = [];
         $managers = [];
         foreach ($this->users->findAll() as $u) {
-            if (!empty($u['is_admin'])) {
+            if (in_array((int) $u['id'], $ownerIds, true)) {
                 $seenIds[] = (int) $u['id'];
                 $managers[] = $u;
             }

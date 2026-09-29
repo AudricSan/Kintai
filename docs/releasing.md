@@ -15,6 +15,12 @@ Each instance follows one of three **update channels**, chosen by the Owner on `
 
 A release's channel is determined by its `target_commitish` (the source branch, set by `.github/workflows/release.yml` — see `GithubUpdateService::selectReleaseForChannel()`), not by inspecting the tag. Within the releases visible to its channel, the instance picks the highest version (semver-aware). `alpha`, `beta`, and `main` are protected branches (PR + passing CI required, no direct push) — see `.github/workflows/release.yml`.
 
+## `develop`: the non-release integration branch
+
+`.github/workflows/release.yml` only triggers on a push to `alpha`, `beta`, or `main` — nothing else. `develop` is a fourth long-lived branch, based on `alpha`, that sits outside that trigger on purpose: it's where day-to-day feature/fix branches merge by default (see [CONTRIBUTING.md](../CONTRIBUTING.md)), so a normal batch of PRs during a work session never tags and publishes a release. It isn't a protected release-channel branch — no branch protection, no CI-gated merge requirement beyond what the team chooses to enforce by convention.
+
+When a batch of work on `develop` is ready to actually ship, promote it forward with an ordinary PR from `develop` into `alpha` (same "merge the branch forward" mechanic described below for alpha → beta → main) — *that* merge is what starts the release cascade. `develop` itself never gets a Git tag or a GitHub Release.
+
 Consequences:
 - Only **GitHub Releases** count (not bare tags, not commits). Until a matching Release exists for the instance's channel, `checkLatestRelease()` returns `null`.
 - No `v` prefix in config files (the `v` prefix only exists on the Git tag — `GithubUpdateService` strips it before comparing versions).
@@ -37,6 +43,8 @@ main   -> v0.13.0            (stable, tagged once the line is ready)
 ```
 
 The next line starts at `0.14.1` (`Y` bumped by hand, `Z` back to its `0` placeholder in `composer.json`/`config/app.php` until the workflow computes the real first `Z`).
+
+`config/app.php`'s `version` field is a plain string literal (no environment-variable indirection) — the repo itself only ever ships `X.Y.0`, but once an instance applies a self-update, `GithubUpdateService::applyUpdate()` rewrites that same field with the exact tag it just applied (real `Z` included), so `UpdateService::getCurrentVersion()` shows the precise running version rather than just the line. This is the only file that tracks it; there's no separate `storage/app/version.json`.
 
 This replaces the previous `X.Y.Z-<week letter><sub-version>` suffix scheme (e.g. `0.12.0-ak23`), which encoded three independent per-channel counters plus an ISO-week letter that was hard to read at a glance on `/admin/update`.
 
@@ -61,14 +69,14 @@ The base version number (`X.Y` in `composer.json`/`config/app.php`/`CHANGELOG.md
    - on `main`, tags `vX.Y.0` as a normal (non-prerelease) Release — skipped with a log message if that exact tag already exists (i.e. the line was already shipped stable);
    - extracts the release notes from `CHANGELOG.md` (the dated `## [X.Y.0]` section for `main`, the `## [Unreleased]` section for `alpha`/`beta`).
 
-To promote a version from one channel to the next (alpha → beta → release), merge the corresponding branch forward (e.g. `alpha` into `beta`, then `beta` into `main`) via PR, same as any other branch promotion.
+To promote a version forward (develop → alpha → beta → release), merge the corresponding branch forward (e.g. `develop` into `alpha`, then `alpha` into `beta`, then `beta` into `main`) via PR, same as any other branch promotion. Only the `alpha`/`beta`/`main` steps actually publish a release — merging into `develop` itself never does (see "`develop`: the non-release integration branch" above).
 
 ## Manual procedure (bumping the version)
 
 Only needed when opening a new line (or a new major) — see "Which number to bump" above; skip this for every other alpha/beta publish.
 
 1. On a working branch, rename `## [Unreleased]` to `## [0.13.0] - 2026-08-04` in `CHANGELOG.md` (the `X.Y.0` line version — `Z` here is always `0`, the real per-publish `Z` is computed by the workflow) and add a new empty `## [Unreleased]` section right above it.
-2. Update the version in `composer.json` (`"version": "0.13.0"`) and `config/app.php` (`env('APP_VERSION', '0.13.0')`), bumping `Y` (or `X` for a breaking change) and resetting the rest to `0`.
+2. Update the version in `composer.json` (`"version": "0.13.0"`) and `config/app.php`'s `'version'` field to the same string, bumping `Y` (or `X` for a breaking change) and resetting the rest to `0`.
 3. Commit, push the branch, and open a PR into `alpha` (new lines always start there):
    ```bash
    git add CHANGELOG.md composer.json config/app.php

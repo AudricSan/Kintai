@@ -107,6 +107,26 @@ final class AppSettingsService
         return in_array($channel, ['alpha', 'beta', 'release'], true) ? $channel : 'release';
     }
 
+    /**
+     * Canal de mise à jour des bundles : release (défaut), beta, ou alpha —
+     * réglage global, s'applique à tous les bundles installés (pas un canal
+     * par bundle). Indépendant de updateChannel() (celui du Core lui-même).
+     */
+    public function bundleUpdateChannel(): string
+    {
+        $channel = $this->get('bundle_update_channel', 'release');
+        return in_array($channel, ['alpha', 'beta', 'release'], true) ? $channel : 'release';
+    }
+
+    // ── Mascotte ───────────────────────────────────────────────────────────────
+
+    /** Mode d'affichage de la mascotte : mix (défaut, tirée au sort par requête), kitsune, ou tanuki. */
+    public function mascotMode(): string
+    {
+        $mode = $this->get('app_mascot_mode', 'mix');
+        return in_array($mode, ['mix', 'kitsune', 'tanuki'], true) ? $mode : 'mix';
+    }
+
     // ── Mode maintenance ──────────────────────────────────────────────────────
 
     /** Mode maintenance activé : seul l'Owner peut accéder aux pages web. */
@@ -119,5 +139,19 @@ final class AppSettingsService
     public function maintenanceMessage(): string
     {
         return $this->get('maintenance_message');
+    }
+
+    // ── Journal d'activité ────────────────────────────────────────────────────
+
+    /** Journal d'accès HTTP automatique (canal "access") activé pour chaque requête. */
+    public function accessLogEnabled(): bool
+    {
+        return $this->get('access_log_enabled', '1') === '1';
+    }
+
+    /** Nombre de jours de rétention des entrées du journal d'activité (0 = illimité, pas de purge auto). */
+    public function logRetentionDays(): int
+    {
+        return max(0, (int) $this->get('log_retention_days', '180'));
     }
 }
