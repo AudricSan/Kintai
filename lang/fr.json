@@ -957,7 +957,7 @@
     "password_edit_hint": "(laisser vide pour ne pas changer)",
     "password_mismatch": "Les mots de passe ne correspondent pas.",
     "password_reset_success": "Mot de passe réinitialisé à 0000 avec succès.",
-    "password_too_short": "Le mot de passe doit contenir au moins 4 caractères.",
+    "password_too_short": "Le mot de passe doit contenir au moins 8 caractères.",
     "pause": "Pause",
     "payroll_cost": "coût salarial",
     "payslip": "Fiche de paie",
