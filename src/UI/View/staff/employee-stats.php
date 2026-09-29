@@ -97,7 +97,7 @@ $reportUrl = $BASE_URL . '/admin/stores/' . (int) $store['id'] . '/employee-repo
     <div class="estat-profile-info">
       <div class="estat-profile-name"><?= htmlspecialchars($empName) ?></div>
       <div class="estat-profile-meta">
-        <?= Badge::make(htmlspecialchars($roleLabel))->variant(!empty($membership['role_is_managing']) ? 'warning' : 'staff')->render() ?>
+        <?= Badge::make($roleLabel)->variant(!empty($membership['role_is_managing']) ? 'warning' : 'staff')->render() ?>
         <?php if (!empty($user['employee_code'])): ?>
           <span class="estat-code">N° <?= htmlspecialchars($user['employee_code']) ?></span>
         <?php endif; ?>

@@ -81,9 +81,9 @@ ob_start();
                 echo Table::make()
                     ->data($backups)
                     ->column(__('backup_col_file'), fn($b) => '<code>' . htmlspecialchars($b['filename']) . '</code>')
-                    ->column(__('backup_col_date'), fn($b) => htmlspecialchars($b['created_at']))
+                    ->text(__('backup_col_date'), fn($b) => $b['created_at'])
                     ->column(__('backup_col_size'), fn($b) => number_format((int)($b['size'] ?? 0) / 1024, 1) . ' ' . __('kb'))
-                    ->column(__('backup_col_note'), fn($b) => htmlspecialchars($b['note'] ?? ''))
+                    ->text(__('backup_col_note'), fn($b) => $b['note'] ?? '')
                     ->column(__('backup_col_actions'), function ($b) use ($action) {
                         return '<form method="POST" action="' . htmlspecialchars($action) . '/restore" class="d-inline">' . csrf_field()
                             . '<input type="hidden" name="filename" value="' . htmlspecialchars($b['filename']) . '">'
