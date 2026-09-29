@@ -27,6 +27,9 @@ final readonly class BundleRegistryEntry
     /**
      * @param string[] $versions Compat schema 1 : liste plate, la plus récente en premier (= versionsByChannel['release'] pour un schema 2).
      * @param array{release: string[], beta: string[], alpha: string[]} $versionsByChannel
+     * @param array<string, string> $commits Version -> sha (40 hex minuscules) du commit vers lequel pointe son tag,
+     *        épinglé par le registry (voir scripts/sync-versions.js du dépôt KintaiBundle). Vide pour un registry qui
+     *        ne l'épingle pas : l'installation se fait alors sans ce contrôle.
      */
     public function __construct(
         public string $slug,
@@ -35,7 +38,14 @@ final readonly class BundleRegistryEntry
         public string $repositoryUrl,
         public array $versions,
         public array $versionsByChannel,
+        public array $commits = [],
     ) {
+    }
+
+    /** Commit épinglé pour cette version, ou null si le registry n'en épingle pas. */
+    public function commitFor(string $version): ?string
+    {
+        return $this->commits[$version] ?? null;
     }
 
     /** Versions disponibles pour le canal donné (release/beta/alpha), la plus récente en premier. */
@@ -65,7 +75,29 @@ final readonly class BundleRegistryEntry
             repositoryUrl: $data['repository_url'],
             versions: $versions,
             versionsByChannel: $versionsByChannel,
+            commits: self::normalizeCommits($data['commits'] ?? []),
         );
+    }
+
+    /**
+     * Ne garde que les couples valides (version X.Y.Z -> sha de 40 hex minuscules) : une valeur mal formée
+     * est ignorée plutôt que de risquer de comparer l'archive à autre chose qu'un vrai commit.
+     *
+     * @return array<string, string>
+     */
+    private static function normalizeCommits(mixed $raw): array
+    {
+        if (!is_array($raw)) {
+            return [];
+        }
+        $commits = [];
+        foreach ($raw as $version => $sha) {
+            if (is_string($version) && preg_match('/^\d+\.\d+\.\d+$/', $version) === 1
+                && is_string($sha) && preg_match('/^[0-9a-f]{40}$/', $sha) === 1) {
+                $commits[$version] = $sha;
+            }
+        }
+        return $commits;
     }
 
     /**
