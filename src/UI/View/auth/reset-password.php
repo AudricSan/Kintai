@@ -14,14 +14,14 @@ use kintai\UI\Components\Button;
 
     <?= Alert::make(__('reset_password_success'))->success()->render() ?>
     <p class="login-hint login-hint--center">
-        <?= Button::make('Se connecter')->primary()->link($login_url ?? route_url('auth.login'))->render() ?>
+        <?= Button::make(__('connect'))->primary()->link($login_url ?? route_url('auth.login'))->render() ?>
     </p>
 
 <?php elseif (!($valid ?? false)): ?>
 
     <?= Alert::make(__('reset_password_invalid_link'))->danger()->render() ?>
     <p class="login-hint login-hint--center">
-        <a href="<?= route_url('password.forgot') ?>">Nouvelle demande</a>
+        <a href="<?= route_url('password.forgot') ?>"><?= __('new_request') ?></a>
     </p>
 
 <?php else: ?>
@@ -30,7 +30,7 @@ use kintai\UI\Components\Button;
         echo Alert::make(htmlspecialchars($error, ENT_QUOTES))->danger()->render();
     endif; ?>
 
-    <h2 class="guest-subtitle">Nouveau mot de passe</h2>
+    <h2 class="guest-subtitle"><?= __('new_password') ?></h2>
     <p class="login-hint"><?= __('reset_password_hint') ?></p>
 
     <form method="POST"
@@ -38,18 +38,18 @@ use kintai\UI\Components\Button;
         <?= csrf_field() ?>
         <div class="form-stack">
             <div class="form-group">
-                <label class="form-label form-label--required">Nouveau mot de passe</label>
+                <label class="form-label form-label--required"><?= __('new_password') ?></label>
                 <input type="password" name="password" class="form-control"
                        autocomplete="new-password" minlength="8" required autofocus>
             </div>
 
             <div class="form-group">
-                <label class="form-label form-label--required">Confirmer le mot de passe</label>
+                <label class="form-label form-label--required"><?= __('confirm_password') ?></label>
                 <input type="password" name="password_confirmation" class="form-control"
                        autocomplete="new-password" minlength="8" required>
             </div>
 
-            <?= Button::make('Enregistrer le nouveau mot de passe')->primary()->full()->submit()->render() ?>
+            <?= Button::make(__('reset_password_submit'))->primary()->full()->submit()->render() ?>
         </div>
     </form>
 
