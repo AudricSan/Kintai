@@ -95,6 +95,29 @@ final class BundleDiscoveryServiceTest extends TestCase
         $this->assertSame('Fake Installed Bundle', $discovered['fake-bundle']['label']);
     }
 
+    public function testInstalledBundleReportsItsActiveVersionNotTheManifestBaseline(): void
+    {
+        $installedDir = sys_get_temp_dir() . '/kintai-installed-' . uniqid();
+        // Le workflow de release d'un bundle lit bundle.json comme ligne de base
+        // "X.Y.0" et calcule Z tout seul : le manifeste d'une release 1.1.8
+        // déclare donc toujours "1.1.0". La version affichée doit être celle du
+        // dossier actif, pas celle du manifeste.
+        $this->writeFakeInstalledBundle($installedDir, 'fake-baseline-bundle', '1.1.8', '1.1.0');
+
+        $store = new InstalledBundleManifestStore($installedDir . '/installed.json');
+        $store->setActiveVersion('fake-baseline-bundle', '1.1.8');
+
+        $service = new BundleDiscoveryService(
+            sys_get_temp_dir() . '/kintai-does-not-exist-' . uniqid(),
+            $store,
+            $installedDir,
+        );
+
+        $discovered = $service->discover();
+
+        $this->assertSame('1.1.8', $discovered['fake-baseline-bundle']['version']);
+    }
+
     public function testLegacySlugWinsOverAnInstalledBundleWithTheSameSlug(): void
     {
         $legacyDir = sys_get_temp_dir() . '/kintai-bundle-discovery-' . uniqid();
@@ -116,7 +139,7 @@ final class BundleDiscoveryServiceTest extends TestCase
         $this->assertNotSame('9.9.9', $discovered['fake-collision-bundle']['version']);
     }
 
-    private function writeFakeInstalledBundle(string $installedDir, string $slug, string $version): void
+    private function writeFakeInstalledBundle(string $installedDir, string $slug, string $version, ?string $manifestVersion = null): void
     {
         $className = 'FakeInstalledBundle_' . str_replace('-', '_', $slug) . '_' . str_replace('.', '_', $version);
         $namespace = 'kintai\\Bundles\\Installed\\' . $className;
@@ -126,7 +149,7 @@ final class BundleDiscoveryServiceTest extends TestCase
         file_put_contents($bundleRoot . '/bundle.json', json_encode([
             'slug'        => $slug,
             'name'        => 'Fake Installed Bundle',
-            'version'     => $version,
+            'version'     => $manifestVersion ?? $version,
             'namespace'   => $namespace,
             'entry_class' => $namespace . '\\' . $className . 'Bundle',
         ]));
