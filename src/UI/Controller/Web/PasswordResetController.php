@@ -22,7 +22,7 @@ final class PasswordResetController
     public function showForgotForm(Request $request): Response
     {
         return Response::html($this->view->render('auth.forgot-password', [
-            'title'   => 'Mot de passe oublié',
+            'title'   => __('forgot_password_title'),
             'sent'    => false,
             'error'   => false,
         ], 'layout.guest'));
@@ -35,7 +35,7 @@ final class PasswordResetController
 
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return Response::html($this->view->render('auth.forgot-password', [
-                'title' => 'Mot de passe oublié',
+                'title' => __('forgot_password_title'),
                 'sent'  => false,
                 'error' => true,
             ], 'layout.guest'));
@@ -45,7 +45,7 @@ final class PasswordResetController
         $this->passwordReset->sendResetLink($email, $this->base());
 
         return Response::html($this->view->render('auth.forgot-password', [
-            'title' => 'Mot de passe oublié',
+            'title' => __('forgot_password_title'),
             'sent'  => true,
             'error' => false,
         ], 'layout.guest'));
@@ -58,7 +58,7 @@ final class PasswordResetController
         $record = $this->passwordReset->findValidToken($token);
 
         return Response::html($this->view->render('auth.reset-password', [
-            'title'   => 'Nouveau mot de passe',
+            'title'   => __('new_password'),
             'token'   => $token,
             'valid'   => $record !== null,
             'success' => false,
@@ -74,21 +74,21 @@ final class PasswordResetController
         $confirm  = (string) $request->post('password_confirmation', '');
 
         if (strlen($password) < 8) {
-            return $this->resetView($token, 'Le mot de passe doit contenir au moins 8 caractères.');
+            return $this->resetView($token, __('reset_password_too_short'));
         }
 
         if ($password !== $confirm) {
-            return $this->resetView($token, 'Les mots de passe ne correspondent pas.');
+            return $this->resetView($token, __('password_mismatch'));
         }
 
         $ok = $this->passwordReset->reset($token, $password);
 
         if (!$ok) {
-            return $this->resetView($token, 'Ce lien est invalide ou a expiré.');
+            return $this->resetView($token, __('reset_password_invalid_link'));
         }
 
         return Response::html($this->view->render('auth.reset-password', [
-            'title'   => 'Nouveau mot de passe',
+            'title'   => __('new_password'),
             'token'   => $token,
             'valid'   => true,
             'success' => true,
@@ -102,7 +102,7 @@ final class PasswordResetController
         $record = $this->passwordReset->findValidToken($token);
 
         return Response::html($this->view->render('auth.reset-password', [
-            'title'   => 'Nouveau mot de passe',
+            'title'   => __('new_password'),
             'token'   => $token,
             'valid'   => $record !== null,
             'success' => false,
