@@ -121,6 +121,9 @@ $router->group('/notifications', function ($r) {
     $r->post('/read-all',    [NotificationController::class, 'markAllRead'], name: 'notifications.read_all');
     $r->post('/delete-all',  [NotificationController::class, 'deleteAll'],   name: 'notifications.delete_all');
     $r->post('/{id}/read',   [NotificationController::class, 'markRead'],    name: 'notifications.read');
+    $r->get('/{id}/open',    [NotificationController::class, 'open'],        name: 'notifications.open');
+    $r->post('/push-subscribe',   [NotificationController::class, 'pushSubscribe'],   name: 'notifications.push_subscribe');
+    $r->post('/push-unsubscribe', [NotificationController::class, 'pushUnsubscribe'], name: 'notifications.push_unsubscribe');
 }, middleware: [AuthMiddleware::class]);
 
 // --- Support (footer : "signaler un problème" → issue GitHub) ---

@@ -165,13 +165,48 @@ final class NotificationServiceTest extends TestCase
     public function testNotifyReplacesPlaceholdersInResolvedLocale(): void
     {
         $this->registerUser(40, 'en');
-        $this->service->notify(40, 'shift_assigned', 'notif_shift_assigned_body', ['date' => '2026-09-20']);
+        $this->service->notify(40, 'shift_assigned', 'notif_shift_assigned_body', [
+            'date' => '2026-09-20', 'start' => '09:00', 'end' => '17:00', 'store' => 'Test Store',
+        ]);
 
         $row = Notification::first()->toArray();
         $body = json_decode((string) $row['data'], true)['body'] ?? null;
         $this->assertSame(
-            str_replace(':date', '2026-09-20', $this->lang('en')['notif_shift_assigned_body']),
+            str_replace(
+                [':date', ':start', ':end', ':store'],
+                ['2026-09-20', '09:00', '17:00', 'Test Store'],
+                $this->lang('en')['notif_shift_assigned_body']
+            ),
             $body
         );
+    }
+
+    /**
+     * Régression : une notification "nouveau shift" sans indiquer lequel obligeait
+     * l'employé à aller vérifier son planning. Le lien permet de cliquer la
+     * notification pour être amené directement dessus (voir NotificationController::open()).
+     */
+    public function testNotifyPersistsLinkInDataColumn(): void
+    {
+        $this->registerUser(5, 'fr');
+        $this->service->notify(
+            5, 'shift_assigned', 'notif_shift_assigned_body', ['date' => '2026-09-20'], 42,
+            '/employee/shifts/day?start=2026-09-20'
+        );
+
+        $row = Notification::first()->toArray();
+        $decoded = json_decode((string) $row['data'], true);
+        $this->assertSame('/employee/shifts/day?start=2026-09-20', $decoded['link'] ?? null);
+    }
+
+    public function testNotifyWithoutLinkStoresNullLink(): void
+    {
+        $this->registerUser(5, 'fr');
+        $this->service->notify(5, 'timeoff_approved', 'notif_timeoff_approved_body', [], 1);
+
+        $row = Notification::first()->toArray();
+        $decoded = json_decode((string) $row['data'], true);
+        $this->assertArrayHasKey('link', $decoded);
+        $this->assertNull($decoded['link']);
     }
 }

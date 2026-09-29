@@ -227,51 +227,13 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
         $initials = strtoupper(mb_substr(strip_tags($displayName), 0, 2));
     }
 
-    $_notifLabels = [
-        'message_received'      => __('notif_message_received'),
-        'timeoff_approved'      => __('notif_timeoff_approved'),
-        'timeoff_refused'       => __('notif_timeoff_refused'),
-        'swap_accepted'         => __('notif_swap_accepted'),
-        'swap_refused'          => __('notif_swap_refused'),
-        'shift_assigned'        => __('notif_shift_assigned'),
-        'open_shift_published'  => __('notif_open_shift_published'),
-        'shift_claim_submitted' => __('notif_shift_claim_submitted'),
-        'shift_claim_approved'  => __('notif_shift_claim_approved'),
-        'shift_claim_rejected'  => __('notif_shift_claim_rejected'),
-        'shift_claim_withdrawn' => __('notif_shift_claim_withdrawn'),
-        'daily_report_submitted' => __('notif_daily_report_submitted'),
-        'daily_report_validated' => __('notif_daily_report_validated'),
-        'feedback_submitted'    => __('notif_feedback_submitted'),
-        'swap_requested'        => __('notif_swap_requested'),
-        'swap_peer_accepted'    => __('notif_swap_peer_accepted'),
-        'swap_peer_refused'     => __('notif_swap_peer_refused'),
-        'swap_cancelled'        => __('notif_swap_cancelled'),
-    ];
-    $_notifIcons = [
-        'message_received'      => '✉',
-        'timeoff_approved'      => '✓',
-        'timeoff_refused'       => '✗',
-        'swap_accepted'         => '⇄',
-        'swap_refused'          => '⇄',
-        'shift_assigned'        => '📅',
-        'open_shift_published'  => '📢',
-        'shift_claim_submitted' => '🙋',
-        'shift_claim_approved'  => '✓',
-        'shift_claim_rejected'  => '✗',
-        'shift_claim_withdrawn' => '⊘',
-        'daily_report_submitted' => '📝',
-        'daily_report_validated' => '✓',
-        'feedback_submitted'    => '💬',
-        'swap_requested'        => '⇄',
-        'swap_peer_accepted'    => '⇄',
-        'swap_peer_refused'     => '⇄',
-        'swap_cancelled'        => '⇄',
-    ];
     $_dropdownItems = $notifications_dropdown ?? [];
     $_unreadCount   = (int) ($unread_notifications_count ?? 0);
     $_recentJson    = json_encode(array_map(fn($n) => [
-        'title' => $_notifLabels[$n['type'] ?? ''] ?? ($n['type'] ?? ''),
+        'id'    => (int) ($n['id'] ?? 0),
+        'title' => notification_type_label($n['type'] ?? ''),
         'body'  => $n['body'] ?? '',
+        'link'  => route_url('notifications.open', ['id' => (int) ($n['id'] ?? 0)]),
     ], $recent_notifications ?? []), JSON_UNESCAPED_UNICODE);
     ?>
 
@@ -418,14 +380,15 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
                 <?php else: ?>
                     <?php foreach ($_dropdownItems as $_n): ?>
                         <?php $_nRead = (int) ($_n['is_read'] ?? 0); ?>
-                        <div class="notif-entry<?= $_nRead ? '' : ' notif-entry--unread' ?>">
-                            <span class="notif-entry__icon"><?= $_notifIcons[$_n['type'] ?? ''] ?? '•' ?></span>
+                        <a href="<?= route_url('notifications.open', ['id' => (int) $_n['id']]) ?>"
+                           class="notif-entry<?= $_nRead ? '' : ' notif-entry--unread' ?>">
+                            <span class="notif-entry__icon"><?= notification_type_icon($_n['type'] ?? '') ?></span>
                             <div class="notif-entry__body">
-                                <div class="notif-entry__title"><?= htmlspecialchars($_notifLabels[$_n['type'] ?? ''] ?? '') ?></div>
+                                <div class="notif-entry__title"><?= htmlspecialchars(notification_type_label($_n['type'] ?? '')) ?></div>
                                 <div class="notif-entry__text"><?= htmlspecialchars($_n['body'] ?? '') ?></div>
                                 <div class="notif-entry__time"><?= htmlspecialchars(substr($_n['created_at'] ?? '', 0, 16)) ?></div>
                             </div>
-                        </div>
+                        </a>
                     <?php endforeach; ?>
                     <div class="notif-dropdown__footer">
                         <a href="<?= route_url('notifications.index') ?>"><?= __('notifications') ?> →</a>
@@ -436,7 +399,6 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
         <div id="notif-meta"
             data-recent="<?= htmlspecialchars($_recentJson) ?>"
             data-poll-url="<?= route_url('notifications.poll') ?>"
-            data-labels="<?= htmlspecialchars(json_encode($_notifLabels, JSON_UNESCAPED_UNICODE)) ?>"
             hidden></div>
 
         <div class="user-dropdown" id="user-dropdown">
