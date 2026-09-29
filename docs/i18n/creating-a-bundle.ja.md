@@ -24,7 +24,9 @@ your-bundle/
     YourBundle.php            # エントリークラス。kintai\Core\BundleContract\Bundle を継承
     Controllers/Web/...
     Controllers/Api/...
+  database/migrations/        # 任意 — 下記「データベースマイグレーション」を参照
   Views/                      # 任意 — loadViewsFrom() で読み込まれる
+  public/{css,js}/...         # 任意 — 下記「アセット」を参照、loadAssetsFrom() で読み込まれる
   lang/{en,fr,ja}.json         # 任意 — バンドル固有の翻訳キー
   routes.php                  # 任意 — loadRoutesFrom() で読み込まれる
   README.md
@@ -53,6 +55,7 @@ abstract class Bundle
 
     protected function loadRoutesFrom(string $path): void;
     protected function loadViewsFrom(string $path, string $namespace): void;
+    protected function loadAssetsFrom(string $relativeDir): void;  // 下記「アセット」を参照
 }
 ```
 
@@ -104,6 +107,85 @@ namespaceは何でも構いません——慣例として、インストール�
 この解決ロジックを自分で再実装しないでください。Coreの`kintai\UI\Controller\Web\HasAdminAccess`トレイト——`managedIds(Request $request): ?array`、`availableStores(?array $managedIds): array`、`assertStoreAccess(Request $request, int $storeId): void`、`assertAnyStoreAccess(Request $request, array $storeIds): void`——を再利用してください。これは公式バンドルの各管理コントローラが使っているのと同じトレイトです（実例として`kintai-bundle-store-photos`の`StorePhotoController`を参照）。すでに`null`のケースを正しく処理しています。自分のコントローラで手作りした同等品を書くことは、まさにこの種のバグがバンドルごとに再導入される原因です。
 
 バンドルが同じ認可の下で**アップロードされたファイル**（画像、PDF、添付ファイル）を配信する必要がある場合、そのための独自のファイル配信ルートを作らないでください。Kintai自身の`/storage/{path*}`（ルート名`storage.file`）にリンクしてください。これは`managed_store_ids`（`StorageFileController::assertPathStoreAccess()`）に加え、独自のアップロードパス制限とMIMEホワイトリストをすでに適用しています。並行するファイル配信ルートは、Coreが既に持っている認可ロジックを、その自身のテストカバレッジの外側で複製することになります。
+
+## データベースマイグレーション
+
+バンドルは独自のテーブルを持てます — スキーマを作成するだけのために、Kintai本体のリポジトリへ専用のPRを出す必要は**もうありません**。バンドルのルート（`src/` と同じ階層、`Views/`/`routes.php` と同じルール）に任意の `database/migrations/` ディレクトリを置き、Kintai本体のCoreマイグレーション（`database/migrations/php/*.php`）と**まったく同じ形式**のファイルを入れてください：
+
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace kintai\Database\Migrations;
+
+use kintai\Core\Database\Migration;
+use Illuminate\Database\Schema\Blueprint;
+
+return new class($this->capsule) extends Migration {
+    public function up(): void
+    {
+        if ($this->schema()->hasTable('your_bundle_table')) {
+            return;
+        }
+        $this->schema()->create('your_bundle_table', function (Blueprint $table) {
+            $table->increments('id');
+            // ...
+        });
+    }
+
+    public function down(): void
+    {
+        $this->schema()->dropIfExists('your_bundle_table');
+    }
+};
+```
+
+ファイル名は `YYYY_MM_DD_NNNNNN_description.php` にしてください — Coreのマイグレーションと同様、アルファベット順が実行順です。`up()` は必ず（上記のように）`hasTable()`/`hasColumn()` で保護してください：マイグレーションは手動の再同期（後述）で再実行されうるため、冪等でなければなりません。
+
+**実行されるタイミング**：`/admin/bundles/market` からのインストールまたは更新中に、バンドルのファイルがディスクに配置された直後（`BundleInstallerService::activate()`）に自動的に実行されます——バンドルが有効としてマークされる前なので、マイグレーションが失敗した場合は、スキーマが不完全なままバンドルが有効化されるのではなく、インストール/更新全体が中止されます。また、インストール済みのすべてのバンドルに対して、`php scripts/db-migrate.php` で手動で再同期することもできます（`--dry-run` で保留中のものをプレビューでき、Coreのマイグレーションと同じオプションです）。
+
+**追跡**：適用済みのバンドルマイグレーションは `bundle_migrations` テーブル（`bundle_slug` + マイグレーション名の組で一意）に記録されます——Core自身の `migrations` テーブルとは別なので、異なる2つのバンドルがマイグレーションのファイル名で衝突することは決してなく、アンインストール時に `BundleMigrationRunner::forgetBundle()` があなたのバンドルの追跡行だけを消去できます。業務テーブル自体はアンインストール時に削除**されません**（制限事項を参照）——削除されるのは追跡行だけなので、後で再インストールすると `up()` メソッドが問題なく再実行されます（テーブルがまだ残っていても、`hasTable()` のガードにより何も起こりません）。
+
+この仕組みは意図的にCoreに依存しません：リポジトリインターフェースとEloquentモデルは、自分のバンドルのnamespace内に置くことも、現在すべての公式バンドルが採用している慣例に従って `src/Core/Repositories/*Interface.php` に置くこともできます（上記「安定した契約」を参照）——マイグレーション自体はどちらでも構いません。
+
+## アセット
+
+**`kintai_core.min: "0.2.0"` 以降が必要です。** バンドルに独自のCSSやJSが必要な場合、Kintai本体の `public/assets/` に追加してもらうよう頼まないでください——この仕組みができる前のすべてのバンドルがその状態で、それはバンドルを別リポジトリとして配布する意義そのものを損なっていました（CSSを少し直すだけでCoreへのPRが必要になっていたのです）。自分で、自分の `public/` ディレクトリ（`src/`、`Views/`、`routes.php` と同じ階層——上記の必須構成の他のすべてと同じルール）から提供してください：
+
+```
+your-bundle/
+  public/
+    css/your-bundle.css
+    js/your-bundle.js
+```
+
+`loadViewsFrom()`/`loadRoutesFrom()` とまったく同じように、`register()` で登録します：
+
+```php
+public function register(): void
+{
+    $this->loadViewsFrom($this->getPath() . '/Views', 'your-namespace');
+    $this->loadRoutesFrom($this->getPath() . '/routes.php');
+    $this->loadAssetsFrom('public');
+}
+```
+
+バンドルのどのビューからでも、`bundle_asset()` ヘルパーを通じてファイルを参照してください——実際のファイルシステム上の場所は現在インストールされているバージョンによって変わるため、ハードコードしたパスは決して使わないでください：
+
+```php
+<?php if ($css = bundle_asset('your-slug', 'css/your-bundle.css')): ?>
+<link rel="stylesheet" href="<?= $css ?>">
+<?php endif; ?>
+```
+
+`bundle_asset()` は、バンドルが有効でない場合に `null` を返します（例外はスローしません）——常に解決されると仮定せず、上記のように `<link>`/`<script>` を必ず `if` で囲んでください。これが組み立てるURL（`GET /bundle-assets/{slug}/{path}?v={version}`）は、専用の認証なしルート（`BundleAssetController`）から配信されます——これらは公開の静的ファイルであり、バンドル自身のページのように `AuthMiddleware`/`PermissionMiddleware` で保護されてはいません——宣言した `public/` ディレクトリに限定され、拡張子は固定のホワイトリスト（`css`、`js`、`svg`、`png`、`webp`）に制限されます。ホワイトリスト外のもの、または `public/` ディレクトリより上位へ遡ろうとする試みはすべて拒否されます（`403`）。無効なバンドル、または `loadAssetsFrom()` を一度も呼んでいないバンドルへのリクエストは、単なる `404` になります。
+
+ビューがURLではなくファイルの**内容**を直接必要とする場合——典型的には `file_get_contents()` でスタイルシートをインライン化するPDFエクスポート——は、代わりに `bundle_asset_path()` を使ってください。同じファイルの絶対ファイルシステムパスに解決されます（無効な場合はやはり `null`）：
+
+```php
+$css = file_get_contents(bundle_asset_path('your-slug', 'css/pdf-your-bundle.css') ?? '');
+```
 
 ## `bundle.json` マニフェスト
 
@@ -183,7 +265,7 @@ Kintai自身のリポジトリ内にある`config/official-bundles.php`が、ど
 
 - **単一プロセス、単一のComposerオートローダー。** バンドルごとの`composer.json`や依存関係の分離はありません——あなたのバンドルはKintai自身の`kintai\`ルートと同じPHPプロセス、同じnamespaceツリーの中で動作します。依存してよいのは`BundleContract\Bundle`、`src/Core/Repositories/*Interface.php`のインターフェース、そしてKintaiのバージョン間で結合しても構わないと思える他のCoreクラスだけにしてください。
 - **`requires_bundles`はまだ強制されません。** 他のバンドルのスラッグ／バージョンへの依存を宣言することは受け付けられ保存されますが、それが欠けていたり古すぎたりしてもインストールをブロックするものは現時点ではありません——今のところは保証ではなくドキュメントとして扱ってください。
-- **アンインストールの仕組みはまだありません。** `/admin/bundles/market` はインストールと更新はできますが、バンドルのファイルとデータベースの行を削除する仕組みはまだ配線されていません。
+- **業務データに対するアンインストールの仕組みはありません。** `/admin/bundles/market` は、バンドルのファイル・マニフェストのエントリ・マイグレーションの追跡行のインストール、更新、アンインストールができますが、マイグレーションが作成したテーブル（とそのデータ）はアンインストール時に削除も変更もされません。それらを片付けたい場合は、今のところ手動でのDB操作になります。
 - **GitHubのみ。** `repository_url`はGitHubリポジトリを指す必要があります——GitLabも、自前ホストのGitサーバーも、Git以外のアーカイブソースも使えません。
 
 ## リファレンス実装
