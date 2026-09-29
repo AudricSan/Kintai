@@ -78,6 +78,15 @@ img {
     min-height: 100vh;
 }
 
+/* ── En-tête collant : bandeau maintenance + topbar ───
+   Un seul wrapper sticky pour que le bandeau reste visible au scroll
+   en même temps que la topbar, empilés dans l'ordre du flux. */
+.app-sticky-header {
+    position: sticky;
+    top: 0;
+    z-index: 200;
+}
+
 /* ── Topbar : marque + navigation + actions ───────
    Remplace l'ancien duo sidebar fixe + topbar : une seule barre
    horizontale, toute la largeur de l'écran reste au contenu. */
@@ -89,9 +98,6 @@ img {
     align-items: center;
     gap: var(--space-2);
     padding: 0 var(--space-6);
-    position: sticky;
-    top: 0;
-    z-index: 200;
 }
 
 .topbar-brand {
@@ -301,9 +307,15 @@ img {
 /* ── Guest Layout ──────────────────────────────── */
 .guest-layout {
     display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.guest-main {
+    display: flex;
+    flex: 1;
     align-items: center;
     justify-content: center;
-    min-height: 100vh;
 }
 
 .guest-container {
@@ -367,15 +379,6 @@ img {
     margin: 0 0 var(--space-3);
 }
 
-/* ── App Footer ────────────────────────────────── */
-.app-footer {
-    border-top: 1px solid var(--color-border);
-    padding: var(--space-2) var(--space-6);
-    background: var(--color-surface);
-    display: flex;
-    justify-content: flex-end;
-}
-
 /* ── Empty State ───────────────────────────────── */
 .empty-state {
     padding: var(--space-8) var(--space-4);
@@ -390,19 +393,40 @@ img {
     width: 88px;
     height: 88px;
     margin: 0 auto var(--space-2);
-    background: url('../../img/mascot/box-empty.png') center / contain no-repeat;
+    background: url('../../img/mascot/kitsune/box-empty.png') center / contain no-repeat;
 }
 
 .empty-state--bell::before {
-    background-image: url('../../img/mascot/bell.png');
+    background-image: url('../../img/mascot/kitsune/bell.png');
 }
 
 .empty-state--timeclock::before {
-    background-image: url('../../img/mascot/timeclock-empty.png');
+    background-image: url('../../img/mascot/kitsune/timeclock-empty.png');
 }
 
 .empty-state--salary::before {
-    background-image: url('../../img/mascot/salary-empty.png');
+    background-image: url('../../img/mascot/kitsune/salary-empty.png');
+}
+
+/* Mascotte "mix"/"tanuki" (réglage Owner, voir MascotResolver) : tant que
+   les assets tanuki correspondants n'existent pas encore sous
+   mascot/tanuki/, ces règles pointent vers un fichier absent — un
+   background-image manquant ne casse rien visuellement (pas de glyphe
+   d'image cassée), juste un carré vide en attendant leur export. */
+[data-mascot="tanuki"] .empty-state::before {
+    background-image: url('../../img/mascot/tanuki/box-empty.png');
+}
+
+[data-mascot="tanuki"] .empty-state--bell::before {
+    background-image: url('../../img/mascot/tanuki/bell.png');
+}
+
+[data-mascot="tanuki"] .empty-state--timeclock::before {
+    background-image: url('../../img/mascot/tanuki/timeclock-empty.png');
+}
+
+[data-mascot="tanuki"] .empty-state--salary::before {
+    background-image: url('../../img/mascot/tanuki/salary-empty.png');
 }
 
 .empty-state__icon {

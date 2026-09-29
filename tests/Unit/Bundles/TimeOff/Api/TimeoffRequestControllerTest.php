@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Bundles\TimeOff\Api;
 
-use kintai\Bundles\TimeOff\Controllers\Api\TimeoffRequestController;
+require_once dirname(__DIR__, 4) . '/Fixtures/bundles/timeoff-1.0.0/src/Controllers/Api/TimeoffRequestController.php';
+
+use kintai\Bundles\Installed\TimeOff\Controllers\Api\TimeoffRequestController;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;

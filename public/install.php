@@ -193,15 +193,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'display_name'  => $adminFirstName . ' ' . $adminLastName,
                 'email'         => $adminEmail,
                 'password_hash' => password_hash($adminPassword, PASSWORD_BCRYPT, ['cost' => 12]),
-                'is_admin'      => 1,
                 'is_active'     => 1,
                 'created_at'    => date('Y-m-d H:i:s'),
                 'updated_at'    => date('Y-m-d H:i:s'),
             ]);
 
-            // AuthService::isAdmin() lit désormais role_assignments (RBAC dynamique) plutôt
-            // que la colonne users.is_admin ci-dessus — sans cette affectation, le compte
-            // créé par l'installeur ne serait pas reconnu comme Owner.
+            // AuthService::isAdmin() lit role_assignments (RBAC dynamique) — sans cette
+            // affectation, le compte créé par l'installeur ne serait pas reconnu comme Owner.
             $ownerRole = $app->container()->make(RoleRepositoryInterface::class)->findBySlug('owner');
             if ($ownerRole !== null) {
                 $app->container()->make(RoleAssignmentRepositoryInterface::class)

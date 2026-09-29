@@ -10,6 +10,7 @@ use kintai\Core\Repositories\ApiTokenRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\Services\AuditLogger;
 
 final class AuthController
 {
@@ -17,6 +18,7 @@ final class AuthController
         private readonly AuthService $auth,
         private readonly ApiTokenRepositoryInterface $tokens,
         private readonly UserRepositoryInterface $users,
+        private readonly AuditLogger $auditLogger,
     ) {}
 
     /**
@@ -46,6 +48,9 @@ final class AuthController
         }
 
         if (!$ok) {
+            $this->auditLogger->log($request, 'auth.api_login_failed', 'user', null, [
+                'mode' => isset($data['email']) ? 'email' : 'code',
+            ]);
             return Response::apiError('Identifiants invalides.', 401, 'INVALID_CREDENTIALS');
         }
 
@@ -66,6 +71,10 @@ final class AuthController
         // Détruire la session PHP créée par AuthService::attempt (l'API est stateless)
         $this->auth->logout();
 
+        $this->auditLogger->log($request, 'api_token.created', 'api_token', (int) $record['id'], [
+            'name' => $name,
+        ], null, (int) $user['id']);
+
         return Response::json([
             'token'      => $rawToken,
             'token_id'   => $record['id'],
@@ -80,6 +89,7 @@ final class AuthController
         $tokenRecord = $request->getAttribute('api_token');
         if ($tokenRecord !== null) {
             $this->tokens->delete((int) $tokenRecord['id']);
+            $this->auditLogger->log($request, 'api_token.revoked', 'api_token', (int) $tokenRecord['id'], [], null, (int) ($tokenRecord['user_id'] ?? 0) ?: null);
         }
 
         return Response::empty();
@@ -113,6 +123,7 @@ final class AuthController
         }
 
         $this->tokens->delete($id);
+        $this->auditLogger->log($request, 'api_token.revoked', 'api_token', $id, [], null, (int) $user['id']);
         return Response::empty();
     }
 

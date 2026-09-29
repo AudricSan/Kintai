@@ -27,8 +27,20 @@
         }
     }
 
+    // Grise/dégrise la case de portée "Toutes les boutiques" en fonction de
+    // l'état de la case de permission sœur (voir .perm-row/.perm-scope dans
+    // roles-form.php) — le contrôleur ignore de toute façon un scope posté
+    // pour une permission non accordée, ceci n'est qu'un confort visuel.
+    function syncScopeState(mainCheckbox) {
+        var row = mainCheckbox.closest('[data-perm-row]');
+        if (!row) return;
+        var scopeCheckbox = row.querySelector('[data-perm-scope-checkbox]');
+        if (scopeCheckbox) scopeCheckbox.disabled = !mainCheckbox.checked;
+    }
+
     document.addEventListener('change', function (e) {
         if (!e.target.matches('[data-perm-checkbox]')) return;
+        syncScopeState(e.target);
         var card = e.target.closest('[data-perm-card]');
         if (card) refreshCard(card);
     });
@@ -41,7 +53,10 @@
 
         var checkboxes = card.querySelectorAll('[data-perm-checkbox]');
         var target = !Array.prototype.every.call(checkboxes, function (cb) { return cb.checked; });
-        checkboxes.forEach(function (cb) { cb.checked = target; });
+        checkboxes.forEach(function (cb) {
+            cb.checked = target;
+            syncScopeState(cb);
+        });
         refreshCard(card);
     });
 }());

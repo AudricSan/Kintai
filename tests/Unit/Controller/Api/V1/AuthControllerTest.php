@@ -14,6 +14,7 @@ use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
+use kintai\Core\Services\AuditLogger;
 use kintai\UI\Controller\Api\V1\AuthController;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -35,7 +36,7 @@ final class AuthControllerTest extends TestCase
         $this->tokens = $this->createMock(ApiTokenRepositoryInterface::class);
 
         $this->auth       = new AuthService($this->users, $storeUsers, $stores, $roles, $roleAssignments, $this->createStub(RememberTokenRepositoryInterface::class));
-        $this->controller = new AuthController($this->auth, $this->tokens, $this->users);
+        $this->controller = new AuthController($this->auth, $this->tokens, $this->users, new AuditLogger());
     }
 
     // -------------------------------------------------------------------------

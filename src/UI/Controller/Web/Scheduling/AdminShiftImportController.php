@@ -217,7 +217,6 @@ final class AdminShiftImportController
             $wage            = $wageCalc->calculate($startTime, $endTime, $shiftTypes, $netMinutes);
             $shiftTypeId     = $wage['dominant_type_id'];
             $estimatedSalary = $wage['estimated_salary'];
-            $wageBreakdownItems = $wage['breakdown'] ?? [];
 
             $hasExact    = false;
             $toDeleteIds = [];
@@ -247,7 +246,6 @@ final class AdminShiftImportController
                 'starts_at'        => $date . ' ' . $startTime . ':00',
                 'ends_at'          => $endsDate . ' ' . $endTime . ':00',
                 'estimated_salary' => $estimatedSalary > 0 ? $estimatedSalary : null,
-                'wage_breakdown'   => !empty($wageBreakdownItems) ? json_encode($wageBreakdownItems, JSON_UNESCAPED_UNICODE) : null,
                 'notes'            => null,
             ];
 

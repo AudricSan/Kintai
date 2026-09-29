@@ -55,14 +55,6 @@ function repUserName(array $usersMap, int $uid): string {
     return $name ?: ($u['display_name'] ?? ($u['email'] ?? '#' . $uid));
 }
 
-function repRoleLabel(string $role): string {
-    return match ($role) {
-        'admin'   => __('role_owner'),
-        'manager' => __('role_manager'),
-        default   => __('role_employee'),
-    };
-}
-
 function repHoursFormat(float $hours): string {
     $h = intdiv((int) round($hours * 60), 60);
     $m = (int) round($hours * 60) % 60;
@@ -80,7 +72,9 @@ $currencyStyle = store_currency_style($store);
         </span>
     </h2>
     <div class="page-header__actions">
+        <?php if (bundle_enabled('salary-report')): ?>
         <?= Button::make('💰 ' . __('salary_report'))->primary()->sm()->link($BASE_URL . '/admin/stores/' . (int) $store['id'] . '/reports/salary/create')->render() ?>
+        <?php endif; ?>
         <?= Button::make('⎙ ' . __('export_pdf'))->primary()->sm()->attrs(['onclick' => 'window.print()'])->render() ?>
         <?= Button::make(__('statistics'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . (int) $store['id'] . '/stats')->render() ?>
         <?= Button::make(__('back'))->ghost()->sm()->link(back_url(route_url('admin.stores')))->render() ?>
@@ -167,8 +161,9 @@ $currencyStyle = store_currency_style($store);
                 return $html;
             })
             ->column(__('role_col'), function($stat, $uid) use ($membersMap) {
-                $role = $membersMap[$uid]['role'] ?? 'staff';
-                return Badge::make(repRoleLabel($role))->variant($role === 'admin' ? 'primary' : ($role === 'manager' ? 'warning' : 'staff'))->render();
+                $roleName     = $membersMap[$uid]['role_name'] ?? '—';
+                $isManaging   = !empty($membersMap[$uid]['role_is_managing']);
+                return Badge::make($roleName)->variant($isManaging ? 'warning' : 'staff')->render();
             })
             ->column(__('shifts_col'), fn($stat) => '<span class="td-right td-mono">' . ($stat['shifts'] ?? 0) . '</span>', 'td-right')
             ->column(__('work_days_col'), fn($stat) => '<span class="td-right td-mono">' . ($stat['work_days'] ?? 0) . '</span>', 'td-right')
@@ -192,8 +187,11 @@ $currencyStyle = store_currency_style($store);
                 $uid = (int) $uid;
                 $statsUrl = $BASE_URL . '/admin/stores/' . (int) $store['id'] . '/employee-report/' . $uid . '/stats?period=' . $period;
                 $salaryUrl = $BASE_URL . '/admin/stores/' . (int) $store['id'] . '/reports/salary/create?user_id=' . $uid;
-                return Button::make('📊 ' . __('view_stats'))->ghost()->sm()->link($statsUrl)->render()
-                    . Button::make('💰 ' . __('salary_report'))->ghost()->sm()->link($salaryUrl)->render();
+                $html = Button::make('📊 ' . __('view_stats'))->ghost()->sm()->link($statsUrl)->render();
+                if (bundle_enabled('salary-report')) {
+                    $html .= Button::make('💰 ' . __('salary_report'))->ghost()->sm()->link($salaryUrl)->render();
+                }
+                return $html;
             })
             ->footer(function($data) use ($totalShifts, $totalGrossHours, $totalNetHours, $anyHasRate, $totalCost, $totalAbsDays, $currency, $currencyStyle) {
                 $html = '<tr class="erep-total-row"><td colspan="2"><strong>' . __('total_row') . '</strong></td>';

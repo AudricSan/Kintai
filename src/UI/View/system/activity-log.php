@@ -133,6 +133,18 @@ $actionLabels = [
     'system.migration_applied'           => __('audit_system_migration_applied'),
     'cron.auto_validated'                => __('audit_cron_auto_validated'),
     'backup.created'                     => __('audit_backup_created'),
+    'backup.restored'                    => __('audit_backup_restored'),
+    'backup.deleted'                     => __('audit_backup_deleted'),
+    'backup.deleted_all'                 => __('audit_backup_deleted_all'),
+    'backup.settings_updated'            => __('audit_backup_settings_updated'),
+    'update.channel_changed'             => __('audit_update_channel_changed'),
+    'update.applied'                     => __('audit_update_applied'),
+    'db.migration_failed'                => __('audit_db_migration_failed'),
+    'log.purged'                         => __('audit_log_purged'),
+    'activity_log.exported'              => __('audit_activity_log_exported'),
+    'api_token.created'                  => __('audit_api_token_created'),
+    'api_token.revoked'                  => __('audit_api_token_revoked'),
+    'auth.api_login_failed'              => __('audit_auth_api_login_failed'),
     'owner_settings.updated'             => __('audit_owner_settings_updated'),
     'nav_settings.updated'               => __('audit_nav_settings_updated'),
     'dashboard_prefs.updated'            => __('audit_dashboard_prefs_updated'),
@@ -160,8 +172,24 @@ $actionLabels = [
     'store_user.deleted'                  => __('audit_store_user_deleted'),
 ];
 ?>
+<?php
+$exportParams = array_filter([
+    'level'         => $levelFilter ?: null,
+    'channel'       => $channelFilter ?: null,
+    'action'        => $actionFilter ?: null,
+    'resource_type' => $resourceFilter ?: null,
+    'from'          => $fromFilter ?: null,
+    'to'            => $toFilter ?: null,
+    'user_id'       => $userIdFilter ?: null,
+    'query'         => $queryFilter ?: null,
+]);
+$exportUrl = route_url('admin.activity.export') . ($exportParams ? '?' . http_build_query($exportParams) : '');
+?>
 <div class="page-header">
     <h2 class="page-header__title"><?= __('activity_log') ?> <span class="page-count">(<?= $total ?>)</span></h2>
+    <div class="page-header__actions">
+        <?= Button::make('⬇ ' . __('export_csv'))->ghost()->sm()->link($exportUrl)->render() ?>
+    </div>
 </div>
 
 <div class="card card--filters mb-sm">

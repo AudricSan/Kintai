@@ -18,6 +18,9 @@ final class PermissionService
     /** @var array<int, array|null> Cache des rôles chargés, par role_id. */
     private array $roleCache = [];
 
+    /** @var array<int, string[]> Cache des clés de permission en portée globale, par role_id. */
+    private array $globalKeysCache = [];
+
     public function __construct(
         private readonly RoleAssignmentRepositoryInterface $assignments,
         private readonly RoleRepositoryInterface $roles,
@@ -37,7 +40,7 @@ final class PermissionService
         }
 
         foreach ($this->assignments->findByUser($userId) as $assignment) {
-            if (!$this->matchesScope($assignment, $storeId)) {
+            if (!$this->matchesScope($assignment, $storeId, $permissionKey)) {
                 continue;
             }
             if ($this->roleGrants((int) $assignment['role_id'], $permissionKey)) {
@@ -61,9 +64,17 @@ final class PermissionService
             if ($assignment['scope_type'] !== 'store' || $assignment['scope_id'] === null) {
                 continue;
             }
-            if ($this->roleGrants((int) $assignment['role_id'], $permissionKey)) {
-                $storeIds[] = (int) $assignment['scope_id'];
+            $roleId = (int) $assignment['role_id'];
+            if (!$this->roleGrants($roleId, $permissionKey)) {
+                continue;
             }
+            if ($this->permissionIsGlobalOnRole($roleId, $permissionKey)) {
+                // Cette permission est marquée globale sur ce rôle : elle ne doit pas
+                // restreindre l'utilisateur à ce store, elle doit remonter comme
+                // "portée illimitée" via can($user, $key, null) — voir PermissionMiddleware.
+                continue;
+            }
+            $storeIds[] = (int) $assignment['scope_id'];
         }
         return array_values(array_unique($storeIds));
     }
@@ -126,6 +137,44 @@ final class PermissionService
     }
 
     /**
+     * Vrai si l'utilisateur détient, via N'IMPORTE QUELLE affectation (peu importe son
+     * scope_type), un rôle système, OU un rôle marquant au moins une permission en
+     * portée globale (case "Toutes les boutiques" cochée sur au moins une clé de ce
+     * rôle — voir permissionIsGlobalOnRole()). Complète anyGrantedStoreIds() pour
+     * PermissionMiddleware : celle-ci ne collecte que les scope_id des affectations
+     * scope_type='store' et ne consulte jamais getGlobalPermissionKeys(), donc ne peut
+     * pas détecter qu'une affectation store-scope porte, via son rôle, une permission
+     * volontairement rendue illimitée. Sans ce signal, la porte grossière des routes
+     * 'public' (self-service/agrégats, et notamment /storage/{path*} qui sert tous les
+     * fichiers uploadés) restait à tort bornée au store d'origine de l'affectation —
+     * bug reproduit avec photos.view marquée globale sur un rôle affecté en store-scope :
+     * la liste des rapports (route à permission précise) montrait tous les magasins,
+     * mais leurs images (servies via /storage/{path*}, route 'public') non.
+     * @param array $authUser Utilisateur authentifié (au minimum ['id' => int])
+     */
+    public function hasAnyGlobalPermissionGrant(array $authUser): bool
+    {
+        $userId = (int) ($authUser['id'] ?? 0);
+        if ($userId <= 0) {
+            return false;
+        }
+        foreach ($this->assignments->findByUser($userId) as $assignment) {
+            $roleId = (int) $assignment['role_id'];
+            $role   = $this->role($roleId);
+            if ($role === null) {
+                continue;
+            }
+            if (!empty($role['is_system'])) {
+                return true;
+            }
+            if ($this->roles->getGlobalPermissionKeys($roleId) !== []) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Charge une ressource par id via $finder, vérifie que $permissionKey est accordée
      * sur son store RÉEL (jamais celui, optionnel, fourni par le client) — le pattern
      * "findById() + can()" que chaque contrôleur de ressource {id} devait ré-écrire à la
@@ -157,7 +206,29 @@ final class PermissionService
         return $item;
     }
 
-    private function matchesScope(array $assignment, ?int $storeId): bool
+    /**
+     * Identifiants des utilisateurs détenant un rôle système (Owner) en
+     * portée globale — remplace le filtre historique sur la colonne legacy
+     * users.is_admin (ex. la liste des responsables proposée dans les
+     * formulaires de rapport de démission/salaire). Même définition que
+     * AuthService::hasOwnerRole() (rôle is_system en portée globale, pas un
+     * slug codé en dur) pour ne jamais diverger de ce qui fait réellement foi
+     * pour l'autorisation.
+     * @return int[]
+     */
+    public function ownerUserIds(): array
+    {
+        $ids = [];
+        foreach ($this->assignments->findByScope('global', null) as $assignment) {
+            $role = $this->role((int) $assignment['role_id']);
+            if ($role !== null && !empty($role['is_system'])) {
+                $ids[] = (int) $assignment['user_id'];
+            }
+        }
+        return array_values(array_unique($ids));
+    }
+
+    private function matchesScope(array $assignment, ?int $storeId, string $permissionKey): bool
     {
         if ($storeId === null) {
             return true;
@@ -165,7 +236,26 @@ final class PermissionService
         if ($assignment['scope_type'] === 'global') {
             return true;
         }
+        if ($this->permissionIsGlobalOnRole((int) $assignment['role_id'], $permissionKey)) {
+            return true;
+        }
         return (int) ($assignment['scope_id'] ?? 0) === $storeId;
+    }
+
+    /**
+     * Vrai si $permissionKey est marquée en portée 'global' sur ce rôle (case
+     * "Toutes les boutiques" cochée dans l'éditeur de rôle) — indépendant de la
+     * portée (scope_type/scope_id) de l'affectation qui relie l'utilisateur à
+     * ce rôle : permet à un rôle store-scope (ex. Manager) d'accorder certaines
+     * permissions sur toutes les boutiques (ex. shifts.view) tout en gardant
+     * les autres restreintes au store de l'affectation (ex. shifts.update).
+     */
+    private function permissionIsGlobalOnRole(int $roleId, string $permissionKey): bool
+    {
+        if (!array_key_exists($roleId, $this->globalKeysCache)) {
+            $this->globalKeysCache[$roleId] = $this->roles->getGlobalPermissionKeys($roleId);
+        }
+        return in_array($permissionKey, $this->globalKeysCache[$roleId], true);
     }
 
     private function roleGrants(int $roleId, string $permissionKey): bool

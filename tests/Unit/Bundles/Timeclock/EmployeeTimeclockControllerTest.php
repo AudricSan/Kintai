@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Bundles\Timeclock;
 
-use kintai\Bundles\Timeclock\Controllers\Web\EmployeeTimeclockController;
+require_once dirname(__DIR__, 3) . '/Fixtures/bundles/timeclock-1.0.0/src/Controllers/Web/EmployeeTimeclockController.php';
+
+use kintai\Bundles\Installed\Timeclock\Controllers\Web\EmployeeTimeclockController;
 use kintai\Core\Container;
 use kintai\Core\Exceptions\ConflictException;
 use kintai\Core\Exceptions\NotFoundException;

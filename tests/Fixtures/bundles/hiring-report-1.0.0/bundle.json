@@ -1,0 +1,13 @@
+{
+    "slug": "hiring-report",
+    "name": "Rapport d'embauche",
+    "version": "1.0.0",
+    "description": "Consultation et édition des rapports d'embauche par magasin. Générés automatiquement à la création d'un employé, même si ce bundle est désactivé.",
+    "author": { "name": "AudricSan", "url": "https://github.com/AudricSan" },
+    "kintai_core": { "min": "0.1.0", "max": "999.999.999" },
+    "requires_bundles": {},
+    "namespace": "kintai\\Bundles\\Installed\\HiringReport",
+    "entry_class": "kintai\\Bundles\\Installed\\HiringReport\\HiringReportBundle",
+    "license": "AGPL-3.0-only",
+    "homepage": "https://github.com/AudricSan/kintai-bundle-hiring-report"
+}

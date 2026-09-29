@@ -27,15 +27,15 @@ final class DatabaseStoreUserRepositoryTest extends TestCase
             $table->increments('id');
             $table->integer('store_id');
             $table->integer('user_id');
-            $table->string('role')->default('staff');
+            $table->string('staff_code')->nullable();
         });
 
         $this->repo = new DatabaseStoreUserRepository();
     }
 
-    private function membership(int $id, int $storeId = 1, int $userId = 10, string $role = 'staff'): array
+    private function membership(int $id, int $storeId = 1, int $userId = 10, ?string $staffCode = null): array
     {
-        return ['id' => $id, 'store_id' => $storeId, 'user_id' => $userId, 'role' => $role];
+        return ['id' => $id, 'store_id' => $storeId, 'user_id' => $userId, 'staff_code' => $staffCode];
     }
 
     // -------------------------------------------------------------------------
@@ -44,10 +44,10 @@ final class DatabaseStoreUserRepositoryTest extends TestCase
 
     public function testFindByIdReturnsMembership(): void
     {
-        $m = EloquentStoreUser::create(['store_id' => 1, 'user_id' => 10, 'role' => 'admin']);
+        $m = EloquentStoreUser::create(['store_id' => 1, 'user_id' => 10, 'staff_code' => 'STF001']);
         $found = $this->repo->findById($m->id);
         $this->assertNotNull($found);
-        $this->assertEquals('admin', $found['role']);
+        $this->assertEquals('STF001', $found['staff_code']);
     }
 
     public function testFindByIdReturnsNullWhenNotFound(): void
@@ -92,10 +92,10 @@ final class DatabaseStoreUserRepositoryTest extends TestCase
 
     public function testFindMembershipReturnsMembership(): void
     {
-        EloquentStoreUser::create(['store_id' => 3, 'user_id' => 7, 'role' => 'manager']);
+        EloquentStoreUser::create(['store_id' => 3, 'user_id' => 7, 'staff_code' => 'STF002']);
         $result = $this->repo->findMembership(3, 7);
         $this->assertNotNull($result);
-        $this->assertSame('manager', $result['role']);
+        $this->assertSame('STF002', $result['staff_code']);
     }
 
     public function testFindMembershipReturnsNullWhenNotMember(): void
@@ -109,17 +109,17 @@ final class DatabaseStoreUserRepositoryTest extends TestCase
 
     public function testSaveCreatesMembership(): void
     {
-        $data = ['store_id' => 1, 'user_id' => 10, 'role' => 'staff'];
+        $data = ['store_id' => 1, 'user_id' => 10, 'staff_code' => 'STF003'];
         $result = $this->repo->save($data);
         $this->assertArrayHasKey('id', $result);
-        $this->assertEquals('staff', $result['role']);
+        $this->assertEquals('STF003', $result['staff_code']);
     }
 
     public function testSaveUpdatesMembership(): void
     {
-        $m = EloquentStoreUser::create(['store_id' => 1, 'user_id' => 10, 'role' => 'staff']);
-        $result = $this->repo->save(['id' => $m->id, 'role' => 'admin']);
-        $this->assertEquals('admin', $result['role']);
+        $m = EloquentStoreUser::create(['store_id' => 1, 'user_id' => 10, 'staff_code' => 'STF003']);
+        $result = $this->repo->save(['id' => $m->id, 'staff_code' => 'STF004']);
+        $this->assertEquals('STF004', $result['staff_code']);
     }
 
     // -------------------------------------------------------------------------

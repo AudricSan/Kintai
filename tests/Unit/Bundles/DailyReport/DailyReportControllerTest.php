@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Bundles\DailyReport;
 
-use kintai\Bundles\DailyReport\Controllers\Web\DailyReportController;
+require_once dirname(__DIR__, 3) . '/Fixtures/bundles/daily-report-1.0.0/src/Controllers/Web/DailyReportController.php';
+
+use kintai\Bundles\Installed\DailyReport\Controllers\Web\DailyReportController;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Mail\MailerService;
 use kintai\Core\Repositories\DailyReportRepositoryInterface;

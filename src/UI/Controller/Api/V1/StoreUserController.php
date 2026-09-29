@@ -47,7 +47,7 @@ final class StoreUserController
     {
         $storeId = (int) $request->param('store_id');
         $this->requireStore($storeId);
-        $data   = array_merge($request->json() ?? [], ['store_id' => $storeId]);
+        $data   = array_merge($this->stripLegacyRoleFields($request->json() ?? []), ['store_id' => $storeId]);
         $saved  = $this->storeUsers->save($data);
         $this->auditLogger->log($request, 'store_user.created', 'store_user', resourceId: (int) ($saved['id'] ?? 0) ?: null, details: $data, storeId: $storeId);
         return Response::json($saved, 201);
@@ -65,7 +65,20 @@ final class StoreUserController
             throw new NotFoundException(__('error_member_not_found'));
         }
 
-        return Response::json($this->storeUsers->save(array_merge($existing, $request->json() ?? [], ['id' => $id, 'store_id' => $storeId])));
+        $data = $this->stripLegacyRoleFields($request->json() ?? []);
+        return Response::json($this->storeUsers->save(array_merge($existing, $data, ['id' => $id, 'store_id' => $storeId])));
+    }
+
+    /**
+     * Le rôle réel d'un membre se gère exclusivement via /admin/roles et
+     * role_assignments (RoleAssignmentSyncService) — jamais par cette API
+     * générique de membership, pour ne pas désynchroniser l'autorisation
+     * réelle d'une valeur postée ici sans passer par le RBAC dynamique.
+     */
+    private function stripLegacyRoleFields(array $data): array
+    {
+        unset($data['role'], $data['is_manager']);
+        return $data;
     }
 
     /** DELETE /api/v1/stores/{store_id}/members/{id} */

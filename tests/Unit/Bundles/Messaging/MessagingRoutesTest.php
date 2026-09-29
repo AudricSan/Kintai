@@ -18,6 +18,11 @@ use kintai\Core\Router;
  * "gestionnaire d'au moins un store" (l'ancien AdminMiddleware), donc
  * n'importe quel manager pouvait tout lire/envoyer/supprimer indépendamment
  * de son rôle assigné.
+ *
+ * Depuis son extraction du monorepo (voir docs/architecture.md "Modular
+ * Bundles"), le code réel du bundle vit hors de ce dépôt
+ * (kintai-bundle-messaging) ; tests/Fixtures/bundles/messaging-1.0.0/ en
+ * est une copie fidèle, maintenue en même temps que le dépôt externe.
  */
 final class MessagingRoutesTest extends TestCase
 {
@@ -25,7 +30,7 @@ final class MessagingRoutesTest extends TestCase
     {
         $router = new Router();
         $container = new Container();
-        require dirname(__DIR__, 4) . '/src/Bundles/Messaging/routes.php';
+        require dirname(__DIR__, 4) . '/tests/Fixtures/bundles/messaging-1.0.0/routes.php';
 
         return $router;
     }

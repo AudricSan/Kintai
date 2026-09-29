@@ -23,7 +23,7 @@ final class TimeclockRoutesTest extends TestCase
     {
         $router = new Router();
         $container = new Container();
-        require dirname(__DIR__, 4) . '/src/Bundles/Timeclock/routes.php';
+        require dirname(__DIR__, 4) . '/tests/Fixtures/bundles/timeclock-1.0.0/routes.php';
 
         return $router;
     }

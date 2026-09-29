@@ -20,6 +20,7 @@ $_settingsTabs[] = ['label' => __('update'),    'url' => route_url('admin.update
 $_settingsTabs[] = ['label' => __('languages'), 'url' => route_url('admin.languages'),     'match' => '/admin/languages'];
 $_settingsTabs[] = ['label' => __('bundle_settings'), 'url' => route_url('admin.bundles'), 'match' => '/admin/bundles'];
 $_settingsTabs[] = ['label' => __('roles'), 'url' => route_url('admin.roles'), 'match' => '/admin/roles'];
+$_settingsTabs[] = ['label' => __('license'), 'url' => route_url('admin.license'), 'match' => '/admin/license'];
 ?>
 <div class="tabs card--mb">
     <?php foreach ($_settingsTabs as $_t): ?>

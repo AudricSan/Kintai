@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Bundles\DailyReport\Api;
 
-use kintai\Bundles\DailyReport\Controllers\Api\DailyReportController;
+require_once dirname(__DIR__, 4) . '/Fixtures/bundles/daily-report-1.0.0/src/Controllers/Api/DailyReportController.php';
+
+use kintai\Bundles\Installed\DailyReport\Controllers\Api\DailyReportController;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\DailyReportRepositoryInterface;

@@ -15,6 +15,11 @@ use kintai\Core\Router;
  * Régression : les routes /admin/reports/resignation et
  * /admin/stores/{id}/reports/resignation/* du bundle ResignationReport
  * doivent rester protégées après leur extraction du core.
+ *
+ * Depuis son extraction du monorepo (voir docs/architecture.md "Modular
+ * Bundles"), le code réel du bundle vit hors de ce dépôt
+ * (kintai-bundle-resignation-report) ; tests/Fixtures/bundles/resignation-report-1.0.0/
+ * en est une copie fidèle, maintenue en même temps que le dépôt externe.
  */
 final class ResignationReportRoutesTest extends TestCase
 {
@@ -22,7 +27,7 @@ final class ResignationReportRoutesTest extends TestCase
     {
         $router = new Router();
         $container = new Container();
-        require dirname(__DIR__, 4) . '/src/Bundles/ResignationReport/routes.php';
+        require dirname(__DIR__, 4) . '/tests/Fixtures/bundles/resignation-report-1.0.0/routes.php';
 
         return $router;
     }

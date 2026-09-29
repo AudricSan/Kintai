@@ -28,6 +28,11 @@ interface StoreRepositoryInterface
     public function findActive(): array;
 
     /**
+     * Compte les stores actifs (deleted_at IS NULL, is_active = 1).
+     */
+    public function countActive(): int;
+
+    /**
      * Crée ou met à jour un store. Crée si pas d'ID, met à jour sinon.
      */
     public function save(array $data): array;

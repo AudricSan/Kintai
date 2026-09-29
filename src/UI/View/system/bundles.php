@@ -4,18 +4,31 @@ use kintai\UI\Components\Flash;
 
 /** @var array $bundles Liste de ['key' => string, 'label' => string, 'desc' => string, 'enabled' => bool, 'official' => bool] */
 /** @var bool  $success */
+/** @var int|null $maxActiveBundles */
+/** @var int  $activeCount */
+/** @var string|null $BASE_URL */
+
+$maxActiveBundles ??= null;
+$activeCount      ??= 0;
 
 echo Flash::fromQuery('success', ['default' => __('save_success')])->render();
+echo Flash::fromQuery('error', [
+    'bundle_quota_exceeded' => __('bundle_quota_exceeded', ['max' => $maxActiveBundles]),
+])->render();
 ?>
 <div class="page-header">
     <h2 class="page-header__title"><?= __('bundle_settings') ?></h2>
 </div>
 
 <?php include __DIR__ . '/../_partials/_settings-tabs.php'; ?>
+<?php include __DIR__ . '/_bundle-tabs.php'; ?>
 
 <div class="card card--mb">
     <div class="card-body">
         <p class="form-hint"><?= __('bundle_settings_hint') ?></p>
+        <?php if ($maxActiveBundles !== null): ?>
+            <p class="form-hint"><?= __('bundle_active_count', ['count' => $activeCount, 'max' => $maxActiveBundles]) ?></p>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -35,6 +48,7 @@ echo Flash::fromQuery('success', ['default' => __('save_success')])->render();
                         <div class="feature-card__body">
                             <span class="feature-card__title">
                                 <?= htmlspecialchars($b['label']) ?>
+                                <span class="badge badge--neutral badge--sm"><?= htmlspecialchars(__('bundle_version', ['version' => $b['version']])) ?></span>
                                 <?php if (!$b['official']): ?>
                                     <span class="badge badge--warning badge--sm"><?= __('bundle_third_party') ?></span>
                                 <?php endif; ?>

@@ -1,0 +1,10 @@
+{
+    "bundle_team_directory": "Team directory",
+    "bundle_team_directory_desc": "Extended profile (picture, bio, skills, languages spoken, hobbies) and a per-store colleague directory.",
+    "error_not_colleague": "You do not share any store with this user.",
+    "team_directory": "Team",
+    "team_directory_back": "Back to directory",
+    "team_directory_empty": "No colleagues to show yet.",
+    "team_directory_empty_profile": "This colleague hasn't filled in their extended profile yet.",
+    "team_directory_view_profile": "View profile"
+}

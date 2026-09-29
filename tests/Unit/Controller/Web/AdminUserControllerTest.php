@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Controller\Web;
 
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Container;
+use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Repositories\DailyReportRepositoryInterface;
 use kintai\Core\Repositories\LogRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
@@ -21,7 +23,9 @@ use kintai\Core\Repositories\HiringReportRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\LicenseClientService;
 use kintai\Core\Services\Log;
+use kintai\Core\Services\PlanLimitService;
 use kintai\Core\Services\RoleAssignmentSyncService;
 use kintai\UI\Controller\Web\Staff\AdminUserController;
 use kintai\UI\ViewRenderer;
@@ -71,6 +75,12 @@ final class AdminUserControllerTest extends TestCase
             $this->createMock(HiringReportRepositoryInterface::class),
             new AuditLogger(),
             new RoleAssignmentSyncService($this->roles, $this->roleAssignments),
+            new PermissionService($this->roleAssignments, $this->roles),
+            new PlanLimitService(
+                $this->stores,
+                $this->users,
+                new LicenseClientService($this->createMock(AppSettingsRepositoryInterface::class), ['base_url' => '', 'api_key' => '']),
+            ),
         );
     }
 
@@ -272,6 +282,26 @@ final class AdminUserControllerTest extends TestCase
         $this->assertSame(7, $data['user']['id']);
     }
 
+    public function testQuickCreateUserFailsWhenFreePlanEmployeeLimitReached(): void
+    {
+        $this->users->method('countActive')->willReturn(15);
+        $req = $this->makePostRequest([
+            'display_name' => 'John Doe',
+            'first_name'   => 'John',
+            'last_name'    => 'Doe',
+            'furigana_last_name'  => 'ドウ',
+            'furigana_first_name' => 'ジョン',
+        ]);
+        $this->users->expects($this->never())->method('save');
+
+        $response = $this->controller->quickCreateUser($req);
+
+        $this->assertSame(403, $response->status());
+        $data = json_decode($response->body(), true);
+        $this->assertFalse($data['success']);
+        $this->assertSame('plan_limit_employees', $data['error']);
+    }
+
     public function testQuickCreateUserFailsWhenNameMissing(): void
     {
         $req = $this->makePostRequest([
@@ -450,7 +480,6 @@ final class AdminUserControllerTest extends TestCase
         $req->setAttribute('managed_store_ids', null);
 
         $this->users->method('save')->willReturn(['id' => 10, 'display_name' => 'John']);
-        // Rôle dynamique id=2 accordant des permissions → colonne legacy 'manager'
         $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'name' => 'Manager', 'is_system' => 0]);
         $this->roles->method('getPermissions')->with(2)->willReturn(['employees.view']);
         $this->roleAssignments->method('findByUser')->willReturn([]);
@@ -466,7 +495,6 @@ final class AdminUserControllerTest extends TestCase
         $this->assertNotNull($capturedStoreUser);
         $this->assertSame(3, $capturedStoreUser['store_id']);
         $this->assertSame(10, $capturedStoreUser['user_id']);
-        $this->assertSame('manager', $capturedStoreUser['role']);
     }
 
     /**
@@ -535,7 +563,7 @@ final class AdminUserControllerTest extends TestCase
 
         $this->controller->quickCreateUser($req);
 
-        $this->assertSame('staff', $capturedStoreUser['role']);
+        $this->assertNotNull($capturedStoreUser);
     }
 
     public function testQuickCreateUserSyncsOwnerRoleWhenIsAdminChecked(): void
@@ -550,11 +578,41 @@ final class AdminUserControllerTest extends TestCase
             'furigana_last_name'  => 'ジェーン',
             'furigana_first_name' => 'ジェーン',
         ]);
+        // Requérant Owner : seul un Owner peut créer un autre compte Owner
+        // (voir testQuickCreateUserIgnoresIsAdminWhenRequesterIsNotOwner).
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
 
         $this->users->method('save')->willReturn(['id' => 11, 'display_name' => 'Jane']);
         $this->roles->method('findBySlug')->with('owner')->willReturn(['id' => 1]);
         $this->roleAssignments->method('findByUser')->willReturn([]);
         $this->roleAssignments->expects($this->once())->method('assign')->with(11, 1, 'global', null);
+
+        $this->controller->quickCreateUser($req);
+    }
+
+    /**
+     * Bug de sécurité corrigé : un requérant qui n'est PAS Owner (ex. un simple
+     * détenteur de employees.create sur son store) ne doit pas pouvoir créer un
+     * compte Owner en postant is_admin=1 — seul le statut Owner du REQUÉRANT
+     * compte, jamais un champ posté par le client.
+     */
+    public function testQuickCreateUserIgnoresIsAdminWhenRequesterIsNotOwner(): void
+    {
+        $req = $this->makePostRequest([
+            'display_name' => 'Jane',
+            'first_name'   => 'Jane',
+            'last_name'    => 'Doe',
+            'email'        => 'jane@example.com',
+            'password'     => 'pass',
+            'is_admin'     => '1',
+            'furigana_last_name'  => 'ジェーン',
+            'furigana_first_name' => 'ジェーン',
+        ]);
+        $req->setAttribute('auth_user', ['id' => 2, 'is_admin' => false]);
+
+        $this->users->method('save')->willReturn(['id' => 12, 'display_name' => 'Jane']);
+        $this->roles->method('findBySlug')->with('owner')->willReturn(['id' => 1]);
+        $this->roleAssignments->expects($this->never())->method('assign');
 
         $this->controller->quickCreateUser($req);
     }
@@ -578,6 +636,9 @@ final class AdminUserControllerTest extends TestCase
             'store_id'     => '3',
         ]);
         $req->setAttribute('managed_store_ids', null);
+        // Requérant Owner : seul un Owner peut créer un autre compte Owner
+        // (voir testStoreUserIgnoresOwnerRoleSelectionWhenRequesterIsNotOwner).
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
 
         $this->roles->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Owner', 'is_system' => 1]);
         $this->roles->method('findBySlug')->with('owner')->willReturn(['id' => 1]);
@@ -595,7 +656,34 @@ final class AdminUserControllerTest extends TestCase
 
         $this->controller->storeUser($req);
 
-        $this->assertSame(1, $captured['is_admin']);
+        $this->assertNotNull($captured);
+    }
+
+    /**
+     * Bug de sécurité corrigé : un requérant qui n'est pas Owner ne doit pas
+     * pouvoir créer un compte Owner en sélectionnant le rôle système dans le
+     * sélecteur "Rôle" unifié.
+     */
+    public function testStoreUserIgnoresOwnerRoleSelectionWhenRequesterIsNotOwner(): void
+    {
+        $req = $this->makePostRequest([
+            'display_name' => 'Jane',
+            'last_name'    => 'Doe',
+            'first_name'   => 'Jane',
+            'email'        => 'jane@example.com',
+            'furigana_last_name'  => 'ドウ',
+            'furigana_first_name' => 'ジェーン',
+            'role_id'      => '1',
+        ]);
+        $req->setAttribute('managed_store_ids', [3]);
+        $req->setAttribute('auth_user', ['id' => 2, 'is_admin' => false]);
+
+        $this->roles->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Owner', 'is_system' => 1]);
+        $this->roles->method('findBySlug')->with('owner')->willReturn(['id' => 1]);
+        $this->users->method('save')->willReturn(['id' => 22, 'display_name' => 'Jane']);
+        $this->roleAssignments->expects($this->never())->method('assign');
+
+        $this->controller->storeUser($req);
     }
 
     /** Rôle par store sélectionné (Manager) : comportement inchangé, juste renommé store_role_id -> role_id. */
@@ -628,12 +716,30 @@ final class AdminUserControllerTest extends TestCase
 
         $this->controller->storeUser($req);
 
-        $this->assertSame('manager', $capturedStoreUser['role']);
+        $this->assertNotNull($capturedStoreUser);
     }
 
     // -------------------------------------------------------------------------
     // storeUser / updateUser — conflit d'email
     // -------------------------------------------------------------------------
+
+    public function testStoreUserRedirectsWithErrorWhenFreePlanEmployeeLimitReached(): void
+    {
+        $this->users->method('countActive')->willReturn(15);
+        $req = $this->makePostRequest([
+            'display_name' => 'John',
+            'last_name'    => 'Doe',
+            'first_name'   => 'John',
+            'furigana_last_name'  => 'ドウ',
+            'furigana_first_name' => 'ジョン',
+            'email'        => 'new@example.com',
+        ]);
+        $this->users->expects($this->never())->method('save');
+
+        $response = $this->controller->storeUser($req);
+
+        $this->assertSame(302, $response->status());
+    }
 
     public function testStoreUserRedirectsWithErrorOnEmailConflict(): void
     {
@@ -738,6 +844,57 @@ final class AdminUserControllerTest extends TestCase
         $response = $this->controller->updateUser($req);
 
         $this->assertSame(302, $response->status());
+    }
+
+    // -------------------------------------------------------------------------
+    // updateUser — statut Owner (is_admin) : uniquement modifiable par un
+    // requérant déjà Owner (bug de sécurité corrigé, voir syncOwnerRole()).
+    // -------------------------------------------------------------------------
+
+    public function testUpdateUserSyncsOwnerRoleWhenRequesterIsOwner(): void
+    {
+        $this->users->method('findById')->with(5)->willReturn(['id' => 5, 'email' => 'me@example.com', 'last_name' => 'Doe', 'first_name' => 'John']);
+        $this->users->method('save')->willReturn(['id' => 5]);
+        $this->roles->method('findBySlug')->with('owner')->willReturn(['id' => 1]);
+        $this->roleAssignments->method('findByUser')->willReturn([]);
+        $this->roleAssignments->expects($this->once())->method('assign')->with(5, 1, 'global', null);
+
+        $req = $this->makePostRequest([
+            'email' => 'me@example.com',
+            'furigana_last_name'  => 'テスト',
+            'furigana_first_name' => 'テスト',
+            'is_admin' => '1',
+        ]);
+        $req->setRouteParams(['id' => 5]);
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+
+        $this->controller->updateUser($req);
+    }
+
+    /**
+     * Bug de sécurité corrigé : un requérant qui n'est pas Owner ne doit pas
+     * pouvoir s'auto-promouvoir (ni promouvoir quiconque) en postant
+     * is_admin=1 sur cette route — seule employees.update la protège
+     * normalement, ce qui ne suffit pas à garantir que le requérant est Owner.
+     */
+    public function testUpdateUserIgnoresIsAdminWhenRequesterIsNotOwner(): void
+    {
+        $this->users->method('findById')->with(5)->willReturn(['id' => 5, 'email' => 'me@example.com', 'last_name' => 'Doe', 'first_name' => 'John']);
+        $this->users->method('save')->willReturn(['id' => 5]);
+        $this->roles->expects($this->never())->method('findBySlug');
+        $this->roleAssignments->expects($this->never())->method('assign');
+        $this->roleAssignments->expects($this->never())->method('revoke');
+
+        $req = $this->makePostRequest([
+            'email' => 'me@example.com',
+            'furigana_last_name'  => 'テスト',
+            'furigana_first_name' => 'テスト',
+            'is_admin' => '1',
+        ]);
+        $req->setRouteParams(['id' => 5]);
+        $req->setAttribute('auth_user', ['id' => 2, 'is_admin' => false]);
+
+        $this->controller->updateUser($req);
     }
 
     // -------------------------------------------------------------------------

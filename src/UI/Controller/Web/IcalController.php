@@ -59,8 +59,11 @@ final class IcalController
         $shifts = array_values(array_filter(
             $this->shifts->findByUser($userId),
             fn($s) => (int) ($s['store_id'] ?? 0) === $storeId
-                && (empty($s['deleted_at']) || ($s['deleted_at'] ?? '') >= $cutoff)
         ));
+        // Shifts supprimés récemment (30 jours) : émis comme VEVENT CANCELLED
+        // par IcalService::build() pour que l'agenda synchronisé de l'employé
+        // reflète explicitement la suppression au lieu de la manquer silencieusement.
+        $shifts = array_merge($shifts, $this->shifts->findRecentDeletionsByUserAndStore($userId, $storeId, $cutoff));
 
         $timeoffs = array_values(array_filter(
             $this->timeoffRequests->findByUser($userId),

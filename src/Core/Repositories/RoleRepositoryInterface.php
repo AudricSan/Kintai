@@ -28,6 +28,15 @@ interface RoleRepositoryInterface
     /** @return string[] Clés de permission accordées à ce rôle. */
     public function getPermissions(int $roleId): array;
 
-    /** @param string[] $permissionKeys */
-    public function savePermissions(int $roleId, array $permissionKeys): void;
+    /** @return string[] Sous-ensemble de getPermissions() dont la portée est 'global'. */
+    public function getGlobalPermissionKeys(int $roleId): array;
+
+    /**
+     * @param string[] $permissionKeys
+     * @param string[] $globalScopeKeys Sous-ensemble de $permissionKeys à marquer en portée
+     *                                  'global' (toutes les boutiques, quelle que soit la
+     *                                  portée de l'affectation du rôle). Toute entrée absente
+     *                                  de $permissionKeys est ignorée.
+     */
+    public function savePermissions(int $roleId, array $permissionKeys, array $globalScopeKeys = []): void;
 }

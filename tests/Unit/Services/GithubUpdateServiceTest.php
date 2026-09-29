@@ -46,7 +46,6 @@ final class GithubUpdateServiceTest extends TestCase
         $this->setPrivate($this->migrator, 'migrationsPath', $this->tmpDir . '/no-migrations');
 
         $this->updateService = new UpdateService($this->tmpDir);
-        $this->setPrivate($this->updateService, 'versionFile', $this->tmpDir . '/storage/app/version.json');
 
         $this->backup = new BackupService($capsule);
         $this->setPrivate($this->backup, 'backupDir', $this->tmpDir . '/storage/backups');
@@ -382,7 +381,7 @@ final class GithubUpdateServiceTest extends TestCase
      * Régression : appliquer une prerelease dont le Z réel dépasse le
      * placeholder "X.Y.0" synchronisé dans config/app.php ne doit pas laisser
      * l'instance se croire perpétuellement en retard sur cette même release
-     * (voir UpdateService::recordAppliedVersion()).
+     * (voir UpdateService::setCurrentVersion()).
      */
     public function testCheckLatestReleaseIsUpToDateRightAfterApplyingAnIteratedRelease(): void
     {
@@ -535,28 +534,6 @@ final class GithubUpdateServiceTest extends TestCase
         $syncPercents = array_filter($percents, fn(int $p) => $p > 55 && $p <= 75);
         $this->assertNotEmpty($syncPercents);
         $this->assertContains(75, $percents);
-    }
-
-    public function testApplyUpdateRecordsDuration(): void
-    {
-        $service = $this->makeService('v1.0.0', ['README.md' => 'v1 readme']);
-
-        $this->assertNull($this->updateService->getLastUpdateDuration());
-
-        $result = $service->applyUpdate();
-
-        $this->assertTrue($result['ok']);
-        $this->assertNotNull($this->updateService->getLastUpdateDuration());
-        $this->assertGreaterThanOrEqual(0, $this->updateService->getLastUpdateDuration());
-    }
-
-    public function testApplyUpdateDoesNotRecordDurationOnFailure(): void
-    {
-        $service = $this->makeService('v1.0.0', ['README.md' => 'hello'], currentVersion: '1.0.0');
-
-        $service->applyUpdate();
-
-        $this->assertNull($this->updateService->getLastUpdateDuration());
     }
 
     public function testGetLastCheckErrorIsNullAfterSuccessfulCheck(): void

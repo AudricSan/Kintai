@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Controller\Web;
 
 use kintai\Core\Auth\PermissionService;
+use kintai\Core\BundleManager;
 use kintai\Core\Container;
-use kintai\Core\FeatureManager;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\ShiftClaimRepositoryInterface;
@@ -22,6 +22,7 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Services\DashboardAlertService;
 use kintai\Core\Services\StoreStatsServiceInterface;
+use kintai\Tests\Support\FakeBundleManagerFactory;
 use kintai\UI\Controller\Web\HomeController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\TestCase;
@@ -40,6 +41,14 @@ final class HomeControllerPendingClaimsTest extends TestCase
     {
         $this->ensureViewFile('dashboard.index', '<?php ?>');
         $this->ensureViewFile('layout.app', "<?php echo json_encode(['stats' => \$stats]);");
+    }
+
+    protected function tearDown(): void
+    {
+        // Réinitialise le singleton Container pour ne pas propager le
+        // BundleManager/ShiftClaimRepositoryInterface injectés vers d'autres tests.
+        $instance = new \ReflectionProperty(Container::class, 'instance');
+        $instance->setValue(null, null);
     }
 
     private function unbindShiftClaims(): void
@@ -119,7 +128,7 @@ final class HomeControllerPendingClaimsTest extends TestCase
 
     public function testDashboardDoesNotCrashAndExcludesClaimsWhenShiftClaimBundleDisabled(): void
     {
-        Container::getInstance()->instance(FeatureManager::class, new FeatureManager(['timeoff']));
+        Container::getInstance()->instance(BundleManager::class, FakeBundleManagerFactory::withActiveSlugs(['timeoff']));
         $this->unbindShiftClaims();
 
         $controller = $this->buildController();
@@ -132,7 +141,7 @@ final class HomeControllerPendingClaimsTest extends TestCase
 
     public function testPendingRequestsIncludesPendingClaimsWhenBundleEnabled(): void
     {
-        Container::getInstance()->instance(FeatureManager::class, new FeatureManager(['timeoff', 'shift-claim']));
+        Container::getInstance()->instance(BundleManager::class, FakeBundleManagerFactory::withActiveSlugs(['timeoff', 'shift-claim']));
 
         $claimsRepo = $this->createMock(ShiftClaimRepositoryInterface::class);
         $claimsRepo->method('findAll')->willReturn([

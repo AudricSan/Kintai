@@ -132,10 +132,10 @@ $composerPath = Join-Path $repoRoot "composer.json"
 $composer = Get-Content $composerPath -Raw
 $newComposer = [regex]::Replace($composer, '"version":\s*"[^"]*"', "`"version`": `"$Version`"", 1)
 
-# --- config/app.php : APP_VERSION par défaut ---
+# --- config/app.php : champ "version" ---
 $appConfigPath = Join-Path $repoRoot "config/app.php"
 $appConfig = Get-Content $appConfigPath -Raw
-$newAppConfig = [regex]::Replace($appConfig, "env\('APP_VERSION',\s*'[^']*'\)", "env('APP_VERSION', '$Version')", 1)
+$newAppConfig = [regex]::Replace($appConfig, "'version'\s*=>\s*'[^']*'", "'version' => '$Version'", 1)
 
 if ($DryRun) {
     Write-Output "`n--- Notes de release qui seraient publiées ---"

@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace kintai\UI\Controller\Web\Staff;
 
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
+use kintai\Core\Exceptions\PlanLimitExceededException;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
@@ -18,6 +20,7 @@ use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\EmployeeStatsService;
 use kintai\Core\Services\PdfCjkFontResolver;
+use kintai\Core\Services\PlanLimitService;
 use kintai\Core\Services\RoleAssignmentSyncService;
 use kintai\UI\ViewRenderer;
 use kintai\UI\Controller\Web\HasAdminAccess;
@@ -36,7 +39,24 @@ final class AdminUserController
         private readonly HiringReportRepositoryInterface $hiringReports,
         private readonly AuditLogger $auditLogger,
         private readonly RoleAssignmentSyncService $roleSync,
+        private readonly PermissionService $permissions,
+        private readonly PlanLimitService $planLimits,
     ) {}
+
+    /**
+     * Enrichit chaque ligne d'un flag `is_admin` calculé depuis le RBAC
+     * dynamique (Owner = affectation globale sur le rôle système), en
+     * remplacement de la colonne historique users.is_admin.
+     */
+    private function enrichIsAdmin(array $users): array
+    {
+        $ownerIds = $this->permissions->ownerUserIds();
+        foreach ($users as &$u) {
+            $u['is_admin'] = in_array((int) $u['id'], $ownerIds, true) ? 1 : 0;
+        }
+        unset($u);
+        return $users;
+    }
 
     // -------------------------------------------------------------------------
     // Users — CRUD
@@ -55,6 +75,7 @@ final class AdminUserController
         } else {
             $users = $this->users->findAll();
         }
+        $users = $this->enrichIsAdmin($users);
 
         // Statistiques du mois en cours — même source que le dashboard employé et le
         // rapport de salaire (ShiftWageCalculator::costOf() via EmployeeStatsService),
@@ -260,6 +281,7 @@ final class AdminUserController
         } else {
             $users = $this->users->findAll();
         }
+        $users = $this->enrichIsAdmin($users);
 
         $availableStores = $this->availableStores($managedIds);
         $availableStoreIds = array_map(fn($s) => (int) $s['id'], $availableStores);
@@ -357,6 +379,12 @@ final class AdminUserController
 
     public function storeUser(Request $request): Response
     {
+        try {
+            $this->planLimits->assertCanCreateEmployee();
+        } catch (PlanLimitExceededException) {
+            return Response::redirect($this->base() . '/admin/users/create?error=plan_limit_employees');
+        }
+
         $email = trim($request->post('email', ''));
         if ($email !== '' && $this->users->findByEmail($email) !== null) {
             return Response::redirect($this->base() . '/admin/users/create?error=email_taken');
@@ -383,8 +411,12 @@ final class AdminUserController
 
         // Un seul sélecteur "Rôle" (Owner + rôles par store) remplace l'ancien
         // couple "Rôle global" (is_admin) / "Rôle dans le store" (store_role_id).
+        // Seul un requérant déjà Owner peut créer un compte Owner : sinon un
+        // simple détenteur de employees.create pourrait s'auto-élever en
+        // sélectionnant le rôle système dans ce formulaire.
+        $isRequesterOwner = !empty($request->getAttribute('auth_user')['is_admin']);
         $selectedRole = $this->roleSync->findRole((int) $request->post('role_id', 0));
-        $isOwner      = $selectedRole !== null && !empty($selectedRole['is_system']);
+        $isOwner      = $isRequesterOwner && $selectedRole !== null && !empty($selectedRole['is_system']);
 
         $saved    = $this->users->save([
             'display_name'       => $request->post('display_name', ''),
@@ -393,7 +425,6 @@ final class AdminUserController
             'email'              => $request->post('email', ''),
             'phone'              => $request->post('phone', '') ?: null,
             'mobile_phone'       => $request->post('mobile_phone', '') ?: null,
-            'furigana'           => $request->post('furigana', '') ?: null,
             'furigana_last_name'  => $request->post('furigana_last_name', '') ?: null,
             'furigana_first_name' => $request->post('furigana_first_name', '') ?: null,
             'gender'             => $request->post('gender', '') ?: null,
@@ -407,7 +438,6 @@ final class AdminUserController
             'color'              => $request->post('color', '#3B82F6'),
             'employee_code'      => $empCode,
             'password_hash'      => password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]),
-            'is_admin'           => $isOwner ? 1 : 0,
             'is_active'          => 1,
         ]);
         $this->roleSync->syncOwnerRole((int) ($saved['id'] ?? 0), $isOwner);
@@ -421,7 +451,6 @@ final class AdminUserController
             $membership = $this->storeUsers->save([
                 'store_id' => $storeId,
                 'user_id'  => (int) $saved['id'],
-                'role'     => $isOwner ? 'manager' : ($role !== null ? $this->roleSync->legacyRoleFor((int) $role['id']) : 'staff'),
             ]);
             if ($role !== null) {
                 $this->roleSync->syncStoreRoleById((int) $saved['id'], $storeId, (int) $role['id']);
@@ -433,9 +462,8 @@ final class AdminUserController
                 'user_id'            => (int) $saved['id'],
                 'employee_number'    => $empCode,
                 'employee_name'      => $request->post('display_name', ''),
-            'furigana'            => null,
-            'furigana_last_name'  => $request->post('furigana_last_name', '') ?: null,
-            'furigana_first_name' => $request->post('furigana_first_name', '') ?: null,
+                'furigana_last_name'  => $request->post('furigana_last_name', '') ?: null,
+                'furigana_first_name' => $request->post('furigana_first_name', '') ?: null,
                 'gender'             => $request->post('gender', '') ?: null,
                 'tax_classification' => $request->post('tax_classification', '') ?: null,
                 'birth_date'         => $request->post('birth_date', '') ?: null,
@@ -466,6 +494,12 @@ final class AdminUserController
      */
     public function quickCreateUser(Request $request): Response
     {
+        try {
+            $this->planLimits->assertCanCreateEmployee();
+        } catch (PlanLimitExceededException) {
+            return Response::json(['success' => false, 'error' => 'plan_limit_employees'], 403);
+        }
+
         $displayName = trim($request->post('display_name', ''));
         $firstName   = trim($request->post('first_name', ''));
         $lastName    = trim($request->post('last_name', ''));
@@ -474,7 +508,9 @@ final class AdminUserController
         $empCode     = strtoupper(trim($request->post('employee_code', ''))) ?: null;
         $password    = $request->post('password', '');
         $color       = $request->post('color', '#3B82F6');
-        $isAdmin     = $request->post('is_admin') === '1' ? 1 : 0;
+        // Seul un requérant déjà Owner peut créer un autre compte Owner (voir
+        // storeUser()/updateUser() pour la même garde).
+        $isAdmin     = !empty($request->getAttribute('auth_user')['is_admin']) && $request->post('is_admin') === '1';
         $storeId     = (int) $request->post('store_id', 0);
         $storeRoleId = (int) $request->post('store_role_id', 0);
 
@@ -531,7 +567,6 @@ final class AdminUserController
             'email'         => $email,
             'phone'         => $phone,
             'mobile_phone'  => $request->post('mobile_phone', '') ?: null,
-            'furigana'            => null,
             'furigana_last_name'  => $furiganaLastName,
             'furigana_first_name' => $furiganaFirstName,
             'gender'        => $request->post('gender', '') ?: null,
@@ -541,7 +576,6 @@ final class AdminUserController
             'address'       => $request->post('address', '') ?: null,
             'employee_code' => $empCode,
             'password_hash' => password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]),
-            'is_admin'      => $isAdmin,
             'is_active'     => 1,
             'color'         => $color,
         ]);
@@ -549,7 +583,7 @@ final class AdminUserController
         if (empty($saved['id'])) {
             return Response::json(['success' => false, 'error' => __('error_creation_failed')], 500);
         }
-        $this->roleSync->syncOwnerRole((int) $saved['id'], (bool) $isAdmin);
+        $this->roleSync->syncOwnerRole((int) $saved['id'], $isAdmin);
 
         if ($storeId > 0) {
             $this->assertStoreAccess($request, $storeId);
@@ -557,7 +591,6 @@ final class AdminUserController
             $this->storeUsers->save([
                 'store_id' => $storeId,
                 'user_id'  => (int) $saved['id'],
-                'role'     => $role !== null ? $this->roleSync->legacyRoleFor((int) $role['id']) : 'staff',
             ]);
             if ($role !== null) {
                 $this->roleSync->syncStoreRoleById((int) $saved['id'], $storeId, (int) $role['id']);
@@ -624,6 +657,7 @@ final class AdminUserController
         }
 
         $userId = (int) $user['id'];
+        $user['is_admin'] = in_array($userId, $this->permissions->ownerUserIds(), true) ? 1 : 0;
 
         // Shift types des stores où l'utilisateur est membre
         $memberships   = $this->storeUsers->findByUser($userId);
@@ -678,7 +712,7 @@ final class AdminUserController
             $mid = (int) ($m['id'] ?? 0);
             $userMemberships[] = array_merge($m, [
                 'store_name'         => $storesMap[$sid] ?? '#' . $sid,
-                'role_name'          => $roleMap[$sid]['name'] ?? ($m['role'] ?? '—'),
+                'role_name'          => $roleMap[$sid]['name'] ?? '—',
                 'role_id'            => $roleMap[$sid]['role_id'] ?? null,
                 'role_is_managing'   => !empty($roleMap[$sid]['is_managing']),
                 'store_ded_settings' => $this->stores->getDeductionSettings($sid),
@@ -747,7 +781,6 @@ final class AdminUserController
             'email'              => $email,
             'phone'              => $request->post('phone', '') ?: null,
             'mobile_phone'       => $request->post('mobile_phone', '') ?: null,
-            'furigana'            => null,
             'furigana_last_name'  => $furiganaLastName,
             'furigana_first_name' => $furiganaFirstName,
             'gender'             => $request->post('gender', '') ?: null,
@@ -760,7 +793,6 @@ final class AdminUserController
             'guarantor_phone'    => $request->post('guarantor_phone', '') ?: null,
             'color'              => $request->post('color', $user['color'] ?? '#3B82F6'),
             'employee_code'      => $empCode,
-            'is_admin'           => $request->post('is_admin') === '1' ? 1 : 0,
             'is_active'          => $request->post('is_active') === '1' ? 1 : 0,
         ]);
 
@@ -771,7 +803,14 @@ final class AdminUserController
         }
 
         $this->users->save($data);
-        $this->roleSync->syncOwnerRole((int) $user['id'], $request->post('is_admin') === '1');
+        // Seul un requérant déjà Owner peut accorder ou retirer le statut Owner
+        // d'un compte (y compris le sien) — sinon n'importe quel détenteur de
+        // employees.update pourrait s'auto-promouvoir en postant is_admin=1.
+        // Un non-Owner ne touche donc jamais au statut Owner de la cible, ni
+        // dans un sens ni dans l'autre.
+        if (!empty($request->getAttribute('auth_user')['is_admin'])) {
+            $this->roleSync->syncOwnerRole((int) $user['id'], $request->post('is_admin') === '1');
+        }
         $this->auditLogger->logUpdate($request, 'user.updated', 'user', (int) $user['id'], $user, $data, [], null, null);
 
         // L'auto-save de la page d'édition (voir user-form-autosave.js) soumet ce même

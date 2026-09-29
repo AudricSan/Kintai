@@ -56,7 +56,7 @@ final class AppResetControllerTest extends TestCase
         $runner->run();
         $capsule->table('users')->insert([
             'first_name' => 'Owner', 'last_name' => 'Test', 'display_name' => 'Owner Test',
-            'email' => 'owner@test.com', 'password_hash' => 'x', 'is_admin' => 1, 'is_active' => 1,
+            'email' => 'owner@test.com', 'password_hash' => 'x', 'is_active' => 1,
             'created_at' => date('Y-m-d H:i:s'), 'updated_at' => date('Y-m-d H:i:s'),
         ]);
 

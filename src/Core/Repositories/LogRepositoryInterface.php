@@ -46,4 +46,7 @@ interface LogRepositoryInterface
 
     /** Retourne les types de ressource distincts (pour les filtres). */
     public function findResourceTypes(): array;
+
+    /** Supprime les entrées antérieures à la date donnée (Y-m-d H:i:s). Retourne le nombre de lignes supprimées. */
+    public function purgeOlderThan(string $before): int;
 }

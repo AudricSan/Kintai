@@ -1,18 +1,27 @@
 <?php
 use kintai\UI\Components\Button;
 use kintai\UI\Components\Flash;
+use kintai\UI\Components\Modal;
 
 /** @var string $mode                 'create'|'edit' */
 /** @var array  $role                 Données du rôle */
 /** @var array  $permission_categories Catégorie => [actions] (PermissionCatalog::CATEGORIES) */
 /** @var array  $action_label_keys    Action => clé de traduction */
 /** @var array  $granted_permissions  Clés de permission déjà accordées (mode edit) */
+/** @var array  $granted_global_permissions Sous-ensemble de $granted_permissions en portée "toutes les boutiques" (mode edit) */
 /** @var array  $holders              ['assignment_id','user_name','initials','color','scope_label'][] (mode edit) */
 $mode ??= 'create';
+$granted_global_permissions ??= [];
+$assignable_users ??= [];
 $isSystem = !empty($role['is_system']);
 
+echo Flash::fromQuery('success', [
+    'holder_added'   => __('role_holder_added'),
+    'holder_removed' => __('role_holder_removed'),
+])->render();
 echo Flash::fromQuery('error', [
-    'invalid_name' => __('role_invalid_name'),
+    'invalid_name'   => __('role_invalid_name'),
+    'invalid_holder' => __('role_invalid_holder'),
 ])->render();
 ?>
 
@@ -46,7 +55,10 @@ echo Flash::fromQuery('error', [
     <div class="card card--mb">
         <div class="card-body">
             <h4 class="section-title"><?= __('role_holders') ?> <span class="page-count">(<?= count($holders) ?>)</span></h4>
-            <?php include __DIR__ . '/../_partials/_role-holders-list.php'; ?>
+            <?php $removable = true; include __DIR__ . '/../_partials/_role-holders-list.php'; ?>
+            <?php if (!empty($assignable_users)): ?>
+            <?= Button::make(__('add'))->outline()->sm()->attrs(['type' => 'button', 'onclick' => "openModal('addRoleHolderModal')"])->render() ?>
+            <?php endif; ?>
         </div>
     </div>
     <?php else: ?>
@@ -83,7 +95,11 @@ echo Flash::fromQuery('error', [
         <div class="card rf-holders">
             <div class="card-body">
                 <h4 class="section-title"><?= __('role_holders') ?> <span class="page-count">(<?= count($holders) ?>)</span></h4>
-                <?php include __DIR__ . '/../_partials/_role-holders-list.php'; ?>
+                <?php $removable = true; include __DIR__ . '/../_partials/_role-holders-list.php'; ?>
+
+                <?php if (!empty($assignable_users)): ?>
+                <?= Button::make(__('add'))->outline()->sm()->attrs(['type' => 'button', 'onclick' => "openModal('addRoleHolderModal')"])->render() ?>
+                <?php endif; ?>
             </div>
         </div>
         <?php endif; ?>
@@ -114,17 +130,29 @@ echo Flash::fromQuery('error', [
                         <div class="perm-card__list">
                             <?php foreach ($actions as $action): ?>
                             <?php
-                                $key       = $category . '.' . $action;
-                                $fieldName = 'perm_' . str_replace('.', '_', $key);
-                                $labelKey  = $action_label_keys[$action] ?? $action;
-                                $checked   = in_array($key, $granted_permissions, true);
+                                $key            = $category . '.' . $action;
+                                $fieldSuffix    = str_replace('.', '_', $key);
+                                $fieldName      = 'perm_' . $fieldSuffix;
+                                $scopeFieldName = 'scope_' . $fieldSuffix;
+                                $scopeFieldId   = 'scope-' . str_replace('_', '-', $fieldSuffix);
+                                $labelKey       = $action_label_keys[$action] ?? $action;
+                                $checked        = in_array($key, $granted_permissions, true);
+                                $globalChecked  = in_array($key, $granted_global_permissions, true);
                             ?>
-                            <label class="perm-toggle">
-                                <span class="perm-toggle__text"><?= __($labelKey) ?></span>
-                                <input type="checkbox" name="<?= htmlspecialchars($fieldName) ?>" value="1" class="perm-toggle__input" data-perm-checkbox
-                                       <?= $checked ? 'checked' : '' ?>>
-                                <span class="perm-toggle__track"></span>
-                            </label>
+                            <div class="perm-row" data-perm-row>
+                                <label class="perm-toggle">
+                                    <span class="perm-toggle__text"><?= __($labelKey) ?></span>
+                                    <input type="checkbox" name="<?= htmlspecialchars($fieldName) ?>" value="1" class="perm-toggle__input" data-perm-checkbox
+                                           <?= $checked ? 'checked' : '' ?>>
+                                    <span class="perm-toggle__track"></span>
+                                </label>
+                                <span class="perm-scope">
+                                    <input type="checkbox" id="<?= htmlspecialchars($scopeFieldId) ?>" name="<?= htmlspecialchars($scopeFieldName) ?>" value="global"
+                                           class="perm-scope__input" data-perm-scope-checkbox
+                                           <?= $globalChecked ? 'checked' : '' ?> <?= $checked ? '' : 'disabled' ?>>
+                                    <label for="<?= htmlspecialchars($scopeFieldId) ?>" class="perm-scope__label" title="<?= htmlspecialchars(__('perm_scope_global_hint')) ?>"><?= __('perm_scope_global') ?></label>
+                                </span>
+                            </div>
                             <?php endforeach; ?>
                         </div>
                     </div>
@@ -140,6 +168,41 @@ echo Flash::fromQuery('error', [
     </div>
     <?php endif; ?>
 </form>
+
+<?php if ($hasHolders): ?>
+<!-- Formulaire de retrait vide et partagé : chaque bouton "×" de
+     _role-holders-list.php le cible via form=/formaction (voir ce partiel). -->
+<form id="roleHolderRemoveForm" method="POST">
+    <?= csrf_field() ?>
+</form>
+
+<?php if (!empty($assignable_users)):
+    ob_start(); ?>
+    <form id="roleHolderAddForm" method="POST" action="<?= route_url('admin.roles.holders.add', ['id' => (int) $role['id']]) ?>">
+        <?= csrf_field() ?>
+        <div class="store-toggle-list">
+            <?php foreach ($assignable_users as $u): ?>
+                <?php $uName = trim(($u['last_name'] ?? '') . ' ' . ($u['first_name'] ?? '')) ?: ($u['email'] ?? '#' . $u['id']); ?>
+                <div class="store-toggle-list__item check-label">
+                    <label class="form-toggle">
+                        <input type="checkbox" name="user_ids[]" value="<?= (int) $u['id'] ?>" class="form-toggle__input">
+                        <span class="form-toggle__track"></span>
+                    </label>
+                    <span><?= htmlspecialchars($uName) ?><?php if (!empty($u['store_names'])): ?> <span class="text-sm-muted">(<?= htmlspecialchars($u['store_names']) ?>)</span><?php endif; ?></span>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    </form>
+    <?php
+    $addRoleHolderFooter = Button::make(__('add'))->primary()->submit()->attrs(['form' => 'roleHolderAddForm'])->render()
+        . ' ' . Button::make(__('cancel'))->ghost()->attrs(['type' => 'button', 'onclick' => "closeModal('addRoleHolderModal')"])->render();
+    echo Modal::make('addRoleHolderModal')
+        ->title(__('role_add_holders_hint'))
+        ->body(ob_get_clean())
+        ->footer($addRoleHolderFooter)
+        ->render();
+endif; ?>
+<?php endif; ?>
 
 <?php if (!$isSystem): ?>
 <script src="<?= $BASE_URL ?>/assets/js/modules/permission-editor.js"></script>

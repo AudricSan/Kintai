@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Bundles\StorePhoto;
 
-use kintai\Bundles\StorePhoto\Controllers\Web\StorePhotoController;
-use kintai\Bundles\StorePhoto\Services\ImageCompressionService;
+require_once dirname(__DIR__, 3) . '/Fixtures/bundles/store-photos-1.0.0/src/Controllers/Web/StorePhotoController.php';
+
+use kintai\Bundles\Installed\StorePhoto\Controllers\Web\StorePhotoController;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Repositories\StorePhotoRepositoryInterface;
@@ -13,6 +14,7 @@ use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\ImageCompressionService;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;

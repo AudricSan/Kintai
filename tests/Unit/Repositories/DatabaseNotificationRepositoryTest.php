@@ -73,6 +73,33 @@ final class DatabaseNotificationRepositoryTest extends TestCase
         $this->assertNull($saved['reference_id']);
     }
 
+    /**
+     * Régression : le clic sur une notification doit pouvoir amener directement à
+     * ce qu'elle concerne (ex. le shift). link est encodé dans data comme
+     * body/reference_id, décodé de la même façon à la lecture.
+     */
+    public function testSaveAndFindByUserRoundTripLink(): void
+    {
+        $this->repo->save([
+            'user_id' => 5, 'type' => 'shift_assigned', 'body' => 'Nouveau shift.',
+            'link' => '/employee/shifts/day?start=2026-08-05', 'is_read' => 0, 'created_at' => '2026-08-05 10:00:00',
+        ]);
+
+        $rows = $this->repo->findByUser(5);
+
+        $this->assertSame('/employee/shifts/day?start=2026-08-05', $rows[0]['link']);
+    }
+
+    public function testSaveWithoutLinkStoresNull(): void
+    {
+        $saved = $this->repo->save([
+            'user_id' => 5, 'type' => 'timeoff_approved', 'body' => 'Congé approuvé.',
+            'is_read' => 0, 'created_at' => '2026-08-05 10:00:00',
+        ]);
+
+        $this->assertNull($saved['link']);
+    }
+
     public function testFindByUserReturnsBodyAndReferenceIdDecoded(): void
     {
         $this->repo->save([
@@ -145,5 +172,18 @@ final class DatabaseNotificationRepositoryTest extends TestCase
 
         $this->assertSame(1, $this->repo->delete((int) $saved['id']));
         $this->assertNull($this->repo->findById((int) $saved['id']));
+    }
+
+    public function testDeleteAllForUserRemovesOnlyThatUsersRowsReadOrNot(): void
+    {
+        $keptOtherUser = $this->repo->save(['user_id' => 6, 'type' => 't', 'body' => 'c', 'is_read' => 0, 'created_at' => '2026-08-05 10:00:00']);
+        $this->repo->save(['user_id' => 5, 'type' => 't', 'body' => 'a', 'is_read' => 0, 'created_at' => '2026-08-05 10:00:00']);
+        $read = $this->repo->save(['user_id' => 5, 'type' => 't', 'body' => 'b', 'is_read' => 0, 'created_at' => '2026-08-05 10:00:00']);
+        $this->repo->markRead((int) $read['id'], 5);
+
+        $this->repo->deleteAllForUser(5);
+
+        $this->assertSame([], $this->repo->findByUser(5));
+        $this->assertNotNull($this->repo->findById((int) $keptOtherUser['id']));
     }
 }

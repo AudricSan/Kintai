@@ -35,8 +35,7 @@ use kintai\UI\Components\Table;
 $empName  = trim(($user['last_name'] ?? '') . ' ' . ($user['first_name'] ?? ''))
     ?: ($user['display_name'] ?? ($user['email'] ?? ''));
 $currencyStyle = store_currency_style($store);
-$roleMap  = ['admin' => __('role_owner'), 'manager' => __('role_manager'), 'staff' => __('role_employee')];
-$roleLabel = $roleMap[$membership['role'] ?? 'staff'] ?? __('role_employee');
+$roleLabel = $membership['role_name'] ?? '—';
 
 function estatBar(array $data, string $color = 'var(--color-primary)', int $maxH = 80): string {
     if (!$data || max(array_values($data)) == 0) {
@@ -98,7 +97,7 @@ $reportUrl = $BASE_URL . '/admin/stores/' . (int) $store['id'] . '/employee-repo
     <div class="estat-profile-info">
       <div class="estat-profile-name"><?= htmlspecialchars($empName) ?></div>
       <div class="estat-profile-meta">
-        <?= Badge::make(htmlspecialchars($roleLabel))->variant(($membership['role'] ?? 'staff') === 'admin' ? 'primary' : (($membership['role'] ?? 'staff') === 'manager' ? 'warning' : 'staff'))->render() ?>
+        <?= Badge::make(htmlspecialchars($roleLabel))->variant(!empty($membership['role_is_managing']) ? 'warning' : 'staff')->render() ?>
         <?php if (!empty($user['employee_code'])): ?>
           <span class="estat-code">N° <?= htmlspecialchars($user['employee_code']) ?></span>
         <?php endif; ?>

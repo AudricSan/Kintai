@@ -29,7 +29,7 @@ Open an issue using the **Feature Request** template. Explain the use case and w
 2. Create a branch: `git checkout -b feat/my-feature` or `fix/my-bug`
 3. Make your changes following the conventions below
 4. Run the tests: `./vendor/bin/phpunit`
-5. Open a pull request against the `alpha` branch (the most active channel — `main`, `alpha`, and `beta` are protected release-channel branches, and merging into them automatically tags and publishes a GitHub Release, see [docs/releasing.md](docs/releasing.md))
+5. Open a pull request against the `develop` branch (the default integration branch for day-to-day work — merging into it does **not** publish a release). `main`, `alpha`, and `beta` are protected release-channel branches: merging into any of them automatically tags and publishes a GitHub Release, so they're only updated deliberately by promoting `develop` forward (see [docs/releasing.md](docs/releasing.md))
 
 ## Code Conventions
 

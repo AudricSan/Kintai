@@ -9,12 +9,14 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\Services\AuditLogger;
 
 final class UserShiftRateController
 {
     public function __construct(
         private readonly UserShiftTypeRateRepositoryInterface $rates,
         private readonly UserRepositoryInterface $users,
+        private readonly AuditLogger $auditLogger,
     ) {}
 
     /** GET /api/v1/users/{user_id}/rates */
@@ -51,7 +53,13 @@ final class UserShiftRateController
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
-        return Response::json($this->rates->save($data), 201);
+        $saved = $this->rates->save($data);
+        $this->auditLogger->log($request, 'user_rate.saved', 'user_rate', (int) ($saved['id'] ?? 0), [
+            'user_id'       => $userId,
+            'shift_type_id' => $data['shift_type_id'] ?? null,
+        ]);
+
+        return Response::json($saved, 201);
     }
 
     /** PUT /api/v1/users/{user_id}/rates/{id} */
@@ -66,11 +74,17 @@ final class UserShiftRateController
             throw new NotFoundException(__('error_rate_not_found'));
         }
 
-        return Response::json($this->rates->save(array_merge($request->json() ?? [], [
+        $saved = $this->rates->save(array_merge($request->json() ?? [], [
             'id'         => $id,
             'user_id'    => $userId,
             'updated_at' => date('Y-m-d H:i:s'),
-        ])));
+        ]));
+        $this->auditLogger->logUpdate($request, 'user_rate.saved', 'user_rate', $id, $rate, $saved, [
+            'user_id'       => $userId,
+            'shift_type_id' => $rate['shift_type_id'] ?? null,
+        ]);
+
+        return Response::json($saved);
     }
 
     /** DELETE /api/v1/users/{user_id}/rates/{id} */
@@ -86,6 +100,11 @@ final class UserShiftRateController
         }
 
         $this->rates->delete($id);
+        $this->auditLogger->log($request, 'user_rate.deleted', 'user_rate', $id, [
+            'user_id'       => $userId,
+            'shift_type_id' => $rate['shift_type_id'] ?? null,
+        ]);
+
         return Response::empty();
     }
 

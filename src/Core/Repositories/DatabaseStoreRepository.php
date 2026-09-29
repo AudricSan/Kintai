@@ -39,6 +39,13 @@ final class DatabaseStoreRepository implements StoreRepositoryInterface
             ->toArray();
     }
 
+    public function countActive(): int
+    {
+        return EloquentStore::where('is_active', 1)
+            ->whereNull('deleted_at')
+            ->count();
+    }
+
     public function save(array $data): array
     {
         if (!empty($data['id'])) {

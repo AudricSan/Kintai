@@ -33,6 +33,7 @@ final class DatabaseUserRepositoryTest extends TestCase
             $table->string('last_name')->default('');
             $table->string('display_name')->default('');
             $table->string('language')->default('fr');
+            $table->timestamp('deleted_at')->nullable();
         });
 
         $this->repo = new DatabaseUserRepository();
@@ -128,6 +129,19 @@ final class DatabaseUserRepositoryTest extends TestCase
     public function testFindAllReturnsEmptyWhenNoUsers(): void
     {
         $this->assertSame([], $this->repo->findAll());
+    }
+
+    // -------------------------------------------------------------------------
+    // countActive()
+    // -------------------------------------------------------------------------
+
+    public function testCountActiveCountsOnlyActiveUsers(): void
+    {
+        EloquentUser::create(['email' => 'u1@test.com', 'is_active' => 1, 'password_hash' => 'h', 'first_name' => 'F', 'last_name' => 'L', 'display_name' => 'D']);
+        EloquentUser::create(['email' => 'u2@test.com', 'is_active' => 0, 'password_hash' => 'h', 'first_name' => 'F', 'last_name' => 'L', 'display_name' => 'D']);
+        EloquentUser::create(['email' => 'u3@test.com', 'is_active' => 1, 'password_hash' => 'h', 'first_name' => 'F', 'last_name' => 'L', 'display_name' => 'D', 'deleted_at' => date('Y-m-d H:i:s')]);
+
+        $this->assertSame(1, $this->repo->countActive());
     }
 
     // -------------------------------------------------------------------------

@@ -7,6 +7,7 @@ namespace kintai\Tests\Unit\Controller\Web\System;
 use kintai\Core\Repositories\LogRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
+use kintai\Core\Services\AuditLogger;
 use kintai\UI\Controller\Web\System\ActivityController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -39,6 +40,7 @@ final class ActivityControllerTest extends TestCase
             new ViewRenderer($viewDir),
             $this->logs,
             $this->users,
+            new AuditLogger(),
         );
 
         $_GET = [];
@@ -75,6 +77,47 @@ final class ActivityControllerTest extends TestCase
         $this->logs->method('countAll')->willReturn(0);
 
         $response = $this->controller->index($req);
+
+        $this->assertSame(200, $response->status());
+    }
+
+    public function testExportReturnsCsvWithMatchingRows(): void
+    {
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+
+        $this->logs->expects($this->once())->method('findAll')
+            ->with(1, 20000, [])
+            ->willReturn([
+                [
+                    'created_at' => '2026-09-18 10:00:00',
+                    'level'      => 'info',
+                    'channel'    => 'audit',
+                    'action'     => 'auth.login',
+                    'message'    => 'auth.login',
+                    'user_id'    => 1,
+                ],
+            ]);
+
+        $response = $this->controller->export($req);
+
+        $this->assertSame(200, $response->status());
+        $this->assertStringContainsString('auth.login', $response->body());
+    }
+
+    public function testExportAppliesSameFiltersAsIndex(): void
+    {
+        $_GET = ['level' => 'error', 'channel' => 'audit'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', [3]);
+
+        $this->logs->expects($this->once())->method('findAll')
+            ->with(1, 20000, $this->callback(fn(array $f) => ($f['level'] ?? null) === 'error'
+                && ($f['channel'] ?? null) === 'audit'
+                && ($f['store_ids'] ?? null) === [3]))
+            ->willReturn([]);
+
+        $response = $this->controller->export($req);
 
         $this->assertSame(200, $response->status());
     }

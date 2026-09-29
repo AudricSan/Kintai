@@ -8,13 +8,11 @@ use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 
 /**
- * Maintient role_assignments synchronisée avec les points d'entrée qui
- * écrivent encore les colonnes historiques (users.is_admin, store_user.role) :
- * AuthService lit désormais exclusivement role_assignments pour calculer
- * isAdmin()/managedStoreIds(), donc toute création/modification d'un compte
- * Owner ou d'une appartenance à un store doit aussi mettre à jour
- * role_assignments, sous peine de rendre le changement invisible pour
- * l'autorisation (task/mermission.md, phase 3 — bascule).
+ * Applique les affectations de rôle dynamique (role_assignments) décidées par
+ * les formulaires Owner/store (case "Owner", sélecteur de rôle par store) —
+ * seule source de vérité pour l'autorisation depuis la bascule RBAC-V2
+ * (task/mermission.md, phase 3). Les anciennes colonnes users.is_admin /
+ * store_user.role ont été retirées en phase 4 ; ce service ne les écrit plus.
  */
 final class RoleAssignmentSyncService
 {
@@ -100,18 +98,6 @@ final class RoleAssignmentSyncService
             }
         }
         return $assignable[0] ?? null;
-    }
-
-    /**
-     * Valeur à écrire dans la colonne historique store_user.role tant qu'elle
-     * existe (supprimée en phase 4) : 'manager' si le rôle accorde au moins
-     * une permission de gestion, 'staff' sinon. Les lecteurs legacy
-     * (DailyReportPermissionService, exports) continuent ainsi de fonctionner
-     * pendant la transition, y compris pour les rôles personnalisés.
-     */
-    public function legacyRoleFor(int $roleId): string
-    {
-        return $this->roles->getPermissions($roleId) !== [] ? 'manager' : 'staff';
     }
 
     /**

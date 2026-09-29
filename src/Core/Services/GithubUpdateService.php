@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace kintai\Core\Services;
 
-use kintai\Bundles\StorePhoto\Services\StorePhotoConsolidationService;
 use kintai\Core\Database\MigrationRunner;
 use kintai\Core\Repositories\StorePhotoRepositoryInterface;
 
@@ -247,7 +246,6 @@ final class GithubUpdateService
     public function applyUpdate(?callable $onProgress = null): array
     {
         $progress = $onProgress ?? function (int $percent, string $label): void {};
-        $startedAt = microtime(true);
 
         $progress(0, __('backup_update_step_check'));
         $release = $this->checkLatestRelease();
@@ -308,8 +306,7 @@ final class GithubUpdateService
                 $composerOutput = $composer['output'];
             }
 
-            $this->updateService->recordAppliedVersion($release['latest_version']);
-            $this->updateService->recordUpdateDuration((int) round(microtime(true) - $startedAt));
+            $this->updateService->setCurrentVersion($release['latest_version']);
 
             $progress(100, __('backup_update_step_done'));
 

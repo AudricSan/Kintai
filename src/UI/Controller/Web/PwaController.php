@@ -46,4 +46,19 @@ final class PwaController
 
         return Response::json($data)->withHeader('Content-Type', 'application/manifest+json');
     }
+
+    /**
+     * Sert public/sw.js à partir d'un template : contrairement aux autres
+     * fichiers sous public/, il doit passer par PHP pour recevoir la même
+     * valeur de cache-busting que asset_version() (le nom de son cache
+     * `CACHE`, sans quoi il faudrait le bumper à la main à chaque changement
+     * sous public/assets/css|js — voir asset_version() pour le détail).
+     */
+    public function serviceWorker(Request $request): Response
+    {
+        $template = file_get_contents(BASE_PATH . '/src/Core/Templates/sw.js.tpl');
+        $body = str_replace('__ASSET_VERSION__', asset_version(), $template);
+
+        return Response::html($body)->withHeader('Content-Type', 'application/javascript; charset=UTF-8');
+    }
 }

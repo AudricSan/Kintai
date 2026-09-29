@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use kintai\UI\Controller\Web\AuthController;
+use kintai\UI\Controller\Web\BundleAssetController;
 use kintai\UI\Controller\Web\PasswordResetController;
 use kintai\UI\Controller\Web\NotificationController;
 use kintai\UI\Controller\Web\CronController;
@@ -10,9 +11,11 @@ use kintai\UI\Controller\Web\EmployeeController;
 use kintai\UI\Controller\Web\HomeController;
 use kintai\UI\Controller\Web\IcalController;
 use kintai\UI\Controller\Web\DocsController;
+use kintai\UI\Controller\Web\LegalController;
 use kintai\UI\Controller\Web\PrivacyController;
 use kintai\UI\Controller\Web\PwaController;
 use kintai\UI\Controller\Web\StorageFileController;
+use kintai\UI\Controller\Web\SupportController;
 
 use kintai\UI\Controller\Web\Requests\AdminRequestsController;
 use kintai\UI\Controller\Web\Scheduling\AdminShiftController;
@@ -27,8 +30,10 @@ use kintai\UI\Controller\Web\System\AdminController;
 use kintai\UI\Controller\Web\System\AdminRoleController;
 use kintai\UI\Controller\Web\System\AppResetController;
 use kintai\UI\Controller\Web\System\BackupController;
+use kintai\UI\Controller\Web\System\BundleMarketController;
 use kintai\UI\Controller\Web\System\BundleSettingsController;
 use kintai\UI\Controller\Web\System\LanguageController;
+use kintai\UI\Controller\Web\System\LicenseController;
 use kintai\UI\Controller\Web\System\MailTestController;
 use kintai\UI\Controller\Web\System\OwnerSettingsController;
 use kintai\Core\Middleware\AuthMiddleware;
@@ -78,12 +83,19 @@ $router->post('/reset-password/{token}', [PasswordResetController::class, 'reset
 
 // --- PWA ---
 $router->get('/manifest.json', [PwaController::class, 'manifest'], name: 'pwa.manifest');
+$router->get('/sw.js', [PwaController::class, 'serviceWorker'], name: 'pwa.service_worker');
 
-// --- Confidentialité ---
+// --- Confidentialité & pages légales (footer) ---
 $router->get('/privacy', [PrivacyController::class, 'show'], name: 'privacy');
+$router->get('/legal/mentions', [LegalController::class, 'mentions'], name: 'legal.mentions');
+$router->get('/legal/terms', [LegalController::class, 'terms'], name: 'legal.terms');
+$router->get('/legal/license', [LegalController::class, 'license'], name: 'legal.license');
 
 // --- Fichiers uploadés (photos de stores, imports) — réservé aux admins/managers ---
 $router->get('/storage/{path*}', [StorageFileController::class, 'serve'], middleware: [AuthMiddleware::class, PermissionMiddleware::class], name: 'storage.file', permission: 'public');
+
+// --- Assets statiques d'un bundle actif (CSS/JS) — publics, pas d'authentification ---
+$router->get('/bundle-assets/{slug}/{path*}', [BundleAssetController::class, 'serve'], name: 'bundle.asset');
 
 // =============================================================================
 // Routes authentifiées (tout utilisateur connecté)
@@ -92,17 +104,30 @@ $router->get('/storage/{path*}', [StorageFileController::class, 'serve'], middle
 $router->group('/profile', function ($r) {
     $r->get('',              [AuthController::class, 'showProfile'],          name: 'profile');
     $r->post('',             [AuthController::class, 'updateProfile'],        name: 'profile.post');
+    $r->post('/avatar',      [AuthController::class, 'uploadAvatar'],         name: 'profile.avatar');
+    $r->post('/avatar/delete', [AuthController::class, 'removeAvatar'],       name: 'profile.avatar.delete');
     $r->post('/password',    [AuthController::class, 'saveProfilePassword'],  name: 'profile.password');
     $r->get('/export',       [AuthController::class, 'exportData'],           name: 'profile.export');
     $r->post('/delete',      [AuthController::class, 'deleteAccount'],        name: 'profile.delete');
 }, middleware: [AuthMiddleware::class]);
 
+// Photo de profil : servie hors du groupe /profile pour rester consultable
+// via l'ID d'un autre utilisateur (annuaire collègues, bundle TeamDirectory).
+$router->get('/avatar/{user_id}', [AuthController::class, 'avatar'], middleware: [AuthMiddleware::class], name: 'user.avatar');
+
 $router->group('/notifications', function ($r) {
     $r->get('',              [NotificationController::class, 'index'],       name: 'notifications.index');
     $r->get('/poll',         [NotificationController::class, 'poll'],        name: 'notifications.poll');
     $r->post('/read-all',    [NotificationController::class, 'markAllRead'], name: 'notifications.read_all');
+    $r->post('/delete-all',  [NotificationController::class, 'deleteAll'],   name: 'notifications.delete_all');
     $r->post('/{id}/read',   [NotificationController::class, 'markRead'],    name: 'notifications.read');
+    $r->get('/{id}/open',    [NotificationController::class, 'open'],        name: 'notifications.open');
+    $r->post('/push-subscribe',   [NotificationController::class, 'pushSubscribe'],   name: 'notifications.push_subscribe');
+    $r->post('/push-unsubscribe', [NotificationController::class, 'pushUnsubscribe'], name: 'notifications.push_unsubscribe');
 }, middleware: [AuthMiddleware::class]);
+
+// --- Support (footer : "signaler un problème" → issue GitHub) ---
+$router->post('/support/report-issue', [SupportController::class, 'reportIssue'], middleware: [AuthMiddleware::class, RateLimiterMiddleware::class], name: 'support.report_issue');
 
 // --- Documentation ---
 $router->get('/docs', [DocsController::class, 'index'], middleware: [AuthMiddleware::class], name: 'docs.index');
@@ -121,9 +146,9 @@ $router->group('/employee', function ($r) {
     $r->get('/shifts/day',      [EmployeeController::class, 'shiftDay'],       name: 'employee.shifts.day');
     $r->get('/shifts/week',     [EmployeeController::class, 'shiftsWeek'],     name: 'employee.shifts.week');
 
-    // Pointage : voir src/Bundles/Timeclock/routes.php
+    // Pointage : bundle distribué hors monorepo, routes chargées depuis storage/bundles/timeclock/ une fois installé (voir docs/architecture.md)
 
-    // Congés : voir src/Bundles/TimeOff/routes.php
+    // Congés : bundle distribué hors monorepo, routes chargées depuis storage/bundles/timeoff/ une fois installé (voir docs/architecture.md)
 
     // Profil : géré par /profile (AuthController, page unique admin/manager/employé)
     $r->get('/profile',                    [EmployeeController::class, 'profile'],               name: 'employee.profile');
@@ -133,13 +158,13 @@ $router->group('/employee', function ($r) {
     $r->get('/nav-settings',  [EmployeeController::class, 'navSettings'],     name: 'employee.nav_settings');
     $r->post('/nav-settings', [EmployeeController::class, 'saveNavSettings'], name: 'employee.nav_settings.save');
 
-    // Feedback : voir src/Bundles/Feedback/routes.php
+    // Feedback : bundle pilote distribué hors monorepo, routes chargées depuis storage/bundles/feedback/ une fois installé (voir docs/architecture.md)
 
-    // Échanges de shifts : voir src/Bundles/ShiftSwap/routes.php
+    // Échanges de shifts : bundle distribué hors monorepo, routes chargées depuis storage/bundles/shift-swap/ une fois installé (voir docs/architecture.md)
 
-    // Bourse aux shifts : voir src/Bundles/ShiftClaim/routes.php
+    // Bourse aux shifts : bundle distribué hors monorepo, routes chargées depuis storage/bundles/shift-claim/ une fois installé (voir docs/architecture.md)
 
-    // Messagerie : voir src/Bundles/Messaging/routes.php (employee.messages*)
+    // Messagerie : bundle distribué hors monorepo, routes chargées depuis storage/bundles/messaging/ une fois installé (employee.messages*, voir docs/architecture.md)
 
 }, middleware: [AuthMiddleware::class]);
 
@@ -205,10 +230,10 @@ $router->group('/admin', function ($r) {
     $r->get('/stores/{id}/employee-report',                      [AdminStoreController::class, 'employeeReport'],    name: 'admin.stores.employee_report', permission: 'payroll.view');
     $r->get('/stores/{id}/employee-report/{uid}/stats',          [AdminStoreController::class, 'employeeStats'],     name: 'admin.stores.employee_stats', permission: 'payroll.view');
 
-    // Rapports d'embauche : voir src/Bundles/HiringReport/routes.php
+    // Rapports d'embauche : bundle distribué hors monorepo, routes chargées depuis storage/bundles/hiring-report/ une fois installé (voir docs/architecture.md)
 
-    // Démission : voir src/Bundles/ResignationReport/routes.php
-    // Salaire : voir src/Bundles/SalaryReport/routes.php
+    // Démission : bundle distribué hors monorepo, routes chargées depuis storage/bundles/resignation-report/ une fois installé (voir docs/architecture.md)
+    // Salaire : bundle distribué hors monorepo, routes chargées depuis storage/bundles/salary-report/ une fois installé (voir docs/architecture.md)
 
     // Shift types
     $r->get('/shift-types',               [AdminShiftTypeController::class, 'shiftTypes'],         name: 'admin.shift_types', permission: 'shifts.view');
@@ -240,18 +265,19 @@ $router->group('/admin', function ($r) {
     $r->post('/shifts/{id}/delete', [AdminShiftController::class, 'deleteShift'],          name: 'admin.shifts.delete', permission: 'shifts.delete');
     $r->post('/shifts/{id}/move',   [AdminShiftController::class, 'moveShift'],            name: 'admin.shifts.move', permission: 'shifts.update');
 
-    // Bourse aux shifts : voir src/Bundles/ShiftClaim/routes.php
+    // Bourse aux shifts : bundle distribué hors monorepo, routes chargées depuis storage/bundles/shift-claim/ une fois installé (voir docs/architecture.md)
 
-    // Demandes de congé : voir src/Bundles/TimeOff/routes.php
+    // Demandes de congé : bundle distribué hors monorepo, routes chargées depuis storage/bundles/timeoff/ une fois installé (voir docs/architecture.md)
 
-    // Échanges de shifts : voir src/Bundles/ShiftSwap/routes.php
+    // Échanges de shifts : bundle distribué hors monorepo, routes chargées depuis storage/bundles/shift-swap/ une fois installé (voir docs/architecture.md)
 
-    // Pointage : voir src/Bundles/Timeclock/routes.php
+    // Pointage : bundle distribué hors monorepo, routes chargées depuis storage/bundles/timeclock/ une fois installé (voir docs/architecture.md)
 
     // Journal d'activité (unifié)
     $r->get('/activity', [ActivityController::class, 'index'], name: 'admin.activity', permission: 'stores.view');
+    $r->get('/activity/export', [ActivityController::class, 'export'], name: 'admin.activity.export', permission: 'stores.view');
 
-    // Feedbacks : voir src/Bundles/Feedback/routes.php
+    // Feedbacks : bundle pilote distribué hors monorepo, routes chargées depuis storage/bundles/feedback/ une fois installé (voir docs/architecture.md)
 
     // Diagnostic mail
     $r->get('/mail-test',  [MailTestController::class, 'show'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.mail_test', permission: 'public');
@@ -277,7 +303,7 @@ $router->group('/admin', function ($r) {
     $r->post('/update/migrate',      [BackupController::class, 'migrate'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.update.migrate', permission: 'public');
     $r->post('/update/channel',      [BackupController::class, 'saveChannel'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.update.channel', permission: 'public');
 
-    // Photos : voir src/Bundles/StorePhoto/routes.php
+    // Photos : bundle distribué hors monorepo, routes chargées depuis storage/bundles/store-photos/ une fois installé (voir docs/architecture.md)
 
     // Langues & traductions (Owner uniquement)
     $r->get('/languages',                       [LanguageController::class, 'index'],        middleware: [OwnerOnlyMiddleware::class], name: 'admin.languages', permission: 'public');
@@ -292,6 +318,21 @@ $router->group('/admin', function ($r) {
     // Bundles (Owner uniquement)
     $r->get('/bundles',  [BundleSettingsController::class, 'show'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles', permission: 'public');
     $r->post('/bundles', [BundleSettingsController::class, 'save'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.save', permission: 'public');
+    $r->get('/bundles/registries',              [BundleMarketController::class, 'index'],   middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.registries', permission: 'public');
+    $r->post('/bundles/registries',             [BundleMarketController::class, 'store'],   middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.registries.store', permission: 'public');
+    $r->post('/bundles/registries/{id}/delete', [BundleMarketController::class, 'destroy'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.registries.delete', permission: 'public');
+    $r->get('/bundles/market',                  [BundleMarketController::class, 'market'],        middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.market', permission: 'public');
+    $r->post('/bundles/market/dry-run',         [BundleMarketController::class, 'dryRun'],        middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.market.dry-run', permission: 'public');
+    $r->post('/bundles/market/install',         [BundleMarketController::class, 'install'],       middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.market.install', permission: 'public');
+    $r->post('/bundles/market/install/stream',  [BundleMarketController::class, 'installStream'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.market.install.stream', permission: 'public');
+    $r->post('/bundles/market/uninstall',       [BundleMarketController::class, 'uninstall'],     middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.market.uninstall', permission: 'public');
+    $r->post('/bundles/market/channel',         [BundleMarketController::class, 'saveChannel'],   middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.market.channel', permission: 'public');
+
+    // Licence (déblocage du plan payant, Owner uniquement)
+    $r->get('/license',           [LicenseController::class, 'show'],       middleware: [OwnerOnlyMiddleware::class], name: 'admin.license', permission: 'public');
+    $r->post('/license/activate', [LicenseController::class, 'activate'],   middleware: [OwnerOnlyMiddleware::class], name: 'admin.license.activate', permission: 'public');
+    $r->post('/license/refresh',  [LicenseController::class, 'refresh'],    middleware: [OwnerOnlyMiddleware::class], name: 'admin.license.refresh', permission: 'public');
+    $r->post('/license/deactivate', [LicenseController::class, 'deactivate'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.license.deactivate', permission: 'public');
 
     // Rôles & permissions (Owner uniquement) — voir task/mermission.md
     $r->get('/roles',              [AdminRoleController::class, 'roles'],      middleware: [OwnerOnlyMiddleware::class], name: 'admin.roles', permission: 'public');
@@ -300,6 +341,8 @@ $router->group('/admin', function ($r) {
     $r->get('/roles/{id}/edit',    [AdminRoleController::class, 'editRole'],   middleware: [OwnerOnlyMiddleware::class], name: 'admin.roles.edit', permission: 'public');
     $r->post('/roles/{id}/edit',   [AdminRoleController::class, 'updateRole'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.roles.update', permission: 'public');
     $r->post('/roles/{id}/delete', [AdminRoleController::class, 'deleteRole'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.roles.delete', permission: 'public');
+    $r->post('/roles/{id}/holders',                       [AdminRoleController::class, 'addHolder'],    middleware: [OwnerOnlyMiddleware::class], name: 'admin.roles.holders.add',    permission: 'public');
+    $r->post('/roles/{id}/holders/{assignmentId}/delete', [AdminRoleController::class, 'removeHolder'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.roles.holders.delete', permission: 'public');
 
 }, middleware: [AuthMiddleware::class, PermissionMiddleware::class]);
 
@@ -381,13 +424,13 @@ $router->group('/api/v1', function ($r) {
     $r->put('/availabilities/{id}',    [ApiAvailabilityController::class, 'update'],  name: 'api.v1.availabilities.update', permission: 'shifts.update');
     $r->delete('/availabilities/{id}', [ApiAvailabilityController::class, 'destroy'], name: 'api.v1.availabilities.destroy', permission: 'shifts.update');
 
-    // Demandes de congé : voir src/Bundles/TimeOff/routes.php
+    // Demandes de congé : bundle distribué hors monorepo, routes chargées depuis storage/bundles/timeoff/ une fois installé (voir docs/architecture.md)
 
-    // Échanges de shifts : voir src/Bundles/ShiftSwap/routes.php
+    // Échanges de shifts : bundle distribué hors monorepo, routes chargées depuis storage/bundles/shift-swap/ une fois installé (voir docs/architecture.md)
 
-    // Pointage : voir src/Bundles/Timeclock/routes.php
+    // Pointage : bundle distribué hors monorepo, routes chargées depuis storage/bundles/timeclock/ une fois installé (voir docs/architecture.md)
 
-    // Bourse aux shifts : voir src/Bundles/ShiftClaim/routes.php
+    // Bourse aux shifts : bundle distribué hors monorepo, routes chargées depuis storage/bundles/shift-claim/ une fois installé (voir docs/architecture.md)
 
     // Notifications
     $r->post('/notifications/read-all',    [ApiNotificationController::class, 'markAllRead'], name: 'api.v1.notifications.read_all', permission: 'public');
@@ -396,7 +439,7 @@ $router->group('/api/v1', function ($r) {
     $r->post('/notifications/{id}/read',   [ApiNotificationController::class, 'markRead'],    name: 'api.v1.notifications.read', permission: 'public');
     $r->delete('/notifications/{id}',      [ApiNotificationController::class, 'destroy'],     name: 'api.v1.notifications.destroy', permission: 'public');
 
-    // Feedbacks : voir src/Bundles/Feedback/routes.php
+    // Feedbacks : bundle pilote distribué hors monorepo, routes chargées depuis storage/bundles/feedback/ une fois installé (voir docs/architecture.md)
 
     // Journal d'activité
     $r->get('/activity', [ApiActivityController::class, 'index'], name: 'api.v1.activity.index', permission: 'stores.view');

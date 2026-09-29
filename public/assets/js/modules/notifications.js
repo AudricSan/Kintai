@@ -5,11 +5,9 @@
     'use strict';
 
     var meta     = document.getElementById('notif-meta');
-    var labels   = {};
     var pollUrl  = '';
 
     if (meta) {
-        try { labels  = JSON.parse(meta.dataset.labels  || '{}'); } catch (e) {}
         pollUrl = meta.dataset.pollUrl || '';
     }
 
@@ -31,9 +29,10 @@
         document.body.appendChild(toastContainer);
     }
 
-    function showToast(title, body) {
-        var toast = document.createElement('div');
+    function showToast(title, body, link) {
+        var toast = document.createElement(link ? 'a' : 'div');
         toast.className = 'toast';
+        if (link) toast.href = link;
         toast.innerHTML =
             '<div>' +
                 '<div class="toast__title">' + escapeHtml(title) + '</div>' +
@@ -74,7 +73,7 @@
         try {
             var recent = JSON.parse(meta.dataset.recent || '[]');
             recent.forEach(function (n) {
-                showToast(labels[n.type] || n.type, n.body);
+                showToast(n.title, n.body, n.link);
             });
         } catch (e) {}
     }
@@ -96,7 +95,7 @@
 
                     if (data.notifications && data.notifications.length) {
                         data.notifications.forEach(function (n) {
-                            showToast(labels[n.type] || n.type, n.body);
+                            showToast(n.title, n.body, n.link);
                         });
                     }
 

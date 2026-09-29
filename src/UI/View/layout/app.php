@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="<?= htmlspecialchars($locale ?? 'en') ?>" style="<?= htmlspecialchars($app_theme_color_style ?? '', ENT_QUOTES) ?>">
+<html lang="<?= htmlspecialchars($locale ?? 'en') ?>" data-mascot="<?= htmlspecialchars(mascot_active(), ENT_QUOTES) ?>" style="<?= htmlspecialchars($app_theme_color_style ?? '', ENT_QUOTES) ?>">
 
 <head>
     <meta charset="UTF-8">
@@ -7,9 +7,12 @@
     <meta name="csrf-token" content="<?= htmlspecialchars(csrf_token(), ENT_QUOTES) ?>">
     <meta name="theme-color" content="#1a5c8c">
     <link rel="manifest" href="<?= route_url('pwa.manifest') ?>">
-    <link rel="apple-touch-icon" href="<?= $BASE_URL ?>/assets/img/kintai-192.png">
+    <link rel="icon" href="<?= $BASE_URL ?>/assets/img/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= $BASE_URL ?>/assets/img/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="<?= $BASE_URL ?>/assets/img/favicon-16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= $BASE_URL ?>/assets/img/apple-touch-icon.png">
     <title><?= htmlspecialchars($title ?? 'Kintai') ?> — Kintai</title>
-    <link rel="stylesheet" href="<?= $BASE_URL ?>/assets/css/app.css">
+    <link rel="stylesheet" href="<?= $BASE_URL ?>/assets/css/app.css?v=<?= asset_version() ?>">
     <script>(function(){var t=localStorage.getItem('kintai-theme');if(t)document.documentElement.dataset.theme=t;}());</script>
 </head>
 
@@ -24,8 +27,12 @@
             : $uri;
         $path = '/' . trim($path, '/') ?: '/';
         $isOwner    = !empty($auth_user['is_admin']);
-        // managed_store_ids : null = admin global, array = manager restreint
-        $isManager  = $isOwner || isset($managed_store_ids);
+        // auth_is_manager (AuthService::isManager(), partagé par AuthMiddleware sur TOUTE
+        // page authentifiée) plutôt que isset($managed_store_ids) : ce dernier n'est jamais
+        // défini sur les routes sans PermissionMiddleware (/employee/*, /profile, /docs...),
+        // ce qui faisait basculer un Manager sur la nav employé réduite dès qu'il quittait
+        // une page /admin/* — même rôle, menu different selon la route visitée.
+        $isManager  = $auth_is_manager ?? $isOwner;
 
         $feat = fn(string $f): bool =>
             feat_bundle($f) && (
@@ -62,17 +69,55 @@
             return $icons[$name] ?? '';
         };
         ?>
-        <?php include __DIR__ . '/partials/_topbar.php'; ?>
+        <div class="app-sticky-header">
+            <?php if (!empty($app_maintenance_mode_enabled)): ?>
+                <div class="maintenance-banner">
+                    <span class="maintenance-banner__icon" aria-hidden="true">⚠</span>
+                    <span><?= __('maintenance_banner_active') ?></span>
+                    <?php if ($isOwner): ?>
+                        <a href="<?= route_url('admin.owner_settings') ?>" class="maintenance-banner__link"><?= __('maintenance_banner_manage') ?></a>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+
+            <?php include __DIR__ . '/partials/_topbar.php'; ?>
+        </div>
+        <?php if (!empty($app_maintenance_mode_enabled)): ?>
+            <script>
+            (function () {
+                var banner = document.querySelector('.maintenance-banner');
+                if (!banner) return;
+                var setOffset = function () {
+                    document.documentElement.style.setProperty('--maintenance-banner-h', banner.offsetHeight + 'px');
+                };
+                setOffset();
+                window.addEventListener('resize', setOffset);
+            }());
+            </script>
+        <?php endif; ?>
 
         <div class="page-content">
             <?= $content ?>
         </div>
 
+        <?php include __DIR__ . '/partials/_footer.php'; ?>
+
         <?php include __DIR__ . '/partials/_bottomnav.php'; ?>
     </div>
 
-    <script src="<?= $BASE_URL ?>/assets/js/app.js"></script>
-    <script src="<?= $BASE_URL ?>/assets/js/modules/notifications.js"></script>
+    <script src="<?= $BASE_URL ?>/assets/js/app.js?v=<?= asset_version() ?>"></script>
+    <script src="<?= $BASE_URL ?>/assets/js/modules/notifications.js?v=<?= asset_version() ?>"></script>
+    <?php if (!empty($push_web_config) && !empty($auth_user['id'] ?? null) && ($tab ?? '') === 'push'): ?>
+        <div id="push-meta"
+             data-project-id="<?= htmlspecialchars($push_web_config['project_id']) ?>"
+             data-api-key="<?= htmlspecialchars($push_web_config['api_key']) ?>"
+             data-app-id="<?= htmlspecialchars($push_web_config['app_id']) ?>"
+             data-vapid-key="<?= htmlspecialchars($push_web_config['vapid_key']) ?>"
+             data-subscribe-url="<?= route_url('notifications.push_subscribe') ?>"
+             data-unsubscribe-url="<?= route_url('notifications.push_unsubscribe') ?>"
+             hidden></div>
+        <script src="<?= $BASE_URL ?>/assets/js/modules/push.js?v=<?= asset_version() ?>"></script>
+    <?php endif; ?>
     <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', function () {
@@ -84,6 +129,10 @@
 
     <?php if ($feedback_enabled ?? true): ?>
         <?php include __DIR__ . '/partials/feedback-modal.php'; ?>
+    <?php endif; ?>
+
+    <?php if (!empty($auth_user['id'] ?? null)): ?>
+        <?php include __DIR__ . '/partials/report-issue-modal.php'; ?>
     <?php endif; ?>
 
     <?php include __DIR__ . '/partials/_confirm-modal.php'; ?>

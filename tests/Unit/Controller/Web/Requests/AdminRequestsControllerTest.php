@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Controller\Web\Requests;
 
 use kintai\Core\Auth\PermissionService;
+use kintai\Core\BundleManager;
 use kintai\Core\Container;
-use kintai\Core\FeatureManager;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\ShiftClaimRepositoryInterface;
@@ -17,6 +17,7 @@ use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
+use kintai\Tests\Support\FakeBundleManagerFactory;
 use kintai\UI\Controller\Web\Requests\AdminRequestsController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\TestCase;
@@ -41,9 +42,17 @@ final class AdminRequestsControllerTest extends TestCase
         $this->ensureViewFile('layout.app', "<?php echo \$content ?? '';");
     }
 
+    protected function tearDown(): void
+    {
+        // Réinitialise le singleton Container pour ne pas propager le
+        // BundleManager injecté par enableBundles() vers d'autres tests.
+        $instance = new \ReflectionProperty(Container::class, 'instance');
+        $instance->setValue(null, null);
+    }
+
     private function enableBundles(array $slugs): void
     {
-        Container::getInstance()->instance(FeatureManager::class, new FeatureManager($slugs));
+        Container::getInstance()->instance(BundleManager::class, FakeBundleManagerFactory::withActiveSlugs($slugs));
     }
 
     private function bindShiftClaims(ShiftClaimRepositoryInterface $repo): void

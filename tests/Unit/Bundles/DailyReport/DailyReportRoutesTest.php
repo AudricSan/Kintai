@@ -22,6 +22,11 @@ use kintai\Core\Router;
  * 'membership' AVANT sa porte grossière "au moins une permission RBAC quelque
  * part" — sinon un simple employé qui n'est manager d'aucun store ne pourrait
  * jamais soumettre son propre rapport.
+ *
+ * Depuis son extraction du monorepo (voir docs/architecture.md "Modular
+ * Bundles"), le code réel du bundle vit hors de ce dépôt
+ * (kintai-bundle-daily-report) ; tests/Fixtures/bundles/daily-report-1.0.0/
+ * en est une copie fidèle, maintenue en même temps que le dépôt externe.
  */
 final class DailyReportRoutesTest extends TestCase
 {
@@ -29,7 +34,7 @@ final class DailyReportRoutesTest extends TestCase
     {
         $router = new Router();
         $container = new Container();
-        require dirname(__DIR__, 4) . '/src/Bundles/DailyReport/routes.php';
+        require dirname(__DIR__, 4) . '/tests/Fixtures/bundles/daily-report-1.0.0/routes.php';
 
         return $router;
     }
