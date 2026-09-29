@@ -254,6 +254,9 @@ ob_start();
 <?php if (empty($user['email'])):
     echo Alert::make(__('profile_no_email_warning'))->warning()->render();
 endif; ?>
+<?php if (!empty($has_default_password)):
+    echo Alert::make(__('profile_default_password_warning'))->warning()->render();
+endif; ?>
 <form method="POST" action="<?= route_url('profile.password') ?>" class="form-stack">
     <?= csrf_field() ?>
     <div class="form-group">

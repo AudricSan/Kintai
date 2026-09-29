@@ -182,10 +182,11 @@ final class AuthController
             return Response::redirect($this->base() . '/login');
         }
 
-        $userId    = (int) $user['id'];
-        $scheme    = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $host      = $_SERVER['HTTP_HOST'] ?? 'localhost';
-        $base      = $this->base();
+        $userId             = (int) $user['id'];
+        $hasDefaultPassword = password_verify('0000', (string) ($user['password_hash'] ?? ''));
+        $scheme             = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host               = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $base               = $this->base();
 
         $memberships = $this->storeUsers->findByUser($userId);
         $stores      = [];
@@ -266,6 +267,7 @@ final class AuthController
         return Response::html($this->view->render('auth.profile', [
             'title'                => __('profile'),
             'user'                 => $user,
+            'has_default_password' => $hasDefaultPassword,
             'tab'                  => $tab,
             'stores'               => $stores,
             'store_id'             => $storeId,
