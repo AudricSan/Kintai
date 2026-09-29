@@ -957,7 +957,7 @@
     "password_edit_hint": "（変更しない場合は空白）",
     "password_mismatch": "パスワードが一致しません。",
     "password_reset_success": "パスワードを0000にリセットしました。",
-    "password_too_short": "パスワードは4文字以上で入力してください。",
+    "password_too_short": "パスワードは8文字以上で入力してください。",
     "pause": "休憩",
     "payroll_cost": "人件費",
     "payslip": "給与明細",

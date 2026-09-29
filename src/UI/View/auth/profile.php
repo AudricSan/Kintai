@@ -266,11 +266,11 @@ endif; ?>
     <div class="form-row">
         <div class="form-group">
             <label class="form-label form-label--required"><?= __('new_password') ?></label>
-            <input type="password" name="new_password" class="form-control" minlength="4" required>
+            <input type="password" name="new_password" class="form-control" minlength="<?= \kintai\Core\Auth\PasswordPolicy::MIN_LENGTH ?>" required>
         </div>
         <div class="form-group">
             <label class="form-label form-label--required"><?= __('confirm_password') ?></label>
-            <input type="password" name="confirm_password" class="form-control" minlength="4" required>
+            <input type="password" name="confirm_password" class="form-control" minlength="<?= \kintai\Core\Auth\PasswordPolicy::MIN_LENGTH ?>" required>
         </div>
     </div>
     <div class="form-actions">
