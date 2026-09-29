@@ -152,7 +152,10 @@ final class BundleDiscoveryService
                     'class'       => $manifest->entryClass,
                     'label'       => $instance->getLabel(),
                     'description' => $instance->getDescription(),
-                    'version'     => $manifest->version,
+                    // Version du dossier actif, pas celle du manifeste : bundle.json
+                    // ne porte que la ligne de base "X.Y.0", Z est calculé par le
+                    // workflow de release du bundle.
+                    'version'     => $version,
                 ];
             } catch (\Throwable) {
                 continue;
