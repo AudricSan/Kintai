@@ -88,6 +88,10 @@ php -S 127.0.0.1:8000 -t public
 
 Ouvrir ensuite `http://127.0.0.1:8000/install.php` — l'installateur web crée `config/database.local.php`, exécute les migrations et crée le compte administrateur.
 
+### Serveur web
+
+Seul `public/` doit être servi. Faites-y pointer la racine de documents du serveur web (`DocumentRoot` d'Apache, `root` de nginx) — jamais la racine du dépôt, sous peine de rendre `.env`, `storage/app/database.sqlite`, les sauvegardes et le code source téléchargeables. `php -S … -t public` le fait déjà. Sous Apache, un `.htaccess` à la racine refuse toute URL hors de `public/` comme filet de sécurité si le serveur est pointé par erreur sur le mauvais dossier ; nginx n'a pas d'équivalent, son `root` doit donc être correct.
+
 ### Mise à jour
 
 ```bash
