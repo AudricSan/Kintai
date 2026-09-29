@@ -28,7 +28,7 @@ $removable ??= false;
                 <button type="submit" form="roleHolderRemoveForm"
                         formaction="<?= route_url('admin.roles.holders.delete', ['id' => (int) $role['id'], 'assignmentId' => $h['assignment_id']]) ?>"
                         class="role-holder-chip__remove btn btn--danger btn--sm" title="<?= htmlspecialchars(__('remove')) ?>"
-                        onclick="return confirm('<?= htmlspecialchars(__('confirm_remove_role_holder'), ENT_QUOTES) ?>')">×</button>
+                        data-confirm="<?= htmlspecialchars(__('confirm_remove_role_holder'), ENT_QUOTES) ?>">×</button>
                 <?php endif; ?>
             </li>
         <?php endforeach; ?>

@@ -208,7 +208,7 @@ ob_start();
     <?php include __DIR__ . '/../_partials/_form-user.php'; ?>
     <div class="form-actions">
         <?= Button::make(__('create'))->primary()->submit()->attrs(['id' => 'qc-submit'])->render() ?>
-        <?= Button::make(__('cancel'))->ghost()->attrs(['onclick' => 'qcClose()'])->render() ?>
+        <?= Button::make(__('cancel'))->ghost()->attrs(['data-on-click' => 'qcClose'])->render() ?>
     </div>
 </form>
 <?php

@@ -253,9 +253,9 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
                 </button>
                 <div class="topbar-nav-group__panel topbar-nav-group__panel--stats">
                     <div class="sb-month-nav">
-                        <button onclick="sbMonthNav('<?= htmlspecialchars($ems['prev_month']) ?>')" class="sb-month-btn">&larr;</button>
+                        <button data-on-click="sbMonthNav" data-args="<?= htmlspecialchars(json_encode([$ems['prev_month']]), ENT_QUOTES) ?>" class="sb-month-btn">&larr;</button>
                         <span class="sb-month-label"><?= htmlspecialchars($ems['month_label']) ?></span>
-                        <button onclick="sbMonthNav('<?= htmlspecialchars($ems['next_month']) ?>')" class="sb-month-btn" <?= $ems['is_current'] ? 'disabled' : '' ?>>&rarr;</button>
+                        <button data-on-click="sbMonthNav" data-args="<?= htmlspecialchars(json_encode([$ems['next_month']]), ENT_QUOTES) ?>" class="sb-month-btn" <?= $ems['is_current'] ? 'disabled' : '' ?>>&rarr;</button>
                     </div>
                     <div class="sb-stats-card">
                         <div class="sb-stats-row">
@@ -273,7 +273,7 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
                             </div>
                         <?php endif; ?>
                         <?php if (!empty($ems['shift_details'])): ?>
-                            <button onclick="sbDetailOpen()" class="sb-detail-btn">
+                            <button data-on-click="sbDetailOpen" class="sb-detail-btn">
                                 <?= __('see_details') ?> (<?= count($ems['shift_details']) ?> shift<?= count($ems['shift_details']) > 1 ? 's' : '' ?>) &#9654;
                             </button>
                         <?php endif; ?>
@@ -282,11 +282,11 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
             </div>
 
             <?php if (!empty($ems['shift_details'])): ?>
-                <div id="sb-detail-overlay" onclick="sbDetailClose()">
-                    <div class="sb-modal" onclick="event.stopPropagation()">
+                <div id="sb-detail-overlay" data-on-click="sbDetailClose">
+                    <div class="sb-modal" data-stop-propagation>
                         <div class="sb-modal-header">
                             <strong><?= __('shift_detail_title', ['month' => htmlspecialchars($ems['month_label'])]) ?></strong>
-                            <button onclick="sbDetailClose()" class="sb-modal-close">&times;</button>
+                            <button data-on-click="sbDetailClose" class="sb-modal-close">&times;</button>
                         </div>
                         <div class="sb-modal-body">
                             <table class="sb-modal-table">
@@ -342,7 +342,7 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
                             </table>
                         </div>
                         <div class="sb-modal-footer">
-                            <button onclick="sbDetailClose()" class="btn btn--ghost btn--sm"><?= __('close') ?></button>
+                            <button data-on-click="sbDetailClose" class="btn btn--ghost btn--sm"><?= __('close') ?></button>
                         </div>
                     </div>
                 </div>
@@ -368,7 +368,7 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
                             </form>
                         <?php endif; ?>
                         <?php if (!empty($_dropdownItems)): ?>
-                            <form method="POST" action="<?= route_url('notifications.delete_all') ?>" class="notif-mark-read-form" onsubmit="return confirm('<?= __('delete_all_notifications_confirm') ?>')">
+                            <form method="POST" action="<?= route_url('notifications.delete_all') ?>" class="notif-mark-read-form" data-confirm="<?= htmlspecialchars(__('delete_all_notifications_confirm'), ENT_QUOTES) ?>">
                                 <?= csrf_field() ?>
                                 <button type="submit" class="btn btn--ghost btn--xs"><?= __('delete_all_notifications') ?></button>
                             </form>

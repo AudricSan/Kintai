@@ -36,7 +36,7 @@ $_total = (int) ($timeoff !== null ? count($timeoff) : 0)
                 </thead>
                 <tbody>
                     <?php foreach ($timeoff as $req): ?>
-                        <tr class="tr--clickable" onclick="location.href='<?= route_url('admin.timeoff') ?>'">
+                        <tr class="tr--clickable" data-goto="<?= route_url('admin.timeoff') ?>">
                             <td data-label="#"><?= (int) $req['id'] ?></td>
                             <td data-label="<?= htmlspecialchars(__('user')) ?>"><?= htmlspecialchars($users_map[(int) ($req['user_id'] ?? 0)] ?? ('User #' . (int) ($req['user_id'] ?? 0))) ?></td>
                             <td data-label="<?= htmlspecialchars(__('type')) ?>"><span class="badge badge--pending"><?= htmlspecialchars((string) ($req['type'] ?? '—')) ?></span></td>
@@ -67,7 +67,7 @@ $_total = (int) ($timeoff !== null ? count($timeoff) : 0)
                 </thead>
                 <tbody>
                     <?php foreach ($swaps as $swap): ?>
-                        <tr class="tr--clickable" onclick="location.href='<?= route_url('admin.swap_requests') ?>'">
+                        <tr class="tr--clickable" data-goto="<?= route_url('admin.swap_requests') ?>">
                             <td data-label="#"><?= (int) $swap['id'] ?></td>
                             <td data-label="<?= htmlspecialchars(__('requester')) ?>"><?= htmlspecialchars($users_map[(int) ($swap['requester_id'] ?? 0)] ?? ('User #' . (int) ($swap['requester_id'] ?? 0))) ?></td>
                             <td data-label="<?= htmlspecialchars(__('target')) ?>"><?= htmlspecialchars($users_map[(int) ($swap['target_user_id'] ?? 0)] ?? ('User #' . (int) ($swap['target_user_id'] ?? 0))) ?></td>
@@ -97,7 +97,7 @@ $_total = (int) ($timeoff !== null ? count($timeoff) : 0)
                 </thead>
                 <tbody>
                     <?php foreach ($claims as $claim): ?>
-                        <tr class="tr--clickable" onclick="location.href='<?= route_url('admin.open_shifts') ?>'">
+                        <tr class="tr--clickable" data-goto="<?= route_url('admin.open_shifts') ?>">
                             <td data-label="<?= htmlspecialchars(__('applicant')) ?>"><?= htmlspecialchars($users_map[(int) ($claim['user_id'] ?? 0)] ?? ('User #' . (int) ($claim['user_id'] ?? 0))) ?></td>
                             <td data-label="<?= htmlspecialchars(__('store')) ?>"><?= htmlspecialchars($stores_map[(int) ($claim['store_id'] ?? 0)] ?? ('Store #' . (int) ($claim['store_id'] ?? 0))) ?></td>
                             <td data-label="<?= htmlspecialchars(__('date')) ?>"><?= htmlspecialchars((string) ($claim['shift_date'] ?? '—')) ?></td>

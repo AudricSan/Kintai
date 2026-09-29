@@ -75,7 +75,7 @@ $currencyStyle = store_currency_style($store);
         <?php if (bundle_enabled('salary-report')): ?>
         <?= Button::make('💰 ' . __('salary_report'))->primary()->sm()->link($BASE_URL . '/admin/stores/' . (int) $store['id'] . '/reports/salary/create')->render() ?>
         <?php endif; ?>
-        <?= Button::make('⎙ ' . __('export_pdf'))->primary()->sm()->attrs(['onclick' => 'window.print()'])->render() ?>
+        <?= Button::make('⎙ ' . __('export_pdf'))->primary()->sm()->attrs(['data-on-click' => '@print'])->render() ?>
         <?= Button::make(__('statistics'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . (int) $store['id'] . '/stats')->render() ?>
         <?= Button::make(__('back'))->ghost()->sm()->link(back_url(route_url('admin.stores')))->render() ?>
     </div>
