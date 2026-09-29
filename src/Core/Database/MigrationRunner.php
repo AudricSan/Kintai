@@ -9,6 +9,8 @@ use kintai\Core\Application;
 
 final class MigrationRunner
 {
+    use HandlesMigrationExecution;
+
     private Capsule $capsule;
     private string $migrationsPath;
 
@@ -108,35 +110,11 @@ final class MigrationRunner
 
     private function executeMigration(string $file, string $name): void
     {
-        try {
-            $migrationClass = require $file;
-
-            if (is_object($migrationClass) && $migrationClass instanceof Migration) {
-                $migrationClass->up();
-            } else {
-                $migration = new $migrationClass($this->capsule);
-                $migration->up();
-            }
-        } catch (\Throwable $e) {
-            // Colonne/table déjà présente en base mais migration non trackée : on la considère comme déjà appliquée.
-            if (!$this->isAlreadyAppliedError($e)) {
-                throw new \RuntimeException("Migration {$name} failed: " . $e->getMessage(), 0, $e);
-            }
-        }
+        $this->runMigrationFile($file, $name);
 
         $this->capsule->table('migrations')->insert([
             'migration' => $name,
             'executed_at' => date('Y-m-d H:i:s'),
         ]);
-    }
-
-    private function isAlreadyAppliedError(\Throwable $e): bool
-    {
-        $message = strtolower($e->getMessage());
-
-        return str_contains($message, 'duplicate column')
-            || str_contains($message, 'already exists')
-            || str_contains($message, 'unique constraint failed')
-            || str_contains($message, 'duplicate entry');
     }
 }

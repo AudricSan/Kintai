@@ -157,7 +157,7 @@ final class AdminStoreController
         $storeId = (int) $store['id'];
         $this->assertStoreAccess($request, $storeId);
 
-        $allFeatureSlugs = ['shifts', 'timeclock', 'timeoff', 'swaps', 'open_shifts', 'messages', 'daily_reports', 'photos'];
+        $allFeatureSlugs = ['shifts', 'timeclock', 'timeoff', 'swaps', 'open_shifts', 'messages', 'daily_reports', 'photos', 'notes'];
         $availableSlugs = $this->availableFeatureSlugs();
         $currentFeatures = $this->stores->getFeatures($storeId);
         // Aucune ligne en base = jamais configuré → toutes actives par défaut (cf. l'affichage plus bas).

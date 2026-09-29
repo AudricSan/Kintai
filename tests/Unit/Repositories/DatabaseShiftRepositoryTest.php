@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use kintai\Core\Repositories\DatabaseShiftRepository;
 use Illuminate\Database\Capsule\Manager as Capsule;
 use kintai\Domain\Eloquent\Shift as EloquentShift;
+use kintai\Domain\Eloquent\ShiftDeletionLog as EloquentShiftDeletionLog;
 
 final class DatabaseShiftRepositoryTest extends TestCase
 {
@@ -28,9 +29,31 @@ final class DatabaseShiftRepositoryTest extends TestCase
             $table->integer('store_id');
             $table->integer('user_id')->nullable();
             $table->string('shift_date');
+            $table->string('start_time')->nullable();
+            $table->string('end_time')->nullable();
+            $table->integer('cross_midnight')->default(0);
+            $table->integer('shift_type_id')->nullable();
+            $table->integer('pause_minutes')->default(0);
             $table->integer('is_open')->default(0);
             $table->integer('ical_sequence')->default(0);
+            $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->nullable();
+        });
+
+        $capsule->getConnection()->getSchemaBuilder()->create('shift_deletion_log', function ($table) {
+            $table->increments('id');
+            $table->integer('shift_id');
+            $table->integer('store_id');
+            $table->integer('user_id')->nullable();
+            $table->string('shift_date')->nullable();
+            $table->string('start_time')->nullable();
+            $table->string('end_time')->nullable();
+            $table->integer('cross_midnight')->default(0);
+            $table->integer('shift_type_id')->nullable();
+            $table->integer('pause_minutes')->default(0);
+            $table->integer('ical_sequence')->default(0);
+            $table->timestamp('shift_created_at')->nullable();
+            $table->timestamp('deleted_at')->nullable();
         });
 
         $this->repo = new DatabaseShiftRepository();
@@ -188,6 +211,95 @@ final class DatabaseShiftRepositoryTest extends TestCase
     public function testDeleteReturnsZeroWhenNotFound(): void
     {
         $this->assertSame(0, $this->repo->delete(999));
+    }
+
+    /**
+     * Régression : delete() faisait un hard delete sans laisser aucune trace,
+     * donc le flux iCal ne pouvait jamais émettre de VEVENT CANCELLED pour un
+     * shift supprimé après export (voir IcalController::feed()). delete() doit
+     * maintenant journaliser le shift dans shift_deletion_log avant de le
+     * supprimer réellement.
+     */
+    public function testDeleteRecordsDeletionLogBeforeHardDeleting(): void
+    {
+        $s = EloquentShift::create([
+            'store_id'       => 1,
+            'user_id'        => 7,
+            'shift_date'     => '2025-06-15',
+            'start_time'     => '09:00',
+            'end_time'       => '17:00',
+            'cross_midnight' => 0,
+            'shift_type_id'  => 3,
+            'pause_minutes'  => 30,
+            'ical_sequence'  => 2,
+        ]);
+
+        $this->repo->delete($s->id);
+
+        $log = EloquentShiftDeletionLog::first();
+        $this->assertNotNull($log);
+        $this->assertSame($s->id, $log->shift_id);
+        $this->assertSame(1, $log->store_id);
+        $this->assertSame(7, $log->user_id);
+        $this->assertSame('2025-06-15', $log->shift_date);
+        $this->assertSame('09:00', $log->start_time);
+        $this->assertSame('17:00', $log->end_time);
+        $this->assertSame(3, $log->shift_type_id);
+        $this->assertSame(30, $log->pause_minutes);
+        // ical_sequence bumped comme pour toute autre modification du shift
+        // (cf. save()/closeOpenShiftTo()), pour que le CANCELLED soit traité
+        // comme une révision plus récente que le dernier CONFIRMED.
+        $this->assertSame(3, $log->ical_sequence);
+        $this->assertNotNull($log->deleted_at);
+    }
+
+    public function testDeleteDoesNotRecordLogWhenShiftNotFound(): void
+    {
+        $this->repo->delete(999);
+
+        $this->assertSame(0, EloquentShiftDeletionLog::count());
+    }
+
+    // -------------------------------------------------------------------------
+    // findRecentDeletionsByUserAndStore()
+    // -------------------------------------------------------------------------
+
+    public function testFindRecentDeletionsByUserAndStoreReturnsShiftShapedArray(): void
+    {
+        $s = EloquentShift::create([
+            'store_id'   => 1,
+            'user_id'    => 7,
+            'shift_date' => '2025-06-15',
+            'start_time' => '09:00',
+            'end_time'   => '17:00',
+        ]);
+        $this->repo->delete($s->id);
+
+        $result = $this->repo->findRecentDeletionsByUserAndStore(7, 1, date('Y-m-d H:i:s', strtotime('-30 days')));
+
+        $this->assertCount(1, $result);
+        $this->assertSame($s->id, $result[0]['id']);
+        $this->assertSame('2025-06-15', $result[0]['shift_date']);
+        $this->assertNotEmpty($result[0]['deleted_at']);
+    }
+
+    public function testFindRecentDeletionsByUserAndStoreExcludesOtherUserOrStore(): void
+    {
+        $s = EloquentShift::create(['store_id' => 1, 'user_id' => 7, 'shift_date' => '2025-06-15']);
+        $this->repo->delete($s->id);
+
+        $this->assertSame([], $this->repo->findRecentDeletionsByUserAndStore(999, 1, date('Y-m-d H:i:s', strtotime('-30 days'))));
+        $this->assertSame([], $this->repo->findRecentDeletionsByUserAndStore(7, 999, date('Y-m-d H:i:s', strtotime('-30 days'))));
+    }
+
+    public function testFindRecentDeletionsByUserAndStoreExcludesEntriesOlderThanSince(): void
+    {
+        $s = EloquentShift::create(['store_id' => 1, 'user_id' => 7, 'shift_date' => '2025-06-15']);
+        $this->repo->delete($s->id);
+
+        // "since" dans le futur par rapport à la suppression qu'on vient de faire
+        $future = date('Y-m-d H:i:s', strtotime('+1 minute'));
+        $this->assertSame([], $this->repo->findRecentDeletionsByUserAndStore(7, 1, $future));
     }
 
     // -------------------------------------------------------------------------

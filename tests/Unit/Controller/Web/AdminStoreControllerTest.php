@@ -151,6 +151,14 @@ final class AdminStoreControllerTest extends TestCase
         $req->setRouteParams(['id' => '1']);
 
         $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Test Store']);
+        // Store déjà configuré (toutes les fonctionnalités pré-existantes explicitement listées, sauf
+        // 'notes' qui n'existait pas encore) : isole ce test de "aucune ligne = tout actif par défaut",
+        // qui rendrait la simple présence de la nouvelle clé 'notes' dans STORE_FEATURE_BUNDLE_MAP
+        // suffisante pour l'auto-activer ici (voir testUpdateStorePreservesFeatureHiddenByDisabledBundle
+        // pour ce comportement "masqué + jamais configuré").
+        $this->stores->method('getFeatures')->with(1)->willReturn([
+            'shifts', 'timeclock', 'timeoff', 'swaps', 'open_shifts', 'messages', 'daily_reports', 'photos',
+        ]);
 
         $captured = null;
         $storeService = $this->createMock(StoreServiceInterface::class);

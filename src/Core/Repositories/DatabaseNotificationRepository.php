@@ -95,16 +95,17 @@ final class DatabaseNotificationRepository implements NotificationRepositoryInte
         EloquentNotification::where('user_id', $userId)->delete();
     }
 
-    /** Traduit le modèle de lecture (body/reference_id/is_read) vers les vraies colonnes (data/read_at). */
+    /** Traduit le modèle de lecture (body/reference_id/link/is_read) vers les vraies colonnes (data/read_at). */
     private function toStorage(array $data): array
     {
         $storage = $data;
-        if (array_key_exists('body', $storage) || array_key_exists('reference_id', $storage)) {
+        if (array_key_exists('body', $storage) || array_key_exists('reference_id', $storage) || array_key_exists('link', $storage)) {
             $storage['data'] = json_encode([
                 'body'         => $storage['body'] ?? '',
                 'reference_id' => $storage['reference_id'] ?? null,
+                'link'         => $storage['link'] ?? null,
             ], JSON_UNESCAPED_UNICODE);
-            unset($storage['body'], $storage['reference_id']);
+            unset($storage['body'], $storage['reference_id'], $storage['link']);
         }
         // is_read n'est jamais stocké tel quel : uniquement dérivé de read_at à la lecture.
         // Une valeur explicite à la création (notify() envoie toujours is_read=0) doit
@@ -113,7 +114,7 @@ final class DatabaseNotificationRepository implements NotificationRepositoryInte
         return $storage;
     }
 
-    /** Traduit les vraies colonnes (data/read_at) vers le modèle de lecture (body/reference_id/is_read). */
+    /** Traduit les vraies colonnes (data/read_at) vers le modèle de lecture (body/reference_id/link/is_read). */
     private function fromStorage(array $row): array
     {
         $decoded = json_decode((string) ($row['data'] ?? ''), true);
@@ -122,6 +123,7 @@ final class DatabaseNotificationRepository implements NotificationRepositoryInte
         return array_merge($row, [
             'body'         => $decoded['body'] ?? '',
             'reference_id' => $decoded['reference_id'] ?? null,
+            'link'         => $decoded['link'] ?? null,
             'is_read'      => ($row['read_at'] ?? null) !== null ? 1 : 0,
         ]);
     }
