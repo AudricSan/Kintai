@@ -1,0 +1,10 @@
+# Jamais servi directement : ce dossier contient la base SQLite, les sauvegardes, les journaux et les
+# envois. L'application les lit elle-même, ou les sert via la route /storage/{path} après contrôle
+# d'accès (voir StorageFileController) — jamais par un accès direct du serveur web.
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>
