@@ -26,6 +26,9 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 final class AuthService
 {
     private const SESSION_KEY = 'auth_user_id';
+    // Empreinte du hash de mot de passe au moment de la connexion : si le mot de passe change
+    // (lui-même, réinitialisation, admin), toute session ouverte avant devient invalide.
+    private const SESSION_PW_FINGERPRINT = 'auth_pw_fp';
     private const REMEMBER_COOKIE = 'kintai_remember';
     private const REMEMBER_LIFETIME_DAYS = 30;
 
@@ -59,7 +62,7 @@ final class AuthService
         }
 
         session_regenerate_id(true);
-        $_SESSION[self::SESSION_KEY] = $user['id'];
+        $this->bindSession($user);
         if ($remember) {
             $this->issueRememberToken((int) $user['id']);
         }
@@ -97,7 +100,7 @@ final class AuthService
         }
 
         session_regenerate_id(true);
-        $_SESSION[self::SESSION_KEY] = $user['id'];
+        $this->bindSession($user);
         if ($remember) {
             $this->issueRememberToken((int) $user['id']);
         }
@@ -147,7 +150,7 @@ final class AuthService
         $this->rememberTokens->deleteBySelector($selector);
 
         session_regenerate_id(true);
-        $_SESSION[self::SESSION_KEY] = $user['id'];
+        $this->bindSession($user);
         $this->issueRememberToken((int) $user['id']);
 
         return true;
@@ -165,17 +168,55 @@ final class AuthService
             return null;
         }
         $user = $this->users->findById((int) $id);
-        if ($user === null) {
+        // Une session ouverte ne doit jamais survivre à la désactivation ou à la suppression
+        // du compte : seules la connexion et le cookie « rester connecté » le vérifiaient.
+        if ($user === null || !($user['is_active'] ?? 1) || !empty($user['deleted_at'])) {
+            $this->dropSession();
+            return null;
+        }
+        // Le mot de passe a changé depuis l'ouverture de cette session (par l'utilisateur, par
+        // réinitialisation ou par un admin) : elle est révoquée, y compris sur les autres appareils.
+        // Une session ouverte avant l'introduction de l'empreinte l'adopte à sa première requête.
+        $stored = $_SESSION[self::SESSION_PW_FINGERPRINT] ?? null;
+        if (!is_string($stored)) {
+            $_SESSION[self::SESSION_PW_FINGERPRINT] = $this->fingerprint($user);
+        } elseif (!hash_equals($stored, $this->fingerprint($user))) {
+            $this->dropSession();
             return null;
         }
         $user['is_admin'] = $this->hasOwnerRole((int) $user['id']) ? 1 : 0;
         return $user;
     }
 
-    /** L'utilisateur est-il connecté ? */
+    /** L'utilisateur est-il connecté (session valide, compte toujours actif) ? */
     public function check(): bool
     {
-        return !empty($_SESSION[self::SESSION_KEY]);
+        return !empty($_SESSION[self::SESSION_KEY]) && $this->user() !== null;
+    }
+
+    /**
+     * À appeler après que l'utilisateur CONNECTÉ a changé son propre mot de passe : la session
+     * courante reste valide (nouvelle empreinte), toutes les autres sont invalidées.
+     */
+    public function refreshSessionAfterPasswordChange(array $user): void
+    {
+        $_SESSION[self::SESSION_PW_FINGERPRINT] = $this->fingerprint($user);
+    }
+
+    private function bindSession(array $user): void
+    {
+        $_SESSION[self::SESSION_KEY] = $user['id'];
+        $_SESSION[self::SESSION_PW_FINGERPRINT] = $this->fingerprint($user);
+    }
+
+    private function dropSession(): void
+    {
+        unset($_SESSION[self::SESSION_KEY], $_SESSION[self::SESSION_PW_FINGERPRINT]);
+    }
+
+    private function fingerprint(array $user): string
+    {
+        return hash('sha256', (string) ($user['password_hash'] ?? ''));
     }
 
     /** L'utilisateur connecté est-il admin global (rôle système, portée globale) ? */
@@ -225,7 +266,7 @@ final class AuthService
     /** Déconnecte l'utilisateur courant (et révoque le "rester connecté" s'il y en a un). */
     public function logout(): void
     {
-        unset($_SESSION[self::SESSION_KEY]);
+        $this->dropSession();
         $this->revokeRememberCookie();
     }
 
