@@ -89,6 +89,7 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(PasswordResetRepositoryInterface::class),
             $c->make(UserRepositoryInterface::class),
             $c->make(MailerService::class),
+            $c->make(\kintai\Core\Auth\CredentialRevoker::class),
         ));
 
         $this->container->singleton(AppSettingsService::class, fn(Container $c) => new AppSettingsService($c->make(AppSettingsRepositoryInterface::class)));
