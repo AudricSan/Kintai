@@ -224,6 +224,29 @@ $css = file_get_contents(bundle_asset_path('your-slug', 'css/pdf-your-bundle.css
 2. コミットに`vX.Y.Z`のタグを付け、そのタグをプッシュする。
 3. そのタグに対してGitHub Releaseを作成する（`gh release create vX.Y.Z --generate-notes`、またはタグのプッシュ時に同じことを行うCIワークフロー——最小限の例として`kintai-bundle-feedback`の`.github/workflows/release.yml`を参照）。何も構築する必要はありません：Releaseが自動生成する`zipball_url`こそが、`BundleInstallerService`がダウンロードするものそのものです。
 
+## Content Security Policy：インラインスクリプトは使えません
+
+Kintai は `script-src 'self' 'nonce-…'` を送信します（`SecurityHeadersMiddleware`）。ブラウザは Kintai 自身が配信するスクリプトと、現在のリクエストの nonce を持つインライン `<script>` だけを実行します。**インラインのイベント属性（`onclick=`、`onchange=`、`onsubmit=`、`oninput=` など）と `javascript:` リンクはブロックされます**。エラーは出ず、サーバー側にも何も記録されず、ボタンが何も起こさなくなるだけです。バンドルのビューではこれらを使わないでください。
+
+- **インライン `<script>`** — どうしても必要な場合のみ、リクエストの nonce を付けます：`<script nonce="<?= csp_nonce() ?>">…</script>`。`<script type="application/json">` のデータブロックは実行されないため nonce は不要です。バンドルの `assets/js/` に置いたファイル（`bundle_asset()` で読み込み）にすれば、何も必要ありません。
+- **イベント属性** — 宣言的な `data-*` 属性に置き換えます。処理は `public/assets/js/modules/csp-actions.js`（アプリのレイアウトが読み込みます）が行います：
+
+| 従来 | 書き方 |
+|---|---|
+| `onclick="doThing()"` | `data-on-click="doThing"` |
+| `onclick="doThing('a', 2)"` | `data-on-click="doThing" data-args='["a", 2]'` |
+| `onchange="doThing(this.value)"` | `data-on-change="doThing" data-args='["@value"]'`（`"@this"`、`"@value"`、`"@checked"` は呼び出し時に置換されます） |
+| `onchange="this.form.submit()"` | `data-submit-on-change` |
+| `onchange="document.getElementById('f').submit()"` | `data-submit-form="f"` |
+| `onclick="location.href='/x'"` | `data-goto="/x"`（http/https のみ） |
+| `onclick="event.stopPropagation()"` | `data-stop-propagation` |
+| `onclick="window.print()"` | `data-on-click="@print"`（`@close`、`@select`、`@removeParent`、`@copy` もあります） |
+| `onsubmit="return confirm('…')"`、`onclick="return confirm('…')"` | `<form>` または送信ボタンに `data-confirm="…"`（共通の確認モーダル） |
+| `Button::attrs(['onclick' => 'f()'])` | `Button::attrs(['data-on-click' => 'f'])` |
+
+`data-on-*` が呼び出せるのは、`window` 上に**自分で定義した関数**（スクリプト内の関数宣言、または `window.f = …`）だけです。`eval` や `setTimeout` などブラウザ組み込みの関数は意図的に拒否され、注入された属性がコード実行の手段にならないようになっています。`Button`/`Modal` の属性値はコンポーネントが既にエスケープするため、`htmlspecialchars()` の結果ではなく生の値を渡してください。
+
+`csp_nonce()` や `csp-actions.js` を使うバンドルには、それらを提供する Kintai Core が必要です。`bundle.json` の `kintai_core.min` をそれに合わせて設定してください。Kintai の `tests/Unit/Security/NoInlineScriptGuardTest.php` は、Core のビューにインラインハンドラーが戻るとすぐに失敗します。自分のビューでも同じ確認を行ってください。
 ## レジストリに掲載してもらう
 
 **レジストリ**とは、単純なHTTPSで配信される静的な`registry.json`ファイルに過ぎません（GitHubリポジトリの`raw.githubusercontent.com` URLがうまく機能し、公式レジストリもこの方法で配信されています）——Kintaiはこれもクローンせず、単にGETするだけです（`BundleRegistryClient`）。

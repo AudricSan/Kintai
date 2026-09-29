@@ -44,12 +44,12 @@ foreach ($conflicts as $c) {
                 <input type="month" id="cf-month" name="month"
                        value="<?= htmlspecialchars($filter_month) ?>"
                        class="form-control form-control-sm"
-                       onchange="this.form.submit()">
+                       data-submit-on-change>
             </div>
             <?php if (count($stores_map) > 1): ?>
             <div class="shifts-filters__group">
                 <label class="shifts-filters__label" for="cf-store"><?= __('store') ?></label>
-                <select id="cf-store" name="store_id" class="form-control form-control-sm" onchange="this.form.submit()">
+                <select id="cf-store" name="store_id" class="form-control form-control-sm" data-submit-on-change>
                     <option value="0"><?= __('all_stores') ?></option>
                     <?php foreach ($stores_map as $sid => $sname): ?>
                         <option value="<?= $sid ?>" <?= $filter_store_id === $sid ? 'selected' : '' ?>>
@@ -81,7 +81,7 @@ foreach ($conflicts as $c) {
     $resolveBtn = '';
     if ($filter_month !== '' && count($sameMonthConflicts) > 0):
         $resolveBtn = '<form method="POST" action="' . route_url('admin.shifts.resolve_newer') . '" class="form-inline"'
-            . ' onsubmit="return confirm(\'' . htmlspecialchars(__('resolve_all_month') . ' (' . count($sameMonthConflicts) . ') ?') . '")">'
+            . ' data-confirm="' . htmlspecialchars(__('resolve_all_month') . ' (' . count($sameMonthConflicts) . ') ?', ENT_QUOTES) . '">'
             . csrf_field()
             . '<input type="hidden" name="bulk" value="1">'
             . '<input type="hidden" name="month" value="' . htmlspecialchars($filter_month) . '">'
@@ -188,7 +188,7 @@ foreach ($conflicts as $c) {
                 <?php if ($sameMth): ?>
                 <form method="POST" action="<?= route_url('admin.shifts.resolve_newer') ?>"
                       class="form-inline"
-                      onsubmit="return confirm('<?= htmlspecialchars(__('keep_newer_shift') . ' #' . $idNewer . ' ?') ?>')">
+                      data-confirm="<?= htmlspecialchars(__('keep_newer_shift') . ' #' . $idNewer . ' ?') ?>">
                     <?= csrf_field() ?>
                     <input type="hidden" name="id_keep"   value="<?= $idNewer ?>">
                     <input type="hidden" name="id_delete" value="<?= $idOlder ?>">

@@ -224,6 +224,29 @@ Obligatoire à la racine du dépôt du bundle :
 2. Tagger le commit `vX.Y.Z` et pousser le tag.
 3. Créer une GitHub Release pour ce tag (`gh release create vX.Y.Z --generate-notes`, ou un workflow CI qui fait la même chose au push d'un tag — voir le `.github/workflows/release.yml` minimal de `kintai-bundle-feedback`). Rien à construire : le `zipball_url` auto-généré de la release est exactement ce que `BundleInstallerService` télécharge.
 
+## Content Security Policy : pas de script inline
+
+Kintai envoie `script-src 'self' 'nonce-…'` (`SecurityHeadersMiddleware`) : le navigateur n'exécute que les scripts servis par Kintai lui-même, ou un `<script>` inline portant le nonce de la requête en cours. **Les attributs d'événements inline (`onclick=`, `onchange=`, `onsubmit=`, `oninput=`…) et les liens `javascript:` sont bloqués**, en silence : le bouton ne fait simplement rien, sans aucune erreur côté serveur. Une vue de bundle ne doit donc pas en utiliser.
+
+- **`<script>` inline** — seulement en cas de vrai besoin, avec le nonce de la requête : `<script nonce="<?= csp_nonce() ?>">…</script>`. Un bloc de données `<script type="application/json">` n'est pas exécuté et n'a pas besoin de nonce. Préférez un fichier dans `assets/js/` de votre bundle (chargé avec `bundle_asset()`), qui n'exige rien.
+- **Attributs d'événements** — remplacez-les par des attributs déclaratifs `data-*`, gérés par `public/assets/js/modules/csp-actions.js` (chargé par le layout de l'application) :
+
+| Au lieu de | Écrire |
+|---|---|
+| `onclick="doThing()"` | `data-on-click="doThing"` |
+| `onclick="doThing('a', 2)"` | `data-on-click="doThing" data-args='["a", 2]'` |
+| `onchange="doThing(this.value)"` | `data-on-change="doThing" data-args='["@value"]'` (`"@this"`, `"@value"`, `"@checked"` sont remplacés à l'appel) |
+| `onchange="this.form.submit()"` | `data-submit-on-change` |
+| `onchange="document.getElementById('f').submit()"` | `data-submit-form="f"` |
+| `onclick="location.href='/x'"` | `data-goto="/x"` (http/https uniquement) |
+| `onclick="event.stopPropagation()"` | `data-stop-propagation` |
+| `onclick="window.print()"` | `data-on-click="@print"` (aussi `@close`, `@select`, `@removeParent`, `@copy`) |
+| `onsubmit="return confirm('…')"`, `onclick="return confirm('…')"` | `data-confirm="…"` sur le `<form>` ou sur le bouton submit (modale de confirmation globale) |
+| `Button::attrs(['onclick' => 'f()'])` | `Button::attrs(['data-on-click' => 'f'])` |
+
+`data-on-*` n'appelle qu'une **fonction que vous avez définie vous-même** sur `window` (une déclaration de fonction dans votre script, ou `window.f = …`) : les fonctions natives du navigateur comme `eval` ou `setTimeout` sont refusées volontairement, pour qu'un attribut injecté ne devienne pas un moyen d'exécuter du code. Les valeurs d'attributs de `Button`/`Modal` sont déjà échappées par le composant : passez la valeur brute, pas le résultat de `htmlspecialchars()`.
+
+Un bundle qui utilise `csp_nonce()` ou `csp-actions.js` exige un Core Kintai qui les fournit : réglez `kintai_core.min` dans son `bundle.json` en conséquence. `tests/Unit/Security/NoInlineScriptGuardTest.php` dans Kintai échoue dès qu'une vue du Core réintroduit un handler inline ; faites la même vérification sur vos propres vues.
 ## Se faire lister dans un registry
 
 Un **registry** n'est rien de plus qu'un fichier statique `registry.json` servi en simple HTTPS (l'URL `raw.githubusercontent.com` d'un dépôt GitHub fonctionne bien, et c'est comme ça que le registry officiel est servi) — Kintai ne le clone jamais non plus, il se contente d'un GET (`BundleRegistryClient`).

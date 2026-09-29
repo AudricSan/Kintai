@@ -28,14 +28,14 @@ $langLabel  = $langLabels[$locale] ?? $locale;
         <div class="docs-unavailable__sync">
             <p class="docs-unavailable__sync-hint"><?= __('docs_sync_body_missing') ?></p>
             <div class="docs-sync__row">
-                <button id="btnWikiSync" type="button" class="btn btn--primary docs-sync__btn" onclick="syncWiki()">
+                <button id="btnWikiSync" type="button" class="btn btn--primary docs-sync__btn" data-on-click="syncWiki">
                     ↻ <?= __('docs_sync_btn_clone') ?>
                 </button>
                 <span id="wikiSyncStatus" class="docs-sync__status" aria-live="polite"></span>
             </div>
         </div>
 
-        <script>
+        <script nonce="<?= csp_nonce() ?>">
         var _wikiSyncUrl = <?= json_encode(route_url('docs.sync')) ?>;
         var _wikiIndexUrl = <?= json_encode(route_url('docs.index')) ?>;
 

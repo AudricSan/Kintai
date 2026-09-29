@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="<?= $BASE_URL ?>/assets/img/apple-touch-icon.png">
     <title><?= htmlspecialchars($title ?? 'Kintai') ?> — Kintai</title>
     <link rel="stylesheet" href="<?= $BASE_URL ?>/assets/css/app.css?v=<?= asset_version() ?>">
-    <script>(function(){var t=localStorage.getItem('kintai-theme');if(t)document.documentElement.dataset.theme=t;}());</script>
+    <script nonce="<?= csp_nonce() ?>">(function(){var t=localStorage.getItem('kintai-theme');if(t)document.documentElement.dataset.theme=t;}());</script>
 </head>
 
 <body>
@@ -83,7 +83,7 @@
             <?php include __DIR__ . '/partials/_topbar.php'; ?>
         </div>
         <?php if (!empty($app_maintenance_mode_enabled)): ?>
-            <script>
+            <script nonce="<?= csp_nonce() ?>">
             (function () {
                 var banner = document.querySelector('.maintenance-banner');
                 if (!banner) return;
@@ -105,6 +105,7 @@
         <?php include __DIR__ . '/partials/_bottomnav.php'; ?>
     </div>
 
+    <script src="<?= $BASE_URL ?>/assets/js/modules/csp-actions.js?v=<?= asset_version() ?>"></script>
     <script src="<?= $BASE_URL ?>/assets/js/app.js?v=<?= asset_version() ?>"></script>
     <script src="<?= $BASE_URL ?>/assets/js/modules/notifications.js?v=<?= asset_version() ?>"></script>
     <?php if (!empty($push_web_config) && !empty($auth_user['id'] ?? null) && ($tab ?? '') === 'push'): ?>
@@ -118,14 +119,14 @@
              hidden></div>
         <script src="<?= $BASE_URL ?>/assets/js/modules/push.js?v=<?= asset_version() ?>"></script>
     <?php endif; ?>
-    <script>
+    <script nonce="<?= csp_nonce() ?>">
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', function () {
             navigator.serviceWorker.register('<?= $BASE_URL ?>/sw.js', { scope: '<?= $BASE_URL ?>/' }).catch(function () {});
         });
     }
     </script>
-    <script>document.addEventListener('click',function(e){if(e.target.closest('a,button,input,select,textarea,form'))return;var t=e.target.closest('.tr--clickable[data-href]');if(t){location.href=t.getAttribute('data-href');return;}var m=e.target.closest('.tr--clickable[data-modal]');if(m&&window.openModal){window.openModal(m.getAttribute('data-modal'));}});</script>
+    <script nonce="<?= csp_nonce() ?>">document.addEventListener('click',function(e){if(e.target.closest('a,button,input,select,textarea,form'))return;var t=e.target.closest('.tr--clickable[data-href]');if(t){location.href=t.getAttribute('data-href');return;}var m=e.target.closest('.tr--clickable[data-modal]');if(m&&window.openModal){window.openModal(m.getAttribute('data-modal'));}});</script>
 
     <?php if ($feedback_enabled ?? true): ?>
         <?php include __DIR__ . '/partials/feedback-modal.php'; ?>

@@ -126,7 +126,7 @@ endif;
             <?php if (!empty($stores_map) && count($stores_map) > 1): ?>
             <div class="shifts-filters__group">
                 <label class="shifts-filters__label" for="cf-store"><?= __('store') ?></label>
-                <select id="cf-store" name="store_id" class="form-control form-control-sm" onchange="this.form.submit()">
+                <select id="cf-store" name="store_id" class="form-control form-control-sm" data-submit-on-change>
                     <option value="0"><?= __('all_stores') ?></option>
                     <?php foreach ($stores_map as $sid => $sname): ?>
                         <option value="<?= $sid ?>" <?= $filter_store_id === $sid ? 'selected' : '' ?>><?= htmlspecialchars($sname) ?></option>
@@ -150,8 +150,8 @@ endif;
                     </button>
                     <div class="cal-employee-filter__panel">
                         <div class="cal-sidebar-actions">
-                            <?= Button::make(__('all'))->ghost()->sm()->attrs(['onclick' => 'calSelectAll(true)'])->render() ?>
-                            <?= Button::make(__('none'))->ghost()->sm()->attrs(['onclick' => 'calSelectAll(false)'])->render() ?>
+                            <?= Button::make(__('all'))->ghost()->sm()->attrs(['data-on-click' => 'calSelectAll', 'data-args' => '[true]'])->render() ?>
+                            <?= Button::make(__('none'))->ghost()->sm()->attrs(['data-on-click' => 'calSelectAll', 'data-args' => '[false]'])->render() ?>
                         </div>
                         <?php foreach ($all_members as $m): ?>
                             <?php
@@ -161,7 +161,7 @@ endif;
                             $checked = empty($filter_uids) || in_array($uid, $filter_uids, true);
                             ?>
                             <label class="cal-member-item" style="--c:<?= htmlspecialchars($col) ?>" title="<?= htmlspecialchars($label) ?>">
-                                <input type="checkbox" name="u[]" value="<?= $uid ?>" <?= $checked ? 'checked' : '' ?> onchange="document.getElementById('calFilterForm').submit()">
+                                <input type="checkbox" name="u[]" value="<?= $uid ?>" <?= $checked ? 'checked' : '' ?> data-submit-form="calFilterForm">
                                 <span class="cal-member-dot" style="background:<?= htmlspecialchars($col) ?>"></span>
                                 <span class="cal-member-name"><?= htmlspecialchars($label) ?></span>
                             </label>

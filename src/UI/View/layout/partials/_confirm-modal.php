@@ -11,7 +11,7 @@ use kintai\UI\Components\Modal;
     ->title(__('confirm'))
     ->body('<p id="global-confirm-message"></p>')
     ->footer(
-        '<button type="button" class="btn btn--ghost" onclick="closeModal(\'global-confirm-modal\')">' . htmlspecialchars(__('cancel')) . '</button>'
+        '<button type="button" class="btn btn--ghost" data-on-click="closeModal" data-args=\'["global-confirm-modal"]\'>' . htmlspecialchars(__('cancel')) . '</button>'
         . '<button type="button" id="global-confirm-submit-btn" class="btn btn--danger">' . htmlspecialchars(__('confirm')) . '</button>'
     )
     ->render() ?>
