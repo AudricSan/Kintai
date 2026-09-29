@@ -29,7 +29,7 @@ Kintaiは **GNU Affero General Public License v3.0**（AGPL-3.0）の下で公�
 2. ブランチを作成する：`git checkout -b feat/my-feature` または `fix/my-bug`
 3. 下記の規約に従って変更を行う
 4. テストを実行する：`./vendor/bin/phpunit`
-5. `alpha` ブランチ（最も活発なチャンネル）に対してプルリクエストを開く（`main`・`alpha`・`beta` は保護されたリリースチャンネル用ブランチです — これらへのマージはGitHub Releaseの自動タグ付け・公開をトリガーします。[releasing.ja.md](releasing.ja.md) を参照）
+5. `develop` ブランチ（日常作業のデフォルトの統合ブランチ — ここへのマージではリリースは公開**されません**）に対してプルリクエストを開く。`main`・`alpha`・`beta` は保護されたリリースチャンネル用ブランチで、いずれかへのマージはGitHub Releaseの自動タグ付け・公開をトリガーするため、`develop` を順に昇格させるときにのみ意図的に更新されます（[releasing.ja.md](releasing.ja.md) を参照）
 
 ## コーディング規約
 
