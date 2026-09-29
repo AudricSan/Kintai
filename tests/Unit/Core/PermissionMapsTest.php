@@ -7,6 +7,7 @@ namespace kintai\Tests\Unit\Core;
 use kintai\Core\Auth\PermissionCatalog;
 use kintai\Core\Container;
 use kintai\Core\Middleware\ApiPermissionMiddleware;
+use kintai\Core\Middleware\OwnerOnlyMiddleware;
 use kintai\Core\Middleware\PermissionMiddleware;
 use kintai\Core\Route;
 use kintai\Core\Router;
@@ -29,7 +30,17 @@ use PHPUnit\Framework\TestCase;
  */
 final class PermissionMapsTest extends TestCase
 {
-    /** @return Route[] */
+    /**
+     * Routes du Core + de tous les bundles.
+     *
+     * Les bundles ne vivent plus dans src/Bundles/ (ce sont des dépôts séparés installés dans
+     * storage/bundles/, absent de la CI) : l'ancien glob sur src/Bundles/*\/routes.php ne renvoyait
+     * plus rien, et aucune route de bundle n'était donc vérifiée. Les fixtures
+     * tests/Fixtures/bundles/*\/routes.php, versionnées dans ce dépôt, sont la copie que la CI peut
+     * lire ; le glob historique est conservé pour un bundle tiers déposé à la main.
+     *
+     * @return Route[]
+     */
     private function allRoutes(): array
     {
         $root = dirname(__DIR__, 3);
@@ -37,11 +48,64 @@ final class PermissionMapsTest extends TestCase
         $container = new Container();
 
         require $root . '/config/routes.php';
-        foreach (glob($root . '/src/Bundles/*/routes.php') as $bundleRoutes) {
+        foreach (array_merge(
+            glob($root . '/src/Bundles/*/routes.php') ?: [],
+            glob($root . '/tests/Fixtures/bundles/*/routes.php') ?: [],
+        ) as $bundleRoutes) {
             require $bundleRoutes;
         }
 
         return $router->routes();
+    }
+
+    /** Routes du Core seul, pour mesurer ce qu'apportent les bundles. */
+    private function coreRouteCount(): int
+    {
+        $router = new Router();
+        $container = new Container();
+        require dirname(__DIR__, 3) . '/config/routes.php';
+
+        return count($router->routes());
+    }
+
+    /**
+     * Routes qui devraient être sous RBAC mais ne le sont pas : toute route /admin doit passer par
+     * PermissionMiddleware (ou OwnerOnlyMiddleware, pour les pages réservées à l'Owner), toute route
+     * /api/v1 par ApiPermissionMiddleware, sauf exemptions documentées.
+     *
+     * @param Route[] $routes
+     * @return string[]
+     */
+    private function routesOutsideRbac(array $routes): array
+    {
+        // Exemptions volontaires de l'API : points d'entrée publics (ping, connexion, protégée par son
+        // propre limiteur) et messagerie, en libre-service, dont chaque contrôleur vérifie que
+        // l'appelant participe au fil (voir CHANGELOG, « Messaging stays self-service »).
+        $apiExemptExact = ['/api/v1/ping', '/api/v1/auth/login'];
+        $apiExemptPrefix = ['/api/v1/messages'];
+
+        $outside = [];
+        foreach ($routes as $route) {
+            $mw = $route->middleware;
+            if (str_starts_with($route->pattern, '/admin')
+                && !in_array(PermissionMiddleware::class, $mw, true)
+                && !in_array(OwnerOnlyMiddleware::class, $mw, true)) {
+                $outside[] = "{$route->method} {$route->pattern}";
+            }
+            if (str_starts_with($route->pattern, '/api/v1')
+                && !in_array(ApiPermissionMiddleware::class, $mw, true)
+                && !in_array($route->pattern, $apiExemptExact, true)) {
+                $exempt = false;
+                foreach ($apiExemptPrefix as $prefix) {
+                    $exempt = $exempt || str_starts_with($route->pattern, $prefix);
+                }
+                if (!$exempt) {
+                    $outside[] = "{$route->method} {$route->pattern}";
+                }
+            }
+        }
+
+        return $outside;
     }
 
     public function testEveryPermissionMiddlewareRouteDeclaresAPermission(): void
@@ -126,5 +190,49 @@ final class PermissionMapsTest extends TestCase
                 "CATEGORY_BUNDLES référence une catégorie inconnue : '$category'."
             );
         }
+    }
+
+    public function testBundleRoutesAreActuallyPartOfTheInspectedRoutes(): void
+    {
+        // Garde-fou contre le retour de l'angle mort : si le chargement des routes de bundles casse
+        // (dossier déplacé, glob vide), tous les tests ci-dessus passeraient sans rien vérifier.
+        $all = $this->allRoutes();
+        $this->assertGreaterThan(
+            $this->coreRouteCount() + 50,
+            count($all),
+            'Les routes des bundles ne sont plus chargées : les invariants RBAC ne les vérifieraient plus.'
+        );
+
+        $names = array_filter(array_map(static fn(Route $r) => $r->name, $all));
+        foreach (['admin.timeoff', 'admin.swap_requests', 'admin.feedbacks'] as $expected) {
+            $this->assertNotEmpty(
+                array_filter($names, static fn($n) => str_starts_with((string) $n, $expected)),
+                "Aucune route '$expected*' : les routes de bundle ne sont pas chargées."
+            );
+        }
+    }
+
+    public function testEveryAdminAndApiRouteIsGatedByRbac(): void
+    {
+        $this->assertSame(
+            [],
+            $this->routesOutsideRbac($this->allRoutes()),
+            'Ces routes /admin ou /api/v1 échappent au RBAC : ajouter PermissionMiddleware (web) ou '
+            . 'ApiPermissionMiddleware (API) avec une déclaration permission:, ou les exempter ici avec une justification.'
+        );
+    }
+
+    public function testTheRbacGateCheckDetectsAnUnprotectedBundleRoute(): void
+    {
+        // Témoin positif : sans lui, un test qui ne trouve jamais rien ne prouverait rien.
+        $router = new Router();
+        $router->get('/admin/some-bundle/list', ['Foo', 'bar'], middleware: [], name: 'admin.some_bundle.list');
+        $router->post('/admin/some-bundle/save', ['Foo', 'bar'], middleware: [PermissionMiddleware::class], name: 'admin.some_bundle.save', permission: 'employees.view');
+        $router->get('/api/v1/some-bundle', ['Foo', 'bar'], middleware: [], name: 'api.v1.some_bundle');
+        $router->get('/api/v1/messages/threads', ['Foo', 'bar'], middleware: [], name: 'api.v1.messages.threads');
+
+        $outside = $this->routesOutsideRbac($router->routes());
+
+        $this->assertSame(['GET /admin/some-bundle/list', 'GET /api/v1/some-bundle'], $outside);
     }
 }
