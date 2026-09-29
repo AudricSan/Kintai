@@ -8,42 +8,35 @@ use Closure;
 use kintai\Core\Exceptions\HttpException;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\Security\AttemptCounter;
 
+/**
+ * Limiteur générique : MAX_ATTEMPTS requêtes par fenêtre de WINDOW secondes, par IP et par route,
+ * QUELLE QUE SOIT leur issue. Convient aux actions rares (mot de passe oublié, signalement d'un
+ * problème, réinitialisation). Les routes de connexion utilisent LoginThrottleMiddleware, qui ne
+ * compte que les échecs et vise aussi le compte : compter les succès y bloquerait les employés d'un
+ * même magasin, qui partagent une IP.
+ */
 final class RateLimiterMiddleware implements MiddlewareInterface
 {
-    private const STORAGE_DIR = '/storage/logs/rate-limits';
     private const MAX_ATTEMPTS = 5;
     private const WINDOW = 300;
 
+    public function __construct(private readonly AttemptCounter $counter = new AttemptCounter()) {}
+
     public function handle(Request $request, Closure $next): Response
     {
-        $ip = $request->ip();
-        $key = $request->method() . ':' . $request->uri();
-        $storage = dirname(__DIR__, 3) . self::STORAGE_DIR;
+        // Nom de la route plutôt que l'URI : sur /reset-password/{token}, l'URI change avec chaque
+        // jeton essayé et permettrait de contourner la limite en variant le jeton.
+        $target = (string) ($request->getAttribute('route_name') ?? $request->uri());
+        $key = 'route:' . $request->ip() . ':' . $request->method() . ':' . $target;
 
-        if (!is_dir($storage)) {
-            @mkdir($storage, 0775, true);
+        $retryAfter = $this->counter->retryAfter($key, self::MAX_ATTEMPTS, self::WINDOW);
+        if ($retryAfter > 0) {
+            throw new HttpException(429, __('error_too_many_attempts'), ['Retry-After' => (string) $retryAfter]);
         }
 
-        $file = $storage . '/' . md5($ip . '_' . $key) . '.lock';
-
-        $now = time();
-        $attempts = [];
-
-        if (file_exists($file)) {
-            $data = @file_get_contents($file);
-            if ($data !== false) {
-                $decoded = json_decode($data, true);
-                $attempts = array_filter(is_array($decoded) ? $decoded : [], fn(int $t) => $t > $now - self::WINDOW);
-            }
-        }
-
-        if (count($attempts) >= self::MAX_ATTEMPTS) {
-            throw new HttpException(429, __('error_too_many_attempts'));
-        }
-
-        $attempts[] = $now;
-        @file_put_contents($file, json_encode($attempts), LOCK_EX);
+        $this->counter->hit($key, self::WINDOW);
 
         return $next($request);
     }

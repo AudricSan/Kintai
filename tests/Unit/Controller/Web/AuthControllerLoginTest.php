@@ -99,6 +99,39 @@ final class AuthControllerLoginTest extends TestCase
         $this->assertSame(302, $response->status());
     }
 
+    public function testFailedLoginFlagsTheRequestForTheThrottle(): void
+    {
+        $this->users->method('findByEmail')->willReturn(null);
+
+        $_POST = ['login_mode' => 'email', 'email' => 'employee@example.test', 'password' => bin2hex(random_bytes(6))];
+        $request = new Request();
+        $this->controller->login($request);
+
+        // Lu par LoginThrottleMiddleware : seuls les échecs comptent.
+        $this->assertTrue($request->getAttribute('auth_failed'));
+    }
+
+    public function testSuccessfulLoginDoesNotFlagTheRequest(): void
+    {
+        $password = bin2hex(random_bytes(6));
+        $user = [
+            'id'            => 9,
+            'email'         => 'employee@example.test',
+            'password_hash' => password_hash($password, PASSWORD_BCRYPT, ['cost' => 4]),
+            'is_active'     => 1,
+            'deleted_at'    => null,
+        ];
+        $this->users->method('findByEmail')->willReturn($user);
+        $this->users->method('findById')->willReturn($user);
+        $this->users->method('save')->willReturn($user);
+
+        $_POST = ['login_mode' => 'email', 'email' => 'employee@example.test', 'password' => $password];
+        $request = new Request();
+        $this->controller->login($request);
+
+        $this->assertNull($request->getAttribute('auth_failed'));
+    }
+
     public function testFailedLoginDoesNotTouchLastLoginAt(): void
     {
         $this->users->method('findByEmail')->with('employee@example.test')->willReturn(null);

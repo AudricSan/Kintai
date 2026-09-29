@@ -41,6 +41,7 @@ use kintai\Core\Middleware\OwnerOnlyMiddleware;
 use kintai\Core\Middleware\PermissionMiddleware;
 use kintai\Core\Middleware\ApiAuthMiddleware;
 use kintai\Core\Middleware\ApiPermissionMiddleware;
+use kintai\Core\Middleware\LoginThrottleMiddleware;
 use kintai\Core\Middleware\RateLimiterMiddleware;
 use kintai\UI\Controller\Api\V1\AuthController as ApiAuthController;
 use kintai\UI\Controller\Api\V1\UserController as ApiUserController;
@@ -72,14 +73,14 @@ $router->get('/ical/{token}/{store_id}/shifts.ics', [IcalController::class, 'fee
 
 // --- Authentification ---
 $router->get('/login',  [AuthController::class, 'showLogin'], name: 'auth.login');
-$router->post('/login', [AuthController::class, 'login'], middleware: [RateLimiterMiddleware::class], name: 'auth.login.post');
+$router->post('/login', [AuthController::class, 'login'], middleware: [LoginThrottleMiddleware::class], name: 'auth.login.post');
 $router->post('/logout', [AuthController::class, 'logout'], name: 'auth.logout');
 
 // --- Réinitialisation de mot de passe ---
 $router->get('/forgot-password',  [PasswordResetController::class, 'showForgotForm'], name: 'password.forgot');
 $router->post('/forgot-password', [PasswordResetController::class, 'sendLink'], middleware: [RateLimiterMiddleware::class], name: 'password.forgot.post');
 $router->get('/reset-password/{token}',  [PasswordResetController::class, 'showResetForm'], name: 'password.reset');
-$router->post('/reset-password/{token}', [PasswordResetController::class, 'reset'], name: 'password.reset.post');
+$router->post('/reset-password/{token}', [PasswordResetController::class, 'reset'], middleware: [RateLimiterMiddleware::class], name: 'password.reset.post');
 
 // --- PWA ---
 $router->get('/manifest.json', [PwaController::class, 'manifest'], name: 'pwa.manifest');
@@ -352,7 +353,7 @@ $router->group('/admin', function ($r) {
 
 // --- Routes publiques ---
 $router->get('/api/v1/ping',       [ApiAuthController::class, 'ping'],  name: 'api.v1.ping');
-$router->post('/api/v1/auth/login', [ApiAuthController::class, 'login'], middleware: [RateLimiterMiddleware::class], name: 'api.v1.auth.login');
+$router->post('/api/v1/auth/login', [ApiAuthController::class, 'login'], middleware: [LoginThrottleMiddleware::class], name: 'api.v1.auth.login');
 
 // --- Routes protégées par token Bearer ---
 $router->group('/api/v1', function ($r) {

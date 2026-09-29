@@ -241,9 +241,14 @@ final class Application
         }
 
         if ($e instanceof HttpException) {
-            return $wantsJson
+            $response = $wantsJson
                 ? Response::json(['error' => $e->getMessage()], $e->statusCode)
                 : $this->renderError($e->statusCode, $e->getMessage(), $request);
+            // En-têtes portés par l'exception (ex. Retry-After d'un 429).
+            foreach ($e->headers as $name => $value) {
+                $response = $response->withHeader((string) $name, (string) $value);
+            }
+            return $response;
         }
 
         // Unexpected error
