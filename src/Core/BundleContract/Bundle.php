@@ -22,6 +22,7 @@ abstract class Bundle
 {
     protected Application $app;
     protected string $path;
+    private ?string $assetsPath = null;
 
     public function __construct(Application $app)
     {
@@ -122,5 +123,29 @@ abstract class Bundle
     {
         $viewRenderer = $this->app->container()->make(\kintai\UI\ViewRenderer::class);
         $viewRenderer->addNamespace($namespace, $path);
+    }
+
+    /**
+     * Aide à l'enregistrement des assets statiques (CSS/JS/images) du
+     * bundle. $relativeDir est résolu par rapport à getPath() (la racine
+     * du bundle, pas celle de la classe) — convention attendue : 'public'.
+     * Lu par BundleManager::assetsPathFor(), qui alimente à son tour
+     * BundleAssetController (route GET /bundle-assets/{slug}/{path*}) et
+     * les helpers bundle_asset()/bundle_asset_path(). Un bundle qui
+     * n'appelle jamais cette méthode n'expose simplement aucun asset —
+     * pas d'erreur, juste un 404 sur toute requête vers son namespace.
+     */
+    protected function loadAssetsFrom(string $relativeDir): void
+    {
+        $this->assetsPath = rtrim($this->getPath(), '/\\') . '/' . trim($relativeDir, '/\\');
+    }
+
+    /**
+     * @internal Lu par BundleManager::assetsPathFor() — jamais destiné à
+     * être appelé directement par le code d'un bundle.
+     */
+    public function getAssetsPath(): ?string
+    {
+        return $this->assetsPath;
     }
 }

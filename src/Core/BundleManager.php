@@ -61,4 +61,31 @@ final class BundleManager
         }
         return false;
     }
+
+    /**
+     * Dossier d'assets statiques déclaré par le bundle actif $slug via
+     * loadAssetsFrom(), ou null si le bundle est inactif ou n'a jamais
+     * appelé loadAssetsFrom(). Utilisé par BundleAssetController et par
+     * les helpers bundle_asset()/bundle_asset_path().
+     */
+    public function assetsPathFor(string $slug): ?string
+    {
+        foreach ($this->bundles as $bundle) {
+            if ($bundle->getName() === $slug) {
+                return $bundle->getAssetsPath();
+            }
+        }
+        return null;
+    }
+
+    /** Version du bundle actif $slug (pour le cache-busting de ses assets), ou null si inactif. */
+    public function versionOf(string $slug): ?string
+    {
+        foreach ($this->bundles as $bundle) {
+            if ($bundle->getName() === $slug) {
+                return $bundle->getVersion();
+            }
+        }
+        return null;
+    }
 }
