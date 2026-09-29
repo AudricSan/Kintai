@@ -11,6 +11,7 @@ use kintai\Core\Cron\BackupJob;
 use kintai\Core\Cron\CronRunner;
 use kintai\Core\Cron\LicenseCheckJob;
 use kintai\Core\Cron\LogPurgeJob;
+use kintai\Core\Database\BundleMigrationRunner;
 use kintai\Core\Database\MigrationRunner;
 use kintai\Core\Repositories\CronTokenRepositoryInterface;
 use kintai\Core\Mail\MailerService;
@@ -208,6 +209,7 @@ final class AppServiceProvider extends ServiceProvider
         $this->container->singleton(BundleInstallerService::class, fn(Container $c) => new BundleInstallerService(
             $c->make(UpdateService::class),
             $c->make(InstalledBundleRepositoryInterface::class),
+            migrationRunner: $c->make(BundleMigrationRunner::class),
         ));
 
         // Binding explicite requis : le constructeur a un paramètre ?\Closure

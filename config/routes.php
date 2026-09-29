@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use kintai\UI\Controller\Web\AuthController;
+use kintai\UI\Controller\Web\BundleAssetController;
 use kintai\UI\Controller\Web\PasswordResetController;
 use kintai\UI\Controller\Web\NotificationController;
 use kintai\UI\Controller\Web\CronController;
@@ -93,6 +94,9 @@ $router->get('/legal/license', [LegalController::class, 'license'], name: 'legal
 // --- Fichiers uploadés (photos de stores, imports) — réservé aux admins/managers ---
 $router->get('/storage/{path*}', [StorageFileController::class, 'serve'], middleware: [AuthMiddleware::class, PermissionMiddleware::class], name: 'storage.file', permission: 'public');
 
+// --- Assets statiques d'un bundle actif (CSS/JS) — publics, pas d'authentification ---
+$router->get('/bundle-assets/{slug}/{path*}', [BundleAssetController::class, 'serve'], name: 'bundle.asset');
+
 // =============================================================================
 // Routes authentifiées (tout utilisateur connecté)
 // =============================================================================
@@ -117,6 +121,9 @@ $router->group('/notifications', function ($r) {
     $r->post('/read-all',    [NotificationController::class, 'markAllRead'], name: 'notifications.read_all');
     $r->post('/delete-all',  [NotificationController::class, 'deleteAll'],   name: 'notifications.delete_all');
     $r->post('/{id}/read',   [NotificationController::class, 'markRead'],    name: 'notifications.read');
+    $r->get('/{id}/open',    [NotificationController::class, 'open'],        name: 'notifications.open');
+    $r->post('/push-subscribe',   [NotificationController::class, 'pushSubscribe'],   name: 'notifications.push_subscribe');
+    $r->post('/push-unsubscribe', [NotificationController::class, 'pushUnsubscribe'], name: 'notifications.push_unsubscribe');
 }, middleware: [AuthMiddleware::class]);
 
 // --- Support (footer : "signaler un problème" → issue GitHub) ---

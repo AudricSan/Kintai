@@ -182,10 +182,11 @@ final class AuthController
             return Response::redirect($this->base() . '/login');
         }
 
-        $userId    = (int) $user['id'];
-        $scheme    = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $host      = $_SERVER['HTTP_HOST'] ?? 'localhost';
-        $base      = $this->base();
+        $userId             = (int) $user['id'];
+        $hasDefaultPassword = password_verify('0000', (string) ($user['password_hash'] ?? ''));
+        $scheme             = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host               = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $base               = $this->base();
 
         $memberships = $this->storeUsers->findByUser($userId);
         $stores      = [];
@@ -197,7 +198,7 @@ final class AuthController
         }
 
         // Onglet courant
-        $tab = in_array((string) $request->query('tab'), ['info', 'availability', 'ical', 'nav', 'data'], true)
+        $tab = in_array((string) $request->query('tab'), ['info', 'availability', 'ical', 'push', 'nav', 'data'], true)
             ? $request->query('tab')
             : 'info';
 
@@ -210,16 +211,7 @@ final class AuthController
                 continue;
             }
 
-            $tokenRow = $this->icalTokens->findByUserAndStore($userId, $storeId);
-            if (!$tokenRow) {
-                $this->icalTokens->save([
-                    'user_id'    => $userId,
-                    'store_id'   => $storeId,
-                    'token'      => bin2hex(random_bytes(32)),
-                    'created_at' => date('Y-m-d H:i:s'),
-                ]);
-                $tokenRow = $this->icalTokens->findByUserAndStore($userId, $storeId);
-            }
+            $tokenRow = $this->icalTokens->findOrCreateForUserAndStore($userId, $storeId);
 
             $icalLinks[] = [
                 'store_id'   => $storeId,
@@ -275,6 +267,7 @@ final class AuthController
         return Response::html($this->view->render('auth.profile', [
             'title'                => __('profile'),
             'user'                 => $user,
+            'has_default_password' => $hasDefaultPassword,
             'tab'                  => $tab,
             'stores'               => $stores,
             'store_id'             => $storeId,
