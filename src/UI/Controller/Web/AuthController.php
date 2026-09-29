@@ -463,8 +463,9 @@ final class AuthController
             return Response::redirect($this->base() . '/profile?tab=info&error=error_generic');
         }
 
-        $storedHash = $dbUser['password_hash'] ?? '';
-        if ($storedHash !== '' && !password_verify($current, $storedHash)) {
+        // Toujours vérifier : un hash vide fait échouer password_verify(), donc refuse l'action.
+        $storedHash = (string) ($dbUser['password_hash'] ?? '');
+        if (!password_verify($current, $storedHash)) {
             return Response::redirect($this->base() . '/profile?tab=info&error=current_password_wrong');
         }
 
@@ -529,8 +530,9 @@ final class AuthController
         $userId   = (int) $user['id'];
         $password = (string) $request->post('password', '');
 
-        $storedHash = $user['password_hash'] ?? '';
-        if ($storedHash !== '' && !password_verify($password, $storedHash)) {
+        // Toujours vérifier : un hash vide fait échouer password_verify(), donc refuse l'action.
+        $storedHash = (string) ($user['password_hash'] ?? '');
+        if (!password_verify($password, $storedHash)) {
             return Response::redirect($this->base() . '/profile?tab=data&error=current_password_wrong');
         }
 
