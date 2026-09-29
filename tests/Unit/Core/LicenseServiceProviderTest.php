@@ -47,4 +47,18 @@ final class LicenseServiceProviderTest extends TestCase
         $this->assertTrue($features->isEnabled('daily-report'));
         $this->assertTrue($features->isEnabled('messaging'));
     }
+
+    public function testHardcodedDefaultsMatchTheShippedLicenseConfig(): void
+    {
+        $config = require BASE_PATH . '/config/license.php';
+
+        $expected = $config['enabled_features'];
+        $actual = LicenseServiceProvider::DEFAULT_FEATURES;
+        sort($expected);
+        sort($actual);
+
+        // Le fallback ne joue que si config/license.php est absent : s'il dérive, un
+        // bundle officiel (ex. team-directory, notebook) disparaît silencieusement.
+        $this->assertSame($expected, $actual);
+    }
 }
