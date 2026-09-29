@@ -50,15 +50,17 @@ final class BundleInstallerService
 
     /**
      * @param (callable(int, string): void)|null $onProgress reçoit (pourcentage 0-100, libellé de l'étape en cours)
+     * @param string|null $expectedCommit commit épinglé par le registry pour cette version (40 hex) : l'archive téléchargée
+     *        doit y correspondre, sinon l'installation est refusée avant toute extraction. null = registry sans épinglage.
      */
-    public function install(string $slug, string $repositoryUrl, string $version, ?string $sourceRegistryUrl = null, ?callable $onProgress = null): BundleInstallResult
+    public function install(string $slug, string $repositoryUrl, string $version, ?string $sourceRegistryUrl = null, ?callable $onProgress = null, ?string $expectedCommit = null): BundleInstallResult
     {
-        return $this->run($slug, $repositoryUrl, $version, $sourceRegistryUrl, dryRun: false, onProgress: $onProgress);
+        return $this->run($slug, $repositoryUrl, $version, $sourceRegistryUrl, dryRun: false, onProgress: $onProgress, expectedCommit: $expectedCommit);
     }
 
-    public function dryRun(string $slug, string $repositoryUrl, string $version): BundleInstallResult
+    public function dryRun(string $slug, string $repositoryUrl, string $version, ?string $expectedCommit = null): BundleInstallResult
     {
-        return $this->run($slug, $repositoryUrl, $version, null, dryRun: true);
+        return $this->run($slug, $repositoryUrl, $version, null, dryRun: true, expectedCommit: $expectedCommit);
     }
 
     /**
@@ -109,7 +111,7 @@ final class BundleInstallerService
     /**
      * @param (callable(int, string): void)|null $onProgress
      */
-    private function run(string $slug, string $repositoryUrl, string $version, ?string $sourceRegistryUrl, bool $dryRun, ?callable $onProgress = null): BundleInstallResult
+    private function run(string $slug, string $repositoryUrl, string $version, ?string $sourceRegistryUrl, bool $dryRun, ?callable $onProgress = null, ?string $expectedCommit = null): BundleInstallResult
     {
         $this->lastError = null;
         $progress = $onProgress ?? function (int $percent, string $label): void {};
@@ -126,6 +128,20 @@ final class BundleInstallerService
         $progress(30, 'Téléchargement de l\'archive...');
         if (!$this->download($downloadUrl, $zipPath)) {
             return BundleInstallResult::failure($this->lastError ?? "Échec du téléchargement de l'archive.");
+        }
+
+        // Avant toute extraction : l'archive doit être celle du commit que le registry a épinglé.
+        if ($expectedCommit !== null) {
+            $progress(50, "Vérification de l'empreinte du commit...");
+            $commitError = ArchiveCommitVerifier::verify($zipPath, $expectedCommit);
+            if ($commitError !== null) {
+                @unlink($zipPath);
+                Log::warning('bundle_commit_mismatch', ['slug' => $slug, 'version' => $version, 'expected' => $expectedCommit]);
+                return BundleInstallResult::failure($commitError);
+            }
+        } elseif (!$dryRun) {
+            // Registry sans épinglage (tiers) : on installe comme avant, mais la trace en reste.
+            Log::warning('bundle_install_unpinned', ['slug' => $slug, 'version' => $version]);
         }
 
         $progress(60, 'Vérification du bundle...');
