@@ -83,6 +83,26 @@ final class AuthControllerTest extends TestCase
         $this->assertSame('INVALID_CREDENTIALS', $data['code']);
     }
 
+    public function testFailedLoginFlagsTheRequestForTheThrottle(): void
+    {
+        $this->users->method('findByEmail')->willReturn(null);
+
+        $req = $this->makeRequest('POST', '/api/v1/auth/login', json: ['email' => 'nobody@example.com', 'password' => bin2hex(random_bytes(6))]);
+        $this->controller->login($req);
+
+        // Lu par LoginThrottleMiddleware : seuls les échecs comptent.
+        $this->assertTrue($req->getAttribute('auth_failed'));
+    }
+
+    public function testMissingCredentialsDoNotCountAsAFailedLogin(): void
+    {
+        $req = $this->makeRequest('POST', '/api/v1/auth/login', json: ['password' => bin2hex(random_bytes(6))]);
+        $response = $this->controller->login($req);
+
+        $this->assertSame(422, $response->status());
+        $this->assertNull($req->getAttribute('auth_failed'));
+    }
+
     public function testLoginInvalidEmployeeCodeReturns401(): void
     {
         $this->users->method('findByEmployeeCode')->willReturn(null);

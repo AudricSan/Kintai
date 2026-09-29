@@ -48,6 +48,8 @@ final class AuthController
         }
 
         if (!$ok) {
+            // Lu par LoginThrottleMiddleware : seuls les échecs comptent dans la limitation.
+            $request->setAttribute('auth_failed', true);
             $this->auditLogger->log($request, 'auth.api_login_failed', 'user', null, [
                 'mode' => isset($data['email']) ? 'email' : 'code',
             ]);

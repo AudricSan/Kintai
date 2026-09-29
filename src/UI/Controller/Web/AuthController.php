@@ -126,6 +126,8 @@ final class AuthController
             return Response::redirect($destination);
         }
 
+        // Lu par LoginThrottleMiddleware : seuls les échecs comptent dans la limitation.
+        $request->setAttribute('auth_failed', true);
         $this->auditLogger->log($request, 'auth.login_failed', 'user', null, ['mode' => $mode]);
         return Response::redirect($this->base() . '/login?error=1&mode=' . urlencode($mode));
     }

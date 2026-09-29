@@ -27,6 +27,8 @@ final class AuthService
 {
     private const SESSION_KEY = 'auth_user_id';
     private const REMEMBER_COOKIE = 'kintai_remember';
+    // Coût bcrypt des mots de passe créés par l'app (voir AdminUserController/PasswordResetService).
+    private const TIMING_COST = 12;
     private const REMEMBER_LIFETIME_DAYS = 30;
 
     public function __construct(
@@ -47,10 +49,12 @@ final class AuthService
         $user = $this->users->findByEmail($email);
 
         if ($user === null) {
+            $this->burnPasswordCheck($password);
             return false;
         }
 
         if (empty($user['is_active']) || !empty($user['deleted_at'])) {
+            $this->burnPasswordCheck($password);
             return false;
         }
 
@@ -74,21 +78,25 @@ final class AuthService
     {
         $store = $this->stores->findByCode(strtoupper(trim($storeCode)));
         if ($store === null) {
+            $this->burnPasswordCheck($password);
             return false;
         }
 
         $user = $this->users->findByEmployeeCode(trim($employeeCode));
         if ($user === null) {
+            $this->burnPasswordCheck($password);
             return false;
         }
 
         if (empty($user['is_active']) || !empty($user['deleted_at'])) {
+            $this->burnPasswordCheck($password);
             return false;
         }
 
         // Vérifier que l'utilisateur est membre de ce store
         $membership = $this->storeUsers->findMembership((int) $store['id'], (int) $user['id']);
         if ($membership === null) {
+            $this->burnPasswordCheck($password);
             return false;
         }
 
@@ -283,6 +291,16 @@ final class AuthService
             'samesite' => 'Lax',
         ]);
         unset($_COOKIE[self::REMEMBER_COOKIE]);
+    }
+
+    /**
+     * Dépense un calcul bcrypt pour rien. Sans cela, un e-mail inconnu, un compte inactif ou un magasin
+     * inexistant répondaient bien plus vite qu'un vrai compte avec un mauvais mot de passe (qui, lui,
+     * paie un password_verify) : cette différence de durée permettait de tester l'existence d'un compte.
+     */
+    private function burnPasswordCheck(string $password): void
+    {
+        password_hash($password, PASSWORD_BCRYPT, ['cost' => self::TIMING_COST]);
     }
 
     private function hasOwnerRole(int $userId): bool
