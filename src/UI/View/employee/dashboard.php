@@ -208,7 +208,7 @@ if (!empty($stats['shift_details'])) {
     $dt = Table::make()->data($stats['shift_details'])
         ->column(__('date'), fn($r) => '<span class="td-nowrap">' . htmlspecialchars($r['date_label'] ?? '') . '</span>')
         ->column(__('schedule'), fn($r) => '<span class="td-nowrap font-mono">' . htmlspecialchars($r['start'] ?? '') . '–' . htmlspecialchars($r['end'] ?? '') . '</span>')
-        ->column(__('type'), fn($r) => htmlspecialchars($r['type_name'] ?? ''))
+        ->text(__('type'), fn($r) => $r['type_name'] ?? '')
         ->column(__('net'), function($r) {
             $html = '<span class="td-nowrap">' . htmlspecialchars($r['net_hours_fmt'] ?? '') . '</span>';
             if (($r['pause_min'] ?? 0) > 0) {
@@ -256,11 +256,11 @@ else:
 <div class="table-wrap">
     <?= Table::make()
         ->data($shifts_today)
-        ->column(__('store'), fn($s) => htmlspecialchars($stores_map[(int)($s['store_id'] ?? 0)] ?? ('Store #' . (int)($s['store_id'] ?? 0))))
-        ->column(__('start'), fn($s) => htmlspecialchars((string) ($s['start_time'] ?? '—')))
-        ->column(__('end'), fn($s) => htmlspecialchars((string) ($s['end_time'] ?? '—')))
+        ->text(__('store'), fn($s) => $stores_map[(int)($s['store_id'] ?? 0)] ?? ('Store #' . (int)($s['store_id'] ?? 0)))
+        ->text(__('start'), fn($s) => (string) ($s['start_time'] ?? '—'))
+        ->text(__('end'), fn($s) => (string) ($s['end_time'] ?? '—'))
         ->column(__('pause'), fn($s) => (int) ($s['pause_minutes'] ?? 0) . ' min')
-        ->column(__('notes'), fn($s) => htmlspecialchars((string) ($s['notes'] ?? '')))
+        ->text(__('notes'), fn($s) => (string) ($s['notes'] ?? ''))
         ->render() ?>
 </div>
 <?php
@@ -282,10 +282,10 @@ else:
 <div class="table-wrap">
     <?= Table::make()
         ->data($upcoming)
-        ->column(__('date'), fn($s) => htmlspecialchars((string) ($s['shift_date'] ?? '—')))
-        ->column(__('store'), fn($s) => htmlspecialchars($stores_map[(int)($s['store_id'] ?? 0)] ?? ('Store #' . (int)($s['store_id'] ?? 0))))
-        ->column(__('start'), fn($s) => htmlspecialchars((string) ($s['start_time'] ?? '—')))
-        ->column(__('end'), fn($s) => htmlspecialchars((string) ($s['end_time'] ?? '—')))
+        ->text(__('date'), fn($s) => (string) ($s['shift_date'] ?? '—'))
+        ->text(__('store'), fn($s) => $stores_map[(int)($s['store_id'] ?? 0)] ?? ('Store #' . (int)($s['store_id'] ?? 0)))
+        ->text(__('start'), fn($s) => (string) ($s['start_time'] ?? '—'))
+        ->text(__('end'), fn($s) => (string) ($s['end_time'] ?? '—'))
         ->render() ?>
 </div>
 <?php
@@ -304,9 +304,9 @@ ob_start();
 <div class="table-wrap">
     <?= Table::make()
         ->data($pending_timeoff)
-        ->column(__('type'), fn($r) => htmlspecialchars((string) ($r['type'] ?? '—')))
-        ->column(__('from'), fn($r) => htmlspecialchars((string) ($r['start_date'] ?? '—')))
-        ->column(__('to'), fn($r) => htmlspecialchars((string) ($r['end_date'] ?? '—')))
+        ->text(__('type'), fn($r) => (string) ($r['type'] ?? '—'))
+        ->text(__('from'), fn($r) => (string) ($r['start_date'] ?? '—'))
+        ->text(__('to'), fn($r) => (string) ($r['end_date'] ?? '—'))
         ->column(__('status'), fn($r) => Badge::make(__('pending'))->pending()->render())
         ->render() ?>
 </div>
@@ -325,8 +325,8 @@ ob_start();
 <div class="table-wrap">
     <?= Table::make()
         ->data($pending_swaps)
-        ->column(__('date'), fn($s) => htmlspecialchars((string) ($s['shift_date'] ?? '—')))
-        ->column(__('from'), fn($s) => htmlspecialchars((string) ($s['requester_name'] ?? '#' . ($s['requester_id'] ?? '?'))))
+        ->text(__('date'), fn($s) => (string) ($s['shift_date'] ?? '—'))
+        ->text(__('from'), fn($s) => (string) ($s['requester_name'] ?? '#' . ($s['requester_id'] ?? '?')))
         ->column('', fn($s) => Button::make(__('view'))->outline()->sm()->link(route_url('employee.swaps'))->render())
         ->render() ?>
 </div>

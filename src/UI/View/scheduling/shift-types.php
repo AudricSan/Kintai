@@ -87,8 +87,8 @@ echo Flash::fromQuery('error', [
     ->column('#', fn($t) => (string) (int) $t['id'])
     ->sortable(__('code'), 'code', fn($t) => '<code class="code-sm">' . htmlspecialchars($t['code'] ?? '') . '</code>')
     ->sortable(__('name'), 'name', fn($t) => '<strong>' . htmlspecialchars($t['name'] ?? '') . '</strong>')
-    ->column(__('start'), fn($t) => htmlspecialchars($t['start_time'] ?? ''))
-    ->column(__('end'), fn($t) => htmlspecialchars($t['end_time'] ?? ''))
+    ->text(__('start'), fn($t) => $t['start_time'] ?? '')
+    ->text(__('end'), fn($t) => $t['end_time'] ?? '')
     ->column(__('color'), fn($t) =>
         '<span class="color-preview"><span class="color-swatch" style="background:' . htmlspecialchars($t['color'] ?? '#ccc') . '"></span><code class="color-code">' . htmlspecialchars($t['color'] ?? '') . '</code></span>'
     )

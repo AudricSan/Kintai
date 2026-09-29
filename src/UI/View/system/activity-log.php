@@ -317,8 +317,8 @@ $exportUrl = route_url('admin.activity.export') . ($exportParams ? '?' . http_bu
                 };
                 $action = $row['action'] ?? '';
                 $label  = $action ? ($actionLabelsLocal[$action] ?? $action) : '—';
-                return Badge::make(htmlspecialchars($row['level'] ?? ''))->variant($levelClass)->render()
-                    . ($action ? Badge::make(htmlspecialchars($label))->primary()->render() : '—');
+                return Badge::make($row['level'] ?? '')->variant($levelClass)->render()
+                    . ($action ? Badge::make($label)->primary()->render() : '—');
             })
             ->column(__('message'), function($row) use ($actionLabelsLocal) {
                 $action = $row['action'] ?? '';
