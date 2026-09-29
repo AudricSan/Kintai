@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use kintai\UI\Controller\Web\AuthController;
+use kintai\UI\Controller\Web\BundleAssetController;
 use kintai\UI\Controller\Web\PasswordResetController;
 use kintai\UI\Controller\Web\NotificationController;
 use kintai\UI\Controller\Web\CronController;
@@ -92,6 +93,9 @@ $router->get('/legal/license', [LegalController::class, 'license'], name: 'legal
 
 // --- Fichiers uploadés (photos de stores, imports) — réservé aux admins/managers ---
 $router->get('/storage/{path*}', [StorageFileController::class, 'serve'], middleware: [AuthMiddleware::class, PermissionMiddleware::class], name: 'storage.file', permission: 'public');
+
+// --- Assets statiques d'un bundle actif (CSS/JS) — publics, pas d'authentification ---
+$router->get('/bundle-assets/{slug}/{path*}', [BundleAssetController::class, 'serve'], name: 'bundle.asset');
 
 // =============================================================================
 // Routes authentifiées (tout utilisateur connecté)

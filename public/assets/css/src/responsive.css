@@ -231,12 +231,6 @@
 
 /* ── Mobile form compact (<640px) ───────────────── */
 @media (max-width: 640px) {
-    .timeoff-form {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-4);
-    }
-
     .dash-stats-body {
         flex-wrap: wrap;
         gap: var(--space-3);
@@ -244,16 +238,6 @@
 
     .dash-stat {
         min-width: 45%;
-    }
-
-    .swap-form-row {
-        flex-direction: column;
-        align-items: stretch;
-        gap: var(--space-2);
-    }
-
-    .swap-form-row .form-control {
-        width: 100%;
     }
 
     .form-row {
@@ -470,23 +454,6 @@
         margin-left: var(--space-2);
     }
 
-    .dr-show-grid {
-        grid-template-columns: 1fr !important;
-        gap: var(--space-4) !important;
-    }
-
-    .dr-kpi-table th,
-    .dr-meta-table th {
-        width: 55%;
-        font-weight: 600;
-        font-size: 0.875rem;
-        white-space: nowrap;
-    }
-
-    .dr-kpi-table td,
-    .dr-meta-table td {
-        font-size: 0.9375rem;
-    }
 }
 
 /* ── Touch-friendly controls (coarse pointer) ──── */
