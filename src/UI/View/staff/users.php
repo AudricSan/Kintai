@@ -155,7 +155,7 @@ $exportQuery = $filter_store_id !== 0 ? '?store_id=' . $filter_store_id : '';
         if ($can('payroll.view')) {
             $panel .= '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/employee-report/' . $uid . '/stats" class="row-actions__link">📊 ' . htmlspecialchars(__('employee_stats')) . '</a>';
         }
-        if ($can('payroll.generate')) {
+        if ($can('payroll.generate') && bundle_enabled('salary-report')) {
             $panel .= '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/reports/salary/create?user_id=' . $uid . '" class="row-actions__link">💰 ' . htmlspecialchars(__('salary_report')) . '</a>';
         }
         if ($can('resignation_reports.create')) {
