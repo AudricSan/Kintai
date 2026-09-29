@@ -90,6 +90,10 @@ php -S 127.0.0.1:8000 -t public
 
 Then open `http://127.0.0.1:8000/install.php` — the web installer creates `config/database.local.php`, runs migrations, and creates the admin account.
 
+### Web server
+
+Only `public/` is meant to be served. Point the web server's document root (Apache `DocumentRoot`, nginx `root`) at it — never at the repository root, or `.env`, `storage/app/database.sqlite`, backups and the source code become downloadable. `php -S … -t public` already does this. On Apache, a root `.htaccess` refuses every URL outside `public/` as a safety net if the server is pointed at the wrong folder by mistake; nginx has no equivalent, so its `root` must be right.
+
 ### Updating
 
 ```bash

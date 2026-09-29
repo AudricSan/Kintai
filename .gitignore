@@ -19,6 +19,8 @@ purge-secrets.txt
 # =========================
 /storage/*
 !/storage/.gitkeep
+# Refuse tout accès direct du serveur web à storage/ (défense en profondeur, voir README « Web server »)
+!/storage/.htaccess
 /src/storage/
 
 /storage/uploads/exels
