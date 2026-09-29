@@ -47,9 +47,9 @@ $storeChipColor = function (string $seed): string {
             . '<span class="avatar-chip" style="--chip-bg:' . $color . '">' . $initials . '</span>'
             . '<strong>' . $name . '</strong></div>';
     })
-    ->sortable(__('type'), 'type', fn($s) => htmlspecialchars($s['type'] ?? ''))
+    ->sortableText(__('type'), 'type', fn($s) => $s['type'] ?? '')
     ->column(__('timezone'), fn($s) => '<span class="text-sm-muted">' . htmlspecialchars($s['timezone'] ?? '') . '</span>')
-    ->column(__('currency'), fn($s) => htmlspecialchars(currency_symbol($s['currency'] ?? '', store_currency_style($s))))
+    ->text(__('currency'), fn($s) => currency_symbol($s['currency'] ?? '', store_currency_style($s)))
     ->sortable(__('status'), 'status', fn($s) =>
         (!empty($s['is_active']) && empty($s['deleted_at']))
             ? Badge::make(__('active'))->active()->render()
