@@ -293,8 +293,8 @@ final class HomeController
 
         $costByMonth = [];
         foreach ($storeIds as $sid) {
-            $stats = $this->storeStats->storeStats((int) $sid, self::FINANCIAL_TREND_PERIOD_DAYS);
-            foreach ($stats['costByMonth'] as $month => $cost) {
+            // Seul le coût par mois sert ici : pas de calcul complet des statistiques sur 180 jours.
+            foreach ($this->storeStats->costByMonth((int) $sid, self::FINANCIAL_TREND_PERIOD_DAYS) as $month => $cost) {
                 $costByMonth[$month] = ($costByMonth[$month] ?? 0) + $cost;
             }
         }
@@ -362,7 +362,7 @@ final class HomeController
             }
 
             $periodTimeclocks = array_values(array_filter(
-                $this->timeclocks->findByStore($sid),
+                $this->timeclocks->findByStoreBetween($sid, $since, $today),
                 fn($tc) => ($tc['shift_date'] ?? '') >= $since && ($tc['shift_date'] ?? '') <= $today
             ));
             foreach ($periodTimeclocks as $tc) {
