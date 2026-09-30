@@ -4,7 +4,7 @@
 
 **Open-source shift, attendance and workforce management for multi-store businesses.**
 
-[![Version](https://img.shields.io/badge/version-0.2.0-purple.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/github/v/release/AudricSan/Kintai?include_prereleases&label=version&color=purple)](https://github.com/AudricSan/Kintai/releases)
 [![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 [![PHP Version](https://img.shields.io/badge/php-%3E%3D%208.3-8892bf.svg)](https://php.net)
 [![Tests](https://github.com/AudricSan/Kintai/actions/workflows/tests.yml/badge.svg)](https://github.com/AudricSan/Kintai/actions/workflows/tests.yml)
@@ -12,7 +12,7 @@
 
 Kintai is the bridge between a spreadsheet and an enterprise ERP: scheduling, clock-in/out, leave, shift swaps, open-shift bidding, daily reports and payroll estimates for retail and hospitality businesses running multiple stores — self-hosted, on your own infrastructure, with your own data.
 
-> **Status: pre-1.0 (`0.2.0`).** Kintai is functional, but the API and data schema may still evolve before a stable `1.0.0`. See [CHANGELOG.md](CHANGELOG.md) and [docs/releasing.md](docs/releasing.md) for the version scheme.
+> **Status: pre-1.0.** Kintai is functional, but the API and data schema may still evolve before a stable `1.0.0`. See [CHANGELOG.md](CHANGELOG.md) and [docs/releasing.md](docs/releasing.md) for the version scheme.
 
 ---
 
