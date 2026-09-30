@@ -193,7 +193,7 @@ $section = function (string $titleKey, string $body, string $span = '') use ($as
                     <span class="avatar-chip" id="userColorPreview" style="--chip-bg:<?= $userColor ?>"><?= $userInitials ?></span>
                     <input type="color" name="color" class="input-color" id="userColorInput"
                            value="<?= $userColor ?>"<?= $formAttr ?>
-                           oninput="document.getElementById('userColorPreview').style.setProperty('--chip-bg', this.value)">
+                           data-on-input="@cssVar" data-target="userColorPreview" data-var="--chip-bg">
                     <span class="text-sm-muted"><?= __('planning_visible_hint') ?></span>
                 </div>
             </div>
@@ -216,7 +216,7 @@ $section = function (string $titleKey, string $body, string $span = '') use ($as
                      prématurément à la fermeture du formulaire interne — ce qui éjectait le bouton
                      "Enregistrer" hors de tout formulaire et le rendait inopérant. -->
                 <button type="submit" form="resetPasswordForm" class="btn btn--warning btn--sm"
-                        onclick="return confirm('<?= htmlspecialchars(__('reset_password_confirm'), ENT_QUOTES) ?>')">
+                        data-confirm="<?= htmlspecialchars(__('reset_password_confirm'), ENT_QUOTES) ?>">
                     <?= __('reset_password_btn') ?>
                 </button>
             </div>

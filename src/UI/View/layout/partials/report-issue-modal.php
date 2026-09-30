@@ -1,17 +1,17 @@
 <?php
 /* Modale "Signaler un problème" — déclenchée depuis le footer applicatif
- * (voir partials/_footer.php, bouton onclick="riOpen()"). Crée directement
+ * (voir partials/_footer.php, bouton data-on-click="riOpen"). Crée directement
  * une issue sur le dépôt GitHub du projet (voir SupportController).
  * Variables disponibles via ViewRenderer::share() : $BASE_URL
  */
 ?>
 
-<div id="ri-overlay" class="fb-overlay" onclick="riClose()" role="dialog" aria-modal="true" aria-labelledby="ri-modal-title">
-    <div class="fb-modal" onclick="event.stopPropagation()">
+<div id="ri-overlay" class="fb-overlay" data-on-click="riClose" role="dialog" aria-modal="true" aria-labelledby="ri-modal-title">
+    <div class="fb-modal" data-stop-propagation>
 
         <div class="fb-modal-header">
             <strong id="ri-modal-title"><?= __('report_issue_modal_title') ?></strong>
-            <button type="button" class="fb-modal-close" onclick="riClose()" aria-label="<?= __('close') ?>">×</button>
+            <button type="button" class="fb-modal-close" data-on-click="riClose" aria-label="<?= __('close') ?>">×</button>
         </div>
 
         <div class="fb-modal-body">
@@ -61,7 +61,7 @@
 
                 <div class="form-actions">
                     <button type="submit" class="btn btn--primary"><?= __('report_issue_submit') ?></button>
-                    <button type="button" class="btn btn--ghost" onclick="riClose()"><?= __('cancel') ?></button>
+                    <button type="button" class="btn btn--ghost" data-on-click="riClose"><?= __('cancel') ?></button>
                 </div>
             </form>
         </div>

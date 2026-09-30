@@ -37,6 +37,12 @@ final class Table implements ComponentInterface
         return $this;
     }
 
+    /**
+     * Colonne à contenu HTML : la valeur renvoyée par `$render` est insérée TELLE QUELLE
+     * dans la cellule (badge, bouton, lien...). C'est donc à l'appelant d'échapper toute
+     * donnée saisie par un utilisateur (`htmlspecialchars()`), sous peine de XSS stocké.
+     * Pour une simple valeur textuelle, préférer `text()`, qui échappe automatiquement.
+     */
     public function column(string $label, callable $render, string $class = ''): self
     {
         $this->columns[] = [
@@ -49,6 +55,32 @@ final class Table implements ComponentInterface
         return $this;
     }
 
+    /**
+     * Colonne de texte : la valeur renvoyée par `$value` est échappée automatiquement
+     * (HTML spécial → entités), il n'y a donc rien à penser côté appelant. À utiliser
+     * pour toute donnée textuelle ; utiliser `column()` seulement pour du HTML voulu.
+     */
+    public function text(string $label, callable $value, string $class = ''): self
+    {
+        return $this->column($label, self::escapingRenderer($value), $class);
+    }
+
+    /** Variante triable de `text()` : même échappement automatique. */
+    public function sortableText(string $label, string $key, callable $value, string $class = ''): self
+    {
+        return $this->sortable($label, $key, self::escapingRenderer($value), $class);
+    }
+
+    private static function escapingRenderer(callable $value): \Closure
+    {
+        return static fn($row, $i = null): string => htmlspecialchars(
+            (string) $value($row, $i),
+            ENT_QUOTES | ENT_SUBSTITUTE,
+            'UTF-8'
+        );
+    }
+
+    /** Colonne triable à contenu HTML : mêmes règles d'échappement que `column()`. */
     public function sortable(string $label, string $key, callable $render, string $class = ''): self
     {
         $this->columns[] = [

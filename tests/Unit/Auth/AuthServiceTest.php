@@ -207,6 +207,9 @@ final class AuthServiceTest extends TestCase
     {
         $user = $this->activeUser();
         $this->users->method('findByEmail')->willReturn($user);
+        // check() recharge désormais l'utilisateur (compte actif, mot de passe inchangé)
+        // au lieu de se contenter de lire l'identifiant en session.
+        $this->users->method('findById')->willReturn($user);
         $this->auth->attempt('user@test.com', 'secret123');
 
         $this->assertTrue($this->auth->check());

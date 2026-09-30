@@ -23,7 +23,7 @@ $langFlags = ['fr' => '🇫🇷', 'en' => '🇬🇧', 'ja' => '🇯🇵'];
         </a>
         <?php if ($isOwner): ?>
             ·
-            <button id="btnWikiSync" type="button" class="docs-wiki__sync-link" onclick="syncWiki()">
+            <button id="btnWikiSync" type="button" class="docs-wiki__sync-link" data-on-click="syncWiki">
                 ↻ <?= __('docs_sync_btn_update') ?>
             </button>
             <span id="wikiSyncStatus" class="docs-sync__status" aria-live="polite"></span>
@@ -96,7 +96,7 @@ $langFlags = ['fr' => '🇫🇷', 'en' => '🇬🇧', 'ja' => '🇯🇵'];
 </div>
 
 <?php if ($isOwner): ?>
-<script>
+<script nonce="<?= csp_nonce() ?>">
 var _wikiSyncUrl = <?= json_encode(route_url('docs.sync')) ?>;
 
 function syncWiki() {

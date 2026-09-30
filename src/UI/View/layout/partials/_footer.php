@@ -75,9 +75,9 @@ $_ftIcon = static function (string $name): string {
             <div class="app-footer__col">
                 <h4 class="app-footer__heading"><?= __('footer_support_heading') ?></h4>
                 <?php if ($feedback_enabled ?? true): ?>
-                    <button type="button" class="app-footer__link app-footer__link--btn" onclick="fbOpen()"><?= __('send_feedback') ?></button>
+                    <button type="button" class="app-footer__link app-footer__link--btn" data-on-click="fbOpen"><?= __('send_feedback') ?></button>
                 <?php endif; ?>
-                <button type="button" class="app-footer__link app-footer__link--btn" onclick="riOpen()">
+                <button type="button" class="app-footer__link app-footer__link--btn" data-on-click="riOpen">
                     <span class="app-footer__icon"><?= $_ftIcon('bug') ?></span><?= __('report_issue') ?>
                 </button>
             </div>

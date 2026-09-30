@@ -99,3 +99,12 @@ function __(string $key, array $replace = []): string
     
     return $key;
 }
+
+/**
+ * Nonce CSP de la requête, à mettre sur chaque <script> inline : `<script nonce="<?= csp_nonce() ?>">`.
+ * Un script inline sans ce nonce est bloqué par la Content-Security-Policy.
+ */
+function csp_nonce(): string
+{
+    return \kintai\Core\Security\CspNonce::get();
+}

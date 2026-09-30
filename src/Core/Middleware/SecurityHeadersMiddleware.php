@@ -7,11 +7,15 @@ namespace kintai\Core\Middleware;
 use Closure;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\Security\CspNonce;
 
 final class SecurityHeadersMiddleware implements MiddlewareInterface
 {
     public function handle(Request $request, Closure $next): Response
     {
+        // Nonce tiré AVANT le rendu des vues (elles l'écrivent dans leurs <script>) et repris dans l'en-tête.
+        $nonce = CspNonce::renew();
+
         $response = $next($request);
 
         $response->withHeader('X-Content-Type-Options', 'nosniff');
@@ -22,7 +26,10 @@ final class SecurityHeadersMiddleware implements MiddlewareInterface
         // GITHUB_ISSUES_TOKEN n'est configuré sur l'instance — sans cette exception, Chrome bloque
         // silencieusement cette redirection cross-origin (violation "form-action", aucune erreur visible,
         // le clic sur "Envoyer" ne fait rien).
-        $response->withHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; form-action 'self' https://github.com; frame-ancestors 'self'; object-src 'none'");
+        // Pas de 'unsafe-inline' pour les scripts : ni <script> inline sans nonce, ni attribut onclick=/onchange=/…
+        // (les vues passent par des attributs data-* gérés par public/assets/js/modules/csp-actions.js).
+        // style-src garde 'unsafe-inline' : les attributs style="…" dynamiques (couleurs, largeurs) en dépendent.
+        $response->withHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'nonce-{$nonce}'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; form-action 'self' https://github.com; frame-ancestors 'self'; object-src 'none'");
 
         if ($request->isSecure()) {
             $response->withHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');

@@ -329,6 +329,110 @@ final class BundleMarketControllerTest extends TestCase
         $this->assertStringContainsString('success=fake-bundle', $this->locationOf($response));
     }
 
+    private const PIN_REGISTRY_URL = 'https://registry.example.test/registry.json';
+    private const PINNED_COMMIT = '7f99e084014e8258003a8b2a8fd4d8a188cfa5c3';
+    private const OTHER_COMMIT = '0123456789abcdef0123456789abcdef01234567';
+
+    /** Configure un registry officiel qui épingle (ou non) le commit de fake-bundle 1.0.0, et l'archive servie. */
+    private function arrangePinnedInstall(?string $pinnedCommit, ?string $servedCommit, bool $registryReachable = true): void
+    {
+        $this->registries->method('all')->willReturn([
+            ['id' => 1, 'name' => 'Registry', 'url' => self::PIN_REGISTRY_URL, 'is_official' => true],
+        ]);
+        $this->registryFetcher = $registryReachable
+            ? fn(string $url) => json_encode([
+                'schema_version' => 2,
+                'name'           => 'Registry',
+                'bundles'        => [[
+                    'slug'           => 'fake-bundle',
+                    'name'           => 'Fake',
+                    'repository_url' => 'https://github.com/AudricSan/kintai-bundle-fake',
+                    'versions'       => ['release' => ['1.0.0'], 'beta' => ['1.0.0'], 'alpha' => ['1.0.0']],
+                    'commits'        => $pinnedCommit !== null ? ['1.0.0' => $pinnedCommit] : [],
+                ]],
+            ])
+            : fn(string $url) => null;
+
+        $zipPath = $this->buildFixtureZip($servedCommit);
+        $this->releaseFetcher = fn() => 'https://example.test/fake.zip';
+        $this->zipDownloader = function (string $url, string $dest) use ($zipPath) { return copy($zipPath, $dest); };
+
+        $_POST = [
+            'slug'                => 'fake-bundle',
+            'repository_url'      => 'https://github.com/AudricSan/kintai-bundle-fake',
+            'version'             => '1.0.0',
+            'registry_url'        => self::PIN_REGISTRY_URL,
+            'confirm_third_party' => '1',
+        ];
+    }
+
+    public function testInstallSucceedsWhenTheArchiveMatchesTheCommitPinnedByTheRegistry(): void
+    {
+        $this->arrangePinnedInstall(self::PINNED_COMMIT, self::PINNED_COMMIT);
+        $this->installedBundles->expects($this->once())->method('upsert');
+
+        $response = $this->makeController()->install(new Request());
+
+        $this->assertStringContainsString('success=fake-bundle', $this->locationOf($response));
+    }
+
+    public function testInstallIsRefusedWhenTheTagWasMovedAfterTheRegistryPinnedIt(): void
+    {
+        // Le registry épingle PINNED_COMMIT ; GitHub sert l'archive d'un autre commit (tag déplacé).
+        $this->arrangePinnedInstall(self::PINNED_COMMIT, self::OTHER_COMMIT);
+        $this->installedBundles->expects($this->never())->method('upsert');
+
+        $response = $this->makeController()->install(new Request());
+
+        $location = $this->locationOf($response);
+        $this->assertStringContainsString('error=', $location);
+        $this->assertStringContainsString('refus', urldecode($location));
+    }
+
+    public function testInstallIsRefusedWhenTheRegistryCannotBeReadToCheckThePin(): void
+    {
+        // Sinon, empêcher la lecture du registry suffirait à désactiver la vérification.
+        $this->arrangePinnedInstall(self::PINNED_COMMIT, self::OTHER_COMMIT, registryReachable: false);
+        $this->installedBundles->expects($this->never())->method('upsert');
+
+        $response = $this->makeController()->install(new Request());
+
+        $this->assertStringContainsString('error=', $this->locationOf($response));
+    }
+
+    public function testInstallStillWorksWhenTheRegistryDoesNotPinThisVersion(): void
+    {
+        $this->arrangePinnedInstall(null, self::OTHER_COMMIT);
+        $this->installedBundles->expects($this->once())->method('upsert');
+
+        $response = $this->makeController()->install(new Request());
+
+        $this->assertStringContainsString('success=fake-bundle', $this->locationOf($response));
+    }
+
+    public function testTheExpectedCommitComesFromTheRegistryNotFromTheRequest(): void
+    {
+        // Un formulaire ne doit pas pouvoir choisir ce qu'on vérifie : un champ « commit » forgé est ignoré.
+        $this->arrangePinnedInstall(self::PINNED_COMMIT, self::OTHER_COMMIT);
+        $_POST['commit'] = self::OTHER_COMMIT;
+        $_POST['expected_commit'] = self::OTHER_COMMIT;
+        $this->installedBundles->expects($this->never())->method('upsert');
+
+        $response = $this->makeController()->install(new Request());
+
+        $this->assertStringContainsString('error=', $this->locationOf($response));
+    }
+
+    public function testDryRunAlsoChecksThePinnedCommit(): void
+    {
+        $this->arrangePinnedInstall(self::PINNED_COMMIT, self::OTHER_COMMIT);
+
+        $response = $this->makeController()->dryRun(new Request());
+
+        $this->assertSame(422, $response->status());
+        $this->assertStringContainsString('refusée', json_decode($response->body(), true)['error']);
+    }
+
     public function testUninstallRedirectsWithErrorWhenSlugIsMissing(): void
     {
         $_POST = ['slug' => ''];
@@ -372,7 +476,7 @@ final class BundleMarketControllerTest extends TestCase
      * Construit un zip qui imite un zipball GitHub : un unique dossier racine
      * contenant bundle.json + src/.
      */
-    private function buildFixtureZip(): string
+    private function buildFixtureZip(?string $commit = null): string
     {
         $manifest = [
             'slug'        => 'fake-bundle',
@@ -392,6 +496,9 @@ final class BundleMarketControllerTest extends TestCase
             "{$root}/src/FakeBundleBundle.php",
             "<?php\nnamespace kintai\\Bundles\\Installed\\FakeBundle;\nfinal class FakeBundleBundle {}\n",
         );
+        if ($commit !== null) {
+            $zip->setArchiveComment($commit);
+        }
         $zip->close();
 
         return $zipPath;

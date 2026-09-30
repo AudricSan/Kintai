@@ -19,67 +19,43 @@ Conséquences :
 - Seules les **Releases GitHub** comptent (pas les tags seuls, pas les commits). Tant qu'aucune Release ne correspond au canal de l'instance, `checkLatestRelease()` renvoie `null`.
 - Sans préfixe `v` dans les fichiers de config (le préfixe `v` n'existe que sur le tag Git — `GithubUpdateService` le retire automatiquement pour comparer les versions).
 
-## Schéma de version : X.Y.Z en cascade
+## Schéma de version : X.Y.Z, un chiffre par canal
 
-Le numéro de version est toujours un `X.Y.Z` brut — plus de suffixe de prerelease, plus de lettre de semaine :
+Le numéro de version est toujours un `X.Y.Z` simple — pas de suffixe de préversion, pas de lettre de semaine. **Chaque canal possède exactement un chiffre** et remet à zéro ceux qui sont à sa droite :
 
-- **X** — version majeure. Bumpée **à la main**, uniquement pour un changement cassant. Bumper `X` remet `Y` et `Z` à `0`.
-- **Y** — ligne de release. Bumpée **à la main**, une seule fois, à l'ouverture du *premier* alpha d'une nouvelle ligne — typiquement juste après que la ligne précédente a été publiée sur `main`. Bumper `Y` remet `Z` à `0`.
-- **Z** — compteur d'itération au sein de la ligne `X.Y` courante, partagé et cumulatif entre `alpha` et `beta` (jamais remis à zéro entre les deux) : le premier alpha de la ligne est `X.Y.1`, la publication alpha ou beta suivante (peu importe laquelle) est `X.Y.2`, etc. **`Z` est calculé automatiquement par `.github/workflows/release.yml`** à partir du plus haut tag `vX.Y.*` existant — jamais saisi à la main.
-- **`Z = 0` est réservé exclusivement à la release stable publiée sur `main`.** Comme alpha/beta démarrent toujours une ligne à `Z = 1` et ne font que monter, `X.Y.0` n'entre jamais en collision avec un tag alpha/beta déjà publié pour cette même ligne.
+| Canal | Publier dessus… | Effet | Exemple |
+|---|---|---|---|
+| `alpha` | incrémente **Z** | `X.Y.Z` → `X.Y.(Z+1)` | `0.3.0` → `0.3.1` |
+| `beta` | incrémente **Y**, remet `Z` à 0 | `X.Y.Z` → `X.(Y+1).0` | `0.3.4` → `0.4.0` |
+| `main` | incrémente **X**, remet `Y` et `Z` à 0 | `X.Y.Z` → `(X+1).0.0` | `0.4.2` → `1.0.0` |
 
-Exemple pour la ligne `0.13` :
+Donc **seul `main` peut changer le premier chiffre, seul `beta` le deuxième, seul `alpha` le troisième.** Rien n'est jamais saisi à la main : `.github/workflows/release.yml` prend le **plus haut tag `vX.Y.Z` existant** (quel que soit le canal qui l'a publié), applique la règle du canal qui publie, et crée le tag Git + la Release GitHub. Sans aucun tag, on part de `0.0.0`.
+
+Exemple, à partir de `v0.3.0` :
 
 ```
-alpha  -> v0.13.1, v0.13.2
-beta   -> v0.13.3, v0.13.4   (même compteur, reprend où alpha s'est arrêté)
-main   -> v0.13.0            (stable, taguée une fois la ligne prête)
+alpha  -> v0.3.1, v0.3.2, v0.3.3
+beta   -> v0.4.0                  (Y + 1, Z remis à 0)
+alpha  -> v0.4.1                  (le compteur repart du plus haut tag)
+main   -> v1.0.0                  (X + 1, Y et Z remis à 0)
 ```
 
-La ligne suivante démarre à `0.14.1` (`Y` bumpé à la main, `Z` revenu à son placeholder `0` dans `composer.json`/`config/app.php` jusqu'à ce que le workflow calcule le vrai premier `Z`).
+Le champ `version` de `config/app.php` est un littéral simple (pas d'indirection par variable d'environnement). Il est purement informatif dans le dépôt : le workflow ne le lit jamais et personne ne le bumpe à la main. Dès qu'une instance applique une mise à jour, `GithubUpdateService::applyUpdate()` réécrit ce même champ avec le tag exact qu'elle vient d'appliquer, si bien que `UpdateService::getCurrentVersion()` affiche la version précise en cours d'exécution. C'est le seul fichier qui la suit ; il n'y a pas de `storage/app/version.json` séparé.
 
-Le champ `version` de `config/app.php` est un littéral de chaîne simple (plus d'indirection par variable d'environnement) — le dépôt lui-même ne publie jamais que `X.Y.0`, mais dès qu'une instance applique une mise à jour automatique, `GithubUpdateService::applyUpdate()` réécrit ce même champ avec le tag exact qui vient d'être appliqué (vrai `Z` inclus), de sorte que `UpdateService::getCurrentVersion()` affiche la version réellement installée plutôt que juste la ligne. C'est le seul fichier qui la mémorise ; il n'y a plus de `storage/app/version.json` séparé.
-
-Ceci remplace l'ancien schéma de suffixe `X.Y.Z-<lettre de semaine><sous-version>` (ex. `0.12.0-ak23`), qui encodait trois compteurs indépendants par canal plus une lettre de semaine ISO difficile à lire d'un coup d'œil sur `/admin/update`.
-
-## Quel nombre bumper
-
-Contrairement à un semver classique MAJEUR/MINEUR/CORRECTIF, `Z` n'est jamais bumpé à la main — seuls `X`/`Y` le sont, et seulement dans ces deux cas :
-
-- **Ouvrir le premier alpha d'une nouvelle ligne** → bump **Y** dans `composer.json`/`config/app.php` (laisser `Z` à son placeholder `.0` — le vrai `Z` de chaque publication est calculé par le workflow, jamais stocké ici).
-- **Changement cassant** → bump **X** à la place (ce qui remet aussi `Y` à `0`).
-- **Chaque publication alpha ou beta suivante sur cette ligne** → rien à bumper à la main ; `composer.json` continue d'afficher `X.Y.0`, seule la section `[Unreleased]` de `CHANGELOG.md` grossit.
-- **Publier la release stable sur `main`** → rien à bumper non plus ; `composer.json` doit déjà afficher `X.Y.0` depuis le premier alpha de la ligne. Le workflow tague exactement `vX.Y.0`, ignoré avec un message de log si ce tag existe déjà (aucun bump de version n'a eu lieu depuis la dernière release stable).
+Ceci remplace le schéma précédent (`Y` bumpé à la main, `Z` cumulatif partagé, `Z = 0` réservé à `main`) puis, avant lui, le schéma à suffixe `X.Y.Z-<lettre de semaine><sous-version>` (ex. `0.12.0-ak23`).
 
 ## Publier une nouvelle version (flux recommandé)
 
-Le numéro de base (`X.Y` dans `composer.json`/`config/app.php`/`CHANGELOG.md`, toujours écrit `X.Y.0`) reste bumpé **à la main**, exactement comme avant, mais uniquement à l'ouverture d'une nouvelle ligne (voir « Quel nombre bumper » ci-dessus) — pas à chaque publication alpha/beta. Ce qui est automatisé par `.github/workflows/release.yml` à chaque push sur `alpha`, `beta` ou `main`, c'est *le calcul de `Z` et la création du tag Git + de la Release GitHub* — vous ne taguez jamais et n'appelez jamais `gh release create` vous-même.
+Il n'y a aucune version à bumper : c'est la promotion d'une branche qui décide quel chiffre avance. Ce qu'automatise `.github/workflows/release.yml` à chaque push sur `alpha`, `beta` ou `main`, c'est *le calcul de la version suivante et la création du tag Git + de la Release GitHub* — vous ne taguez jamais et ne lancez jamais `gh release create` vous-même.
 
-1. Sur une branche de travail classique, bumpez la version si vous ouvrez une nouvelle ligne (voir « Procédure manuelle » ci-dessous, ou lancez `scripts/release.ps1 -DryRun` pour prévisualiser les notes du changelog — ses étapes automatisées de tag/push/`gh release create` sont remplacées par la Action et échoueront simplement contre une branche protégée ; ne le lancez donc plus sans `-DryRun`).
-2. Ouvrez une PR ciblant la branche du canal à publier (`alpha`, `beta` ou `main`), et fusionnez-la une fois la CI verte (exigée par la protection de branche).
-3. `.github/workflows/release.yml` se déclenche sur le push résultant et :
-   - lit la ligne `X.Y` dans `composer.json` ;
-   - sur `alpha`/`beta`, trouve le plus haut tag `vX.Y.*` existant, calcule `Z+1`, et tague `vX.Y.Z`, marqué comme prerelease — chaque publication produit un tag distinct et toujours croissant ;
-   - sur `main`, tague `vX.Y.0` comme Release normale (non-prerelease) — ignoré avec un message de log si ce tag exact existe déjà (c'est-à-dire si la ligne a déjà été publiée en stable) ;
-   - extrait les notes de release depuis `CHANGELOG.md` (la section datée `## [X.Y.0]` pour `main`, la section `## [Unreleased]` pour `alpha`/`beta`).
+1. Ajouter les changements dans `CHANGELOG.md` sous `## [Unreleased]` sur votre branche de travail (comme pour toute modification).
+2. Ouvrir une PR vers la branche du canal visé (`alpha`, `beta` ou `main`), et la merger une fois la CI verte (exigé par la protection de branche).
+3. `.github/workflows/release.yml` s'exécute sur le push résultant et :
+   - retrouve le plus haut tag `vX.Y.Z` existant ;
+   - applique la règle du canal (tableau ci-dessus) et tague le résultat — marqué prerelease sur `alpha`/`beta`, Release normale sur `main` ;
+   - extrait les notes de version de `CHANGELOG.md` (la section `## [Unreleased]`, ou, si elle est vide, la section `## [X.Y.Z]` de la version qui vient d'être calculée).
 
-Pour faire progresser une version d'un canal au suivant (alpha → beta → release), fusionnez la branche correspondante vers la suivante (ex. `alpha` dans `beta`, puis `beta` dans `main`) via une PR, comme toute autre promotion de branche.
-
-## Procédure manuelle (bump de version)
-
-Uniquement nécessaire à l'ouverture d'une nouvelle ligne (ou d'un nouveau majeur) — voir « Quel nombre bumper » ci-dessus ; à ignorer pour toute autre publication alpha/beta.
-
-1. Sur une branche de travail, renommer `## [Unreleased]` en `## [0.13.0] - 2026-08-04` dans `CHANGELOG.md` (la version de ligne `X.Y.0` — `Z` vaut toujours `0` ici, le vrai `Z` de chaque publication étant calculé par le workflow) et ajouter une nouvelle section `## [Unreleased]` vide juste au-dessus.
-2. Mettre à jour la version dans `composer.json` (`"version": "0.13.0"`) et le champ `'version'` de `config/app.php` avec la même chaîne, en bumpant `Y` (ou `X` pour un changement cassant) et en remettant le reste à `0`.
-3. Committer, pousser la branche, et ouvrir une PR vers `alpha` (les nouvelles lignes démarrent toujours là) :
-   ```bash
-   git add CHANGELOG.md composer.json config/app.php
-   git commit -m "core(release): v0.13.0"
-   git push -u origin <votre-branche>
-   gh pr create --base alpha
-   ```
-4. Une fois fusionnée, `.github/workflows/release.yml` calcule le vrai `Z` (`1` pour cette première publication) et crée automatiquement le tag (`v0.13.1`) et la Release GitHub — plus rien à faire à la main. Chaque publication alpha/beta suivante sur cette ligne n'est qu'une PR normale (sans bump de version) vers `alpha` ou `beta`.
-
+Pour faire avancer une version (develop → alpha → beta → release), on merge la branche correspondante vers l'avant (p. ex. `develop` dans `alpha`, puis `alpha` dans `beta`, puis `beta` dans `main`) via PR, comme n'importe quelle autre promotion. Seules les étapes `alpha`/`beta`/`main` publient réellement une release — un merge dans `develop` n'en publie jamais (voir « `develop` » plus haut). Rappel : chaque promotion fait avancer un chiffre — une publication `beta` incrémente `Y`, une publication `main` incrémente `X`.
 ## Après la publication
 
 - Sur chaque instance, l'owner voit « Mise à jour disponible » sur `/admin/update` (pour le canal qu'elle suit) et peut cliquer « Mettre à jour maintenant ».
@@ -89,5 +65,5 @@ Uniquement nécessaire à l'ouverture d'une nouvelle ligne (ou d'un nouveau maje
 ## En cas de problème
 
 - **Release publiée par erreur / cassée** : `gh release delete vX.Y.Z` puis `git push --delete origin vX.Y.Z` et `git tag -d vX.Y.Z` en local. Les instances qui ont déjà appliqué la mise à jour ne sont **pas** annulées automatiquement — restaurer depuis le backup DB+uploads et le snapshot de code créés dans `storage/backups/` juste avant l'update.
-- **La Action échoue à publier** : vérifier l'exécution du workflow `Release` dans l'onglet Actions ; la cause la plus fréquente est une version dans `composer.json` qui ne correspond encore à aucune section `## [...]` dans `CHANGELOG.md` — le workflow fait alors volontairement échouer le build plutôt que de publier une release sans notes. Ajouter l'entrée CHANGELOG manquante puis repousser. Il reste possible de taguer et publier manuellement avec `gh release create` si besoin.
+- **La Action échoue à publier** : vérifier l'exécution du workflow `Release` dans l'onglet Actions ; la cause la plus fréquente est une section `## [Unreleased]` vide dans `CHANGELOG.md`, sans section `## [X.Y.Z]` pour la version calculée non plus — le workflow fait alors volontairement échouer le build plutôt que de publier une release sans notes. Ajouter l'entrée CHANGELOG manquante puis repousser. Il reste possible de taguer et publier manuellement avec `gh release create` si besoin.
 - **Le repo passe privé un jour** : définir `GITHUB_UPDATE_TOKEN` (voir `.env.example`) sur chaque instance pour que `GithubUpdateService` puisse continuer à interroger l'API ; le workflow `Release` dispose déjà de son propre accès via le `GITHUB_TOKEN` intégré, rien à changer de ce côté.

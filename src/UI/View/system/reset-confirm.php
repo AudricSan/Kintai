@@ -33,7 +33,7 @@ ob_start();
 <?php endif; ?>
 
 <form method="POST" action="<?= htmlspecialchars($executeAction) ?>"
-      onsubmit="return confirm('<?= $mode === 'factory' ? __('reset_factory_confirm') : __('reset_data_confirm') ?>')">
+      data-confirm="<?= htmlspecialchars($mode === 'factory' ? __('reset_factory_confirm') : __('reset_data_confirm'), ENT_QUOTES) ?>">
     <?= csrf_field() ?>
     <input type="hidden" name="mode" value="<?= htmlspecialchars($mode) ?>">
     <input type="hidden" name="backup_filename" value="<?= htmlspecialchars($backup_filename) ?>">
@@ -47,4 +47,4 @@ ob_start();
 </form>
 <?php echo Card::make()->header(__('reset_confirm_card_title'))->body(ob_get_clean())->render(); ?>
 
-<script>document.getElementById('reset-download-link').click();</script>
+<script nonce="<?= csp_nonce() ?>">document.getElementById('reset-download-link').click();</script>

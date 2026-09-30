@@ -24,7 +24,9 @@ your-bundle/
     YourBundle.php            # classe d'entrée, étend kintai\Core\BundleContract\Bundle
     Controllers/Web/...
     Controllers/Api/...
+  database/migrations/        # optionnel — voir « Migrations de base de données » ci-dessous
   Views/                      # optionnel — chargé via loadViewsFrom()
+  public/{css,js}/...         # optionnel — voir « Assets » ci-dessous, chargé via loadAssetsFrom()
   lang/{en,fr,ja}.json         # optionnel — clés de traduction propres au bundle
   routes.php                  # optionnel — chargé via loadRoutesFrom()
   README.md
@@ -53,6 +55,7 @@ abstract class Bundle
 
     protected function loadRoutesFrom(string $path): void;
     protected function loadViewsFrom(string $path, string $namespace): void;
+    protected function loadAssetsFrom(string $relativeDir): void;  // voir « Assets » ci-dessous
 }
 ```
 
@@ -105,6 +108,85 @@ Ne recalculez pas cette résolution vous-même. Réutilisez le trait `kintai\UI\
 
 Si votre bundle doit servir un **fichier uploadé** (une image, un PDF, une pièce jointe) derrière cette même autorisation, ne construisez pas votre propre route de service de fichier — appuyez-vous sur `/storage/{path*}` (nom de route `storage.file`) de Kintai lui-même, qui applique déjà `managed_store_ids` (`StorageFileController::assertPathStoreAccess()`) ainsi que son propre confinement de chemin d'upload et sa liste blanche de types MIME. Une route de service de fichier parallèle duplique une logique d'autorisation que le Core possède déjà, hors de sa propre couverture de tests.
 
+## Migrations de base de données
+
+Un bundle peut posséder ses propres tables — une PR dédiée sur le dépôt de Kintai n'est **plus** nécessaire pour créer un schéma. Déposez un dossier optionnel `database/migrations/` à la racine de votre bundle (au même niveau que `src/`, même règle que `Views/`/`routes.php`), contenant des fichiers au **format strictement identique** à celui des migrations du Core de Kintai (`database/migrations/php/*.php`) :
+
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace kintai\Database\Migrations;
+
+use kintai\Core\Database\Migration;
+use Illuminate\Database\Schema\Blueprint;
+
+return new class($this->capsule) extends Migration {
+    public function up(): void
+    {
+        if ($this->schema()->hasTable('your_bundle_table')) {
+            return;
+        }
+        $this->schema()->create('your_bundle_table', function (Blueprint $table) {
+            $table->increments('id');
+            // ...
+        });
+    }
+
+    public function down(): void
+    {
+        $this->schema()->dropIfExists('your_bundle_table');
+    }
+};
+```
+
+Nommez les fichiers `YYYY_MM_DD_NNNNNN_description.php` — l'ordre alphabétique est l'ordre d'exécution, exactement comme pour les migrations du Core. Protégez toujours `up()` avec `hasTable()`/`hasColumn()` (comme ci-dessus) : les migrations doivent être idempotentes, car elles peuvent être rejouées par une resynchronisation manuelle (voir plus bas).
+
+**Quand elles s'exécutent** : automatiquement, juste après que les fichiers de votre bundle ont été déposés sur le disque lors d'une installation ou d'une mise à jour depuis `/admin/bundles/market` (`BundleInstallerService::activate()`) — avant que le bundle soit marqué actif, de sorte qu'une migration en échec annule toute l'installation/mise à jour au lieu d'activer un bundle au schéma incomplet. Elles peuvent aussi être resynchronisées manuellement, pour tous les bundles installés d'un coup, avec `php scripts/db-migrate.php` (`--dry-run` prévisualise ce qui est en attente, même option que pour les migrations du Core).
+
+**Suivi** : les migrations de bundle appliquées sont enregistrées dans une table `bundle_migrations` (`bundle_slug` + nom de la migration, uniques ensemble) — distincte de la table `migrations` propre au Core, si bien que deux bundles différents ne peuvent jamais entrer en collision sur un nom de fichier de migration, et que `BundleMigrationRunner::forgetBundle()` peut effacer uniquement les lignes de suivi de votre bundle à la désinstallation. Les tables métier elles-mêmes ne sont **pas** supprimées à la désinstallation (voir Limitations) — seules les lignes de suivi le sont, de sorte qu'une réinstallation ultérieure rejoue proprement vos méthodes `up()` (leurs gardes `hasTable()` en font une opération sans effet si les tables sont toujours là).
+
+Ce mécanisme est volontairement indépendant du Core : votre interface de repository et votre modèle Eloquent peuvent vivre dans le namespace de votre propre bundle, ou dans `src/Core/Repositories/*Interface.php` si vous préférez suivre la convention que tous les bundles officiels utilisent actuellement (voir « Le contrat stable » ci-dessus) — la migration elle-même n'en a que faire.
+
+## Assets
+
+**Nécessite `kintai_core.min: "0.2.0"` ou supérieur.** Si votre bundle a besoin de son propre CSS ou JS, ne demandez pas qu'il soit ajouté au `public/assets/` de Kintai — c'était la situation de tous les bundles avant que ce mécanisme existe, et cela ruinait tout l'intérêt de distribuer les bundles comme dépôts séparés (un ajustement de CSS impliquait une PR sur le Core). Livrez-le vous-même, depuis votre propre dossier `public/` (au même niveau que `src/`, `Views/`, `routes.php` — même règle que tout le reste de l'arborescence requise ci-dessus) :
+
+```
+your-bundle/
+  public/
+    css/your-bundle.css
+    js/your-bundle.js
+```
+
+Déclarez-le dans `register()`, exactement comme `loadViewsFrom()`/`loadRoutesFrom()` :
+
+```php
+public function register(): void
+{
+    $this->loadViewsFrom($this->getPath() . '/Views', 'your-namespace');
+    $this->loadRoutesFrom($this->getPath() . '/routes.php');
+    $this->loadAssetsFrom('public');
+}
+```
+
+Depuis n'importe laquelle des vues de votre bundle, référencez le fichier via le helper `bundle_asset()` — jamais un chemin codé en dur, car l'emplacement réel sur le disque dépend de la version actuellement installée :
+
+```php
+<?php if ($css = bundle_asset('your-slug', 'css/your-bundle.css')): ?>
+<link rel="stylesheet" href="<?= $css ?>">
+<?php endif; ?>
+```
+
+`bundle_asset()` renvoie `null` (sans jamais lever d'exception) quand votre bundle n'est pas actif — protégez toujours le `<link>`/`<script>` par un `if`, comme ci-dessus, plutôt que de supposer qu'il se résout toujours. L'URL qu'il construit (`GET /bundle-assets/{slug}/{path}?v={version}`) est servie par une route dédiée non authentifiée (`BundleAssetController`) — ce sont des fichiers statiques publics, pas protégés par `AuthMiddleware`/`PermissionMiddleware` comme les pages de votre bundle — confinée à votre dossier `public/` déclaré et limitée à une liste blanche fixe d'extensions (`css`, `js`, `svg`, `png`, `webp`). Tout ce qui sort de cette liste blanche, ou toute tentative de remonter au-dessus de votre dossier `public/`, est rejeté (`403`) ; une requête vers un bundle inactif, ou qui n'a jamais appelé `loadAssetsFrom()`, renvoie un simple `404`.
+
+Si une vue a besoin du **contenu** du fichier plutôt que d'une URL — le cas courant étant un export PDF qui intègre sa feuille de style via `file_get_contents()` — utilisez plutôt `bundle_asset_path()`, qui se résout vers le chemin absolu du même fichier sur le système de fichiers (là encore `null` si inactif) :
+
+```php
+$css = file_get_contents(bundle_asset_path('your-slug', 'css/pdf-your-bundle.css') ?? '');
+```
+
 ## Le manifeste `bundle.json`
 
 Obligatoire à la racine du dépôt du bundle :
@@ -133,7 +215,7 @@ Obligatoire à la racine du dépôt du bundle :
 | `namespace` | Oui | Racine PSR-4 pour tout ce qui vit sous `src/`. |
 | `entry_class` | Oui | Nom pleinement qualifié de la classe d'entrée ; son fichier doit exister sous `src/` une fois résolu depuis `namespace` (vérifié avant activation). |
 | `description`, `author`, `license`, `homepage` | Non | Informatif uniquement. |
-| `kintai_core.min`/`.max` | Non (défauts `0.0.0`/`999.999.999`) | L'installateur refuse d'activer un bundle hors de ces bornes par rapport à la version Core de l'instance en cours. |
+| `kintai_core.min`/`.max` | Non (défauts `0.0.0`/`999.999.999`) | L'installateur refuse d'activer un bundle hors de ces bornes par rapport à la version Core de l'instance en cours. Un bundle dont les vues utilisent les actions `data-*` ou `csp_nonce()` doit fixer `min` à `0.3.0` — voir [Content Security Policy](#content-security-policy--pas-de-script-inline). |
 | `requires_bundles` | Non (défaut `{}`) | Slug → contrainte de version. **Informatif uniquement pour l'instant** — voir Limitations. |
 
 ## Publier une release
@@ -142,7 +224,51 @@ Obligatoire à la racine du dépôt du bundle :
 2. Tagger le commit `vX.Y.Z` et pousser le tag.
 3. Créer une GitHub Release pour ce tag (`gh release create vX.Y.Z --generate-notes`, ou un workflow CI qui fait la même chose au push d'un tag — voir le `.github/workflows/release.yml` minimal de `kintai-bundle-feedback`). Rien à construire : le `zipball_url` auto-généré de la release est exactement ce que `BundleInstallerService` télécharge.
 
-## Se faire lister dans un registry
+## Content Security Policy : pas de script inline
+
+Kintai envoie `script-src 'self' 'nonce-…'` (`SecurityHeadersMiddleware`) : le navigateur n'exécute que les scripts servis par Kintai lui-même, ou un `<script>` inline portant le nonce de la requête en cours. **Les attributs d'événements inline (`onclick=`, `onchange=`, `onsubmit=`, `oninput=`…) et les liens `javascript:` sont bloqués**, en silence : le bouton ne fait simplement rien, sans aucune erreur côté serveur. Une vue de bundle ne doit donc pas en utiliser.
+
+- **`<script>` inline** — seulement en cas de vrai besoin, avec le nonce de la requête : `<script nonce="<?= csp_nonce() ?>">…</script>`. Un bloc de données `<script type="application/json">` n'est pas exécuté et n'a pas besoin de nonce. Préférez un fichier dans `assets/js/` de votre bundle (chargé avec `bundle_asset()`), qui n'exige rien.
+- **Attributs d'événements** — remplacez-les par des attributs déclaratifs `data-*`, gérés par `public/assets/js/modules/csp-actions.js` (chargé par le layout de l'application) :
+
+| Au lieu de | Écrire |
+|---|---|
+| `onclick="doThing()"` | `data-on-click="doThing"` |
+| `onclick="doThing('a', 2)"` | `data-on-click="doThing" data-args='["a", 2]'` |
+| `onchange="doThing(this.value)"` | `data-on-change="doThing" data-args='["@value"]'` (`"@this"`, `"@value"`, `"@checked"` sont remplacés à l'appel) |
+| `onchange="this.form.submit()"` | `data-submit-on-change` |
+| `onchange="document.getElementById('f').submit()"` | `data-submit-form="f"` |
+| `onclick="location.href='/x'"` | `data-goto="/x"` (http/https uniquement) |
+| `onclick="event.stopPropagation()"` | `data-stop-propagation` |
+| `onclick="window.print()"` | `data-on-click="@print"` (aussi `@close`, `@select`, `@removeParent`, `@copy`) |
+| `onsubmit="return confirm('…')"`, `onclick="return confirm('…')"` | `data-confirm="…"` sur le `<form>` ou sur le bouton submit (modale de confirmation globale) |
+| `Button::attrs(['onclick' => 'f()'])` | `Button::attrs(['data-on-click' => 'f'])` |
+
+`data-on-*` n'appelle qu'une **fonction que vous avez définie vous-même** sur `window` (une déclaration de fonction dans votre script, ou `window.f = …`) : les fonctions natives du navigateur comme `eval` ou `setTimeout` sont refusées volontairement, pour qu'un attribut injecté ne devienne pas un moyen d'exécuter du code. Les valeurs d'attributs de `Button`/`Modal` sont déjà échappées par le composant : passez la valeur brute, pas le résultat de `htmlspecialchars()`.
+
+**Version requise.** Les actions `data-*` et `csp_nonce()` existent à partir de **Kintai Core 0.3.0**. Un bundle qui les utilise doit déclarer `"kintai_core": { "min": "0.3.0", … }` dans son `bundle.json`, pour que l'installateur le refuse sur un Core plus ancien au lieu d'installer des contrôles qui ne font rien. À l'inverse, c'est une **rupture pour les bundles existants** : un bundle écrit avant la 0.3.0 qui utilise encore des handlers inline continue de fonctionner sur un Core antérieur à la 0.3.0, mais ses boutons, sélecteurs et confirmations cessent de fonctionner à partir de la 0.3.0 tant qu'il n'est pas migré. `tests/Unit/Security/NoInlineScriptGuardTest.php` dans Kintai échoue dès qu'une vue du Core réintroduit un handler inline ; faites la même vérification sur vos propres vues.
+
+### Migrer un bundle existant
+
+1. Repérez les occurrences : `grep -rnE "[[:space:]]on(click|change|submit|input)[[:space:]]*=|['\"]on(click|change|submit|input)['\"][[:space:]]*=>|javascript:|<script>" Views src`.
+2. Remplacez chacune par l'attribut `data-*` correspondant du tableau ci-dessus. Un `confirm()` devient `data-confirm` ; un handler qui appelait `event.stopPropagation()` exige `data-stop-propagation`, sinon un ancêtre délégué se déclenche aussi.
+3. Vérifiez que chaque fonction appelée via `data-on-*` est définie **sur `window`** : une déclaration de fonction dans un script classique, ou `window.f = …`. Un `const f = …` ou `let f = …` de premier niveau n'est pas une propriété de `window` et est refusé.
+4. Mettez le nonce sur les blocs `<script>` inline que vous gardez : `<script nonce="<?= csp_nonce() ?>">`.
+5. Relevez `kintai_core.min` à `0.3.0` et ajoutez la vérification CI ci-dessous.
+
+### Vérifier en CI
+
+Le serveur ne voit aucune erreur quand le navigateur bloque un handler inline : rien d'autre n'attrapera une régression. Les bundles officiels exécutent cette étape dans `.github/workflows/tests.yml` :
+
+```yaml
+- name: No inline event handlers or nonce-less scripts (Kintai CSP)
+  run: |
+    set -euo pipefail
+    if grep -rnE "[[:space:]]on(click|change|submit|input|load|error|focus|blur|dblclick|keyup|keydown)[[:space:]]*=|['\"]on(click|change|submit|input)['\"][[:space:]]*=>|(href|src|action)[[:space:]]*=[[:space:]]*[\"']javascript:|<script>" Views src; then
+      echo "::error::Inline handlers, javascript: URLs and <script> without nonce are blocked by Kintai's CSP"
+      exit 1
+    fi
+```
 
 Un **registry** n'est rien de plus qu'un fichier statique `registry.json` servi en simple HTTPS (l'URL `raw.githubusercontent.com` d'un dépôt GitHub fonctionne bien, et c'est comme ça que le registry officiel est servi) — Kintai ne le clone jamais non plus, il se contente d'un GET (`BundleRegistryClient`).
 
@@ -170,6 +296,7 @@ Un **registry** n'est rien de plus qu'un fichier statique `registry.json` servi 
 - `repository_url` doit être un simple `https://github.com/{owner}/{repo}` — l'installateur en dérive l'URL de l'API GitHub pour retrouver la release.
 - `versions` (schema 2) est indexé par canal de mise à jour — `release` (uniquement les releases non-prerelease publiées depuis `main`), `beta` (`main` ou `beta`, exclut `alpha`), `alpha` (tout) — chacun une liste de versions installables, la plus récente en premier. Ça reflète le canal choisi une seule fois pour tous les bundles installés sur `/admin/bundles/market` (`AppSettingsService::bundleUpdateChannel()`, indépendant du canal de mise à jour du Core lui-même sur `/admin/update`) : la liste correspondant à ce canal est ce que l'UI du catalogue propose comme "dernière version" et ce qu'une simple mise à jour installe. **Le schema 1** (`versions` en liste plate, sans clé de canal) reste accepté pour compatibilité — Kintai propose alors cette même liste plate sur les trois canaux, faute de moyen de savoir de quelle branche vient chaque release. Le registry officiel calcule ces trois listes du schema 2 automatiquement à partir des vraies Releases GitHub de chaque bundle (`target_commitish`/`prerelease`, même règle que les canaux de release de Kintai lui-même) — voir `scripts/sync-versions.js` de [`AudricSan/KintaiBundle`](https://github.com/AudricSan/KintaiBundle), qui tourne toutes les heures et ouvre une PR dès qu'une nouvelle release change les listes de versions d'un bundle ; vous n'éditez jamais `versions` à la main.
 - Le `bundle.json` de votre dépôt reste la source de vérité réelle pour la compatibilité (`kintai_core.min`/`max`) et tout le reste, lue au moment de l'installation — `versions` ici n'est jamais qu'une indication pour l'UI du catalogue sur ce qui est installable et sur quel canal.
+- `commits` (facultatif, ajouté au schema 2 sans changer de version — les anciennes versions de Kintai l'ignorent) associe à chaque version le sha complet (40 caractères) du commit vers lequel pointe son tag, p. ex. `"commits": {"1.0.2": "7f99e084…"}`. S'il est présent, Kintai compare l'archive téléchargée à ce commit **avant toute extraction** (un zipball GitHub porte son commit dans le commentaire du ZIP et dans le nom de son dossier racine) et refuse l'installation en cas de différence : un tag déplacé vers un autre commit (dépôt ou compte compromis) ne peut donc pas faire passer un autre code à l'insu du registry. Le registry officiel le renseigne automatiquement : le même passage horaire de `sync-versions.js` épingle le commit de chaque nouvelle release, ne réécrit jamais une empreinte existante et échoue bruyamment si un tag a bougé — l'empreinte n'atteint `main` que via la pull request relue par un mainteneur. Kintai lit le commit attendu dans le registry côté serveur (jamais depuis la requête) et refuse d'installer si le registry est injoignable pour le vérifier. Un registry qui ne publie pas `commits` continue de fonctionner comme avant (un avertissement est journalisé). Ce n'est pas une signature : cela repose sur la génération de l'archive par GitHub et sur HTTPS, et le registry reste le point de confiance. Si vous tenez votre propre registry, le `sync-versions.js` de `AudricSan/KintaiBundle` est réutilisable tel quel.
 
 Deux façons d'être découvert :
 - **Votre propre registry** — écrivez et hébergez vous-même un `registry.json` (n'importe où accessible en HTTPS), puis n'importe qui peut ajouter son URL depuis `/admin/bundles/registries`. Aucune approbation nécessaire de quiconque.
@@ -183,7 +310,8 @@ Deux façons d'être découvert :
 
 - **Un seul processus, un seul autoloader Composer.** Il n'y a pas de `composer.json` par bundle ni d'isolation des dépendances — votre bundle tourne dans le même processus PHP et le même arbre de namespaces que le `kintai\` de Kintai lui-même. Ne dépendez que de `BundleContract\Bundle`, des interfaces de `src/Core/Repositories/*Interface.php`, et d'autres classes Core avec lesquelles vous êtes à l'aise de vous coupler entre versions de Kintai.
 - **`requires_bundles` n'est pas encore appliqué.** Déclarer une dépendance sur le slug/la version d'un autre bundle est accepté et stocké, mais rien ne bloque actuellement l'installation si elle manque ou est trop ancienne — considérez-le comme de la documentation pour l'instant, pas une garantie.
-- **Pas encore de flux de désinstallation.** `/admin/bundles/market` peut installer et mettre à jour ; retirer les fichiers d'un bundle et ses lignes en base de données n'est pas encore câblé.
+- **Pas de flux de désinstallation pour les données métier.** `/admin/bundles/market` peut installer, mettre à jour et désinstaller les fichiers d'un bundle, son entrée de manifeste et ses lignes de suivi de migrations — mais les tables créées par vos migrations (et leurs données) ne sont jamais supprimées ni touchées à la désinstallation. Les nettoyer, si on le souhaite, reste pour l'instant une opération manuelle sur la base de données.
+- **Les scripts et handlers d'événements inline ne fonctionnent pas.** À partir de Kintai Core 0.3.0, la Content-Security-Policy n'a plus `'unsafe-inline'` pour les scripts : une vue de bundle avec `onclick=`/`onchange=`/`onsubmit=`/`oninput=`, un lien `javascript:` ou un `<script>` sans nonce est bloquée en silence par le navigateur. Voir [Content Security Policy](#content-security-policy--pas-de-script-inline).
 - **GitHub uniquement.** `repository_url` doit pointer vers un dépôt GitHub — ni GitLab, ni serveur Git auto-hébergé, ni source d'archive non-Git.
 
 ## Implémentation de référence

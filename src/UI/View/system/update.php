@@ -41,7 +41,7 @@ ob_start();
     <span class="btn-group">
         <?php foreach ($channels as $value => $label): ?>
             <?php $needsConfirm = $value !== 'release' && $value !== $updateChannel; ?>
-            <form method="POST" action="<?= htmlspecialchars($channelAction) ?>" class="d-inline"<?= $needsConfirm ? " onsubmit=\"return confirm('" . __('update_channel_switch_confirm') . "')\"" : '' ?>>
+            <form method="POST" action="<?= htmlspecialchars($channelAction) ?>" class="d-inline"<?= $needsConfirm ? " data-confirm=\"" . htmlspecialchars(__('update_channel_switch_confirm'), ENT_QUOTES) . "\"" : '' ?>>
                 <?= csrf_field() ?>
                 <input type="hidden" name="channel" value="<?= htmlspecialchars($value) ?>">
                 <?= Button::make($label)->sm()->{$value === $updateChannel ? 'primary' : 'outline'}()->submit()->disabled($value === $updateChannel)->render() ?>
@@ -68,7 +68,7 @@ ob_start();
             <?php if ($updateInfo['release_url']): ?>
                 <br><a href="<?= htmlspecialchars($updateInfo['release_url']) ?>" target="_blank" rel="noopener"><?= __('backup_release_notes') ?></a>
             <?php endif; ?>
-            <form id="backup-update-form" method="POST" action="<?= htmlspecialchars($action) ?>/apply" class="mt-sm" data-stream-url="<?= htmlspecialchars($action) ?>/stream" onsubmit="return confirm('<?= __('backup_update_confirm') ?>')">
+            <form id="backup-update-form" method="POST" action="<?= htmlspecialchars($action) ?>/apply" class="mt-sm" data-stream-url="<?= htmlspecialchars($action) ?>/stream" data-confirm="<?= htmlspecialchars(__('backup_update_confirm'), ENT_QUOTES) ?>">
                 <?= csrf_field() ?>
                 <?= Button::make(__('backup_update_now_btn'))->danger()->submit()->render() ?>
             </form>
@@ -142,7 +142,7 @@ ob_start();
     <?php endif; ?>
     <p class="btn-group mt-sm">
         <?php if ($notesSummary !== ''): ?>
-            <?= Button::make(__('update_notes_view_more'))->sm()->outline()->attrs(['onclick' => "openModal('update-notes-modal')"])->render() ?>
+            <?= Button::make(__('update_notes_view_more'))->sm()->outline()->attrs(['data-on-click' => 'openModal', 'data-args' => '["update-notes-modal"]'])->render() ?>
         <?php endif; ?>
         <?= Button::make(__('update_notes_github_btn'))->sm()->ghost()->link($repoReleasesUrl)->attrs(['target' => '_blank', 'rel' => 'noopener'])->render() ?>
     </p>

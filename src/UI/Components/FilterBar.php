@@ -101,7 +101,7 @@ final class FilterBar implements ComponentInterface
                     $html .= '<select id="ff-' . htmlspecialchars($field['name']) . '"'
                         . ' name="' . htmlspecialchars($field['name']) . '"'
                         . ' class="form-control form-control-sm"'
-                        . ' onchange="this.form.submit()">';
+                        . ' data-submit-on-change>';
                     if ($field['placeholder'] !== '') {
                         $html .= '<option value="">' . htmlspecialchars($field['placeholder']) . '</option>';
                     }
@@ -126,7 +126,7 @@ final class FilterBar implements ComponentInterface
                         . ' name="' . htmlspecialchars($field['name']) . '"'
                         . ' value="' . htmlspecialchars($field['value']) . '"'
                         . ' class="form-control form-control-sm"'
-                        . ' onchange="this.form.submit()">';
+                        . ' data-submit-on-change>';
                     break;
 
                 case 'month':
@@ -134,7 +134,7 @@ final class FilterBar implements ComponentInterface
                         . ' name="' . htmlspecialchars($field['name']) . '"'
                         . ' value="' . htmlspecialchars($field['value']) . '"'
                         . ' class="form-control form-control-sm"'
-                        . ' onchange="this.form.submit()">';
+                        . ' data-submit-on-change>';
                     break;
             }
 
