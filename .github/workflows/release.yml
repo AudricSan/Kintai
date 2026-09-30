@@ -13,6 +13,9 @@ name: Release
 # seul alpha le troisième. Le plus haut tag existant sert de référence,
 # quel que soit le canal qui l'a publié.
 #
+# La version calculée est aussi écrite dans config/app.php du commit taggé (jamais poussé sur la branche) :
+# voir scripts/set-release-version.php.
+#
 # Le canal (alpha/beta/release) n'est pas déterminé en inspectant le tag
 # mais via le target_commitish de la Release GitHub — voir
 # GithubUpdateService::selectReleaseForChannel().
@@ -125,6 +128,17 @@ jobs:
           set -euo pipefail
 
           TAG="${{ steps.version.outputs.tag }}"
+          VERSION="${{ steps.version.outputs.version }}"
+
+          # La version calculée est écrite dans config/app.php du commit qui porte le tag : l'archive de la release
+          # affiche ainsi sa vraie version (sinon une installation neuve se croirait dans le littéral figé du dépôt et
+          # l'installateur de bundles refuserait ceux qui exigent une version plus récente, cf. kintai_core.min).
+          # Ce commit n'est PAS poussé sur la branche (protégée) : seul le tag le référence.
+          php scripts/set-release-version.php "$VERSION"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add config/app.php
+          git diff --cached --quiet || git commit -m "release: v${VERSION}"
 
           git tag "$TAG"
           git push origin "$TAG"
