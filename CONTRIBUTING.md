@@ -55,6 +55,8 @@ composer install
 
 CI also runs a fresh-install smoke test (`install-smoke` job, `scripts/ci/install-smoke-test.sh`): the real web installer on an empty SQLite database, then a login with the account it created. It writes into the checkout, so it refuses to run outside CI (`CI=true`) or where an installation already exists — run it locally only in a throwaway clone.
 
+A second job, `provision-smoke` (`scripts/ci/provision-smoke-test.sh`), does the same for the command-line installer, `scripts/provision.php`, including its refusals (invalid input, already installed, existing account). Same safeguards.
+
 Every new or changed feature should come with PHPUnit tests under `tests/Unit/` (and `tests/Integration/` where relevant).
 
 ## Documentation languages

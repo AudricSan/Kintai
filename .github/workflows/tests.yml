@@ -47,6 +47,27 @@ jobs:
       - name: Fresh install smoke test
         run: bash scripts/ci/install-smoke-test.sh
 
+  provision-smoke:
+    # Installation en ligne de commande (scripts/provision.php) sur une instance vierge : refus attendus, compte
+    # Owner, URL publique, connexion. Job séparé : chaque test exige une instance sans installation.
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_sqlite, mbstring, gd, intl
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-dev
+
+      - name: CLI provisioning smoke test
+        run: bash scripts/ci/provision-smoke-test.sh
+
   check-translations:
     runs-on: ubuntu-latest
     continue-on-error: true
