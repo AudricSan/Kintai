@@ -70,16 +70,17 @@ final class StoreStatsServiceMultiStoreComparisonTest extends TestCase
             [1, [['user_id' => 10], ['user_id' => 11]]],
             [2, []],
         ]);
-        $this->shifts->method('findByStore')->willReturnMap([
-            [1, [
+        $shiftsByStore = [
+            1 => [
                 [
                     'id' => 1, 'store_id' => 1, 'user_id' => 10, 'shift_date' => date('Y-m-d'),
                     'start_time' => '09:00', 'end_time' => '17:00', 'cross_midnight' => 0,
                     'duration_minutes' => 480, 'pause_minutes' => 60, 'deleted_at' => null,
                 ],
-            ]],
-            [2, []],
-        ]);
+            ],
+            2 => [],
+        ];
+        $this->shifts->method('findByStoreBetween')->willReturnCallback(fn(int $storeId) => $shiftsByStore[$storeId] ?? []);
 
         $rows = $this->service->multiStoreComparison([1, 2], 30);
 
