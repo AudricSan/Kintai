@@ -68,7 +68,7 @@ final class StoreStatsServiceStoreStatsTest extends TestCase
 
     public function testMissingCreatedByAndShiftTypeIdDoNotWarnAndFallBackToDefaults(): void
     {
-        $this->shifts->method('findByStore')->willReturn([
+        $this->shifts->method('findByStoreBetween')->willReturn([
             [
                 'id' => 1, 'user_id' => 10, 'shift_date' => date('Y-m-d'),
                 'start_time' => '09:00', 'end_time' => '17:00', 'cross_midnight' => 0,

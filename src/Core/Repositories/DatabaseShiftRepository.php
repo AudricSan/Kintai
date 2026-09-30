@@ -23,6 +23,25 @@ final class DatabaseShiftRepository implements ShiftRepositoryInterface
         return EloquentShift::where('store_id', $storeId)->get()->toArray();
     }
 
+    public function findByStoreBetween(int $storeId, string $from, string $to): array
+    {
+        // Index (store_id, shift_date, deleted_at) : seule la plage demandée est lue, pas tout l'historique.
+        return EloquentShift::where('store_id', $storeId)
+            ->whereBetween('shift_date', [$from, $to])
+            // Ordre explicite = celui que findByStore() obtenait implicitement sous SQLite (index store_id, user_id,
+            // shift_date) : les statistiques construisent des tableaux indexés par employé dont l'ordre s'affiche.
+            // Explicite, il est aussi le même sous MySQL.
+            ->orderBy('user_id')
+            ->orderBy('shift_date')
+            ->orderBy('id')
+            // Lecture brute, sans instancier un modèle par ligne : le modèle Shift n'a ni cast, ni accesseur, ni champ
+            // masqué, son toArray() renvoie exactement les colonnes — même résultat, pour une fraction du coût.
+            ->toBase()
+            ->get()
+            ->map(static fn($row): array => (array) $row)
+            ->all();
+    }
+
     public function findByUser(int $userId): array
     {
         return EloquentShift::where('user_id', $userId)->get()->toArray();
