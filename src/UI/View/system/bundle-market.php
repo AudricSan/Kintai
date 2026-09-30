@@ -31,7 +31,8 @@ $bundleChipColor = function (string $seed): string {
 <?php include __DIR__ . '/../_partials/_settings-tabs.php'; ?>
 <?php include __DIR__ . '/_bundle-tabs.php'; ?>
 
-<?php if ($success): ?>
+<?php // Le slug vient de l'URL : n'afficher le message que pour un slug bien formé, jamais un texte libre. ?>
+<?php if ($success && preg_match('/^[a-z0-9][a-z0-9-]{0,63}$/', (string) $success) === 1): ?>
     <div class="alert alert--success mb-sm"><?= htmlspecialchars(__('bundle_market_install_success', ['slug' => $success])) ?></div>
 <?php endif; ?>
 <?php if ($uninstalled): ?>
@@ -40,8 +41,10 @@ $bundleChipColor = function (string $seed): string {
 <?php if ($channelSaved): ?>
     <div class="alert alert--success mb-sm"><?= htmlspecialchars(__('bundle_market_channel_saved', ['channel' => $channels[$channelSaved] ?? $channelSaved])) ?></div>
 <?php endif; ?>
-<?php if ($error): ?>
-    <div class="alert alert--danger mb-sm"><?= htmlspecialchars(urldecode($error)) ?></div>
+<?php // Seul le code « invalid » a son message ici ; le détail d'un échec (« failed ») est affiché par le layout
+// depuis la session (kintai\Core\SessionFlash), jamais lu dans l'URL. ?>
+<?php if ($error === 'invalid'): ?>
+    <div class="alert alert--danger mb-sm"><?= htmlspecialchars(__('bundle_market_invalid_request')) ?></div>
 <?php endif; ?>
 
 <div class="card card--mb">

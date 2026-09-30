@@ -116,7 +116,7 @@ final class StoreStatsService implements StoreStatsServiceInterface
 
         $usersMap = [];
         foreach ($this->users->findAll() as $u) {
-            $usersMap[(int) $u['id']] = $u;
+            $usersMap[(int) $u['id']] = self::withoutSecrets($u);
         }
 
         $allTimeoffs = array_filter(
@@ -448,7 +448,7 @@ final class StoreStatsService implements StoreStatsServiceInterface
 
         $usersMap = [];
         foreach ($this->users->findAll() as $u) {
-            $usersMap[(int) $u['id']] = $u;
+            $usersMap[(int) $u['id']] = self::withoutSecrets($u);
         }
 
         $storeTypesMap = array_column($this->shiftTypes->findByStore($storeId), null, 'id');
@@ -808,7 +808,7 @@ final class StoreStatsService implements StoreStatsServiceInterface
 
         $usersMap = [];
         foreach ($this->users->findAll() as $u) {
-            $usersMap[(int) $u['id']] = $u;
+            $usersMap[(int) $u['id']] = self::withoutSecrets($u);
         }
 
         $allTimeoffs = array_filter(
@@ -1082,5 +1082,16 @@ final class StoreStatsService implements StoreStatsServiceInterface
             ];
         }
         return $rows;
+    }
+
+    /**
+     * Utilisateur sans ses champs secrets. Les statistiques renvoient la liste des utilisateurs (usersMap) jusqu'aux
+     * vues et exports : le hachage du mot de passe n'a rien à y faire, même s'il n'est jamais affiché.
+     */
+    private static function withoutSecrets(array $user): array
+    {
+        unset($user['password_hash']);
+
+        return $user;
     }
 }

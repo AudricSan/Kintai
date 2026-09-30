@@ -30,6 +30,9 @@ echo Flash::fromQuery('error', [
     'server_not_configured' => __('license_server_not_configured'),
     'server_unreachable'    => __('license_server_unreachable'),
     'no_license'            => __('license_none_registered'),
+    // Erreur renvoyée par le serveur de licences : le texte exact est affiché plus bas (« dernière erreur »),
+    // depuis l'état enregistré, jamais depuis l'URL.
+    'default'               => __('error_generic'),
 ])->render();
 ?>
 <div class="page-header">
