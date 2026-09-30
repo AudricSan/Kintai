@@ -29,6 +29,8 @@ final class AuthService
     // Empreinte du hash de mot de passe au moment de la connexion : si le mot de passe change
     // (lui-même, réinitialisation, admin), toute session ouverte avant devient invalide.
     private const SESSION_PW_FINGERPRINT = 'auth_pw_fp';
+    /** État « mot de passe à changer » de la session : ['fp' => empreinte du hash, 'weak' => bool]. */
+    private const SESSION_PW_WEAK = 'auth_pw_weak';
     private const REMEMBER_COOKIE = 'kintai_remember';
     // Coût bcrypt des mots de passe créés par l'app (voir AdminUserController/PasswordResetService).
     // Même coût que PasswordHasher : le calcul factice doit durer autant qu'une vraie vérification.
@@ -68,6 +70,7 @@ final class AuthService
 
         session_regenerate_id(true);
         $this->bindSession($user);
+        $this->rememberPasswordStrength($user, $password);
         if ($remember) {
             $this->issueRememberToken((int) $user['id']);
         }
@@ -110,6 +113,7 @@ final class AuthService
 
         session_regenerate_id(true);
         $this->bindSession($user);
+        $this->rememberPasswordStrength($user, $password);
         if ($remember) {
             $this->issueRememberToken((int) $user['id']);
         }
@@ -204,12 +208,52 @@ final class AuthService
     }
 
     /**
+     * Le mot de passe de l'utilisateur connecté est-il trop faible pour continuer ? C'est le cas du mot de
+     * passe par défaut « 0000 » (attribué à la création d'un compte ou à sa réinitialisation par un admin)
+     * et de tout mot de passe sous PasswordPolicy::MIN_LENGTH.
+     *
+     * Le second cas n'est connu qu'à la connexion par mot de passe (seul moment où le clair est lisible) ;
+     * pour une session ouverte autrement (cookie « rester connecté », session antérieure à ce contrôle),
+     * seul « 0000 » peut être détecté, une fois, en comparant au hash.
+     */
+    public function mustChangePassword(): bool
+    {
+        $user = $this->user();
+        if ($user === null) {
+            return false;
+        }
+
+        $fingerprint = $this->fingerprint($user);
+        $state = $_SESSION[self::SESSION_PW_WEAK] ?? null;
+        if (!is_array($state) || !hash_equals((string) ($state['fp'] ?? ''), $fingerprint)) {
+            $state = [
+                'fp'   => $fingerprint,
+                'weak' => password_verify(PasswordPolicy::DEFAULT_PASSWORD, (string) ($user['password_hash'] ?? '')),
+            ];
+            $_SESSION[self::SESSION_PW_WEAK] = $state;
+        }
+
+        return (bool) $state['weak'];
+    }
+
+    /**
      * À appeler après que l'utilisateur CONNECTÉ a changé son propre mot de passe : la session
      * courante reste valide (nouvelle empreinte), toutes les autres sont invalidées.
      */
     public function refreshSessionAfterPasswordChange(array $user): void
     {
         $_SESSION[self::SESSION_PW_FINGERPRINT] = $this->fingerprint($user);
+        // Le nouveau mot de passe a passé PasswordPolicy : il ne doit plus être réclamé.
+        $_SESSION[self::SESSION_PW_WEAK] = ['fp' => $this->fingerprint($user), 'weak' => false];
+    }
+
+    /** Mémorise, à la connexion, si le mot de passe saisi est trop court (clair disponible uniquement ici). */
+    private function rememberPasswordStrength(array $user, string $password): void
+    {
+        $_SESSION[self::SESSION_PW_WEAK] = [
+            'fp'   => $this->fingerprint($user),
+            'weak' => !PasswordPolicy::isLongEnough($password),
+        ];
     }
 
     private function bindSession(array $user): void
@@ -220,7 +264,7 @@ final class AuthService
 
     private function dropSession(): void
     {
-        unset($_SESSION[self::SESSION_KEY], $_SESSION[self::SESSION_PW_FINGERPRINT]);
+        unset($_SESSION[self::SESSION_KEY], $_SESSION[self::SESSION_PW_FINGERPRINT], $_SESSION[self::SESSION_PW_WEAK]);
     }
 
     private function fingerprint(array $user): string
