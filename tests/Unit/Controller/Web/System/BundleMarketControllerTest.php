@@ -56,6 +56,7 @@ final class BundleMarketControllerTest extends TestCase
 
     protected function tearDown(): void
     {
+        \kintai\Core\SessionFlash::pull();
         $_GET = [];
         $_POST = [];
     }
@@ -384,9 +385,13 @@ final class BundleMarketControllerTest extends TestCase
 
         $response = $this->makeController()->install(new Request());
 
+        // L'URL ne porte qu'un code ; le détail (en session) est affiché par le layout, jamais lu dans l'URL.
         $location = $this->locationOf($response);
-        $this->assertStringContainsString('error=', $location);
-        $this->assertStringContainsString('refus', urldecode($location));
+        $this->assertStringContainsString('error=failed', $location);
+        $this->assertStringNotContainsString('refus', urldecode($location));
+        $flash = \kintai\Core\SessionFlash::pull();
+        $this->assertSame('danger', $flash[0]['type'] ?? null);
+        $this->assertStringContainsString('refus', $flash[0]['text'] ?? '');
     }
 
     public function testInstallIsRefusedWhenTheRegistryCannotBeReadToCheckThePin(): void

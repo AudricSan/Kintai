@@ -27,7 +27,8 @@ use kintai\UI\Components\Button;
 <?php else: ?>
 
     <?php if (!empty($error)):
-        echo Alert::make(htmlspecialchars($error, ENT_QUOTES))->danger()->render();
+        // Alert échappe déjà le message : un htmlspecialchars() ici afficherait « &#039; » à la place d'une apostrophe.
+        echo Alert::make((string) $error)->danger()->render();
     endif; ?>
 
     <h2 class="guest-subtitle"><?= __('new_password') ?></h2>

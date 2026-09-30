@@ -97,6 +97,15 @@
         <?php endif; ?>
 
         <div class="page-content">
+            <?php foreach (\kintai\Core\SessionFlash::pull() as $_flash): ?>
+                <div class="alert alert--<?= htmlspecialchars($_flash['type']) ?> mb-sm"><?= htmlspecialchars($_flash['text']) ?></div>
+            <?php endforeach; ?>
+            <?php if ($isOwner && !empty($app_public_url_missing)): ?>
+                <div class="alert alert--warning mb-sm">
+                    <?= htmlspecialchars(__('public_url_missing_warning')) ?>
+                    <a href="<?= route_url('admin.owner_settings') ?>"><?= htmlspecialchars(__('public_url_missing_action')) ?></a>
+                </div>
+            <?php endif; ?>
             <?= $content ?>
         </div>
 

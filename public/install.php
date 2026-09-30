@@ -192,7 +192,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'last_name'     => $adminLastName,
                 'display_name'  => $adminFirstName . ' ' . $adminLastName,
                 'email'         => $adminEmail,
-                'password_hash' => password_hash($adminPassword, PASSWORD_BCRYPT, ['cost' => 12]),
+                'password_hash' => \kintai\Core\Auth\PasswordHasher::hash($adminPassword),
                 'is_active'     => 1,
                 'created_at'    => date('Y-m-d H:i:s'),
                 'updated_at'    => date('Y-m-d H:i:s'),
@@ -204,6 +204,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($ownerRole !== null) {
                 $app->container()->make(RoleAssignmentRepositoryInterface::class)
                     ->assign((int) $adminUser['id'], (int) $ownerRole['id'], 'global', null);
+            }
+
+            // ── Step D bis: URL publique de l'instance ────────────────────
+            // Sert aux liens absolus des e-mails (réinitialisation du mot de passe). L'adresse par laquelle
+            // l'administrateur installe est la bonne dans l'immense majorité des cas ; elle reste modifiable
+            // dans /admin/owner-settings, et APP_URL prime si elle est définie (voir PublicUrlResolver).
+            $installScheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $installBase   = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/install.php')), '/');
+            $installBase   = ($installBase === '.' ) ? '' : $installBase;
+            $publicUrl     = \kintai\Core\Services\PublicUrlResolver::normalize(
+                $installScheme . '://' . (string) ($_SERVER['HTTP_HOST'] ?? '') . $installBase
+            );
+            if ($publicUrl !== null) {
+                $app->container()->make(\kintai\Core\Repositories\AppSettingsRepositoryInterface::class)
+                    ->setMany([\kintai\Core\Services\PublicUrlResolver::SETTING_KEY => $publicUrl]);
             }
 
             // ── Step E: Lock installation ─────────────────────────────────

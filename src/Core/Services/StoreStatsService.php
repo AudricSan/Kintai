@@ -16,6 +16,15 @@ use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 
 final class StoreStatsService implements StoreStatsServiceInterface
 {
+    /**
+     * Résultats de storeStats() déjà calculés pendant cette requête, par (store, période, bornes de durée).
+     * Le tableau de bord demande les mêmes statistiques à plusieurs widgets ; le service est un singleton de
+     * requête (AppServiceProvider), ce cache ne survit donc jamais à la requête.
+     *
+     * @var array<string, array>
+     */
+    private array $storeStatsCache = [];
+
     public function __construct(
         private readonly StoreRepositoryInterface $stores,
         private readonly ShiftRepositoryInterface $shifts,
@@ -31,12 +40,74 @@ final class StoreStatsService implements StoreStatsServiceInterface
 
     public function storeStats(int $storeId, int $period, int $minShiftMin = 0, int $maxShiftMin = 0): array
     {
+        $cacheKey = "{$storeId}:{$period}:{$minShiftMin}:{$maxShiftMin}:" . date('Y-m-d');
+        return $this->storeStatsCache[$cacheKey] ??= $this->computeStoreStats($storeId, $period, $minShiftMin, $maxShiftMin);
+    }
+
+    /**
+     * Même calcul que la boucle de coûts de computeStoreStats() (mêmes shifts, même ordre, mêmes taux), réduit au
+     * coût par mois : la vue financière du tableau de bord n'utilise que ce chiffre et déclenchait jusqu'ici le
+     * calcul complet des statistiques sur 180 jours pour chaque magasin.
+     */
+    public function costByMonth(int $storeId, int $period): array
+    {
+        $cacheKey = "cost:{$storeId}:{$period}:" . date('Y-m-d');
+        if (isset($this->storeStatsCache[$cacheKey])) {
+            return $this->storeStatsCache[$cacheKey];
+        }
+
         $since = date('Y-m-d', strtotime("-{$period} days"));
         $today = date('Y-m-d');
+        $shifts = array_filter(
+            $this->shifts->findByStoreBetween($storeId, $since, $today),
+            fn($s) => empty($s['deleted_at'])
+        );
+
+        $memberIds     = array_map(fn($m) => (int) $m['user_id'], $this->storeUsers->findByStore($storeId));
+        $rateCache     = $this->rateCacheFor($memberIds);
+        $storeTypesMap = array_column($this->shiftTypes->findByStore($storeId), null, 'id');
+        $wageCalc      = new ShiftWageCalculator();
+
+        $costByMonth = [];
+        foreach ($shifts as $s) {
+            $wage  = $wageCalc->costOf($s, $storeTypesMap, $rateCache[(int) $s['user_id']] ?? []);
+            $month = substr($s['shift_date'], 0, 7);
+            $costByMonth[$month] = ($costByMonth[$month] ?? 0) + $wage['amount'];
+        }
+        ksort($costByMonth);
+
+        return $this->storeStatsCache[$cacheKey] = $costByMonth;
+    }
+
+    /** @return array<int, array<int, float>> user_id => (shift_type_id => taux horaire) */
+    private function rateCacheFor(array $memberIds): array
+    {
+        $rateCache = [];
+        foreach ($memberIds as $uid) {
+            foreach ($this->userRates->findByUser($uid) as $r) {
+                $rateCache[$uid][(int) $r['shift_type_id']] = (float) $r['hourly_rate'];
+            }
+        }
+
+        return $rateCache;
+    }
+
+    private function computeStoreStats(int $storeId, int $period, int $minShiftMin, int $maxShiftMin): array
+    {
+        $since = date('Y-m-d', strtotime("-{$period} days"));
+        $today = date('Y-m-d');
+        $prevSince = date('Y-m-d', strtotime("-{$period} days", strtotime($since)));
+
+        // Une seule lecture, limitée à la période précédente + la période courante (la précédente sert aux
+        // comparaisons plus bas), au lieu de tout l'historique du store lu deux fois puis filtré en PHP.
+        $windowShifts = array_values(array_filter(
+            $this->shifts->findByStoreBetween($storeId, $prevSince, $today),
+            fn($s) => empty($s['deleted_at'])
+        ));
 
         $allShifts = array_values(array_filter(
-            $this->shifts->findByStore($storeId),
-            fn($s) => empty($s['deleted_at']) && $s['shift_date'] >= $since && $s['shift_date'] <= $today
+            $windowShifts,
+            fn($s) => $s['shift_date'] >= $since && $s['shift_date'] <= $today
         ));
         $n = count($allShifts);
 
@@ -45,7 +116,7 @@ final class StoreStatsService implements StoreStatsServiceInterface
 
         $usersMap = [];
         foreach ($this->users->findAll() as $u) {
-            $usersMap[(int) $u['id']] = $u;
+            $usersMap[(int) $u['id']] = self::withoutSecrets($u);
         }
 
         $allTimeoffs = array_filter(
@@ -55,12 +126,7 @@ final class StoreStatsService implements StoreStatsServiceInterface
 
         $storeTypesMap = array_column($this->shiftTypes->findByStore($storeId), null, 'id');
 
-        $rateCache = [];
-        foreach ($memberIds as $uid) {
-            foreach ($this->userRates->findByUser($uid) as $r) {
-                $rateCache[$uid][(int) $r['shift_type_id']] = (float) $r['hourly_rate'];
-            }
-        }
+        $rateCache = $this->rateCacheFor($memberIds);
         $wageCalc = new ShiftWageCalculator();
 
         $durations    = array_map(fn($s) => (int) $s['duration_minutes'], $allShifts);
@@ -285,11 +351,10 @@ final class StoreStatsService implements StoreStatsServiceInterface
         $burnoutRisk += (($hours ? max($hours) : 0) > 50) ? 20 : (($hours ? max($hours) : 0) > 40 ? 10 : 0);
         $burnoutRisk = min(100, $burnoutRisk);
 
-        $prevSince  = date('Y-m-d', strtotime("-{$period} days", strtotime($since)));
         $prevEnd    = date('Y-m-d', strtotime($since . ' -1 day'));
         $prevShifts = array_values(array_filter(
-            $this->shifts->findByStore($storeId),
-            fn($s) => empty($s['deleted_at']) && $s['shift_date'] >= $prevSince && $s['shift_date'] <= $prevEnd
+            $windowShifts,
+            fn($s) => $s['shift_date'] >= $prevSince && $s['shift_date'] <= $prevEnd
         ));
         $prevN     = count($prevShifts);
         $prevHours = array_sum(array_map(
@@ -383,7 +448,7 @@ final class StoreStatsService implements StoreStatsServiceInterface
 
         $usersMap = [];
         foreach ($this->users->findAll() as $u) {
-            $usersMap[(int) $u['id']] = $u;
+            $usersMap[(int) $u['id']] = self::withoutSecrets($u);
         }
 
         $storeTypesMap = array_column($this->shiftTypes->findByStore($storeId), null, 'id');
@@ -743,7 +808,7 @@ final class StoreStatsService implements StoreStatsServiceInterface
 
         $usersMap = [];
         foreach ($this->users->findAll() as $u) {
-            $usersMap[(int) $u['id']] = $u;
+            $usersMap[(int) $u['id']] = self::withoutSecrets($u);
         }
 
         $allTimeoffs = array_filter(
@@ -1017,5 +1082,16 @@ final class StoreStatsService implements StoreStatsServiceInterface
             ];
         }
         return $rows;
+    }
+
+    /**
+     * Utilisateur sans ses champs secrets. Les statistiques renvoient la liste des utilisateurs (usersMap) jusqu'aux
+     * vues et exports : le hachage du mot de passe n'a rien à y faire, même s'il n'est jamais affiché.
+     */
+    private static function withoutSecrets(array $user): array
+    {
+        unset($user['password_hash']);
+
+        return $user;
     }
 }

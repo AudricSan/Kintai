@@ -4,7 +4,7 @@
 
 **複数店舗を運営する企業向けの、オープンソースなシフト・勤怠・労務管理システム。**
 
-[![Version](https://img.shields.io/badge/version-0.2.0-purple.svg)](CHANGELOG.ja.md)
+[![Version](https://img.shields.io/github/v/release/AudricSan/Kintai?include_prereleases&label=version&color=purple)](https://github.com/AudricSan/Kintai/releases)
 [![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 [![PHP Version](https://img.shields.io/badge/php-%3E%3D%208.3-8892bf.svg)](https://php.net)
 [![Tests](https://github.com/AudricSan/Kintai/actions/workflows/tests.yml/badge.svg)](https://github.com/AudricSan/Kintai/actions/workflows/tests.yml)
@@ -12,7 +12,7 @@
 
 Kintaiは、Excelの勤怠表と大企業向けERPの間を埋めるツールです。複数店舗を展開する小売・飲食業向けに、シフト管理、勤怠打刻、休暇申請、シフト交換、日報、給与概算までを一括で提供します。自社インフラ上で、自社データを保持したまま運用できます。
 
-> **ステータス：ベータ版（`0.2.0`）。** Kintaiは実用段階にあり、下記のデモ環境でも日常的に稼働していますが、安定版 `1.0.0` に至るまでAPIやデータスキーマが変更される可能性があります。詳細は [CHANGELOG.ja.md](CHANGELOG.ja.md) をご覧ください。
+> **ステータス：ベータ版（1.0 未満）。** Kintaiは実用段階にあり、下記のデモ環境でも日常的に稼働していますが、安定版 `1.0.0` に至るまでAPIやデータスキーマが変更される可能性があります。詳細は [CHANGELOG.ja.md](CHANGELOG.ja.md) をご覧ください。
 
 ---
 
@@ -87,6 +87,14 @@ php -S 127.0.0.1:8000 -t public
 ```
 
 続けて `http://127.0.0.1:8000/install.php` を開いてください — Webインストーラーが `config/database.local.php` を作成し、マイグレーションを実行、管理者アカウントを作成します。
+
+インストーラーは、インストールに使ったアドレスをインスタンスの**公開URL**としても記録します。これはメール内リンク（パスワード再設定）に使われます。ユーザーが別のアドレスで Kintai にアクセスする場合は、オーナー設定（`/admin/owner-settings`）で確認してください。環境変数 `APP_URL` が設定されている場合はそちらが優先されます。公開URLがないと、パスワード再設定メールは送信されず、オーナーに警告が表示されます。
+
+ブラウザーを使わずにインストールする場合（スクリプトによるデプロイ）は、`scripts/provision.php` がコマンドラインで同じ処理を行います。デフォルトは SQLite で、MySQL の場合は `--db-driver=mysql` と `--db-*` オプションを使い、環境変数がフォールバックになります（スクリプト冒頭を参照）。公開URLを推測できるリクエストがないため、`--app-url` を指定してください：
+
+```bash
+php scripts/provision.php --admin-email=admin@example.com --admin-password='…' --app-url=https://kintai.example.com
+```
 
 ### Webサーバー
 
