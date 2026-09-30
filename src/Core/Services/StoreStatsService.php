@@ -16,6 +16,15 @@ use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 
 final class StoreStatsService implements StoreStatsServiceInterface
 {
+    /**
+     * Résultats de storeStats() déjà calculés pendant cette requête, par (store, période, bornes de durée).
+     * Le tableau de bord demande les mêmes statistiques à plusieurs widgets ; le service est un singleton de
+     * requête (AppServiceProvider), ce cache ne survit donc jamais à la requête.
+     *
+     * @var array<string, array>
+     */
+    private array $storeStatsCache = [];
+
     public function __construct(
         private readonly StoreRepositoryInterface $stores,
         private readonly ShiftRepositoryInterface $shifts,
@@ -31,12 +40,26 @@ final class StoreStatsService implements StoreStatsServiceInterface
 
     public function storeStats(int $storeId, int $period, int $minShiftMin = 0, int $maxShiftMin = 0): array
     {
+        $cacheKey = "{$storeId}:{$period}:{$minShiftMin}:{$maxShiftMin}:" . date('Y-m-d');
+        return $this->storeStatsCache[$cacheKey] ??= $this->computeStoreStats($storeId, $period, $minShiftMin, $maxShiftMin);
+    }
+
+    private function computeStoreStats(int $storeId, int $period, int $minShiftMin, int $maxShiftMin): array
+    {
         $since = date('Y-m-d', strtotime("-{$period} days"));
         $today = date('Y-m-d');
+        $prevSince = date('Y-m-d', strtotime("-{$period} days", strtotime($since)));
+
+        // Une seule lecture, limitée à la période précédente + la période courante (la précédente sert aux
+        // comparaisons plus bas), au lieu de tout l'historique du store lu deux fois puis filtré en PHP.
+        $windowShifts = array_values(array_filter(
+            $this->shifts->findByStoreBetween($storeId, $prevSince, $today),
+            fn($s) => empty($s['deleted_at'])
+        ));
 
         $allShifts = array_values(array_filter(
-            $this->shifts->findByStore($storeId),
-            fn($s) => empty($s['deleted_at']) && $s['shift_date'] >= $since && $s['shift_date'] <= $today
+            $windowShifts,
+            fn($s) => $s['shift_date'] >= $since && $s['shift_date'] <= $today
         ));
         $n = count($allShifts);
 
@@ -285,11 +308,10 @@ final class StoreStatsService implements StoreStatsServiceInterface
         $burnoutRisk += (($hours ? max($hours) : 0) > 50) ? 20 : (($hours ? max($hours) : 0) > 40 ? 10 : 0);
         $burnoutRisk = min(100, $burnoutRisk);
 
-        $prevSince  = date('Y-m-d', strtotime("-{$period} days", strtotime($since)));
         $prevEnd    = date('Y-m-d', strtotime($since . ' -1 day'));
         $prevShifts = array_values(array_filter(
-            $this->shifts->findByStore($storeId),
-            fn($s) => empty($s['deleted_at']) && $s['shift_date'] >= $prevSince && $s['shift_date'] <= $prevEnd
+            $windowShifts,
+            fn($s) => $s['shift_date'] >= $prevSince && $s['shift_date'] <= $prevEnd
         ));
         $prevN     = count($prevShifts);
         $prevHours = array_sum(array_map(

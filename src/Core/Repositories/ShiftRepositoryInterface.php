@@ -18,6 +18,12 @@ interface ShiftRepositoryInterface
     public function findByStore(int $storeId): array;
 
     /**
+     * Shifts d'un store dont la date est comprise entre $from et $to inclus (YYYY-MM-DD), supprimés compris
+     * (même périmètre que findByStore(), restreint par date côté base plutôt qu'en PHP).
+     */
+    public function findByStoreBetween(int $storeId, string $from, string $to): array;
+
+    /**
      * Retourne tous les shifts d'un utilisateur.
      */
     public function findByUser(int $userId): array;
