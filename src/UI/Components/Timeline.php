@@ -204,7 +204,7 @@ final class Timeline implements ComponentInterface
         );
 
         $html = '<div title="' . $tooltip . '"'
-            . ' onclick="sdModalOpen(this)"'
+            . ' data-on-click="sdModalOpen" data-args=\'["@this"]\''
             . ' data-id="' . ((int) ($sh['id'] ?? 0)) . '"'
             . ' data-date="' . htmlspecialchars($sh['shift_date'] ?? '') . '"'
             . ' data-start="' . $this->atFmt($sm) . '"'

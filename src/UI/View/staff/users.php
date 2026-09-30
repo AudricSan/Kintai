@@ -57,7 +57,7 @@ $exportQuery = $filter_store_id !== 0 ? '?store_id=' . $filter_store_id : '';
             <?php if (count($available_stores) > 1 || $filter_store_id !== 0): ?>
             <div class="shifts-filters__group">
                 <label class="shifts-filters__label" for="uf-store"><?= __('store') ?></label>
-                <select id="uf-store" name="store_id" class="form-control form-control-sm" onchange="this.form.submit()">
+                <select id="uf-store" name="store_id" class="form-control form-control-sm" data-submit-on-change>
                     <option value="0"><?= __('all_stores') ?></option>
                     <?php foreach ($available_stores as $s): ?>
                         <option value="<?= (int) $s['id'] ?>" <?= $filter_store_id === (int) $s['id'] ? 'selected' : '' ?>><?= htmlspecialchars($s['name']) ?></option>

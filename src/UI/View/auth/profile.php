@@ -295,7 +295,7 @@ else: ?>
             <?= csrf_field() ?>
             <input type="hidden" name="tab" value="availability">
             <label class="form-label" for="store_sel"><?= __('store') ?></label>
-            <select id="store_sel" name="store_id" class="form-control" onchange="this.form.submit()">
+            <select id="store_sel" name="store_id" class="form-control" data-submit-on-change>
                 <?php foreach ($stores as $sid => $s): ?>
                     <option value="<?= (int) $sid ?>" <?= $sid === $store_id ? 'selected' : '' ?>>
                         <?= htmlspecialchars($s['name'] ?? '#' . $sid) ?>
@@ -461,7 +461,7 @@ $_filteredBnPool = array_values(array_filter(
         <?= Button::make(__('nav_reset_order'))
             ->ghost()->sm()
             ->attrs(['name' => 'reset_section_order', 'value' => '1',
-                'onclick' => "return confirm('" . htmlspecialchars(__('nav_reset_order') . ' ?', ENT_QUOTES) . "')"])
+                'data-confirm' => __('nav_reset_order') . ' ?'])
             ->submit()->render() ?>
     </div>
     <ul class="nav-order-list" id="navSectionOrder">
@@ -573,15 +573,15 @@ ob_start();
         <div class="form-inline-flex">
             <input type="text" class="form-control" readonly
                    value="<?= htmlspecialchars($link['url']) ?>"
-                   onclick="this.select()">
+                   data-on-click="@select">
             <button type="button" class="btn btn--ghost btn--sm"
                     data-copy-url="<?= htmlspecialchars($link['url']) ?>"
-                    onclick="navigator.clipboard.writeText(this.dataset.copyUrl);this.textContent='✓'">
+                    data-on-click="@copy">
                 <?= __('ical_copy') ?>
             </button>
             <form method="POST"
                   action="<?= $BASE_URL ?>/ical/<?= (int) $link['store_id'] ?>/regenerate"
-                  onsubmit="return confirm('<?= htmlspecialchars(__('ical_regenerate_confirm'), ENT_QUOTES) ?>')">
+                  data-confirm="<?= htmlspecialchars(__('ical_regenerate_confirm'), ENT_QUOTES) ?>">
                 <?= csrf_field() ?>
                 <?= Button::make(__('ical_regenerate'))->ghost()->sm()->submit()->render() ?>
             </form>

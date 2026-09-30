@@ -84,7 +84,7 @@ echo Flash::fromQuery('error', [
     <div class="card-header card-header--flex">
         <h3 class="card-title"><?= __('stores_plural') ?></h3>
         <?php if (!empty($available_stores) && $can('employees.update')): ?>
-        <?= Button::make(__('assign_to_store'))->outline()->sm()->attrs(['type' => 'button', 'onclick' => "openModal('assignStoreModal')"])->render() ?>
+        <?= Button::make(__('assign_to_store'))->outline()->sm()->attrs(['type' => 'button', 'data-on-click' => 'openModal', 'data-args' => '["assignStoreModal"]'])->render() ?>
         <?php endif; ?>
     </div>
     <div class="table-wrap">
@@ -120,7 +120,7 @@ echo Flash::fromQuery('error', [
                                     <?= csrf_field() ?>
                                     <input type="hidden" name="_redirect_to" value="<?= htmlspecialchars($BASE_URL . '/admin/users/' . (int) $user['id'] . '/edit?success=deductions_saved') ?>">
                                     <label class="form-toggle" title="<?= htmlspecialchars(__('subject_to_deductions')) ?>">
-                                        <input type="checkbox" name="subject_to_deductions" value="1" class="form-toggle__input" <?= $subject ? 'checked' : '' ?> onchange="this.form.submit()">
+                                        <input type="checkbox" name="subject_to_deductions" value="1" class="form-toggle__input" <?= $subject ? 'checked' : '' ?> data-submit-on-change>
                                         <span class="form-toggle__track"></span>
                                     </label>
                                 </form>
@@ -145,7 +145,7 @@ echo Flash::fromQuery('error', [
                                     <?= csrf_field() ?>
                                     <input type="hidden" name="_redirect_to" value="<?= htmlspecialchars($BASE_URL . '/admin/users/' . (int) $user['id'] . '/edit?success=deductions_saved') ?>">
                                     <label class="form-toggle" title="<?= htmlspecialchars(__('subject_to_deductions')) ?>">
-                                        <input type="checkbox" name="subject_to_deductions" value="1" class="form-toggle__input" <?= $subject ? 'checked' : '' ?> onchange="this.form.submit()">
+                                        <input type="checkbox" name="subject_to_deductions" value="1" class="form-toggle__input" <?= $subject ? 'checked' : '' ?> data-submit-on-change>
                                         <span class="form-toggle__track"></span>
                                     </label>
                                 </form>
@@ -164,7 +164,7 @@ echo Flash::fromQuery('error', [
                                     <input type="number" name="hourly_rate" class="form-control form-control-sm w-90" min="0" step="0.01"
                                            value="<?= $currentRate !== null ? number_format((float) $currentRate['hourly_rate'], 2, '.', '') : '' ?>"
                                            placeholder="<?= htmlspecialchars($t['hourly_rate'] !== null ? number_format((float) $t['hourly_rate'], 2, '.', '') : '0.00') ?>"
-                                           onchange="this.form.submit()">
+                                           data-submit-on-change>
                                 </form>
                                 <?php else: ?>
                                     <?= $currentRate !== null ? Badge::make(number_format((float) $currentRate['hourly_rate'], 2, '.', ''))->active()->render() : '<span class="text-sm text-muted">—</span>' ?>
@@ -213,7 +213,7 @@ foreach ($user_memberships as $m):
         <?= csrf_field() ?>
         <input type="hidden" name="_redirect_to" value="<?= htmlspecialchars($BASE_URL . '/admin/users/' . (int) $user['id'] . '/edit?success=deductions_saved') ?>">
         <label class="form-toggle form-toggle--labeled">
-            <input type="checkbox" name="subject_to_deductions" value="1" class="form-toggle__input" <?= $subject ? 'checked' : '' ?> onchange="this.form.submit()">
+            <input type="checkbox" name="subject_to_deductions" value="1" class="form-toggle__input" <?= $subject ? 'checked' : '' ?> data-submit-on-change>
             <span class="form-toggle__track"></span>
             <span><?= __('subject_to_deductions') ?></span>
         </label>
@@ -245,7 +245,7 @@ endforeach;
         <input type="hidden" name="redirect_to" value="<?= $BASE_URL ?>/admin/users/<?= (int)$user['id'] ?>/edit?success=member_added">
         <div class="form-group">
             <label class="form-label"><?= __('store') ?></label>
-            <select name="store_id_select" class="form-control" required onchange="document.getElementById('addStoreForm').action='<?= $BASE_URL ?>/admin/stores/' + this.value + '/members'">
+            <select name="store_id_select" class="form-control" required data-on-change="@setFormAction" data-target="addStoreForm" data-action-template="<?= $BASE_URL ?>/admin/stores/{value}/members">
                 <option value="">— <?= __('select') ?> —</option>
                 <?php foreach ($available_stores as $s): ?>
                     <option value="<?= (int)$s['id'] ?>"><?= htmlspecialchars($s['name'] ?? '') ?></option>
@@ -263,7 +263,7 @@ endforeach;
     </form>
     <?php
     $assignStoreModalFooter = Button::make(__('add'))->primary()->submit()->attrs(['form' => 'addStoreForm'])->render()
-        . ' ' . Button::make(__('cancel'))->ghost()->attrs(['onclick' => "closeModal('assignStoreModal')"])->render();
+        . ' ' . Button::make(__('cancel'))->ghost()->attrs(['data-on-click' => 'closeModal', 'data-args' => '["assignStoreModal"]'])->render();
     echo Modal::make('assignStoreModal')
         ->title(__('assign_to_store'))
         ->body(ob_get_clean())

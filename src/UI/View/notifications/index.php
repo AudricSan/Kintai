@@ -10,7 +10,7 @@
             <?= csrf_field() ?>
             <button type="submit" class="btn btn--ghost btn--sm"><?= __('mark_all_read') ?></button>
         </form>
-        <form method="POST" action="<?= route_url('notifications.delete_all') ?>" onsubmit="return confirm('<?= __('delete_all_notifications_confirm') ?>')">
+        <form method="POST" action="<?= route_url('notifications.delete_all') ?>" data-confirm="<?= htmlspecialchars(__('delete_all_notifications_confirm'), ENT_QUOTES) ?>">
             <?= csrf_field() ?>
             <button type="submit" class="btn btn--ghost btn--sm"><?= __('delete_all_notifications') ?></button>
         </form>

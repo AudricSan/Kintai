@@ -215,7 +215,7 @@ Obligatoire à la racine du dépôt du bundle :
 | `namespace` | Oui | Racine PSR-4 pour tout ce qui vit sous `src/`. |
 | `entry_class` | Oui | Nom pleinement qualifié de la classe d'entrée ; son fichier doit exister sous `src/` une fois résolu depuis `namespace` (vérifié avant activation). |
 | `description`, `author`, `license`, `homepage` | Non | Informatif uniquement. |
-| `kintai_core.min`/`.max` | Non (défauts `0.0.0`/`999.999.999`) | L'installateur refuse d'activer un bundle hors de ces bornes par rapport à la version Core de l'instance en cours. |
+| `kintai_core.min`/`.max` | Non (défauts `0.0.0`/`999.999.999`) | L'installateur refuse d'activer un bundle hors de ces bornes par rapport à la version Core de l'instance en cours. Un bundle dont les vues utilisent les actions `data-*` ou `csp_nonce()` doit fixer `min` à `0.3.0` — voir [Content Security Policy](#content-security-policy--pas-de-script-inline). |
 | `requires_bundles` | Non (défaut `{}`) | Slug → contrainte de version. **Informatif uniquement pour l'instant** — voir Limitations. |
 
 ## Publier une release
@@ -224,7 +224,51 @@ Obligatoire à la racine du dépôt du bundle :
 2. Tagger le commit `vX.Y.Z` et pousser le tag.
 3. Créer une GitHub Release pour ce tag (`gh release create vX.Y.Z --generate-notes`, ou un workflow CI qui fait la même chose au push d'un tag — voir le `.github/workflows/release.yml` minimal de `kintai-bundle-feedback`). Rien à construire : le `zipball_url` auto-généré de la release est exactement ce que `BundleInstallerService` télécharge.
 
-## Se faire lister dans un registry
+## Content Security Policy : pas de script inline
+
+Kintai envoie `script-src 'self' 'nonce-…'` (`SecurityHeadersMiddleware`) : le navigateur n'exécute que les scripts servis par Kintai lui-même, ou un `<script>` inline portant le nonce de la requête en cours. **Les attributs d'événements inline (`onclick=`, `onchange=`, `onsubmit=`, `oninput=`…) et les liens `javascript:` sont bloqués**, en silence : le bouton ne fait simplement rien, sans aucune erreur côté serveur. Une vue de bundle ne doit donc pas en utiliser.
+
+- **`<script>` inline** — seulement en cas de vrai besoin, avec le nonce de la requête : `<script nonce="<?= csp_nonce() ?>">…</script>`. Un bloc de données `<script type="application/json">` n'est pas exécuté et n'a pas besoin de nonce. Préférez un fichier dans `assets/js/` de votre bundle (chargé avec `bundle_asset()`), qui n'exige rien.
+- **Attributs d'événements** — remplacez-les par des attributs déclaratifs `data-*`, gérés par `public/assets/js/modules/csp-actions.js` (chargé par le layout de l'application) :
+
+| Au lieu de | Écrire |
+|---|---|
+| `onclick="doThing()"` | `data-on-click="doThing"` |
+| `onclick="doThing('a', 2)"` | `data-on-click="doThing" data-args='["a", 2]'` |
+| `onchange="doThing(this.value)"` | `data-on-change="doThing" data-args='["@value"]'` (`"@this"`, `"@value"`, `"@checked"` sont remplacés à l'appel) |
+| `onchange="this.form.submit()"` | `data-submit-on-change` |
+| `onchange="document.getElementById('f').submit()"` | `data-submit-form="f"` |
+| `onclick="location.href='/x'"` | `data-goto="/x"` (http/https uniquement) |
+| `onclick="event.stopPropagation()"` | `data-stop-propagation` |
+| `onclick="window.print()"` | `data-on-click="@print"` (aussi `@close`, `@select`, `@removeParent`, `@copy`) |
+| `onsubmit="return confirm('…')"`, `onclick="return confirm('…')"` | `data-confirm="…"` sur le `<form>` ou sur le bouton submit (modale de confirmation globale) |
+| `Button::attrs(['onclick' => 'f()'])` | `Button::attrs(['data-on-click' => 'f'])` |
+
+`data-on-*` n'appelle qu'une **fonction que vous avez définie vous-même** sur `window` (une déclaration de fonction dans votre script, ou `window.f = …`) : les fonctions natives du navigateur comme `eval` ou `setTimeout` sont refusées volontairement, pour qu'un attribut injecté ne devienne pas un moyen d'exécuter du code. Les valeurs d'attributs de `Button`/`Modal` sont déjà échappées par le composant : passez la valeur brute, pas le résultat de `htmlspecialchars()`.
+
+**Version requise.** Les actions `data-*` et `csp_nonce()` existent à partir de **Kintai Core 0.3.0**. Un bundle qui les utilise doit déclarer `"kintai_core": { "min": "0.3.0", … }` dans son `bundle.json`, pour que l'installateur le refuse sur un Core plus ancien au lieu d'installer des contrôles qui ne font rien. À l'inverse, c'est une **rupture pour les bundles existants** : un bundle écrit avant la 0.3.0 qui utilise encore des handlers inline continue de fonctionner sur un Core antérieur à la 0.3.0, mais ses boutons, sélecteurs et confirmations cessent de fonctionner à partir de la 0.3.0 tant qu'il n'est pas migré. `tests/Unit/Security/NoInlineScriptGuardTest.php` dans Kintai échoue dès qu'une vue du Core réintroduit un handler inline ; faites la même vérification sur vos propres vues.
+
+### Migrer un bundle existant
+
+1. Repérez les occurrences : `grep -rnE "[[:space:]]on(click|change|submit|input)[[:space:]]*=|['\"]on(click|change|submit|input)['\"][[:space:]]*=>|javascript:|<script>" Views src`.
+2. Remplacez chacune par l'attribut `data-*` correspondant du tableau ci-dessus. Un `confirm()` devient `data-confirm` ; un handler qui appelait `event.stopPropagation()` exige `data-stop-propagation`, sinon un ancêtre délégué se déclenche aussi.
+3. Vérifiez que chaque fonction appelée via `data-on-*` est définie **sur `window`** : une déclaration de fonction dans un script classique, ou `window.f = …`. Un `const f = …` ou `let f = …` de premier niveau n'est pas une propriété de `window` et est refusé.
+4. Mettez le nonce sur les blocs `<script>` inline que vous gardez : `<script nonce="<?= csp_nonce() ?>">`.
+5. Relevez `kintai_core.min` à `0.3.0` et ajoutez la vérification CI ci-dessous.
+
+### Vérifier en CI
+
+Le serveur ne voit aucune erreur quand le navigateur bloque un handler inline : rien d'autre n'attrapera une régression. Les bundles officiels exécutent cette étape dans `.github/workflows/tests.yml` :
+
+```yaml
+- name: No inline event handlers or nonce-less scripts (Kintai CSP)
+  run: |
+    set -euo pipefail
+    if grep -rnE "[[:space:]]on(click|change|submit|input|load|error|focus|blur|dblclick|keyup|keydown)[[:space:]]*=|['\"]on(click|change|submit|input)['\"][[:space:]]*=>|(href|src|action)[[:space:]]*=[[:space:]]*[\"']javascript:|<script>" Views src; then
+      echo "::error::Inline handlers, javascript: URLs and <script> without nonce are blocked by Kintai's CSP"
+      exit 1
+    fi
+```
 
 Un **registry** n'est rien de plus qu'un fichier statique `registry.json` servi en simple HTTPS (l'URL `raw.githubusercontent.com` d'un dépôt GitHub fonctionne bien, et c'est comme ça que le registry officiel est servi) — Kintai ne le clone jamais non plus, il se contente d'un GET (`BundleRegistryClient`).
 
@@ -267,6 +311,7 @@ Deux façons d'être découvert :
 - **Un seul processus, un seul autoloader Composer.** Il n'y a pas de `composer.json` par bundle ni d'isolation des dépendances — votre bundle tourne dans le même processus PHP et le même arbre de namespaces que le `kintai\` de Kintai lui-même. Ne dépendez que de `BundleContract\Bundle`, des interfaces de `src/Core/Repositories/*Interface.php`, et d'autres classes Core avec lesquelles vous êtes à l'aise de vous coupler entre versions de Kintai.
 - **`requires_bundles` n'est pas encore appliqué.** Déclarer une dépendance sur le slug/la version d'un autre bundle est accepté et stocké, mais rien ne bloque actuellement l'installation si elle manque ou est trop ancienne — considérez-le comme de la documentation pour l'instant, pas une garantie.
 - **Pas de flux de désinstallation pour les données métier.** `/admin/bundles/market` peut installer, mettre à jour et désinstaller les fichiers d'un bundle, son entrée de manifeste et ses lignes de suivi de migrations — mais les tables créées par vos migrations (et leurs données) ne sont jamais supprimées ni touchées à la désinstallation. Les nettoyer, si on le souhaite, reste pour l'instant une opération manuelle sur la base de données.
+- **Les scripts et handlers d'événements inline ne fonctionnent pas.** À partir de Kintai Core 0.3.0, la Content-Security-Policy n'a plus `'unsafe-inline'` pour les scripts : une vue de bundle avec `onclick=`/`onchange=`/`onsubmit=`/`oninput=`, un lien `javascript:` ou un `<script>` sans nonce est bloquée en silence par le navigateur. Voir [Content Security Policy](#content-security-policy--pas-de-script-inline).
 - **GitHub uniquement.** `repository_url` doit pointer vers un dépôt GitHub — ni GitLab, ni serveur Git auto-hébergé, ni source d'archive non-Git.
 
 ## Implémentation de référence

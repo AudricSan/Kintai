@@ -43,6 +43,7 @@ Open an issue using the **Feature Request** template. Explain the use case and w
 - Comments in code are written in French; everything else (commit messages, PR descriptions, docs) in English
 - No external framework dependencies beyond `illuminate/database` (Eloquent, used as an ORM only)
 - Never use inline `style="..."` in views — extend a CSS module under `public/assets/css/src/` instead
+- No inline event handlers (`onclick=`, `onchange=`, `onsubmit=`, `oninput=`…), no `javascript:` links and no `<script>` without a nonce in views or components — the Content-Security-Policy (`script-src 'self' 'nonce-…'`) blocks them silently. Use `data-on-click`/`data-on-change`/`data-args`, `data-submit-on-change`, `data-confirm`, `data-stop-propagation` (`public/assets/js/modules/csp-actions.js`) and `<script nonce="<?= csp_nonce() ?>">`; `NoInlineScriptGuardTest` fails on a violation. Bundle authors: see `docs/creating-a-bundle.md` ("Content Security Policy")
 - Filter bars apply instantly — no "Filter" submit button. Text inputs debounce-submit their form on `input` (see the generic wiring in `public/assets/js/app.js` targeting `form.filter-bar`/`form.shifts-filters`), `select`/date fields submit `onchange`. This applies to every filter, including name/text search fields
 
 ## Running Tests

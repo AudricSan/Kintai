@@ -82,8 +82,8 @@ for ($h = 6; $h < 30; $h++) $ganttHours[] = $h % 24;
 <body>
 
 <div class="pt-toolbar">
-    <button onclick="window.print()">🖨 <?= __('print_timeline') ?></button>
-    <a href="javascript:window.close()">✕ <?= __('close') ?></a>
+    <button data-on-click="@print">🖨 <?= __('print_timeline') ?></button>
+    <a href="#" data-on-click="@close">✕ <?= __('close') ?></a>
     <span class="pt-toolbar__hint"><?= __('print_hint') ?></span>
 </div>
 
@@ -248,6 +248,7 @@ for ($h = 6; $h < 30; $h++) $ganttHours[] = $h % 24;
 </div>
 
 <?php if ($autoprint ?? false): ?><meta name="autoprint" content="1"><?php endif; ?>
+<script src="<?= $BASE_URL ?>/assets/js/modules/csp-actions.js"></script>
 <script src="<?= $BASE_URL ?>/assets/js/modules/autoprint.js"></script>
 </body>
 </html>

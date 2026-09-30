@@ -65,7 +65,7 @@ echo Flash::fromQuery('error', [
                             <label class="form-toggle">
                                 <input type="checkbox" name="enabled" value="1" class="form-toggle__input"
                                        <?= in_array($sid, $type_store_ids[$tid] ?? [], true) ? 'checked' : '' ?>
-                                       onchange="this.form.submit()">
+                                       data-submit-on-change>
                                 <span class="form-toggle__track"></span>
                             </label>
                         </form>
@@ -102,7 +102,7 @@ echo Flash::fromQuery('error', [
         $html = '<div class="btn-group">';
         $html .= '<form method="POST" action="' . htmlspecialchars($BASE_URL . '/admin/shift-types/' . $id . '/delete') . '" class="form-inline">';
         $html .= csrf_field();
-        $html .= Button::make(__('delete'))->danger()->sm()->submit()->attrs(['onclick' => "return confirm('" . __('confirm_delete_shift_type') . "')"])->render();
+        $html .= Button::make(__('delete'))->danger()->sm()->submit()->attrs(['data-confirm' => __('confirm_delete_shift_type')])->render();
         $html .= '</form>';
         $html .= '</div>';
         return $html;
