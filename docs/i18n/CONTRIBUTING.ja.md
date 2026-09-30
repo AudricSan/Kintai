@@ -53,6 +53,8 @@ composer install
 ./vendor/bin/phpunit
 ```
 
+CI では新規インストールのスモークテスト（`install-smoke` ジョブ、`scripts/ci/install-smoke-test.sh`）も実行します。空の SQLite データベースで実際の Web インストーラーを動かし、作成したアカウントでログインします。チェックアウト先に書き込むため、CI 外（`CI=true` なし）や既にインストール済みの場所では実行を拒否します。ローカルでは使い捨てのクローンでのみ実行してください。
+
 新規または変更された機能には、`tests/Unit/`（該当する場合は `tests/Integration/`）にPHPUnitテストを追加してください。
 
 ## ドキュメントの言語

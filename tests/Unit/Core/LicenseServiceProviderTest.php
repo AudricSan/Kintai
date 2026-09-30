@@ -48,6 +48,51 @@ final class LicenseServiceProviderTest extends TestCase
         $this->assertTrue($features->isEnabled('messaging'));
     }
 
+    public function testANotYetMigratedDatabaseFallsBackToTheConfigFileInsteadOfCrashing(): void
+    {
+        // Ce fournisseur tourne dans le constructeur d'Application, avant toute migration (installateur web,
+        // `php scripts/db-migrate.php` sur base neuve). La table app_settings n'existe pas encore : sans
+        // repli, « no such table » empêchait toute installation neuve.
+        $container = new Container();
+        $appSettings = $this->createMock(AppSettingsRepositoryInterface::class);
+        $appSettings->method('get')->willThrowException(new \Illuminate\Database\QueryException(
+            'sqlite',
+            'select * from "app_settings" where "app_settings"."key" = ? limit 1',
+            [LicenseServiceProvider::SETTINGS_KEY],
+            new \PDOException('SQLSTATE[HY000]: General error: 1 no such table: app_settings'),
+        ));
+        $container->instance(AppSettingsRepositoryInterface::class, $appSettings);
+
+        (new LicenseServiceProvider($container))->register();
+
+        $features = $container->make(FeatureManager::class);
+        $this->assertTrue($features->isEnabled('daily-report'), 'Repli sur config/license.php attendu.');
+    }
+
+    public function testARawPdoErrorIsAlsoTolerated(): void
+    {
+        $container = new Container();
+        $appSettings = $this->createMock(AppSettingsRepositoryInterface::class);
+        $appSettings->method('get')->willThrowException(new \PDOException('no such table: app_settings'));
+        $container->instance(AppSettingsRepositoryInterface::class, $appSettings);
+
+        (new LicenseServiceProvider($container))->register();
+
+        $this->assertInstanceOf(FeatureManager::class, $container->make(FeatureManager::class));
+    }
+
+    public function testNonDatabaseErrorsAreNotSwallowed(): void
+    {
+        // Seules les erreurs de base sont tolérées : un vrai bogue doit rester visible.
+        $container = new Container();
+        $appSettings = $this->createMock(AppSettingsRepositoryInterface::class);
+        $appSettings->method('get')->willThrowException(new \LogicException('bogue'));
+        $container->instance(AppSettingsRepositoryInterface::class, $appSettings);
+
+        $this->expectException(\LogicException::class);
+        (new LicenseServiceProvider($container))->register();
+    }
+
     public function testHardcodedDefaultsMatchTheShippedLicenseConfig(): void
     {
         $config = require BASE_PATH . '/config/license.php';
