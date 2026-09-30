@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\UI\Controller\Web;
 
+use kintai\Core\Auth\PasswordPolicy;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\PasswordResetService;
@@ -73,7 +74,7 @@ final class PasswordResetController
         $password = (string) $request->post('password', '');
         $confirm  = (string) $request->post('password_confirmation', '');
 
-        if (strlen($password) < 8) {
+        if (!PasswordPolicy::isLongEnough($password)) {
             return $this->resetView($token, __('reset_password_too_short'));
         }
 
