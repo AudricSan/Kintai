@@ -11,6 +11,7 @@ use kintai\Core\Repositories\BundleRegistryRepositoryInterface;
 use kintai\Core\Repositories\InstalledBundleRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\SessionFlash;
 use kintai\Core\Services\AppSettingsService;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\BundleInstaller\BundleInstallerService;
@@ -197,7 +198,8 @@ final class BundleMarketController
         }
 
         if (!$this->installer->uninstall($slug)) {
-            return Response::redirect($this->base() . '/admin/bundles/market?error=' . urlencode((string) $this->installer->getLastError()));
+            SessionFlash::put('danger', (string) $this->installer->getLastError());
+            return Response::redirect($this->base() . '/admin/bundles/market?error=failed');
         }
 
         $this->disableBundle($slug);
@@ -270,13 +272,15 @@ final class BundleMarketController
 
         $pin = $this->catalog->resolvePin($registryUrl, $slug, $version);
         if ($pin['error'] !== null) {
-            return Response::redirect($this->base() . '/admin/bundles/market?error=' . urlencode($pin['error']));
+            SessionFlash::put('danger', $pin['error']);
+            return Response::redirect($this->base() . '/admin/bundles/market?error=failed');
         }
 
         $result = $this->installer->install($slug, $repositoryUrl, $version, $registryUrl, null, $pin['commit']);
 
         if (!$result->success) {
-            return Response::redirect($this->base() . '/admin/bundles/market?error=' . urlencode((string) $result->error));
+            SessionFlash::put('danger', (string) $result->error);
+            return Response::redirect($this->base() . '/admin/bundles/market?error=failed');
         }
 
         $this->auditLogger->log($request, 'bundle.installed', 'bundle', null, [

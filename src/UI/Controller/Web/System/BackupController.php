@@ -8,6 +8,7 @@ use kintai\Core\Database\MigrationRunner;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\SessionFlash;
 use kintai\Core\Services\AppSettingsService;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\BackupService;
@@ -137,11 +138,19 @@ final class BackupController
             try {
                 $result = $this->githubUpdate->applyUpdate();
             } catch (\Throwable $e) {
-                return Response::redirect('/admin/update?success=error_' . urlencode($e->getMessage()));
+                SessionFlash::put('danger', __('error_prefix') . $e->getMessage());
+                return Response::redirect('/admin/update?success=error_failed');
             }
 
             if (!$result['ok']) {
-                return Response::redirect('/admin/update?success=error_' . urlencode((string) $result['error']));
+                // applyUpdate() renvoie un code (no_update_available, download_failed…) traduit par describeFlash() ;
+                // tout autre texte passe par la session, jamais par l'URL.
+                $code = (string) $result['error'];
+                if (preg_match('/^[a-z_]{1,60}$/', $code) === 1) {
+                    return Response::redirect('/admin/update?success=error_' . $code);
+                }
+                SessionFlash::put('danger', __('error_prefix') . $code);
+                return Response::redirect('/admin/update?success=error_failed');
             }
 
             $summary = sprintf(
@@ -248,7 +257,8 @@ final class BackupController
             ]);
             return Response::redirect('/admin/backup?success=created_' . urlencode($result['filename']));
         } catch (\Throwable $e) {
-            return Response::redirect('/admin/backup?success=error_' . urlencode($e->getMessage()));
+            SessionFlash::put('danger', __('error_prefix') . $e->getMessage());
+            return Response::redirect('/admin/backup?success=error_failed');
         }
     }
 
@@ -267,7 +277,8 @@ final class BackupController
             $this->auditLogger->log($request, 'backup.restored', 'system', null, ['filename' => $filename]);
             return Response::redirect('/admin/backup?success=restored');
         } catch (\Throwable $e) {
-            return Response::redirect('/admin/backup?success=error_' . urlencode($e->getMessage()));
+            SessionFlash::put('danger', __('error_prefix') . $e->getMessage());
+            return Response::redirect('/admin/backup?success=error_failed');
         }
     }
 
@@ -300,7 +311,8 @@ final class BackupController
                 return Response::redirect('/admin/update?success=migrated');
             } catch (\Throwable $e) {
                 $this->auditLogger->log($request, 'db.migration_failed', 'system', null, ['error' => $e->getMessage()]);
-                return Response::redirect('/admin/update?success=error_' . urlencode($e->getMessage()));
+                SessionFlash::put('danger', __('error_prefix') . $e->getMessage());
+                return Response::redirect('/admin/update?success=error_failed');
             }
         } finally {
             if (!$wasMaintenanceEnabled) {
@@ -338,17 +350,17 @@ final class BackupController
             $decoded === 'restored' => ['type' => 'success', 'text' => __('backup_flash_restored')],
             $decoded === 'deleted'  => ['type' => 'success', 'text' => __('backup_flash_deleted')],
             $decoded === 'migrated' => ['type' => 'success', 'text' => __('backup_flash_migrated')],
-            str_starts_with($decoded, 'created_') => ['type' => 'success', 'text' => __('backup_flash_created', [
+            str_starts_with($decoded, 'created_') && preg_match('/^created_[\w.-]{1,120}$/', $decoded) === 1 => ['type' => 'success', 'text' => __('backup_flash_created', [
                 'filename' => substr($decoded, strlen('created_')),
             ])],
-            str_starts_with($decoded, 'deleted_all_') => ['type' => 'success', 'text' => __('backup_flash_deleted_all', [
+            preg_match('/^deleted_all_\d{1,6}$/', $decoded) === 1 => ['type' => 'success', 'text' => __('backup_flash_deleted_all', [
                 'count' => substr($decoded, strlen('deleted_all_')),
             ])],
-            str_starts_with($decoded, 'channel_') => ['type' => 'success', 'text' => __('backup_flash_channel', [
+            preg_match('/^channel_(release|beta|alpha)$/', $decoded) === 1 => ['type' => 'success', 'text' => __('backup_flash_channel', [
                 'channel' => substr($decoded, strlen('channel_')),
             ])],
             str_starts_with($decoded, 'updated_') && preg_match(
-                '/^updated_(?<version>.+)_files-(?<copied>\d+)_deleted-(?<deleted>\d+)_migrations-(?<migrations>\d+)_composer-/',
+                '/^updated_(?<version>\d+\.\d+\.\d+)_files-(?<copied>\d+)_deleted-(?<deleted>\d+)_migrations-(?<migrations>\d+)_composer-/',
                 $decoded,
                 $m
             ) === 1 => ['type' => 'success', 'text' => strtr(__('backup_update_done_summary'), [
@@ -362,8 +374,12 @@ final class BackupController
             $decoded === 'error_no_update_available' => ['type' => 'danger', 'text' => __('backup_flash_error_no_update_available')],
             $decoded === 'error_download_failed'     => ['type' => 'danger', 'text' => __('backup_flash_error_download_failed')],
             $decoded === 'error_extract_failed'      => ['type' => 'danger', 'text' => __('backup_flash_error_extract_failed')],
-            str_starts_with($decoded, 'error_') => ['type' => 'danger', 'text' => __('error_prefix') . substr($decoded, strlen('error_'))],
-            default => ['type' => 'success', 'text' => $decoded],
+            // Le détail de l'échec est déjà affiché par le layout depuis la session : pas de second bandeau.
+            $decoded === 'error_failed' => null,
+            // Jamais le texte brut de l'URL (n'importe qui pourrait fabriquer le lien) : le détail d'une erreur
+            // passe par kintai\Core\SessionFlash, affiché par le layout.
+            str_starts_with($decoded, 'error_') => ['type' => 'danger', 'text' => __('error_generic')],
+            default => null,
         };
     }
 }
