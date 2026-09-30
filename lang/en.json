@@ -957,7 +957,7 @@
     "password_edit_hint": "(leave blank to keep unchanged)",
     "password_mismatch": "Passwords do not match.",
     "password_reset_success": "Password reset to 0000 successfully.",
-    "password_too_short": "Password must be at least 4 characters.",
+    "password_too_short": "Password must be at least 8 characters.",
     "pause": "Pause",
     "payroll_cost": "payroll cost",
     "payslip": "Pay slip",
