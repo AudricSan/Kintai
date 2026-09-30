@@ -9,6 +9,7 @@ use kintai\Core\Container;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AppSettingsService;
+use kintai\Core\Services\PublicUrlResolver;
 use kintai\Core\Services\UpdateService;
 use kintai\UI\ViewRenderer;
 
@@ -28,6 +29,8 @@ final class AppSettingsMiddleware implements MiddlewareInterface
             $view->share('app_support_email', $settings->supportEmail());
             $view->share('app_maintenance_mode_enabled', $settings->maintenanceModeEnabled());
             $view->share('app_version', $this->container->make(UpdateService::class)->getCurrentVersion());
+            // Sans URL publique, les e-mails de réinitialisation du mot de passe ne partent pas : l'Owner en est averti.
+            $view->share('app_public_url_missing', $this->container->make(PublicUrlResolver::class)->resolve() === null);
         } catch (\Throwable) {
             // Table absente (avant migration) ou DB non disponible — on ignore.
         }
