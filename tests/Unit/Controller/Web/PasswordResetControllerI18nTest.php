@@ -11,7 +11,10 @@ use kintai\Core\Repositories\PasswordResetRepositoryInterface;
 use kintai\Core\Repositories\RememberTokenRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
+use kintai\Core\Repositories\AppSettingsRepositoryInterface;
+use kintai\Core\Services\AppSettingsService;
 use kintai\Core\Services\PasswordResetService;
+use kintai\Core\Services\PublicUrlResolver;
 use kintai\UI\Controller\Web\PasswordResetController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -51,7 +54,13 @@ final class PasswordResetControllerI18nTest extends TestCase
             ),
         );
 
-        $this->controller = new PasswordResetController(new ViewRenderer($viewDir), $service);
+        $settingsRepo = $this->createMock(AppSettingsRepositoryInterface::class);
+        $settingsRepo->method('all')->willReturn([]);
+        $this->controller = new PasswordResetController(
+            new ViewRenderer($viewDir),
+            $service,
+            new PublicUrlResolver(new AppSettingsService($settingsRepo), 'https://kintai.example.com'),
+        );
     }
 
     private function writeView(string $dir, string $view, string $content): void

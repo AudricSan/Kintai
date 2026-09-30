@@ -11,6 +11,7 @@ use kintai\Core\Request;
 use kintai\Core\Services\AppSettingsService;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\Log;
+use kintai\Core\Services\PublicUrlResolver;
 use kintai\UI\Controller\Web\System\OwnerSettingsController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\TestCase;
@@ -49,7 +50,7 @@ final class OwnerSettingsControllerTest extends TestCase
      * initial — doit être appelé APRÈS avoir préparé $this->stored, car AppSettingsService
      * met en cache repo->all() une seule fois, à la construction.
      */
-    private function makeController(array $initialStored = []): OwnerSettingsController
+    private function makeController(array $initialStored = [], string $envUrl = ''): OwnerSettingsController
     {
         $this->stored = $initialStored;
 
@@ -63,7 +64,9 @@ final class OwnerSettingsControllerTest extends TestCase
 
         $view = new ViewRenderer(sys_get_temp_dir());
 
-        return new OwnerSettingsController($view, new AppSettingsService($repo), new AuditLogger());
+        $settings = new AppSettingsService($repo);
+
+        return new OwnerSettingsController($view, $settings, new AuditLogger(), new PublicUrlResolver($settings, $envUrl));
     }
 
     public function testShowRendersWithDefaultFoxyColors(): void
@@ -176,6 +179,46 @@ final class OwnerSettingsControllerTest extends TestCase
         $controller->save(new Request());
 
         $this->assertSame('0', $this->stored['log_retention_days']);
+    }
+
+    public function testSaveStoresANormalizedPublicUrl(): void
+    {
+        $controller = $this->makeController();
+        $_POST = ['app_public_url' => 'HTTPS://Kintai.Example.com/app/'];
+
+        $controller->save(new Request());
+
+        $this->assertSame('https://kintai.example.com/app', $this->stored[PublicUrlResolver::SETTING_KEY]);
+    }
+
+    public function testSaveRefusesAnInvalidPublicUrlAndKeepsThePreviousOne(): void
+    {
+        // Un chemin seul (« /Kintai ») donnerait à nouveau des liens d'e-mail inutilisables : refusé.
+        $controller = $this->makeController([PublicUrlResolver::SETTING_KEY => 'https://old.example.com']);
+        $_POST = ['app_public_url' => '/Kintai', 'app_subtitle' => 'Changed'];
+
+        $response = $controller->save(new Request());
+
+        $this->assertSame('https://old.example.com', $this->stored[PublicUrlResolver::SETTING_KEY]);
+        $this->assertArrayNotHasKey('app_subtitle', $this->stored, 'Rien ne doit être enregistré quand l\'URL est refusée.');
+        $this->assertStringContainsString('error=public_url_invalid', $this->locationOf($response));
+    }
+
+    public function testSaveAcceptsAnEmptyPublicUrl(): void
+    {
+        $controller = $this->makeController([PublicUrlResolver::SETTING_KEY => 'https://old.example.com']);
+        $_POST = ['app_public_url' => ''];
+
+        $controller->save(new Request());
+
+        $this->assertSame('', $this->stored[PublicUrlResolver::SETTING_KEY]);
+    }
+
+    private function locationOf(\kintai\Core\Response $response): string
+    {
+        $ref = new \ReflectionProperty($response, 'headers');
+
+        return $ref->getValue($response)['Location'] ?? '';
     }
 
     public function testSaveRedirectsWithSuccessFlag(): void
