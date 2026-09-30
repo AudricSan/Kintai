@@ -477,7 +477,7 @@ final class AuthController
         }
 
         $oldUser = $dbUser;
-        $dbUser['password_hash'] = password_hash($newPass, PASSWORD_DEFAULT);
+        $dbUser['password_hash'] = \kintai\Core\Auth\PasswordHasher::hash($newPass);
         try {
             $this->users->save($dbUser);
             // La session courante reste valide ; toutes les autres (autres appareils, cookie
