@@ -63,7 +63,7 @@ $notebook_entries ??= [];
 <div class="page-header">
     <h2 class="page-header__title"><?= __('dashboard') ?></h2>
     <div class="page-header__actions">
-        <?= Button::make(__('customize'))->ghost()->sm()->attrs(['onclick' => 'dashCustomizeToggle()'])->render() ?>
+        <?= Button::make(__('customize'))->ghost()->sm()->attrs(['data-on-click' => 'dashCustomizeToggle'])->render() ?>
     </div>
 </div>
 
@@ -97,7 +97,7 @@ ob_start();
 </form>
 <?php
 echo Card::make()
-    ->header('<span>' . __('dashboard_customize') . '</span> ' . Button::make(__('close'))->ghost()->sm()->attrs(['onclick' => 'dashCustomizeToggle()'])->render())
+    ->header('<span>' . __('dashboard_customize') . '</span> ' . Button::make(__('close'))->ghost()->sm()->attrs(['data-on-click' => 'dashCustomizeToggle'])->render())
     ->body(ob_get_clean())
     ->attrs(['id' => 'dash-customize', 'class' => 'dash-customize-panel hidden'])
     ->render();
@@ -161,14 +161,14 @@ echo Card::make()
 <?php if (widget_on('monthly_stats', $widgets) && $stats !== null): ?>
 <?php $cur = $stats['currency'] ?? 'JPY'; $curStyle = $stats['currency_symbol_style'] ?? 'kanji'; ?>
 <?php
-$navPrev = Button::make('←')->ghost()->sm()->attrs(['onclick' => "dashMonthNav('" . htmlspecialchars($stats['prev_month']) . "')", 'class' => 'dash-month-btn'])->render();
+$navPrev = Button::make('←')->ghost()->sm()->attrs(['data-on-click' => 'dashMonthNav', 'data-args' => json_encode([$stats['prev_month']]), 'class' => 'dash-month-btn'])->render();
 $navNext = Button::make('→')->ghost()->sm()->attrs([
-    'onclick' => "dashMonthNav('" . htmlspecialchars($stats['next_month']) . "')",
+    'data-on-click' => 'dashMonthNav', 'data-args' => json_encode([$stats['next_month']]),
     'class' => 'dash-month-btn' . ($stats['is_current'] ? ' dash-month-btn--disabled' : ''),
     'disabled' => $stats['is_current'] ? 'disabled' : null,
 ])->render();
 $navToday = !$stats['is_current']
-    ? Button::make(__('today'))->ghost()->sm()->attrs(['onclick' => "dashMonthNav('" . date('Y-m') . "')"])->render()
+    ? Button::make(__('today'))->ghost()->sm()->attrs(['data-on-click' => 'dashMonthNav', 'data-args' => json_encode([date('Y-m')])])->render()
     : '';
 $headerHtml = $navPrev
     . ' <strong class="dash-month-label">' . htmlspecialchars($stats['month_label']) . '</strong> '
@@ -194,7 +194,7 @@ ob_start();
 </div>
 <?php if (!empty($stats['shift_details'])): ?>
 <div class="dash-stat-actions">
-    <?= Button::make(__('details') . ' ▼')->ghost()->sm()->attrs(['id' => 'dash-detail-toggle', 'onclick' => 'dashDetailToggle()'])->render() ?>
+    <?= Button::make(__('details') . ' ▼')->ghost()->sm()->attrs(['id' => 'dash-detail-toggle', 'data-on-click' => 'dashDetailToggle'])->render() ?>
 </div>
 <?php endif; ?>
 <?php

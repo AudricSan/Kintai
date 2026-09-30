@@ -52,7 +52,7 @@ $bundleChipColor = function (string $seed): string {
             <span class="btn-group">
                 <?php foreach ($channels as $value => $label): ?>
                     <?php $needsConfirm = $value !== 'release' && $value !== $bundleUpdateChannel; ?>
-                    <form method="POST" action="<?= htmlspecialchars($channelAction) ?>" class="d-inline"<?= $needsConfirm ? " onsubmit=\"return confirm('" . __('update_channel_switch_confirm') . "')\"" : '' ?>>
+                    <form method="POST" action="<?= htmlspecialchars($channelAction) ?>" class="d-inline"<?= $needsConfirm ? " data-confirm=\"" . htmlspecialchars(__('update_channel_switch_confirm'), ENT_QUOTES) . "\"" : '' ?>>
                         <?= csrf_field() ?>
                         <input type="hidden" name="channel" value="<?= htmlspecialchars($value) ?>">
                         <?= Button::make($label)->sm()->{$value === $bundleUpdateChannel ? 'primary' : 'outline'}()->submit()->disabled($value === $bundleUpdateChannel)->render() ?>

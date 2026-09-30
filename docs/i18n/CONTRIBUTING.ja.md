@@ -43,6 +43,7 @@ Kintaiは **GNU Affero General Public License v3.0**（AGPL-3.0）の下で公�
 - コード内のコメントはフランス語で記述する。それ以外（コミットメッセージ、PRの説明、ドキュメント）はすべて英語
 - `illuminate/database`（ORMとしてのみ使用するEloquent）以外の外部フレームワーク依存を追加しない
 - ビュー内でインラインの `style="..."` は使用禁止 — `public/assets/css/src/` 配下のCSSモジュールを拡張すること
+- ビューやコンポーネントにインラインのイベントハンドラー（`onclick=`、`onchange=`、`onsubmit=`、`oninput=` など）、`javascript:` リンク、nonce のない `<script>` を置かないこと — Content-Security-Policy（`script-src 'self' 'nonce-…'`）が黙ってブロックします。`data-on-click`/`data-on-change`/`data-args`、`data-submit-on-change`、`data-confirm`、`data-stop-propagation`（`public/assets/js/modules/csp-actions.js`）と `<script nonce="<?= csp_nonce() ?>">` を使ってください。違反すると `NoInlineScriptGuardTest` が失敗します。バンドル作者は `docs/creating-a-bundle.md`（「Content Security Policy」）を参照
 - フィルターバーは即座に適用される仕組みにすること — 「フィルター」ボタンは不要。テキスト入力は `input` イベントでデバウンスしてフォームを送信し（`public/assets/js/app.js` の `form.filter-bar`/`form.shifts-filters` を対象とした汎用処理を参照）、`select`/日付フィールドは `onchange` で送信する。これは名前・テキスト検索フィールドを含むすべてのフィルターに適用される
 
 ## テストの実行

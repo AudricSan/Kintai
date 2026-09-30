@@ -151,7 +151,7 @@ ob_start();
             <?= csrf_field() ?>
             <?= Button::make(__('license_refresh_btn'))->sm()->outline()->submit()->disabled(!$configured)->render() ?>
         </form>
-        <form method="POST" action="<?= route_url('admin.license.deactivate') ?>" class="d-inline" onsubmit="return confirm('<?= __('license_deactivate_confirm') ?>')">
+        <form method="POST" action="<?= route_url('admin.license.deactivate') ?>" class="d-inline" data-confirm="<?= htmlspecialchars(__('license_deactivate_confirm'), ENT_QUOTES) ?>">
             <?= csrf_field() ?>
             <?= Button::make(__('license_deactivate_btn'))->sm()->danger()->submit()->render() ?>
         </form>

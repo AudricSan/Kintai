@@ -82,7 +82,7 @@ $_dashChartData = [];
 <!-- En-tête dashboard + bouton Personnaliser -->
 <div class="page-header">
     <h2 class="page-header__title"><?= __('dashboard') ?></h2>
-    <button type="button" class="btn btn--ghost btn--sm" onclick="adminDashCustomize()">
+    <button type="button" class="btn btn--ghost btn--sm" data-on-click="adminDashCustomize">
         <?= __('customize') ?>
     </button>
 </div>
@@ -91,7 +91,7 @@ $_dashChartData = [];
 <div id="admin-dash-customize" class="dash-customize-panel card card--mb hidden">
     <div class="card-header">
         <span><?= __('dashboard_customize') ?></span>
-        <button type="button" class="btn btn--ghost btn--sm" onclick="adminDashCustomize()"><?= __('close') ?></button>
+        <button type="button" class="btn btn--ghost btn--sm" data-on-click="adminDashCustomize"><?= __('close') ?></button>
     </div>
     <div class="card-body">
         <form method="POST" action="<?= route_url('admin.dashboard.widgets') ?>">
@@ -244,7 +244,7 @@ $store_stats_hours_by_week ??= [];
                 </thead>
                 <tbody>
                     <?php foreach ($store_stats_rows as $_row): ?>
-                        <tr class="tr--clickable" onclick="location.href='<?= route_url('admin.stores.stats', ['id' => $_row['store_id']]) ?>'">
+                        <tr class="tr--clickable" data-goto="<?= route_url('admin.stores.stats', ['id' => $_row['store_id']]) ?>">
                             <td data-label="<?= htmlspecialchars(__('store')) ?>"><?= htmlspecialchars((string) $_row['store_name']) ?></td>
                             <td data-label="<?= htmlspecialchars(__('net_hours')) ?>"><?= number_format((float) $_row['total_hours'], 1) ?><?= __('hours_unit') ?></td>
                             <td data-label="<?= htmlspecialchars(__('total_cost')) ?>"><?= format_currency((float) $_row['total_cost'], (string) $_row['currency'], (string) $_row['currency_symbol_style']) ?></td>
@@ -403,11 +403,11 @@ $hasMultipleStores = count($shiftsByStore) > 1;
         <!-- Onglets par magasin -->
         <div class="dash-tabs" id="dash-shifts-tabs">
             <div class="dash-tabs-nav">
-                <button type="button" class="dash-tab-btn" data-tab="all" onclick="dashTab('all')">
+                <button type="button" class="dash-tab-btn" data-tab="all" data-on-click="dashTab" data-args='["all"]'>
                     <?= __('all') ?> <span class="badge badge--secondary badge--sm"><?= count($shifts_today) ?></span>
                 </button>
                 <?php foreach ($shiftsByStore as $sid => $sGroup): ?>
-                    <button type="button" class="dash-tab-btn" data-tab="s<?= $sid ?>" onclick="dashTab('s<?= $sid ?>')">
+                    <button type="button" class="dash-tab-btn" data-tab="s<?= $sid ?>" data-on-click="dashTab" data-args="<?= htmlspecialchars(json_encode(['s' . $sid]), ENT_QUOTES) ?>">
                         <?= htmlspecialchars($sGroup['name']) ?>
                         <span class="badge badge--secondary badge--sm"><?= count($sGroup['shifts']) ?></span>
                     </button>
@@ -427,7 +427,7 @@ $hasMultipleStores = count($shiftsByStore) > 1;
                         </tr></thead>
                         <tbody>
                             <?php foreach ($shifts_today as $shift): ?>
-                                <tr class="tr--clickable" onclick="location.href='<?= $BASE_URL ?>/admin/shifts/<?= (int)$shift['id'] ?>/edit'">
+                                <tr class="tr--clickable" data-goto="<?= $BASE_URL ?>/admin/shifts/<?= (int)$shift['id'] ?>/edit">
                                     <td data-label="<?= htmlspecialchars(__('store')) ?>"><?= htmlspecialchars((string) ($shift['store_name'] ?? '—')) ?></td>
                                     <td data-label="<?= htmlspecialchars(__('user')) ?>"><?= htmlspecialchars((string) ($shift['user_name'] ?? '—')) ?></td>
                                     <td data-label="<?= htmlspecialchars(__('start')) ?>"><?= htmlspecialchars((string) ($shift['start_time'] ?? '—')) ?></td>
@@ -453,7 +453,7 @@ $hasMultipleStores = count($shiftsByStore) > 1;
                             </tr></thead>
                             <tbody>
                                 <?php foreach ($sGroup['shifts'] as $shift): ?>
-                                    <tr class="tr--clickable" onclick="location.href='<?= $BASE_URL ?>/admin/shifts/<?= (int)$shift['id'] ?>/edit'">
+                                    <tr class="tr--clickable" data-goto="<?= $BASE_URL ?>/admin/shifts/<?= (int)$shift['id'] ?>/edit">
                                         <td data-label="<?= htmlspecialchars(__('user')) ?>"><?= htmlspecialchars((string) ($shift['user_name'] ?? '—')) ?></td>
                                         <td data-label="<?= htmlspecialchars(__('start')) ?>"><?= htmlspecialchars((string) ($shift['start_time'] ?? '—')) ?></td>
                                         <td data-label="<?= htmlspecialchars(__('end')) ?>"><?= htmlspecialchars((string) ($shift['end_time'] ?? '—')) ?></td>
@@ -466,7 +466,7 @@ $hasMultipleStores = count($shiftsByStore) > 1;
                 </div>
             <?php endforeach; ?>
         </div>
-        <script>
+        <script nonce="<?= csp_nonce() ?>">
         (function () {
             var LS_KEY = 'kintai_dash_shifts_tab';
             function dashTab(id) {
@@ -501,7 +501,7 @@ $hasMultipleStores = count($shiftsByStore) > 1;
                 </thead>
                 <tbody>
                     <?php foreach ($shifts_today as $shift): ?>
-                        <tr class="tr--clickable" onclick="location.href='<?= $BASE_URL ?>/admin/shifts/<?= (int)$shift['id'] ?>/edit'">
+                        <tr class="tr--clickable" data-goto="<?= $BASE_URL ?>/admin/shifts/<?= (int)$shift['id'] ?>/edit">
                             <td><?= (int) $shift['id'] ?></td>
                             <td data-label="<?= htmlspecialchars(__('user')) ?>"><?= htmlspecialchars((string) ($shift['user_name'] ?? '—')) ?></td>
                             <td data-label="<?= htmlspecialchars(__('start')) ?>"><?= htmlspecialchars((string) ($shift['start_time'] ?? '—')) ?></td>
