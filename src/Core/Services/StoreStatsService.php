@@ -44,6 +44,54 @@ final class StoreStatsService implements StoreStatsServiceInterface
         return $this->storeStatsCache[$cacheKey] ??= $this->computeStoreStats($storeId, $period, $minShiftMin, $maxShiftMin);
     }
 
+    /**
+     * Même calcul que la boucle de coûts de computeStoreStats() (mêmes shifts, même ordre, mêmes taux), réduit au
+     * coût par mois : la vue financière du tableau de bord n'utilise que ce chiffre et déclenchait jusqu'ici le
+     * calcul complet des statistiques sur 180 jours pour chaque magasin.
+     */
+    public function costByMonth(int $storeId, int $period): array
+    {
+        $cacheKey = "cost:{$storeId}:{$period}:" . date('Y-m-d');
+        if (isset($this->storeStatsCache[$cacheKey])) {
+            return $this->storeStatsCache[$cacheKey];
+        }
+
+        $since = date('Y-m-d', strtotime("-{$period} days"));
+        $today = date('Y-m-d');
+        $shifts = array_filter(
+            $this->shifts->findByStoreBetween($storeId, $since, $today),
+            fn($s) => empty($s['deleted_at'])
+        );
+
+        $memberIds     = array_map(fn($m) => (int) $m['user_id'], $this->storeUsers->findByStore($storeId));
+        $rateCache     = $this->rateCacheFor($memberIds);
+        $storeTypesMap = array_column($this->shiftTypes->findByStore($storeId), null, 'id');
+        $wageCalc      = new ShiftWageCalculator();
+
+        $costByMonth = [];
+        foreach ($shifts as $s) {
+            $wage  = $wageCalc->costOf($s, $storeTypesMap, $rateCache[(int) $s['user_id']] ?? []);
+            $month = substr($s['shift_date'], 0, 7);
+            $costByMonth[$month] = ($costByMonth[$month] ?? 0) + $wage['amount'];
+        }
+        ksort($costByMonth);
+
+        return $this->storeStatsCache[$cacheKey] = $costByMonth;
+    }
+
+    /** @return array<int, array<int, float>> user_id => (shift_type_id => taux horaire) */
+    private function rateCacheFor(array $memberIds): array
+    {
+        $rateCache = [];
+        foreach ($memberIds as $uid) {
+            foreach ($this->userRates->findByUser($uid) as $r) {
+                $rateCache[$uid][(int) $r['shift_type_id']] = (float) $r['hourly_rate'];
+            }
+        }
+
+        return $rateCache;
+    }
+
     private function computeStoreStats(int $storeId, int $period, int $minShiftMin, int $maxShiftMin): array
     {
         $since = date('Y-m-d', strtotime("-{$period} days"));
@@ -78,12 +126,7 @@ final class StoreStatsService implements StoreStatsServiceInterface
 
         $storeTypesMap = array_column($this->shiftTypes->findByStore($storeId), null, 'id');
 
-        $rateCache = [];
-        foreach ($memberIds as $uid) {
-            foreach ($this->userRates->findByUser($uid) as $r) {
-                $rateCache[$uid][(int) $r['shift_type_id']] = (float) $r['hourly_rate'];
-            }
-        }
+        $rateCache = $this->rateCacheFor($memberIds);
         $wageCalc = new ShiftWageCalculator();
 
         $durations    = array_map(fn($s) => (int) $s['duration_minutes'], $allShifts);
