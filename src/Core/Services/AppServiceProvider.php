@@ -94,6 +94,8 @@ final class AppServiceProvider extends ServiceProvider
 
         $this->container->singleton(AppSettingsService::class, fn(Container $c) => new AppSettingsService($c->make(AppSettingsRepositoryInterface::class)));
 
+        $this->container->singleton(PublicUrlResolver::class, fn(Container $c) => new PublicUrlResolver($c->make(AppSettingsService::class)));
+
         $this->container->singleton(MascotResolver::class, fn(Container $c) => new MascotResolver($c->make(AppSettingsService::class)));
 
         $this->container->singleton(ShiftServiceInterface::class, fn(Container $c) => new ShiftService(
