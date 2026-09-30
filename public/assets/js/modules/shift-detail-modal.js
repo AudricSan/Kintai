@@ -48,9 +48,16 @@
                     var lbl  = item.rate_fmt ? item.type_name + ' · ' + item.rate_fmt : item.type_name;
                     var mins = Math.round(item.minutes);
                     var h    = Math.floor(mins / 60), m = mins % 60;
-                    row.innerHTML =
-                        '<span class="pay-label">' + lbl + ' × ' + h + 'h' + String(m).padStart(2, '0') + '</span>' +
-                        '<span class="pay-amount">' + (item.pay_fmt || '—') + '</span>';
+                    // Construit par nœuds DOM : le nom du type de shift est saisi par un administrateur, jamais
+                    // interprété comme du HTML.
+                    var label = document.createElement('span');
+                    label.className = 'pay-label';
+                    label.textContent = lbl + ' × ' + h + 'h' + String(m).padStart(2, '0');
+                    var amount = document.createElement('span');
+                    amount.className = 'pay-amount';
+                    amount.textContent = item.pay_fmt || '—';
+                    row.appendChild(label);
+                    row.appendChild(amount);
                     rows.appendChild(row);
                 });
             }
