@@ -53,6 +53,8 @@ composer install
 ./vendor/bin/phpunit
 ```
 
+La CI exécute aussi un test d'installation neuve (job `install-smoke`, `scripts/ci/install-smoke-test.sh`) : le vrai installateur web sur une base SQLite vide, puis une connexion avec le compte créé. Il écrit dans le dépôt, donc il refuse de tourner hors CI (`CI=true`) ou là où une installation existe déjà — en local, uniquement dans un clone jetable.
+
 Chaque fonctionnalité nouvelle ou modifiée doit être accompagnée de tests PHPUnit dans `tests/Unit/` (et `tests/Integration/` le cas échéant).
 
 ## Langues de la documentation

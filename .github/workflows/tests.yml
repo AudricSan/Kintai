@@ -26,6 +26,27 @@ jobs:
       - name: Run tests
         run: ./vendor/bin/phpunit
 
+  install-smoke:
+    # Installation neuve de bout en bout par le vrai installateur web (base SQLite vide), puis connexion
+    # de l'admin créé. Aucun test unitaire ne couvre ce parcours ; il était cassé sans que rien n'échoue.
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_sqlite, mbstring, gd, intl
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-dev
+
+      - name: Fresh install smoke test
+        run: bash scripts/ci/install-smoke-test.sh
+
   check-translations:
     runs-on: ubuntu-latest
     continue-on-error: true

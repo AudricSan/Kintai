@@ -27,8 +27,7 @@ final class LicenseServiceProvider extends ServiceProvider
      */
     private function loadEnabledFeatures(): array
     {
-        $appSettings = $this->container->make(AppSettingsRepositoryInterface::class);
-        $stored = $appSettings->get(self::SETTINGS_KEY);
+        $stored = $this->storedSetting();
         if ($stored !== null) {
             $decoded = json_decode($stored, true);
             if (is_array($decoded)) {
@@ -44,5 +43,25 @@ final class LicenseServiceProvider extends ServiceProvider
 
         // Default to all core features enabled for self-hosted version if no license file.
         return self::DEFAULT_FEATURES;
+    }
+
+    /**
+     * Réglage Owner en base, ou null s'il est absent — y compris quand la base n'est pas encore migrée.
+     *
+     * Ce fournisseur s'exécute dans le constructeur d'Application, donc AVANT toute migration : c'est le cas de
+     * l'installateur web (étape C) et de `php scripts/db-migrate.php` sur une base neuve. Sans cette tolérance,
+     * la lecture échoue sur « no such table: app_settings » et aucune installation neuve n'aboutit. On retombe
+     * alors sur config/license.php, exactement comme quand la clé n'existe pas.
+     *
+     * Seules les erreurs de base sont interceptées ; pas de journalisation ici : le journal applicatif écrit
+     * lui-même en base, indisponible à ce stade.
+     */
+    private function storedSetting(): ?string
+    {
+        try {
+            return $this->container->make(AppSettingsRepositoryInterface::class)->get(self::SETTINGS_KEY);
+        } catch (\Illuminate\Database\QueryException|\PDOException) {
+            return null;
+        }
     }
 }
