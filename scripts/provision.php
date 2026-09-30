@@ -33,6 +33,7 @@ require_once BASE_PATH . '/src/Core/helpers.php';
 
 use Illuminate\Database\Capsule\Manager as Capsule;
 use kintai\Core\Application;
+use kintai\Core\Auth\PasswordHasher;
 use kintai\Core\Auth\PasswordPolicy;
 use kintai\Core\Database\MigrationRunner;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
@@ -241,7 +242,7 @@ try {
         'last_name'     => $adminLastName,
         'display_name'  => $adminFirstName . ' ' . $adminLastName,
         'email'         => $adminEmail,
-        'password_hash' => password_hash($adminPassword, PASSWORD_BCRYPT, ['cost' => 12]),
+        'password_hash' => PasswordHasher::hash($adminPassword),
         'is_active'     => 1,
         'created_at'    => date('Y-m-d H:i:s'),
         'updated_at'    => date('Y-m-d H:i:s'),
