@@ -25,6 +25,16 @@ final class DatabaseTimeclockRepository implements TimeclockRepositoryInterface
         return EloquentTimeclock::where('store_id', $storeId)->get()->toArray();
     }
 
+    public function findByStoreBetween(int $storeId, string $from, string $to): array
+    {
+        // Seule la période est lue (index store_id, shift_date), pas tout l'historique des pointages.
+        return EloquentTimeclock::where('store_id', $storeId)
+            ->whereBetween('shift_date', [$from, $to])
+            ->orderBy('id')
+            ->get()
+            ->toArray();
+    }
+
     public function findByUserAndDate(int $userId, string $date): array
     {
         return EloquentTimeclock::where('user_id', $userId)
