@@ -35,7 +35,7 @@ final class Alert implements ComponentInterface
             . htmlspecialchars($this->message);
 
         if ($this->dismissible) {
-            $html .= '<button type="button" class="alert__close" onclick="this.parentElement.remove()">&times;</button>';
+            $html .= '<button type="button" class="alert__close" data-on-click="@removeParent">&times;</button>';
         }
 
         $html .= '</div>';

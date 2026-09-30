@@ -17,6 +17,7 @@
 ## 📡 ネットワーク・インフラ
 - **SSL/TLS：** すべてのSaaSインスタンスでHTTPSを必須化。
 - **セキュリティヘッダー：** HSTS、Content Security Policy（CSP）、X-Frame-Optionsをミドルウェアでデフォルト有効化。
+- **Content Security Policy：** スクリプトは Kintai 自身が配信するもの、またはリクエストごとの nonce を持つものだけが実行されます（`script-src 'self' 'nonce-…'`、`'unsafe-inline'` なし）。XSS の脆弱性から注入されたスクリプトや `onclick=` はブラウザにブロックされます。ビューはインライン handler の代わりに、`csp-actions.js` が処理する宣言的な `data-*` 属性を使います。バンドルも同様にしてください（[バンドルの作り方](creating-a-bundle.ja.md#content-security-policyインラインスクリプトは使えません) を参照）。
 - **レートリミット：** ログインおよび機微なAPIエンドポイントをブルートフォース攻撃から保護します。
 
 ## 🛠 シークレット管理

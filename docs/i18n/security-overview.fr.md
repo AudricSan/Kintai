@@ -17,6 +17,7 @@
 ## 📡 Réseau & Infrastructure
 - **SSL/TLS :** HTTPS obligatoire pour toutes les instances SaaS.
 - **En-têtes de sécurité :** HSTS, Content Security Policy (CSP) et X-Frame-Options activés par défaut via middleware.
+- **Content Security Policy :** les scripts ne s'exécutent que s'ils sont servis par Kintai lui-même ou portent le nonce de la requête (`script-src 'self' 'nonce-…'`, sans `'unsafe-inline'`) : un script ou un `onclick=` injecté par une faille XSS est bloqué par le navigateur. Les vues utilisent des attributs déclaratifs `data-*` gérés par `csp-actions.js` au lieu de handlers inline ; les bundles doivent faire de même (voir [Créer un bundle](creating-a-bundle.fr.md#content-security-policy--pas-de-script-inline)).
 - **Rate limiting :** protège le login et les endpoints API sensibles contre les attaques par force brute.
 
 ## 🛠 Gestion des secrets

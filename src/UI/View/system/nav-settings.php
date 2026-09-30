@@ -70,7 +70,7 @@ echo Flash::fromQuery('success', ['default' => __('operation_success'), '1' => _
     ?>
     <div class="form-inline-flex mb-sm">
         <p class="text-muted flex-1"><?= __('nav_section_order_desc') ?></p>
-        <?= Button::make(__('nav_reset_order'))->ghost()->sm()->submit()->attrs(['name' => 'reset_section_order', 'value' => '1', 'onclick' => "return confirm('" . htmlspecialchars(__('nav_reset_order') . ' ?', ENT_QUOTES) . "')"])->render() ?>
+        <?= Button::make(__('nav_reset_order'))->ghost()->sm()->submit()->attrs(['name' => 'reset_section_order', 'value' => '1', 'data-confirm' => __('nav_reset_order') . ' ?'])->render() ?>
     </div>
     <ul class="nav-order-list" id="navSectionOrder">
         <?php foreach ($sectionOrder as $secKey): if (!isset($sections[$secKey])) continue; ?>

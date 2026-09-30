@@ -24,7 +24,9 @@ your-bundle/
     YourBundle.php            # エントリークラス。kintai\Core\BundleContract\Bundle を継承
     Controllers/Web/...
     Controllers/Api/...
+  database/migrations/        # 任意 — 下記「データベースマイグレーション」を参照
   Views/                      # 任意 — loadViewsFrom() で読み込まれる
+  public/{css,js}/...         # 任意 — 下記「アセット」を参照、loadAssetsFrom() で読み込まれる
   lang/{en,fr,ja}.json         # 任意 — バンドル固有の翻訳キー
   routes.php                  # 任意 — loadRoutesFrom() で読み込まれる
   README.md
@@ -53,6 +55,7 @@ abstract class Bundle
 
     protected function loadRoutesFrom(string $path): void;
     protected function loadViewsFrom(string $path, string $namespace): void;
+    protected function loadAssetsFrom(string $relativeDir): void;  // 下記「アセット」を参照
 }
 ```
 
@@ -105,6 +108,85 @@ namespaceは何でも構いません——慣例として、インストール�
 
 バンドルが同じ認可の下で**アップロードされたファイル**（画像、PDF、添付ファイル）を配信する必要がある場合、そのための独自のファイル配信ルートを作らないでください。Kintai自身の`/storage/{path*}`（ルート名`storage.file`）にリンクしてください。これは`managed_store_ids`（`StorageFileController::assertPathStoreAccess()`）に加え、独自のアップロードパス制限とMIMEホワイトリストをすでに適用しています。並行するファイル配信ルートは、Coreが既に持っている認可ロジックを、その自身のテストカバレッジの外側で複製することになります。
 
+## データベースマイグレーション
+
+バンドルは独自のテーブルを持てます — スキーマを作成するだけのために、Kintai本体のリポジトリへ専用のPRを出す必要は**もうありません**。バンドルのルート（`src/` と同じ階層、`Views/`/`routes.php` と同じルール）に任意の `database/migrations/` ディレクトリを置き、Kintai本体のCoreマイグレーション（`database/migrations/php/*.php`）と**まったく同じ形式**のファイルを入れてください：
+
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace kintai\Database\Migrations;
+
+use kintai\Core\Database\Migration;
+use Illuminate\Database\Schema\Blueprint;
+
+return new class($this->capsule) extends Migration {
+    public function up(): void
+    {
+        if ($this->schema()->hasTable('your_bundle_table')) {
+            return;
+        }
+        $this->schema()->create('your_bundle_table', function (Blueprint $table) {
+            $table->increments('id');
+            // ...
+        });
+    }
+
+    public function down(): void
+    {
+        $this->schema()->dropIfExists('your_bundle_table');
+    }
+};
+```
+
+ファイル名は `YYYY_MM_DD_NNNNNN_description.php` にしてください — Coreのマイグレーションと同様、アルファベット順が実行順です。`up()` は必ず（上記のように）`hasTable()`/`hasColumn()` で保護してください：マイグレーションは手動の再同期（後述）で再実行されうるため、冪等でなければなりません。
+
+**実行されるタイミング**：`/admin/bundles/market` からのインストールまたは更新中に、バンドルのファイルがディスクに配置された直後（`BundleInstallerService::activate()`）に自動的に実行されます——バンドルが有効としてマークされる前なので、マイグレーションが失敗した場合は、スキーマが不完全なままバンドルが有効化されるのではなく、インストール/更新全体が中止されます。また、インストール済みのすべてのバンドルに対して、`php scripts/db-migrate.php` で手動で再同期することもできます（`--dry-run` で保留中のものをプレビューでき、Coreのマイグレーションと同じオプションです）。
+
+**追跡**：適用済みのバンドルマイグレーションは `bundle_migrations` テーブル（`bundle_slug` + マイグレーション名の組で一意）に記録されます——Core自身の `migrations` テーブルとは別なので、異なる2つのバンドルがマイグレーションのファイル名で衝突することは決してなく、アンインストール時に `BundleMigrationRunner::forgetBundle()` があなたのバンドルの追跡行だけを消去できます。業務テーブル自体はアンインストール時に削除**されません**（制限事項を参照）——削除されるのは追跡行だけなので、後で再インストールすると `up()` メソッドが問題なく再実行されます（テーブルがまだ残っていても、`hasTable()` のガードにより何も起こりません）。
+
+この仕組みは意図的にCoreに依存しません：リポジトリインターフェースとEloquentモデルは、自分のバンドルのnamespace内に置くことも、現在すべての公式バンドルが採用している慣例に従って `src/Core/Repositories/*Interface.php` に置くこともできます（上記「安定した契約」を参照）——マイグレーション自体はどちらでも構いません。
+
+## アセット
+
+**`kintai_core.min: "0.2.0"` 以降が必要です。** バンドルに独自のCSSやJSが必要な場合、Kintai本体の `public/assets/` に追加してもらうよう頼まないでください——この仕組みができる前のすべてのバンドルがその状態で、それはバンドルを別リポジトリとして配布する意義そのものを損なっていました（CSSを少し直すだけでCoreへのPRが必要になっていたのです）。自分で、自分の `public/` ディレクトリ（`src/`、`Views/`、`routes.php` と同じ階層——上記の必須構成の他のすべてと同じルール）から提供してください：
+
+```
+your-bundle/
+  public/
+    css/your-bundle.css
+    js/your-bundle.js
+```
+
+`loadViewsFrom()`/`loadRoutesFrom()` とまったく同じように、`register()` で登録します：
+
+```php
+public function register(): void
+{
+    $this->loadViewsFrom($this->getPath() . '/Views', 'your-namespace');
+    $this->loadRoutesFrom($this->getPath() . '/routes.php');
+    $this->loadAssetsFrom('public');
+}
+```
+
+バンドルのどのビューからでも、`bundle_asset()` ヘルパーを通じてファイルを参照してください——実際のファイルシステム上の場所は現在インストールされているバージョンによって変わるため、ハードコードしたパスは決して使わないでください：
+
+```php
+<?php if ($css = bundle_asset('your-slug', 'css/your-bundle.css')): ?>
+<link rel="stylesheet" href="<?= $css ?>">
+<?php endif; ?>
+```
+
+`bundle_asset()` は、バンドルが有効でない場合に `null` を返します（例外はスローしません）——常に解決されると仮定せず、上記のように `<link>`/`<script>` を必ず `if` で囲んでください。これが組み立てるURL（`GET /bundle-assets/{slug}/{path}?v={version}`）は、専用の認証なしルート（`BundleAssetController`）から配信されます——これらは公開の静的ファイルであり、バンドル自身のページのように `AuthMiddleware`/`PermissionMiddleware` で保護されてはいません——宣言した `public/` ディレクトリに限定され、拡張子は固定のホワイトリスト（`css`、`js`、`svg`、`png`、`webp`）に制限されます。ホワイトリスト外のもの、または `public/` ディレクトリより上位へ遡ろうとする試みはすべて拒否されます（`403`）。無効なバンドル、または `loadAssetsFrom()` を一度も呼んでいないバンドルへのリクエストは、単なる `404` になります。
+
+ビューがURLではなくファイルの**内容**を直接必要とする場合——典型的には `file_get_contents()` でスタイルシートをインライン化するPDFエクスポート——は、代わりに `bundle_asset_path()` を使ってください。同じファイルの絶対ファイルシステムパスに解決されます（無効な場合はやはり `null`）：
+
+```php
+$css = file_get_contents(bundle_asset_path('your-slug', 'css/pdf-your-bundle.css') ?? '');
+```
+
 ## `bundle.json` マニフェスト
 
 バンドルのリポジトリのルートに必須：
@@ -133,7 +215,7 @@ namespaceは何でも構いません——慣例として、インストール�
 | `namespace` | はい | `src/`配下すべてのPSR-4ルート。 |
 | `entry_class` | はい | エントリークラスの完全修飾名。`namespace`から解決した際に`src/`配下にそのファイルが存在する必要があります（有効化前にチェック）。 |
 | `description`、`author`、`license`、`homepage` | いいえ | 情報提供のみ。 |
-| `kintai_core.min`/`.max` | いいえ（デフォルト `0.0.0`/`999.999.999`） | インストーラーは、稼働中インスタンスのCoreバージョンがこの範囲外の場合、バンドルの有効化を拒否します。 |
+| `kintai_core.min`/`.max` | いいえ（デフォルト `0.0.0`/`999.999.999`） | インストーラーは、稼働中インスタンスのCoreバージョンがこの範囲外の場合、バンドルの有効化を拒否します。ビューで `data-*` アクションや `csp_nonce()` を使うバンドルは `min` を `0.3.0` にする必要があります。[Content Security Policy](#content-security-policyインラインスクリプトは使えません) を参照してください。 |
 | `requires_bundles` | いいえ（デフォルト `{}`） | スラッグ→バージョン制約。**現時点では情報提供のみ** — 「既知の制限」を参照。 |
 
 ## リリースを公開する
@@ -142,7 +224,51 @@ namespaceは何でも構いません——慣例として、インストール�
 2. コミットに`vX.Y.Z`のタグを付け、そのタグをプッシュする。
 3. そのタグに対してGitHub Releaseを作成する（`gh release create vX.Y.Z --generate-notes`、またはタグのプッシュ時に同じことを行うCIワークフロー——最小限の例として`kintai-bundle-feedback`の`.github/workflows/release.yml`を参照）。何も構築する必要はありません：Releaseが自動生成する`zipball_url`こそが、`BundleInstallerService`がダウンロードするものそのものです。
 
-## レジストリに掲載してもらう
+## Content Security Policy：インラインスクリプトは使えません
+
+Kintai は `script-src 'self' 'nonce-…'` を送信します（`SecurityHeadersMiddleware`）。ブラウザは Kintai 自身が配信するスクリプトと、現在のリクエストの nonce を持つインライン `<script>` だけを実行します。**インラインのイベント属性（`onclick=`、`onchange=`、`onsubmit=`、`oninput=` など）と `javascript:` リンクはブロックされます**。エラーは出ず、サーバー側にも何も記録されず、ボタンが何も起こさなくなるだけです。バンドルのビューではこれらを使わないでください。
+
+- **インライン `<script>`** — どうしても必要な場合のみ、リクエストの nonce を付けます：`<script nonce="<?= csp_nonce() ?>">…</script>`。`<script type="application/json">` のデータブロックは実行されないため nonce は不要です。バンドルの `assets/js/` に置いたファイル（`bundle_asset()` で読み込み）にすれば、何も必要ありません。
+- **イベント属性** — 宣言的な `data-*` 属性に置き換えます。処理は `public/assets/js/modules/csp-actions.js`（アプリのレイアウトが読み込みます）が行います：
+
+| 従来 | 書き方 |
+|---|---|
+| `onclick="doThing()"` | `data-on-click="doThing"` |
+| `onclick="doThing('a', 2)"` | `data-on-click="doThing" data-args='["a", 2]'` |
+| `onchange="doThing(this.value)"` | `data-on-change="doThing" data-args='["@value"]'`（`"@this"`、`"@value"`、`"@checked"` は呼び出し時に置換されます） |
+| `onchange="this.form.submit()"` | `data-submit-on-change` |
+| `onchange="document.getElementById('f').submit()"` | `data-submit-form="f"` |
+| `onclick="location.href='/x'"` | `data-goto="/x"`（http/https のみ） |
+| `onclick="event.stopPropagation()"` | `data-stop-propagation` |
+| `onclick="window.print()"` | `data-on-click="@print"`（`@close`、`@select`、`@removeParent`、`@copy` もあります） |
+| `onsubmit="return confirm('…')"`、`onclick="return confirm('…')"` | `<form>` または送信ボタンに `data-confirm="…"`（共通の確認モーダル） |
+| `Button::attrs(['onclick' => 'f()'])` | `Button::attrs(['data-on-click' => 'f'])` |
+
+`data-on-*` が呼び出せるのは、`window` 上に**自分で定義した関数**（スクリプト内の関数宣言、または `window.f = …`）だけです。`eval` や `setTimeout` などブラウザ組み込みの関数は意図的に拒否され、注入された属性がコード実行の手段にならないようになっています。`Button`/`Modal` の属性値はコンポーネントが既にエスケープするため、`htmlspecialchars()` の結果ではなく生の値を渡してください。
+
+**必要なバージョン。** `data-*` アクションと `csp_nonce()` は **Kintai Core 0.3.0** から提供されます。これらを使うバンドルは `bundle.json` に `"kintai_core": { "min": "0.3.0", … }` を宣言してください。古い Core では何も起きないコントロールをインストールする代わりに、インストーラーが拒否します。逆に、これは**既存バンドルにとって互換性のない変更**です。0.3.0 より前に書かれ、まだインライン handler を使っているバンドルは、0.3.0 未満の Core では動作し続けますが、0.3.0 以降ではボタン・セレクト・確認ダイアログが移行するまで動作しなくなります。Kintai の `tests/Unit/Security/NoInlineScriptGuardTest.php` は、Core のビューにインライン handler が戻るとすぐに失敗します。自分のビューでも同じ確認を行ってください。
+
+### 既存バンドルの移行
+
+1. 該当箇所を探します：`grep -rnE "[[:space:]]on(click|change|submit|input)[[:space:]]*=|['\"]on(click|change|submit|input)['\"][[:space:]]*=>|javascript:|<script>" Views src`。
+2. それぞれを上の表の対応する `data-*` 属性に置き換えます。`confirm()` は `data-confirm` に、`event.stopPropagation()` を呼んでいた handler は `data-stop-propagation` にします。そうしないと、委譲された祖先要素も反応してしまいます。
+3. `data-on-*` から呼ぶ関数がすべて **`window` 上**に定義されていることを確認します（通常のスクリプト内の関数宣言、または `window.f = …`）。トップレベルの `const f = …` や `let f = …` は `window` のプロパティではないため拒否されます。
+4. 残すインライン `<script>` には nonce を付けます：`<script nonce="<?= csp_nonce() ?>">`。
+5. `kintai_core.min` を `0.3.0` に引き上げ、下記の CI チェックを追加します。
+
+### CI での確認
+
+ブラウザがインライン handler をブロックしてもサーバーにはエラーが出ないため、他の方法では退行を検知できません。公式バンドルは `.github/workflows/tests.yml` で次のステップを実行しています：
+
+```yaml
+- name: No inline event handlers or nonce-less scripts (Kintai CSP)
+  run: |
+    set -euo pipefail
+    if grep -rnE "[[:space:]]on(click|change|submit|input|load|error|focus|blur|dblclick|keyup|keydown)[[:space:]]*=|['\"]on(click|change|submit|input)['\"][[:space:]]*=>|(href|src|action)[[:space:]]*=[[:space:]]*[\"']javascript:|<script>" Views src; then
+      echo "::error::Inline handlers, javascript: URLs and <script> without nonce are blocked by Kintai's CSP"
+      exit 1
+    fi
+```
 
 **レジストリ**とは、単純なHTTPSで配信される静的な`registry.json`ファイルに過ぎません（GitHubリポジトリの`raw.githubusercontent.com` URLがうまく機能し、公式レジストリもこの方法で配信されています）——Kintaiはこれもクローンせず、単にGETするだけです（`BundleRegistryClient`）。
 
@@ -170,6 +296,7 @@ namespaceは何でも構いません——慣例として、インストール�
 - `repository_url`は単純な`https://github.com/{owner}/{repo}`である必要があります——インストーラーはここからGitHub APIのリリース検索URLを導出します。
 - `versions`（schema 2）は更新チャンネルごとにキー分けされます——`release`（`main`から公開された非プレリリースのみ）、`beta`（`main`または`beta`、`alpha`を除く）、`alpha`（すべて）——それぞれ最新順のインストール可能なバージョンのリストです。これは`/admin/bundles/market`でインストール済みのすべてのバンドルに対して一度だけ選ぶチャンネル（`AppSettingsService::bundleUpdateChannel()`、`/admin/update`のCore自身のチャンネルとは独立）と対応しており、そのチャンネルに一致するリストがカタログUIで「最新」として提示され、通常の更新でインストールされる内容になります。**schema 1**（`versions`がチャンネルキーのないフラットな配列）も後方互換性のため引き続き受け付けられます——その場合Kintaiは三つのチャンネルすべてに同じフラットなリストを提示します。どのリリースがどのブランチから来たか判別する手段がないためです。公式レジストリはこのschema 2の3つのリストを、各バンドルの実際のGitHub Releases（`target_commitish`/`prerelease`、Kintai自身のリリースチャンネルと同じ規則）から自動的に算出します——[`AudricSan/KintaiBundle`](https://github.com/AudricSan/KintaiBundle)の`scripts/sync-versions.js`を参照してください。これは1時間ごとに実行され、新しいリリースでいずれかのバンドルのバージョンリストが変わるたびにPRを開きます。`versions`を手動で編集することはありません。
 - あなたのリポジトリ内の`bundle.json`は、互換性（`kintai_core.min`/`max`）やその他すべてに関する実際の情報源であり続け、インストール時に読み取られます——ここでの`versions`はカタログUIへの、何がインストール可能でどのチャンネルにあるかというヒントに過ぎません。
+- `commits`（任意。バージョン番号を上げずに schema 2 へ追加したもので、古い Kintai は無視します）は、各バージョンのタグが指すコミットの完全な sha（40 文字）を対応付けます。例: `"commits": {"1.0.2": "7f99e084…"}`。指定されている場合、Kintai は**展開の前に**ダウンロードしたアーカイブをこのコミットと照合し（GitHub の zipball は ZIP のコメントとルートフォルダ名にコミットを持ちます）、一致しなければインストールを拒否します。タグが別のコミットへ移動された場合（リポジトリやアカウントの侵害）でも、別のコードがレジストリに気付かれず紛れ込むことはありません。公式レジストリでは自動で設定されます。毎時の `sync-versions.js` が新しいリリースのコミットを固定し、既存の固定値は決して書き換えず、タグが動いていればエラーで停止します。固定値はメンテナーがレビューするプルリクエストを経て初めて `main` に反映されます。Kintai は期待されるコミットをサーバー側でレジストリから取得し（リクエストからは決して受け取りません）、確認のためにレジストリへ接続できない場合はインストールを拒否します。`commits` を公開しないレジストリはこれまでどおり動作します（警告がログに記録されます）。これは署名ではなく、GitHub によるアーカイブ生成と HTTPS に依存しており、信頼の起点は引き続きレジストリです。独自のレジストリを運用する場合は、`AudricSan/KintaiBundle` の `sync-versions.js` をそのまま再利用できます。
 
 見つけてもらう方法は2つあります：
 - **自分のレジストリ** — 自分で`registry.json`を書いてホストし（HTTPSでアクセスできればどこでも構いません）、そのURLを誰でも`/admin/bundles/registries`から追加できます。誰の承認も不要です。
@@ -183,7 +310,8 @@ Kintai自身のリポジトリ内にある`config/official-bundles.php`が、ど
 
 - **単一プロセス、単一のComposerオートローダー。** バンドルごとの`composer.json`や依存関係の分離はありません——あなたのバンドルはKintai自身の`kintai\`ルートと同じPHPプロセス、同じnamespaceツリーの中で動作します。依存してよいのは`BundleContract\Bundle`、`src/Core/Repositories/*Interface.php`のインターフェース、そしてKintaiのバージョン間で結合しても構わないと思える他のCoreクラスだけにしてください。
 - **`requires_bundles`はまだ強制されません。** 他のバンドルのスラッグ／バージョンへの依存を宣言することは受け付けられ保存されますが、それが欠けていたり古すぎたりしてもインストールをブロックするものは現時点ではありません——今のところは保証ではなくドキュメントとして扱ってください。
-- **アンインストールの仕組みはまだありません。** `/admin/bundles/market` はインストールと更新はできますが、バンドルのファイルとデータベースの行を削除する仕組みはまだ配線されていません。
+- **業務データに対するアンインストールの仕組みはありません。** `/admin/bundles/market` は、バンドルのファイル・マニフェストのエントリ・マイグレーションの追跡行のインストール、更新、アンインストールができますが、マイグレーションが作成したテーブル（とそのデータ）はアンインストール時に削除も変更もされません。それらを片付けたい場合は、今のところ手動でのDB操作になります。
+- **インラインのスクリプトとイベントハンドラーは動作しません。** Kintai Core 0.3.0 以降、Content-Security-Policy はスクリプトに `'unsafe-inline'` を許可しません。`onclick=`/`onchange=`/`onsubmit=`/`oninput=`、`javascript:` リンク、nonce のない `<script>` を含むバンドルのビューは、ブラウザに黙ってブロックされます。[Content Security Policy](#content-security-policyインラインスクリプトは使えません) を参照してください。
 - **GitHubのみ。** `repository_url`はGitHubリポジトリを指す必要があります——GitLabも、自前ホストのGitサーバーも、Git以外のアーカイブソースも使えません。
 
 ## リファレンス実装

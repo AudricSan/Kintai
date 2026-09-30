@@ -100,7 +100,7 @@ $periodLabel = $period_mode === 'week'
         <?php if ($_canManage): ?>
             <?= Button::make('⚡ ' . __('conflict_view'))->ghost()->sm()->link(route_url('admin.shifts.conflicts') . ($filter_store_id ? '?store_id=' . $filter_store_id : ''))->render() ?>
             <?= Button::make('↑ ' . __('import_excel'))->ghost()->sm()->link(route_url('admin.shifts.import'))->render() ?>
-            <?= Button::make('+ ' . __('new_shift'))->primary()->sm()->attrs(['onclick' => 'sdQcOpen()'])->render() ?>
+            <?= Button::make('+ ' . __('new_shift'))->primary()->sm()->attrs(['data-on-click' => 'sdQcOpen'])->render() ?>
         <?php elseif (($show_request_swap ?? false) && feat_bundle('swaps')): ?>
             <?= Button::make('⇄ ' . __('request_swap'))->primary()->sm()->link(route_url('employee.swaps.create'))->render() ?>
         <?php endif; ?>
@@ -125,7 +125,7 @@ ob_start();
         <?= csrf_field() ?>
         <input type="hidden" name="view"  value="<?= htmlspecialchars($period_mode) ?>">
         <input type="hidden" name="start" value="<?= htmlspecialchars($days[0]->format('Y-m-d')) ?>">
-        <select name="store_id" class="form-control filter-bar__select" onchange="this.form.submit()">
+        <select name="store_id" class="form-control filter-bar__select" data-submit-on-change>
             <?php foreach ($available_stores as $s): ?>
                 <option value="<?= (int) $s['id'] ?>" <?= (int) $s['id'] === $filter_store_id ? 'selected' : '' ?>>
                     <?= htmlspecialchars($s['name'] ?? '') ?>
@@ -383,7 +383,7 @@ ob_start();
                                     );
                                     ?>
                                     <div title="<?= $tooltip ?>"
-                                         onclick="sdModalOpen(this)"
+                                         data-on-click="sdModalOpen" data-args='["@this"]'
                                          data-id="<?= (int) ($sh['id'] ?? 0) ?>"
                                          data-date="<?= htmlspecialchars($sh['shift_date'] ?? '') ?>"
                                          data-start="<?= TimelineHelpers::atFmt($sh['_sm']) ?>"
@@ -444,8 +444,8 @@ ob_start();
 <?php endif; ?>
 
 <!-- ── Modal détail shift ──────────────────────────────────────────────────── -->
-<div id="sd-overlay" class="sd-overlay" onclick="sdModalClose()">
-    <div id="sd-modal" class="sd-modal" onclick="event.stopPropagation()">
+<div id="sd-overlay" class="sd-overlay" data-on-click="sdModalClose">
+    <div id="sd-modal" class="sd-modal" data-stop-propagation>
 
         <div id="sd-header" class="sd-modal-header">
             <div>
@@ -455,7 +455,7 @@ ob_start();
                 </div>
                 <div id="sd-date" class="sd-modal-sub"></div>
             </div>
-            <button onclick="sdModalClose()" class="sd-modal-close">×</button>
+            <button data-on-click="sdModalClose" class="sd-modal-close">×</button>
         </div>
 
         <div class="sd-modal-body">
@@ -496,7 +496,7 @@ ob_start();
                 <?= Button::make(__('delete'))->danger()->sm()->attrs(['type' => 'submit'])->render() ?>
             </form>
             <?php endif; ?>
-            <?= Button::make(__('close'))->ghost()->sm()->attrs(['onclick' => 'sdModalClose()'])->render() ?>
+            <?= Button::make(__('close'))->ghost()->sm()->attrs(['data-on-click' => 'sdModalClose'])->render() ?>
         </div>
     </div>
 </div>
@@ -504,11 +504,11 @@ ob_start();
 <?php if ($_canManage): ?>
 <!-- ── Modal création shift (unifié) ─────────────────────────────────────────── -->
 <div id="qc-overlay" class="modal">
-    <div class="modal__backdrop" onclick="sdQcClose()"></div>
-    <div class="modal__dialog modal__dialog--wide" onclick="event.stopPropagation()">
+    <div class="modal__backdrop" data-on-click="sdQcClose"></div>
+    <div class="modal__dialog modal__dialog--wide" data-stop-propagation>
         <div class="modal__header">
             <h3 class="modal__title"><?= __('quick_new_shift') ?></h3>
-            <button type="button" class="modal__close" onclick="sdQcClose()">×</button>
+            <button type="button" class="modal__close" data-on-click="sdQcClose">×</button>
         </div>
         <div class="modal__body">
             <?php $shift ??= []; $all_stores ??= $available_stores ?? []; ?>
@@ -518,7 +518,7 @@ ob_start();
                 <?php include __DIR__ . '/../_partials/_form-shift.php'; ?>
                 <div class="form-actions">
                     <?= Button::make(__('create'))->primary()->attrs(['type' => 'submit', 'id' => 'qc-submit'])->render() ?>
-                    <?= Button::make(__('cancel'))->ghost()->attrs(['onclick' => 'sdQcClose()'])->render() ?>
+                    <?= Button::make(__('cancel'))->ghost()->attrs(['data-on-click' => 'sdQcClose'])->render() ?>
                 </div>
             </form>
         </div>

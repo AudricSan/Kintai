@@ -14,9 +14,10 @@
 if (!empty($downloadUrl)):
 ?>
 <div class="pdf-preview-toolbar">
-    <button type="button" onclick="window.print()">🖨 <?= __('print_payslip') ?></button>
+    <button type="button" data-on-click="@print">🖨 <?= __('print_payslip') ?></button>
     <a href="<?= htmlspecialchars($downloadUrl) ?>" class="pdf-preview-toolbar__download">⬇ <?= __('download_pdf') ?></a>
-    <a href="javascript:window.close()">✕ <?= __('close') ?></a>
+    <a href="#" data-on-click="@close">✕ <?= __('close') ?></a>
     <span class="pdf-preview-toolbar__hint"><?= __('print_hint') ?></span>
 </div>
+<script src="<?= $BASE_URL ?>/assets/js/modules/csp-actions.js"></script>
 <?php endif; ?>

@@ -37,7 +37,7 @@ echo Tabs::make()
         <form method="GET" action="" class="flex-row gap-sm">
             <input type="hidden" name="tab" value="error-file">
             <label class="form-label" for="lines"><?= __('logs_lines') ?></label>
-            <select id="lines" name="lines" class="form-control form-control-sm" onchange="this.form.submit()">
+            <select id="lines" name="lines" class="form-control form-control-sm" data-submit-on-change>
                 <option value="50" <?= $err_lines === 50 ? 'selected' : '' ?>>50</option>
                 <option value="200" <?= $err_lines === 200 ? 'selected' : '' ?>>200</option>
                 <option value="1000" <?= $err_lines === 1000 ? 'selected' : '' ?>>1000</option>
@@ -197,7 +197,7 @@ $exportUrl = route_url('admin.activity.export') . ($exportParams ? '?' . http_bu
         <div class="shifts-filters__row">
             <div class="shifts-filters__group">
                 <label class="shifts-filters__label" for="al-level"><?= __('level') ?></label>
-                <select id="al-level" name="level" class="form-control form-control-sm" onchange="this.form.submit()">
+                <select id="al-level" name="level" class="form-control form-control-sm" data-submit-on-change>
                     <option value=""><?= __('all') ?></option>
                     <?php foreach ($levels as $l): ?>
                         <option value="<?= $l ?>" <?= $levelFilter === $l ? 'selected' : '' ?>><?= htmlspecialchars(ucfirst($l)) ?></option>
@@ -206,7 +206,7 @@ $exportUrl = route_url('admin.activity.export') . ($exportParams ? '?' . http_bu
             </div>
             <div class="shifts-filters__group">
                 <label class="shifts-filters__label" for="al-channel"><?= __('channel') ?></label>
-                <select id="al-channel" name="channel" class="form-control form-control-sm" onchange="this.form.submit()">
+                <select id="al-channel" name="channel" class="form-control form-control-sm" data-submit-on-change>
                     <option value=""><?= __('all') ?></option>
                     <?php foreach ($channels as $c): ?>
                         <option value="<?= $c ?>" <?= $channelFilter === $c ? 'selected' : '' ?>><?= htmlspecialchars(ucfirst($c)) ?></option>
@@ -216,7 +216,7 @@ $exportUrl = route_url('admin.activity.export') . ($exportParams ? '?' . http_bu
             <?php if (!empty($actions)): ?>
             <div class="shifts-filters__group">
                 <label class="shifts-filters__label" for="al-action"><?= __('action') ?></label>
-                <select id="al-action" name="action" class="form-control form-control-sm" onchange="this.form.submit()">
+                <select id="al-action" name="action" class="form-control form-control-sm" data-submit-on-change>
                     <option value=""><?= __('all') ?></option>
                     <?php foreach ($actions as $a):
                         $alLabel = $actionLabels[$a] ?? $a; ?>
@@ -235,7 +235,7 @@ $exportUrl = route_url('admin.activity.export') . ($exportParams ? '?' . http_bu
             </div>
             <div class="shifts-filters__group">
                 <label class="shifts-filters__label" for="al-user"><?= __('user') ?></label>
-                <select id="al-user" name="user_id" class="form-control form-control-sm" onchange="this.form.submit()">
+                <select id="al-user" name="user_id" class="form-control form-control-sm" data-submit-on-change>
                     <option value=""><?= __('all') ?></option>
                     <?php foreach ($users_map as $uid => $uname): ?>
                         <option value="<?= $uid ?>" <?= (string) $userIdFilter === (string) $uid ? 'selected' : '' ?>><?= htmlspecialchars($uname) ?></option>
@@ -317,8 +317,8 @@ $exportUrl = route_url('admin.activity.export') . ($exportParams ? '?' . http_bu
                 };
                 $action = $row['action'] ?? '';
                 $label  = $action ? ($actionLabelsLocal[$action] ?? $action) : '—';
-                return Badge::make(htmlspecialchars($row['level'] ?? ''))->variant($levelClass)->render()
-                    . ($action ? Badge::make(htmlspecialchars($label))->primary()->render() : '—');
+                return Badge::make($row['level'] ?? '')->variant($levelClass)->render()
+                    . ($action ? Badge::make($label)->primary()->render() : '—');
             })
             ->column(__('message'), function($row) use ($actionLabelsLocal) {
                 $action = $row['action'] ?? '';
@@ -386,7 +386,7 @@ echo Modal::make('—', '<div id="al-detail-content"></div>')
     ],
 ], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?></script>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 (function() {
     var rows = document.querySelectorAll('.log-row');
     var content = document.getElementById('al-detail-content');

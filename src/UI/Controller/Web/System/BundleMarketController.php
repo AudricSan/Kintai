@@ -244,7 +244,14 @@ final class BundleMarketController
             return Response::json(['ok' => false, 'error' => __('bundle_market_invalid_request')], 400);
         }
 
-        $result = $this->installer->dryRun($slug, $repositoryUrl, $version);
+        // Empreinte du commit épinglée par le registry, retrouvée côté serveur (jamais lue depuis la requête).
+        $registryUrl = trim((string) $request->post('registry_url', ''));
+        $pin = $this->catalog->resolvePin($registryUrl !== '' ? $registryUrl : null, $slug, $version);
+        if ($pin['error'] !== null) {
+            return Response::json(['ok' => false, 'error' => $pin['error']], 422);
+        }
+
+        $result = $this->installer->dryRun($slug, $repositoryUrl, $version, $pin['commit']);
 
         return Response::json([
             'ok'    => $result->success,
@@ -261,15 +268,21 @@ final class BundleMarketController
         }
         [$slug, $repositoryUrl, $version, $registryUrl] = $input;
 
-        $result = $this->installer->install($slug, $repositoryUrl, $version, $registryUrl);
+        $pin = $this->catalog->resolvePin($registryUrl, $slug, $version);
+        if ($pin['error'] !== null) {
+            return Response::redirect($this->base() . '/admin/bundles/market?error=' . urlencode($pin['error']));
+        }
+
+        $result = $this->installer->install($slug, $repositoryUrl, $version, $registryUrl, null, $pin['commit']);
 
         if (!$result->success) {
             return Response::redirect($this->base() . '/admin/bundles/market?error=' . urlencode((string) $result->error));
         }
 
         $this->auditLogger->log($request, 'bundle.installed', 'bundle', null, [
-            'slug'    => $slug,
-            'version' => $version,
+            'slug'          => $slug,
+            'version'       => $version,
+            'commit_pinned' => $pin['commit'] !== null,
         ]);
 
         return Response::redirect($this->base() . '/admin/bundles/market?success=' . urlencode($slug));
@@ -306,9 +319,15 @@ final class BundleMarketController
         }
         [$slug, $repositoryUrl, $version, $registryUrl] = $input;
 
+        $pin = $this->catalog->resolvePin($registryUrl, $slug, $version);
+        if ($pin['error'] !== null) {
+            $emit('error', ['message' => $pin['error']]);
+            exit(0);
+        }
+
         $result = $this->installer->install($slug, $repositoryUrl, $version, $registryUrl, function (int $percent, string $label) use ($emit): void {
             $emit('progress', ['percent' => $percent, 'label' => $label]);
-        });
+        }, $pin['commit']);
 
         if (!$result->success) {
             $emit('error', ['message' => (string) $result->error]);
@@ -316,8 +335,9 @@ final class BundleMarketController
         }
 
         $this->auditLogger->log($request, 'bundle.installed', 'bundle', null, [
-            'slug'    => $slug,
-            'version' => $version,
+            'slug'          => $slug,
+            'version'       => $version,
+            'commit_pinned' => $pin['commit'] !== null,
         ]);
 
         $emit('done', ['slug' => $slug, 'version' => $version]);

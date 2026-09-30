@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\UI\Controller\Web\Staff;
 
+use kintai\Core\Auth\CredentialRevoker;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
@@ -41,6 +42,8 @@ final class AdminUserController
         private readonly RoleAssignmentSyncService $roleSync,
         private readonly PermissionService $permissions,
         private readonly PlanLimitService $planLimits,
+        // Optionnel pour les tests qui construisent le contrôleur à la main.
+        private readonly ?CredentialRevoker $revoker = null,
     ) {}
 
     /**
@@ -803,6 +806,11 @@ final class AdminUserController
         }
 
         $this->users->save($data);
+        // Nouveau mot de passe ou compte désactivé : on révoque cookies « rester connecté » et jetons d'API
+        // (les sessions déjà ouvertes tombent seules : empreinte du mot de passe / compte inactif).
+        if ($newPassword !== '' || (!empty($user['is_active']) && empty($data['is_active']))) {
+            $this->revoker?->revokeAllFor((int) $user['id']);
+        }
         // Seul un requérant déjà Owner peut accorder ou retirer le statut Owner
         // d'un compte (y compris le sien) — sinon n'importe quel détenteur de
         // employees.update pourrait s'auto-promouvoir en postant is_admin=1.
@@ -835,6 +843,7 @@ final class AdminUserController
     {
         $id = (int) $request->param('id');
         $this->users->delete($id);
+        $this->revoker?->revokeAllFor($id);
         $this->auditLogger->log($request, 'user.deleted', 'user', $id, []);
         return Response::redirect($this->base() . '/admin/users?success=deleted');
     }
@@ -849,6 +858,7 @@ final class AdminUserController
         $oldUser = $user;
         $user['password_hash'] = password_hash('0000', PASSWORD_BCRYPT, ['cost' => 12]);
         $this->users->save($user);
+        $this->revoker?->revokeAllFor((int) $user['id']);
         $this->auditLogger->logUpdate($request, 'user.password_reset', 'user', (int) $user['id'], $oldUser, $user, [
             'email' => $user['email'] ?? null,
         ], null, null);
