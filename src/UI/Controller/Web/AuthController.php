@@ -101,7 +101,7 @@ final class AuthController
             // Connexion par code employé + code magasin + mot de passe
             $employeeCode = trim($request->post('employee_code', ''));
             $storeCode    = trim($request->post('store_code', ''));
-            $password     = $request->post('password', '0000');
+            $password     = $request->post('password', PasswordPolicy::DEFAULT_PASSWORD);
             $ok = $this->auth->attemptByCode($employeeCode, $storeCode, $password, $remember);
         } else {
             // Connexion classique email + mot de passe
@@ -190,7 +190,7 @@ final class AuthController
         }
 
         $userId             = (int) $user['id'];
-        $hasDefaultPassword = password_verify('0000', (string) ($user['password_hash'] ?? ''));
+        $hasDefaultPassword = $this->auth->mustChangePassword();
         $scheme             = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
         $host               = $_SERVER['HTTP_HOST'] ?? 'localhost';
         $base               = $this->base();

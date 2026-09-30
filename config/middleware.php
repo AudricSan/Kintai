@@ -12,6 +12,7 @@ return [
         \kintai\Core\Middleware\I18nMiddleware::class,
         \kintai\Core\Middleware\AppSettingsMiddleware::class,
         \kintai\Core\Middleware\MaintenanceModeMiddleware::class,
+        \kintai\Core\Middleware\MustChangePasswordMiddleware::class,
         \kintai\Core\Middleware\DailyReportNavMiddleware::class,
         \kintai\Core\Middleware\MessageCountMiddleware::class,
         \kintai\Core\Middleware\NotificationMiddleware::class,
