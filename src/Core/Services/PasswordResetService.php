@@ -19,6 +19,8 @@ final class PasswordResetService
         private readonly MailerService $mailer,
         // Optionnel pour les tests qui construisent le service à la main.
         private readonly ?CredentialRevoker $revoker = null,
+        // Pour écrire l'e-mail dans la langue du destinataire ; sans lui, langue de la requête en cours.
+        private readonly ?TranslationService $translator = null,
     ) {}
 
     /**
@@ -51,11 +53,13 @@ final class PasswordResetService
 
         $link = (string) self::resetLink($baseUrl, $token);
 
-        return $this->mailer->send(
-            [$email],
-            '[Kintai] Réinitialisation de votre mot de passe',
-            $this->buildMailBody($name, $link),
+        // L'e-mail est écrit dans la langue du destinataire (sa préférence), pas celle de la personne qui l'a demandé.
+        [$subject, $body] = $this->inLocale(
+            is_string($user['language'] ?? null) ? $user['language'] : null,
+            fn(): array => [__('reset_mail_subject'), $this->buildMailBody($name, $link)],
         );
+
+        return $this->mailer->send([$email], $subject, $body);
     }
 
     /**
@@ -106,7 +110,7 @@ final class PasswordResetService
         }
 
         $this->users->save(array_merge($user, [
-            'password_hash' => password_hash($newPassword, PASSWORD_BCRYPT, ['cost' => 12]),
+            'password_hash' => \kintai\Core\Auth\PasswordHasher::hash($newPassword),
         ]));
 
         $this->resets->deleteByEmail($record['email']);
@@ -117,14 +121,42 @@ final class PasswordResetService
         return true;
     }
 
+    /**
+     * Exécute $fn avec la langue $locale (si le traducteur est disponible), puis rétablit la langue de la requête.
+     *
+     * @template T
+     * @param callable(): T $fn
+     * @return T
+     */
+    private function inLocale(?string $locale, callable $fn): mixed
+    {
+        if ($this->translator === null || $locale === null || $locale === '') {
+            return $fn();
+        }
+        $previous = $this->translator->getLocale();
+        $this->translator->setLocale($locale);
+        try {
+            return $fn();
+        } finally {
+            $this->translator->setLocale($previous);
+        }
+    }
+
     private function buildMailBody(string $name, string $link): string
     {
-        $escapedName = htmlspecialchars($name, ENT_QUOTES);
+        $e = static fn(string $key, array $replace = []): string => htmlspecialchars(__($key, $replace), ENT_QUOTES);
         $escapedLink = htmlspecialchars($link, ENT_QUOTES);
+        $lang        = htmlspecialchars($this->translator?->getLocale() ?? 'en', ENT_QUOTES);
+        $title       = $e('reset_mail_title');
+        $greeting    = $e('reset_mail_greeting', ['name' => $name]);
+        $intro       = $e('reset_mail_intro');
+        $button      = $e('reset_mail_button');
+        $expiry      = $e('reset_mail_expiry');
+        $ignore      = $e('reset_mail_ignore');
 
         return <<<HTML
         <!DOCTYPE html>
-        <html lang="fr">
+        <html lang="{$lang}">
         <head><meta charset="UTF-8"></head>
         <body style="font-family:sans-serif;background:#f8fafc;margin:0;padding:32px 0;">
           <table width="100%" cellpadding="0" cellspacing="0">
@@ -134,23 +166,22 @@ final class PasswordResetService
                 <tr><td>
                   <h1 style="font-size:22px;color:#1e293b;margin:0 0 8px;">Kintai</h1>
                   <h2 style="font-size:16px;color:#475569;font-weight:normal;margin:0 0 24px;">
-                    Réinitialisation de mot de passe
+                    {$title}
                   </h2>
-                  <p style="color:#334155;line-height:1.6;">Bonjour {$escapedName},</p>
+                  <p style="color:#334155;line-height:1.6;">{$greeting}</p>
                   <p style="color:#334155;line-height:1.6;">
-                    Vous avez demandé la réinitialisation de votre mot de passe.
-                    Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe.
+                    {$intro}
                   </p>
                   <p style="text-align:center;margin:32px 0;">
                     <a href="{$escapedLink}"
                        style="background:#2563eb;color:#fff;text-decoration:none;
                               padding:12px 28px;border-radius:6px;font-size:15px;font-weight:600;">
-                      Réinitialiser mon mot de passe
+                      {$button}
                     </a>
                   </p>
                   <p style="color:#64748b;font-size:13px;line-height:1.6;">
-                    Ce lien expire dans 1 heure.<br>
-                    Si vous n'avez pas fait cette demande, ignorez simplement ce message.
+                    {$expiry}<br>
+                    {$ignore}
                   </p>
                   <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
                   <p style="color:#94a3b8;font-size:12px;">Kintai — Shift Management</p>

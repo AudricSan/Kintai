@@ -31,7 +31,8 @@ final class AuthService
     private const SESSION_PW_FINGERPRINT = 'auth_pw_fp';
     private const REMEMBER_COOKIE = 'kintai_remember';
     // Coût bcrypt des mots de passe créés par l'app (voir AdminUserController/PasswordResetService).
-    private const TIMING_COST = 12;
+    // Même coût que PasswordHasher : le calcul factice doit durer autant qu'une vraie vérification.
+    private const TIMING_COST = PasswordHasher::COST;
     private const REMEMBER_LIFETIME_DAYS = 30;
 
     public function __construct(
