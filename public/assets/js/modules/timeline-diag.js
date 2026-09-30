@@ -8,32 +8,40 @@
     tip.className = 'tl-diag-tip';
     document.body.appendChild(tip);
 
+    // Échappe toute valeur insérée en HTML : noms d'employés et libellés sont saisis par des administrateurs
+    // ou des managers, et un manager ne doit pas pouvoir injecter du HTML dans l'écran d'un autre utilisateur.
+    function esc(value) {
+        var span = document.createElement('span');
+        span.textContent = value === undefined || value === null ? '' : String(value);
+        return span.innerHTML;
+    }
+
     function renderDiag(d) {
         var staffColor = d.understaffed ? '#fca5a5' : '#86efac';
         var html = '<div class="tl-diag-hdr">'
-            + '👥 ' + d.staff + i18n.staff_planned_label
+            + '👥 ' + esc(d.staff) + esc(i18n.staff_planned_label)
             + (d.min_staff > 0
-                ? ' · ' + i18n.peak_abbr
-                  + ' <span style="color:' + staffColor + '">' + d.peak + '</span>'
-                  + '<span class="tl-diag-dim"> / min ' + d.min_staff + ' ' + i18n.simult_abbr + '</span>'
+                ? ' · ' + esc(i18n.peak_abbr)
+                  + ' <span style="color:' + staffColor + '">' + esc(d.peak) + '</span>'
+                  + '<span class="tl-diag-dim"> / min ' + esc(d.min_staff) + ' ' + esc(i18n.simult_abbr) + '</span>'
                 : '')
-            + (d.understaffed ? ' <span class="tl-diag-warn">— ' + i18n.understaffed_warn + '</span>' : '')
+            + (d.understaffed ? ' <span class="tl-diag-warn">— ' + esc(i18n.understaffed_warn) + '</span>' : '')
             + '</div>';
         if (d.understaffed_ranges && d.understaffed_ranges.length) {
-            html += '<div class="tl-diag-section tl-diag-section--under">⚠ ' + i18n.understaffed_warn + ' (' + d.understaffed_ranges.length + ')</div>';
-            d.understaffed_ranges.forEach(function (r) { html += '<div class="tl-diag-item">· ' + r + '</div>'; });
+            html += '<div class="tl-diag-section tl-diag-section--under">⚠ ' + esc(i18n.understaffed_warn) + ' (' + d.understaffed_ranges.length + ')</div>';
+            d.understaffed_ranges.forEach(function (r) { html += '<div class="tl-diag-item">· ' + esc(r) + '</div>'; });
         }
         if (d.conflicts && d.conflicts.length) {
-            html += '<div class="tl-diag-section tl-diag-section--conflict">⚡ ' + i18n.alert_conflicts + ' (' + d.conflicts.length + ')</div>';
-            d.conflicts.forEach(function (c) { html += '<div class="tl-diag-item">· ' + c + '</div>'; });
+            html += '<div class="tl-diag-section tl-diag-section--conflict">⚡ ' + esc(i18n.alert_conflicts) + ' (' + d.conflicts.length + ')</div>';
+            d.conflicts.forEach(function (c) { html += '<div class="tl-diag-item">· ' + esc(c) + '</div>'; });
         }
         if (d.short && d.short.length) {
-            html += '<div class="tl-diag-section tl-diag-section--short">⏱ ' + i18n.alert_short_shifts + ' (' + d.short.length + ')</div>';
-            d.short.forEach(function (s) { html += '<div class="tl-diag-item">· ' + s + '</div>'; });
+            html += '<div class="tl-diag-section tl-diag-section--short">⏱ ' + esc(i18n.alert_short_shifts) + ' (' + d.short.length + ')</div>';
+            d.short.forEach(function (s) { html += '<div class="tl-diag-item">· ' + esc(s) + '</div>'; });
         }
         if (d.long && d.long.length) {
-            html += '<div class="tl-diag-section tl-diag-section--long">⏰ ' + i18n.alert_long_shifts + ' (' + d.long.length + ')</div>';
-            d.long.forEach(function (l) { html += '<div class="tl-diag-item">· ' + l + '</div>'; });
+            html += '<div class="tl-diag-section tl-diag-section--long">⏰ ' + esc(i18n.alert_long_shifts) + ' (' + d.long.length + ')</div>';
+            d.long.forEach(function (l) { html += '<div class="tl-diag-item">· ' + esc(l) + '</div>'; });
         }
         return html;
     }
