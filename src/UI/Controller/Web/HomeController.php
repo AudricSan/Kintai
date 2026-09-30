@@ -293,8 +293,8 @@ final class HomeController
 
         $costByMonth = [];
         foreach ($storeIds as $sid) {
-            $stats = $this->storeStats->storeStats((int) $sid, self::FINANCIAL_TREND_PERIOD_DAYS);
-            foreach ($stats['costByMonth'] as $month => $cost) {
+            // Seul le coût par mois sert ici : pas de calcul complet des statistiques sur 180 jours.
+            foreach ($this->storeStats->costByMonth((int) $sid, self::FINANCIAL_TREND_PERIOD_DAYS) as $month => $cost) {
                 $costByMonth[$month] = ($costByMonth[$month] ?? 0) + $cost;
             }
         }
@@ -349,8 +349,9 @@ final class HomeController
                 $timeoffByType[$type] = ($timeoffByType[$type] ?? 0) + $count;
             }
 
+            // Seule la période est lue (index store_id, shift_date), pas tout l'historique du store.
             $periodShifts = array_values(array_filter(
-                $this->shifts->findByStore($sid),
+                $this->shifts->findByStoreBetween($sid, $since, $today),
                 fn($s) => empty($s['deleted_at']) && $s['user_id'] !== null
                     && $s['shift_date'] >= $since && $s['shift_date'] <= $today
             ));
@@ -361,7 +362,7 @@ final class HomeController
             }
 
             $periodTimeclocks = array_values(array_filter(
-                $this->timeclocks->findByStore($sid),
+                $this->timeclocks->findByStoreBetween($sid, $since, $today),
                 fn($tc) => ($tc['shift_date'] ?? '') >= $since && ($tc['shift_date'] ?? '') <= $today
             ));
             foreach ($periodTimeclocks as $tc) {

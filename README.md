@@ -4,7 +4,7 @@
 
 **Open-source shift, attendance and workforce management for multi-store businesses.**
 
-[![Version](https://img.shields.io/badge/version-0.2.0-purple.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/github/v/release/AudricSan/Kintai?include_prereleases&label=version&color=purple)](https://github.com/AudricSan/Kintai/releases)
 [![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 [![PHP Version](https://img.shields.io/badge/php-%3E%3D%208.3-8892bf.svg)](https://php.net)
 [![Tests](https://github.com/AudricSan/Kintai/actions/workflows/tests.yml/badge.svg)](https://github.com/AudricSan/Kintai/actions/workflows/tests.yml)
@@ -12,7 +12,7 @@
 
 Kintai is the bridge between a spreadsheet and an enterprise ERP: scheduling, clock-in/out, leave, shift swaps, open-shift bidding, daily reports and payroll estimates for retail and hospitality businesses running multiple stores — self-hosted, on your own infrastructure, with your own data.
 
-> **Status: pre-1.0 (`0.2.0`).** Kintai is functional, but the API and data schema may still evolve before a stable `1.0.0`. See [CHANGELOG.md](CHANGELOG.md) and [docs/releasing.md](docs/releasing.md) for the version scheme.
+> **Status: pre-1.0.** Kintai is functional, but the API and data schema may still evolve before a stable `1.0.0`. See [CHANGELOG.md](CHANGELOG.md) and [docs/releasing.md](docs/releasing.md) for the version scheme.
 
 ---
 
@@ -89,6 +89,14 @@ php -S 127.0.0.1:8000 -t public
 ```
 
 Then open `http://127.0.0.1:8000/install.php` — the web installer creates `config/database.local.php`, runs migrations, and creates the admin account.
+
+The installer also records the address you install from as the instance's **public URL**, used for the links in emails (password reset). Check it under Owner settings (`/admin/owner-settings`) if users reach Kintai through another address; the `APP_URL` environment variable, when set, takes precedence. Without a public URL, password reset emails are not sent and the Owner sees a warning.
+
+To install without a browser (scripted deployment), `scripts/provision.php` does the same from the command line — SQLite by default, `--db-driver=mysql` plus `--db-*` options otherwise, environment variables as fallback (see the header of the script). Pass `--app-url`, since there is no request address to learn the public URL from:
+
+```bash
+php scripts/provision.php --admin-email=admin@example.com --admin-password='…' --app-url=https://kintai.example.com
+```
 
 ### Web server
 

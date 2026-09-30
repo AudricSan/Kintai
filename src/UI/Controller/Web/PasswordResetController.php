@@ -8,6 +8,7 @@ use kintai\Core\Auth\PasswordPolicy;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\PasswordResetService;
+use kintai\Core\Services\PublicUrlResolver;
 use kintai\UI\Controller\Web\HasBaseUrl;
 use kintai\UI\ViewRenderer;
 
@@ -17,6 +18,7 @@ final class PasswordResetController
     public function __construct(
         private readonly ViewRenderer $view,
         private readonly PasswordResetService $passwordReset,
+        private readonly PublicUrlResolver $publicUrl,
     ) {}
 
     /** GET /forgot-password */
@@ -42,8 +44,10 @@ final class PasswordResetController
             ], 'layout.guest'));
         }
 
-        // Anti-énumération : on envoie toujours la page "succès"
-        $this->passwordReset->sendResetLink($email, $this->base());
+        // Anti-énumération : on envoie toujours la page "succès". Le lien de l'e-mail doit être absolu : il est
+        // construit sur l'URL publique configurée, jamais sur l'en-tête Host de cette requête (voir PublicUrlResolver).
+        // Sans URL configurée, le service n'envoie rien et journalise l'erreur ; l'Owner en est averti dans l'interface.
+        $this->passwordReset->sendResetLink($email, $this->publicUrl->resolve() ?? '');
 
         return Response::html($this->view->render('auth.forgot-password', [
             'title' => __('forgot_password_title'),

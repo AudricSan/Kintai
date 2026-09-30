@@ -74,6 +74,10 @@ final class HomeControllerFinancialHrWidgetsTest extends TestCase
 
         $storeStats = $this->createMock(StoreStatsServiceInterface::class);
         $storeStats->method('multiStoreComparison')->willReturn([]);
+        // La vue financière ne lit plus que le coût par mois (costByMonth()), pas storeStats() complet.
+        $storeStats->method('costByMonth')->willReturnCallback(
+            fn(int $storeId, int $period) => $storeStatsByStore[$storeId]['costByMonth'] ?? []
+        );
         $storeStats->method('storeStats')->willReturnCallback(
             fn(int $storeId, int $period) => $storeStatsByStore[$storeId] ?? [
                 'costByMonth' => [], 'absRate' => 0, 'timeoffsByStatus' => [], 'timeoffsByType' => [],

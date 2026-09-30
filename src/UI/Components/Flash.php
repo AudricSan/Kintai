@@ -59,7 +59,13 @@ final class Flash implements ComponentInterface
             return '';
         }
 
-        $message = $this->messages[$this->defaultMessage] ?? $this->defaultMessage;
+        // Seuls les messages prévus par la vue s'affichent (ou son message 'default'). Afficher la valeur brute
+        // permettait à n'importe qui de fabriquer un lien (?success=…) montrant le texte de son choix dans un
+        // bandeau Kintai authentique. Les textes libres passent par kintai\Core\SessionFlash.
+        $message = $this->messages[$this->defaultMessage] ?? $this->messages['default'] ?? null;
+        if ($message === null) {
+            return '';
+        }
         if ($message instanceof \Closure) {
             $message = $message();
         }

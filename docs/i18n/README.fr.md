@@ -4,7 +4,7 @@
 
 **Gestion open-source des plannings, du pointage et des ressources humaines pour les entreprises multi-magasins.**
 
-[![Version](https://img.shields.io/badge/version-0.2.0-purple.svg)](CHANGELOG.fr.md)
+[![Version](https://img.shields.io/github/v/release/AudricSan/Kintai?include_prereleases&label=version&color=purple)](https://github.com/AudricSan/Kintai/releases)
 [![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 [![PHP Version](https://img.shields.io/badge/php-%3E%3D%208.3-8892bf.svg)](https://php.net)
 [![Tests](https://github.com/AudricSan/Kintai/actions/workflows/tests.yml/badge.svg)](https://github.com/AudricSan/Kintai/actions/workflows/tests.yml)
@@ -12,7 +12,7 @@
 
 Kintai est le pont entre le tableur Excel et l'ERP d'entreprise : planning, pointage, congés, échanges de shifts, rapports journaliers et estimation de la paie pour les entreprises de retail et d'hôtellerie-restauration gérant plusieurs magasins — auto-hébergé, sur votre propre infrastructure, avec vos propres données.
 
-> **Statut : bêta (`0.2.0`).** Kintai est fonctionnel et utilisé quotidiennement sur l'instance de démonstration ci-dessous, mais l'API et le schéma de données peuvent encore évoluer avant une version stable `1.0.0`. Voir [CHANGELOG.fr.md](CHANGELOG.fr.md).
+> **Statut : bêta, pré-1.0.** Kintai est fonctionnel et utilisé quotidiennement sur l'instance de démonstration ci-dessous, mais l'API et le schéma de données peuvent encore évoluer avant une version stable `1.0.0`. Voir [CHANGELOG.fr.md](CHANGELOG.fr.md).
 
 ---
 
@@ -87,6 +87,14 @@ php -S 127.0.0.1:8000 -t public
 ```
 
 Ouvrir ensuite `http://127.0.0.1:8000/install.php` — l'installateur web crée `config/database.local.php`, exécute les migrations et crée le compte administrateur.
+
+L'installateur enregistre aussi l'adresse depuis laquelle vous installez comme **URL publique** de l'instance, utilisée pour les liens des e-mails (réinitialisation du mot de passe). Vérifiez-la dans les réglages Owner (`/admin/owner-settings`) si les utilisateurs accèdent à Kintai par une autre adresse ; la variable d'environnement `APP_URL`, si elle est définie, prime. Sans URL publique, les e-mails de réinitialisation ne partent pas et l'Owner voit un avertissement.
+
+Pour installer sans navigateur (déploiement scripté), `scripts/provision.php` fait la même chose en ligne de commande — SQLite par défaut, sinon `--db-driver=mysql` et les options `--db-*`, avec les variables d'environnement en repli (voir l'en-tête du script). Passez `--app-url`, puisqu'aucune adresse de requête ne permet d'en déduire l'URL publique :
+
+```bash
+php scripts/provision.php --admin-email=admin@example.com --admin-password='…' --app-url=https://kintai.example.com
+```
 
 ### Serveur web
 

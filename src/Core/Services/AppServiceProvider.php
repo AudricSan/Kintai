@@ -90,9 +90,12 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(UserRepositoryInterface::class),
             $c->make(MailerService::class),
             $c->make(\kintai\Core\Auth\CredentialRevoker::class),
+            $c->make(TranslationService::class),
         ));
 
         $this->container->singleton(AppSettingsService::class, fn(Container $c) => new AppSettingsService($c->make(AppSettingsRepositoryInterface::class)));
+
+        $this->container->singleton(PublicUrlResolver::class, fn(Container $c) => new PublicUrlResolver($c->make(AppSettingsService::class)));
 
         $this->container->singleton(MascotResolver::class, fn(Container $c) => new MascotResolver($c->make(AppSettingsService::class)));
 

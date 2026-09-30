@@ -93,6 +93,31 @@ final class PasswordResetServiceTest extends TestCase
         $this->assertTrue($this->service->sendResetLink('user@test.com', 'https://example.com'));
     }
 
+    public function testTheResetLinkIsAbsolute(): void
+    {
+        // Le lien part par e-mail : un chemin seul (ancien comportement, « /reset-password/… ») est inutilisable.
+        $this->assertSame(
+            'https://kintai.example.com/sub/reset-password/abc123',
+            PasswordResetService::resetLink('https://kintai.example.com/sub/', 'abc123'),
+        );
+    }
+
+    public function testNoLinkCanBeBuiltFromAPathOnly(): void
+    {
+        $this->assertNull(PasswordResetService::resetLink('/Kintai', 'abc123'));
+        $this->assertNull(PasswordResetService::resetLink('', 'abc123'));
+    }
+
+    public function testWithoutAPublicUrlNothingIsSentAndNoTokenIsCreated(): void
+    {
+        // Sans URL publique, mieux vaut ne rien envoyer (et le journaliser) qu'un lien cassé.
+        $this->users->method('findByEmail')->willReturn($this->activeUser());
+        $this->resets->expects($this->never())->method('create');
+
+        $this->assertFalse($this->service->sendResetLink('user@test.com', ''));
+        $this->assertFalse($this->service->sendResetLink('user@test.com', '/Kintai'));
+    }
+
     // ── findValidToken ────────────────────────────────────────────────────────
 
     public function testFindValidTokenReturnsNullForUnknownToken(): void
