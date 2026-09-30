@@ -39,7 +39,9 @@ final class StoreStatsServiceStoreStatsCacheTest extends TestCase
         $shiftTypes = $this->createStub(ShiftTypeRepositoryInterface::class);
         $shiftTypes->method('findByStore')->willReturn([]);
         $users = $this->createStub(UserRepositoryInterface::class);
-        $users->method('findAll')->willReturn([]);
+        $users->method('findAll')->willReturn([
+            ['id' => 10, 'first_name' => 'Aiko', 'last_name' => 'Sato', 'email' => 'a@kintai.test', 'password_hash' => '$2y$12$secret'],
+        ]);
         $timeoff = $this->createStub(TimeoffRequestRepositoryInterface::class);
         $timeoff->method('findByStore')->willReturn([]);
         $rates = $this->createStub(UserShiftTypeRateRepositoryInterface::class);
@@ -115,5 +117,15 @@ final class StoreStatsServiceStoreStatsCacheTest extends TestCase
         $stats = $this->service->storeStats(1, 30);
 
         $this->assertSame(2, $stats['n']);
+    }
+    public function testTheUsersListNeverCarriesPasswordHashes(): void
+    {
+        // usersMap part jusqu'aux vues et aux exports : le hachage du mot de passe n'a rien à y faire.
+        $this->shifts->method('findByStoreBetween')->willReturn([]);
+
+        $user = $this->service->storeStats(1, 30)['usersMap'][10];
+
+        $this->assertArrayNotHasKey('password_hash', $user);
+        $this->assertSame('Sato', $user['last_name'], 'les autres champs restent disponibles');
     }
 }
