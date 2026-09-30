@@ -421,12 +421,25 @@ final class BackupControllerTest extends TestCase
         }
     }
 
-    public function testDescribeFlashKeepsExceptionDetailForUnknownErrorCode(): void
+    public function testDescribeFlashNeverShowsFreeTextFromTheUrl(): void
     {
-        $flash = $this->describeFlash($this->makeController(), 'error_' . urlencode('disk I/O error'));
+        // N'importe qui peut fabriquer ces liens : aucun texte venu de l'URL ne doit apparaître dans un bandeau.
+        $controller = $this->makeController();
 
-        $this->assertSame('danger', $flash['type']);
-        $this->assertStringContainsString('disk I/O error', $flash['text']);
+        $error = $this->describeFlash($controller, 'error_' . urlencode('Votre compte est suspendu, appelez le 0800'));
+        $this->assertSame('danger', $error['type']);
+        $this->assertStringNotContainsString('suspendu', $error['text']);
+
+        $this->assertNull($this->describeFlash($controller, urlencode('Votre compte est suspendu')));
+        $this->assertNull($this->describeFlash($controller, 'created_' . urlencode('<b>piège</b>')));
+        $this->assertNull($this->describeFlash($controller, 'channel_' . urlencode('appelez le 0800')));
+        $this->assertNull($this->describeFlash($controller, 'deleted_all_' . urlencode('beaucoup')));
+    }
+
+    public function testDescribeFlashShowsNothingForAFailureWhoseDetailIsInTheSession(): void
+    {
+        // Le détail est affiché par le layout depuis kintai\Core\SessionFlash : pas de second bandeau.
+        $this->assertNull($this->describeFlash($this->makeController(), 'error_failed'));
     }
 
     public function testDescribeFlashMarksKnownSuccessCodesAsSuccess(): void
