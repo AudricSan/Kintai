@@ -57,7 +57,7 @@ echo Flash::fromQuery('error', [
             <h4 class="section-title"><?= __('role_holders') ?> <span class="page-count">(<?= count($holders) ?>)</span></h4>
             <?php $removable = true; include __DIR__ . '/../_partials/_role-holders-list.php'; ?>
             <?php if (!empty($assignable_users)): ?>
-            <?= Button::make(__('add'))->outline()->sm()->attrs(['type' => 'button', 'onclick' => "openModal('addRoleHolderModal')"])->render() ?>
+            <?= Button::make(__('add'))->outline()->sm()->attrs(['type' => 'button', 'data-on-click' => 'openModal', 'data-args' => '["addRoleHolderModal"]'])->render() ?>
             <?php endif; ?>
         </div>
     </div>
@@ -98,7 +98,7 @@ echo Flash::fromQuery('error', [
                 <?php $removable = true; include __DIR__ . '/../_partials/_role-holders-list.php'; ?>
 
                 <?php if (!empty($assignable_users)): ?>
-                <?= Button::make(__('add'))->outline()->sm()->attrs(['type' => 'button', 'onclick' => "openModal('addRoleHolderModal')"])->render() ?>
+                <?= Button::make(__('add'))->outline()->sm()->attrs(['type' => 'button', 'data-on-click' => 'openModal', 'data-args' => '["addRoleHolderModal"]'])->render() ?>
                 <?php endif; ?>
             </div>
         </div>
@@ -195,7 +195,7 @@ echo Flash::fromQuery('error', [
     </form>
     <?php
     $addRoleHolderFooter = Button::make(__('add'))->primary()->submit()->attrs(['form' => 'roleHolderAddForm'])->render()
-        . ' ' . Button::make(__('cancel'))->ghost()->attrs(['type' => 'button', 'onclick' => "closeModal('addRoleHolderModal')"])->render();
+        . ' ' . Button::make(__('cancel'))->ghost()->attrs(['type' => 'button', 'data-on-click' => 'closeModal', 'data-args' => '["addRoleHolderModal"]'])->render();
     echo Modal::make('addRoleHolderModal')
         ->title(__('role_add_holders_hint'))
         ->body(ob_get_clean())

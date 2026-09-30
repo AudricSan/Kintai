@@ -57,7 +57,7 @@ $exportQuery = $filter_store_id !== 0 ? '?store_id=' . $filter_store_id : '';
             <?php if (count($available_stores) > 1 || $filter_store_id !== 0): ?>
             <div class="shifts-filters__group">
                 <label class="shifts-filters__label" for="uf-store"><?= __('store') ?></label>
-                <select id="uf-store" name="store_id" class="form-control form-control-sm" onchange="this.form.submit()">
+                <select id="uf-store" name="store_id" class="form-control form-control-sm" data-submit-on-change>
                     <option value="0"><?= __('all_stores') ?></option>
                     <?php foreach ($available_stores as $s): ?>
                         <option value="<?= (int) $s['id'] ?>" <?= $filter_store_id === (int) $s['id'] ? 'selected' : '' ?>><?= htmlspecialchars($s['name']) ?></option>
@@ -115,7 +115,7 @@ $exportQuery = $filter_store_id !== 0 ? '?store_id=' . $filter_store_id : '';
             . ($full !== $name ? '<div class="text-hint">' . $full . '</div>' : '')
             . '</div></div>';
     })
-    ->sortable(__('email'), 'email', fn($u) => htmlspecialchars($u['email'] ?? ''))
+    ->sortableText(__('email'), 'email', fn($u) => $u['email'] ?? '')
     ->sortable(__('role'), 'role', fn($u) => !empty($u['is_admin']) ? Badge::make('Admin')->admin()->render() : Badge::make('Staff')->staff()->render())
     ->column(__('store'), function($u) use ($user_store_ids, $store_names) {
         $uStoreIds = $user_store_ids[(int) $u['id']] ?? [];
@@ -123,7 +123,7 @@ $exportQuery = $filter_store_id !== 0 ? '?store_id=' . $filter_store_id : '';
         $html = '';
         foreach ($uStoreIds as $usid) {
             $sname = $store_names[$usid] ?? '';
-            if ($sname) $html .= Badge::make(htmlspecialchars($sname))->store()->render() . ' ';
+            if ($sname) $html .= Badge::make($sname)->store()->render() . ' ';
         }
         return $html;
     })

@@ -57,7 +57,7 @@ final class CronController
     public function autoValidate(Request $request): Response
     {
         $secret = (string) env('CRON_SECRET', '');
-        if ($secret === '' || $request->query('token', '') !== $secret) {
+        if ($secret === '' || !hash_equals($secret, (string) $request->query('token', ''))) {
             throw new ForbiddenException(__('error_cron_secret_missing'));
         }
 

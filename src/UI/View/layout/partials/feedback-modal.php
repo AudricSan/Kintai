@@ -1,6 +1,6 @@
 <?php
 /* Modale feedback — déclenchée depuis le footer applicatif (voir
- * partials/_footer.php, bouton onclick="fbOpen()").
+ * partials/_footer.php, bouton data-on-click="fbOpen").
  * Variables disponibles via ViewRenderer::share() : $BASE_URL, $auth_user
  */
 ?>
@@ -9,12 +9,12 @@
 <?php endif; ?>
 
 <!-- Overlay + modale -->
-<div id="fb-overlay" class="fb-overlay" onclick="fbClose()" role="dialog" aria-modal="true" aria-labelledby="fb-modal-title">
-    <div class="fb-modal" onclick="event.stopPropagation()">
+<div id="fb-overlay" class="fb-overlay" data-on-click="fbClose" role="dialog" aria-modal="true" aria-labelledby="fb-modal-title">
+    <div class="fb-modal" data-stop-propagation>
 
         <div class="fb-modal-header">
             <strong id="fb-modal-title"><?= __('feedback_modal_title') ?></strong>
-            <button type="button" class="fb-modal-close" onclick="fbClose()" aria-label="<?= __('close') ?>">×</button>
+            <button type="button" class="fb-modal-close" data-on-click="fbClose" aria-label="<?= __('close') ?>">×</button>
         </div>
 
         <div class="fb-modal-body">
@@ -47,7 +47,7 @@
                     <label class="form-label form-label--required" for="fb-category">
                         <?= __('feedback_category') ?>
                     </label>
-                    <select name="category" id="fb-category" class="form-control" required onchange="fbCategoryChange(this.value)">
+                    <select name="category" id="fb-category" class="form-control" required data-on-change="fbCategoryChange" data-args='["@value"]'>
                         <option value="other"><?= __('feedback_cat_other') ?></option>
                         <option value="shift"><?= __('feedback_cat_shift') ?></option>
                         <option value="schedule"><?= __('feedback_cat_schedule') ?></option>
@@ -74,10 +74,10 @@
                             <button type="button"
                                     class="fb-star-btn"
                                     data-value="<?= $i ?>"
-                                    onclick="fbSetRating(<?= $i ?>)"
+                                    data-on-click="fbSetRating" data-args="[<?= (int) $i ?>]"
                                     aria-label="<?= $i ?>/5">★</button>
                         <?php endfor; ?>
-                        <button type="button" class="fb-star-clear" onclick="fbClearRating()" title="<?= __('reset') ?>">✕</button>
+                        <button type="button" class="fb-star-clear" data-on-click="fbClearRating" title="<?= __('reset') ?>">✕</button>
                     </div>
                     <input type="hidden" name="rating" id="fb-rating-input" value="">
                 </div>
@@ -103,7 +103,7 @@
 
                 <div class="form-actions">
                     <button type="submit" class="btn btn--primary"><?= __('send') ?></button>
-                    <button type="button" class="btn btn--ghost" onclick="fbClose()"><?= __('cancel') ?></button>
+                    <button type="button" class="btn btn--ghost" data-on-click="fbClose"><?= __('cancel') ?></button>
                 </div>
             </form>
         </div>

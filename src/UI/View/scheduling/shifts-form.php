@@ -62,7 +62,7 @@ ob_start();
         <?php if ($mode === 'edit'): ?>
             <form method="POST" action="<?= $BASE_URL ?>/admin/shifts/<?= (int)$shift['id'] ?>/delete" class="form-inline ml-auto">
                 <?= csrf_field() ?>
-                <?= Button::make(__('delete'))->danger()->attrs(['onclick' => "return confirm('" . __('confirm') . "')"])->submit()->render() ?>
+                <?= Button::make(__('delete'))->danger()->attrs(['data-confirm' => __('confirm')])->submit()->render() ?>
             </form>
         <?php endif; ?>
     </div>

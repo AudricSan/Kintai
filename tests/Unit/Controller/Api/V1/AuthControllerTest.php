@@ -83,6 +83,26 @@ final class AuthControllerTest extends TestCase
         $this->assertSame('INVALID_CREDENTIALS', $data['code']);
     }
 
+    public function testFailedLoginFlagsTheRequestForTheThrottle(): void
+    {
+        $this->users->method('findByEmail')->willReturn(null);
+
+        $req = $this->makeRequest('POST', '/api/v1/auth/login', json: ['email' => 'nobody@example.com', 'password' => bin2hex(random_bytes(6))]);
+        $this->controller->login($req);
+
+        // Lu par LoginThrottleMiddleware : seuls les échecs comptent.
+        $this->assertTrue($req->getAttribute('auth_failed'));
+    }
+
+    public function testMissingCredentialsDoNotCountAsAFailedLogin(): void
+    {
+        $req = $this->makeRequest('POST', '/api/v1/auth/login', json: ['password' => bin2hex(random_bytes(6))]);
+        $response = $this->controller->login($req);
+
+        $this->assertSame(422, $response->status());
+        $this->assertNull($req->getAttribute('auth_failed'));
+    }
+
     public function testLoginInvalidEmployeeCodeReturns401(): void
     {
         $this->users->method('findByEmployeeCode')->willReturn(null);
@@ -107,11 +127,14 @@ final class AuthControllerTest extends TestCase
             'is_active'     => true,
             'deleted_at'    => null,
         ]);
+        // Comme en base : findById() et findByEmail() renvoient la même ligne, hash compris
+        // (la session est liée à l'empreinte de ce hash).
         $this->users->method('findById')->willReturn([
-            'id'         => 7,
-            'email'      => 'alice@example.com',
-            'is_active'  => true,
-            'deleted_at' => null,
+            'id'            => 7,
+            'email'         => 'alice@example.com',
+            'password_hash' => $hash,
+            'is_active'     => true,
+            'deleted_at'    => null,
         ]);
         $this->tokens->method('save')->willReturn([
             'id'         => 1,
@@ -144,7 +167,7 @@ final class AuthControllerTest extends TestCase
             'deleted_at'    => null,
         ]);
         $this->users->method('findById')->willReturn([
-            'id' => 1, 'email' => 'x@x.com', 'is_active' => true, 'deleted_at' => null,
+            'id' => 1, 'email' => 'x@x.com', 'password_hash' => $hash, 'is_active' => true, 'deleted_at' => null,
         ]);
 
         $capturedToken = null;

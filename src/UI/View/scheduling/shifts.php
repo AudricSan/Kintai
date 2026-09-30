@@ -224,12 +224,12 @@ if ($_canManage) {
         <div class="shifts-filters__row">
             <div class="shifts-filters__group">
                 <label class="shifts-filters__label" for="sf-month"><?= __('month') ?></label>
-                <input type="month" id="sf-month" name="month" value="<?= htmlspecialchars($filter_month) ?>" class="form-control form-control-sm" onchange="this.form.submit()">
+                <input type="month" id="sf-month" name="month" value="<?= htmlspecialchars($filter_month) ?>" class="form-control form-control-sm" data-submit-on-change>
             </div>
             <?php if (count($stores_map) > 1): ?>
             <div class="shifts-filters__group">
                 <label class="shifts-filters__label" for="sf-store"><?= __('store') ?></label>
-                <select id="sf-store" name="store_id" class="form-control form-control-sm" onchange="this.form.submit()">
+                <select id="sf-store" name="store_id" class="form-control form-control-sm" data-submit-on-change>
                     <option value="0"><?= __('all_stores') ?></option>
                     <?php foreach ($stores_map as $sid => $sname): ?>
                         <option value="<?= $sid ?>" <?= $filter_store_id === $sid ? 'selected' : '' ?>><?= htmlspecialchars($sname) ?></option>
@@ -239,7 +239,7 @@ if ($_canManage) {
             <?php endif; ?>
             <div class="shifts-filters__group">
                 <label class="shifts-filters__label" for="sf-user"><?= __('user') ?></label>
-                <select id="sf-user" name="user_id" class="form-control form-control-sm" onchange="this.form.submit()">
+                <select id="sf-user" name="user_id" class="form-control form-control-sm" data-submit-on-change>
                     <option value="0"><?= __('all_staff') ?></option>
                     <?php foreach ($users_for_filter as $uid => $uname): ?>
                         <option value="<?= $uid ?>" <?= $filter_user_id === $uid ? 'selected' : '' ?>><?= htmlspecialchars($uname) ?></option>
@@ -277,14 +277,14 @@ if ($_canManage) {
     <?php else: ?>
         <div id="bulk-bar" class="bulk-bar is-hidden">
             <span id="bulk-count" class="bulk-bar__count"><?= __('n_selected', ['count' => 0]) ?></span>
-            <?= Button::make('🗑 ' . __('bulk_delete_selection'))->danger()->sm()->submit()->attrs(['form' => 'bulk-form', 'onclick' => "return confirm('" . __('confirm_bulk_delete') . "')"])->render() ?>
-            <button type="button" class="btn btn--ghost btn--sm" onclick="bulkSelectAll(false)"><?= __('deselect_all') ?></button>
+            <?= Button::make('🗑 ' . __('bulk_delete_selection'))->danger()->sm()->submit()->attrs(['form' => 'bulk-form', 'data-confirm' => __('confirm_bulk_delete')])->render() ?>
+            <button type="button" class="btn btn--ghost btn--sm" data-on-click="bulkSelectAll" data-args='[false]'><?= __('deselect_all') ?></button>
         </div>
         <div class="table-wrap">
             <table class="data-table data-table--shifts">
                 <thead>
                     <tr>
-                        <th class="col-check"><input type="checkbox" id="bulk-select-all" title="<?= __('select_deselect_all') ?>" onchange="bulkSelectAll(this.checked)"></th>
+                        <th class="col-check"><input type="checkbox" id="bulk-select-all" title="<?= __('select_deselect_all') ?>" data-on-change="bulkSelectAll" data-args='["@checked"]'></th>
                         <th class="col-id">#</th>
                         <th class="col-date"><a href="<?= shiftSortUrl('date', $sort, $activeFilters) ?>" class="link-sort"><?= __('date') ?><span class="sort-icon"><?= shiftSortIcon('date', $sort) ?></span></a></th>
                         <?php if (count($stores_map) > 1): ?>
@@ -334,7 +334,7 @@ if ($_canManage) {
                         </tr>
                         <?php endif; ?>
                         <tr>
-                            <td class="col-check"><input type="checkbox" name="ids[]" value="<?= (int) $shift['id'] ?>" form="bulk-form" class="bulk-cb" onchange="bulkUpdateBar()"></td>
+                            <td class="col-check"><input type="checkbox" name="ids[]" value="<?= (int) $shift['id'] ?>" form="bulk-form" class="bulk-cb" data-on-change="bulkUpdateBar"></td>
                             <td class="col-id td-muted"><?= (int) $shift['id'] ?></td>
                             <td class="col-date td-nowrap"><?= htmlspecialchars($shiftDate) ?></td>
                             <?php if (count($stores_map) > 1): ?>
@@ -352,7 +352,7 @@ if ($_canManage) {
                                     <a href="<?= $BASE_URL ?>/admin/shifts/<?= (int) $shift['id'] ?>/edit" class="btn btn--ghost btn--sm"><?= __('edit') ?></a>
                                     <form method="POST" action="<?= $BASE_URL ?>/admin/shifts/<?= (int) $shift['id'] ?>/delete" class="form-inline">
                                         <?= csrf_field() ?>
-                                        <?= Button::make(__('delete'))->danger()->sm()->attrs(['onclick' => "return confirm('" . __('confirm_delete_shift') . "')"])->submit()->render() ?>
+                                        <?= Button::make(__('delete'))->danger()->sm()->attrs(['data-confirm' => __('confirm_delete_shift')])->submit()->render() ?>
                                     </form>
                                 </div>
                             </td>
