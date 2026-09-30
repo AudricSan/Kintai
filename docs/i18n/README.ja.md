@@ -90,6 +90,12 @@ php -S 127.0.0.1:8000 -t public
 
 インストーラーは、インストールに使ったアドレスをインスタンスの**公開URL**としても記録します。これはメール内リンク（パスワード再設定）に使われます。ユーザーが別のアドレスで Kintai にアクセスする場合は、オーナー設定（`/admin/owner-settings`）で確認してください。環境変数 `APP_URL` が設定されている場合はそちらが優先されます。公開URLがないと、パスワード再設定メールは送信されず、オーナーに警告が表示されます。
 
+ブラウザーを使わずにインストールする場合（スクリプトによるデプロイ）は、`scripts/provision.php` がコマンドラインで同じ処理を行います。デフォルトは SQLite で、MySQL の場合は `--db-driver=mysql` と `--db-*` オプションを使い、環境変数がフォールバックになります（スクリプト冒頭を参照）。公開URLを推測できるリクエストがないため、`--app-url` を指定してください：
+
+```bash
+php scripts/provision.php --admin-email=admin@example.com --admin-password='…' --app-url=https://kintai.example.com
+```
+
 ### Webサーバー
 
 配信するのは `public/` だけです。Webサーバーのドキュメントルート（Apacheの `DocumentRoot`、nginxの `root`）をそこに向けてください——リポジトリのルートに向けてはいけません。向けてしまうと、`.env`、`storage/app/database.sqlite`、バックアップ、ソースコードがダウンロードできてしまいます。`php -S … -t public` はすでにそうなっています。Apacheでは、サーバーを誤ったフォルダーに向けてしまった場合の安全網として、ルートの `.htaccess` が `public/` 以外のすべてのURLを拒否します。nginxには同等の仕組みがないため、`root` を正しく設定する必要があります。
