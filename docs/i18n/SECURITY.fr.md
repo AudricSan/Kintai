@@ -4,13 +4,17 @@
 
 ## Versions supportées
 
-Kintai est actuellement en pré-`1.0.0` — il n'existe pas encore de branche de support à long terme.
-Seul le dernier commit sur `main` reçoit des correctifs de sécurité.
+Kintai est actuellement en pré-`1.0.0` — il n'existe pas encore de branche de support à long terme, et toutes les
+releases publiées jusqu'ici sont des pré-releases, sur le canal `alpha` ou `beta`
+([releases](https://github.com/AudricSan/Kintai/releases)). Les correctifs de sécurité partent dans la release
+suivante ; les instances les reçoivent via **Mettre à jour maintenant** sur `/admin/update`.
 
 | Version | Supportée |
 |---------|-----------|
-| `main` (dernier commit) | ✅ |
-| toute version antérieure | ❌ |
+| Dernière release publiée (canal alpha ou beta) | ✅ |
+| Toute release antérieure | ❌ |
+
+Une fois la `1.0.0` publiée sur `main`, la version supportée sera la dernière release stable.
 
 ## Signaler une vulnérabilité
 
