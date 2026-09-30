@@ -215,7 +215,7 @@ $css = file_get_contents(bundle_asset_path('your-slug', 'css/pdf-your-bundle.css
 | `namespace` | はい | `src/`配下すべてのPSR-4ルート。 |
 | `entry_class` | はい | エントリークラスの完全修飾名。`namespace`から解決した際に`src/`配下にそのファイルが存在する必要があります（有効化前にチェック）。 |
 | `description`、`author`、`license`、`homepage` | いいえ | 情報提供のみ。 |
-| `kintai_core.min`/`.max` | いいえ（デフォルト `0.0.0`/`999.999.999`） | インストーラーは、稼働中インスタンスのCoreバージョンがこの範囲外の場合、バンドルの有効化を拒否します。 |
+| `kintai_core.min`/`.max` | いいえ（デフォルト `0.0.0`/`999.999.999`） | インストーラーは、稼働中インスタンスのCoreバージョンがこの範囲外の場合、バンドルの有効化を拒否します。ビューで `data-*` アクションや `csp_nonce()` を使うバンドルは `min` を `0.3.0` にする必要があります。[Content Security Policy](#content-security-policyインラインスクリプトは使えません) を参照してください。 |
 | `requires_bundles` | いいえ（デフォルト `{}`） | スラッグ→バージョン制約。**現時点では情報提供のみ** — 「既知の制限」を参照。 |
 
 ## リリースを公開する
@@ -246,8 +246,29 @@ Kintai は `script-src 'self' 'nonce-…'` を送信します（`SecurityHeaders
 
 `data-on-*` が呼び出せるのは、`window` 上に**自分で定義した関数**（スクリプト内の関数宣言、または `window.f = …`）だけです。`eval` や `setTimeout` などブラウザ組み込みの関数は意図的に拒否され、注入された属性がコード実行の手段にならないようになっています。`Button`/`Modal` の属性値はコンポーネントが既にエスケープするため、`htmlspecialchars()` の結果ではなく生の値を渡してください。
 
-`csp_nonce()` や `csp-actions.js` を使うバンドルには、それらを提供する Kintai Core が必要です。`bundle.json` の `kintai_core.min` をそれに合わせて設定してください。Kintai の `tests/Unit/Security/NoInlineScriptGuardTest.php` は、Core のビューにインラインハンドラーが戻るとすぐに失敗します。自分のビューでも同じ確認を行ってください。
-## レジストリに掲載してもらう
+**必要なバージョン。** `data-*` アクションと `csp_nonce()` は **Kintai Core 0.3.0** から提供されます。これらを使うバンドルは `bundle.json` に `"kintai_core": { "min": "0.3.0", … }` を宣言してください。古い Core では何も起きないコントロールをインストールする代わりに、インストーラーが拒否します。逆に、これは**既存バンドルにとって互換性のない変更**です。0.3.0 より前に書かれ、まだインライン handler を使っているバンドルは、0.3.0 未満の Core では動作し続けますが、0.3.0 以降ではボタン・セレクト・確認ダイアログが移行するまで動作しなくなります。Kintai の `tests/Unit/Security/NoInlineScriptGuardTest.php` は、Core のビューにインライン handler が戻るとすぐに失敗します。自分のビューでも同じ確認を行ってください。
+
+### 既存バンドルの移行
+
+1. 該当箇所を探します：`grep -rnE "[[:space:]]on(click|change|submit|input)[[:space:]]*=|['\"]on(click|change|submit|input)['\"][[:space:]]*=>|javascript:|<script>" Views src`。
+2. それぞれを上の表の対応する `data-*` 属性に置き換えます。`confirm()` は `data-confirm` に、`event.stopPropagation()` を呼んでいた handler は `data-stop-propagation` にします。そうしないと、委譲された祖先要素も反応してしまいます。
+3. `data-on-*` から呼ぶ関数がすべて **`window` 上**に定義されていることを確認します（通常のスクリプト内の関数宣言、または `window.f = …`）。トップレベルの `const f = …` や `let f = …` は `window` のプロパティではないため拒否されます。
+4. 残すインライン `<script>` には nonce を付けます：`<script nonce="<?= csp_nonce() ?>">`。
+5. `kintai_core.min` を `0.3.0` に引き上げ、下記の CI チェックを追加します。
+
+### CI での確認
+
+ブラウザがインライン handler をブロックしてもサーバーにはエラーが出ないため、他の方法では退行を検知できません。公式バンドルは `.github/workflows/tests.yml` で次のステップを実行しています：
+
+```yaml
+- name: No inline event handlers or nonce-less scripts (Kintai CSP)
+  run: |
+    set -euo pipefail
+    if grep -rnE "[[:space:]]on(click|change|submit|input|load|error|focus|blur|dblclick|keyup|keydown)[[:space:]]*=|['\"]on(click|change|submit|input)['\"][[:space:]]*=>|(href|src|action)[[:space:]]*=[[:space:]]*[\"']javascript:|<script>" Views src; then
+      echo "::error::Inline handlers, javascript: URLs and <script> without nonce are blocked by Kintai's CSP"
+      exit 1
+    fi
+```
 
 **レジストリ**とは、単純なHTTPSで配信される静的な`registry.json`ファイルに過ぎません（GitHubリポジトリの`raw.githubusercontent.com` URLがうまく機能し、公式レジストリもこの方法で配信されています）——Kintaiはこれもクローンせず、単にGETするだけです（`BundleRegistryClient`）。
 
@@ -290,6 +311,7 @@ Kintai自身のリポジトリ内にある`config/official-bundles.php`が、ど
 - **単一プロセス、単一のComposerオートローダー。** バンドルごとの`composer.json`や依存関係の分離はありません——あなたのバンドルはKintai自身の`kintai\`ルートと同じPHPプロセス、同じnamespaceツリーの中で動作します。依存してよいのは`BundleContract\Bundle`、`src/Core/Repositories/*Interface.php`のインターフェース、そしてKintaiのバージョン間で結合しても構わないと思える他のCoreクラスだけにしてください。
 - **`requires_bundles`はまだ強制されません。** 他のバンドルのスラッグ／バージョンへの依存を宣言することは受け付けられ保存されますが、それが欠けていたり古すぎたりしてもインストールをブロックするものは現時点ではありません——今のところは保証ではなくドキュメントとして扱ってください。
 - **業務データに対するアンインストールの仕組みはありません。** `/admin/bundles/market` は、バンドルのファイル・マニフェストのエントリ・マイグレーションの追跡行のインストール、更新、アンインストールができますが、マイグレーションが作成したテーブル（とそのデータ）はアンインストール時に削除も変更もされません。それらを片付けたい場合は、今のところ手動でのDB操作になります。
+- **インラインのスクリプトとイベントハンドラーは動作しません。** Kintai Core 0.3.0 以降、Content-Security-Policy はスクリプトに `'unsafe-inline'` を許可しません。`onclick=`/`onchange=`/`onsubmit=`/`oninput=`、`javascript:` リンク、nonce のない `<script>` を含むバンドルのビューは、ブラウザに黙ってブロックされます。[Content Security Policy](#content-security-policyインラインスクリプトは使えません) を参照してください。
 - **GitHubのみ。** `repository_url`はGitHubリポジトリを指す必要があります——GitLabも、自前ホストのGitサーバーも、Git以外のアーカイブソースも使えません。
 
 ## リファレンス実装
