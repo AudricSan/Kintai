@@ -65,6 +65,47 @@ final class DatabaseShiftRepositoryTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
+    // findByStoreBetween()
+    // -------------------------------------------------------------------------
+
+    public function testFindByStoreBetweenReturnsOnlyTheStoreAndTheRangeBoundsIncluded(): void
+    {
+        EloquentShift::insert([
+            $this->shift(1, 1, 10, '2025-06-01'),
+            $this->shift(2, 1, 10, '2025-06-10'),
+            $this->shift(3, 1, 10, '2025-06-30'),
+            $this->shift(4, 1, 10, '2025-07-01'),
+            $this->shift(5, 2, 10, '2025-06-10'),
+        ]);
+
+        $ids = array_column($this->repo->findByStoreBetween(1, '2025-06-01', '2025-06-30'), 'id');
+
+        $this->assertSame([1, 2, 3], array_map('intval', $ids));
+    }
+
+    public function testFindByStoreBetweenOrdersByUserThenDateThenId(): void
+    {
+        // Ordre explicite (et non celui de l'index que la base choisit) : les statistiques en dépendent.
+        EloquentShift::insert([
+            $this->shift(1, 1, 20, '2025-06-02'),
+            $this->shift(2, 1, 10, '2025-06-05'),
+            $this->shift(3, 1, 10, '2025-06-01'),
+            $this->shift(4, 1, 20, '2025-06-01'),
+        ]);
+
+        $ids = array_column($this->repo->findByStoreBetween(1, '2025-06-01', '2025-06-30'), 'id');
+
+        $this->assertSame([3, 2, 4, 1], array_map('intval', $ids));
+    }
+
+    public function testFindByStoreBetweenReturnsPlainArraysLikeFindByStore(): void
+    {
+        EloquentShift::insert([$this->shift(1, 1, 10, '2025-06-10')]);
+
+        $this->assertSame($this->repo->findByStore(1), $this->repo->findByStoreBetween(1, '2025-06-01', '2025-06-30'));
+    }
+
+    // -------------------------------------------------------------------------
     // findById()
     // -------------------------------------------------------------------------
 

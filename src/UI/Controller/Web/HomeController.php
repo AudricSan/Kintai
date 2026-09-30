@@ -349,8 +349,9 @@ final class HomeController
                 $timeoffByType[$type] = ($timeoffByType[$type] ?? 0) + $count;
             }
 
+            // Seule la période est lue (index store_id, shift_date), pas tout l'historique du store.
             $periodShifts = array_values(array_filter(
-                $this->shifts->findByStore($sid),
+                $this->shifts->findByStoreBetween($sid, $since, $today),
                 fn($s) => empty($s['deleted_at']) && $s['user_id'] !== null
                     && $s['shift_date'] >= $since && $s['shift_date'] <= $today
             ));
