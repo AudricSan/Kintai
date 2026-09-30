@@ -33,8 +33,8 @@
     }
 
     form.addEventListener('submit', function (e) {
-        // L'attribut onsubmit="confirm(...)" du formulaire s'exécute avant ce
-        // listener ; s'il a été annulé, e.defaultPrevented est déjà true.
+        // La confirmation (data-confirm, modale globale confirm-modal.js) a lieu avant ce
+        // listener : annulée, elle n'envoie jamais de submit ; par sécurité on respecte defaultPrevented.
         if (e.defaultPrevented) return;
         e.preventDefault();
 

@@ -1,0 +1,18 @@
+# Racine du dépôt — filet de sécurité.
+#
+# Le seul dossier destiné à être servi par le serveur web est public/. Le serveur doit donc être
+# configuré avec public/ comme racine de documents (DocumentRoot) ; dans ce cas ce fichier n'est
+# jamais lu. Il ne joue que si le serveur pointe par erreur sur la racine du dépôt (par exemple un
+# dossier htdocs/Kintai atteint via http://localhost/Kintai/) : sans lui, .env, la base SQLite
+# (storage/app/database.sqlite), les sauvegardes, les journaux et le code source seraient
+# téléchargeables.
+#
+# Toute URL qui ne commence pas par public/ est refusée (403). Les requêtes vers public/ passent
+# et sont traitées par public/.htaccess, comme avant.
+
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(?!public/) - [F,L]
+</IfModule>

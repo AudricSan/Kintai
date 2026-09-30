@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace kintai\UI\Controller\Web;
 
 use kintai\Core\Auth\AuthService;
+use kintai\Core\Auth\PasswordPolicy;
+use kintai\Core\Auth\CredentialRevoker;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Request;
 use kintai\Core\Response;
@@ -61,6 +63,9 @@ final class AuthController
         private readonly AvailabilityRepositoryInterface $availabilities,
         private readonly LanguageRepositoryInterface $languages,
         private readonly AvatarImageOptimizer $avatarOptimizer,
+        // Optionnel pour ne pas casser les tests qui construisent le contrôleur à la main ;
+        // le conteneur l'injecte toujours en production.
+        private readonly ?CredentialRevoker $revoker = null,
     ) {}
 
     /** @var array<string, string> extension → type MIME (avatars) */
@@ -126,6 +131,8 @@ final class AuthController
             return Response::redirect($destination);
         }
 
+        // Lu par LoginThrottleMiddleware : seuls les échecs comptent dans la limitation.
+        $request->setAttribute('auth_failed', true);
         $this->auditLogger->log($request, 'auth.login_failed', 'user', null, ['mode' => $mode]);
         return Response::redirect($this->base() . '/login?error=1&mode=' . urlencode($mode));
     }
@@ -454,7 +461,7 @@ final class AuthController
             return Response::redirect($this->base() . '/profile?tab=info&error=password_mismatch');
         }
 
-        if (mb_strlen($newPass) < 4) {
+        if (!PasswordPolicy::isLongEnough($newPass)) {
             return Response::redirect($this->base() . '/profile?tab=info&error=password_too_short');
         }
 
@@ -463,8 +470,9 @@ final class AuthController
             return Response::redirect($this->base() . '/profile?tab=info&error=error_generic');
         }
 
-        $storedHash = $dbUser['password_hash'] ?? '';
-        if ($storedHash !== '' && !password_verify($current, $storedHash)) {
+        // Toujours vérifier : un hash vide fait échouer password_verify(), donc refuse l'action.
+        $storedHash = (string) ($dbUser['password_hash'] ?? '');
+        if (!password_verify($current, $storedHash)) {
             return Response::redirect($this->base() . '/profile?tab=info&error=current_password_wrong');
         }
 
@@ -472,6 +480,11 @@ final class AuthController
         $dbUser['password_hash'] = password_hash($newPass, PASSWORD_DEFAULT);
         try {
             $this->users->save($dbUser);
+            // La session courante reste valide ; toutes les autres (autres appareils, cookie
+            // « rester connecté », jetons d'API) sont révoquées : c'est le but d'un changement
+            // de mot de passe après une compromission.
+            $this->auth->refreshSessionAfterPasswordChange($dbUser);
+            $this->revoker?->revokeAllFor($userId);
             $this->auditLogger->logUpdate($request, 'user.change_password', 'user', $userId, $oldUser, $dbUser, [], null, $userId);
         } catch (\Throwable) {
             return Response::redirect($this->base() . '/profile?tab=info&error=error_generic');
@@ -529,8 +542,9 @@ final class AuthController
         $userId   = (int) $user['id'];
         $password = (string) $request->post('password', '');
 
-        $storedHash = $user['password_hash'] ?? '';
-        if ($storedHash !== '' && !password_verify($password, $storedHash)) {
+        // Toujours vérifier : un hash vide fait échouer password_verify(), donc refuse l'action.
+        $storedHash = (string) ($user['password_hash'] ?? '');
+        if (!password_verify($password, $storedHash)) {
             return Response::redirect($this->base() . '/profile?tab=data&error=current_password_wrong');
         }
 
@@ -570,6 +584,9 @@ final class AuthController
 
         $this->auditLogger->log($request, 'user.self_deleted', 'user', $userId, [], null, $userId);
 
+        // Le compte est désormais inactif (les sessions et cookies sont de toute façon refusés) :
+        // on purge quand même ses cookies « rester connecté » et jetons d'API.
+        $this->revoker?->revokeAllFor($userId);
         $this->auth->logout();
         return Response::redirect($this->base() . '/login?deleted=1');
     }

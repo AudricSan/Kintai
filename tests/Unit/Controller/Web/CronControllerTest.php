@@ -93,8 +93,42 @@ final class CronControllerTest extends TestCase
         $this->controller->run($req);
     }
 
+    public function testAutoValidateRejectsWhenNoSecretIsConfigured(): void
+    {
+        unset($_ENV['CRON_SECRET']);
+        $_GET = ['token' => ''];
+
+        $this->expectException(ForbiddenException::class);
+        $this->controller->autoValidate(new Request());
+    }
+
+    public function testAutoValidateRejectsAWrongSecret(): void
+    {
+        $_ENV['CRON_SECRET'] = 'le-vrai-secret';
+        $_GET = ['token' => 'le-vrai-secreT'];
+
+        $this->expectException(ForbiddenException::class);
+        $this->controller->autoValidate(new Request());
+    }
+
+    public function testAutoValidateAcceptsTheRightSecret(): void
+    {
+        $_ENV['CRON_SECRET'] = 'le-vrai-secret';
+        $_GET = ['token' => 'le-vrai-secret'];
+
+        // Le service de validation n'est pas injecté ici (voir setUp) : l'appel
+        // échoue après le contrôle du secret, ce qui suffit à prouver qu'il est passé.
+        try {
+            $this->controller->autoValidate(new Request());
+        } catch (\Throwable $e) {
+            $this->assertNotInstanceOf(ForbiddenException::class, $e);
+        }
+        $this->addToAssertionCount(1);
+    }
+
     protected function tearDown(): void
     {
         $_GET = [];
+        unset($_ENV['CRON_SECRET']);
     }
 }

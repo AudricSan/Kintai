@@ -88,7 +88,7 @@ endif; ?>
     </div>
 </form>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 (function () {
     var tabs   = document.querySelectorAll('.login-tab[data-tab]');
     var panels = { code: document.getElementById('panel-code'), email: document.getElementById('panel-email') };

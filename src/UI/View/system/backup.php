@@ -81,13 +81,13 @@ ob_start();
                 echo Table::make()
                     ->data($backups)
                     ->column(__('backup_col_file'), fn($b) => '<code>' . htmlspecialchars($b['filename']) . '</code>')
-                    ->column(__('backup_col_date'), fn($b) => htmlspecialchars($b['created_at']))
+                    ->text(__('backup_col_date'), fn($b) => $b['created_at'])
                     ->column(__('backup_col_size'), fn($b) => number_format((int)($b['size'] ?? 0) / 1024, 1) . ' ' . __('kb'))
-                    ->column(__('backup_col_note'), fn($b) => htmlspecialchars($b['note'] ?? ''))
+                    ->text(__('backup_col_note'), fn($b) => $b['note'] ?? '')
                     ->column(__('backup_col_actions'), function ($b) use ($action) {
                         return '<form method="POST" action="' . htmlspecialchars($action) . '/restore" class="d-inline">' . csrf_field()
                             . '<input type="hidden" name="filename" value="' . htmlspecialchars($b['filename']) . '">'
-                            . Button::make(__('backup_restore_btn'))->sm()->warning()->attrs(['onclick' => "return confirm('" . __('backup_restore_confirm') . "')"])->submit()->render()
+                            . Button::make(__('backup_restore_btn'))->sm()->warning()->attrs(['data-confirm' => __('backup_restore_confirm')])->submit()->render()
                             . '</form>'
                             . '<form method="POST" action="' . htmlspecialchars($action) . '/delete" class="d-inline" data-confirm="' . htmlspecialchars(__('backup_delete_confirm'), ENT_QUOTES) . '">' . csrf_field()
                             . '<input type="hidden" name="filename" value="' . htmlspecialchars($b['filename']) . '">'
@@ -114,7 +114,7 @@ ob_start();
     ob_start();
     ?>
     <p class="text-muted mb-sm"><?= __('reset_intro') ?></p>
-    <form method="POST" action="<?= htmlspecialchars($resetAction) ?>" class="form-stack" onsubmit="return confirm('<?= __('reset_data_confirm') ?>')">
+    <form method="POST" action="<?= htmlspecialchars($resetAction) ?>" class="form-stack" data-confirm="<?= htmlspecialchars(__('reset_data_confirm'), ENT_QUOTES) ?>">
         <?= csrf_field() ?>
         <p class="form-label"><?= __('reset_keep_label') ?></p>
         <?php foreach ($optionalCategories as $key => $cat): ?>
@@ -132,7 +132,7 @@ ob_start();
             <?= Button::make(__('reset_data_btn'))->danger()->submit()->render() ?>
         </div>
     </form>
-    <form method="POST" action="<?= htmlspecialchars($resetAction) ?>" class="mt-sm" onsubmit="return confirm('<?= __('reset_factory_confirm') ?>')">
+    <form method="POST" action="<?= htmlspecialchars($resetAction) ?>" class="mt-sm" data-confirm="<?= htmlspecialchars(__('reset_factory_confirm'), ENT_QUOTES) ?>">
         <?= csrf_field() ?>
         <input type="hidden" name="mode" value="factory">
         <?= Button::make(__('reset_factory_btn'))->danger()->submit()->render() ?>

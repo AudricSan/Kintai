@@ -64,11 +64,11 @@ echo Flash::fromQuery('error', [
         <span><?= __('members') ?> <span class="text-sm text-dim">(<?= count($members) ?>)</span></span>
         <?php if (count(array_filter($members, fn($m) => empty($m['is_active']))) > 0): ?>
             <label class="form-toggle form-toggle--labeled">
-                <input type="checkbox" id="showInactiveMembers" class="form-toggle__input" onchange="document.querySelectorAll('.member-row--inactive').forEach(el => el.style.display = this.checked ? '' : 'none')">
+                <input type="checkbox" id="showInactiveMembers" class="form-toggle__input" data-on-change="@toggleRows" data-target=".member-row--inactive">
                 <span class="form-toggle__track"></span>
                 <span><?= __('show_inactive') ?></span>
             </label>
-            <script>document.querySelectorAll('.member-row--inactive').forEach(el => el.style.display = 'none');</script>
+            <script nonce="<?= csp_nonce() ?>">document.querySelectorAll('.member-row--inactive').forEach(el => el.style.display = 'none');</script>
         <?php endif; ?>
     </div>
 <?php
@@ -83,7 +83,7 @@ else:
         ->column(__('name'), fn($m) => '<strong>' . htmlspecialchars($m['user_name']) . '</strong>')
         ->column(__('email'), fn($m) => '<span class="text-sm td-muted">' . htmlspecialchars($m['user_email']) . '</span>')
         ->column(__('role'), function($m) {
-            return Badge::make(htmlspecialchars($m['role_name'] ?? '—'))
+            return Badge::make($m['role_name'] ?? '—')
                 ->variant(!empty($m['role_is_managing']) ? 'warning' : 'active')
                 ->render();
         })
