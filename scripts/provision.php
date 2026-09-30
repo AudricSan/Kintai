@@ -189,7 +189,7 @@ $userRepo->save([
     'last_name'     => $adminLastName,
     'display_name'  => $adminFirstName . ' ' . $adminLastName,
     'email'         => $adminEmail,
-    'password_hash' => password_hash($adminPassword, PASSWORD_BCRYPT, ['cost' => 12]),
+    'password_hash' => \kintai\Core\Auth\PasswordHasher::hash($adminPassword),
     'is_admin'      => 1,
     'is_active'     => 1,
     'created_at'    => date('Y-m-d H:i:s'),
