@@ -88,6 +88,8 @@ php -S 127.0.0.1:8000 -t public
 
 Ouvrir ensuite `http://127.0.0.1:8000/install.php` — l'installateur web crée `config/database.local.php`, exécute les migrations et crée le compte administrateur.
 
+L'installateur enregistre aussi l'adresse depuis laquelle vous installez comme **URL publique** de l'instance, utilisée pour les liens des e-mails (réinitialisation du mot de passe). Vérifiez-la dans les réglages Owner (`/admin/owner-settings`) si les utilisateurs accèdent à Kintai par une autre adresse ; la variable d'environnement `APP_URL`, si elle est définie, prime. Sans URL publique, les e-mails de réinitialisation ne partent pas et l'Owner voit un avertissement.
+
 ### Serveur web
 
 Seul `public/` doit être servi. Faites-y pointer la racine de documents du serveur web (`DocumentRoot` d'Apache, `root` de nginx) — jamais la racine du dépôt, sous peine de rendre `.env`, `storage/app/database.sqlite`, les sauvegardes et le code source téléchargeables. `php -S … -t public` le fait déjà. Sous Apache, un `.htaccess` à la racine refuse toute URL hors de `public/` comme filet de sécurité si le serveur est pointé par erreur sur le mauvais dossier ; nginx n'a pas d'équivalent, son `root` doit donc être correct.
