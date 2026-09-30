@@ -27,6 +27,13 @@ final class PasswordResetService
      */
     public function sendResetLink(string $email, string $baseUrl): bool
     {
+        // Le lien part par e-mail : il doit être absolu (voir PublicUrlResolver). Un chemin seul (« /Kintai »)
+        // donnerait un lien qu'aucun client mail ne sait ouvrir — on n'envoie rien plutôt qu'un lien cassé.
+        if (self::resetLink($baseUrl, 'x') === null) {
+            Log::error('password_reset_no_public_url', ['reason' => "URL publique de l'instance non configurée (APP_URL ou réglage Owner)"]);
+            return false;
+        }
+
         $user = $this->users->findByEmail($email);
 
         if ($user === null || empty($user['is_active']) || !empty($user['deleted_at'])) {
@@ -42,13 +49,24 @@ final class PasswordResetService
             ? $user['display_name']
             : ($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? ''));
 
-        $link = rtrim($baseUrl, '/') . '/reset-password/' . $token;
+        $link = (string) self::resetLink($baseUrl, $token);
 
         return $this->mailer->send(
             [$email],
             '[Kintai] Réinitialisation de votre mot de passe',
             $this->buildMailBody($name, $link),
         );
+    }
+
+    /**
+     * Lien absolu de réinitialisation pour ce jeton, ou null si $baseUrl n'est pas une URL absolue valide
+     * (voir PublicUrlResolver::normalize()).
+     */
+    public static function resetLink(string $baseUrl, string $token): ?string
+    {
+        $publicUrl = PublicUrlResolver::normalize($baseUrl);
+
+        return $publicUrl === null ? null : $publicUrl . '/reset-password/' . rawurlencode($token);
     }
 
     /**
