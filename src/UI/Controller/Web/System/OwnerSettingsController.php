@@ -8,6 +8,7 @@ use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AppSettingsService;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\PublicUrlResolver;
 use kintai\Core\Services\ThemeColorPalette;
 use kintai\UI\Controller\Web\HasBaseUrl;
 use kintai\UI\ViewRenderer;
@@ -19,6 +20,7 @@ final class OwnerSettingsController
         private readonly ViewRenderer $view,
         private readonly AppSettingsService $settings,
         private readonly AuditLogger $auditLogger,
+        private readonly PublicUrlResolver $publicUrl,
     ) {}
 
     /** GET /admin/owner-settings */
@@ -48,11 +50,20 @@ final class OwnerSettingsController
                 'access_log_enabled'       => $this->settings->accessLogEnabled() ? '1' : '0',
                 'log_retention_days'       => $this->settings->logRetentionDays(),
                 'app_mascot_mode'          => $this->settings->mascotMode(),
+                'app_public_url'           => $this->settings->get(PublicUrlResolver::SETTING_KEY),
             ],
+            'public_url_forced_by_env' => $this->publicUrl->isForcedByEnvironment(),
+            'public_url_effective'     => $this->publicUrl->resolve(),
+            // Simple suggestion affichée à l'Owner (jamais enregistrée sans son action) : l'adresse par laquelle il
+            // consulte cette page. Un Owner authentifié n'a aucune raison de forger son propre en-tête Host.
+            'public_url_suggestion'    => PublicUrlResolver::normalize(
+                ($request->isSecure() ? 'https' : 'http') . '://' . (string) $request->server('HTTP_HOST', '') . $this->base()
+            ),
             'theme_colors'      => $themeColors,
             'theme_colors_dark' => $themeColorsDark,
             'theme_dark_mode'   => $this->settings->themeDarkMode(),
             'success' => isset($_GET['success']),
+            'error'   => $request->query('error') === 'public_url_invalid' ? 'public_url_invalid' : null,
         ], 'layout.app'));
     }
 
@@ -100,6 +111,13 @@ final class OwnerSettingsController
         $mascotMode = (string) $request->post('app_mascot_mode', 'mix');
         $mascotMode = in_array($mascotMode, ['mix', 'kitsune', 'tanuki'], true) ? $mascotMode : 'mix';
 
+        // URL publique : une valeur invalide est refusée (l'ancienne est conservée) plutôt qu'enregistrée telle quelle.
+        $publicUrlInput = trim((string) $request->post('app_public_url', ''));
+        $publicUrl      = $publicUrlInput === '' ? '' : PublicUrlResolver::normalize($publicUrlInput);
+        if ($publicUrl === null) {
+            return Response::redirect($this->base() . '/admin/owner-settings?error=public_url_invalid');
+        }
+
         $oldData = array_merge([
             'app_subtitle'      => $this->settings->subtitle(),
             'app_login_notice'  => $this->settings->loginNotice(),
@@ -109,6 +127,7 @@ final class OwnerSettingsController
             'access_log_enabled'      => $this->settings->accessLogEnabled() ? '1' : '0',
             'log_retention_days'      => (string) $this->settings->logRetentionDays(),
             'app_mascot_mode'         => $this->settings->mascotMode(),
+            PublicUrlResolver::SETTING_KEY => $this->settings->get(PublicUrlResolver::SETTING_KEY),
         ], $oldThemeData);
 
         $newData = array_merge([
@@ -120,6 +139,7 @@ final class OwnerSettingsController
             'access_log_enabled'      => $accessLogEnabled,
             'log_retention_days'      => (string) $logRetentionDays,
             'app_mascot_mode'         => $mascotMode,
+            PublicUrlResolver::SETTING_KEY => $publicUrl,
         ], $newThemeData);
 
         $this->settings->setMany($newData);

@@ -1,11 +1,16 @@
 <?php
 
+use kintai\UI\Components\Alert;
 use kintai\UI\Components\Button;
 use kintai\UI\Components\Card;
 use kintai\UI\Components\Flash;
 
 /** @var array  $settings */
 /** @var bool   $success */
+/** @var string|null $error */
+/** @var bool   $public_url_forced_by_env */
+/** @var string|null $public_url_effective */
+/** @var string|null $public_url_suggestion */
 /** @var array  $theme_colors */
 /** @var array  $theme_colors_dark */
 /** @var string $theme_dark_mode */
@@ -44,6 +49,9 @@ $tanukiPalette = [
 ];
 
 echo Flash::fromQuery('success', ['default' => __('save_success')])->render();
+if (($error ?? null) === 'public_url_invalid') {
+    echo Alert::make(__('public_url_invalid'))->danger()->render();
+}
 ?>
 <div class="page-header">
     <h2 class="page-header__title"><?= __('owner_settings') ?></h2>
@@ -72,6 +80,24 @@ echo Flash::fromQuery('success', ['default' => __('save_success')])->render();
             placeholder="<?= __('support_email_placeholder') ?>"
             value="<?= htmlspecialchars($settings['app_support_email'] ?? '', ENT_QUOTES) ?>">
         <p class="form-hint"><?= __('support_email_hint') ?></p>
+    </div>
+
+    <div class="form-group">
+        <label class="form-label" for="app_public_url"><?= __('public_url') ?></label>
+        <?php if (!empty($public_url_forced_by_env)): ?>
+            <input type="url" id="app_public_url" class="form-control" disabled
+                value="<?= htmlspecialchars((string) $public_url_effective, ENT_QUOTES) ?>">
+            <input type="hidden" name="app_public_url" value="<?= htmlspecialchars($settings['app_public_url'] ?? '', ENT_QUOTES) ?>">
+            <p class="form-hint"><?= __('public_url_forced_by_env') ?></p>
+        <?php else: ?>
+            <input type="url" id="app_public_url" name="app_public_url" class="form-control"
+                placeholder="<?= htmlspecialchars((string) ($public_url_suggestion ?? 'https://kintai.example.com'), ENT_QUOTES) ?>"
+                value="<?= htmlspecialchars($settings['app_public_url'] ?? '', ENT_QUOTES) ?>">
+            <p class="form-hint"><?= __('public_url_hint') ?></p>
+            <?php if (empty($settings['app_public_url']) && !empty($public_url_suggestion)): ?>
+                <p class="form-hint"><?= htmlspecialchars(__('public_url_suggestion', ['url' => $public_url_suggestion])) ?></p>
+            <?php endif; ?>
+        <?php endif; ?>
     </div>
 
     <?php
