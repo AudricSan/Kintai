@@ -440,7 +440,7 @@ final class AdminUserController
             'guarantor_phone'    => $request->post('guarantor_phone', '') ?: null,
             'color'              => $request->post('color', '#3B82F6'),
             'employee_code'      => $empCode,
-            'password_hash'      => password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]),
+            'password_hash'      => \kintai\Core\Auth\PasswordHasher::hash($password),
             'is_active'          => 1,
         ]);
         $this->roleSync->syncOwnerRole((int) ($saved['id'] ?? 0), $isOwner);
@@ -578,7 +578,7 @@ final class AdminUserController
             'postal_code'   => $request->post('postal_code', '') ?: null,
             'address'       => $request->post('address', '') ?: null,
             'employee_code' => $empCode,
-            'password_hash' => password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]),
+            'password_hash' => \kintai\Core\Auth\PasswordHasher::hash($password),
             'is_active'     => 1,
             'color'         => $color,
         ]);
@@ -802,7 +802,7 @@ final class AdminUserController
         // Mettre à jour le mot de passe uniquement si fourni
         $newPassword = $request->post('password', '');
         if ($newPassword !== '') {
-            $data['password_hash'] = password_hash($newPassword, PASSWORD_BCRYPT, ['cost' => 12]);
+            $data['password_hash'] = \kintai\Core\Auth\PasswordHasher::hash($newPassword);
         }
 
         $this->users->save($data);
@@ -856,7 +856,7 @@ final class AdminUserController
         }
 
         $oldUser = $user;
-        $user['password_hash'] = password_hash('0000', PASSWORD_BCRYPT, ['cost' => 12]);
+        $user['password_hash'] = \kintai\Core\Auth\PasswordHasher::hash('0000');
         $this->users->save($user);
         $this->revoker?->revokeAllFor((int) $user['id']);
         $this->auditLogger->logUpdate($request, 'user.password_reset', 'user', (int) $user['id'], $oldUser, $user, [
