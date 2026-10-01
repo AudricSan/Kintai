@@ -138,4 +138,42 @@ final class StoreServiceTest extends TestCase
         $this->assertSame('円', currency_symbol('JPY'));
         $this->assertStringNotContainsString('<', format_currency(12.5, '<b>x</b>'));
     }
+
+    /** Audit du 01/10/2026 (point 7) : un code déjà pris levait une erreur SQL (page 500) au lieu d'un message. */
+    public function testCreateStoreRejectsACodeAlreadyUsedByAnotherStore(): void
+    {
+        $this->stores->method('findByCode')->with('ST01')->willReturn(['id' => 5, 'code' => 'ST01']);
+        $this->stores->expects($this->never())->method('save');
+
+        try {
+            $this->service->createStore(['code' => 'ST01', 'name' => 'Store B']);
+            $this->fail('Un code déjà pris doit être refusé.');
+        } catch (\kintai\Core\Exceptions\ValidationException $e) {
+            $this->assertArrayHasKey('code', $e->errors, 'refus dû au doublon, pas au format');
+        }
+    }
+
+    public function testUpdateStoreRejectsACodeAlreadyUsedByAnotherStore(): void
+    {
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'code' => 'A1', 'name' => 'Store A']);
+        $this->stores->method('findByCode')->with('B2')->willReturn(['id' => 2, 'code' => 'B2']);
+        $this->stores->expects($this->never())->method('save');
+
+        try {
+            $this->service->updateStore(1, ['code' => 'b2', 'name' => 'Store A']);
+            $this->fail('Un code déjà pris doit être refusé.');
+        } catch (\kintai\Core\Exceptions\ValidationException $e) {
+            $this->assertArrayHasKey('code', $e->errors);
+        }
+    }
+
+    public function testUpdateStoreKeepingItsOwnCodeIsAccepted(): void
+    {
+        $store = ['id' => 1, 'code' => 'A1', 'name' => 'Store A'];
+        $this->stores->method('findById')->with(1)->willReturn($store);
+        $this->stores->method('findByCode')->with('A1')->willReturn($store);
+        $this->stores->expects($this->once())->method('save')->willReturn($store);
+
+        $this->service->updateStore(1, ['code' => 'A1', 'name' => 'Store A renamed']);
+    }
 }

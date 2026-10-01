@@ -1396,6 +1396,7 @@
     "val_name_max_length_200": "Le nom ne peut pas dépasser 200 caractères.",
     "val_store_code_format": "Le code doit contenir 2 à 20 caractères (A-Z, 0-9, -, _).",
     "val_store_code_required": "Le code du magasin est requis.",
+    "val_store_code_taken": "Le code « :code » est déjà utilisé par un autre magasin.",
     "val_store_name_required": "Le nom du magasin est requis.",
     "val_store_required": "Le magasin est requis.",
     "validation_device_token_required": "Le jeton de l'appareil est requis.",

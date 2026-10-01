@@ -1395,6 +1395,7 @@
     "val_name_max_length_200": "名前は200文字以内で入力してください。",
     "val_store_code_format": "コードは2〜20文字で入力してください（A-Z, 0-9, -, _）。",
     "val_store_code_required": "店舗コードは必須です。",
+    "val_store_code_taken": "コード「:code」は他の店舗で既に使用されています。",
     "val_store_name_required": "店舗名は必須です。",
     "val_store_required": "店舗は必須です。",
     "validation_device_token_required": "デバイストークンが必要です。",

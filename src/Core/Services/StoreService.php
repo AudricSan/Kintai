@@ -81,6 +81,7 @@ final class StoreService implements StoreServiceInterface
 
         $validator = new StoreValidator($this->languages);
         $validator->validate($data)->throwIfInvalid();
+        $this->assertCodeAvailable(strtoupper(trim((string) ($data['code'] ?? ''))), 0);
         $manualSlug = $this->validatedManualSlug($data, 0);
 
         $saved = $this->stores->save([
@@ -103,6 +104,24 @@ final class StoreService implements StoreServiceInterface
         $this->routeSlugs?->syncStore((int) $saved['id'], (string) $saved['name'], $manualSlug);
 
         return $saved;
+    }
+
+    /**
+     * Le code magasin est unique en base : un code déjà pris par un autre magasin levait une erreur SQL, donc une
+     * page 500, au lieu d'un message. $storeId vaut 0 pour un magasin pas encore créé.
+     *
+     * @throws ValidationException
+     */
+    private function assertCodeAvailable(string $code, int $storeId): void
+    {
+        if ($code === '') {
+            return;
+        }
+        $existing = $this->stores->findByCode($code);
+        if ($existing !== null && (int) $existing['id'] !== $storeId) {
+            $message = __('val_store_code_taken', ['code' => $code]);
+            throw new ValidationException(['code' => $message], $message);
+        }
     }
 
     /**
@@ -141,6 +160,7 @@ final class StoreService implements StoreServiceInterface
         if ($currencyErrors !== []) {
             throw new ValidationException(['currency' => $currencyErrors[0]], $currencyErrors[0]);
         }
+        $this->assertCodeAvailable(strtoupper(trim((string) ($data['code'] ?? $store['code'] ?? ''))), $storeId);
 
         $storeData = array_merge($store, [
             'code'                 => strtoupper(trim($data['code'] ?? $store['code'] ?? '')),
