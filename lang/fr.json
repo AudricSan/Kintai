@@ -1110,7 +1110,12 @@
     "print_payslip": "Imprimer",
     "print_timeline": "Imprimer le planning",
     "profile": "Profil",
-    "profile_default_password_warning": "Vous utilisez encore le mot de passe par défaut (0000). Changez-le ci-dessous pour sécuriser votre compte.",
+    "profile_must_change_password_warning": "Pour la sécurité de votre compte, choisissez un nouveau mot de passe (8 caractères minimum) : vous utilisez encore le mot de passe par défaut ou un mot de passe trop court.",
+    "password_reminder_banner": "Vous utilisez encore le mot de passe par défaut ou un mot de passe trop court.",
+    "password_reminder_action": "Changer mon mot de passe",
+    "password_reminder_title": "Mot de passe à changer",
+    "password_reminder_body": "Votre mot de passe est le mot de passe par défaut ou fait moins de 8 caractères. Toute personne qui connaît votre code employé pourrait se connecter à votre place. Choisissez-en un nouveau dès maintenant.",
+    "password_reminder_later": "Plus tard",
     "profile_enriched": "Profil enrichi",
     "profile_no_email_warning": "Aucun email renseigné. En cas d'oubli du mot de passe, il sera impossible de le récupérer. Demandez à un administrateur de le réinitialiser à 0000.",
     "profile_tab_availability": "Disponibilités",
@@ -1396,6 +1401,7 @@
     "val_name_max_length_200": "Le nom ne peut pas dépasser 200 caractères.",
     "val_store_code_format": "Le code doit contenir 2 à 20 caractères (A-Z, 0-9, -, _).",
     "val_store_code_required": "Le code du magasin est requis.",
+    "val_store_code_taken": "Le code « :code » est déjà utilisé par un autre magasin.",
     "val_store_name_required": "Le nom du magasin est requis.",
     "val_store_required": "Le magasin est requis.",
     "validation_device_token_required": "Le jeton de l'appareil est requis.",
@@ -1525,5 +1531,12 @@
     "report_issue_error_generic": "Échec de l'envoi. Merci de réessayer plus tard.",
     "report_issue_privacy_note": "Ce signalement est publié publiquement sur GitHub. N'y incluez aucune information personnelle ou confidentielle.",
 
-    "zone_to_create": "Glissez ici pour créer un shift"
+    "zone_to_create": "Glissez ici pour créer un shift",
+    "store_slug": "Slug d'URL (facultatif)",
+    "store_slug_hint": "Nom court en romaji pour les adresses de ce magasin (ex. tokorozawa-higashicho) : minuscules, chiffres et tirets. Laissé vide, l'adresse utilise le nom du magasin tel quel. Les anciennes adresses restent valides.",
+    "store_slug_current": "Adresse actuelle :",
+    "store_slug_invalid": "Le slug d'URL ne peut contenir que des minuscules, des chiffres et des tirets simples, avec au moins une lettre (60 caractères maximum).",
+    "store_slug_reserved": "Ce slug d'URL est réservé par l'application. Choisissez-en un autre.",
+    "store_slug_taken": "Ce slug d'URL est déjà utilisé (ou l'a été) par un autre magasin.",
+    "employee_code_invalid_url": "Le numéro d'employé ne peut contenir que des lettres, des chiffres, des tirets et des tirets bas, et ne peut pas commencer par « ID- »."
 }

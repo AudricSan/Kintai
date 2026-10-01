@@ -119,7 +119,7 @@ final class AuthControllerTest extends TestCase
 
     public function testLoginSuccessReturnsToken(): void
     {
-        $hash = password_hash('secret', PASSWORD_BCRYPT);
+        $hash = password_hash('secret-passphrase', PASSWORD_BCRYPT);
         $this->users->method('findByEmail')->willReturn([
             'id'            => 7,
             'email'         => 'alice@example.com',
@@ -145,7 +145,7 @@ final class AuthControllerTest extends TestCase
 
         $req      = $this->makeRequest('POST', '/api/v1/auth/login', json: [
             'email'    => 'alice@example.com',
-            'password' => 'secret',
+            'password' => 'secret-passphrase',
         ]);
         $response = $this->controller->login($req);
 
@@ -156,9 +156,70 @@ final class AuthControllerTest extends TestCase
         $this->assertArrayNotHasKey('password_hash', $data['user']);
     }
 
+    /**
+     * Audit du 01/10/2026 : l'API délivrait un jeton avec le mot de passe par défaut « 0000 ». Le web ne fait
+     * que rappeler de le changer (PasswordReminderMiddleware) ; un jeton API, accès durable, reste refusé.
+     *
+     * @return array<string, array{string}>
+     */
+    public static function weakPasswords(): array
+    {
+        return ['mot de passe par défaut' => ['0000'], 'mot de passe court' => ['abc1234']];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('weakPasswords')]
+    public function testWeakPasswordGetsNoTokenAndMustBeChangedOnTheWeb(string $password): void
+    {
+        $row = [
+            'id' => 9, 'email' => 'weak@example.com', 'password_hash' => password_hash($password, PASSWORD_BCRYPT, ['cost' => 4]),
+            'is_active' => true, 'deleted_at' => null,
+        ];
+        $this->users->method('findByEmail')->willReturn($row);
+        $this->users->method('findById')->willReturn($row);
+        $this->tokens->expects($this->never())->method('save');
+
+        $req      = $this->makeRequest('POST', '/api/v1/auth/login', json: ['email' => 'weak@example.com', 'password' => $password]);
+        $response = $this->controller->login($req);
+
+        $this->assertSame(403, $response->status());
+        $this->assertSame('PASSWORD_CHANGE_REQUIRED', json_decode($response->body(), true)['code']);
+        // Identifiants corrects : pas un échec pour la limitation des tentatives.
+        $this->assertNull($req->getAttribute('auth_failed'));
+        // Aucune session ne doit rester ouverte.
+        $this->assertNull($this->auth->user());
+    }
+
+    public function testDefaultPasswordByEmployeeCodeGetsNoToken(): void
+    {
+        $row = [
+            'id' => 9, 'email' => null, 'password_hash' => password_hash('0000', PASSWORD_BCRYPT, ['cost' => 4]),
+            'is_active' => true, 'deleted_at' => null,
+        ];
+        $storeUsers = $this->createStub(StoreUserRepositoryInterface::class);
+        $storeUsers->method('findMembership')->willReturn(['id' => 1]);
+        $stores = $this->createStub(StoreRepositoryInterface::class);
+        $stores->method('findByCode')->willReturn(['id' => 3]);
+        $users = $this->createStub(UserRepositoryInterface::class);
+        $users->method('findByEmployeeCode')->willReturn($row);
+        $users->method('findById')->willReturn($row);
+        $roleAssignments = $this->createStub(RoleAssignmentRepositoryInterface::class);
+        $roleAssignments->method('findByUser')->willReturn([]);
+        $tokens = $this->createMock(ApiTokenRepositoryInterface::class);
+        $tokens->expects($this->never())->method('save');
+
+        $auth       = new AuthService($users, $storeUsers, $stores, $this->createStub(RoleRepositoryInterface::class), $roleAssignments, $this->createStub(RememberTokenRepositoryInterface::class));
+        $controller = new AuthController($auth, $tokens, $users, new AuditLogger());
+
+        $response = $controller->login($this->makeRequest('POST', '/api/v1/auth/login', json: [
+            'employee_code' => '057', 'store_code' => '21836', 'password' => '0000',
+        ]));
+
+        $this->assertSame(403, $response->status());
+    }
+
     public function testLoginTokenLengthIs64Hex(): void
     {
-        $hash = password_hash('pass', PASSWORD_BCRYPT);
+        $hash = password_hash('long-enough-pass', PASSWORD_BCRYPT);
         $this->users->method('findByEmail')->willReturn([
             'id'            => 1,
             'email'         => 'x@x.com',
@@ -177,7 +238,7 @@ final class AuthControllerTest extends TestCase
         });
 
         $req = $this->makeRequest('POST', '/api/v1/auth/login', json: [
-            'email' => 'x@x.com', 'password' => 'pass',
+            'email' => 'x@x.com', 'password' => 'long-enough-pass',
         ]);
         $this->controller->login($req);
 

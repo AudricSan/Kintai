@@ -1110,7 +1110,12 @@
     "print_payslip": "印刷",
     "print_timeline": "シフト印刷",
     "profile": "プロフィール",
-    "profile_default_password_warning": "まだデフォルトのパスワード（0000）を使用しています。下記から変更してアカウントを保護してください。",
+    "profile_must_change_password_warning": "アカウント保護のため、新しいパスワード（8文字以上）を設定してください。現在、初期パスワードまたは短すぎるパスワードを使用しています。",
+    "password_reminder_banner": "初期パスワード、または短すぎるパスワードを使用しています。",
+    "password_reminder_action": "パスワードを変更",
+    "password_reminder_title": "パスワードの変更をお願いします",
+    "password_reminder_body": "現在のパスワードは初期パスワード、または8文字未満です。従業員番号を知っている人なら誰でもあなたとしてログインできてしまいます。今すぐ新しいパスワードを設定してください。",
+    "password_reminder_later": "後で",
     "profile_enriched": "拡張プロフィール",
     "profile_no_email_warning": "メールアドレスが設定されていません。パスワードを忘れた場合、復元できません。管理者に0000へのリセットを依頼してください。",
     "profile_tab_availability": "稼働可能時間",
@@ -1395,6 +1400,7 @@
     "val_name_max_length_200": "名前は200文字以内で入力してください。",
     "val_store_code_format": "コードは2〜20文字で入力してください（A-Z, 0-9, -, _）。",
     "val_store_code_required": "店舗コードは必須です。",
+    "val_store_code_taken": "コード「:code」は他の店舗で既に使用されています。",
     "val_store_name_required": "店舗名は必須です。",
     "val_store_required": "店舗は必須です。",
     "validation_device_token_required": "デバイストークンが必要です。",
@@ -1524,5 +1530,12 @@
     "report_issue_error_generic": "送信に失敗しました。後でもう一度お試しください。",
     "report_issue_privacy_note": "この報告はGitHub上に公開されます。個人情報や機密情報は記入しないでください。",
 
-    "zone_to_create": "ドラッグしてシフトを作成"
+    "zone_to_create": "ドラッグしてシフトを作成",
+    "store_slug": "URLスラッグ（任意）",
+    "store_slug_hint": "この店舗のURLに使うローマ字の短い名前（例：tokorozawa-higashicho）。小文字・数字・ハイフンのみ。空欄の場合は店舗名がそのままURLに使われます。以前のURLも引き続き使えます。",
+    "store_slug_current": "現在のURL：",
+    "store_slug_invalid": "URLスラッグには小文字・数字・単一のハイフンのみ使用でき、英字を1文字以上含める必要があります（最大60文字）。",
+    "store_slug_reserved": "このURLスラッグはアプリケーションで予約されています。別のものを選んでください。",
+    "store_slug_taken": "このURLスラッグは他の店舗で使用中（または使用済み）です。",
+    "employee_code_invalid_url": "従業員番号には英数字・ハイフン・アンダースコアのみ使用でき、「ID-」で始めることはできません。"
 }

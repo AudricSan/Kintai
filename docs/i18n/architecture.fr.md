@@ -55,6 +55,15 @@ Le multi-tenancy est réalisé au **niveau du déploiement**, pas au niveau du c
 - **JS & CSS vanilla :** aucune étape de build lourde ni framework frontend, pour que l'application reste légère et facile à personnaliser.
 - **Mobile first :** design responsive pensé pour les employés consultant leur planning en déplacement.
 
+## 🔗 URLs lisibles
+Les routes web désignent magasins et employés par un segment lisible plutôt que par un identifiant : `/admin/stores/所沢東町店/edit`, `/admin/users/057/edit`.
+- **Paramètres de route typés :** un motif déclare `{id:store}` ou `{uid:employee}`. `Router::url()`/`route_url()` transforment l'identifiant reçu en segment (encodé en `%XX`), et `Application::dispatch()` retransforme le segment entrant en identifiant **avant** les middlewares de route : contrôleurs et `PermissionMiddleware` continuent de lire un identifiant numérique via `$request->param()`. Les binders sont dans `src/Core/Routing/` (`StoreRouteBinder`, `EmployeeRouteBinder`, enregistrés dans `RouteBinderRegistry`).
+- **Magasins :** un slug facultatif saisi par l'Owner (romaji, ex. `tokorozawa-higashicho`), sinon le nom du magasin tel quel — jamais translittéré (ICU lirait les kanji en mandarin). Stocké dans `route_slugs`, avec tous les anciens alias.
+- **Employés :** leur numéro d'employé, jamais leur nom (donnée personnelle qui finirait dans les journaux du serveur et l'en-tête `Referer`) ; `id-42` s'ils n'en ont pas. Les anciens numéros sont conservés dans `route_slugs`, quel que soit le chemin qui les a modifiés (`DatabaseUserRepository::save()`).
+- **Anciens liens :** un identifiant numérique, un ancien alias ou une casse différente est résolu, puis un GET est redirigé en `301` vers l'URL canonique (query string conservée) ; un POST est servi tel quel. La redirection et la 404 d'un segment inconnu ne sont rendues **qu'après** les middlewares de route : un visiteur non autorisé n'apprend ni le nom d'un magasin ni l'existence d'un numéro d'employé.
+- **Mots réservés :** tout segment littéral des routes enregistrées (`create`, `export`, `stats`…, bundles compris) reçoit un suffixe s'il sert d'alias : un alias ne peut jamais masquer une page fixe.
+- **Non concernés :** `/api/v1/*` (contrat machine, identifiants uniquement), les URLs des flux iCal, les paramètres de query string.
+
 ## 📡 API & Intégrations
 - **API V1 :** une API RESTful permettant l'intégration avec des outils tiers.
 - **iCal :** calendriers personnels pour les employés, sécurisés par token.

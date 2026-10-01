@@ -36,6 +36,7 @@ define('BASE_PATH', dirname(__DIR__));
 
 require BASE_PATH . '/vendor/autoload.php';
 require BASE_PATH . '/src/Core/helpers.php';
+kintai_normalize_script_name();
 
 // Bundles installés dynamiquement (storage/bundles/) : hors PSR-4 standard,
 // voir kintai\Core\InstalledBundleAutoloader.
@@ -51,7 +52,7 @@ if (!file_exists($installedLockFile)) {
         @file_put_contents($installedLockFile, bin2hex(random_bytes(32)));
     } else {
         // Réellement pas installé → rediriger vers l'installeur
-        header('Location: /install.php');
+        header('Location: ' . base_url() . '/install.php');
         exit;
     }
 }

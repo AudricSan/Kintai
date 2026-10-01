@@ -62,7 +62,7 @@ function lcBadgeClass(?float $pct): string {
         <?= __('profitability') ?> — <?= htmlspecialchars($store['name'] ?? '') ?>
     </h2>
     <div class="page-header__actions">
-        <?= Button::make(__('statistics'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . $storeId . '/stats?period=90')->render() ?>
+        <?= Button::make(__('statistics'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . store_segment($storeId) . '/stats?period=90')->render() ?>
         <?= Button::make(__('daily_reports'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . $storeId . '/daily-reports')->render() ?>
         <?= Button::make(__('back'))->ghost()->sm()->link(back_url(route_url('admin.stores')))->render() ?>
     </div>
@@ -102,7 +102,7 @@ ob_start();
     <div class="sstat-grid">
 
         <div class="sstat-card">
-            <div class="sstat-card__value text-primary"><?= profFmt($totalSales) ?> <small><?= $currency ?></small></div>
+            <div class="sstat-card__value text-primary"><?= profFmt($totalSales) ?> <small><?= htmlspecialchars($currency) ?></small></div>
             <div class="sstat-card__label"><?= __('total_revenue') ?></div>
             <div class="sstat-card__sub"><?= $reportCount ?> <?= __('days_with_report') ?></div>
         </div>
@@ -118,20 +118,20 @@ ob_start();
         <?php endif; ?>
 
         <div class="sstat-card">
-            <div class="sstat-card__value"><?= profFmt($totalLaborMnl) ?> <small><?= $currency ?></small></div>
+            <div class="sstat-card__value"><?= profFmt($totalLaborMnl) ?> <small><?= htmlspecialchars($currency) ?></small></div>
             <div class="sstat-card__label"><?= __('labor_cost_manual') ?></div>
             <div class="sstat-card__sub"><?= __('from_daily_reports') ?></div>
         </div>
 
         <?php if ($totalLaborCalc > 0): ?>
         <div class="sstat-card">
-            <div class="sstat-card__value"><?= profFmt($totalLaborCalc) ?> <small><?= $currency ?></small></div>
+            <div class="sstat-card__value"><?= profFmt($totalLaborCalc) ?> <small><?= htmlspecialchars($currency) ?></small></div>
             <div class="sstat-card__label"><?= __('labor_cost_calc') ?></div>
             <div class="sstat-card__sub"><?= __('from_shift_rates') ?></div>
         </div>
         <div class="sstat-card">
             <div class="sstat-card__value <?= abs($variance) < 100 ? 'text-success' : 'text-warning' ?>">
-                <?= $variance >= 0 ? '+' : '' ?><?= profFmt($variance) ?> <small><?= $currency ?></small>
+                <?= $variance >= 0 ? '+' : '' ?><?= profFmt($variance) ?> <small><?= htmlspecialchars($currency) ?></small>
             </div>
             <div class="sstat-card__label"><?= __('variance_mnl_calc') ?></div>
             <div class="sstat-card__sub"><?= __('variance_hint') ?></div>
@@ -145,7 +145,7 @@ ob_start();
         </div>
         <?php if ($revPerCust !== null): ?>
         <div class="sstat-card">
-            <div class="sstat-card__value"><?= profFmt($revPerCust, 0) ?> <small><?= $currency ?></small></div>
+            <div class="sstat-card__value"><?= profFmt($revPerCust, 0) ?> <small><?= htmlspecialchars($currency) ?></small></div>
             <div class="sstat-card__label"><?= __('rev_per_customer') ?></div>
         </div>
         <?php endif; ?>
@@ -160,7 +160,7 @@ ob_start();
     <div class="sstat-section-title"><?= __('profitability_trends') ?></div>
     <div class="sstat-two">
         <div class="card">
-            <div class="sstat-sublabel--strong"><?= __('monthly_revenue') ?> <small class="text-muted">(<?= $currency ?>)</small></div>
+            <div class="sstat-sublabel--strong"><?= __('monthly_revenue') ?> <small class="text-muted">(<?= htmlspecialchars($currency) ?>)</small></div>
             <div class="sstat-canvas-wrap"><canvas id="chart-profit-sales"></canvas></div>
         </div>
         <div class="card">
@@ -170,7 +170,7 @@ ob_start();
     </div>
     <div class="sstat-two">
         <div class="card">
-            <div class="sstat-sublabel--strong"><?= __('monthly_labor_cost') ?> <small class="text-muted">(<?= $currency ?>)</small></div>
+            <div class="sstat-sublabel--strong"><?= __('monthly_labor_cost') ?> <small class="text-muted">(<?= htmlspecialchars($currency) ?>)</small></div>
             <div class="sstat-canvas-wrap"><canvas id="chart-profit-labor"></canvas></div>
         </div>
         <?php if ($totalCustomers > 0): ?>
@@ -189,7 +189,7 @@ ob_start();
     <div class="sstat-section-title"><?= __('daily_analysis') ?></div>
     <div class="sstat-two">
         <div class="card">
-            <div class="sstat-sublabel--strong"><?= __('daily_revenue') ?> <small class="text-muted">(<?= $currency ?>)</small></div>
+            <div class="sstat-sublabel--strong"><?= __('daily_revenue') ?> <small class="text-muted">(<?= htmlspecialchars($currency) ?>)</small></div>
             <div class="sstat-canvas-wrap"><canvas id="chart-profit-daily-sales"></canvas></div>
         </div>
         <div class="card">
@@ -207,12 +207,12 @@ ob_start();
     $showCalc = $totalLaborCalc > 0;
     $t = Table::make()->data(array_reverse($rows))
         ->column(__('date'), fn($row) => profDate($row['date'] ?? ''))
-        ->column(__('revenue_col') . ' (' . $currency . ')', fn($row) => '<span class="text-right">' . (($row['sales'] ?? 0) > 0 ? profFmt($row['sales']) : '<span class="text-muted">—</span>') . '</span>', 'text-right')
+        ->column(__('revenue_col') . ' (' . htmlspecialchars($currency) . ')', fn($row) => '<span class="text-right">' . (($row['sales'] ?? 0) > 0 ? profFmt($row['sales']) : '<span class="text-muted">—</span>') . '</span>', 'text-right')
         ->column(__('customer_count_col'), fn($row) => '<span class="text-right">' . (($row['customers'] ?? 0) > 0 ? $row['customers'] : '<span class="text-muted">—</span>') . '</span>', 'text-right')
         ->column(__('rev_per_cust_col'), fn($row) => '<span class="text-right">' . (($row['rev_per_cust'] ?? null) !== null ? profFmt($row['rev_per_cust'], 0) : '<span class="text-muted">—</span>') . '</span>', 'text-right')
-        ->column(__('labor_manual_col') . ' (' . $currency . ')', fn($row) => '<span class="text-right">' . (($row['labor_mnl'] ?? 0) > 0 ? profFmt($row['labor_mnl']) : '<span class="text-muted">—</span>') . '</span>', 'text-right');
+        ->column(__('labor_manual_col') . ' (' . htmlspecialchars($currency) . ')', fn($row) => '<span class="text-right">' . (($row['labor_mnl'] ?? 0) > 0 ? profFmt($row['labor_mnl']) : '<span class="text-muted">—</span>') . '</span>', 'text-right');
     if ($showCalc) {
-        $t->column(__('labor_calc_col') . ' (' . $currency . ')', fn($row) => '<span class="text-right">' . (($row['labor_calc'] ?? 0) > 0 ? profFmt($row['labor_calc']) : '<span class="text-muted">—</span>') . '</span>', 'text-right');
+        $t->column(__('labor_calc_col') . ' (' . htmlspecialchars($currency) . ')', fn($row) => '<span class="text-right">' . (($row['labor_calc'] ?? 0) > 0 ? profFmt($row['labor_calc']) : '<span class="text-muted">—</span>') . '</span>', 'text-right');
     }
     $t->column(__('lc_pct_col'), function($row) {
         if (($row['lc_pct'] ?? null) === null) return '<span class="text-muted text-right">—</span>';

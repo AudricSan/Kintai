@@ -8,6 +8,7 @@
  */
 $mode ??= 'create';
 $store ??= [];
+$routeSlug ??= null; // ['slug' => …, 'is_manual' => bool] : alias d'URL courant (mode édition)
 $deductionSettings ??= [];
 $importSettings ??= [];
 
@@ -38,6 +39,16 @@ $dedResidentTax = $ded['resident_tax_monthly'] ?? 0;
                 <label class="form-label form-label--required"><?= __('name') ?></label>
                 <input type="text" name="name" class="form-control"
                        value="<?= htmlspecialchars($store['name'] ?? '') ?>" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label"><?= __('store_slug') ?></label>
+                <input type="text" name="slug" class="form-control" maxlength="<?= \kintai\Core\Routing\SlugGenerator::MAX_LENGTH ?>"
+                       pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="tokorozawa-higashicho"
+                       value="<?= htmlspecialchars(!empty($routeSlug['is_manual']) ? (string) $routeSlug['slug'] : '') ?>">
+                <span class="form-hint"><?= __('store_slug_hint') ?></span>
+                <?php if (!empty($routeSlug['slug'])): ?>
+                    <span class="form-hint"><?= __('store_slug_current') ?> <code>/admin/stores/<?= htmlspecialchars((string) $routeSlug['slug']) ?>/edit</code></span>
+                <?php endif; ?>
             </div>
             <div class="form-group">
                 <label class="form-label"><?= __('type') ?></label>
@@ -77,7 +88,7 @@ $dedResidentTax = $ded['resident_tax_monthly'] ?? 0;
                 <label class="form-label"><?= __('currency') ?></label>
                 <?php $storeCurrency = strtoupper($store['currency'] ?? 'EUR'); ?>
                 <select name="currency" class="form-control">
-                    <?php foreach (['EUR', 'USD', 'JPY', 'GBP', 'CHF', 'KRW'] as $curOpt): ?>
+                    <?php foreach (\kintai\Core\Validation\StoreValidator::CURRENCIES as $curOpt): ?>
                         <option value="<?= $curOpt ?>"<?= $storeCurrency === $curOpt ? ' selected' : '' ?>><?= $curOpt ?> (<?= currency_symbol($curOpt) ?>)</option>
                     <?php endforeach; ?>
                 </select>

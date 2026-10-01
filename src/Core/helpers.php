@@ -352,6 +352,41 @@ if (!function_exists('mascot_active')) {
     }
 }
 
+if (!function_exists('kintai_normalize_script_name')) {
+    /**
+     * Ramène SCRIPT_NAME à l'URL réellement vue par le visiteur quand le .htaccess racine a réécrit la
+     * requête en interne vers public/ (domaine ou dossier pointant sur la racine du dépôt, sans passer par
+     * public/ comme DocumentRoot). Apache renseigne alors SCRIPT_NAME avec « /…/public/index.php » alors que
+     * l'URL demandée ne contient pas « /public » : sans correction, base_url() et le routeur en déduiraient
+     * que l'application vit sous /public et chaque lien généré le contiendrait.
+     *
+     * Sans effet quand public/ est le DocumentRoot, et quand « /public » figure dans l'URL demandée (accès
+     * direct par /Kintai/public/, comme avant l'introduction de la réécriture).
+     * À appeler une fois, en tête du point d'entrée (index.php, install.php).
+     */
+    function kintai_normalize_script_name(): void
+    {
+        $scriptName = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+        $dir        = rtrim(dirname($scriptName), '/');
+        if (!str_ends_with($dir, '/public')) {
+            return;
+        }
+
+        $path = rawurldecode((string) (parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH) ?: '/'));
+        if ($path === $dir || str_starts_with($path, $dir . '/')) {
+            return;
+        }
+
+        $root = substr($dir, 0, -strlen('/public'));
+        foreach (['SCRIPT_NAME', 'PHP_SELF'] as $key) {
+            $value = str_replace('\\', '/', (string) ($_SERVER[$key] ?? ''));
+            if (str_starts_with($value, $dir . '/')) {
+                $_SERVER[$key] = $root . substr($value, strlen($dir));
+            }
+        }
+    }
+}
+
 if (!function_exists('base_url')) {
     /**
      * Calcule la base URL à partir de SCRIPT_NAME.
@@ -374,6 +409,64 @@ if (!function_exists('base_url')) {
     {
         $router = \kintai\Core\Container::getInstance()->make(\kintai\Core\Router::class);
         return base_url() . $router->url($name, $params);
+    }
+}
+
+if (!function_exists('safe_redirect_path')) {
+    /**
+     * Destination de redirection fournie par la requête (redirect_to, return_to…), acceptée seulement si c'est un
+     * chemin interne : commence par « / », sans « // » ni « \ » en tête (les navigateurs lisent « /\site.example »
+     * comme « //site.example », une autre origine), sans antislash ni caractère de contrôle, sans schéma ni hôte.
+     * Sinon $fallback. Contrôle commun à tous les formulaires qui renvoient l'utilisateur d'où il vient.
+     */
+    function safe_redirect_path(?string $path, string $fallback): string
+    {
+        $path = trim((string) $path);
+        if ($path === ''
+            || $path[0] !== '/'
+            || str_starts_with($path, '//')
+            || str_contains($path, '\\')
+            || preg_match('/[\x00-\x1F\x7F]/', $path) === 1
+        ) {
+            return $fallback;
+        }
+
+        $parts = parse_url($path);
+        if ($parts === false || isset($parts['scheme']) || isset($parts['host'])) {
+            return $fallback;
+        }
+
+        return $path;
+    }
+}
+
+if (!function_exists('route_segment')) {
+    /**
+     * Segment d'URL lisible (encodé) d'une entité adressée par un paramètre de route typé : alias d'un magasin
+     * (所沢東町店, tokorozawa-higashicho), numéro d'un employé (057, ou id-42). Pour les URLs construites à la main ;
+     * route_url() fait la même conversion toute seule. Retombe sur l'identifiant si le routage typé est
+     * indisponible (tests, base pas encore migrée).
+     */
+    function route_segment(string $type, int|string $id): string
+    {
+        try {
+            $binder = \kintai\Core\Container::getInstance()->make(\kintai\Core\Router::class)->binderFor($type);
+            $segment = $binder !== null ? $binder->segmentFor((int) $id) : (string) $id;
+        } catch (\Throwable) {
+            $segment = (string) $id;
+        }
+
+        return rawurlencode($segment);
+    }
+
+    function store_segment(int|string $storeId): string
+    {
+        return route_segment('store', $storeId);
+    }
+
+    function employee_segment(int|string $userId): string
+    {
+        return route_segment('employee', $userId);
     }
 }
 

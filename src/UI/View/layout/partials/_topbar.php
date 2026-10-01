@@ -29,7 +29,7 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
             $_defSec
         )));
         $reportHref = (is_array($managed_store_ids) && count($managed_store_ids) === 1)
-            ? $BASE_URL . '/admin/stores/' . $managed_store_ids[0] . '/employee-report'
+            ? $BASE_URL . '/admin/stores/' . store_segment($managed_store_ids[0]) . '/employee-report'
             : $BASE_URL . '/admin/stores';
         ?>
         <a href="<?= route_url($isManager ? 'home' : 'employee.dashboard') ?>" class="topbar-nav-link<?= ($isManager ? ($path === '/' || $path === '') : $path === '/employee') ? ' topbar-nav-link--active' : '' ?>"><?= __('dashboard') ?></a>

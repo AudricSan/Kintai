@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace kintai\Core\Services;
 
 use kintai\Core\Exceptions\NotFoundException;
+use kintai\Core\Exceptions\ValidationException;
 use kintai\Core\Repositories\LanguageRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
+use kintai\Core\Routing\RouteSlugService;
 use kintai\Core\Validation\StoreValidator;
 
 final class StoreService implements StoreServiceInterface
@@ -19,6 +21,7 @@ final class StoreService implements StoreServiceInterface
         private readonly UserRepositoryInterface $users,
         private readonly LanguageRepositoryInterface $languages,
         private readonly PlanLimitService $planLimits,
+        private readonly ?RouteSlugService $routeSlugs = null,
     ) {}
 
     public function getStoresForAdmin(?array $managedIds, string $sort = 'name_asc'): array
@@ -78,8 +81,10 @@ final class StoreService implements StoreServiceInterface
 
         $validator = new StoreValidator($this->languages);
         $validator->validate($data)->throwIfInvalid();
+        $this->assertCodeAvailable(strtoupper(trim((string) ($data['code'] ?? ''))), 0);
+        $manualSlug = $this->validatedManualSlug($data, 0);
 
-        return $this->stores->save([
+        $saved = $this->stores->save([
             'code'            => strtoupper(trim($data['code'] ?? '')),
             'name'            => $data['name'] ?? '',
             'type'            => $data['type'] ?? 'retail',
@@ -95,6 +100,51 @@ final class StoreService implements StoreServiceInterface
             'address_country' => ($data['address_country'] ?? '') ?: null,
             'is_active'       => 1,
         ]);
+
+        $this->routeSlugs?->syncStore((int) $saved['id'], (string) $saved['name'], $manualSlug);
+
+        return $saved;
+    }
+
+    /**
+     * Le code magasin est unique en base : un code déjà pris par un autre magasin levait une erreur SQL, donc une
+     * page 500, au lieu d'un message. $storeId vaut 0 pour un magasin pas encore créé.
+     *
+     * @throws ValidationException
+     */
+    private function assertCodeAvailable(string $code, int $storeId): void
+    {
+        if ($code === '') {
+            return;
+        }
+        $existing = $this->stores->findByCode($code);
+        if ($existing !== null && (int) $existing['id'] !== $storeId) {
+            $message = __('val_store_code_taken', ['code' => $code]);
+            throw new ValidationException(['code' => $message], $message);
+        }
+    }
+
+    /**
+     * Slug d'URL saisi à la main (champ « slug »), normalisé et validé. null = champ absent (API : un slug
+     * manuel existant est conservé), '' = pas de slug manuel (alias tiré du nom).
+     *
+     * @throws ValidationException
+     */
+    private function validatedManualSlug(array $data, int $storeId): ?string
+    {
+        if (!array_key_exists('slug', $data) || $data['slug'] === null) {
+            return null;
+        }
+        $slug = mb_strtolower(trim((string) $data['slug']), 'UTF-8');
+        if ($slug === '' || $this->routeSlugs === null) {
+            return $slug;
+        }
+        $error = $this->routeSlugs->manualStoreSlugError($slug, $storeId);
+        if ($error !== null) {
+            throw new ValidationException(['slug' => __($error)], __($error));
+        }
+
+        return $slug;
     }
 
     public function updateStore(int $storeId, array $data): array
@@ -103,6 +153,14 @@ final class StoreService implements StoreServiceInterface
         if ($store === null) {
             throw new NotFoundException(__('error_store_not_found'));
         }
+
+        // Seule la devise est revalidée ici (voir StoreValidator::currencyErrors()) : une valeur forgée hors de la
+        // liste du formulaire finissait affichée telle quelle dans les pages de statistiques et de rentabilité.
+        $currencyErrors = StoreValidator::currencyErrors($data);
+        if ($currencyErrors !== []) {
+            throw new ValidationException(['currency' => $currencyErrors[0]], $currencyErrors[0]);
+        }
+        $this->assertCodeAvailable(strtoupper(trim((string) ($data['code'] ?? $store['code'] ?? ''))), $storeId);
 
         $storeData = array_merge($store, [
             'code'                 => strtoupper(trim($data['code'] ?? $store['code'] ?? '')),
@@ -127,6 +185,8 @@ final class StoreService implements StoreServiceInterface
             'is_active'            => !empty($data['is_active']) ? 1 : 0,
         ]);
 
+        $manualSlug = $this->validatedManualSlug($data, $storeId);
+
         if (isset($data['_excel_settings'])) {
             $this->stores->saveImportSettings($storeId, $data['_excel_settings']);
         }
@@ -137,7 +197,10 @@ final class StoreService implements StoreServiceInterface
             $this->stores->saveFeatures($storeId, $data['_features']);
         }
 
-        return $this->stores->save($storeData);
+        $saved = $this->stores->save($storeData);
+        $this->routeSlugs?->syncStore($storeId, (string) $saved['name'], $manualSlug);
+
+        return $saved;
     }
 
     public function deleteStore(int $storeId): void
