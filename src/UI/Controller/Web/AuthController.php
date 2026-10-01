@@ -171,7 +171,6 @@ final class AuthController
                 if ($dbUser) {
                     $dbUser['language']    = $locale;
                     $this->users->save($dbUser);
-                    $_SESSION['auth_user'] = $dbUser;
                 }
             } catch (\Throwable) {
                 // Colonne language absente (migration non exécutée) — session suffit
@@ -331,7 +330,6 @@ final class AuthController
             $dbUser['share_phone']         = $request->post('share_phone') === '1' ? 1 : 0;
             $dbUser['share_mobile_phone']  = $request->post('share_mobile_phone') === '1' ? 1 : 0;
             $this->users->save($dbUser);
-            $_SESSION['auth_user'] = $dbUser;
 
             $_SESSION['locale'] = $language;
             $this->auditLogger->logUpdate($request, 'user.update_profile', 'user', $userId, $oldUser, $dbUser, [], null, $userId);
@@ -382,7 +380,6 @@ final class AuthController
         $oldUser = $dbUser;
         $dbUser['avatar_path'] = basename($compressed['path']);
         $this->users->save($dbUser);
-        $_SESSION['auth_user'] = $dbUser;
 
         $this->auditLogger->logUpdate($request, 'user.avatar_updated', 'user', $userId, $oldUser, $dbUser, [], null, $userId);
 
@@ -411,7 +408,6 @@ final class AuthController
         $oldUser = $dbUser;
         $dbUser['avatar_path'] = null;
         $this->users->save($dbUser);
-        $_SESSION['auth_user'] = $dbUser;
 
         $this->auditLogger->logUpdate($request, 'user.avatar_removed', 'user', $userId, $oldUser, $dbUser, [], null, $userId);
 
