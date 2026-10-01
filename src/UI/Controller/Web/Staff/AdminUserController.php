@@ -856,7 +856,7 @@ final class AdminUserController
         }
 
         $oldUser = $user;
-        $user['password_hash'] = \kintai\Core\Auth\PasswordHasher::hash('0000');
+        $user['password_hash'] = \kintai\Core\Auth\PasswordHasher::hash(\kintai\Core\Auth\PasswordPolicy::DEFAULT_PASSWORD);
         $this->users->save($user);
         $this->revoker?->revokeAllFor((int) $user['id']);
         $this->auditLogger->logUpdate($request, 'user.password_reset', 'user', (int) $user['id'], $oldUser, $user, [
