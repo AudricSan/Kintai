@@ -66,7 +66,7 @@ function estatDate(string $date): string {
     return $dt ? $dt->format('d/m/Y') : $date;
 }
 
-$reportUrl = $BASE_URL . '/admin/stores/' . (int) $store['id'] . '/employee-report?period=' . $period;
+$reportUrl = $BASE_URL . '/admin/stores/' . store_segment((int) $store['id']) . '/employee-report?period=' . $period;
 ?>
 
 <div class="page-header">

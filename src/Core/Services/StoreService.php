@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace kintai\Core\Services;
 
 use kintai\Core\Exceptions\NotFoundException;
+use kintai\Core\Exceptions\ValidationException;
 use kintai\Core\Repositories\LanguageRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
+use kintai\Core\Routing\RouteSlugService;
 use kintai\Core\Validation\StoreValidator;
 
 final class StoreService implements StoreServiceInterface
@@ -19,6 +21,7 @@ final class StoreService implements StoreServiceInterface
         private readonly UserRepositoryInterface $users,
         private readonly LanguageRepositoryInterface $languages,
         private readonly PlanLimitService $planLimits,
+        private readonly ?RouteSlugService $routeSlugs = null,
     ) {}
 
     public function getStoresForAdmin(?array $managedIds, string $sort = 'name_asc'): array
@@ -78,8 +81,9 @@ final class StoreService implements StoreServiceInterface
 
         $validator = new StoreValidator($this->languages);
         $validator->validate($data)->throwIfInvalid();
+        $manualSlug = $this->validatedManualSlug($data, 0);
 
-        return $this->stores->save([
+        $saved = $this->stores->save([
             'code'            => strtoupper(trim($data['code'] ?? '')),
             'name'            => $data['name'] ?? '',
             'type'            => $data['type'] ?? 'retail',
@@ -95,6 +99,33 @@ final class StoreService implements StoreServiceInterface
             'address_country' => ($data['address_country'] ?? '') ?: null,
             'is_active'       => 1,
         ]);
+
+        $this->routeSlugs?->syncStore((int) $saved['id'], (string) $saved['name'], $manualSlug);
+
+        return $saved;
+    }
+
+    /**
+     * Slug d'URL saisi à la main (champ « slug »), normalisé et validé. null = champ absent (API : un slug
+     * manuel existant est conservé), '' = pas de slug manuel (alias tiré du nom).
+     *
+     * @throws ValidationException
+     */
+    private function validatedManualSlug(array $data, int $storeId): ?string
+    {
+        if (!array_key_exists('slug', $data) || $data['slug'] === null) {
+            return null;
+        }
+        $slug = mb_strtolower(trim((string) $data['slug']), 'UTF-8');
+        if ($slug === '' || $this->routeSlugs === null) {
+            return $slug;
+        }
+        $error = $this->routeSlugs->manualStoreSlugError($slug, $storeId);
+        if ($error !== null) {
+            throw new ValidationException(['slug' => __($error)], __($error));
+        }
+
+        return $slug;
     }
 
     public function updateStore(int $storeId, array $data): array
@@ -127,6 +158,8 @@ final class StoreService implements StoreServiceInterface
             'is_active'            => !empty($data['is_active']) ? 1 : 0,
         ]);
 
+        $manualSlug = $this->validatedManualSlug($data, $storeId);
+
         if (isset($data['_excel_settings'])) {
             $this->stores->saveImportSettings($storeId, $data['_excel_settings']);
         }
@@ -137,7 +170,10 @@ final class StoreService implements StoreServiceInterface
             $this->stores->saveFeatures($storeId, $data['_features']);
         }
 
-        return $this->stores->save($storeData);
+        $saved = $this->stores->save($storeData);
+        $this->routeSlugs?->syncStore($storeId, (string) $saved['name'], $manualSlug);
+
+        return $saved;
     }
 
     public function deleteStore(int $storeId): void

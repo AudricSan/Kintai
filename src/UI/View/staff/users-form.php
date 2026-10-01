@@ -25,7 +25,7 @@ $all_stores            ??= [];
 $assignable_roles      ??= [];
 $default_store_role_id ??= 0;
 $action = $mode === 'edit'
-    ? $BASE_URL . '/admin/users/' . (int) $user['id'] . '/edit'
+    ? $BASE_URL . '/admin/users/' . employee_segment((int) $user['id']) . '/edit'
     : route_url('admin.users.create');
 $can = $user_can ?? fn(string $k): bool => true;
 // admin.users.edit n'exige que employees.view, mais la soumission réelle
@@ -46,6 +46,7 @@ echo Flash::fromQuery('error', [
     'name_required'        => __('name_required'),
     'furigana_required'    => __('furigana_required'),
     'plan_limit_employees' => __('plan_limit_employees'),
+    'employee_code_invalid_url' => __('employee_code_invalid_url'),
 ])->render();
 ?>
 <div class="page-header">
@@ -66,7 +67,7 @@ echo Flash::fromQuery('error', [
     </fieldset>
 </form>
 <?php if ($mode === 'edit'): ?>
-<form method="POST" action="<?= $BASE_URL ?>/admin/users/<?= (int) $user['id'] ?>/reset-password" id="resetPasswordForm">
+<form method="POST" action="<?= $BASE_URL ?>/admin/users/<?= employee_segment((int) $user['id']) ?>/reset-password" id="resetPasswordForm">
     <?= csrf_field() ?>
 </form>
 <?php endif; ?>
@@ -116,9 +117,9 @@ echo Flash::fromQuery('error', [
                             <td data-label="<?= htmlspecialchars(__('role')) ?>"><?= Badge::make($m['role_name'] ?? '—')->variant(!empty($m['role_is_managing']) ? 'warning' : 'active')->render() ?></td>
                             <td data-label="<?= htmlspecialchars(__('social_deductions')) ?>">
                                 <?php if ($storeDedEnabled && $can('payroll.generate')): ?>
-                                <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/members/<?= $mid ?>/deductions" class="form-inline">
+                                <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= store_segment($sid) ?>/members/<?= $mid ?>/deductions" class="form-inline">
                                     <?= csrf_field() ?>
-                                    <input type="hidden" name="_redirect_to" value="<?= htmlspecialchars($BASE_URL . '/admin/users/' . (int) $user['id'] . '/edit?success=deductions_saved') ?>">
+                                    <input type="hidden" name="_redirect_to" value="<?= htmlspecialchars($BASE_URL . '/admin/users/' . employee_segment((int) $user['id']) . '/edit?success=deductions_saved') ?>">
                                     <label class="form-toggle" title="<?= htmlspecialchars(__('subject_to_deductions')) ?>">
                                         <input type="checkbox" name="subject_to_deductions" value="1" class="form-toggle__input" <?= $subject ? 'checked' : '' ?> data-submit-on-change>
                                         <span class="form-toggle__track"></span>
@@ -141,9 +142,9 @@ echo Flash::fromQuery('error', [
                             <td rowspan="<?= $rowSpan ?>" data-label="<?= htmlspecialchars(__('role')) ?>"><?= Badge::make($m['role_name'] ?? '—')->variant(!empty($m['role_is_managing']) ? 'warning' : 'active')->render() ?></td>
                             <td rowspan="<?= $rowSpan ?>" data-label="<?= htmlspecialchars(__('social_deductions')) ?>">
                                 <?php if ($storeDedEnabled && $can('payroll.generate')): ?>
-                                <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/members/<?= $mid ?>/deductions" class="form-inline">
+                                <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= store_segment($sid) ?>/members/<?= $mid ?>/deductions" class="form-inline">
                                     <?= csrf_field() ?>
-                                    <input type="hidden" name="_redirect_to" value="<?= htmlspecialchars($BASE_URL . '/admin/users/' . (int) $user['id'] . '/edit?success=deductions_saved') ?>">
+                                    <input type="hidden" name="_redirect_to" value="<?= htmlspecialchars($BASE_URL . '/admin/users/' . employee_segment((int) $user['id']) . '/edit?success=deductions_saved') ?>">
                                     <label class="form-toggle" title="<?= htmlspecialchars(__('subject_to_deductions')) ?>">
                                         <input type="checkbox" name="subject_to_deductions" value="1" class="form-toggle__input" <?= $subject ? 'checked' : '' ?> data-submit-on-change>
                                         <span class="form-toggle__track"></span>
@@ -158,7 +159,7 @@ echo Flash::fromQuery('error', [
                             <td data-label="<?= htmlspecialchars(__('base_rate')) ?>" class="text-sm"><?= $t['hourly_rate'] !== null ? number_format((float) $t['hourly_rate'], 2, '.', '') : '—' ?></td>
                             <td data-label="<?= htmlspecialchars(__('custom_rate')) ?>">
                                 <?php if ($can('employees.update')): ?>
-                                <form method="POST" action="<?= $BASE_URL ?>/admin/users/<?= (int) $user['id'] ?>/rates" class="form-inline">
+                                <form method="POST" action="<?= $BASE_URL ?>/admin/users/<?= employee_segment((int) $user['id']) ?>/rates" class="form-inline">
                                     <?= csrf_field() ?>
                                     <input type="hidden" name="shift_type_id" value="<?= $tid ?>">
                                     <input type="number" name="hourly_rate" class="form-control form-control-sm w-90" min="0" step="0.01"
@@ -194,7 +195,7 @@ foreach ($user_memberships as $m):
     ob_start();
     if ($can('employees.update')):
     ?>
-    <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/members/<?= $mid ?>/role" class="form-inline-flex mb-sm">
+    <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= store_segment($sid) ?>/members/<?= $mid ?>/role" class="form-inline-flex mb-sm">
         <?= csrf_field() ?>
         <div class="form-group">
             <label class="form-label"><?= __('role') ?></label>
@@ -209,9 +210,9 @@ foreach ($user_memberships as $m):
     <?php endif; ?>
 
     <?php if ($storeDedEnabled && $can('payroll.generate')): ?>
-    <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/members/<?= $mid ?>/deductions" class="mb-sm">
+    <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= store_segment($sid) ?>/members/<?= $mid ?>/deductions" class="mb-sm">
         <?= csrf_field() ?>
-        <input type="hidden" name="_redirect_to" value="<?= htmlspecialchars($BASE_URL . '/admin/users/' . (int) $user['id'] . '/edit?success=deductions_saved') ?>">
+        <input type="hidden" name="_redirect_to" value="<?= htmlspecialchars($BASE_URL . '/admin/users/' . employee_segment((int) $user['id']) . '/edit?success=deductions_saved') ?>">
         <label class="form-toggle form-toggle--labeled">
             <input type="checkbox" name="subject_to_deductions" value="1" class="form-toggle__input" <?= $subject ? 'checked' : '' ?> data-submit-on-change>
             <span class="form-toggle__track"></span>
@@ -223,7 +224,7 @@ foreach ($user_memberships as $m):
     <?php
     $editMembershipFooter = '';
     if ($can('employees.update')) {
-        $editMembershipFooter = '<form method="POST" action="' . htmlspecialchars($BASE_URL . '/admin/stores/' . $sid . '/members/' . $mid . '/delete') . '" class="form-inline" data-confirm="' . htmlspecialchars(__('confirm_remove_member'), ENT_QUOTES) . '">'
+        $editMembershipFooter = '<form method="POST" action="' . htmlspecialchars($BASE_URL . '/admin/stores/' . store_segment($sid) . '/members/' . $mid . '/delete') . '" class="form-inline" data-confirm="' . htmlspecialchars(__('confirm_remove_member'), ENT_QUOTES) . '">'
             . csrf_field()
             . Button::make(__('remove'))->danger()->sm()->submit()->render()
             . '</form>';
@@ -242,7 +243,7 @@ endforeach;
     <form method="POST" action="<?= $BASE_URL ?>/admin/stores/0/members" id="addStoreForm" class="form-stack">
         <?= csrf_field() ?>
         <input type="hidden" name="user_id" value="<?= (int)$user['id'] ?>">
-        <input type="hidden" name="redirect_to" value="<?= $BASE_URL ?>/admin/users/<?= (int)$user['id'] ?>/edit?success=member_added">
+        <input type="hidden" name="redirect_to" value="<?= $BASE_URL ?>/admin/users/<?= employee_segment((int)$user['id']) ?>/edit?success=member_added">
         <div class="form-group">
             <label class="form-label"><?= __('store') ?></label>
             <select name="store_id_select" class="form-control" required data-on-change="@setFormAction" data-target="addStoreForm" data-action-template="<?= $BASE_URL ?>/admin/stores/{value}/members">

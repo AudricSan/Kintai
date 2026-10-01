@@ -435,7 +435,7 @@ ob_start();
         <?php $c = $userColorMap[$uid] ?? '#6366f1'; $n = $users_map[$uid] ?? ('#' . $uid); $isMe = $uid === $my_user_id; ?>
         <span class="week-legend-item">
             <span class="tl-legend-bar" style="background:<?= $isMe ? $c : $c . '70' ?>;border:<?= $isMe ? "2px solid {$c}" : "1px solid {$c}aa" ?>"></span>
-            <span class="<?= $isMe ? 'tl-legend-name--me' : 'text-muted tl-legend-name' ?>"><?php if ($_canManage): ?><a href="<?= $BASE_URL ?>/admin/users/<?= (int) $uid ?>/edit"><?= htmlspecialchars($n) ?></a><?php else: ?><?= htmlspecialchars($n) ?><?php endif; ?></span>
+            <span class="<?= $isMe ? 'tl-legend-name--me' : 'text-muted tl-legend-name' ?>"><?php if ($_canManage): ?><a href="<?= $BASE_URL ?>/admin/users/<?= employee_segment((int) $uid) ?>/edit"><?= htmlspecialchars($n) ?></a><?php else: ?><?= htmlspecialchars($n) ?><?php endif; ?></span>
         </span>
     <?php endforeach; ?>
     <!-- <span class="text-muted ml-auto"><?= __('timeline_legend_hint') ?></span> -->

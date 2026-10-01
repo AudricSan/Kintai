@@ -1525,5 +1525,12 @@
     "report_issue_error_generic": "Failed to send. Please try again later.",
     "report_issue_privacy_note": "This report is published publicly on GitHub. Do not include any personal or confidential information.",
 
-    "zone_to_create": "Drag here to create a shift"
+    "zone_to_create": "Drag here to create a shift",
+    "store_slug": "URL slug (optional)",
+    "store_slug_hint": "Short romanized name used in this store's web addresses (e.g. tokorozawa-higashicho): lowercase letters, digits and hyphens. Left empty, addresses use the store name as is. Previous addresses keep working.",
+    "store_slug_current": "Current address:",
+    "store_slug_invalid": "The URL slug may only contain lowercase letters, digits and single hyphens, with at least one letter (60 characters maximum).",
+    "store_slug_reserved": "This URL slug is reserved by the application. Please choose another one.",
+    "store_slug_taken": "This URL slug is already used (or was used) by another store.",
+    "employee_code_invalid_url": "The employee number may only contain letters, digits, hyphens and underscores, and cannot start with \"ID-\"."
 }

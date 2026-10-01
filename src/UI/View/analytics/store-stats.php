@@ -88,10 +88,10 @@ function deltaChip(mixed $val, bool $invertColor = false, string $suffix = '%'):
         </span>
     </h2>
     <div class="page-header__actions">
-        <?= Button::make('⬇ ' . __('export_csv'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . (int) $store['id'] . '/stats/export?period=' . $period)->render() ?>
-        <?= Button::make(__('profitability'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . (int) $store['id'] . '/profitability')->render() ?>
-        <?= Button::make(__('employee_report'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . (int) $store['id'] . '/employee-report')->render() ?>
-        <?= Button::make(__('edit'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . (int) $store['id'] . '/edit')->render() ?>
+        <?= Button::make('⬇ ' . __('export_csv'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . store_segment((int) $store['id']) . '/stats/export?period=' . $period)->render() ?>
+        <?= Button::make(__('profitability'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . store_segment((int) $store['id']) . '/profitability')->render() ?>
+        <?= Button::make(__('employee_report'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . store_segment((int) $store['id']) . '/employee-report')->render() ?>
+        <?= Button::make(__('edit'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . store_segment((int) $store['id']) . '/edit')->render() ?>
         <?= Button::make(__('back'))->ghost()->sm()->link(back_url(route_url('admin.stores')))->render() ?>
     </div>
 </div>
@@ -219,7 +219,7 @@ function deltaChip(mixed $val, bool $invertColor = false, string $suffix = '%'):
                 $maxH = $hoursByUser ? max($hoursByUser) : 1;
                 foreach ($hoursByUser as $uid => $h): ?>
                     <tr>
-                        <td><a href="<?= $BASE_URL ?>/admin/users/<?= (int) $uid ?>/edit"><?= htmlspecialchars(userName($usersMap, (int) $uid)) ?></a></td>
+                        <td><a href="<?= $BASE_URL ?>/admin/users/<?= employee_segment((int) $uid) ?>/edit"><?= htmlspecialchars(userName($usersMap, (int) $uid)) ?></a></td>
                         <td><?= number_format($h, 1) ?><?= __('hours_unit') ?></td>
                         <td class="col-40">
                             <div class="sstat-progress">
@@ -259,7 +259,7 @@ function deltaChip(mixed $val, bool $invertColor = false, string $suffix = '%'):
                 <tbody>
                 <?php foreach ($shiftsCreatedByManager as $mid => $cnt): ?>
                     <tr>
-                        <td><?php if ($mid > 0): ?><a href="<?= $BASE_URL ?>/admin/users/<?= (int) $mid ?>/edit"><?= htmlspecialchars(userName($usersMap, $mid)) ?></a><?php else: ?><?= htmlspecialchars(__('import_system')) ?><?php endif; ?></td>
+                        <td><?php if ($mid > 0): ?><a href="<?= $BASE_URL ?>/admin/users/<?= employee_segment((int) $mid) ?>/edit"><?= htmlspecialchars(userName($usersMap, $mid)) ?></a><?php else: ?><?= htmlspecialchars(__('import_system')) ?><?php endif; ?></td>
                         <td><?= $cnt ?></td>
                         <td><?= $modByManager[$mid] ?? 0 ?></td>
                     </tr>
@@ -297,7 +297,7 @@ function deltaChip(mixed $val, bool $invertColor = false, string $suffix = '%'):
                 <tbody>
                 <?php arsort($timeoffsByUser); foreach ($timeoffsByUser as $uid => $cnt): ?>
                     <tr>
-                        <td><a href="<?= $BASE_URL ?>/admin/users/<?= (int) $uid ?>/edit"><?= htmlspecialchars(userName($usersMap, (int) $uid)) ?></a></td>
+                        <td><a href="<?= $BASE_URL ?>/admin/users/<?= employee_segment((int) $uid) ?>/edit"><?= htmlspecialchars(userName($usersMap, (int) $uid)) ?></a></td>
                         <td><?= $cnt ?></td>
                     </tr>
                 <?php endforeach; ?>
@@ -365,7 +365,7 @@ function deltaChip(mixed $val, bool $invertColor = false, string $suffix = '%'):
             <tbody>
             <?php arsort($costByUser); foreach ($costByUser as $uid => $cost): ?>
                 <tr>
-                    <td><a href="<?= $BASE_URL ?>/admin/users/<?= (int) $uid ?>/edit"><?= htmlspecialchars(userName($usersMap, (int) $uid)) ?></a></td>
+                    <td><a href="<?= $BASE_URL ?>/admin/users/<?= employee_segment((int) $uid) ?>/edit"><?= htmlspecialchars(userName($usersMap, (int) $uid)) ?></a></td>
                     <td><?= format_currency($cost, $currency, $currencyStyle) ?></td>
                     <td><?= number_format($hoursByUser[$uid] ?? 0, 1) ?><?= __('hours_unit') ?></td>
                     <td><?= ($hoursByUser[$uid] ?? 0) > 0 ? format_currency($cost / $hoursByUser[$uid], $currency, $currencyStyle) : '—' ?></td>

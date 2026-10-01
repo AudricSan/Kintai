@@ -20,6 +20,25 @@ final class Router
     /** @var string[] */
     private array $groupMiddleware = [];
 
+    /**
+     * Fournit le binder d'un type de paramètre ({id:store} → « store »), ou null si le type est inconnu.
+     * Branché par Application ; absent (tests du routeur seul), les paramètres typés restent bruts.
+     *
+     * @var (\Closure(string): ?\kintai\Core\Routing\RouteParamBinder)|null
+     */
+    private ?\Closure $binderResolver = null;
+
+    /** @param callable(string): ?\kintai\Core\Routing\RouteParamBinder $resolver */
+    public function setBinderResolver(callable $resolver): void
+    {
+        $this->binderResolver = \Closure::fromCallable($resolver);
+    }
+
+    public function binderFor(string $type): ?\kintai\Core\Routing\RouteParamBinder
+    {
+        return $this->binderResolver !== null ? ($this->binderResolver)($type) : null;
+    }
+
     public function get(string $pattern, array $handler, array $middleware = [], ?string $name = null, string|array|null $permission = null): self
     {
         return $this->addRoute('GET', $pattern, $handler, $middleware, $name, $permission);
@@ -112,13 +131,41 @@ final class Router
             throw new \InvalidArgumentException("Route [{$name}] not defined.");
         }
 
-        $pattern = $this->named[$name]->pattern;
+        $route   = $this->named[$name];
+        $pattern = $route->pattern;
 
         foreach ($params as $key => $value) {
+            $type = $route->bindings[$key] ?? null;
+            if ($type !== null) {
+                // Paramètre typé : un identifiant devient le segment lisible (slug, numéro d'employé), encodé
+                // pour l'URL (所沢東町店 → %E6%89%80…). Une valeur non numérique est prise comme segment déjà prêt.
+                $binder  = $this->binderFor($type);
+                $segment = $binder !== null && (is_int($value) || (is_string($value) && ctype_digit($value)))
+                    ? $binder->segmentFor((int) $value)
+                    : (string) $value;
+                $pattern = str_replace("{{$key}:{$type}}", rawurlencode($segment), $pattern);
+                continue;
+            }
             $pattern = str_replace(["{{$key}}", "{{$key}*}"], (string) $value, $pattern);
         }
 
         return $pattern;
+    }
+
+    /**
+     * Chemin d'une route à partir de segments déjà décodés (encodés ici, « / » conservé pour {x*}). Sert à
+     * reconstruire l'URL canonique d'une requête arrivée par un ancien lien.
+     *
+     * @param array<string, string> $segments
+     */
+    public function pathFor(Route $route, array $segments): string
+    {
+        return (string) preg_replace_callback('/\{(\w+)(?::\w+)?(\*)?\}/', function (array $m) use ($segments): string {
+            $value = (string) ($segments[$m[1]] ?? '');
+            return ($m[2] ?? '') === '*'
+                ? implode('/', array_map('rawurlencode', explode('/', $value)))
+                : rawurlencode($value);
+        }, $route->pattern);
     }
 
     /**
@@ -140,11 +187,16 @@ final class Router
         $fullPattern = $this->groupPrefix . $pattern;
         $fullMiddleware = array_merge($this->groupMiddleware, $middleware);
 
-        // Compile pattern to regex — {name} capture un segment, {name*} capture le reste du chemin
+        // Compile pattern to regex — {name} capture un segment, {name*} capture le reste du chemin, {name:type}
+        // capture un segment typé (store, employee…) que l'application traduit en identifiant (voir Routing\).
         $paramNames = [];
-        $regex = preg_replace_callback('/\{(\w+)(\*)?\}/', function ($m) use (&$paramNames) {
+        $bindings   = [];
+        $regex = preg_replace_callback('/\{(\w+)(?::(\w+))?(\*)?\}/', function ($m) use (&$paramNames, &$bindings) {
             $paramNames[] = $m[1];
-            return isset($m[2]) && $m[2] === '*' ? '(.+)' : '([^/]+)';
+            if (($m[2] ?? '') !== '') {
+                $bindings[$m[1]] = $m[2];
+            }
+            return isset($m[3]) && $m[3] === '*' ? '(.+)' : '([^/]+)';
         }, $fullPattern);
 
         $regex = '#^' . $regex . '$#';
@@ -158,6 +210,7 @@ final class Router
             middleware: $fullMiddleware,
             name: $name,
             permission: $permission,
+            bindings: $bindings,
         );
 
         $this->routes[] = $route;

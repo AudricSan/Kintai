@@ -108,6 +108,22 @@ Don't re-derive this resolution logic yourself. Reuse Core's `kintai\UI\Controll
 
 If your bundle needs to serve an **uploaded file** (an image, a PDF, an attachment) behind this same authorization, don't build your own file-serving route for it — link into Kintai's own `/storage/{path*}` (route name `storage.file`), which already applies `managed_store_ids` (`StorageFileController::assertPathStoreAccess()`) plus its own upload-path confinement and MIME allow-list. A parallel file-serving route duplicates authorization logic Core already owns, outside of Core's own test coverage.
 
+## Readable URLs: typed route parameters
+
+Core's web routes no longer show database ids for stores and employees (`/admin/stores/所沢東町店/edit`, `/admin/users/057/edit`, see `docs/architecture.md`, "Readable URLs"). Your bundle gets the same thing by typing its route parameters — nothing to register:
+
+```php
+// routes.php
+$r->get('/stores/{id:store}/photos',               [StorePhotoController::class, 'index'], name: 'store_photos.index', permission: 'photos.view');
+$r->get('/stores/{id:store}/reports/{uid:employee}', [ReportController::class, 'show'],    name: 'reports.show',       permission: 'reports.view');
+```
+
+- **Your controllers don't change:** `$request->param('id')` still returns the numeric id. The segment is resolved before `PermissionMiddleware`, so `store_param` rules and `assertStoreAccess()` keep working unchanged.
+- **Generate links with `route_url()`, passing the id** (`route_url('store_photos.index', ['id' => $storeId])`): it emits the readable, encoded segment. For a URL you build by hand, use `store_segment($storeId)` / `employee_segment($userId)` instead of the raw id — never the employee's name.
+- **Old links keep working:** a numeric id is resolved and a GET is redirected `301` to the readable URL (a POST is served as is), so bookmarks, e-mails and notifications sent before your bundle migrated are not broken.
+- **Only type what designates a store or an employee.** A report, a photo or a membership id stays a plain `{id}`.
+- **Requires a Core that ships typed route parameters** (see its CHANGELOG): set `kintai_core.min` in `bundle.json` accordingly, since an older Core would read `{id:store}` as a literal segment.
+
 ## Database migrations
 
 A bundle can own its own table(s) — a dedicated PR against Kintai's own repository is **not** required just to create a schema anymore. Drop an optional `database/migrations/` directory at your bundle's root (a sibling of `src/`, same rule as `Views/`/`routes.php`), containing files in the **exact same format** as Kintai's own Core migrations (`database/migrations/php/*.php`):
