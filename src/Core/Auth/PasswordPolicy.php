@@ -10,12 +10,17 @@ namespace kintai\Core\Auth;
  * 4 au profil) : changer son mot de passe depuis le profil permettait de choisir plus faible que ce que
  * la réinitialisation exigeait.
  *
- * Ne s'applique pas au mot de passe par défaut « 0000 » attribué à la création d'un compte : c'est une
- * décision assumée (l'utilisateur voit un avertissement tant qu'il ne l'a pas changé).
+ * Le mot de passe par défaut « 0000 » attribué à la création d'un compte passe par MIN_LENGTH sans le
+ * respecter : il n'est donc valable que le temps de la première connexion. Tant qu'un utilisateur le
+ * garde (ou garde un mot de passe trop court), MustChangePasswordMiddleware ne lui laisse accéder qu'à son
+ * profil pour le changer (AuthService::mustChangePassword()).
  */
 final class PasswordPolicy
 {
     public const MIN_LENGTH = 8;
+
+    /** Mot de passe attribué à un compte créé ou réinitialisé par un admin. */
+    public const DEFAULT_PASSWORD = '0000';
 
     public static function isLongEnough(string $password): bool
     {
