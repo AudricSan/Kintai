@@ -32,6 +32,10 @@ final class SessionMiddleware implements MiddlewareInterface
             session_name($config['name'] ?? 'kintai_session');
             session_start();
         }
+        // Ancienne copie de la ligne utilisateur (hash du mot de passe compris), écrite par AuthController jusqu'au
+        // 01/10/2026 sans jamais être relue : on la retire des sessions encore ouvertes.
+        unset($_SESSION['auth_user']);
+
         return $next($request);
     }
 }
