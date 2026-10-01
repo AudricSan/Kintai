@@ -32,10 +32,7 @@ final class SupportController
     /** POST /support/report-issue */
     public function reportIssue(Request $request): Response
     {
-        $returnTo = trim((string) $request->post('return_to', ''));
-        if ($returnTo === '' || !str_starts_with($returnTo, '/') || str_contains($returnTo, '//')) {
-            $returnTo = $this->base() . '/';
-        }
+        $returnTo = safe_redirect_path((string) $request->post('return_to', ''), $this->base() . '/');
 
         $title = trim((string) $request->post('title', ''));
         $description = trim((string) $request->post('description', ''));

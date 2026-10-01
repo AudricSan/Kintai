@@ -253,6 +253,37 @@ final class AdminStoreControllerTest extends TestCase
         $this->assertSame(200, $response->status());
     }
 
+    /** @return array<string, array{string, bool}> */
+    public static function memberRedirects(): array
+    {
+        return [
+            'fiche employé (champ caché)' => ['/admin/users/057/edit?success=member_added', true],
+            'site externe'                => ['https://evil.example/', false],
+            'origine relative au schéma'  => ['//evil.example/', false],
+            'antislash'                   => ['/\\evil.example/', false],
+        ];
+    }
+
+    /** Audit du 01/10/2026 : la destination postée après l'ajout d'un membre n'était pas contrôlée du tout. */
+    #[\PHPUnit\Framework\Attributes\DataProvider('memberRedirects')]
+    public function testAddMemberOnlyRedirectsToInternalPaths(string $redirectTo, bool $kept): void
+    {
+        $_SERVER = ['REQUEST_METHOD' => 'POST', 'REQUEST_URI' => '/admin/stores/1/members', 'SCRIPT_NAME' => '/index.php'];
+        $_POST   = ['user_id' => '0', 'redirect_to' => $redirectTo];
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+        $req->setRouteParams(['id' => 1]);
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Test Store']);
+
+        $response = $this->controller->addMember($req);
+
+        $location = (string) ((fn() => $this->headers['Location'] ?? '')->call($response));
+        $this->assertSame(302, $response->status());
+        $kept
+            ? $this->assertSame($redirectTo, $location)
+            : $this->assertStringEndsWith('/admin/stores/1/edit?success=member_added', $location);
+    }
+
     protected function tearDown(): void
     {
         $_GET = [];

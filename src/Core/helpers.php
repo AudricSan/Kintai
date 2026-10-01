@@ -412,6 +412,34 @@ if (!function_exists('base_url')) {
     }
 }
 
+if (!function_exists('safe_redirect_path')) {
+    /**
+     * Destination de redirection fournie par la requête (redirect_to, return_to…), acceptée seulement si c'est un
+     * chemin interne : commence par « / », sans « // » ni « \ » en tête (les navigateurs lisent « /\site.example »
+     * comme « //site.example », une autre origine), sans antislash ni caractère de contrôle, sans schéma ni hôte.
+     * Sinon $fallback. Contrôle commun à tous les formulaires qui renvoient l'utilisateur d'où il vient.
+     */
+    function safe_redirect_path(?string $path, string $fallback): string
+    {
+        $path = trim((string) $path);
+        if ($path === ''
+            || $path[0] !== '/'
+            || str_starts_with($path, '//')
+            || str_contains($path, '\\')
+            || preg_match('/[\x00-\x1F\x7F]/', $path) === 1
+        ) {
+            return $fallback;
+        }
+
+        $parts = parse_url($path);
+        if ($parts === false || isset($parts['scheme']) || isset($parts['host'])) {
+            return $fallback;
+        }
+
+        return $path;
+    }
+}
+
 if (!function_exists('route_segment')) {
     /**
      * Segment d'URL lisible (encodé) d'une entité adressée par un paramètre de route typé : alias d'un magasin
