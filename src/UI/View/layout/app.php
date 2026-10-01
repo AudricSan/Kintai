@@ -149,10 +149,6 @@
     </script>
     <script nonce="<?= csp_nonce() ?>">document.addEventListener('click',function(e){if(e.target.closest('a,button,input,select,textarea,form'))return;var t=e.target.closest('.tr--clickable[data-href]');if(t){location.href=t.getAttribute('data-href');return;}var m=e.target.closest('.tr--clickable[data-modal]');if(m&&window.openModal){window.openModal(m.getAttribute('data-modal'));}});</script>
 
-    <?php if ($feedback_enabled ?? true): ?>
-        <?php include __DIR__ . '/partials/feedback-modal.php'; ?>
-    <?php endif; ?>
-
     <?php if (!empty($auth_user['id'] ?? null)): ?>
         <?php include __DIR__ . '/partials/report-issue-modal.php'; ?>
     <?php endif; ?>
