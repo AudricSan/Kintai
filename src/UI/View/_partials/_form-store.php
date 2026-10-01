@@ -88,7 +88,7 @@ $dedResidentTax = $ded['resident_tax_monthly'] ?? 0;
                 <label class="form-label"><?= __('currency') ?></label>
                 <?php $storeCurrency = strtoupper($store['currency'] ?? 'EUR'); ?>
                 <select name="currency" class="form-control">
-                    <?php foreach (['EUR', 'USD', 'JPY', 'GBP', 'CHF', 'KRW'] as $curOpt): ?>
+                    <?php foreach (\kintai\Core\Validation\StoreValidator::CURRENCIES as $curOpt): ?>
                         <option value="<?= $curOpt ?>"<?= $storeCurrency === $curOpt ? ' selected' : '' ?>><?= $curOpt ?> (<?= currency_symbol($curOpt) ?>)</option>
                     <?php endforeach; ?>
                 </select>
