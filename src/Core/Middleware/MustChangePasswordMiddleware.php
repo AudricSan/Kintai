@@ -22,10 +22,13 @@ use kintai\Core\Response;
 final class MustChangePasswordMiddleware implements MiddlewareInterface
 {
     /** Préfixes libres : ressources statiques, API à jeton, cron, photo de profil affichée sur /profile. */
-    private const BYPASS_PREFIXES = ['/api/', '/cron/', '/assets/', '/bundle-assets/', '/avatar/'];
+    private const BYPASS_PREFIXES = ['/api/', '/cron/', '/assets/', '/bundle-assets/', '/avatar/', '/lang/'];
 
-    /** Chemins exacts libres, toutes méthodes confondues. */
-    private const BYPASS_PATHS = ['/login', '/logout', '/profile', '/profile/password', '/sw.js', '/manifest.json'];
+    /**
+     * Chemins exacts libres, toutes méthodes confondues. La langue (/lang/…) et la vue mobile/bureau restent
+     * accessibles : un employé qui ne lit pas la langue par défaut doit pouvoir la changer avant tout.
+     */
+    private const BYPASS_PATHS = ['/login', '/logout', '/profile', '/profile/password', '/sw.js', '/manifest.json', '/switch-device'];
 
     public function __construct(private readonly Container $container) {}
 

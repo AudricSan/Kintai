@@ -184,6 +184,8 @@ final class MustChangePasswordTest extends TestCase
             'asset'                      => ['/assets/css/app.css', 'GET'],
             'API à jeton'                => ['/api/v1/shifts', 'GET'],
             'service worker'             => ['/sw.js', 'GET'],
+            'changement de langue'       => ['/lang/ja', 'GET'],
+            'vue mobile/bureau'          => ['/switch-device', 'POST'],
         ];
     }
 
