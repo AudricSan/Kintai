@@ -8,6 +8,10 @@ use kintai\Core\Repositories\LanguageRepositoryInterface;
 
 final class StoreValidator implements ValidatorInterface
 {
+    /** Devises proposées par le formulaire magasin (liste fermée, partagée avec la vue et StoreService). */
+    public const CURRENCIES = ['EUR', 'USD', 'JPY', 'GBP', 'CHF', 'KRW'];
+
+    public const CURRENCY_SYMBOL_STYLES = ['kanji', 'international'];
     public function __construct(
         private readonly LanguageRepositoryInterface $languages,
     ) {}
@@ -55,18 +59,31 @@ final class StoreValidator implements ValidatorInterface
             $errors[] = __('val_invalid_phone');
         }
 
-        $validCurrencies = ['EUR', 'USD', 'JPY', 'GBP', 'CHF', 'KRW'];
-        $currency = strtoupper(trim($data['currency'] ?? ''));
-        if ($currency !== '' && !in_array($currency, $validCurrencies, true)) {
+        array_push($errors, ...self::currencyErrors($data));
+
+        return new ValidationResult($errors === [], $errors);
+    }
+
+    /**
+     * Contrôle de la devise et du style de symbole seuls, applicable aussi à la modification d'un magasin. Les autres
+     * champs n'y sont pas revalidés : des magasins existants ont un type libre ou une langue hors liste, et les
+     * bloquer empêcherait toute modification. La devise, elle, vient d'une liste fermée et s'affiche dans les vues.
+     *
+     * @return list<string>
+     */
+    public static function currencyErrors(array $data): array
+    {
+        $errors   = [];
+        $currency = strtoupper(trim((string) ($data['currency'] ?? '')));
+        if ($currency !== '' && !in_array($currency, self::CURRENCIES, true)) {
             $errors[] = __('val_invalid_currency');
         }
 
-        $validSymbolStyles = ['kanji', 'international'];
         $symbolStyle = $data['currency_symbol_style'] ?? 'kanji';
-        if (!in_array($symbolStyle, $validSymbolStyles, true)) {
+        if (!in_array($symbolStyle, self::CURRENCY_SYMBOL_STYLES, true)) {
             $errors[] = __('val_invalid_currency_symbol_style');
         }
 
-        return new ValidationResult($errors === [], $errors);
+        return $errors;
     }
 }

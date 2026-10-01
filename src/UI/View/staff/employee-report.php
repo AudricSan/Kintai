@@ -76,7 +76,7 @@ $currencyStyle = store_currency_style($store);
         <?= Button::make('💰 ' . __('salary_report'))->primary()->sm()->link($BASE_URL . '/admin/stores/' . (int) $store['id'] . '/reports/salary/create')->render() ?>
         <?php endif; ?>
         <?= Button::make('⎙ ' . __('export_pdf'))->primary()->sm()->attrs(['data-on-click' => '@print'])->render() ?>
-        <?= Button::make(__('statistics'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . (int) $store['id'] . '/stats')->render() ?>
+        <?= Button::make(__('statistics'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . store_segment((int) $store['id']) . '/stats')->render() ?>
         <?= Button::make(__('back'))->ghost()->sm()->link(back_url(route_url('admin.stores')))->render() ?>
     </div>
 </div>
@@ -149,11 +149,11 @@ $currencyStyle = store_currency_style($store);
     <?php else:
         $t = Table::make()->data($employeeStats)
             ->rowAttrs(fn($stat, $uid) => ['class' => ($stat['shifts'] ?? 0) > 0 ? '' : 'erep-row--inactive'])
-            ->rowUrl(fn($stat, $uid) => $BASE_URL . '/admin/users/' . (int) $uid . '/edit')
+            ->rowUrl(fn($stat, $uid) => $BASE_URL . '/admin/users/' . employee_segment((int) $uid) . '/edit')
             ->column(__('employee_name'), function($stat, $uid) use ($BASE_URL, $usersMap) {
                 $uid = (int) $uid;
                 $uName = repUserName($usersMap, $uid);
-                $html = '<a href="' . $BASE_URL . '/admin/users/' . $uid . '/edit" class="erep-emp-link">'
+                $html = '<a href="' . $BASE_URL . '/admin/users/' . employee_segment($uid) . '/edit" class="erep-emp-link">'
                     . htmlspecialchars($uName) . '</a>';
                 if (($stat['shifts'] ?? 0) === 0) {
                     $html .= Badge::make('—')->muted()->sm()->render();
@@ -185,7 +185,7 @@ $currencyStyle = store_currency_style($store);
             ->column(__('max_consec_col'), fn($stat) => '<span class="td-right td-mono ' . ((($stat['max_consec'] ?? 0) >= 6) ? 'erep-val--warn' : '') . '">' . (($stat['max_consec'] ?? 0) > 0 ? $stat['max_consec'] : '—') . '</span>', 'td-right')
             ->column(__('actions'), function($stat, $uid) use ($BASE_URL, $store, $period) {
                 $uid = (int) $uid;
-                $statsUrl = $BASE_URL . '/admin/stores/' . (int) $store['id'] . '/employee-report/' . $uid . '/stats?period=' . $period;
+                $statsUrl = $BASE_URL . '/admin/stores/' . store_segment((int) $store['id']) . '/employee-report/' . employee_segment($uid) . '/stats?period=' . $period;
                 $salaryUrl = $BASE_URL . '/admin/stores/' . (int) $store['id'] . '/reports/salary/create?user_id=' . $uid;
                 $html = Button::make('📊 ' . __('view_stats'))->ghost()->sm()->link($statsUrl)->render();
                 if (bundle_enabled('salary-report')) {

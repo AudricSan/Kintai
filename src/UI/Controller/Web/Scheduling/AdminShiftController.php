@@ -569,10 +569,7 @@ final class AdminShiftController
             ? array_values(array_filter($this->users->findAll(), fn($u) => in_array((int) $u['id'], $this->memberUserIds($managedIds), true)))
             : $this->users->findAll();
 
-        $redirectTo = trim((string) $request->query('redirect_to', ''));
-        if ($redirectTo === '' || !str_starts_with($redirectTo, '/') || str_starts_with($redirectTo, '//')) {
-            $redirectTo = '';
-        }
+        $redirectTo = safe_redirect_path((string) $request->query('redirect_to', ''), '');
 
         return Response::html($this->view->render('scheduling.shifts-form', [
             'title'       => 'Nouveau shift',
@@ -701,8 +698,8 @@ final class AdminShiftController
             }
         }
 
-        $redirectTo = trim($request->post('redirect_to', ''));
-        if ($redirectTo !== '' && str_starts_with($redirectTo, '/') && !str_starts_with($redirectTo, '//')) {
+        $redirectTo = safe_redirect_path((string) $request->post('redirect_to', ''), '');
+        if ($redirectTo !== '') {
             $sep = str_contains($redirectTo, '?') ? '&' : '?';
             return Response::redirect($redirectTo . $sep . 'success=created');
         }
@@ -723,10 +720,7 @@ final class AdminShiftController
             ? array_values(array_filter($this->users->findAll(), fn($u) => in_array((int) $u['id'], $this->memberUserIds($managedIds), true)))
             : $this->users->findAll();
 
-        $redirectTo = trim($request->query('redirect_to', ''));
-        if ($redirectTo === '' || !str_starts_with($redirectTo, '/') || str_starts_with($redirectTo, '//')) {
-            $redirectTo = '';
-        }
+        $redirectTo = safe_redirect_path((string) $request->query('redirect_to', ''), '');
 
         return Response::html($this->view->render('scheduling.shifts-form', [
             'title'       => 'Modifier le shift #' . $shift['id'],
@@ -848,8 +842,8 @@ final class AdminShiftController
             }
         }
 
-        $redirectTo = trim($request->post('redirect_to', ''));
-        if ($redirectTo !== '' && str_starts_with($redirectTo, '/') && !str_starts_with($redirectTo, '//')) {
+        $redirectTo = safe_redirect_path((string) $request->post('redirect_to', ''), '');
+        if ($redirectTo !== '') {
             $sep = str_contains($redirectTo, '?') ? '&' : '?';
             return Response::redirect($redirectTo . $sep . 'success=updated');
         }
@@ -891,8 +885,8 @@ final class AdminShiftController
             }
         }
 
-        $redirectTo = trim($request->post('redirect_to', ''));
-        if ($redirectTo !== '' && str_starts_with($redirectTo, '/') && !str_starts_with($redirectTo, '//')) {
+        $redirectTo = safe_redirect_path((string) $request->post('redirect_to', ''), '');
+        if ($redirectTo !== '') {
             $sep = str_contains($redirectTo, '?') ? '&' : '?';
             return Response::redirect($redirectTo . $sep . 'success=conflict_resolved');
         }

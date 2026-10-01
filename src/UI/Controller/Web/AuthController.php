@@ -101,7 +101,7 @@ final class AuthController
             // Connexion par code employé + code magasin + mot de passe
             $employeeCode = trim($request->post('employee_code', ''));
             $storeCode    = trim($request->post('store_code', ''));
-            $password     = $request->post('password', '0000');
+            $password     = $request->post('password', PasswordPolicy::DEFAULT_PASSWORD);
             $ok = $this->auth->attemptByCode($employeeCode, $storeCode, $password, $remember);
         } else {
             // Connexion classique email + mot de passe
@@ -147,8 +147,9 @@ final class AuthController
             unset($_SESSION['device_view']); // retour à la détection auto
         }
 
-        $referer = $_SERVER['HTTP_REFERER'] ?? ($this->base() . '/');
-        return Response::redirect($referer);
+        // Retour à la page d'origine seulement si elle appartient au site (back_url() vérifie l'origine du Referer) :
+        // l'en-tête vient du navigateur et pouvait renvoyer vers n'importe quel site.
+        return Response::redirect(back_url($this->base() . '/'));
     }
 
     /** Change la langue de l'utilisateur (session + BD si connecté). */
@@ -157,7 +158,7 @@ final class AuthController
         $locale = $request->param('locale');
         $activeCodes = array_column($this->languages->findAllActive(), 'code');
         if (!in_array($locale, $activeCodes, true)) {
-            return Response::redirect($_SERVER['HTTP_REFERER'] ?? ($this->base() . '/'));
+            return Response::redirect(back_url($this->base() . '/'));
         }
 
         $_SESSION['locale'] = $locale;
@@ -170,15 +171,15 @@ final class AuthController
                 if ($dbUser) {
                     $dbUser['language']    = $locale;
                     $this->users->save($dbUser);
-                    $_SESSION['auth_user'] = $dbUser;
                 }
             } catch (\Throwable) {
                 // Colonne language absente (migration non exécutée) — session suffit
             }
         }
 
-        $referer = $_SERVER['HTTP_REFERER'] ?? ($this->base() . '/');
-        return Response::redirect($referer);
+        // Retour à la page d'origine seulement si elle appartient au site (back_url() vérifie l'origine du Referer) :
+        // l'en-tête vient du navigateur et pouvait renvoyer vers n'importe quel site.
+        return Response::redirect(back_url($this->base() . '/'));
     }
 
     /** Affiche le profil de l'utilisateur. */
@@ -190,7 +191,7 @@ final class AuthController
         }
 
         $userId             = (int) $user['id'];
-        $hasDefaultPassword = password_verify('0000', (string) ($user['password_hash'] ?? ''));
+        $hasDefaultPassword = $this->auth->mustChangePassword();
         $scheme             = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
         $host               = $_SERVER['HTTP_HOST'] ?? 'localhost';
         $base               = $this->base();
@@ -329,7 +330,6 @@ final class AuthController
             $dbUser['share_phone']         = $request->post('share_phone') === '1' ? 1 : 0;
             $dbUser['share_mobile_phone']  = $request->post('share_mobile_phone') === '1' ? 1 : 0;
             $this->users->save($dbUser);
-            $_SESSION['auth_user'] = $dbUser;
 
             $_SESSION['locale'] = $language;
             $this->auditLogger->logUpdate($request, 'user.update_profile', 'user', $userId, $oldUser, $dbUser, [], null, $userId);
@@ -380,7 +380,6 @@ final class AuthController
         $oldUser = $dbUser;
         $dbUser['avatar_path'] = basename($compressed['path']);
         $this->users->save($dbUser);
-        $_SESSION['auth_user'] = $dbUser;
 
         $this->auditLogger->logUpdate($request, 'user.avatar_updated', 'user', $userId, $oldUser, $dbUser, [], null, $userId);
 
@@ -409,7 +408,6 @@ final class AuthController
         $oldUser = $dbUser;
         $dbUser['avatar_path'] = null;
         $this->users->save($dbUser);
-        $_SESSION['auth_user'] = $dbUser;
 
         $this->auditLogger->logUpdate($request, 'user.avatar_removed', 'user', $userId, $oldUser, $dbUser, [], null, $userId);
 

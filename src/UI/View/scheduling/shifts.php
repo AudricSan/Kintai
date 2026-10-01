@@ -340,7 +340,7 @@ if ($_canManage) {
                             <?php if (count($stores_map) > 1): ?>
                             <td class="col-store"><?= htmlspecialchars($stores_map[(int) ($shift['store_id'] ?? 0)] ?? '—') ?></td>
                             <?php endif; ?>
-                            <td class="col-staff"><a href="<?= $BASE_URL ?>/admin/users/<?= (int) ($shift['user_id'] ?? 0) ?>/edit"><?= htmlspecialchars($users_map[(int) ($shift['user_id'] ?? 0)] ?? '—') ?></a></td>
+                            <td class="col-staff"><a href="<?= $BASE_URL ?>/admin/users/<?= employee_segment((int) ($shift['user_id'] ?? 0)) ?>/edit"><?= htmlspecialchars($users_map[(int) ($shift['user_id'] ?? 0)] ?? '—') ?></a></td>
                             <td class="col-type"><?php if ($typeColor): ?><span class="type-badge" data-color="<?= htmlspecialchars($typeColor) ?>"><?= htmlspecialchars($typeName) ?></span><?php else: ?><?= htmlspecialchars($typeName) ?><?php endif; ?></td>
                             <td class="col-time td-nowrap"><?= htmlspecialchars($shift['start_time'] ?? '') ?></td>
                             <td class="col-time td-nowrap"><?= htmlspecialchars($shift['end_time'] ?? '') ?></td>

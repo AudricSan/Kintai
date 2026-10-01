@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace kintai\UI\Controller\Api\V1;
 
 use kintai\Core\Auth\AuthService;
+use kintai\Core\Auth\PasswordPolicy;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\ApiTokenRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
@@ -54,6 +55,22 @@ final class AuthController
                 'mode' => isset($data['email']) ? 'email' : 'code',
             ]);
             return Response::apiError('Identifiants invalides.', 401, 'INVALID_CREDENTIALS');
+        }
+
+        // Mot de passe par défaut « 0000 » ou trop court : pas de jeton. Sur le web, l'utilisateur est seulement
+        // invité à le changer (PasswordReminderMiddleware) ; un jeton API, lui, est un accès durable et sans
+        // écran pour le rappeler : quiconque connaît un code employé et un code magasin en obtiendrait un.
+        // Les identifiants sont bons : ce n'est pas un échec pour la limitation des tentatives.
+        if (!PasswordPolicy::isLongEnough($password)) {
+            $userId = (int) ($this->auth->user()['id'] ?? 0);
+            $this->auth->logout();
+            $this->auditLogger->log($request, 'auth.api_login_password_change_required', 'user', $userId ?: null, [
+                'mode' => isset($data['email']) ? 'email' : 'code',
+            ], null, $userId ?: null);
+            return Response::apiError(
+                'Mot de passe à changer : connectez-vous sur le site pour choisir un nouveau mot de passe (8 caractères minimum).',
+                403, 'PASSWORD_CHANGE_REQUIRED'
+            );
         }
 
         $user      = $this->auth->user();
