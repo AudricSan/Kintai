@@ -45,7 +45,9 @@ function currency_symbol(string $currency, string $jpySymbolStyle = 'kanji'): st
         'USD'   => '$',
         'GBP'   => '£',
         'CHF'   => 'CHF',
-        default => $currency,
+        // Code inconnu : réduit à ses lettres et chiffres. Il est affiché tel quel par plusieurs vues et
+        // exports ; une valeur forgée (« <A HREF=…> ») ne doit jamais y injecter de balisage.
+        default => (string) preg_replace('/[^A-Z0-9]/', '', $currency),
     };
 }
 

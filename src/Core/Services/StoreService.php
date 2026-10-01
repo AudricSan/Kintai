@@ -135,6 +135,13 @@ final class StoreService implements StoreServiceInterface
             throw new NotFoundException(__('error_store_not_found'));
         }
 
+        // Seule la devise est revalidée ici (voir StoreValidator::currencyErrors()) : une valeur forgée hors de la
+        // liste du formulaire finissait affichée telle quelle dans les pages de statistiques et de rentabilité.
+        $currencyErrors = StoreValidator::currencyErrors($data);
+        if ($currencyErrors !== []) {
+            throw new ValidationException(['currency' => $currencyErrors[0]], $currencyErrors[0]);
+        }
+
         $storeData = array_merge($store, [
             'code'                 => strtoupper(trim($data['code'] ?? $store['code'] ?? '')),
             'name'                 => $data['name'] ?? $store['name'] ?? '',
