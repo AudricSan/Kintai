@@ -30,5 +30,7 @@ final readonly class Route
         public array $middleware = [],
         public ?string $name = null,
         public string|array|null $permission = null,
+        /** @var array<string, string> paramètre typé → type ({id:store} donne ['id' => 'store']) */
+        public array $bindings = [],
     ) {}
 }

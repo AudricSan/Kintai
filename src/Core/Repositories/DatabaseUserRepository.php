@@ -5,6 +5,7 @@ declare(strict_types=1);
 
 namespace kintai\Core\Repositories;
 
+use kintai\Domain\Eloquent\RouteSlug;
 use kintai\Domain\Eloquent\User as EloquentUser;
 
 final class DatabaseUserRepository implements UserRepositoryInterface
@@ -67,10 +68,13 @@ final class DatabaseUserRepository implements UserRepositoryInterface
     {
         if (!empty($userData['id'])) {
             $user = EloquentUser::findOrFail($userData['id']);
+            $oldCode = $user->employee_code;
             $user->fill($userData);
             $user->save();
+            $this->recordEmployeeCodeChange((int) $user->id, $oldCode, $user->employee_code);
         } else {
             $user = EloquentUser::create($userData);
+            $this->recordEmployeeCodeChange((int) $user->id, null, $user->employee_code);
         }
         
         return $user->toArray();
@@ -85,8 +89,51 @@ final class DatabaseUserRepository implements UserRepositoryInterface
     {
         $user = EloquentUser::find($id);
         if ($user) {
+            $this->forgetEmployeeCodes($id);
             return $user->delete() ? 1 : 0;
         }
         return 0;
+    }
+
+    /**
+     * Le numéro d'employé sert de segment d'URL (/admin/users/057/edit, voir EmployeeRouteBinder). Quel que soit
+     * le chemin qui le modifie (formulaire, API, import), l'ancien numéro est conservé pour rediriger les anciens
+     * liens en 301, et un numéro réattribué cesse de pointer vers son ancien titulaire.
+     */
+    private function recordEmployeeCodeChange(int $userId, mixed $oldCode, mixed $newCode): void
+    {
+        $old = $oldCode === null || $oldCode === '' ? null : (string) $oldCode;
+        $new = $newCode === null || $newCode === '' ? null : (string) $newCode;
+        if ($old === $new) {
+            return;
+        }
+
+        try {
+            if ($new !== null) {
+                // Le numéro courant l'emporte sur tout historique : le sien comme celui d'un autre employé.
+                RouteSlug::where('entity_type', 'employee')->where('slug', $new)->delete();
+            }
+            if ($old !== null && !RouteSlug::where('entity_type', 'employee')->where('slug', $old)->exists()) {
+                RouteSlug::create([
+                    'entity_type' => 'employee',
+                    'entity_id'   => $userId,
+                    'slug'        => $old,
+                    'is_current'  => false,
+                    'is_manual'   => false,
+                    'created_at'  => date('Y-m-d H:i:s'),
+                ]);
+            }
+        } catch (\Illuminate\Database\QueryException) {
+            // Table route_slugs absente (migration pas encore jouée) : l'enregistrement de l'utilisateur prime.
+        }
+    }
+
+    private function forgetEmployeeCodes(int $userId): void
+    {
+        try {
+            RouteSlug::where('entity_type', 'employee')->where('entity_id', $userId)->delete();
+        } catch (\Illuminate\Database\QueryException) {
+            // Table route_slugs absente : rien à oublier.
+        }
     }
 }

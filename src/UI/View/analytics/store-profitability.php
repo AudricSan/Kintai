@@ -62,7 +62,7 @@ function lcBadgeClass(?float $pct): string {
         <?= __('profitability') ?> — <?= htmlspecialchars($store['name'] ?? '') ?>
     </h2>
     <div class="page-header__actions">
-        <?= Button::make(__('statistics'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . $storeId . '/stats?period=90')->render() ?>
+        <?= Button::make(__('statistics'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . store_segment($storeId) . '/stats?period=90')->render() ?>
         <?= Button::make(__('daily_reports'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . $storeId . '/daily-reports')->render() ?>
         <?= Button::make(__('back'))->ghost()->sm()->link(back_url(route_url('admin.stores')))->render() ?>
     </div>

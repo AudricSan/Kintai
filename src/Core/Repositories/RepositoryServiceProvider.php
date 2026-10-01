@@ -14,6 +14,7 @@ final class RepositoryServiceProvider extends ServiceProvider
         $this->container->singleton(UserRepositoryInterface::class, fn() => new DatabaseUserRepository());
         $this->container->singleton(StoreRepositoryInterface::class, fn() => new DatabaseStoreRepository());
         $this->container->singleton(StoreUserRepositoryInterface::class, fn() => new DatabaseStoreUserRepository());
+        $this->container->singleton(RouteSlugRepositoryInterface::class, fn() => new DatabaseRouteSlugRepository());
         $this->container->singleton(ShiftTypeRepositoryInterface::class, fn() => new DatabaseShiftTypeRepository());
         $this->container->singleton(ShiftRepositoryInterface::class, fn() => new DatabaseShiftRepository());
         $this->container->singleton(AvailabilityRepositoryInterface::class, fn() => new DatabaseAvailabilityRepository());

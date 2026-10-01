@@ -6,7 +6,12 @@ namespace kintai\Core;
 
 use kintai\Core\Exceptions\HttpException;
 use kintai\Core\Exceptions\MethodNotAllowedException;
+use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Exceptions\ValidationException;
+use kintai\Core\Routing\EmployeeRouteBinder;
+use kintai\Core\Routing\RouteBinderRegistry;
+use kintai\Core\Routing\RouteParamBinder;
+use kintai\Core\Routing\StoreRouteBinder;
 use kintai\Core\Middleware\MiddlewarePipeline;
 use kintai\Core\Repositories\LanguageRepositoryInterface;
 use kintai\Core\Repositories\LogRepositoryInterface;
@@ -60,6 +65,18 @@ final class Application
         $this->container->instance(Router::class, $this->router);
         $this->container->instance(MiddlewarePipeline::class, $this->pipeline);
         $this->container->instance(BundleManager::class, $this->bundleManager);
+
+        // Paramètres de route typés ({id:store}, {uid:employee}) : segments lisibles ↔ identifiants (voir Routing\)
+        $this->container->singleton(RouteBinderRegistry::class, function (): RouteBinderRegistry {
+            $registry = new RouteBinderRegistry();
+            $registry->register('store', fn() => $this->container->make(StoreRouteBinder::class));
+            $registry->register('employee', fn() => $this->container->make(EmployeeRouteBinder::class));
+            return $registry;
+        });
+        $this->router->setBinderResolver(function (string $type): ?RouteParamBinder {
+            $registry = $this->container->make(RouteBinderRegistry::class);
+            return $registry->has($type) ? $registry->get($type) : null;
+        });
 
         // Register ViewRenderer
         $this->container->singleton(ViewRenderer::class, fn() => new ViewRenderer(
@@ -204,6 +221,14 @@ final class Application
         $resolveAndRun = function (Request $request): Response {
             [$route, $params] = $this->router->dispatch($request->method(), $request->uri());
 
+            // Paramètres typés traduits en identifiants AVANT les middlewares de route (les contrôles d'accès les
+            // lisent), mais la 301 ou la 404 qui en découle n'est rendue qu'APRÈS eux : un visiteur non connecté ou
+            // sans droit ne doit apprendre ni le nom d'un magasin ni l'existence d'un numéro d'employé.
+            $deferred = null;
+            if ($route->bindings !== []) {
+                [$params, $deferred] = $this->bindRouteParams($route, $params, $request);
+            }
+
             $request->setRouteParams($params);
             $request->setAttribute('route_name', $route->name);
             // Règle RBAC déclarée sur la route elle-même (voir Route::$permission),
@@ -211,7 +236,13 @@ final class Application
             $request->setAttribute('route_permission', $route->permission);
 
             // Core handler: resolve controller, call method
-            $core = function (Request $request) use ($route) {
+            $core = function (Request $request) use ($route, $deferred) {
+                if ($deferred instanceof Throwable) {
+                    throw $deferred;
+                }
+                if ($deferred instanceof Response) {
+                    return $deferred;
+                }
                 [$controllerClass, $method] = $route->handler;
                 $controller = $this->container->make($controllerClass);
                 return $controller->$method($request);
@@ -221,6 +252,50 @@ final class Application
         };
 
         return $this->pipeline->run($request, $this->globalMiddleware, $resolveAndRun);
+    }
+
+    /**
+     * Traduit les paramètres typés ({id:store}, {uid:employee}) en identifiants numériques, AVANT les middlewares
+     * de route : contrôleurs et contrôles d'accès (PermissionMiddleware) continuent de lire un identifiant via
+     * $request->param(). Un ancien lien (identifiant nu, alias historique) est redirigé en 301 vers l'URL
+     * canonique en GET/HEAD ; les autres méthodes (formulaires POST) sont servies sans redirection.
+     *
+     * Renvoie les paramètres résolus et, le cas échéant, ce qu'il faudra rendre à la place du contrôleur une fois
+     * les middlewares passés : la redirection 301, ou la 404 d'un segment inconnu (son paramètre vaut alors « 0 »).
+     *
+     * @param array<string, string> $params
+     * @return array{0: array<string, string>, 1: Response|NotFoundException|null}
+     */
+    private function bindRouteParams(Route $route, array $params, Request $request): array
+    {
+        $segments = $params;
+        $redirect = false;
+
+        foreach ($route->bindings as $name => $type) {
+            $binder = $this->router->binderFor($type);
+            if ($binder === null || !isset($params[$name])) {
+                continue;
+            }
+            $bound = $binder->resolve($params[$name]);
+            if ($bound === null) {
+                $missing       = new NotFoundException("No [{$type}] matches [{$params[$name]}].");
+                $params[$name] = '0';
+                return [$params, $missing];
+            }
+            $redirect        = $redirect || !$bound->canonical;
+            $segments[$name] = $binder->segmentFor($bound->id);
+            $params[$name]   = (string) $bound->id;
+        }
+
+        if ($redirect && in_array($request->method(), ['GET', 'HEAD'], true)) {
+            $query = (string) ($_SERVER['QUERY_STRING'] ?? '');
+            return [$params, Response::redirect(
+                base_url() . $this->router->pathFor($route, $segments) . ($query !== '' ? '?' . $query : ''),
+                301,
+            )];
+        }
+
+        return [$params, null];
     }
 
     private function handleException(Throwable $e, Request $request): Response

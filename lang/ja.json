@@ -1524,5 +1524,12 @@
     "report_issue_error_generic": "送信に失敗しました。後でもう一度お試しください。",
     "report_issue_privacy_note": "この報告はGitHub上に公開されます。個人情報や機密情報は記入しないでください。",
 
-    "zone_to_create": "ドラッグしてシフトを作成"
+    "zone_to_create": "ドラッグしてシフトを作成",
+    "store_slug": "URLスラッグ（任意）",
+    "store_slug_hint": "この店舗のURLに使うローマ字の短い名前（例：tokorozawa-higashicho）。小文字・数字・ハイフンのみ。空欄の場合は店舗名がそのままURLに使われます。以前のURLも引き続き使えます。",
+    "store_slug_current": "現在のURL：",
+    "store_slug_invalid": "URLスラッグには小文字・数字・単一のハイフンのみ使用でき、英字を1文字以上含める必要があります（最大60文字）。",
+    "store_slug_reserved": "このURLスラッグはアプリケーションで予約されています。別のものを選んでください。",
+    "store_slug_taken": "このURLスラッグは他の店舗で使用中（または使用済み）です。",
+    "employee_code_invalid_url": "従業員番号には英数字・ハイフン・アンダースコアのみ使用でき、「ID-」で始めることはできません。"
 }

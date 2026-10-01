@@ -35,14 +35,14 @@ echo Flash::fromQuery('success', ['default' => __('operation_success')])->render
         <span class="page-count"><?= htmlspecialchars($store['name'] ?? '') ?></span>
     </h2>
     <div class="page-header__actions">
-        <a href="<?= back_url($BASE_URL . '/admin/stores/' . (int) $store['id'] . '/edit') ?>" class="btn btn--ghost">← <?= __('back') ?></a>
+        <a href="<?= back_url($BASE_URL . '/admin/stores/' . store_segment((int) $store['id']) . '/edit') ?>" class="btn btn--ghost">← <?= __('back') ?></a>
     </div>
 </div>
 
 <?php
 ob_start();
 echo '<p class="form-hint">' . __('deduction_overrides_hint') . '</p>';
-echo Form::make('POST', $BASE_URL . '/admin/stores/' . (int) $store['id'] . '/members/' . (int) $membership['id'] . '/deductions')->start();
+echo Form::make('POST', $BASE_URL . '/admin/stores/' . store_segment((int) $store['id']) . '/members/' . (int) $membership['id'] . '/deductions')->start();
 foreach ($fields as $key => $cfg):
     $val         = isset($ov[$key]) && $ov[$key] !== null ? (string) $ov[$key] : '';
     $storeVal    = (float) ($ds[$cfg['rate_key']] ?? 0);
@@ -73,7 +73,7 @@ foreach ($fields as $key => $cfg):
 <?php endforeach; ?>
 <div class="form-actions">
     <?= Button::make(__('save'))->primary()->submit()->render() ?>
-    <a href="<?= htmlspecialchars(back_url($BASE_URL . '/admin/stores/' . (int) $store['id'] . '/edit')) ?>" class="btn btn--ghost"><?= __('cancel') ?></a>
+    <a href="<?= htmlspecialchars(back_url($BASE_URL . '/admin/stores/' . store_segment((int) $store['id']) . '/edit')) ?>" class="btn btn--ghost"><?= __('cancel') ?></a>
 </div>
 <?php
 echo Form::make()->end();

@@ -542,7 +542,7 @@ $hasMultipleStores = count($shiftsByStore) > 1;
                         <?php foreach ($pending_timeoff as $req): ?>
                             <tr>
                                 <td data-label="#"><?= (int) $req['id'] ?></td>
-                                <td data-label="<?= htmlspecialchars(__('user')) ?>"><a href="<?= $BASE_URL ?>/admin/users/<?= (int)($req['user_id'] ?? 0) ?>/edit"><?= htmlspecialchars($users_map[(int)($req['user_id'] ?? 0)] ?? ('User #' . (int)($req['user_id'] ?? 0))) ?></a></td>
+                                <td data-label="<?= htmlspecialchars(__('user')) ?>"><a href="<?= $BASE_URL ?>/admin/users/<?= employee_segment((int)($req['user_id'] ?? 0)) ?>/edit"><?= htmlspecialchars($users_map[(int)($req['user_id'] ?? 0)] ?? ('User #' . (int)($req['user_id'] ?? 0))) ?></a></td>
                                 <td data-label="<?= htmlspecialchars(__('type')) ?>"><span class="badge badge--pending"><?= htmlspecialchars((string) ($req['type'] ?? '—')) ?></span></td>
                                 <td data-label="<?= htmlspecialchars(__('from')) ?>"><?= htmlspecialchars((string) ($req['start_date'] ?? '—')) ?></td>
                                 <td data-label="<?= htmlspecialchars(__('to')) ?>"><?= htmlspecialchars((string) ($req['end_date'] ?? '—')) ?></td>
@@ -573,8 +573,8 @@ $hasMultipleStores = count($shiftsByStore) > 1;
                         <?php foreach ($pending_swaps as $swap): ?>
                             <tr>
                                 <td data-label="#"><?= (int) $swap['id'] ?></td>
-                                <td data-label="<?= htmlspecialchars(__('requester')) ?>"><a href="<?= $BASE_URL ?>/admin/users/<?= (int)($swap['requester_id'] ?? 0) ?>/edit"><?= htmlspecialchars($users_map[(int)($swap['requester_id'] ?? 0)] ?? ('User #' . (int)($swap['requester_id'] ?? 0))) ?></a></td>
-                                <td data-label="<?= htmlspecialchars(__('target')) ?>"><a href="<?= $BASE_URL ?>/admin/users/<?= (int)($swap['target_user_id'] ?? 0) ?>/edit"><?= htmlspecialchars($users_map[(int)($swap['target_user_id'] ?? 0)] ?? ('User #' . (int)($swap['target_user_id'] ?? 0))) ?></a></td>
+                                <td data-label="<?= htmlspecialchars(__('requester')) ?>"><a href="<?= $BASE_URL ?>/admin/users/<?= employee_segment((int)($swap['requester_id'] ?? 0)) ?>/edit"><?= htmlspecialchars($users_map[(int)($swap['requester_id'] ?? 0)] ?? ('User #' . (int)($swap['requester_id'] ?? 0))) ?></a></td>
+                                <td data-label="<?= htmlspecialchars(__('target')) ?>"><a href="<?= $BASE_URL ?>/admin/users/<?= employee_segment((int)($swap['target_user_id'] ?? 0)) ?>/edit"><?= htmlspecialchars($users_map[(int)($swap['target_user_id'] ?? 0)] ?? ('User #' . (int)($swap['target_user_id'] ?? 0))) ?></a></td>
                                 <td data-label="<?= htmlspecialchars(__('shifts')) ?>">#<?= (int) ($swap['requester_shift_id'] ?? 0) ?></td>
                             </tr>
                         <?php endforeach; ?>
