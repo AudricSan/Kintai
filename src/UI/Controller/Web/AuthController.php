@@ -147,8 +147,9 @@ final class AuthController
             unset($_SESSION['device_view']); // retour à la détection auto
         }
 
-        $referer = $_SERVER['HTTP_REFERER'] ?? ($this->base() . '/');
-        return Response::redirect($referer);
+        // Retour à la page d'origine seulement si elle appartient au site (back_url() vérifie l'origine du Referer) :
+        // l'en-tête vient du navigateur et pouvait renvoyer vers n'importe quel site.
+        return Response::redirect(back_url($this->base() . '/'));
     }
 
     /** Change la langue de l'utilisateur (session + BD si connecté). */
@@ -157,7 +158,7 @@ final class AuthController
         $locale = $request->param('locale');
         $activeCodes = array_column($this->languages->findAllActive(), 'code');
         if (!in_array($locale, $activeCodes, true)) {
-            return Response::redirect($_SERVER['HTTP_REFERER'] ?? ($this->base() . '/'));
+            return Response::redirect(back_url($this->base() . '/'));
         }
 
         $_SESSION['locale'] = $locale;
@@ -177,8 +178,9 @@ final class AuthController
             }
         }
 
-        $referer = $_SERVER['HTTP_REFERER'] ?? ($this->base() . '/');
-        return Response::redirect($referer);
+        // Retour à la page d'origine seulement si elle appartient au site (back_url() vérifie l'origine du Referer) :
+        // l'en-tête vient du navigateur et pouvait renvoyer vers n'importe quel site.
+        return Response::redirect(back_url($this->base() . '/'));
     }
 
     /** Affiche le profil de l'utilisateur. */
