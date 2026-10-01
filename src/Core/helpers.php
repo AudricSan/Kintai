@@ -352,6 +352,41 @@ if (!function_exists('mascot_active')) {
     }
 }
 
+if (!function_exists('kintai_normalize_script_name')) {
+    /**
+     * Ramène SCRIPT_NAME à l'URL réellement vue par le visiteur quand le .htaccess racine a réécrit la
+     * requête en interne vers public/ (domaine ou dossier pointant sur la racine du dépôt, sans passer par
+     * public/ comme DocumentRoot). Apache renseigne alors SCRIPT_NAME avec « /…/public/index.php » alors que
+     * l'URL demandée ne contient pas « /public » : sans correction, base_url() et le routeur en déduiraient
+     * que l'application vit sous /public et chaque lien généré le contiendrait.
+     *
+     * Sans effet quand public/ est le DocumentRoot, et quand « /public » figure dans l'URL demandée (accès
+     * direct par /Kintai/public/, comme avant l'introduction de la réécriture).
+     * À appeler une fois, en tête du point d'entrée (index.php, install.php).
+     */
+    function kintai_normalize_script_name(): void
+    {
+        $scriptName = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+        $dir        = rtrim(dirname($scriptName), '/');
+        if (!str_ends_with($dir, '/public')) {
+            return;
+        }
+
+        $path = rawurldecode((string) (parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH) ?: '/'));
+        if ($path === $dir || str_starts_with($path, $dir . '/')) {
+            return;
+        }
+
+        $root = substr($dir, 0, -strlen('/public'));
+        foreach (['SCRIPT_NAME', 'PHP_SELF'] as $key) {
+            $value = str_replace('\\', '/', (string) ($_SERVER[$key] ?? ''));
+            if (str_starts_with($value, $dir . '/')) {
+                $_SERVER[$key] = $root . substr($value, strlen($dir));
+            }
+        }
+    }
+}
+
 if (!function_exists('base_url')) {
     /**
      * Calcule la base URL à partir de SCRIPT_NAME.

@@ -98,7 +98,7 @@ php scripts/provision.php --admin-email=admin@example.com --admin-password='…'
 
 ### Webサーバー
 
-配信するのは `public/` だけです。Webサーバーのドキュメントルート（Apacheの `DocumentRoot`、nginxの `root`）をそこに向けてください——リポジトリのルートに向けてはいけません。向けてしまうと、`.env`、`storage/app/database.sqlite`、バックアップ、ソースコードがダウンロードできてしまいます。`php -S … -t public` はすでにそうなっています。Apacheでは、サーバーを誤ったフォルダーに向けてしまった場合の安全網として、ルートの `.htaccess` が `public/` 以外のすべてのURLを拒否します。nginxには同等の仕組みがないため、`root` を正しく設定する必要があります。
+配信するのは `public/` だけです。Webサーバーのドキュメントルート（Apacheの `DocumentRoot`、nginxの `root`）をそこに向けてください——リポジトリのルートに向けてはいけません。向けてしまうと、`.env`、`storage/app/database.sqlite`、バックアップ、ソースコードがダウンロードできてしまいます。`php -S … -t public` はすでにそうなっています。Apacheでは、サーバー（または共有ホスティングの `www/` フォルダー）がそれでもリポジトリのルートを指している場合、ルートの `.htaccess` がすべてのリクエストを `public/` へ透過的に書き換えます。URLはそのままきれいに保たれ、`public/` の外側には一切アクセスできず、サブフォルダー（`/Kintai/`）からでも動作します。nginxには同等の仕組みがないため、`root` を正しく設定する必要があります。
 
 ### アップデート
 
