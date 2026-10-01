@@ -57,9 +57,9 @@ final class AuthController
             return Response::apiError('Identifiants invalides.', 401, 'INVALID_CREDENTIALS');
         }
 
-        // Mot de passe par défaut « 0000 » ou trop court : sur le web, MustChangePasswordMiddleware confine
-        // l'utilisateur à son profil tant qu'il ne l'a pas changé. Délivrer un jeton ici contournerait cette
-        // obligation (quiconque connaît un code employé et un code magasin obtiendrait un accès à l'API).
+        // Mot de passe par défaut « 0000 » ou trop court : pas de jeton. Sur le web, l'utilisateur est seulement
+        // invité à le changer (PasswordReminderMiddleware) ; un jeton API, lui, est un accès durable et sans
+        // écran pour le rappeler : quiconque connaît un code employé et un code magasin en obtiendrait un.
         // Les identifiants sont bons : ce n'est pas un échec pour la limitation des tentatives.
         if (!PasswordPolicy::isLongEnough($password)) {
             $userId = (int) ($this->auth->user()['id'] ?? 0);
