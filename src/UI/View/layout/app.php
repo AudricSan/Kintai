@@ -71,7 +71,7 @@
         ?>
         <div class="app-sticky-header">
             <?php if (!empty($app_maintenance_mode_enabled)): ?>
-                <div class="maintenance-banner">
+                <div class="maintenance-banner" data-app-banner>
                     <span class="maintenance-banner__icon" aria-hidden="true">⚠</span>
                     <span><?= __('maintenance_banner_active') ?></span>
                     <?php if ($isOwner): ?>
@@ -79,16 +79,28 @@
                     <?php endif; ?>
                 </div>
             <?php endif; ?>
+            <?php if (!empty($password_change_recommended)): ?>
+                <?php // Rappel permanent tant que le mot de passe par défaut (ou trop court) n'est pas changé : jamais bloquant. ?>
+                <div class="password-banner" data-app-banner>
+                    <span class="password-banner__icon" aria-hidden="true">🔑</span>
+                    <span><?= __('password_reminder_banner') ?></span>
+                    <a href="<?= route_url('profile') ?>?tab=info" class="password-banner__link"><?= __('password_reminder_action') ?></a>
+                </div>
+            <?php endif; ?>
 
             <?php include __DIR__ . '/partials/_topbar.php'; ?>
         </div>
-        <?php if (!empty($app_maintenance_mode_enabled)): ?>
+        <?php if (!empty($app_maintenance_mode_enabled) || !empty($password_change_recommended)): ?>
             <script nonce="<?= csp_nonce() ?>">
             (function () {
-                var banner = document.querySelector('.maintenance-banner');
-                if (!banner) return;
+                // Hauteur cumulée des bandeaux au-dessus de la barre du haut (maintenance, mot de passe) : sert au
+                // positionnement des éléments collants sous l'en-tête (voir --maintenance-banner-h, responsive.css).
+                var banners = document.querySelectorAll('[data-app-banner]');
+                if (!banners.length) return;
                 var setOffset = function () {
-                    document.documentElement.style.setProperty('--maintenance-banner-h', banner.offsetHeight + 'px');
+                    var h = 0;
+                    banners.forEach(function (b) { h += b.offsetHeight; });
+                    document.documentElement.style.setProperty('--maintenance-banner-h', h + 'px');
                 };
                 setOffset();
                 window.addEventListener('resize', setOffset);
@@ -146,6 +158,9 @@
     <?php endif; ?>
 
     <?php include __DIR__ . '/partials/_confirm-modal.php'; ?>
+    <?php if (!empty($password_reminder_popup)) {
+        include __DIR__ . '/partials/_password-reminder-modal.php';
+    } ?>
 </body>
 
 </html>
