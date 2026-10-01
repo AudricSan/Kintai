@@ -43,12 +43,13 @@ final class Log
         ];
     }
 
+    /**
+     * Utilisateur à l'origine de l'entrée : seulement l'attribut « auth_user » de la requête, posé par
+     * AuthMiddleware/ApiAuthMiddleware. Jamais $_REQUEST : « ?auth_user[id]=1 » dans une URL attribuait l'entrée
+     * du journal à n'importe quel utilisateur.
+     */
     private static function resolveUserId(): ?int
     {
-        $authUser = $_REQUEST['auth_user'] ?? null;
-        if (is_array($authUser)) {
-            return isset($authUser['id']) ? (int) $authUser['id'] : null;
-        }
         if (self::$container !== null) {
             try {
                 $req = self::$container->make(\kintai\Core\Request::class);
@@ -64,10 +65,6 @@ final class Log
 
     private static function resolveStoreId(): ?int
     {
-        $authUser = $_REQUEST['auth_user'] ?? null;
-        if (is_array($authUser) && isset($authUser['store_id'])) {
-            return (int) $authUser['store_id'];
-        }
         if (self::$container !== null) {
             try {
                 $req = self::$container->make(\kintai\Core\Request::class);
@@ -190,14 +187,15 @@ final class Log
         );
     }
 
+    /**
+     * Adresse réelle de la connexion. X-Forwarded-For et Client-IP sont envoyés par le client lui-même : les lire en
+     * premier laissait n'importe qui inscrire l'IP de son choix dans le journal. Même source que la limitation des
+     * connexions (Request::ip()).
+     */
     private static function resolveIp(): ?string
     {
-        foreach (['HTTP_X_FORWARDED_FOR', 'HTTP_CLIENT_IP', 'REMOTE_ADDR'] as $key) {
-            if (!empty($_SERVER[$key])) {
-                return trim(explode(',', $_SERVER[$key])[0]);
-            }
-        }
-        return null;
+        $ip = trim((string) ($_SERVER['REMOTE_ADDR'] ?? ''));
+        return $ip !== '' ? $ip : null;
     }
 
     private static function resolveUserAgent(): ?string
