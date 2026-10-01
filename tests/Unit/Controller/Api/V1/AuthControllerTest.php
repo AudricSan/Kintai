@@ -157,8 +157,8 @@ final class AuthControllerTest extends TestCase
     }
 
     /**
-     * Audit du 01/10/2026 : l'API délivrait un jeton avec le mot de passe par défaut « 0000 », contournant le
-     * changement obligatoire imposé sur le web (MustChangePasswordMiddleware).
+     * Audit du 01/10/2026 : l'API délivrait un jeton avec le mot de passe par défaut « 0000 ». Le web ne fait
+     * que rappeler de le changer (PasswordReminderMiddleware) ; un jeton API, accès durable, reste refusé.
      *
      * @return array<string, array{string}>
      */
