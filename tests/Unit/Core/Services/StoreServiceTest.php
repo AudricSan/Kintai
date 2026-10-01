@@ -111,4 +111,31 @@ final class StoreServiceTest extends TestCase
 
         $this->service->updateStore(1, ['name' => 'Store A renamed']);
     }
+
+    /** Audit du 01/10/2026 : la devise n'était pas contrôlée en modification et s'affichait telle quelle. */
+    public function testUpdateStoreRejectsAForgedCurrency(): void
+    {
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'code' => 'A', 'name' => 'Store A']);
+        $this->stores->expects($this->never())->method('save');
+
+        $this->expectException(\kintai\Core\Exceptions\ValidationException::class);
+        $this->service->updateStore(1, ['name' => 'Store A', 'currency' => '<a href=//evil>SESSION</a>']);
+    }
+
+    public function testUpdateStoreStillAcceptsExistingFreeTypeAndLocale(): void
+    {
+        // Données réelles : type libre (コンビニ) et langue hors liste (JA) ne doivent pas bloquer une modification.
+        $existingStore = ['id' => 1, 'code' => '58182', 'name' => '航空公園東口店', 'type' => 'コンビニ', 'locale' => 'JA', 'currency' => 'JPY'];
+        $this->stores->method('findById')->with(1)->willReturn($existingStore);
+        $this->stores->expects($this->once())->method('save')->willReturn($existingStore);
+
+        $this->service->updateStore(1, ['name' => '航空公園東口店', 'type' => 'コンビニ', 'locale' => 'JA', 'currency' => 'JPY']);
+    }
+
+    public function testUnknownCurrencyCodeCannotInjectMarkup(): void
+    {
+        $this->assertSame('AHREFEVILSESSIONA', currency_symbol('<a href=//evil>SESSION</a>'));
+        $this->assertSame('円', currency_symbol('JPY'));
+        $this->assertStringNotContainsString('<', format_currency(12.5, '<b>x</b>'));
+    }
 }
