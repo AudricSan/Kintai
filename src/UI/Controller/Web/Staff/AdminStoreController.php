@@ -283,8 +283,11 @@ final class AdminStoreController
             ], $storeId);
         }
 
-        $redirectTo = $request->post('redirect_to', '');
-        $dest = $redirectTo !== '' ? $redirectTo : $this->base() . '/admin/stores/' . store_segment($storeId) . '/edit?success=member_added';
+        // Retour vers la fiche employé quand l'ajout part de là (champ caché), sinon vers la fiche du magasin.
+        $dest = safe_redirect_path(
+            (string) $request->post('redirect_to', ''),
+            $this->base() . '/admin/stores/' . store_segment($storeId) . '/edit?success=member_added',
+        );
         return Response::redirect($dest);
     }
 
