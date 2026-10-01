@@ -71,20 +71,20 @@
         ?>
         <div class="app-sticky-header">
             <?php if (!empty($app_maintenance_mode_enabled)): ?>
-                <div class="maintenance-banner" data-app-banner>
-                    <span class="maintenance-banner__icon" aria-hidden="true">⚠</span>
+                <div class="app-banner" data-app-banner>
+                    <span class="app-banner__icon" aria-hidden="true">⚠</span>
                     <span><?= __('maintenance_banner_active') ?></span>
                     <?php if ($isOwner): ?>
-                        <a href="<?= route_url('admin.owner_settings') ?>" class="maintenance-banner__link"><?= __('maintenance_banner_manage') ?></a>
+                        <a href="<?= route_url('admin.owner_settings') ?>" class="app-banner__link"><?= __('maintenance_banner_manage') ?></a>
                     <?php endif; ?>
                 </div>
             <?php endif; ?>
             <?php if (!empty($password_change_recommended)): ?>
                 <?php // Rappel permanent tant que le mot de passe par défaut (ou trop court) n'est pas changé : jamais bloquant. ?>
-                <div class="password-banner" data-app-banner>
-                    <span class="password-banner__icon" aria-hidden="true">🔑</span>
+                <div class="app-banner" data-app-banner>
+                    <span class="app-banner__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.65 10A6 6 0 1 0 12.65 14H17v4h4v-4h2v-4H12.65zM7 14a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"/></svg></span>
                     <span><?= __('password_reminder_banner') ?></span>
-                    <a href="<?= route_url('profile') ?>?tab=info" class="password-banner__link"><?= __('password_reminder_action') ?></a>
+                    <a href="<?= route_url('profile') ?>?tab=info" class="app-banner__link"><?= __('password_reminder_action') ?></a>
                 </div>
             <?php endif; ?>
 
