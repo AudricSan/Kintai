@@ -1110,7 +1110,7 @@
     "print_payslip": "印刷",
     "print_timeline": "シフト印刷",
     "profile": "プロフィール",
-    "profile_default_password_warning": "まだデフォルトのパスワード（0000）を使用しています。下記から変更してアカウントを保護してください。",
+    "profile_must_change_password_warning": "アカウント保護のため、続行する前に新しいパスワード（8文字以上）を設定してください。設定するまで、他の機能はご利用いただけません。",
     "profile_enriched": "拡張プロフィール",
     "profile_no_email_warning": "メールアドレスが設定されていません。パスワードを忘れた場合、復元できません。管理者に0000へのリセットを依頼してください。",
     "profile_tab_availability": "稼働可能時間",
