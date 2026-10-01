@@ -4,7 +4,7 @@
  * Footer global de l'application — inclus par layout/app.php (utilisateur
  * connecté) et layout/guest.php (page de connexion / pages publiques).
  * Variables disponibles via ViewRenderer::share() : $BASE_URL, $auth_user,
- * $isManager, $app_subtitle, $app_support_email, $feedback_enabled, $app_version.
+ * $isManager, $app_subtitle, $app_support_email, $app_version.
  *
  * @var string $BASE_URL
  */
@@ -74,10 +74,7 @@ $_ftIcon = static function (string $name): string {
         <?php if ($_ftAuthed): ?>
             <div class="app-footer__col">
                 <h4 class="app-footer__heading"><?= __('footer_support_heading') ?></h4>
-                <?php if ($feedback_enabled ?? true): ?>
-                    <button type="button" class="app-footer__link app-footer__link--btn" data-on-click="fbOpen"><?= __('send_feedback') ?></button>
-                <?php endif; ?>
-                <button type="button" class="app-footer__link app-footer__link--btn" data-on-click="riOpen">
+                <button type="button" class="app-footer__link app-footer__link--btn" data-on-click="openModal" data-args='["report-issue-modal"]'>
                     <span class="app-footer__icon"><?= $_ftIcon('bug') ?></span><?= __('report_issue') ?>
                 </button>
             </div>

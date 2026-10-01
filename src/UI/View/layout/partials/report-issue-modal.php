@@ -1,25 +1,29 @@
 <?php
 /* Modale "Signaler un problème" — déclenchée depuis le footer applicatif
- * (voir partials/_footer.php, bouton data-on-click="riOpen"). Crée directement
+ * (voir partials/_footer.php, bouton data-on-click="openModal"). Crée directement
  * une issue sur le dépôt GitHub du projet (voir SupportController).
+ * Utilise le composant .modal du Core (modals.css + openModal/closeModal d'app.js) :
+ * elle reste masquée tant qu'elle n'est pas ouverte, quels que soient les bundles installés.
  * Variables disponibles via ViewRenderer::share() : $BASE_URL
  */
+
+$riError   = $_GET['ri_error']   ?? null;
+$riSuccess = $_GET['ri_success'] ?? null;
+// Rouverte d'office après un envoi (succès ou erreur) pour afficher le résultat.
+$riOpen    = $riError !== null || $riSuccess !== null;
 ?>
 
-<div id="ri-overlay" class="fb-overlay" data-on-click="riClose" role="dialog" aria-modal="true" aria-labelledby="ri-modal-title">
-    <div class="fb-modal" data-stop-propagation>
+<div id="report-issue-modal" class="modal<?= $riOpen ? ' open' : '' ?>" role="dialog" aria-modal="true" aria-labelledby="ri-modal-title">
+    <div class="modal__backdrop" data-on-click="closeModal" data-args='["report-issue-modal"]'></div>
+    <div class="modal__dialog">
 
-        <div class="fb-modal-header">
-            <strong id="ri-modal-title"><?= __('report_issue_modal_title') ?></strong>
-            <button type="button" class="fb-modal-close" data-on-click="riClose" aria-label="<?= __('close') ?>">×</button>
+        <div class="modal__header">
+            <h3 class="modal__title" id="ri-modal-title"><?= __('report_issue_modal_title') ?></h3>
+            <button type="button" class="modal__close" data-on-click="closeModal" data-args='["report-issue-modal"]' aria-label="<?= __('close') ?>">&times;</button>
         </div>
 
-        <div class="fb-modal-body">
+        <div class="modal__body">
 
-            <?php
-            $riError   = $_GET['ri_error']   ?? null;
-            $riSuccess = $_GET['ri_success'] ?? null;
-            ?>
             <?php if ($riSuccess !== null): ?>
                 <div class="alert alert--success mb-sm">
                     <?= __('report_issue_success') ?>
@@ -61,14 +65,9 @@
 
                 <div class="form-actions">
                     <button type="submit" class="btn btn--primary"><?= __('report_issue_submit') ?></button>
-                    <button type="button" class="btn btn--ghost" data-on-click="riClose"><?= __('cancel') ?></button>
+                    <button type="button" class="btn btn--ghost" data-on-click="closeModal" data-args='["report-issue-modal"]'><?= __('cancel') ?></button>
                 </div>
             </form>
         </div>
     </div>
 </div>
-
-<script type="application/json" id="kintai-report-issue-data"><?= json_encode([
-    'autoOpen' => ($riError !== null || $riSuccess !== null),
-], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?></script>
-<script src="<?= $BASE_URL ?>/assets/js/modules/report-issue.js?v=<?= asset_version() ?>"></script>
