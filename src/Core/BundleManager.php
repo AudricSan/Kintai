@@ -49,8 +49,7 @@ final class BundleManager
      * depuis /admin/bundles/market) n'est PAS actif : contrairement à
      * FeatureManager::isEnabled(), qui ne reflète que le réglage stocké, ceci
      * reflète l'état réel après boot. À utiliser partout où du code suppose
-     * qu'une route/vue du bundle existe réellement (ex. la modale de feedback,
-     * incluse inconditionnellement par le layout).
+     * qu'une route/vue du bundle existe réellement.
      */
     public function isActive(string $slug): bool
     {
