@@ -55,6 +55,15 @@ Multi-tenancy is achieved at the **deployment level**, not the code level.
 - **Vanilla JS & CSS:** No heavy build steps or frontend frameworks, ensuring the application remains lightweight and easy to customize.
 - **Mobile First:** Responsive design catering to employees checking schedules on the go.
 
+## 🔗 Readable URLs
+Web routes address stores and employees by a readable segment instead of a database id: `/admin/stores/所沢東町店/edit`, `/admin/users/057/edit`.
+- **Typed route parameters:** a pattern declares `{id:store}` or `{uid:employee}`. `Router::url()`/`route_url()` turn the id they are given into the segment (percent-encoded), and `Application::dispatch()` turns the incoming segment back into the id **before** route middleware run, so controllers and `PermissionMiddleware` keep reading a numeric id through `$request->param()`. Binders live in `src/Core/Routing/` (`StoreRouteBinder`, `EmployeeRouteBinder`, registered in `RouteBinderRegistry`).
+- **Stores:** an optional slug typed by the Owner (romaji, e.g. `tokorozawa-higashicho`), otherwise the store name as is — never transliterated (ICU would read kanji in Mandarin). Stored in `route_slugs` with every previous alias kept.
+- **Employees:** their employee number, never their name (personal data that would end up in server logs and `Referer`); `id-42` when they have none. Previous numbers are kept in `route_slugs`, whatever path changed them (`DatabaseUserRepository::save()`).
+- **Old links:** a numeric id, a previous alias or a different letter case resolves, then a GET is redirected `301` to the canonical URL (query string kept); a POST is served as is. The redirect and the 404 of an unknown segment are only rendered **after** route middleware: a visitor who isn't allowed in learns neither a store's name nor whether an employee number exists.
+- **Reserved words:** every literal segment of the registered routes (`create`, `export`, `stats`…, bundles included) gets a suffix when used as an alias, so an alias can never shadow a fixed page.
+- **Not affected:** `/api/v1/*` (a machine contract, ids only), iCal feed URLs, query-string parameters.
+
 ## 📡 API & Integrations
 - **API V1:** A RESTful API allowing integration with third-party tools.
 - **iCal:** Personal calendars for employees, secured via tokens.

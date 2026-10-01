@@ -25,6 +25,7 @@ use kintai\Core\Services\PlanLimitService;
 use kintai\Core\Services\RoleAssignmentSyncService;
 use kintai\UI\ViewRenderer;
 use kintai\UI\Controller\Web\HasAdminAccess;
+use kintai\Core\Routing\EmployeeRouteBinder;
 
 final class AdminUserController
 {
@@ -403,6 +404,9 @@ final class AdminUserController
 
         $password = $request->post('password', '');
         $empCode  = strtoupper(trim($request->post('employee_code', ''))) ?: null;
+        if ($empCode !== null && !EmployeeRouteBinder::isValidCode($empCode)) {
+            return Response::redirect($this->base() . '/admin/users/create?error=employee_code_invalid_url');
+        }
         if ($password === '') {
             $fn  = trim($request->post('first_name', ''));
             $ln  = trim($request->post('last_name', ''));
@@ -552,6 +556,9 @@ final class AdminUserController
         }
 
         // Vérifier unicité du code employé si fourni
+        if ($empCode !== null && !EmployeeRouteBinder::isValidCode($empCode)) {
+            return Response::json(['success' => false, 'error' => 'employee_code_invalid_url'], 422);
+        }
         if ($empCode !== null && $this->users->findByEmployeeCode($empCode) !== null) {
             return Response::json(['success' => false, 'error' => 'employee_code_taken'], 409);
         }
@@ -777,6 +784,9 @@ final class AdminUserController
         }
 
         $empCode = strtoupper(trim($request->post('employee_code', ''))) ?: null;
+        if ($empCode !== null && !EmployeeRouteBinder::isValidCode($empCode)) {
+            return $this->updateUserError($request, $user, 'employee_code_invalid_url');
+        }
         $data = array_merge($user, [
             'display_name'       => $request->post('display_name', $user['display_name'] ?? ''),
             'first_name'         => $firstName,
@@ -836,7 +846,7 @@ final class AdminUserController
         if ($request->wantsJson()) {
             return Response::json(['success' => false, 'error' => $error], 422);
         }
-        return Response::redirect($this->base() . '/admin/users/' . $user['id'] . '/edit?error=' . $error);
+        return Response::redirect($this->base() . '/admin/users/' . employee_segment($user['id']) . '/edit?error=' . $error);
     }
 
     public function deleteUser(Request $request): Response
@@ -863,7 +873,7 @@ final class AdminUserController
             'email' => $user['email'] ?? null,
         ], null, null);
 
-        return Response::redirect($this->base() . '/admin/users/' . $user['id'] . '/edit?success=password_reset');
+        return Response::redirect($this->base() . '/admin/users/' . employee_segment($user['id']) . '/edit?success=password_reset');
     }
 
     // -------------------------------------------------------------------------
@@ -921,7 +931,7 @@ final class AdminUserController
             }
         }
 
-        return Response::redirect($this->base() . '/admin/users/' . $userId . '/edit?success=rate_updated');
+        return Response::redirect($this->base() . '/admin/users/' . employee_segment($userId) . '/edit?success=rate_updated');
     }
 
     public function deleteUserRate(Request $request): Response
@@ -942,7 +952,7 @@ final class AdminUserController
             ]);
         }
 
-        return Response::redirect($this->base() . '/admin/users/' . $userId . '/edit?success=rate_deleted');
+        return Response::redirect($this->base() . '/admin/users/' . employee_segment($userId) . '/edit?success=rate_deleted');
     }
 
 }

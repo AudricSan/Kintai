@@ -62,6 +62,12 @@ final class DatabaseStoreRepository implements StoreRepositoryInterface
     {
         $store = EloquentStore::find($id);
         if ($store) {
+            // Alias d'URL du magasin (courant et historique) : SQLite n'applique pas les cascades ici.
+            try {
+                \kintai\Domain\Eloquent\RouteSlug::where('entity_type', 'store')->where('entity_id', $id)->delete();
+            } catch (\Illuminate\Database\QueryException) {
+                // Table route_slugs absente (migration pas encore jouée).
+            }
             return $store->delete() ? 1 : 0;
         }
         return 0;

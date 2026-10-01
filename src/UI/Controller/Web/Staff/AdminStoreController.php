@@ -18,6 +18,7 @@ use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\RoleAssignmentSyncService;
 use kintai\Core\Services\StoreServiceInterface;
 use kintai\Core\Services\StoreStatsServiceInterface;
+use kintai\Core\Routing\RouteSlugService;
 use kintai\UI\ViewRenderer;
 
 final class AdminStoreController
@@ -34,6 +35,7 @@ final class AdminStoreController
         private readonly StoreStatsServiceInterface $storeStatsService,
         private readonly FeatureManager $features,
         private readonly RoleAssignmentSyncService $roleSync,
+        private readonly ?RouteSlugService $routeSlugs = null,
     ) {}
 
     /**
@@ -84,6 +86,7 @@ final class AdminStoreController
         $savedStore = $this->storeService->createStore([
             'code'            => strtoupper(trim($request->post('code', ''))),
             'name'            => $request->post('name', ''),
+            'slug'            => (string) $request->post('slug', ''),
             'type'            => ($tmp = $request->post('type', '')) !== '' ? $tmp : 'retail',
             'timezone'        => ($tmp = $request->post('timezone', '')) !== '' ? $tmp : 'UTC',
             'locale'          => ($tmp = $request->post('locale', '')) !== '' ? $tmp : 'en',
@@ -144,6 +147,7 @@ final class AdminStoreController
             // Aucune ligne en base = jamais configuré → toutes les fonctionnalités actives par défaut (null)
             'enabledFeatures'   => ($_ef = $this->stores->getFeatures($storeId)) !== [] ? $_ef : null,
             'importSettings'    => $this->stores->getImportSettings($storeId),
+            'routeSlug'         => $this->routeSlugs?->currentStoreSlug($storeId),
             'availableFeatureSlugs' => $this->availableFeatureSlugs(),
         ], 'layout.app'));
     }
@@ -182,6 +186,7 @@ final class AdminStoreController
         $data = [
             'code'                  => strtoupper(trim($request->post('code', $store['code'] ?? ''))),
             'name'                  => $request->post('name', $store['name'] ?? ''),
+            'slug'                  => (string) $request->post('slug', ''),
             'type'                  => ($tmp = $request->post('type', '')) !== '' ? $tmp : ($store['type'] ?? 'retail'),
             'timezone'              => ($tmp = $request->post('timezone', '')) !== '' ? $tmp : ($store['timezone'] ?? 'UTC'),
             'locale'                => ($tmp = $request->post('locale', '')) !== '' ? $tmp : ($store['locale'] ?? 'en'),
@@ -279,7 +284,7 @@ final class AdminStoreController
         }
 
         $redirectTo = $request->post('redirect_to', '');
-        $dest = $redirectTo !== '' ? $redirectTo : $this->base() . '/admin/stores/' . $storeId . '/edit?success=member_added';
+        $dest = $redirectTo !== '' ? $redirectTo : $this->base() . '/admin/stores/' . store_segment($storeId) . '/edit?success=member_added';
         return Response::redirect($dest);
     }
 
@@ -296,7 +301,7 @@ final class AdminStoreController
 
         $role = $this->roleSync->findAssignableRole((int) $request->post('role_id', 0));
         if ($role === null) {
-            return Response::redirect($this->base() . '/admin/stores/' . $storeId . '/edit?error=invalid_role');
+            return Response::redirect($this->base() . '/admin/stores/' . store_segment($storeId) . '/edit?error=invalid_role');
         }
         $roleId  = (int) $role['id'];
         $userId  = (int) $membership['user_id'];
@@ -308,7 +313,7 @@ final class AdminStoreController
             'user_id' => $membership['user_id'] ?? null,
         ], $storeId);
 
-        return Response::redirect($this->base() . '/admin/stores/' . $storeId . '/edit?success=role_updated');
+        return Response::redirect($this->base() . '/admin/stores/' . store_segment($storeId) . '/edit?success=role_updated');
     }
 
     public function removeMember(Request $request): Response
@@ -329,7 +334,7 @@ final class AdminStoreController
             'user_id' => $membership['user_id'] ?? null,
         ], $storeId);
 
-        return Response::redirect($this->base() . '/admin/stores/' . $storeId . '/edit?success=member_removed');
+        return Response::redirect($this->base() . '/admin/stores/' . store_segment($storeId) . '/edit?success=member_removed');
     }
 
     public function editMemberDeductions(Request $request): Response
@@ -380,7 +385,7 @@ final class AdminStoreController
         ], $storeId);
 
         $redirectTo = $request->post('_redirect_to', '');
-        $fallback   = $this->base() . '/admin/stores/' . $storeId . '/edit?success=deductions_saved';
+        $fallback   = $this->base() . '/admin/stores/' . store_segment($storeId) . '/edit?success=deductions_saved';
         $target     = ($redirectTo !== '' && str_starts_with($redirectTo, $this->base() . '/admin/'))
             ? $redirectTo
             : $fallback;

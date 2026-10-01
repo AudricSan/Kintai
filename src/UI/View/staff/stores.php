@@ -35,7 +35,7 @@ $storeChipColor = function (string $seed): string {
     ->data($stores)
     ->emptyMessage(__('no_store_found'))
     ->currentSort($sort)
-    ->rowUrl(fn($s) => $BASE_URL . '/admin/stores/' . (int) $s['id'] . '/edit')
+    ->rowUrl(fn($s) => $BASE_URL . '/admin/stores/' . store_segment((int) $s['id']) . '/edit')
     ->column('#', fn($s) => (string) (int) $s['id'])
     ->sortable(__('code'), 'code', fn($s) => '<code class="code-sm">' . htmlspecialchars($s['code'] ?? '') . '</code>')
     ->sortable(__('name'), 'name', function($s) use ($storeChipColor) {
@@ -59,11 +59,11 @@ $storeChipColor = function (string $seed): string {
         $id = (int) $s['id'];
         $panel = '';
         if ($can('payroll.view')) {
-            $panel .= '<a href="' . $BASE_URL . '/admin/stores/' . $id . '/stats" class="row-actions__link">📊 ' . htmlspecialchars(__('statistics')) . '</a>'
-                . '<a href="' . $BASE_URL . '/admin/stores/' . $id . '/employee-report" class="row-actions__link">👥 ' . htmlspecialchars(__('employee_report')) . '</a>';
+            $panel .= '<a href="' . $BASE_URL . '/admin/stores/' . store_segment($id) . '/stats" class="row-actions__link">📊 ' . htmlspecialchars(__('statistics')) . '</a>'
+                . '<a href="' . $BASE_URL . '/admin/stores/' . store_segment($id) . '/employee-report" class="row-actions__link">👥 ' . htmlspecialchars(__('employee_report')) . '</a>';
         }
         if ($can('stores.delete')) {
-            $panel .= '<form method="POST" action="' . htmlspecialchars($BASE_URL . '/admin/stores/' . $id . '/delete') . '" data-confirm="' . htmlspecialchars(__('confirm_delete_store'), ENT_QUOTES) . '">'
+            $panel .= '<form method="POST" action="' . htmlspecialchars($BASE_URL . '/admin/stores/' . store_segment($id) . '/delete') . '" data-confirm="' . htmlspecialchars(__('confirm_delete_store'), ENT_QUOTES) . '">'
                 . csrf_field()
                 . '<button type="submit" class="row-actions__link row-actions__link--danger">🗑 ' . htmlspecialchars(__('delete')) . '</button>'
                 . '</form>';

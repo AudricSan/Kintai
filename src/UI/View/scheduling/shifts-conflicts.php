@@ -98,7 +98,7 @@ foreach ($conflicts as $c) {
 
     <div class="conflict-group mb-sm">
         <div class="conflict-group__header">
-            <span class="conflict-user-name">👤 <a href="<?= $BASE_URL ?>/admin/users/<?= (int) $userId ?>/edit"><?= $userName ?></a></span>
+            <span class="conflict-user-name">👤 <a href="<?= $BASE_URL ?>/admin/users/<?= employee_segment((int) $userId) ?>/edit"><?= $userName ?></a></span>
             <?= Badge::make((string) count($userConflicts))->danger()->render() ?>
         </div>
 
@@ -228,7 +228,7 @@ $tsTable = Table::make()
     ->column(__('date'), fn($s) => '<span class="td-nowrap">' . htmlspecialchars($s['shift_date'] ?? '') . '</span>')
     ->column(__('employee'), function($s) use ($BASE_URL, $users_map) {
         $uid = (int) ($s['user_id'] ?? 0);
-        return '<a href="' . htmlspecialchars($BASE_URL . '/admin/users/' . $uid . '/edit') . '">'
+        return '<a href="' . htmlspecialchars($BASE_URL . '/admin/users/' . employee_segment($uid) . '/edit') . '">'
             . htmlspecialchars($users_map[$uid] ?? ('#' . ($s['user_id'] ?? '?'))) . '</a>';
     })
     ->column(__('start') . ' – ' . __('end'), function($s) use ($types_map) {

@@ -108,6 +108,22 @@ Ne recalculez pas cette résolution vous-même. Réutilisez le trait `kintai\UI\
 
 Si votre bundle doit servir un **fichier uploadé** (une image, un PDF, une pièce jointe) derrière cette même autorisation, ne construisez pas votre propre route de service de fichier — appuyez-vous sur `/storage/{path*}` (nom de route `storage.file`) de Kintai lui-même, qui applique déjà `managed_store_ids` (`StorageFileController::assertPathStoreAccess()`) ainsi que son propre confinement de chemin d'upload et sa liste blanche de types MIME. Une route de service de fichier parallèle duplique une logique d'autorisation que le Core possède déjà, hors de sa propre couverture de tests.
 
+## URLs lisibles : paramètres de route typés
+
+Les routes web du Core n'affichent plus d'identifiants pour les magasins et les employés (`/admin/stores/所沢東町店/edit`, `/admin/users/057/edit`, voir `docs/architecture.md`, « URLs lisibles »). Votre bundle obtient la même chose en typant ses paramètres de route — rien à enregistrer :
+
+```php
+// routes.php
+$r->get('/stores/{id:store}/photos',               [StorePhotoController::class, 'index'], name: 'store_photos.index', permission: 'photos.view');
+$r->get('/stores/{id:store}/reports/{uid:employee}', [ReportController::class, 'show'],    name: 'reports.show',       permission: 'reports.view');
+```
+
+- **Vos contrôleurs ne changent pas :** `$request->param('id')` renvoie toujours l'identifiant numérique. Le segment est résolu avant `PermissionMiddleware` : les règles `store_param` et `assertStoreAccess()` fonctionnent sans modification.
+- **Générez les liens avec `route_url()`, en passant l'identifiant** (`route_url('store_photos.index', ['id' => $storeId])`) : il produit le segment lisible et encodé. Pour une URL construite à la main, utilisez `store_segment($storeId)` / `employee_segment($userId)` au lieu de l'identifiant brut — jamais le nom de l'employé.
+- **Les anciens liens restent valides :** un identifiant numérique est résolu et un GET est redirigé en `301` vers l'URL lisible (un POST est servi tel quel) : favoris, e-mails et notifications envoyés avant la migration de votre bundle ne cassent pas.
+- **Ne typez que ce qui désigne un magasin ou un employé.** L'identifiant d'un rapport, d'une photo ou d'une adhésion reste un simple `{id}`.
+- **Nécessite un Core qui fournit les paramètres de route typés** (voir son CHANGELOG) : réglez `kintai_core.min` dans `bundle.json` en conséquence, un Core plus ancien lirait `{id:store}` comme un segment littéral.
+
 ## Migrations de base de données
 
 Un bundle peut posséder ses propres tables — une PR dédiée sur le dépôt de Kintai n'est **plus** nécessaire pour créer un schéma. Déposez un dossier optionnel `database/migrations/` à la racine de votre bundle (au même niveau que `src/`, même règle que `Views/`/`routes.php`), contenant des fichiers au **format strictement identique** à celui des migrations du Core de Kintai (`database/migrations/php/*.php`) :
