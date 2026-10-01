@@ -20,7 +20,7 @@ $assignable_roles ??= [];
 $default_role_id  ??= 0;
 $can              = $user_can ?? fn(string $k): bool => true;
 $action  = $mode === 'edit'
-    ? $BASE_URL . '/admin/stores/' . (int) $store['id'] . '/edit'
+    ? $BASE_URL . '/admin/stores/' . store_segment((int) $store['id']) . '/edit'
     : route_url('admin.stores.create');
 $storeId = (int) ($store['id'] ?? 0);
 
@@ -79,7 +79,7 @@ else:
     echo Table::make()
         ->data($members)
         ->rowAttrs(fn($m) => empty($m['is_active']) ? ['class' => 'member-row--inactive'] : [])
-        ->rowUrl(fn($m) => $BASE_URL . '/admin/users/' . (int) $m['id'] . '/edit')
+        ->rowUrl(fn($m) => $BASE_URL . '/admin/users/' . employee_segment((int) $m['id']) . '/edit')
         ->column(__('name'), fn($m) => '<strong>' . htmlspecialchars($m['user_name']) . '</strong>')
         ->column(__('email'), fn($m) => '<span class="text-sm td-muted">' . htmlspecialchars($m['user_email']) . '</span>')
         ->column(__('role'), function($m) {
@@ -93,7 +93,7 @@ else:
             $currentRoleId = (int) ($m['role_id'] ?? 0);
             $html = '<div class="btn-group">';
             if ($can('employees.update')) {
-                $html .= '<form method="POST" action="' . htmlspecialchars($BASE_URL . '/admin/stores/' . $storeId . '/members/' . $mid . '/role') . '" class="form-inline-flex">' . csrf_field()
+                $html .= '<form method="POST" action="' . htmlspecialchars($BASE_URL . '/admin/stores/' . store_segment($storeId) . '/members/' . $mid . '/role') . '" class="form-inline-flex">' . csrf_field()
                     . '<select name="role_id" class="form-control form-control-sm w-180">';
                 foreach ($assignable_roles as $r) {
                     $sel = (int) $r['id'] === $currentRoleId ? ' selected' : '';
@@ -102,10 +102,10 @@ else:
                 $html .= '</select>' . Button::make(__('apply'))->ghost()->sm()->submit()->render() . '</form>';
             }
             if ($can('payroll.view')) {
-                $html .= '<a href="' . $BASE_URL . '/admin/stores/' . (int) $store['id'] . '/members/' . $mid . '/deductions" class="btn btn--ghost btn--sm" title="' . __('deduction_overrides') . '">💰</a>';
+                $html .= '<a href="' . $BASE_URL . '/admin/stores/' . store_segment((int) $store['id']) . '/members/' . $mid . '/deductions" class="btn btn--ghost btn--sm" title="' . __('deduction_overrides') . '">💰</a>';
             }
             if ($can('employees.update')) {
-                $html .= '<form method="POST" action="' . $BASE_URL . '/admin/stores/' . $storeId . '/members/' . $mid . '/delete" class="form-inline" data-confirm="' . htmlspecialchars(__('confirm_remove_member'), ENT_QUOTES) . '">' . csrf_field()
+                $html .= '<form method="POST" action="' . $BASE_URL . '/admin/stores/' . store_segment($storeId) . '/members/' . $mid . '/delete" class="form-inline" data-confirm="' . htmlspecialchars(__('confirm_remove_member'), ENT_QUOTES) . '">' . csrf_field()
                     . '<button type="submit" class="btn btn--danger btn--sm">' . __('remove') . '</button></form>';
             }
             $html .= '</div>';
@@ -116,7 +116,7 @@ endif;
 ?>
     <?php if (!empty($available) && $can('employees.update')): ?>
         <div class="card-body--add">
-            <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= $storeId ?>/members" class="form-flex--add">
+            <form method="POST" action="<?= $BASE_URL ?>/admin/stores/<?= store_segment($storeId) ?>/members" class="form-flex--add">
                 <?= csrf_field() ?>
                 <div class="form-group form-group--flex1">
                     <label class="form-label"><?= __('user') ?></label>

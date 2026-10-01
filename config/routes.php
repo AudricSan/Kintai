@@ -114,7 +114,7 @@ $router->group('/profile', function ($r) {
 
 // Photo de profil : servie hors du groupe /profile pour rester consultable
 // via l'ID d'un autre utilisateur (annuaire collègues, bundle TeamDirectory).
-$router->get('/avatar/{user_id}', [AuthController::class, 'avatar'], middleware: [AuthMiddleware::class], name: 'user.avatar');
+$router->get('/avatar/{user_id:employee}', [AuthController::class, 'avatar'], middleware: [AuthMiddleware::class], name: 'user.avatar');
 
 $router->group('/notifications', function ($r) {
     $r->get('',              [NotificationController::class, 'index'],       name: 'notifications.index');
@@ -204,32 +204,32 @@ $router->group('/admin', function ($r) {
     $r->post('/users/quick-create',       [AdminUserController::class, 'quickCreateUser'],     name: 'admin.users.quick_create', permission: 'employees.create');
     $r->get('/users/check-employee-code', [AdminUserController::class, 'checkEmployeeCode'],   name: 'admin.users.check_employee_code', permission: 'employees.view');
     $r->get('/users/check-email',         [AdminUserController::class, 'checkEmail'],          name: 'admin.users.check_email', permission: 'employees.view');
-    $r->get('/users/{id}/edit',           [AdminUserController::class, 'editUser'],            name: 'admin.users.edit', permission: 'employees.view');
-    $r->post('/users/{id}/edit',          [AdminUserController::class, 'updateUser'],          name: 'admin.users.update', permission: 'employees.update');
-    $r->post('/users/{id}/delete',        [AdminUserController::class, 'deleteUser'],          name: 'admin.users.delete', permission: 'employees.delete');
-    $r->post('/users/{id}/reset-password',[AdminUserController::class, 'resetPassword'],       name: 'admin.users.reset_password', permission: 'employees.update');
-    $r->post('/users/{id}/rates',         [AdminUserController::class, 'setUserRate'],         name: 'admin.users.rates.set', permission: 'employees.update');
-    $r->post('/users/{id}/rates/{rid}/delete', [AdminUserController::class, 'deleteUserRate'], name: 'admin.users.rates.delete', permission: 'employees.update');
+    $r->get('/users/{id:employee}/edit',           [AdminUserController::class, 'editUser'],            name: 'admin.users.edit', permission: 'employees.view');
+    $r->post('/users/{id:employee}/edit',          [AdminUserController::class, 'updateUser'],          name: 'admin.users.update', permission: 'employees.update');
+    $r->post('/users/{id:employee}/delete',        [AdminUserController::class, 'deleteUser'],          name: 'admin.users.delete', permission: 'employees.delete');
+    $r->post('/users/{id:employee}/reset-password',[AdminUserController::class, 'resetPassword'],       name: 'admin.users.reset_password', permission: 'employees.update');
+    $r->post('/users/{id:employee}/rates',         [AdminUserController::class, 'setUserRate'],         name: 'admin.users.rates.set', permission: 'employees.update');
+    $r->post('/users/{id:employee}/rates/{rid}/delete', [AdminUserController::class, 'deleteUserRate'], name: 'admin.users.rates.delete', permission: 'employees.update');
 
     // Magasins
     $r->get('/stores',                    [AdminStoreController::class, 'stores'],               name: 'admin.stores', permission: 'stores.view');
     $r->get('/stores/create',             [AdminStoreController::class, 'createStore'],          name: 'admin.stores.create', permission: 'stores.create');
     $r->post('/stores/create',            [AdminStoreController::class, 'storeStore'],           name: 'admin.stores.store', permission: 'stores.create');
-    $r->get('/stores/{id}/edit',          [AdminStoreController::class, 'editStore'],            name: 'admin.stores.edit', permission: 'stores.view');
-    $r->post('/stores/{id}/edit',         [AdminStoreController::class, 'updateStore'],          name: 'admin.stores.update', permission: 'stores.update');
-    $r->post('/stores/{id}/delete',       [AdminStoreController::class, 'deleteStore'],          name: 'admin.stores.delete', permission: 'stores.delete');
-    $r->post('/stores/{id}/members',      [AdminStoreController::class, 'addMember'],            name: 'admin.stores.members.add', permission: 'employees.update');
-    $r->post('/stores/{id}/members/{mid}/role',   [AdminStoreController::class, 'updateMemberRole'], name: 'admin.stores.members.role', permission: 'employees.update');
-    $r->post('/stores/{id}/members/{mid}/delete', [AdminStoreController::class, 'removeMember'],      name: 'admin.stores.members.delete', permission: 'employees.update');
-    $r->get('/stores/{id}/members/{mid}/deductions',  [AdminStoreController::class, 'editMemberDeductions'],   name: 'admin.stores.members.deductions', permission: 'payroll.view');
-    $r->post('/stores/{id}/members/{mid}/deductions', [AdminStoreController::class, 'saveMemberDeductions'],   name: 'admin.stores.members.deductions.save', permission: 'payroll.generate');
+    $r->get('/stores/{id:store}/edit',          [AdminStoreController::class, 'editStore'],            name: 'admin.stores.edit', permission: 'stores.view');
+    $r->post('/stores/{id:store}/edit',         [AdminStoreController::class, 'updateStore'],          name: 'admin.stores.update', permission: 'stores.update');
+    $r->post('/stores/{id:store}/delete',       [AdminStoreController::class, 'deleteStore'],          name: 'admin.stores.delete', permission: 'stores.delete');
+    $r->post('/stores/{id:store}/members',      [AdminStoreController::class, 'addMember'],            name: 'admin.stores.members.add', permission: 'employees.update');
+    $r->post('/stores/{id:store}/members/{mid}/role',   [AdminStoreController::class, 'updateMemberRole'], name: 'admin.stores.members.role', permission: 'employees.update');
+    $r->post('/stores/{id:store}/members/{mid}/delete', [AdminStoreController::class, 'removeMember'],      name: 'admin.stores.members.delete', permission: 'employees.update');
+    $r->get('/stores/{id:store}/members/{mid}/deductions',  [AdminStoreController::class, 'editMemberDeductions'],   name: 'admin.stores.members.deductions', permission: 'payroll.view');
+    $r->post('/stores/{id:store}/members/{mid}/deductions', [AdminStoreController::class, 'saveMemberDeductions'],   name: 'admin.stores.members.deductions.save', permission: 'payroll.generate');
 
     // Statistiques & Rapports
-    $r->get('/stores/{id}/stats',              [AdminStoreController::class, 'storeStats'],       name: 'admin.stores.stats', permission: 'payroll.view');
-    $r->get('/stores/{id}/stats/export',       [AdminStoreController::class, 'storeStatsExport'], name: 'admin.stores.stats_export', permission: 'payroll.export');
-    $r->get('/stores/{id}/profitability',      [AdminStoreController::class, 'storeProfitability'], name: 'admin.stores.profitability', permission: 'payroll.view');
-    $r->get('/stores/{id}/employee-report',                      [AdminStoreController::class, 'employeeReport'],    name: 'admin.stores.employee_report', permission: 'payroll.view');
-    $r->get('/stores/{id}/employee-report/{uid}/stats',          [AdminStoreController::class, 'employeeStats'],     name: 'admin.stores.employee_stats', permission: 'payroll.view');
+    $r->get('/stores/{id:store}/stats',              [AdminStoreController::class, 'storeStats'],       name: 'admin.stores.stats', permission: 'payroll.view');
+    $r->get('/stores/{id:store}/stats/export',       [AdminStoreController::class, 'storeStatsExport'], name: 'admin.stores.stats_export', permission: 'payroll.export');
+    $r->get('/stores/{id:store}/profitability',      [AdminStoreController::class, 'storeProfitability'], name: 'admin.stores.profitability', permission: 'payroll.view');
+    $r->get('/stores/{id:store}/employee-report',                      [AdminStoreController::class, 'employeeReport'],    name: 'admin.stores.employee_report', permission: 'payroll.view');
+    $r->get('/stores/{id:store}/employee-report/{uid:employee}/stats',          [AdminStoreController::class, 'employeeStats'],     name: 'admin.stores.employee_stats', permission: 'payroll.view');
 
     // Rapports d'embauche : bundle distribué hors monorepo, routes chargées depuis storage/bundles/hiring-report/ une fois installé (voir docs/architecture.md)
 

@@ -1525,5 +1525,12 @@
     "report_issue_error_generic": "Échec de l'envoi. Merci de réessayer plus tard.",
     "report_issue_privacy_note": "Ce signalement est publié publiquement sur GitHub. N'y incluez aucune information personnelle ou confidentielle.",
 
-    "zone_to_create": "Glissez ici pour créer un shift"
+    "zone_to_create": "Glissez ici pour créer un shift",
+    "store_slug": "Slug d'URL (facultatif)",
+    "store_slug_hint": "Nom court en romaji pour les adresses de ce magasin (ex. tokorozawa-higashicho) : minuscules, chiffres et tirets. Laissé vide, l'adresse utilise le nom du magasin tel quel. Les anciennes adresses restent valides.",
+    "store_slug_current": "Adresse actuelle :",
+    "store_slug_invalid": "Le slug d'URL ne peut contenir que des minuscules, des chiffres et des tirets simples, avec au moins une lettre (60 caractères maximum).",
+    "store_slug_reserved": "Ce slug d'URL est réservé par l'application. Choisissez-en un autre.",
+    "store_slug_taken": "Ce slug d'URL est déjà utilisé (ou l'a été) par un autre magasin.",
+    "employee_code_invalid_url": "Le numéro d'employé ne peut contenir que des lettres, des chiffres, des tirets et des tirets bas, et ne peut pas commencer par « ID- »."
 }

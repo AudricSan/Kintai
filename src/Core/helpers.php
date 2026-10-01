@@ -377,6 +377,36 @@ if (!function_exists('base_url')) {
     }
 }
 
+if (!function_exists('route_segment')) {
+    /**
+     * Segment d'URL lisible (encodé) d'une entité adressée par un paramètre de route typé : alias d'un magasin
+     * (所沢東町店, tokorozawa-higashicho), numéro d'un employé (057, ou id-42). Pour les URLs construites à la main ;
+     * route_url() fait la même conversion toute seule. Retombe sur l'identifiant si le routage typé est
+     * indisponible (tests, base pas encore migrée).
+     */
+    function route_segment(string $type, int|string $id): string
+    {
+        try {
+            $binder = \kintai\Core\Container::getInstance()->make(\kintai\Core\Router::class)->binderFor($type);
+            $segment = $binder !== null ? $binder->segmentFor((int) $id) : (string) $id;
+        } catch (\Throwable) {
+            $segment = (string) $id;
+        }
+
+        return rawurlencode($segment);
+    }
+
+    function store_segment(int|string $storeId): string
+    {
+        return route_segment('store', $storeId);
+    }
+
+    function employee_segment(int|string $userId): string
+    {
+        return route_segment('employee', $userId);
+    }
+}
+
 if (!function_exists('notification_type_catalog')) {
     /**
      * Libellé + icône par type de notification, seule source pour le dropdown

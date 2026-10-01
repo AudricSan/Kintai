@@ -108,6 +108,22 @@ namespaceは何でも構いません——慣例として、インストール�
 
 バンドルが同じ認可の下で**アップロードされたファイル**（画像、PDF、添付ファイル）を配信する必要がある場合、そのための独自のファイル配信ルートを作らないでください。Kintai自身の`/storage/{path*}`（ルート名`storage.file`）にリンクしてください。これは`managed_store_ids`（`StorageFileController::assertPathStoreAccess()`）に加え、独自のアップロードパス制限とMIMEホワイトリストをすでに適用しています。並行するファイル配信ルートは、Coreが既に持っている認可ロジックを、その自身のテストカバレッジの外側で複製することになります。
 
+## 読みやすいURL：型付きルートパラメーター
+
+CoreのWebルートは、店舗と従業員にデータベースIDを表示しなくなりました（`/admin/stores/所沢東町店/edit`、`/admin/users/057/edit`。`docs/architecture.md` の「読みやすいURL」を参照）。バンドルでもルートパラメーターに型を付けるだけで同じ動作になります。登録は不要です：
+
+```php
+// routes.php
+$r->get('/stores/{id:store}/photos',               [StorePhotoController::class, 'index'], name: 'store_photos.index', permission: 'photos.view');
+$r->get('/stores/{id:store}/reports/{uid:employee}', [ReportController::class, 'show'],    name: 'reports.show',       permission: 'reports.view');
+```
+
+- **コントローラーは変更不要：** `$request->param('id')` は引き続き数値IDを返します。セグメントは `PermissionMiddleware` の前に解決されるため、`store_param` ルールや `assertStoreAccess()` もそのまま動作します。
+- **リンクは `route_url()` にIDを渡して生成してください**（`route_url('store_photos.index', ['id' => $storeId])`）。読みやすくエンコードされたセグメントが出力されます。手作業でURLを組み立てる場合は、生のIDではなく `store_segment($storeId)` / `employee_segment($userId)` を使ってください。従業員の氏名は決して使わないでください。
+- **古いリンクも引き続き有効：** 数値IDは解決され、GETは読みやすいURLへ `301` リダイレクトされます（POSTはそのまま処理）。バンドル移行前に送られたブックマーク、メール、通知は壊れません。
+- **型を付けるのは店舗または従業員を指すものだけ。** レポート、写真、所属のIDは通常の `{id}` のままです。
+- **型付きルートパラメーターを提供するCoreが必要です**（CHANGELOGを参照）。古いCoreは `{id:store}` を固定セグメントとして読んでしまうため、`bundle.json` の `kintai_core.min` を適切に設定してください。
+
 ## データベースマイグレーション
 
 バンドルは独自のテーブルを持てます — スキーマを作成するだけのために、Kintai本体のリポジトリへ専用のPRを出す必要は**もうありません**。バンドルのルート（`src/` と同じ階層、`Views/`/`routes.php` と同じルール）に任意の `database/migrations/` ディレクトリを置き、Kintai本体のCoreマイグレーション（`database/migrations/php/*.php`）と**まったく同じ形式**のファイルを入れてください：

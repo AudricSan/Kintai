@@ -87,7 +87,7 @@ $exportQuery = $filter_store_id !== 0 ? '?store_id=' . $filter_store_id : '';
     ->emptyMessage(__('none'))
     ->currentSort($sort)
     ->filters($activeFilters)
-    ->rowUrl(fn($u) => $BASE_URL . '/admin/users/' . (int) $u['id'] . '/edit')
+    ->rowUrl(fn($u) => $BASE_URL . '/admin/users/' . employee_segment((int) $u['id']) . '/edit')
     ->rowAttrs(fn($u) => [
         'data-search-text'    => implode('|', [
             trim(($u['last_name'] ?? '') . ' ' . ($u['first_name'] ?? '')),
@@ -111,7 +111,7 @@ $exportQuery = $filter_store_id !== 0 ? '?store_id=' . $filter_store_id : '';
         $chipColor = htmlspecialchars($u['color'] ?? '#6c5ce7');
         return '<div class="avatar-chip-cell">'
             . '<span class="avatar-chip" style="--chip-bg:' . $chipColor . '">' . $initials . '</span>'
-            . '<div><a href="' . htmlspecialchars($BASE_URL . '/admin/users/' . $uid . '/edit') . '"><strong>' . $name . '</strong></a>'
+            . '<div><a href="' . htmlspecialchars($BASE_URL . '/admin/users/' . employee_segment($uid) . '/edit') . '"><strong>' . $name . '</strong></a>'
             . ($full !== $name ? '<div class="text-hint">' . $full . '</div>' : '')
             . '</div></div>';
     })
@@ -153,7 +153,7 @@ $exportQuery = $filter_store_id !== 0 ? '?store_id=' . $filter_store_id : '';
         $sId = $user_store_map[$uid];
         $panel = '';
         if ($can('payroll.view')) {
-            $panel .= '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/employee-report/' . $uid . '/stats" class="row-actions__link">📊 ' . htmlspecialchars(__('employee_stats')) . '</a>';
+            $panel .= '<a href="' . $BASE_URL . '/admin/stores/' . store_segment($sId) . '/employee-report/' . employee_segment($uid) . '/stats" class="row-actions__link">📊 ' . htmlspecialchars(__('employee_stats')) . '</a>';
         }
         if ($can('payroll.generate') && bundle_enabled('salary-report')) {
             $panel .= '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/reports/salary/create?user_id=' . $uid . '" class="row-actions__link">💰 ' . htmlspecialchars(__('salary_report')) . '</a>';
