@@ -10,10 +10,10 @@ namespace kintai\Core\Auth;
  * 4 au profil) : changer son mot de passe depuis le profil permettait de choisir plus faible que ce que
  * la réinitialisation exigeait.
  *
- * Le mot de passe par défaut « 0000 » attribué à la création d'un compte passe par MIN_LENGTH sans le
- * respecter : il n'est donc valable que le temps de la première connexion. Tant qu'un utilisateur le
- * garde (ou garde un mot de passe trop court), MustChangePasswordMiddleware ne lui laisse accéder qu'à son
- * profil pour le changer (AuthService::mustChangePassword()).
+ * Le mot de passe par défaut « 0000 » attribué à la création d'un compte ne respecte pas MIN_LENGTH. Tant
+ * qu'un utilisateur le garde (ou garde un mot de passe trop court), le web le lui rappelle par un bandeau et
+ * une fenêtre à chaque connexion (PasswordReminderMiddleware, AuthService::mustChangePassword()), et l'API
+ * refuse de lui délivrer un jeton.
  */
 final class PasswordPolicy
 {

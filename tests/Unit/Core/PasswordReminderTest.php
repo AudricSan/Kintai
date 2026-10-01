@@ -7,7 +7,7 @@ namespace kintai\Tests\Unit\Core;
 use kintai\Core\Auth\AuthService;
 use kintai\Core\Auth\PasswordPolicy;
 use kintai\Core\Container;
-use kintai\Core\Middleware\MustChangePasswordMiddleware;
+use kintai\Core\Middleware\PasswordReminderMiddleware;
 use kintai\Core\Repositories\RememberTokenRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
@@ -16,15 +16,16 @@ use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Audit du 30/09/2026 (point 8) : le mot de passe par défaut « 0000 » restait valable indéfiniment. Tant
- * que l'utilisateur le garde (ou garde un mot de passe de moins de 8 caractères), il ne doit atteindre que
- * son profil.
+ * Mot de passe par défaut « 0000 » ou de moins de 8 caractères : l'application reste accessible, mais un bandeau
+ * le rappelle sur chaque page et une fenêtre s'ouvre à chaque connexion (décision du 01/10/2026, qui remplace le
+ * blocage introduit après l'audit du 30/09/2026).
  */
-final class MustChangePasswordTest extends TestCase
+final class PasswordReminderTest extends TestCase
 {
     /** @var array<string, mixed> */
     private array $row;
@@ -75,19 +76,19 @@ final class MustChangePasswordTest extends TestCase
         return password_hash($password, PASSWORD_BCRYPT, ['cost' => 4]);
     }
 
-    private function request(string $uri, string $method = 'GET'): Request
+    private function request(string $uri, string $method = 'GET', array $server = []): Request
     {
-        $_SERVER = ['REQUEST_METHOD' => $method, 'REQUEST_URI' => $uri, 'SCRIPT_NAME' => '/index.php'];
+        $_SERVER = ['REQUEST_METHOD' => $method, 'REQUEST_URI' => $uri, 'SCRIPT_NAME' => '/index.php'] + $server;
         $_GET = $_POST = $_COOKIE = $_FILES = [];
 
         return new Request();
     }
 
-    private function through(string $uri, string $method = 'GET'): Response
+    private function through(string $uri, string $method = 'GET', array $server = []): Response
     {
-        $middleware = new MustChangePasswordMiddleware($this->container);
+        $middleware = new PasswordReminderMiddleware($this->container);
 
-        return $middleware->handle($this->request($uri, $method), fn() => Response::json(['ok' => true]));
+        return $middleware->handle($this->request($uri, $method, $server), fn() => Response::json(['ok' => true]));
     }
 
     public function testDefaultPasswordMustBeChangedAfterLogin(): void
@@ -155,60 +156,104 @@ final class MustChangePasswordTest extends TestCase
         $this->assertFalse($this->auth->check());
     }
 
-    public function testMiddlewareRedirectsToProfileWhenPasswordMustChange(): void
+    /** @return array{0: Response, 1: bool, 2: bool} réponse, bandeau, fenêtre */
+    private function page(string $uri, string $method = 'GET', array $server = []): array
     {
-        $this->auth->attempt('emp@example.test', '0000');
+        $view = new ViewRenderer(sys_get_temp_dir());
+        $this->container->instance(ViewRenderer::class, $view);
+        $response = $this->through($uri, $method, $server);
 
-        $response = $this->through('/employee/shifts');
-
-        $this->assertSame(302, $response->status());
-        $this->assertStringEndsWith('/profile?tab=info', ((fn() => $this->headers['Location'] ?? '')->call($response)));
-    }
-
-    #[DataProvider('allowedPaths')]
-    public function testMiddlewareLetsEssentialPathsThrough(string $uri, string $method): void
-    {
-        $this->auth->attempt('emp@example.test', '0000');
-
-        $this->assertSame(200, $this->through($uri, $method)->status());
+        return [$response, (bool) $view->get('password_change_recommended'), (bool) $view->get('password_reminder_popup')];
     }
 
     /** @return array<string, array{string, string}> */
-    public static function allowedPaths(): array
+    public static function anyPage(): array
     {
         return [
-            'profil'                     => ['/profile', 'GET'],
-            'changement de mot de passe' => ['/profile/password', 'POST'],
-            'déconnexion'                => ['/logout', 'POST'],
-            'photo de profil'            => ['/avatar/7', 'GET'],
-            'asset'                      => ['/assets/css/app.css', 'GET'],
-            'API à jeton'                => ['/api/v1/shifts', 'GET'],
-            'service worker'             => ['/sw.js', 'GET'],
-            'changement de langue'       => ['/lang/ja', 'GET'],
-            'vue mobile/bureau'          => ['/switch-device', 'POST'],
+            'planning'       => ['/admin/shifts/timeline', 'GET'],
+            'export profil'  => ['/profile/export', 'GET'],
+            'enregistrement' => ['/admin/shifts/create', 'POST'],
         ];
     }
 
-    public function testMiddlewareBlocksOtherProfileActionsAndAdminPages(): void
+    /** 01/10/2026 : le changement n'est plus imposé ; l'application reste entièrement accessible. */
+    #[DataProvider('anyPage')]
+    public function testWeakPasswordNeverBlocksTheApplication(string $uri, string $method): void
     {
         $this->auth->attempt('emp@example.test', '0000');
 
-        foreach ([['/profile/delete', 'POST'], ['/profile/export', 'GET'], ['/admin/shifts/timeline', 'GET']] as [$uri, $method]) {
-            $this->assertSame(302, $this->through($uri, $method)->status(), "$method $uri devrait être redirigé");
+        [$response] = $this->page($uri, $method);
+
+        $this->assertSame(200, $response->status());
+    }
+
+    public function testBannerIsShownOnEveryPageWhilePasswordIsWeak(): void
+    {
+        $this->auth->attempt('emp@example.test', '0000');
+
+        foreach (['/employee', '/admin/shifts/timeline', '/profile'] as $uri) {
+            [, $banner] = $this->page($uri);
+            $this->assertTrue($banner, $uri);
         }
     }
 
-    public function testMiddlewareLeavesEveryoneElseAlone(): void
+    public function testPopupIsShownOncePerLogin(): void
+    {
+        $this->auth->attempt('emp@example.test', '0000');
+
+        [, , $first]  = $this->page('/employee');
+        [, , $second] = $this->page('/employee/shifts');
+        $this->assertTrue($first, 'première page après la connexion');
+        $this->assertFalse($second, 'pas à chaque page');
+
+        // Nouvelle connexion : la fenêtre revient.
+        $this->auth->logout();
+        $this->auth->attempt('emp@example.test', '0000');
+        [, , $again] = $this->page('/employee');
+        $this->assertTrue($again, 'à chaque connexion');
+    }
+
+    public function testPopupIsNotConsumedByBackgroundRequests(): void
+    {
+        $this->auth->attempt('emp@example.test', '0000');
+
+        [, , $ajax] = $this->page('/notifications/poll', 'GET', ['HTTP_X_REQUESTED_WITH' => 'XMLHttpRequest']);
+        [, , $post] = $this->page('/admin/shifts/create', 'POST');
+        [, , $page] = $this->page('/employee');
+
+        $this->assertFalse($ajax);
+        $this->assertFalse($post);
+        $this->assertTrue($page, 'la fenêtre attend la première vraie page');
+    }
+
+    public function testSessionRestoredWithoutPasswordAlsoShowsThePopupForTheDefaultPassword(): void
+    {
+        // Session ouverte sans mot de passe en clair (cookie « rester connecté ») : même effet que bindSession().
+        $row = $this->row;
+        (fn() => $this->bindSession($row))->call($this->auth);
+
+        [, $banner, $popup] = $this->page('/employee');
+        $this->assertTrue($banner);
+        $this->assertTrue($popup);
+    }
+
+    public function testStrongPasswordGetsNeitherBannerNorPopup(): void
     {
         $strong = bin2hex(random_bytes(6));
         $this->row['password_hash'] = $this->hash($strong);
         $this->auth->attempt('emp@example.test', $strong);
 
-        $this->assertSame(200, $this->through('/employee/shifts')->status());
+        [$response, $banner, $popup] = $this->page('/employee');
+        $this->assertSame(200, $response->status());
+        $this->assertFalse($banner);
+        $this->assertFalse($popup);
     }
 
-    public function testMiddlewareLeavesAnonymousVisitorsAlone(): void
+    public function testAnonymousVisitorsAreLeftAlone(): void
     {
-        $this->assertSame(200, $this->through('/employee/shifts')->status());
+        [$response, $banner, $popup] = $this->page('/login');
+        $this->assertSame(200, $response->status());
+        $this->assertFalse($banner);
+        $this->assertFalse($popup);
     }
 }
