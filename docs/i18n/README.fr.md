@@ -98,7 +98,7 @@ php scripts/provision.php --admin-email=admin@example.com --admin-password='…'
 
 ### Serveur web
 
-Seul `public/` doit être servi. Faites-y pointer la racine de documents du serveur web (`DocumentRoot` d'Apache, `root` de nginx) — jamais la racine du dépôt, sous peine de rendre `.env`, `storage/app/database.sqlite`, les sauvegardes et le code source téléchargeables. `php -S … -t public` le fait déjà. Sous Apache, un `.htaccess` à la racine refuse toute URL hors de `public/` comme filet de sécurité si le serveur est pointé par erreur sur le mauvais dossier ; nginx n'a pas d'équivalent, son `root` doit donc être correct.
+Seul `public/` doit être servi. Faites-y pointer la racine de documents du serveur web (`DocumentRoot` d'Apache, `root` de nginx) — jamais la racine du dépôt, sous peine de rendre `.env`, `storage/app/database.sqlite`, les sauvegardes et le code source téléchargeables. `php -S … -t public` le fait déjà. Sous Apache, si le serveur (ou le dossier `www/` d'un hébergement mutualisé) pointe malgré tout sur la racine du dépôt, un `.htaccess` à la racine réécrit de façon transparente chaque requête vers `public/` — l'URL reste propre, rien en dehors de `public/` n'est accessible, et cela fonctionne aussi depuis un sous-dossier (`/Kintai/`). nginx n'a pas d'équivalent, son `root` doit donc être correct.
 
 ### Mise à jour
 

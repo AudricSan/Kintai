@@ -6,6 +6,7 @@ define('BASE_PATH', dirname(__DIR__));
 
 require BASE_PATH . '/vendor/autoload.php';
 require BASE_PATH . '/src/Core/helpers.php';
+kintai_normalize_script_name();
 
 use Illuminate\Database\Capsule\Manager as Capsule;
 use kintai\Core\Application;
@@ -24,7 +25,7 @@ if (file_exists($installedLockFile) || kintai_installed_via_database(BASE_PATH))
     if (!file_exists($installedLockFile)) {
         @file_put_contents($installedLockFile, bin2hex(random_bytes(32)));
     }
-    header('Location: /');
+    header('Location: ' . base_url() . '/');
     exit;
 }
 
