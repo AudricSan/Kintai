@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Controller\Api\V1;
 
+use kintai\Tests\Support\ApiOwnerAuth;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Services\AuditLogger;
@@ -20,7 +21,7 @@ final class ShiftTypeControllerTest extends TestCase
     protected function setUp(): void
     {
         $this->shiftTypes = $this->createMock(ShiftTypeRepositoryInterface::class);
-        $this->controller = new ShiftTypeController($this->shiftTypes, new AuditLogger());
+        $this->controller = new ShiftTypeController($this->shiftTypes, new AuditLogger(), ApiOwnerAuth::permissions($this));
     }
 
     protected function tearDown(): void
@@ -30,7 +31,7 @@ final class ShiftTypeControllerTest extends TestCase
 
     private function makeJsonRequest(array $body): Request
     {
-        $req = new Request();
+        $req = ApiOwnerAuth::owner(new Request());
         $ref = new \ReflectionProperty(Request::class, 'jsonBody');
         $ref->setAccessible(true);
         $ref->setValue($req, $body);
@@ -42,7 +43,7 @@ final class ShiftTypeControllerTest extends TestCase
         $this->shiftTypes->method('findById')->with(5)->willReturn(['id' => 5, 'code' => 'MORNING']);
         $this->shiftTypes->method('getStoreIds')->with(5)->willReturn([1, 2]);
 
-        $req = new Request();
+        $req = ApiOwnerAuth::owner(new Request());
         $req->setRouteParams(['id' => '5']);
 
         $response = $this->controller->show($req);

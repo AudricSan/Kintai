@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace kintai\UI\Controller\Api\V1;
 
+use kintai\Core\Auth\UserTargetGuard;
 use kintai\Core\Exceptions\NotFoundException;
-use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
@@ -15,7 +15,7 @@ final class UserShiftRateController
 {
     public function __construct(
         private readonly UserShiftTypeRateRepositoryInterface $rates,
-        private readonly UserRepositoryInterface $users,
+        private readonly UserTargetGuard $guard,
         private readonly AuditLogger $auditLogger,
     ) {}
 
@@ -23,7 +23,7 @@ final class UserShiftRateController
     public function index(Request $request): Response
     {
         $userId = (int) $request->param('user_id');
-        $this->requireUser($userId);
+        $this->guard->require($request, $userId, 'payroll.view');
         return Response::json($this->rates->findByUser($userId));
     }
 
@@ -32,7 +32,7 @@ final class UserShiftRateController
     {
         $userId = (int) $request->param('user_id');
         $id     = (int) $request->param('id');
-        $this->requireUser($userId);
+        $this->guard->require($request, $userId, 'payroll.view');
 
         $rate = $this->rates->findById($id);
         if ($rate === null || (int) $rate['user_id'] !== $userId) {
@@ -46,9 +46,11 @@ final class UserShiftRateController
     public function store(Request $request): Response
     {
         $userId = (int) $request->param('user_id');
-        $this->requireUser($userId);
+        $this->guard->require($request, $userId, 'employees.update');
 
-        $data = array_merge($request->json() ?? [], [
+        $body = $request->json() ?? [];
+        unset($body['id']);
+        $data = array_merge($body, [
             'user_id'    => $userId,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
@@ -67,7 +69,7 @@ final class UserShiftRateController
     {
         $userId = (int) $request->param('user_id');
         $id     = (int) $request->param('id');
-        $this->requireUser($userId);
+        $this->guard->require($request, $userId, 'employees.update');
 
         $rate = $this->rates->findById($id);
         if ($rate === null || (int) $rate['user_id'] !== $userId) {
@@ -92,7 +94,7 @@ final class UserShiftRateController
     {
         $userId = (int) $request->param('user_id');
         $id     = (int) $request->param('id');
-        $this->requireUser($userId);
+        $this->guard->require($request, $userId, 'employees.update');
 
         $rate = $this->rates->findById($id);
         if ($rate === null || (int) $rate['user_id'] !== $userId) {
@@ -106,12 +108,5 @@ final class UserShiftRateController
         ]);
 
         return Response::empty();
-    }
-
-    private function requireUser(int $id): void
-    {
-        if ($this->users->findById($id) === null) {
-            throw new NotFoundException(__('error_user_not_found'));
-        }
     }
 }

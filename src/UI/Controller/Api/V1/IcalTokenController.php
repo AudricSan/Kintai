@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace kintai\UI\Controller\Api\V1;
 
+use kintai\Core\Auth\UserTargetGuard;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\IcalTokenRepositoryInterface;
-use kintai\Core\Repositories\UserRepositoryInterface;
+use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 
@@ -14,14 +15,15 @@ final class IcalTokenController
 {
     public function __construct(
         private readonly IcalTokenRepositoryInterface $icalTokens,
-        private readonly UserRepositoryInterface $users,
+        private readonly UserTargetGuard $guard,
+        private readonly StoreUserRepositoryInterface $storeUsers,
     ) {}
 
     /** GET /api/v1/users/{user_id}/ical-tokens */
     public function index(Request $request): Response
     {
         $userId = (int) $request->param('user_id');
-        $this->requireUser($userId);
+        $this->guard->require($request, $userId, 'employees.view');
         return Response::json($this->icalTokens->findByUser($userId));
     }
 
@@ -30,7 +32,7 @@ final class IcalTokenController
     {
         $userId  = (int) $request->param('user_id');
         $storeId = (int) $request->param('store_id');
-        $this->requireUser($userId);
+        $this->guard->require($request, $userId, 'employees.view');
 
         $token = $this->icalTokens->findByUserAndStore($userId, $storeId);
         if ($token === null) {
@@ -44,10 +46,11 @@ final class IcalTokenController
     public function store(Request $request): Response
     {
         $userId  = (int) $request->param('user_id');
-        $this->requireUser($userId);
+        $this->guard->require($request, $userId, 'employees.update');
 
         $data    = $request->json() ?? [];
         $storeId = (int) ($data['store_id'] ?? 0);
+        $this->assertMember($userId, $storeId);
 
         // findOrCreate plutôt qu'un save() inconditionnel : un second appel pour le
         // même user+store percuterait sinon la contrainte unique (user_id, store_id)
@@ -62,7 +65,7 @@ final class IcalTokenController
     {
         $userId  = (int) $request->param('user_id');
         $storeId = (int) $request->param('store_id');
-        $this->requireUser($userId);
+        $this->guard->require($request, $userId, 'employees.update');
 
         if ($this->icalTokens->findByUserAndStore($userId, $storeId) === null) {
             throw new NotFoundException(__('error_ical_token_not_found'));
@@ -77,7 +80,8 @@ final class IcalTokenController
     {
         $userId  = (int) $request->param('user_id');
         $storeId = (int) $request->param('store_id');
-        $this->requireUser($userId);
+        $this->guard->require($request, $userId, 'employees.update');
+        $this->assertMember($userId, $storeId);
 
         $existing = $this->icalTokens->findByUserAndStore($userId, $storeId);
         $saved    = $this->icalTokens->save(array_merge($existing ?? [], [
@@ -91,10 +95,11 @@ final class IcalTokenController
         return Response::json($saved);
     }
 
-    private function requireUser(int $id): void
+    /** Le flux iCal d'un magasin n'est délivré qu'à ses membres. */
+    private function assertMember(int $userId, int $storeId): void
     {
-        if ($this->users->findById($id) === null) {
-            throw new NotFoundException(__('error_user_not_found'));
+        if ($this->storeUsers->findMembership($storeId, $userId) === null) {
+            throw new NotFoundException(__('error_store_not_found'));
         }
     }
 }
