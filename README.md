@@ -100,7 +100,7 @@ php scripts/provision.php --admin-email=admin@example.com --admin-password='…'
 
 ### Web server
 
-Only `public/` is meant to be served. Point the web server's document root (Apache `DocumentRoot`, nginx `root`) at it — never at the repository root, or `.env`, `storage/app/database.sqlite`, backups and the source code become downloadable. `php -S … -t public` already does this. On Apache, if the server (or a shared host's `www/` folder) points at the repository root anyway, a root `.htaccess` transparently rewrites every request to `public/` — the URL stays clean, nothing outside `public/` becomes reachable, and it works from a sub-folder too (`/Kintai/`). nginx has no equivalent, so its `root` must be right.
+Only `public/` is meant to be served. Point the web server's document root (Apache `DocumentRoot`, nginx `root`) at it — never at the repository root, or `.env`, `storage/app/database.sqlite`, backups and the source code become downloadable. `php -S … -t public` already does this. On Apache, if the server (or a shared host's `www/` folder) points at the repository root anyway, a root `.htaccess` transparently rewrites every request to `public/` — the URL stays clean, nothing outside `public/` becomes reachable, and it works from a sub-folder too (`/Kintai/`). `storage/.htaccess` only denies the technical sub-folders that physically exist (`app`, `backups`, `bundles`, `cache`, `logs`, `uploads`): Apache checks it against the original `/storage/…` URL *before* that rewrite, so a blanket deny would answer 403 for photos and avatars served by the access-controlled `/storage/{path}` route. nginx has no equivalent, so its `root` must be right.
 
 ### Updating
 
