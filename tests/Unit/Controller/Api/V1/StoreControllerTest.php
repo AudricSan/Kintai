@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Controller\Api\V1;
 
+use kintai\Tests\Support\ApiOwnerAuth;
 use kintai\Core\Exceptions\PlanLimitExceededException;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Request;
@@ -24,7 +25,7 @@ final class StoreControllerTest extends TestCase
     {
         $this->stores = $this->createMock(StoreRepositoryInterface::class);
         $this->storeService = $this->createMock(StoreServiceInterface::class);
-        $this->controller = new StoreController($this->stores, $this->storeService, new AuditLogger());
+        $this->controller = new StoreController($this->stores, $this->storeService, new AuditLogger(), ApiOwnerAuth::permissions($this));
     }
 
     protected function tearDown(): void
@@ -34,7 +35,7 @@ final class StoreControllerTest extends TestCase
 
     private function makeJsonRequest(array $body): Request
     {
-        $req = new Request();
+        $req = ApiOwnerAuth::owner(new Request());
         $ref = new \ReflectionProperty(Request::class, 'jsonBody');
         $ref->setAccessible(true);
         $ref->setValue($req, $body);

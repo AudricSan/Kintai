@@ -450,6 +450,7 @@
     "error_503_title": "503 — Maintenance en cours",
     "error_access_denied": "Accès refusé.",
     "error_api_permission_insufficient": "Permission insuffisante : :key requise.",
+    "error_api_store_id_required": "Le champ store_id est obligatoire.",
     "error_availability_not_found": "Disponibilité introuvable.",
     "error_claim_not_found": "Candidature introuvable.",
     "error_clockin_already_active": "Un clock-in est déjà actif pour cet employé.",
