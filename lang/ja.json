@@ -450,6 +450,7 @@
     "error_503_title": "503 — メンテナンス中",
     "error_access_denied": "アクセスが拒否されました。",
     "error_api_permission_insufficient": "権限が不足しています：:key が必要です。",
+    "error_api_store_id_required": "store_id は必須です。",
     "error_availability_not_found": "空き状況が見つかりません。",
     "error_claim_not_found": "応募が見つかりません。",
     "error_clockin_already_active": "この従業員には既に有効な出勤打刻があります。",
