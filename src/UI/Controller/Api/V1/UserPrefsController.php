@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\UI\Controller\Api\V1;
 
-use kintai\Core\Exceptions\NotFoundException;
+use kintai\Core\Auth\UserTargetGuard;
 use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserNavPrefsRepositoryInterface;
-use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 
@@ -16,7 +15,7 @@ final class UserPrefsController
     public function __construct(
         private readonly UserDashboardPrefsRepositoryInterface $dashboardPrefs,
         private readonly UserNavPrefsRepositoryInterface $navPrefs,
-        private readonly UserRepositoryInterface $users,
+        private readonly UserTargetGuard $guard,
     ) {}
 
     /** GET /api/v1/users/{user_id}/dashboard-prefs?type=admin */
@@ -24,7 +23,7 @@ final class UserPrefsController
     {
         $userId        = (int) $request->param('user_id');
         $dashboardType = $request->query('type', 'admin') ?? 'admin';
-        $this->requireUser($userId);
+        $this->guard->require($request, $userId, 'employees.view');
 
         return Response::json([
             'user_id'        => $userId,
@@ -37,7 +36,7 @@ final class UserPrefsController
     public function saveDashboardPrefs(Request $request): Response
     {
         $userId        = (int) $request->param('user_id');
-        $this->requireUser($userId);
+        $this->guard->require($request, $userId, 'employees.update');
 
         $data          = $request->json() ?? [];
         $dashboardType = (string) ($data['dashboard_type'] ?? 'admin');
@@ -56,7 +55,7 @@ final class UserPrefsController
     public function getNavPrefs(Request $request): Response
     {
         $userId = (int) $request->param('user_id');
-        $this->requireUser($userId);
+        $this->guard->require($request, $userId, 'employees.view');
 
         return Response::json([
             'user_id' => $userId,
@@ -68,7 +67,7 @@ final class UserPrefsController
     public function saveNavPrefs(Request $request): Response
     {
         $userId = (int) $request->param('user_id');
-        $this->requireUser($userId);
+        $this->guard->require($request, $userId, 'employees.update');
 
         $data   = $request->json() ?? [];
         $hidden = (array) ($data['hidden'] ?? []);
@@ -76,12 +75,5 @@ final class UserPrefsController
         $this->navPrefs->saveHidden($userId, $hidden);
 
         return Response::json(['user_id' => $userId, 'hidden' => $hidden]);
-    }
-
-    private function requireUser(int $id): void
-    {
-        if ($this->users->findById($id) === null) {
-            throw new NotFoundException(__('error_user_not_found'));
-        }
     }
 }

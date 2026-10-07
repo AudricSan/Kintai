@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Controller\Api\V1;
 
+use kintai\Core\Repositories\StoreUserRepositoryInterface;
+use kintai\Core\Auth\UserTargetGuard;
+use kintai\Tests\Support\ApiOwnerAuth;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
@@ -25,7 +28,14 @@ final class UserShiftRateControllerTest extends TestCase
         $this->users = $this->createMock(UserRepositoryInterface::class);
         $this->users->method('findById')->with(20)->willReturn(['id' => 20]);
 
-        $this->controller = new UserShiftRateController($this->rates, $this->users, new AuditLogger());
+        $this->controller = new UserShiftRateController($this->rates, $this->guard(), new AuditLogger());
+    }
+
+    private function guard(): UserTargetGuard
+    {
+        $storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
+        $storeUsers->method('findByUser')->willReturn([]);
+        return new UserTargetGuard($this->users, $storeUsers, ApiOwnerAuth::permissions($this));
     }
 
     // -------------------------------------------------------------------------
@@ -46,7 +56,7 @@ final class UserShiftRateControllerTest extends TestCase
     {
         $this->users = $this->createMock(UserRepositoryInterface::class);
         $this->users->method('findById')->with(99)->willReturn(null);
-        $controller = new UserShiftRateController($this->rates, $this->users, new AuditLogger());
+        $controller = new UserShiftRateController($this->rates, $this->guard(), new AuditLogger());
 
         $this->expectException(NotFoundException::class);
         $controller->index($this->requestFor(['user_id' => '99']));
@@ -125,7 +135,7 @@ final class UserShiftRateControllerTest extends TestCase
 
     private function requestFor(array $routeParams, array $json = []): Request
     {
-        $req = new Request();
+        $req = ApiOwnerAuth::owner(new Request());
         if ($json !== []) {
             $ref = new \ReflectionProperty(Request::class, 'jsonBody');
             $ref->setAccessible(true);

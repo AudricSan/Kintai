@@ -788,6 +788,7 @@ final class AdminUserControllerTest extends TestCase
 
     public function testUpdateUserRedirectsWithErrorWhenEmailTakenByAnotherUser(): void
     {
+        $this->grantRequesterGlobalRole($this->roleAssignments, $this->roles);
         $this->users->method('findById')->with(5)->willReturn(['id' => 5, 'email' => 'me@example.com']);
         $this->users->method('findByEmail')->with('taken@example.com')->willReturn(['id' => 99]);
         $this->users->expects($this->never())->method('save');
@@ -803,6 +804,7 @@ final class AdminUserControllerTest extends TestCase
     /** Le nom et le prénom sont désormais obligatoires à l'édition, sauf s'ils sont déjà en base. */
     public function testUpdateUserRedirectsWithErrorWhenNameMissing(): void
     {
+        $this->grantRequesterGlobalRole($this->roleAssignments, $this->roles);
         $this->users->method('findById')->with(5)->willReturn(['id' => 5, 'email' => 'me@example.com', 'last_name' => null, 'first_name' => null]);
         $this->users->expects($this->never())->method('save');
 
@@ -817,6 +819,7 @@ final class AdminUserControllerTest extends TestCase
     /** Le furigana est désormais obligatoire à l'édition, sauf s'il est déjà en base. */
     public function testUpdateUserRedirectsWithErrorWhenFuriganaMissing(): void
     {
+        $this->grantRequesterGlobalRole($this->roleAssignments, $this->roles);
         $this->users->method('findById')->with(5)->willReturn(['id' => 5, 'email' => 'me@example.com', 'last_name' => 'Doe', 'first_name' => 'John', 'furigana_last_name' => null, 'furigana_first_name' => null]);
         $this->users->expects($this->never())->method('save');
 
@@ -830,6 +833,7 @@ final class AdminUserControllerTest extends TestCase
 
     public function testUpdateUserAllowsKeepingOwnEmailUnchanged(): void
     {
+        $this->grantRequesterGlobalRole($this->roleAssignments, $this->roles);
         $this->users->method('findById')->with(5)->willReturn(['id' => 5, 'email' => 'me@example.com', 'last_name' => 'Doe', 'first_name' => 'John']);
         $this->users->expects($this->never())->method('findByEmail');
         $this->users->expects($this->once())->method('save')->willReturn(['id' => 5]);
@@ -879,6 +883,7 @@ final class AdminUserControllerTest extends TestCase
      */
     public function testUpdateUserIgnoresIsAdminWhenRequesterIsNotOwner(): void
     {
+        $this->grantRequesterGlobalRole($this->roleAssignments, $this->roles);
         $this->users->method('findById')->with(5)->willReturn(['id' => 5, 'email' => 'me@example.com', 'last_name' => 'Doe', 'first_name' => 'John']);
         $this->users->method('save')->willReturn(['id' => 5]);
         $this->roles->expects($this->never())->method('findBySlug');
@@ -1039,6 +1044,7 @@ final class AdminUserControllerTest extends TestCase
 
     public function testSetUserRateAllowedWhenManagingOneOfTypeStores(): void
     {
+        $this->grantRequesterGlobalRole($this->roleAssignments, $this->roles);
         $this->users->method('findById')->with(10)->willReturn(['id' => 10]);
         $this->shiftTypes->method('findById')->with(7)->willReturn(['id' => 7, 'code' => 'MORNING']);
         $this->shiftTypes->method('getStoreIds')->with(7)->willReturn([1, 2]);
@@ -1082,10 +1088,20 @@ final class AdminUserControllerTest extends TestCase
     // Helpers
     // -------------------------------------------------------------------------
 
+    /** Accorde au demandeur (quel que soit son id) un rôle système global : la garde d'accès à l'employé ciblé le laisse passer. */
+    private function grantRequesterGlobalRole($assignments, $roles): void
+    {
+        $assignments->method('findByUser')->willReturn([['id' => 1, 'user_id' => 1, 'role_id' => 10, 'scope_type' => 'global', 'scope_id' => null]]);
+        $roles->method('findById')->willReturn(['id' => 10, 'is_system' => 1]);
+    }
+
     private function makePostRequest(array $post): Request
     {
         $_POST = $post;
-        return new Request();
+        $req = new Request();
+        // Demandeur par défaut ; les tests qui en ont besoin d'un autre le redéfinissent.
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => false]);
+        return $req;
     }
 
     private function makeQueryRequest(array $query): Request
