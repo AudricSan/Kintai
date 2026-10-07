@@ -120,6 +120,23 @@ jobs:
             exit 1
           fi
 
+          # GitHub refuse un corps de Release de plus de 125 000 caractères (HTTP 422) : au-delà, la Release n'est pas
+          # créée alors que le tag, lui, est déjà poussé (cas de la v0.3.4). On coupe donc à la dernière ligne entière
+          # qui tient sous la limite — comptée en octets, toujours >= au nombre de caractères, et sans jamais couper
+          # un caractère multi-octet en deux — et on renvoie vers le CHANGELOG complet.
+          MAX_BYTES=120000
+          if [ "$(wc -c < release-notes.txt)" -gt "$MAX_BYTES" ]; then
+            echo "::warning::Notes de release tronquées (> ${MAX_BYTES} octets) : limite GitHub de 125 000 caractères."
+            LC_ALL=C awk -v max="$MAX_BYTES" '{ n += length($0) + 1; if (n > max) exit; print }' release-notes.txt > release-notes.cut
+            {
+              cat release-notes.cut
+              echo
+              echo "---"
+              echo "_Notes tronquées (limite GitHub de 125 000 caractères) — liste complète dans [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/CHANGELOG.md)._"
+            } > release-notes.txt
+            rm release-notes.cut
+          fi
+
       - name: Create tag and GitHub release
         if: steps.version.outputs.skip != 'true'
         env:
