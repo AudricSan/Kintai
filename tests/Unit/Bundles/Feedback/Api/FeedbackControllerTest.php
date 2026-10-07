@@ -6,6 +6,7 @@ namespace kintai\Tests\Unit\Bundles\Feedback\Api;
 
 require_once dirname(__DIR__, 4) . '/Fixtures/bundles/feedback-1.0.0/src/Controllers/Api/FeedbackController.php';
 
+use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Bundles\Installed\Feedback\Controllers\Api\FeedbackController;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ForbiddenException;
@@ -29,6 +30,7 @@ final class FeedbackControllerTest extends TestCase
     private RoleAssignmentRepositoryInterface&MockObject $assignments;
     private RoleRepositoryInterface&MockObject $roles;
     private FeedbackController $controller;
+    private StoreUserRepositoryInterface&MockObject $storeUsers;
 
     protected function setUp(): void
     {
@@ -37,7 +39,8 @@ final class FeedbackControllerTest extends TestCase
         $this->roles       = $this->createMock(RoleRepositoryInterface::class);
         $this->controller  = new FeedbackController(
             $this->feedbacks,
-            new PermissionService($this->assignments, $this->roles)
+            new PermissionService($this->assignments, $this->roles),
+            $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class)
         );
     }
 

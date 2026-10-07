@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace kintai\UI\Controller\Api\V1;
 
 use kintai\Core\Api\Paginator;
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Request;
@@ -16,6 +17,7 @@ final class ShiftController
     public function __construct(
         private readonly ShiftRepositoryInterface $shifts,
         private readonly AuditLogger $auditLogger,
+        private readonly PermissionService $permissions,
     ) {}
 
     /** GET /api/v1/shifts?store_id=X&user_id=Y&date=Z&page=1&limit=20 */
@@ -36,51 +38,71 @@ final class ShiftController
             $items = [];
         }
 
+        $items = $this->permissions->restrictToScope($this->authUser($request), 'shifts.view', $items);
+
         return Response::json(Paginator::paginate($items, $page, $limit));
     }
 
     /** GET /api/v1/shifts/{id} */
     public function show(Request $request): Response
     {
-        $shift = $this->shifts->findById((int) $request->param('id'));
-        if ($shift === null) {
-            throw new NotFoundException(__('error_shift_not_found'));
-        }
-        return Response::json($shift);
+        return Response::json($this->requireShift($request, 'shifts.view'));
     }
 
-    /** POST /api/v1/shifts */
+    /** POST /api/v1/shifts — `store_id` obligatoire (la permission est vérifiée sur ce magasin). */
     public function store(Request $request): Response
     {
-        $data  = $request->json() ?? [];
+        $data = $request->json() ?? [];
+        unset($data['id']);
+        $this->permissions->requireOnStore($this->authUser($request), 'shifts.create', $data['store_id'] ?? null);
+
         $saved = $this->shifts->save($data);
-        $this->auditLogger->log($request, 'shift.created', 'shift', resourceId: (int) ($saved['id'] ?? 0) ?: null, details: $data, storeId: isset($data['store_id']) ? (int) $data['store_id'] : null);
+        $this->auditLogger->log($request, 'shift.created', 'shift', resourceId: (int) ($saved['id'] ?? 0) ?: null, details: $data, storeId: (int) $data['store_id']);
         return Response::json($saved, 201);
     }
 
     /** PUT /api/v1/shifts/{id} */
     public function update(Request $request): Response
     {
-        $id  = (int) $request->param('id');
-        $old = $this->shifts->findById($id);
-        if ($old === null) {
-            throw new NotFoundException(__('error_shift_not_found'));
+        $old = $this->requireShift($request, 'shifts.update');
+        $id  = (int) $old['id'];
+
+        $data = $request->json() ?? [];
+        // Déplacer un shift vers un autre magasin exige aussi le droit sur la destination.
+        if (isset($data['store_id']) && (int) $data['store_id'] !== (int) $old['store_id']) {
+            $this->permissions->requireOnStore($this->authUser($request), 'shifts.update', $data['store_id']);
         }
-        $data  = $request->json() ?? [];
+
         $saved = $this->shifts->save(array_merge($data, ['id' => $id]));
-        $this->auditLogger->logUpdate($request, 'shift.updated', 'shift', resourceId: $id, oldData: $old, newData: $saved, extraContext: $data, storeId: isset($data['store_id']) ? (int) $data['store_id'] : null);
+        $this->auditLogger->logUpdate($request, 'shift.updated', 'shift', resourceId: $id, oldData: $old, newData: $saved, extraContext: $data, storeId: (int) ($saved['store_id'] ?? 0) ?: null);
         return Response::json($saved);
     }
 
     /** DELETE /api/v1/shifts/{id} */
     public function destroy(Request $request): Response
     {
-        $id = (int) $request->param('id');
-        if ($this->shifts->findById($id) === null) {
-            throw new NotFoundException(__('error_shift_not_found'));
-        }
+        $old = $this->requireShift($request, 'shifts.delete');
+        $id  = (int) $old['id'];
+
         $this->shifts->delete($id);
-        $this->auditLogger->log($request, 'shift.deleted', 'shift', resourceId: $id);
+        $this->auditLogger->log($request, 'shift.deleted', 'shift', resourceId: $id, storeId: (int) $old['store_id'] ?: null);
         return Response::empty();
+    }
+
+    private function authUser(Request $request): array
+    {
+        return $request->getAttribute('auth_user') ?? [];
+    }
+
+    /** Charge le shift par id et vérifie $permissionKey sur son magasin réel. */
+    private function requireShift(Request $request, string $permissionKey): array
+    {
+        return $this->permissions->requireOwnedResource(
+            $this->authUser($request),
+            fn(int $id) => $this->shifts->findById($id),
+            (int) $request->param('id'),
+            $permissionKey,
+            notFoundMessage: __('error_shift_not_found'),
+        );
     }
 }
