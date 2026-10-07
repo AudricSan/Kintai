@@ -155,12 +155,85 @@ final class WebRootProtectionTest extends TestCase
         $this->assertMatchesRegularExpression('/^\s*Options\s+-Indexes/m', $this->rootHtaccess());
     }
 
-    public function testStorageDeniesAllDirectAccess(): void
+    /**
+     * Expression de la condition <If> de storage/.htaccess (REQUEST_URI refusé), convertie en regex PCRE.
+     *
+     * @return list<string>
+     */
+    private function storageDenyPatterns(): array
     {
         $file = $this->root . '/storage/.htaccess';
-        $this->assertFileExists($file, 'storage/.htaccess a disparu (refus de tout accès direct).');
-        $this->assertStringContainsString('Require all denied', (string) file_get_contents($file));
-        $this->assertStringContainsString('Deny from all', (string) file_get_contents($file), 'Repli Apache 2.2 manquant.');
+        $this->assertFileExists($file, 'storage/.htaccess a disparu (refus de l\'accès direct).');
+        $content = (string) file_get_contents($file);
+
+        $this->assertStringContainsString('Require all denied', $content);
+        $this->assertStringContainsString('Deny from all', $content, 'Repli Apache 2.2 manquant.');
+        $this->assertSame(
+            1,
+            preg_match('~<If "([^"\n]+)">~', $content, $if),
+            'La condition <If> de storage/.htaccess a disparu.',
+        );
+        preg_match_all('~m#(.+?)#i~', $if[1], $m);
+        $this->assertNotEmpty($m[1]);
+
+        return array_map(static fn(string $p): string => '#' . $p . '#i', $m[1]);
+    }
+
+    private function storageIsDenied(string $uri): bool
+    {
+        foreach ($this->storageDenyPatterns() as $pattern) {
+            if (preg_match($pattern, $uri) === 1) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** @return array<string, array{string}> */
+    public static function physicalStoragePaths(): array
+    {
+        return [
+            'base SQLite'        => ['/storage/app/database.sqlite'],
+            'sauvegardes'        => ['/storage/backups/backup_2026.zip'],
+            'journaux'           => ['/storage/logs/error.log'],
+            'cache'              => ['/storage/cache/x'],
+            'bundles installés'  => ['/storage/bundles/installed.json'],
+            'uploads en direct'  => ['/storage/uploads/img/1/a.jpg'],
+            'marqueur install'   => ['/storage/installed.lock'],
+            'casse différente'   => ['/STORAGE/APP/database.sqlite'],
+            'sous-dossier'       => ['/Kintai/storage/app/database.sqlite'],
+            'dossier seul'       => ['/storage/app'],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('physicalStoragePaths')]
+    public function testStorageDeniesDirectAccessToPhysicalContent(string $uri): void
+    {
+        $this->assertTrue($this->storageIsDenied($uri), "« $uri » doit rester refusé par storage/.htaccess.");
+    }
+
+    /** @return array<string, array{string}> */
+    public static function virtualStorageUrls(): array
+    {
+        return [
+            'photo'            => ['/storage/img/3/12/photo.jpg'],
+            'avatar'           => ['/storage/avatars/u1.webp'],
+            'import'           => ['/storage/5/import.xlsx'],
+            'sous-dossier'     => ['/Kintai/storage/img/3/12/photo.jpg'],
+            'dossier "app" plus loin' => ['/storage/img/3/app/photo.jpg'],
+        ];
+    }
+
+    /**
+     * Apache évalue storage/.htaccess pour l'URL originale, avant la réécriture racine vers public/ : un refus
+     * inconditionnel renvoyait 403 sur les photos servies par StorageFileController dès que le serveur pointe sur
+     * la racine du dépôt (sans /public dans l'URL). Ces URL ne correspondent à aucun fichier réel et doivent passer.
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('virtualStorageUrls')]
+    public function testStorageLetsVirtualUrlsReachTheFrontController(string $uri): void
+    {
+        $this->assertFalse($this->storageIsDenied($uri), "« $uri » ne doit pas être bloqué par Apache (URL servie par le contrôleur).");
     }
 
     public function testStorageHtaccessIsNotIgnoredByGit(): void
