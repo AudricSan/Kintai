@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace kintai\UI\Controller\Api\V1;
 
 use kintai\Core\Api\Paginator;
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\NotFoundException;
+use kintai\Core\Exceptions\ValidationException;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\StoreServiceInterface;
+use kintai\Core\Validation\StoreValidator;
 
 final class StoreController
 {
@@ -18,29 +21,37 @@ final class StoreController
         private readonly StoreRepositoryInterface $stores,
         private readonly StoreServiceInterface $storeService,
         private readonly AuditLogger $auditLogger,
+        private readonly PermissionService $permissions,
     ) {}
 
     /** GET /api/v1/stores?page=1&limit=20 */
     public function index(Request $request): Response
     {
         [$page, $limit] = Paginator::params($request);
-        return Response::json(Paginator::paginate($this->stores->findAll(), $page, $limit));
+        $authUser = $this->authUser($request);
+        $items    = $this->stores->findAll();
+
+        if (!$this->permissions->hasUnrestrictedGrant($authUser, 'stores.view')) {
+            $items = array_values(array_filter(
+                $items,
+                fn(array $s): bool => $this->permissions->can($authUser, 'stores.view', (int) $s['id'])
+            ));
+        }
+
+        return Response::json(Paginator::paginate($items, $page, $limit));
     }
 
     /** GET /api/v1/stores/{id} */
     public function show(Request $request): Response
     {
-        $store = $this->stores->findById((int) $request->param('id'));
-        if ($store === null) {
-            throw new NotFoundException(__('error_store_not_found'));
-        }
-        return Response::json($store);
+        return Response::json($this->requireStore($request, 'stores.view'));
     }
 
     /** POST /api/v1/stores */
     public function store(Request $request): Response
     {
-        $data  = $request->json() ?? [];
+        $data = $request->json() ?? [];
+        unset($data['id']);
         $saved = $this->storeService->createStore($data);
         $this->auditLogger->log($request, 'store.created', 'store', resourceId: (int) ($saved['id'] ?? 0) ?: null, details: $data);
         return Response::json($saved, 201);
@@ -49,12 +60,16 @@ final class StoreController
     /** PUT /api/v1/stores/{id} */
     public function update(Request $request): Response
     {
-        $id  = (int) $request->param('id');
-        $old = $this->stores->findById($id);
-        if ($old === null) {
-            throw new NotFoundException(__('error_store_not_found'));
+        $old = $this->requireStore($request, 'stores.update');
+        $id  = (int) $old['id'];
+
+        $data = $request->json() ?? [];
+        // Même contrôle de devise que le formulaire web (StoreService::updateStore) : la valeur est affichée dans les statistiques.
+        $currencyErrors = StoreValidator::currencyErrors($data);
+        if ($currencyErrors !== []) {
+            throw new ValidationException(['currency' => $currencyErrors[0]], $currencyErrors[0]);
         }
-        $data  = $request->json() ?? [];
+
         $saved = $this->stores->save(array_merge($data, ['id' => $id]));
         $this->auditLogger->logUpdate($request, 'store.updated', 'store', resourceId: $id, oldData: $old, newData: $saved, extraContext: $data);
         return Response::json($saved);
@@ -63,12 +78,28 @@ final class StoreController
     /** DELETE /api/v1/stores/{id} */
     public function destroy(Request $request): Response
     {
-        $id = (int) $request->param('id');
-        if ($this->stores->findById($id) === null) {
-            throw new NotFoundException(__('error_store_not_found'));
-        }
+        $old = $this->requireStore($request, 'stores.delete');
+        $id  = (int) $old['id'];
+
         $this->stores->delete($id);
         $this->auditLogger->log($request, 'store.deleted', 'store', resourceId: $id);
         return Response::empty();
+    }
+
+    private function authUser(Request $request): array
+    {
+        return $request->getAttribute('auth_user') ?? [];
+    }
+
+    /** Charge le magasin par id et vérifie $permissionKey sur ce magasin (jamais « n'importe lequel »). */
+    private function requireStore(Request $request, string $permissionKey): array
+    {
+        $id    = (int) $request->param('id');
+        $store = $this->stores->findById($id);
+        if ($store === null) {
+            throw new NotFoundException(__('error_store_not_found'));
+        }
+        $this->permissions->requireOnStore($this->authUser($request), $permissionKey, $id);
+        return $store;
     }
 }

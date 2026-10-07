@@ -6,6 +6,7 @@ namespace kintai\Core\Auth;
 
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
+use kintai\Core\Exceptions\ValidationException;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 
@@ -204,6 +205,93 @@ final class PermissionService
             throw new ForbiddenException(__('error_permission_insufficient', ['key' => $permissionKey]));
         }
         return $item;
+    }
+
+    /**
+     * Vrai si $permissionKey est accordée SANS restriction de magasin : affectation
+     * globale, ou clé marquée « Toutes les boutiques » sur le rôle. Contrairement à
+     * can($user, $key, null) (« accordée quelque part »), un simple gérant d'un seul
+     * magasin n'est jamais illimité.
+     */
+    public function hasUnrestrictedGrant(array $authUser, string $permissionKey): bool
+    {
+        $userId = (int) ($authUser['id'] ?? 0);
+        if ($userId <= 0) {
+            return false;
+        }
+        foreach ($this->assignments->findByUser($userId) as $assignment) {
+            $roleId = (int) $assignment['role_id'];
+            if (!$this->roleGrants($roleId, $permissionKey)) {
+                continue;
+            }
+            if ($assignment['scope_type'] === 'global' || $this->permissionIsGlobalOnRole($roleId, $permissionKey)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Exige $permissionKey sur AU MOINS UN des magasins donnés (ex. les magasins d'un
+     * employé ciblé), ou sans restriction de magasin. Une liste vide n'est donc
+     * acceptée que pour une portée illimitée.
+     *
+     * @param int[] $storeIds
+     * @throws ForbiddenException
+     */
+    public function requireOnAnyStore(array $authUser, string $permissionKey, array $storeIds): void
+    {
+        if ($this->hasUnrestrictedGrant($authUser, $permissionKey)) {
+            return;
+        }
+        foreach ($storeIds as $storeId) {
+            if ($this->can($authUser, $permissionKey, (int) $storeId)) {
+                return;
+            }
+        }
+        throw new ForbiddenException(__('error_permission_insufficient', ['key' => $permissionKey]));
+    }
+
+    /**
+     * Exige $permissionKey sur UN magasin précis, fourni par le client (corps d'une
+     * création, ou nouveau magasin d'une modification). Un magasin absent est une
+     * erreur de validation, jamais une portée « n'importe laquelle ».
+     *
+     * @throws ValidationException Si $storeId est absent
+     * @throws ForbiddenException
+     */
+    public function requireOnStore(array $authUser, string $permissionKey, mixed $storeId): void
+    {
+        $storeId = is_numeric($storeId) ? (int) $storeId : 0;
+        if ($storeId <= 0) {
+            throw new ValidationException(['store_id' => __('error_api_store_id_required')]);
+        }
+        if (!$this->can($authUser, $permissionKey, $storeId)) {
+            throw new ForbiddenException(__('error_permission_insufficient', ['key' => $permissionKey]));
+        }
+    }
+
+    /**
+     * Garde d'accès à un compte employé ciblé : $permissionKey sur l'un de ses magasins
+     * (voir requireOnAnyStore()) et, en plus, seul un Owner peut agir sur un compte
+     * Owner — sinon un gérant de magasin pourrait réinitialiser le mot de passe de
+     * l'Owner. Un utilisateur peut toujours agir sur son propre compte.
+     *
+     * @param int[] $targetStoreIds Magasins dont la cible est membre
+     * @throws ForbiddenException
+     */
+    public function requireUserAccess(array $authUser, string $permissionKey, int $targetUserId, array $targetStoreIds): void
+    {
+        $callerId = (int) ($authUser['id'] ?? 0);
+        if ($callerId > 0 && $callerId === $targetUserId) {
+            return;
+        }
+        $this->requireOnAnyStore($authUser, $permissionKey, $targetStoreIds);
+
+        $owners = $this->ownerUserIds();
+        if (in_array($targetUserId, $owners, true) && !in_array($callerId, $owners, true)) {
+            throw new ForbiddenException(__('error_permission_insufficient', ['key' => $permissionKey]));
+        }
     }
 
     /**

@@ -6,6 +6,7 @@ namespace kintai\Tests\Unit\Bundles\ShiftClaim\Api;
 
 require_once dirname(__DIR__, 4) . '/Fixtures/bundles/shift-claim-1.0.0/src/Controllers/Api/ShiftClaimController.php';
 
+use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Bundles\Installed\ShiftClaim\Controllers\Api\ShiftClaimController;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ForbiddenException;
@@ -30,6 +31,7 @@ final class ShiftClaimControllerTest extends TestCase
     private RoleAssignmentRepositoryInterface&MockObject $assignments;
     private RoleRepositoryInterface&MockObject $roles;
     private ShiftClaimController $controller;
+    private StoreUserRepositoryInterface&MockObject $storeUsers;
 
     protected function setUp(): void
     {
@@ -38,7 +40,8 @@ final class ShiftClaimControllerTest extends TestCase
         $this->roles       = $this->createMock(RoleRepositoryInterface::class);
         $this->controller  = new ShiftClaimController(
             $this->claims,
-            new PermissionService($this->assignments, $this->roles)
+            new PermissionService($this->assignments, $this->roles),
+            $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class)
         );
     }
 
