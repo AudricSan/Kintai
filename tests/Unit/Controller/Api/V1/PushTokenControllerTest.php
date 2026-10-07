@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Controller\Api\V1;
 
+use kintai\Core\Repositories\StoreUserRepositoryInterface;
+use kintai\Core\Auth\UserTargetGuard;
+use kintai\Tests\Support\ApiOwnerAuth;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Exceptions\ValidationException;
 use kintai\Core\Repositories\DevicePushTokenRepositoryInterface;
@@ -23,7 +26,9 @@ final class PushTokenControllerTest extends TestCase
     {
         $this->tokens = $this->createMock(DevicePushTokenRepositoryInterface::class);
         $this->users  = $this->createMock(UserRepositoryInterface::class);
-        $this->controller = new PushTokenController($this->tokens, $this->users);
+        $storeUsers   = $this->createMock(StoreUserRepositoryInterface::class);
+        $storeUsers->method('findByUser')->willReturn([]);
+        $this->controller = new PushTokenController($this->tokens, new UserTargetGuard($this->users, $storeUsers, ApiOwnerAuth::permissions($this)));
     }
 
     public function testStoreRegistersDeviceToken(): void
@@ -82,7 +87,7 @@ final class PushTokenControllerTest extends TestCase
 
     private function requestWithJson(array $json, array $routeParams = []): Request
     {
-        $req = new Request();
+        $req = ApiOwnerAuth::owner(new Request());
         $ref = new \ReflectionProperty(Request::class, 'jsonBody');
         $ref->setAccessible(true);
         $ref->setValue($req, $json);

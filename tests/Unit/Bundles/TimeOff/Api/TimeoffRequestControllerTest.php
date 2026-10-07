@@ -6,6 +6,7 @@ namespace kintai\Tests\Unit\Bundles\TimeOff\Api;
 
 require_once dirname(__DIR__, 4) . '/Fixtures/bundles/timeoff-1.0.0/src/Controllers/Api/TimeoffRequestController.php';
 
+use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Bundles\Installed\TimeOff\Controllers\Api\TimeoffRequestController;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ForbiddenException;
@@ -29,6 +30,7 @@ final class TimeoffRequestControllerTest extends TestCase
     private RoleAssignmentRepositoryInterface&MockObject $assignments;
     private RoleRepositoryInterface&MockObject $roles;
     private TimeoffRequestController $controller;
+    private StoreUserRepositoryInterface&MockObject $storeUsers;
 
     protected function setUp(): void
     {
@@ -38,7 +40,8 @@ final class TimeoffRequestControllerTest extends TestCase
         $this->controller      = new TimeoffRequestController(
             $this->timeoffRequests,
             new AuditLogger(),
-            new PermissionService($this->assignments, $this->roles)
+            new PermissionService($this->assignments, $this->roles),
+            $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class)
         );
     }
 

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Controller\Api\V1;
 
+use kintai\Core\Repositories\StoreUserRepositoryInterface;
+use kintai\Tests\Support\ApiOwnerAuth;
 use kintai\Core\Exceptions\PlanLimitExceededException;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
@@ -34,6 +36,8 @@ final class UserControllerTest extends TestCase
                 $this->users,
                 new LicenseClientService($this->createMock(AppSettingsRepositoryInterface::class), ['base_url' => '', 'api_key' => '']),
             ),
+            ApiOwnerAuth::permissions($this),
+            $this->createMock(StoreUserRepositoryInterface::class),
         );
     }
 
@@ -44,7 +48,7 @@ final class UserControllerTest extends TestCase
 
     private function makeJsonRequest(array $body): Request
     {
-        $req = new Request();
+        $req = ApiOwnerAuth::owner(new Request());
         $ref = new \ReflectionProperty(Request::class, 'jsonBody');
         $ref->setAccessible(true);
         $ref->setValue($req, $body);

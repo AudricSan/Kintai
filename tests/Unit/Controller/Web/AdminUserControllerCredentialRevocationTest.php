@@ -66,6 +66,10 @@ final class AdminUserControllerCredentialRevocationTest extends TestCase
         $roles = $this->createMock(RoleRepositoryInterface::class);
         $roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
 
+        // Demandeur : rôle système global (la garde d'accès à l'employé ciblé doit le laisser passer).
+        $roleAssignments->method('findByUser')->willReturn([['id' => 1, 'user_id' => 1, 'role_id' => 10, 'scope_type' => 'global', 'scope_id' => null]]);
+        $roles->method('findById')->willReturn(['id' => 10, 'is_system' => 1]);
+
         $container = new Container();
         $container->instance(LogRepositoryInterface::class, $this->createMock(LogRepositoryInterface::class));
         Log::setContainer($container);

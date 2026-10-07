@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\UI\Controller\Api\V1;
 
-use kintai\Core\Exceptions\NotFoundException;
+use kintai\Core\Auth\UserTargetGuard;
 use kintai\Core\Exceptions\ValidationException;
 use kintai\Core\Repositories\DevicePushTokenRepositoryInterface;
-use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 
@@ -17,7 +16,7 @@ final class PushTokenController
 
     public function __construct(
         private readonly DevicePushTokenRepositoryInterface $tokens,
-        private readonly UserRepositoryInterface $users,
+        private readonly UserTargetGuard $guard,
     ) {}
 
     /**
@@ -29,7 +28,7 @@ final class PushTokenController
     public function store(Request $request): Response
     {
         $userId = (int) $request->param('user_id');
-        $this->requireUser($userId);
+        $this->guard->require($request, $userId, 'employees.update');
 
         $data     = $request->json() ?? [];
         $token    = trim((string) ($data['token'] ?? ''));
@@ -58,7 +57,7 @@ final class PushTokenController
     public function destroy(Request $request): Response
     {
         $userId = (int) $request->param('user_id');
-        $this->requireUser($userId);
+        $this->guard->require($request, $userId, 'employees.update');
 
         $token = trim((string) ($request->json('token') ?? ''));
         if ($token === '') {
@@ -67,12 +66,5 @@ final class PushTokenController
 
         $this->tokens->deleteByToken($token);
         return Response::empty();
-    }
-
-    private function requireUser(int $id): void
-    {
-        if ($this->users->findById($id) === null) {
-            throw new NotFoundException(__('error_user_not_found'));
-        }
     }
 }

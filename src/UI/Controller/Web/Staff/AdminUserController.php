@@ -48,6 +48,23 @@ final class AdminUserController
     ) {}
 
     /**
+     * Garde d'accès à l'employé ciblé par une route /admin/users/{id}/... : la permission doit être
+     * accordée sur l'un de ses magasins (managed_store_ids ne dit que « quelque part »), et seul un
+     * Owner peut agir sur un compte Owner — sans quoi un gérant pouvait réinitialiser le mot de passe
+     * de l'Owner ou modifier un employé d'un autre magasin.
+     */
+    private function assertCanActOnUser(Request $request, int $userId, string $permissionKey): void
+    {
+        $authUser = $request->getAttribute('auth_user') ?? [];
+        // Owner (is_admin est dérivé du rôle système par AuthService) : aucune restriction.
+        if (!empty($authUser['is_admin'])) {
+            return;
+        }
+        $storeIds = array_map(fn(array $m): int => (int) $m['store_id'], $this->storeUsers->findByUser($userId));
+        $this->permissions->requireUserAccess($authUser, $permissionKey, $userId, $storeIds);
+    }
+
+    /**
      * Enrichit chaque ligne d'un flag `is_admin` calculé depuis le RBAC
      * dynamique (Owner = affectation globale sur le rôle système), en
      * remplacement de la colonne historique users.is_admin.
@@ -665,6 +682,7 @@ final class AdminUserController
         if ($user === null) {
             throw new NotFoundException(__('error_user_not_found'));
         }
+        $this->assertCanActOnUser($request, (int) $user['id'], 'employees.view');
 
         $userId = (int) $user['id'];
         $user['is_admin'] = in_array($userId, $this->permissions->ownerUserIds(), true) ? 1 : 0;
@@ -762,6 +780,7 @@ final class AdminUserController
         if ($user === null) {
             throw new NotFoundException(__('error_user_not_found'));
         }
+        $this->assertCanActOnUser($request, (int) $user['id'], 'employees.update');
 
         $email = trim($request->post('email', $user['email'] ?? ''));
         if ($email !== ($user['email'] ?? '')) {
@@ -852,6 +871,7 @@ final class AdminUserController
     public function deleteUser(Request $request): Response
     {
         $id = (int) $request->param('id');
+        $this->assertCanActOnUser($request, $id, 'employees.delete');
         $this->users->delete($id);
         $this->revoker?->revokeAllFor($id);
         $this->auditLogger->log($request, 'user.deleted', 'user', $id, []);
@@ -864,6 +884,7 @@ final class AdminUserController
         if ($user === null) {
             throw new NotFoundException(__('error_user_not_found'));
         }
+        $this->assertCanActOnUser($request, (int) $user['id'], 'employees.update');
 
         $oldUser = $user;
         $user['password_hash'] = \kintai\Core\Auth\PasswordHasher::hash(\kintai\Core\Auth\PasswordPolicy::DEFAULT_PASSWORD);
@@ -887,6 +908,7 @@ final class AdminUserController
         if ($user === null) {
             throw new NotFoundException(__('error_user_not_found'));
         }
+        $this->assertCanActOnUser($request, $userId, 'employees.update');
 
         $shiftTypeId = (int) $request->post('shift_type_id', 0);
         $rateRaw     = $request->post('hourly_rate', '');
@@ -938,6 +960,7 @@ final class AdminUserController
     {
         $userId = (int) $request->param('id');
         $rid    = (int) $request->param('rid');
+        $this->assertCanActOnUser($request, $userId, 'employees.update');
 
         $rate = $this->userRates->findById($rid);
         if ($rate !== null && (int) $rate['user_id'] === $userId) {

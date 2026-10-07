@@ -6,6 +6,7 @@ namespace kintai\Tests\Unit\Bundles\Messaging\Api;
 
 require_once dirname(__DIR__, 4) . '/Fixtures/bundles/messaging-1.0.0/src/Controllers/Api/MessageController.php';
 
+use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Bundles\Installed\Messaging\Controllers\Api\MessageController;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
@@ -24,11 +25,12 @@ final class MessageControllerTest extends TestCase
 {
     private MessageRepositoryInterface&MockObject $messages;
     private MessageController $controller;
+    private StoreUserRepositoryInterface&MockObject $storeUsers;
 
     protected function setUp(): void
     {
         $this->messages  = $this->createMock(MessageRepositoryInterface::class);
-        $this->controller = new MessageController($this->messages);
+        $this->controller = new MessageController($this->messages, $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class));
     }
 
     protected function tearDown(): void
@@ -70,6 +72,10 @@ final class MessageControllerTest extends TestCase
 
     public function testCreateThreadForcesCreatorIdFromTokenAndAddsSelfAsParticipant(): void
     {
+        // L'appelant est membre du magasin 3, comme le participant ajouté.
+        $this->storeUsers->method('findMembership')->with(3, 42)->willReturn(['store_id' => 3, 'user_id' => 42]);
+        $this->storeUsers->method('findByUser')->willReturn([['store_id' => 3]]);
+
         $req = $this->requestAs(42, [
             'store_id'         => 3,
             'subject'          => 'Sujet',

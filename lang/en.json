@@ -450,6 +450,7 @@
     "error_503_title": "503 — Maintenance in progress",
     "error_access_denied": "Access denied.",
     "error_api_permission_insufficient": "Insufficient permission: :key required.",
+    "error_api_store_id_required": "The store_id field is required.",
     "error_availability_not_found": "Availability not found.",
     "error_claim_not_found": "Claim not found.",
     "error_clockin_already_active": "A clock-in is already active for this employee.",

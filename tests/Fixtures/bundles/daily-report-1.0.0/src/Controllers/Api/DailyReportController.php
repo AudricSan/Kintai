@@ -13,8 +13,18 @@ use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\DailyReportPermissionService;
 
+/**
+ * Régression (audit du 03/10/2026) : store() et update() fusionnaient le JSON brut du client. Un `id`
+ * dans le corps d'un POST écrasait le rapport de quelqu'un d'autre (save() fait un upsert sur l'id, ce
+ * qui contournait canEdit()), `author_id` était pris du client (un rapport pouvait être attribué à un
+ * tiers), et update() laissait modifier `store_id`, `status`, la validation ou le PDF. Seuls les champs
+ * métier de la liste blanche sont acceptés ; les transitions passent par submit()/validate().
+ */
 final class DailyReportController
 {
+    /** Champs de contenu qu'un client peut écrire (store_id, author_id, status et les champs de workflow sont imposés ou réservés). */
+    private const CONTENT_FIELDS = ['report_date', 'sales_total', 'customer_count', 'labor_cost', 'waste_total', 'notes', 'data'];
+
     public function __construct(
         private readonly DailyReportRepositoryInterface $reports,
         private readonly StoreRepositoryInterface $stores,
@@ -80,11 +90,12 @@ final class DailyReportController
             return $this->forbidden();
         }
 
-        $data = array_merge($body, [
+        $data = array_intersect_key($body, array_flip(self::CONTENT_FIELDS)) + [
+            'store_id'   => $storeId,
             'status'     => 'draft',
-            'author_id'  => $body['author_id'] ?? (int) ($authUser['id'] ?? 0),
+            'author_id'  => (int) ($authUser['id'] ?? 0),
             'created_at' => date('Y-m-d H:i:s'),
-        ]);
+        ];
         return Response::json($this->reports->save($data), 201);
     }
 
@@ -99,10 +110,10 @@ final class DailyReportController
             return $this->forbidden();
         }
 
-        return Response::json($this->reports->save(array_merge($request->json() ?? [], [
+        return Response::json($this->reports->save(array_intersect_key($request->json() ?? [], array_flip(self::CONTENT_FIELDS)) + [
             'id'         => (int) $report['id'],
             'updated_at' => date('Y-m-d H:i:s'),
-        ])));
+        ]));
     }
 
     /** DELETE /api/v1/daily-reports/{id} */
