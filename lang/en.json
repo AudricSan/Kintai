@@ -495,6 +495,7 @@
     "error_not_in_conversation": "You are not part of this conversation.",
     "error_not_resource_store_manager": "You are not a manager of a store associated with this resource.",
     "error_not_store_manager": "You are not a manager of this store.",
+    "error_role_exceeds_own_permissions": "You cannot assign a role with more permissions than your own.",
     "error_notification_not_found": "Notification not found.",
     "error_owner_only": "Reserved for the owner.",
     "error_owner_only_create_store": "Only an owner can create a store.",
