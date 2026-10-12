@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Controller\Web;
 
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Container;
 use kintai\Core\FeatureManager;
 use kintai\Core\Repositories\LogRepositoryInterface;
@@ -65,6 +66,7 @@ final class AdminStoreControllerTest extends TestCase
             $this->storeStatsService,
             new FeatureManager(['messaging', 'daily-report', 'store-photos']),
             new RoleAssignmentSyncService($this->roles, $this->roleAssignments),
+            new PermissionService($this->roleAssignments, $this->roles),
         );
     }
 
@@ -124,6 +126,7 @@ final class AdminStoreControllerTest extends TestCase
             $this->storeStatsService,
             new FeatureManager(['daily-report']), // messaging et store-photos désactivés
             new RoleAssignmentSyncService($this->roles, $this->roleAssignments),
+            new PermissionService($this->roleAssignments, $this->roles),
         );
 
         $req = new Request();
@@ -180,6 +183,7 @@ final class AdminStoreControllerTest extends TestCase
             // testUpdateStorePreservesFeatureHiddenByDisabledBundle pour le cas masqué).
             new FeatureManager(['messaging', 'daily-report', 'store-photos', 'timeoff', 'shift-swap', 'shift-claim', 'timeclock']),
             new RoleAssignmentSyncService($this->roles, $this->roleAssignments),
+            new PermissionService($this->roleAssignments, $this->roles),
         );
 
         $response = $controller->updateStore($req);
@@ -220,6 +224,7 @@ final class AdminStoreControllerTest extends TestCase
             $this->storeStatsService,
             new FeatureManager(['daily-report']), // messaging et store-photos désactivés
             new RoleAssignmentSyncService($this->roles, $this->roleAssignments),
+            new PermissionService($this->roleAssignments, $this->roles),
         );
 
         $response = $controller->updateStore($req);
@@ -282,6 +287,66 @@ final class AdminStoreControllerTest extends TestCase
         $kept
             ? $this->assertSame($redirectTo, $location)
             : $this->assertStringEndsWith('/admin/stores/1/edit?success=member_added', $location);
+    }
+
+    /** Prépare un gérant (id 2) du magasin 1 qui ne détient que shifts.view, et deux rôles assignables. */
+    private function prepareManagerScenario(array $post): Request
+    {
+        $_POST   = $post;
+        $_SERVER = ['REQUEST_METHOD' => 'POST', 'REQUEST_URI' => '/admin/stores/1/members/9/role', 'SCRIPT_NAME' => '/index.php'];
+        $this->roleAssignments->method('findByUser')->willReturnCallback(fn(int $uid) => $uid === 2
+            ? [['id' => 1, 'user_id' => 2, 'role_id' => 20, 'scope_type' => 'store', 'scope_id' => 1]]
+            : []);
+        $this->roleAssignments->method('findByScope')->willReturn([
+            ['id' => 5, 'user_id' => 7, 'role_id' => 10, 'scope_type' => 'global', 'scope_id' => null],
+        ]);
+        $this->roles->method('findById')->willReturnCallback(fn(int $id) => match ($id) {
+            10      => ['id' => 10, 'is_system' => 1],
+            default => ['id' => $id, 'is_system' => 0],
+        });
+        $this->roles->method('getPermissions')->willReturnCallback(fn(int $id) => match ($id) {
+            20, 31 => ['shifts.view'],
+            30      => ['shifts.view', 'shifts.update'],
+            default => [],
+        });
+        $this->roles->method('getGlobalPermissionKeys')->willReturn([]);
+        $this->stores->method('findById')->willReturn(['id' => 1]);
+
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 2]);
+        $req->setAttribute('managed_store_ids', [1]);
+        $req->setRouteParams(['id' => 1, 'mid' => 9]);
+        return $req;
+    }
+
+    /** Audit du 13/10/2026 : un gérant pouvait s'attribuer un rôle plus puissant que le sien. */
+    public function testUpdateMemberRoleRefusesRoleExceedingCallerPermissions(): void
+    {
+        $req = $this->prepareManagerScenario(['role_id' => '30']);
+        $this->storeUsers->method('findById')->with(9)->willReturn(['id' => 9, 'store_id' => 1, 'user_id' => 2]);
+        $this->users->method('findById')->willReturn(['id' => 2]);
+
+        $this->expectException(\kintai\Core\Exceptions\ForbiddenException::class);
+        $this->controller->updateMemberRole($req);
+    }
+
+    public function testUpdateMemberRoleRefusesToTouchAnOwnerAccount(): void
+    {
+        $req = $this->prepareManagerScenario(['role_id' => '31']);
+        $this->storeUsers->method('findById')->with(9)->willReturn(['id' => 9, 'store_id' => 1, 'user_id' => 7]);
+        $this->users->method('findById')->willReturn(['id' => 7]);
+
+        $this->expectException(\kintai\Core\Exceptions\ForbiddenException::class);
+        $this->controller->updateMemberRole($req);
+    }
+
+    public function testAddMemberRefusesUnknownUser(): void
+    {
+        $req = $this->prepareManagerScenario(['user_id' => '999', 'role_id' => '31']);
+        $this->users->method('findById')->willReturn(null);
+
+        $this->expectException(\kintai\Core\Exceptions\NotFoundException::class);
+        $this->controller->addMember($req);
     }
 
     protected function tearDown(): void
