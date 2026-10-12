@@ -326,6 +326,19 @@ select.form-control {
     flex-shrink: 0;
 }
 
+/* Mobile : la mascotte passe au-dessus de la palette au lieu d'être à côté. */
+@media (max-width: 640px) {
+    .theme-foxy-palette {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .theme-foxy-palette__title,
+    .theme-foxy-palette .color-presets {
+        justify-content: center;
+    }
+}
+
 .theme-foxy-palette__title {
     font-weight: 600;
     display: flex;
