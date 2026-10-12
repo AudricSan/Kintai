@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace kintai\Bundles\Installed\HiringReport\Controllers\Web;
 
+use kintai\Core\Exceptions\ValidationException;
 use kintai\Core\Repositories\HiringReportRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
+use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
@@ -54,6 +56,7 @@ final class AdminHiringReportController
         private readonly UserRepositoryInterface $users,
         private readonly HiringReportRepositoryInterface $hiringReports,
         private readonly AuditLogger $auditLogger,
+        private readonly StoreUserRepositoryInterface $storeUsers,
     ) {}
 
     public function hiringReports(Request $request): Response
@@ -103,7 +106,7 @@ final class AdminHiringReportController
         return Response::html($this->view->render('hiring-report::reports-hiring-form', [
             'title' => '新規採用報告書 — ' . ($store['name'] ?? ''),
             'store' => $store,
-            'users' => $this->users->findAll(),
+            'users' => $this->storeMembersForReportForm($storeId),
             'mode'  => 'create',
             'report' => [],
         ], 'layout.app'));
@@ -116,6 +119,9 @@ final class AdminHiringReportController
         $this->assertStoreAccess($request, $storeId);
 
         $userId = (int) $request->post('user_id', 0);
+        if ($userId > 0 && $this->storeUsers->findMembership($storeId, $userId) === null) {
+            throw new ValidationException(['user_id' => __('error_hiring_user_not_in_store')]);
+        }
 
         $data = array_merge([
             'store_id' => $storeId,
@@ -186,6 +192,6 @@ final class AdminHiringReportController
 
     protected function reportEditExtras(int $storeId, array $report): array
     {
-        return ['users' => $this->users->findAll()];
+        return ['users' => $this->storeMembersForReportForm($storeId, (int) ($report['user_id'] ?? 0))];
     }
 }

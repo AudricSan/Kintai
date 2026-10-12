@@ -319,6 +319,7 @@ final class AdminResignationReportControllerTest extends TestCase
         $req->setRouteParams(['id' => '1']);
 
         $this->stores->method('findById')->with(1)->willReturn(['id' => 1]);
+        $this->storeUsers->method('findMembership')->with(1, 5)->willReturn(['id' => 3]);
         $this->resignationReports->method('save')->willReturnCallback(fn(array $d) => $d + ['id' => 99]);
         $this->users->method('findById')->with(5)->willReturn(['id' => 5, 'is_active' => 1]);
 
@@ -333,6 +334,58 @@ final class AdminResignationReportControllerTest extends TestCase
         $this->assertSame(302, $response->status());
         $this->assertNotNull($captured);
         $this->assertSame(0, $captured['is_active']);
+    }
+
+    /** Audit du 13/10/2026 : la création désactivait n'importe quel compte, y compris hors du magasin. */
+    public function testStoreResignationReportRefusesUserOutsideTheStore(): void
+    {
+        $_POST = ['employee_name' => 'X', 'user_id' => '77'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setAttribute('auth_user', ['id' => 1]);
+        $req->setRouteParams(['id' => '1']);
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1]);
+        $this->storeUsers->method('findMembership')->willReturn(null);
+        $this->users->expects($this->never())->method('save');
+        $this->resignationReports->expects($this->never())->method('save');
+
+        $this->expectException(\kintai\Core\Exceptions\ValidationException::class);
+        $this->controller->storeResignationReport($req);
+    }
+
+    public function testStoreResignationReportRefusesOwnerAccountForNonOwner(): void
+    {
+        $_POST = ['employee_name' => 'Owner', 'user_id' => '7'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', [1]);
+        $req->setAttribute('auth_user', ['id' => 2]);
+        $req->setRouteParams(['id' => '1']);
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1]);
+        $this->storeUsers->method('findMembership')->willReturn(['id' => 3]);
+        $this->assignments->method('findByScope')->willReturn([
+            ['id' => 1, 'user_id' => 7, 'role_id' => 10, 'scope_type' => 'global', 'scope_id' => null],
+        ]);
+        $this->roles->method('findById')->willReturn(['id' => 10, 'is_system' => 1]);
+        $this->users->expects($this->never())->method('save');
+
+        $this->expectException(\kintai\Core\Exceptions\ForbiddenException::class);
+        $this->controller->storeResignationReport($req);
+    }
+
+    public function testDeletePermanentlyRefusesUserWhoBelongsToAnUnmanagedStore(): void
+    {
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', [1]);
+        $req->setAttribute('auth_user', ['id' => 2]);
+        $req->setRouteParams(['id' => '1', 'rid' => '10']);
+        $this->resignationReports->method('findById')->with(10)->willReturn(['id' => 10, 'store_id' => 1, 'user_id' => 5]);
+        $this->assignments->method('findByScope')->willReturn([]);
+        $this->storeUsers->method('findByUser')->with(5)->willReturn([['store_id' => 1], ['store_id' => 4]]);
+        $this->users->expects($this->never())->method('delete');
+        $this->resignationReports->expects($this->never())->method('delete');
+
+        $this->expectException(\kintai\Core\Exceptions\ForbiddenException::class);
+        $this->controller->deleteResignationReportPermanently($req);
     }
 
     public function testUpdateResignationReportMergesPostFieldsAndRedirects(): void
@@ -350,6 +403,7 @@ final class AdminResignationReportControllerTest extends TestCase
         $req = new Request();
         $req->setAttribute('managed_store_ids', null);
         $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+        $this->storeUsers->method('findMembership')->with(1, 5)->willReturn(['id' => 3]);
         $req->setRouteParams(['id' => '1', 'rid' => '10']);
 
         $this->resignationReports->method('findById')->with(10)
@@ -365,6 +419,23 @@ final class AdminResignationReportControllerTest extends TestCase
         $response = $this->controller->updateResignationReport($req);
 
         $this->assertSame(302, $response->status());
+    }
+
+    /** Audit du 13/10/2026 : un rapport ne peut pas être lié à un compte étranger au magasin. */
+    public function testUpdateResignationReportRejectsUserOutsideTheStore(): void
+    {
+        $_POST = ['user_id' => '99', 'employee_name' => 'X'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+        $req->setRouteParams(['id' => '1', 'rid' => '10']);
+
+        $this->resignationReports->method('findById')->with(10)->willReturn(['id' => 10, 'store_id' => 1]);
+        $this->storeUsers->method('findMembership')->willReturn(null);
+        $this->resignationReports->expects($this->never())->method('save');
+
+        $this->expectException(\kintai\Core\Exceptions\ValidationException::class);
+        $this->controller->updateResignationReport($req);
     }
 
     public function testDeleteResignationReportDeletesAndLogs(): void

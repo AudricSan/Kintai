@@ -523,6 +523,7 @@
     "error_shifts_different_stores": "シフトは同じ店舗に属している必要があります。",
     "error_storage_not_found": "ストレージが見つかりません。",
     "error_store_access_denied": "この店舗へのアクセスが拒否されました。",
+    "error_report_user_not_in_store": "選択した従業員はこの店舗のメンバーではありません。",
     "error_store_not_found": "店舗が見つかりません。",
     "error_submission_not_found": "投稿が見つかりません。",
     "error_target_shift_not_found": "対象シフトが見つかりません。",
