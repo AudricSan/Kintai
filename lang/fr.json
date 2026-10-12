@@ -580,7 +580,7 @@
     "feature_timeoff": "Congés",
     "feature_timeoff_desc": "Soumission et suivi des demandes d'absence.",
     "feedback_anonymous": "Soumettre de façon anonyme",
-    "feedback_anonymous_hint": "Votre identité ne sera pas visible par les managers.",
+    "feedback_anonymous_hint": "Votre nom est masqué dans la liste des retours. Il reste enregistré dans le journal d’activité que les administrateurs peuvent consulter.",
     "feedback_cat_app": "L'application",
     "feedback_cat_other": "Autre",
     "feedback_cat_schedule": "Mon planning",

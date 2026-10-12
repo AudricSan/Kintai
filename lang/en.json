@@ -580,7 +580,7 @@
     "feature_timeoff": "Time-off",
     "feature_timeoff_desc": "Submit and track absence requests.",
     "feedback_anonymous": "Submit anonymously",
-    "feedback_anonymous_hint": "Your identity will not be visible to managers.",
+    "feedback_anonymous_hint": "Your name is hidden in the feedback list. It is still recorded in the activity log that administrators can read.",
     "feedback_cat_app": "The application",
     "feedback_cat_other": "Other",
     "feedback_cat_schedule": "My schedule",
