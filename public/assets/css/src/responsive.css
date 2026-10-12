@@ -227,6 +227,10 @@
     .dash-two-col {
         grid-template-columns: minmax(0, 1fr);
     }
+
+    .theme-container {
+        flex-direction: column;
+    }
 }
 
 /* ── Mobile form compact (<640px) ───────────────── */
