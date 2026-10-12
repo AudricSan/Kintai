@@ -12,6 +12,7 @@ use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\HiringReportRepositoryInterface;
 use kintai\Core\Repositories\LogRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
+use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Services\AuditLogger;
@@ -25,6 +26,7 @@ final class AdminHiringReportControllerTest extends TestCase
     private HiringReportRepositoryInterface&MockObject $hiringReports;
     private StoreRepositoryInterface&MockObject $stores;
     private UserRepositoryInterface&MockObject $users;
+    private StoreUserRepositoryInterface&MockObject $storeUsers;
     private LogRepositoryInterface&MockObject $logRepo;
     private AdminHiringReportController $controller;
 
@@ -42,6 +44,7 @@ final class AdminHiringReportControllerTest extends TestCase
         $this->hiringReports = $this->createMock(HiringReportRepositoryInterface::class);
         $this->stores = $this->createMock(StoreRepositoryInterface::class);
         $this->users = $this->createMock(UserRepositoryInterface::class);
+        $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
 
         $this->logRepo = $this->createMock(LogRepositoryInterface::class);
         $container = new Container();
@@ -54,6 +57,7 @@ final class AdminHiringReportControllerTest extends TestCase
             $this->users,
             $this->hiringReports,
             new AuditLogger(),
+            $this->storeUsers,
         );
     }
 
@@ -157,6 +161,37 @@ final class AdminHiringReportControllerTest extends TestCase
         $this->controller->showHiringReport($req);
     }
 
+    /** Audit du 13/10/2026 : un rapport d'embauche ne peut pas être lié à un compte étranger au magasin. */
+    public function testStoreHiringReportRefusesUserOutsideTheStore(): void
+    {
+        $_POST = ['user_id' => '77', 'employee_name' => 'X'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setAttribute('auth_user', ['id' => 1]);
+        $req->setRouteParams(['id' => '1']);
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1]);
+        $this->storeUsers->method('findMembership')->willReturn(null);
+        $this->hiringReports->expects($this->never())->method('save');
+
+        $this->expectException(\kintai\Core\Exceptions\ValidationException::class);
+        $this->controller->storeHiringReport($req);
+    }
+
+    /** Le formulaire ne propose que les membres du magasin, pas tous les comptes de l'instance. */
+    public function testCreateHiringReportOnlyListsMembersOfTheStore(): void
+    {
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+        $req->setRouteParams(['id' => '1']);
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'A']);
+        $this->storeUsers->expects($this->atLeastOnce())->method('findByStore')->with(1)->willReturn([['user_id' => 5]]);
+        $this->users->expects($this->never())->method('findAll');
+        $this->users->method('findById')->with(5)->willReturn(['id' => 5]);
+
+        $this->assertSame(200, $this->controller->createHiringReport($req)->status());
+    }
+
     public function testStoreHiringReportSavesAndRedirects(): void
     {
         $_POST = [
@@ -187,6 +222,7 @@ final class AdminHiringReportControllerTest extends TestCase
         $req->setRouteParams(['id' => '1']);
 
         $this->stores->method('findById')->with(1)->willReturn(['id' => 1]);
+        $this->storeUsers->method('findMembership')->with(1, 5)->willReturn(['id' => 3]);
         $this->hiringReports->expects($this->once())->method('save')->with($this->callback(
             fn(array $data) =>
                 $data['store_id'] === 1
@@ -212,6 +248,7 @@ final class AdminHiringReportControllerTest extends TestCase
         $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
         $req->setRouteParams(['id' => '1', 'rid' => '10']);
 
+        $this->storeUsers->method('findMembership')->with(1, 5)->willReturn(['id' => 3]);
         $this->hiringReports->method('findById')->with(10)
             ->willReturn(['id' => 10, 'store_id' => 1, 'employee_name' => 'Ancien nom']);
 

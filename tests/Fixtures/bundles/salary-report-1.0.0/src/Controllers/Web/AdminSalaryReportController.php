@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace kintai\Bundles\Installed\SalaryReport\Controllers\Web;
 
 use kintai\Core\Auth\PermissionService;
+use kintai\Core\Exceptions\ValidationException;
 use kintai\Core\Repositories\DailyReportRepositoryInterface;
 use kintai\Core\Repositories\SalaryReportRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
@@ -287,6 +288,9 @@ final class AdminSalaryReportController
 
         $targetMonth = $request->post('target_month', '');
         $userId = (int) $request->post('user_id', 0);
+        if ($userId > 0 && $this->storeUsers->findMembership($storeId, $userId) === null) {
+            throw new ValidationException(['user_id' => __('error_salary_user_not_in_store')]);
+        }
 
         $existing = $this->salaryReports->findByStoreAndMonth($storeId, $targetMonth, $userId ?: null);
         if ($existing !== null) {
