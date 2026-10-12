@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace kintai\UI\Controller\Web\Staff;
 
 use kintai\Core\Exceptions\NotFoundException;
+use kintai\Core\Exceptions\ValidationException;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\PdfCjkFontResolver;
@@ -165,6 +166,7 @@ trait HasStaffReportCrud
 
         $changes = $this->postData($request, $cfg['fields']);
         $userId = (int) $request->post('user_id', 0);
+        $this->assertReportUserInStore($userId, $storeId);
         $changes = ['user_id' => $userId > 0 ? $userId : null] + $changes;
         $data = array_merge($report, $changes);
 
@@ -174,6 +176,24 @@ trait HasStaffReportCrud
         ]);
 
         return $this->redirectToList($storeId, $cfg['slug'], 'updated');
+    }
+
+    /**
+     * L'employé rattaché à un rapport doit être membre du magasin du rapport : sinon un gérant
+     * pouvait lier le rapport d'un magasin à un compte d'un autre magasin. Sans effet si la
+     * classe utilisatrice n'a pas de `$storeUsers` (anciennes versions de bundle) ou si aucun
+     * employé n'est choisi (user_id = 0). Utilisable aussi par les bundles à la création.
+     *
+     * @throws ValidationException
+     */
+    protected function assertReportUserInStore(int $userId, int $storeId): void
+    {
+        if ($userId <= 0 || !isset($this->storeUsers)) {
+            return;
+        }
+        if ($this->storeUsers->findMembership($storeId, $userId) === null) {
+            throw new ValidationException(['user_id' => __('error_report_user_not_in_store')]);
+        }
     }
 
     private function deleteReport(Request $request): Response
@@ -239,7 +259,10 @@ trait HasStaffReportCrud
         $authUser = $request->getAttribute('auth_user');
         $managedIds = $request->getAttribute('managed_store_ids');
 
-        if (!empty($authUser['is_admin'])) {
+        // `managed_store_ids === null` = portée illimitée : Owner, mais aussi un rôle personnalisé
+        // accordant la permission « Toutes les boutiques » (tester `is_admin` seul les excluait).
+        $unrestricted = !empty($authUser['is_admin']) || $managedIds === null;
+        if ($unrestricted) {
             $allStores = $this->stores->findAll();
             $storeIds = [];
         } else {
@@ -252,7 +275,7 @@ trait HasStaffReportCrud
         $filterStoreId = (int) $request->query('store_id', '0');
         $queryStoreIds = $storeIds;
         if ($filterStoreId > 0) {
-            if (empty($authUser['is_admin']) && !in_array($filterStoreId, $storeIds, true)) {
+            if (!$unrestricted && !in_array($filterStoreId, $storeIds, true)) {
                 throw new \kintai\Core\Exceptions\ForbiddenException(__('error_store_access_denied'));
             }
             $queryStoreIds = [$filterStoreId];
