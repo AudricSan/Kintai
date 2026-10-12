@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace kintai\Bundles\Installed\ResignationReport\Controllers\Web;
 
 use kintai\Core\Auth\PermissionService;
+use kintai\Core\Exceptions\ForbiddenException;
+use kintai\Core\Exceptions\ValidationException;
 use kintai\Core\Repositories\ResignationReportRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
@@ -219,6 +221,14 @@ final class AdminResignationReportController
         $this->assertStoreAccess($request, $storeId);
 
         $userId = (int) $request->post('user_id', 0);
+        if ($userId > 0) {
+            // La création désactive le compte ciblé : il doit appartenir à CE magasin et ne
+            // pas être un Owner, sinon un gérant pouvait désactiver (puis supprimer) n'importe quel compte.
+            if ($this->storeUsers->findMembership($storeId, $userId) === null) {
+                throw new ValidationException(['user_id' => __('error_resignation_user_not_in_store')]);
+            }
+            $this->assertNotOwnerAccount($request, $userId);
+        }
 
         $data = array_merge([
             'store_id' => $storeId,
@@ -296,6 +306,10 @@ final class AdminResignationReportController
     {
         [$report, $storeId, $reportId] = $this->findReportOrFail($request);
         $userId = (int) ($report['user_id'] ?? 0);
+        if ($userId > 0) {
+            $this->assertNotOwnerAccount($request, $userId);
+            $this->assertUserOnlyInManagedStores($request, $userId);
+        }
 
         $this->resignationReports->delete($reportId);
         $this->auditLogger->log($request, 'resignation_report.deleted', 'resignation_report', $reportId, [
@@ -311,6 +325,33 @@ final class AdminResignationReportController
         }
 
         return $this->redirectToList($storeId, 'resignation', 'user_deleted');
+    }
+
+    /** Seul un Owner peut agir sur un compte Owner (même règle que les fiches employés). */
+    private function assertNotOwnerAccount(Request $request, int $userId): void
+    {
+        $callerId = (int) ($request->getAttribute('auth_user')['id'] ?? 0);
+        $owners   = $this->permissions->ownerUserIds();
+        if (in_array($userId, $owners, true) && !in_array($callerId, $owners, true)) {
+            throw new ForbiddenException(__('error_not_store_manager'));
+        }
+    }
+
+    /**
+     * Supprimer un compte l'efface de TOUS ses magasins : le gérant doit donc gérer chacun d'eux
+     * (portée illimitée = null, toujours accepté).
+     */
+    private function assertUserOnlyInManagedStores(Request $request, int $userId): void
+    {
+        $managed = $request->getAttribute('managed_store_ids');
+        if ($managed === null) {
+            return;
+        }
+        foreach ($this->storeUsers->findByUser($userId) as $membership) {
+            if (!in_array((int) $membership['store_id'], $managed, true)) {
+                throw new ForbiddenException(__('error_not_store_manager'));
+            }
+        }
     }
 
     public function resignationReportPdf(Request $request): Response
