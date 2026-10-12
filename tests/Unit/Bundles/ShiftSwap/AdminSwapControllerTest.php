@@ -234,6 +234,125 @@ final class AdminSwapControllerTest extends TestCase
         $this->assertSame(200, $response->status());
     }
 
+    private function location(\kintai\Core\Response $response): string
+    {
+        $ref = new \ReflectionProperty(\kintai\Core\Response::class, 'headers');
+        $ref->setAccessible(true);
+        return $ref->getValue($response)['Location'] ?? '';
+    }
+
+    private function pendingSwap(): array
+    {
+        return [
+            'id' => 31, 'store_id' => 5, 'status' => 'pending',
+            'requester_id' => 1, 'target_user_id' => 2,
+            'requester_shift_id' => 10, 'target_shift_id' => 20,
+        ];
+    }
+
+    /** Audit du 13/10/2026 : un rejeu de l'approbation ré-échangeait les shifts et annulait l'échange. */
+    public function testApproveSwapOnAnAlreadyAcceptedSwapChangesNothing(): void
+    {
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '31']);
+        $this->swapRequests->method('findById')->with(31)->willReturn(['status' => 'accepted'] + $this->pendingSwap());
+        $this->shifts->expects($this->never())->method('save');
+        $this->swapRequests->expects($this->never())->method('save');
+
+        $this->assertStringContainsString('error=invalid_state', $this->location($this->controller->approveSwap($req)));
+    }
+
+    public function testApproveSwapRefusesWhenAShiftWasReassignedSinceTheRequest(): void
+    {
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '31']);
+        $this->swapRequests->method('findById')->with(31)->willReturn($this->pendingSwap());
+        // Le shift #10 n'appartient plus au demandeur (1) : il a été réaffecté à 8.
+        $this->shifts->method('findById')->willReturnMap([
+            [10, ['id' => 10, 'user_id' => 8, 'store_id' => 5, 'shift_date' => '2026-09-01']],
+            [20, ['id' => 20, 'user_id' => 2, 'store_id' => 5, 'shift_date' => '2026-09-02']],
+        ]);
+        $this->shifts->expects($this->never())->method('save');
+        $this->swapRequests->expects($this->never())->method('save');
+
+        $this->assertStringContainsString('error=invalid_state', $this->location($this->controller->approveSwap($req)));
+    }
+
+    public function testApproveSwapRefusesAConflictingSameDayExchange(): void
+    {
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '31']);
+        $this->swapRequests->method('findById')->with(31)->willReturn($this->pendingSwap());
+        $this->shifts->method('findById')->willReturnMap([
+            [10, ['id' => 10, 'user_id' => 1, 'store_id' => 5, 'shift_date' => '2026-09-01']],
+            [20, ['id' => 20, 'user_id' => 2, 'store_id' => 5, 'shift_date' => '2026-09-02']],
+        ]);
+        // Le demandeur a déjà un autre shift le 02/09 (date du shift qu'il recevrait).
+        $this->shifts->method('findByUser')->willReturnCallback(fn(int $uid) => $uid === 1
+            ? [['id' => 10, 'shift_date' => '2026-09-01'], ['id' => 99, 'shift_date' => '2026-09-02']]
+            : [['id' => 20, 'shift_date' => '2026-09-02']]);
+        $this->shifts->expects($this->never())->method('save');
+
+        $this->assertStringContainsString('error=swap_conflict', $this->location($this->controller->approveSwap($req)));
+    }
+
+    public function testApproveSwapExchangesTheShiftsOfAPendingSwap(): void
+    {
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '31']);
+        $this->swapRequests->method('findById')->with(31)->willReturn($this->pendingSwap());
+        $this->shifts->method('findById')->willReturnMap([
+            [10, ['id' => 10, 'user_id' => 1, 'store_id' => 5, 'shift_date' => '2026-09-01']],
+            [20, ['id' => 20, 'user_id' => 2, 'store_id' => 5, 'shift_date' => '2026-09-02']],
+        ]);
+        $this->shifts->method('findByUser')->willReturn([]);
+        $saved = [];
+        $this->shifts->expects($this->exactly(2))->method('save')->willReturnCallback(function (array $d) use (&$saved) {
+            $saved[$d['id']] = $d['user_id'];
+            return $d;
+        });
+        $this->swapRequests->expects($this->once())->method('save')->with($this->callback(fn(array $d) => $d['status'] === 'accepted'));
+
+        $this->assertStringContainsString('success=approved', $this->location($this->controller->approveSwap($req)));
+        $this->assertSame([10 => 2, 20 => 1], $saved);
+    }
+
+    public function testRefuseSwapOnAnAlreadyAcceptedSwapChangesNothing(): void
+    {
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '31']);
+        $this->swapRequests->method('findById')->with(31)->willReturn(['status' => 'accepted'] + $this->pendingSwap());
+        $this->swapRequests->expects($this->never())->method('save');
+
+        $this->assertStringContainsString('error=invalid_state', $this->location($this->controller->refuseSwap($req)));
+    }
+
+    /** Les shifts ont été réaffectés depuis l'échange : les « rendre » écraserait ce changement. */
+    public function testDeleteSwapDoesNotRestoreShiftsThatMovedSinceTheExchange(): void
+    {
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '77']);
+        $this->swapRequests->method('findById')->with(77)->willReturn([
+            'id' => 77, 'store_id' => 5, 'status' => 'accepted', 'requester_id' => 1, 'target_user_id' => 2,
+            'requester_shift_id' => 10, 'target_shift_id' => 20,
+        ]);
+        // Le shift #10 devrait appartenir à 2 après l'échange ; il appartient maintenant à 8.
+        $this->shifts->method('findById')->willReturnMap([
+            [10, ['id' => 10, 'user_id' => 8, 'store_id' => 5]],
+            [20, ['id' => 20, 'user_id' => 1, 'store_id' => 5]],
+        ]);
+        $this->shifts->expects($this->never())->method('save');
+        $this->swapRequests->expects($this->once())->method('delete')->with(77);
+
+        $this->assertStringContainsString('success=deleted', $this->location($this->controller->deleteSwap($req)));
+    }
+
     public function testDeleteSwapRevertsShiftsWhenAccepted(): void
     {
         $req = new Request();

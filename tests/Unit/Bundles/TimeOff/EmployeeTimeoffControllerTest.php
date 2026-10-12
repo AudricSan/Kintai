@@ -43,6 +43,12 @@ final class EmployeeTimeoffControllerTest extends TestCase
             $this->stores,
             $this->storeUsers,
             new AuditLogger(),
+            $this->createMock(\kintai\Core\Repositories\UserRepositoryInterface::class),
+            $this->createMock(\kintai\Core\Services\NotificationService::class),
+            new \kintai\Core\Auth\PermissionService(
+                $this->createMock(\kintai\Core\Repositories\RoleAssignmentRepositoryInterface::class),
+                $this->createMock(\kintai\Core\Repositories\RoleRepositoryInterface::class),
+            ),
         );
     }
 
@@ -101,6 +107,67 @@ final class EmployeeTimeoffControllerTest extends TestCase
         $this->assertSame('pending', $captured['status']);
         $this->assertSame(9, $captured['user_id']);
         $this->assertSame(1, $captured['store_id']);
+    }
+
+    /** Audit du 13/10/2026 : les dates étaient enregistrées telles quelles, sans aucun contrôle. */
+    public function testStoreTimeoffRejectsInvalidDates(): void
+    {
+        $this->storeUsers->method('findByUser')->with(9)->willReturn([['store_id' => 1, 'user_id' => 9]]);
+        $this->stores->method('getFeatures')->with(1)->willReturn([]);
+        $this->timeoffRequests->expects($this->never())->method('save');
+
+        $_POST = ['type' => 'sick', 'start_date' => 'pas-une-date', 'end_date' => ''];
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 9]);
+
+        $this->expectException(\kintai\Core\Exceptions\ValidationException::class);
+        $this->controller->storeTimeoff($req);
+    }
+
+    public function testStoreTimeoffRejectsEndBeforeStart(): void
+    {
+        $this->storeUsers->method('findByUser')->with(9)->willReturn([['store_id' => 1, 'user_id' => 9]]);
+        $this->stores->method('getFeatures')->with(1)->willReturn([]);
+        $this->timeoffRequests->expects($this->never())->method('save');
+
+        $_POST = ['type' => 'sick', 'start_date' => '2026-08-05', 'end_date' => '2026-08-01'];
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 9]);
+
+        $this->expectException(\kintai\Core\Exceptions\ValidationException::class);
+        $this->controller->storeTimeoff($req);
+    }
+
+    public function testStoreTimeoffUsesTheChosenStoreWhenMember(): void
+    {
+        $this->storeUsers->method('findByUser')->with(9)->willReturn([
+            ['store_id' => 1, 'user_id' => 9], ['store_id' => 4, 'user_id' => 9],
+        ]);
+        $this->stores->method('getFeatures')->willReturn([]);
+
+        $_POST = ['type' => 'sick', 'start_date' => '2026-08-01', 'store_id' => '4'];
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 9]);
+
+        $this->timeoffRequests->expects($this->once())->method('save')->with($this->callback(
+            fn(array $d) => $d['store_id'] === 4 && $d['end_date'] === '2026-08-01'
+        ))->willReturn(['id' => 7]);
+
+        $this->assertSame(302, $this->controller->storeTimeoff($req)->status());
+    }
+
+    public function testStoreTimeoffRefusesAStoreTheEmployeeDoesNotBelongTo(): void
+    {
+        $this->storeUsers->method('findByUser')->with(9)->willReturn([['store_id' => 1, 'user_id' => 9]]);
+        $this->stores->method('getFeatures')->willReturn([]);
+        $this->timeoffRequests->expects($this->never())->method('save');
+
+        $_POST = ['type' => 'sick', 'start_date' => '2026-08-01', 'store_id' => '99'];
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 9]);
+
+        $this->expectException(\kintai\Core\Exceptions\ValidationException::class);
+        $this->controller->storeTimeoff($req);
     }
 
     public function testCancelTimeoffOnlyAllowsOwnerOfPendingRequest(): void
