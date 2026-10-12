@@ -295,6 +295,29 @@ final class PermissionService
     }
 
     /**
+     * Vrai si l'appelant peut attribuer $roleId sur le magasin $storeId : chaque permission du
+     * rôle doit lui appartenir sur ce magasin, et chaque permission « Toutes les boutiques »
+     * du rôle doit lui être accordée sans restriction de magasin. Sans ce plafond, un gérant
+     * d'un seul magasin pouvait s'attribuer un rôle plus puissant que le sien (et, via une
+     * permission globale, obtenir des droits sur tous les magasins). Un Owner (rôle système)
+     * satisfait toujours ces deux conditions.
+     */
+    public function canAssignRole(array $authUser, int $roleId, int $storeId): bool
+    {
+        foreach ($this->roles->getPermissions($roleId) as $key) {
+            if (!$this->can($authUser, $key, $storeId)) {
+                return false;
+            }
+        }
+        foreach ($this->roles->getGlobalPermissionKeys($roleId) as $key) {
+            if (!$this->hasUnrestrictedGrant($authUser, $key)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
      * Identifiants des utilisateurs détenant un rôle système (Owner) en
      * portée globale — remplace le filtre historique sur la colonne legacy
      * users.is_admin (ex. la liste des responsables proposée dans les
