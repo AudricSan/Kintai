@@ -108,6 +108,50 @@ final class EmployeeTimeclockControllerTest extends TestCase
         $this->assertSame(201, $response->status());
     }
 
+    /** Un employé multi-magasins pointe sur le magasin qu'il choisit (avant : toujours le premier). */
+    public function testClockInUsesTheChosenStoreWhenMember(): void
+    {
+        $_POST['store_id'] = '7';
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1]);
+
+        $this->storeUsers->method('findByUser')->with(1)->willReturn([['store_id' => 5], ['store_id' => 7]]);
+        $this->timeclocks->method('findActiveByUser')->with(1)->willReturn(null);
+        $this->timeclocks->expects($this->once())->method('save')->with($this->callback(
+            fn(array $data) => $data['store_id'] === 7
+        ))->willReturn(['id' => 10]);
+
+        $this->assertSame(201, $this->controller->clockIn($req)->status());
+    }
+
+    public function testClockInRefusesAStoreTheEmployeeDoesNotBelongTo(): void
+    {
+        $_POST['store_id'] = '99';
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1]);
+
+        $this->storeUsers->method('findByUser')->with(1)->willReturn([['store_id' => 5]]);
+        $this->timeclocks->method('findActiveByUser')->with(1)->willReturn(null);
+        $this->timeclocks->expects($this->never())->method('save');
+
+        $this->expectException(\kintai\Core\Exceptions\ValidationException::class);
+        $this->controller->clockIn($req);
+    }
+
+    /** Avant : la ligne était créée avec store_id = 0 pour un employé sans magasin. */
+    public function testClockInRefusesAnEmployeeWithoutAnyStore(): void
+    {
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1]);
+
+        $this->storeUsers->method('findByUser')->with(1)->willReturn([]);
+        $this->timeclocks->method('findActiveByUser')->with(1)->willReturn(null);
+        $this->timeclocks->expects($this->never())->method('save');
+
+        $this->expectException(\kintai\Core\Exceptions\ValidationException::class);
+        $this->controller->clockIn($req);
+    }
+
     public function testClockInRejectsWhenAlreadyActive(): void
     {
         $req = new Request();
