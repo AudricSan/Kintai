@@ -13,6 +13,9 @@ All notable changes to Kintai are documented here.
 - **API — `POST /api/v1/stores/{store_id}/members` accepted any body field** — an `id` in the body overwrote a membership of another store, `user_id` was not checked (orphan or duplicate rows) and `PUT` could reassign a membership to someone else. The controller now uses a field allow-list, ignores `id`/`store_id`/`role`/`is_manager`, requires an existing non-member `user_id` on creation and keeps `user_id` immutable on update.
 - **Release — v0.3.4 tag created but no GitHub Release published** — `[Unreleased]` had accumulated every entry since v0.1.1 (~129,000 characters) and GitHub rejects a Release body over 125,000 (`HTTP 422: body is too long`), after the workflow had already pushed the tag. `release.yml` now truncates the notes at the last whole line under 120,000 bytes and links to the full `CHANGELOG.md`, and what was already published is archived under a dated section so `[Unreleased]` only carries what is new. See `docs/releasing.md`.
 
+### Changed
+- Dependencies — `composer.lock` refreshed within the existing constraints: `illuminate/*` 13.33.0 → 13.35.0, `nesbot/carbon` 3.14.1 → 3.14.2, PHPUnit and the `symfony/polyfill-*` packages (supersedes the Dependabot bump to 13.34.0).
+
 ## [0.1.2 – 0.3.4] - 2026-10-07
 
 _Archive: everything published by the alpha/beta releases up to v0.3.4, previously accumulated under `[Unreleased]` (which pushed the release notes past GitHub's 125,000-character limit). New entries go back under `[Unreleased]`._
