@@ -522,6 +522,7 @@
     "error_shifts_different_stores": "Shifts must belong to the same store.",
     "error_storage_not_found": "Storage not found.",
     "error_store_access_denied": "Access denied to this store.",
+    "error_report_user_not_in_store": "The selected employee is not a member of this store.",
     "error_store_not_found": "Store not found.",
     "error_submission_not_found": "Submission not found.",
     "error_target_shift_not_found": "Target shift not found.",

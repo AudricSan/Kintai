@@ -522,6 +522,7 @@
     "error_shifts_different_stores": "Les shifts doivent appartenir au même store.",
     "error_storage_not_found": "Stockage introuvable.",
     "error_store_access_denied": "Accès refusé à ce magasin.",
+    "error_report_user_not_in_store": "L’employé choisi n’est pas membre de ce magasin.",
     "error_store_not_found": "Magasin introuvable.",
     "error_submission_not_found": "Envoi introuvable.",
     "error_target_shift_not_found": "Shift cible introuvable.",
