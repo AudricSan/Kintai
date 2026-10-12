@@ -130,6 +130,85 @@ final class AdminTimeoffControllerTest extends TestCase
         $this->controller->storeTimeoffForEmployee($req);
     }
 
+    /** Audit du 13/10/2026 : approuver/refuser ne doit agir que sur une demande en attente. */
+    public function testApproveTimeoffIgnoresARequestThatIsNotPending(): void
+    {
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '5']);
+        $this->timeoffRequests->method('findById')->with(5)->willReturn(['id' => 5, 'store_id' => 1, 'user_id' => 9, 'status' => 'cancelled']);
+        $this->timeoffRequests->expects($this->never())->method('save');
+        $this->notifs->expects($this->never())->method('notify');
+
+        $response = $this->controller->approveTimeoff($req);
+
+        $this->assertSame(302, $response->status());
+        $this->assertStringContainsString('error=invalid_state', $this->location($response));
+    }
+
+    public function testRefuseTimeoffIgnoresARequestThatIsNotPending(): void
+    {
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '5']);
+        $this->timeoffRequests->method('findById')->with(5)->willReturn(['id' => 5, 'store_id' => 1, 'user_id' => 9, 'status' => 'approved']);
+        $this->timeoffRequests->expects($this->never())->method('save');
+
+        $this->assertStringContainsString('error=invalid_state', $this->location($this->controller->refuseTimeoff($req)));
+    }
+
+    public function testApproveTimeoffStillWorksOnAPendingRequest(): void
+    {
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '5']);
+        $this->timeoffRequests->method('findById')->with(5)->willReturn(['id' => 5, 'store_id' => 1, 'user_id' => 9, 'status' => 'pending', 'type' => 'sick', 'start_date' => '2026-08-01', 'end_date' => '2026-08-01']);
+        $this->timeoffRequests->expects($this->once())->method('save')->with($this->callback(fn(array $d) => $d['status'] === 'approved'));
+        $this->notifs->expects($this->once())->method('notify');
+
+        $this->assertStringContainsString('success=approved', $this->location($this->controller->approveTimeoff($req)));
+    }
+
+    public function testStoreTimeoffForEmployeeRejectsEndBeforeStart(): void
+    {
+        $_POST = ['user_id' => '5', 'type' => 'vacation', 'start_date' => '2026-08-05', 'end_date' => '2026-08-01'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setAttribute('auth_user', ['id' => 1]);
+        $this->users->method('findById')->with(5)->willReturn(['id' => 5]);
+        $this->storeUsers->method('findByUser')->with(5)->willReturn([['store_id' => 3, 'user_id' => 5]]);
+        $this->timeoffRequests->expects($this->never())->method('save');
+
+        $this->expectException(\kintai\Core\Exceptions\ValidationException::class);
+        $this->controller->storeTimeoffForEmployee($req);
+    }
+
+    /** Avant : toujours la première adhésion, donc 403 pour le gérant du second magasin. */
+    public function testStoreTimeoffForEmployeePicksTheStoreTheManagerManages(): void
+    {
+        $_POST = ['user_id' => '5', 'type' => 'vacation', 'start_date' => '2026-08-01'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', [4]);
+        $req->setAttribute('auth_user', ['id' => 1]);
+        $this->users->method('findById')->with(5)->willReturn(['id' => 5]);
+        $this->storeUsers->method('findByUser')->with(5)->willReturn([
+            ['store_id' => 3, 'user_id' => 5], ['store_id' => 4, 'user_id' => 5],
+        ]);
+        $this->storeUsers->method('findByStore')->willReturn([['user_id' => 5]]);
+        $this->timeoffRequests->expects($this->once())->method('save')->with($this->callback(
+            fn(array $d) => $d['store_id'] === 4
+        ))->willReturn(['id' => 12]);
+
+        $this->assertSame(302, $this->controller->storeTimeoffForEmployee($req)->status());
+    }
+
+    private function location(\kintai\Core\Response $response): string
+    {
+        $ref = new \ReflectionProperty(\kintai\Core\Response::class, 'headers');
+        $ref->setAccessible(true);
+        return $ref->getValue($response)['Location'] ?? '';
+    }
+
     public function testDeleteTimeoffRemovesRecordRegardlessOfStatus(): void
     {
         $req = new Request();
