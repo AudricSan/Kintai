@@ -6,6 +6,7 @@ namespace kintai\UI\Controller\Web\Staff;
 
 use kintai\UI\Controller\Web\HasAdminAccess;
 
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\FeatureManager;
@@ -35,6 +36,7 @@ final class AdminStoreController
         private readonly StoreStatsServiceInterface $storeStatsService,
         private readonly FeatureManager $features,
         private readonly RoleAssignmentSyncService $roleSync,
+        private readonly PermissionService $permissions,
         private readonly ?RouteSlugService $routeSlugs = null,
     ) {}
 
@@ -254,6 +256,30 @@ final class AdminStoreController
         return Response::redirect($this->base() . '/admin/stores?success=deleted');
     }
 
+    /**
+     * Le compte ciblé doit exister, et seul un Owner peut agir sur un compte Owner
+     * (même règle que les fiches employés : sinon un gérant pouvait toucher à l'Owner).
+     */
+    private function assertCanManageMember(Request $request, int $userId): void
+    {
+        if ($this->users->findById($userId) === null) {
+            throw new NotFoundException(__('error_user_not_found'));
+        }
+        $callerId = (int) ($request->getAttribute('auth_user')['id'] ?? 0);
+        $owners   = $this->permissions->ownerUserIds();
+        if ($userId !== $callerId && in_array($userId, $owners, true) && !in_array($callerId, $owners, true)) {
+            throw new ForbiddenException(__('error_not_store_manager'));
+        }
+    }
+
+    /** Un non-Owner ne peut attribuer qu'un rôle plafonné par ses propres droits (voir PermissionService::canAssignRole). */
+    private function assertCanAssignRole(Request $request, int $roleId, int $storeId): void
+    {
+        if (!$this->permissions->canAssignRole($request->getAttribute('auth_user') ?? [], $roleId, $storeId)) {
+            throw new ForbiddenException(__('error_role_exceeds_own_permissions'));
+        }
+    }
+
     public function addMember(Request $request): Response
     {
         $storeId = (int) $request->param('id');
@@ -264,6 +290,9 @@ final class AdminStoreController
         $this->assertStoreAccess($request, $storeId);
 
         $userId = (int) $request->post('user_id', 0);
+        if ($userId > 0) {
+            $this->assertCanManageMember($request, $userId);
+        }
         // Rôle dynamique (roles en base) — repli sur le rôle par défaut si
         // l'id posté est absent/invalide, pour rester tolérant aux anciens formulaires.
         $role = $this->roleSync->findAssignableRole((int) $request->post('role_id', 0))
@@ -271,6 +300,7 @@ final class AdminStoreController
 
         if ($userId > 0 && $role !== null) {
             $roleId = (int) $role['id'];
+            $this->assertCanAssignRole($request, $roleId, $storeId);
             $membership = $this->storeService->addMember($storeId, $userId);
             if ($membership !== null) {
                 $this->roleSync->syncStoreRoleById($userId, $storeId, $roleId);
@@ -308,6 +338,8 @@ final class AdminStoreController
         }
         $roleId  = (int) $role['id'];
         $userId  = (int) $membership['user_id'];
+        $this->assertCanManageMember($request, $userId);
+        $this->assertCanAssignRole($request, $roleId, $storeId);
         $oldRole = $this->roleSync->storeRoleMapForStore($storeId)[$userId]['name'] ?? '—';
 
         $this->roleSync->syncStoreRoleById($userId, $storeId, $roleId);
@@ -329,6 +361,7 @@ final class AdminStoreController
             throw new NotFoundException(__('error_membership_not_found'));
         }
         $this->assertStoreAccess($request, $storeId);
+        $this->assertCanManageMember($request, (int) $membership['user_id']);
 
         $this->storeService->removeMember($mid, $storeId);
         $this->roleSync->revokeStoreRole((int) $membership['user_id'], $storeId);
