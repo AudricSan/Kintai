@@ -327,4 +327,55 @@ final class PermissionServiceTest extends TestCase
 
         $this->assertFalse($this->service->hasAnyGlobalPermissionGrant(['id' => 2]));
     }
+
+    // -------------------------------------------------------------------------
+    // canAssignRole() — plafond d'attribution des rôles
+    // -------------------------------------------------------------------------
+
+    /** Gérant du magasin 5 avec un rôle (20) qui n'accorde que shifts.view. */
+    private function managerWithViewOnly(): void
+    {
+        $this->assignments->method('findByUser')->with(2)->willReturn([
+            ['id' => 1, 'user_id' => 2, 'role_id' => 20, 'scope_type' => 'store', 'scope_id' => 5],
+        ]);
+        $this->roles->method('findById')->willReturnCallback(fn(int $id) => $this->role($id));
+        $this->roles->method('getPermissions')->willReturnCallback(fn(int $id) => match ($id) {
+            20, 31 => ['shifts.view'],
+            30     => ['shifts.view', 'shifts.update'],
+            32     => ['shifts.view'],
+            default => [],
+        });
+        $this->roles->method('getGlobalPermissionKeys')->willReturnCallback(fn(int $id) => $id === 32 ? ['shifts.view'] : []);
+    }
+
+    public function testCanAssignRoleAllowsSubsetOfOwnPermissions(): void
+    {
+        $this->managerWithViewOnly();
+        $this->assertTrue($this->service->canAssignRole(['id' => 2], 31, 5));
+    }
+
+    public function testCanAssignRoleRefusesRoleWithPermissionTheCallerLacks(): void
+    {
+        $this->managerWithViewOnly();
+        $this->assertFalse($this->service->canAssignRole(['id' => 2], 30, 5));
+    }
+
+    /** Un rôle portant une permission « Toutes les boutiques » donnerait des droits hors du magasin du gérant. */
+    public function testCanAssignRoleRefusesGlobalPermissionWithoutUnrestrictedGrant(): void
+    {
+        $this->managerWithViewOnly();
+        $this->assertFalse($this->service->canAssignRole(['id' => 2], 32, 5));
+    }
+
+    public function testCanAssignRoleAlwaysAllowedForOwner(): void
+    {
+        $this->assignments->method('findByUser')->with(1)->willReturn([
+            ['id' => 1, 'user_id' => 1, 'role_id' => 10, 'scope_type' => 'global', 'scope_id' => null],
+        ]);
+        $this->roles->method('findById')->with(10)->willReturn($this->role(10, isSystem: true));
+        $this->roles->method('getPermissions')->willReturn(['shifts.view', 'shifts.update']);
+        $this->roles->method('getGlobalPermissionKeys')->willReturn(['shifts.view']);
+
+        $this->assertTrue($this->service->canAssignRole(['id' => 1], 30, 5));
+    }
 }
