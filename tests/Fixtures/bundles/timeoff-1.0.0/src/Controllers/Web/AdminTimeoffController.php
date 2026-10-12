@@ -6,6 +6,7 @@ namespace kintai\Bundles\Installed\TimeOff\Controllers\Web;
 
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
+use kintai\Core\Exceptions\ValidationException;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
@@ -125,8 +126,7 @@ final class AdminTimeoffController
             throw new ForbiddenException(__('error_not_employee_manager'));
         }
 
-        $memberships = $this->storeUsers->findByUser($userId);
-        $storeId     = $memberships ? (int) $memberships[0]['store_id'] : 0;
+        $storeId = $this->resolveStoreId($request, $userId);
         $this->assertStoreAccess($request, $storeId);
 
         $validTypes = ['vacation', 'sick', 'personal', 'unpaid', 'other'];
@@ -134,10 +134,9 @@ final class AdminTimeoffController
         if (!in_array($type, $validTypes, true)) {
             $type = 'vacation';
         }
-        $startDate = $request->post('start_date', '');
-        $endDate   = $request->post('end_date', $startDate) ?: $startDate;
-        $reason    = $request->post('reason', '') ?: null;
-        $authUser  = $request->getAttribute('auth_user');
+        [$startDate, $endDate] = $this->validDates($request->post('start_date', ''), $request->post('end_date', ''));
+        $reason   = $request->post('reason', '') ?: null;
+        $authUser = $request->getAttribute('auth_user');
 
         $saved = $this->timeoffRequests->save([
             'store_id'    => $storeId,
@@ -159,8 +158,9 @@ final class AdminTimeoffController
             $userId,
             'timeoff_approved',
             'notif_timeoff_added_body',
-            [],
-            (int) ($saved['id'] ?? 0)
+            $this->timeoffReplace($type, $startDate, $endDate),
+            (int) ($saved['id'] ?? 0),
+            '/employee/timeoff'
         );
 
         return Response::redirect($this->base() . '/admin/timeoff?success=created');
@@ -173,14 +173,20 @@ final class AdminTimeoffController
             throw new NotFoundException(__('error_request_not_found'));
         }
         $this->assertStoreAccess($request, (int) ($req['store_id'] ?? 0));
+        // Seule une demande en attente se décide : sinon un gérant ressuscitait une demande annulée
+        // par l'employé, ou ré-approuvait (double notification).
+        if (($req['status'] ?? '') !== 'pending') {
+            return Response::redirect($this->base() . '/admin/timeoff?error=invalid_state');
+        }
         $this->timeoffRequests->save(array_merge($req, ['status' => 'approved']));
         $this->auditLogger->logUpdate($request, 'timeoff.approved', 'timeoff_request', (int) $req['id'], $req, array_merge($req, ['status' => 'approved']), [], (int) ($req['store_id'] ?? 0) ?: null);
         $this->notifs->notify(
             (int) $req['user_id'],
             'timeoff_approved',
             'notif_timeoff_approved_body',
-            [],
-            (int) $req['id']
+            $this->timeoffReplace($req['type'] ?? '', $req['start_date'] ?? '', $req['end_date'] ?? ''),
+            (int) $req['id'],
+            '/employee/timeoff'
         );
         return Response::redirect($this->base() . '/admin/timeoff?success=approved');
     }
@@ -192,14 +198,18 @@ final class AdminTimeoffController
             throw new NotFoundException(__('error_request_not_found'));
         }
         $this->assertStoreAccess($request, (int) ($req['store_id'] ?? 0));
+        if (($req['status'] ?? '') !== 'pending') {
+            return Response::redirect($this->base() . '/admin/timeoff?error=invalid_state');
+        }
         $this->timeoffRequests->save(array_merge($req, ['status' => 'refused']));
         $this->auditLogger->logUpdate($request, 'timeoff.refused', 'timeoff_request', (int) $req['id'], $req, array_merge($req, ['status' => 'refused']), [], (int) ($req['store_id'] ?? 0) ?: null);
         $this->notifs->notify(
             (int) $req['user_id'],
             'timeoff_refused',
             'notif_timeoff_refused_body',
-            [],
-            (int) $req['id']
+            $this->timeoffReplace($req['type'] ?? '', $req['start_date'] ?? '', $req['end_date'] ?? ''),
+            (int) $req['id'],
+            '/employee/timeoff'
         );
         return Response::redirect($this->base() . '/admin/timeoff?success=refused');
     }
@@ -227,5 +237,71 @@ final class AdminTimeoffController
         $this->timeoffRequests->delete((int) $req['id']);
 
         return Response::redirect($this->base() . '/admin/timeoff?success=deleted');
+    }
+
+    /**
+     * Magasin d'un congé saisi par un gérant : celui posté s'il fait partie des magasins de
+     * l'employé, sinon le premier de ses magasins que le gérant gère (avant : toujours la
+     * première adhésion, donc un 403 pour le gérant du second magasin).
+     *
+     * @throws ValidationException
+     */
+    private function resolveStoreId(Request $request, int $userId): int
+    {
+        $storeIds = array_values(array_unique(array_map(
+            fn(array $m): int => (int) $m['store_id'],
+            $this->storeUsers->findByUser($userId)
+        )));
+        if ($storeIds === []) {
+            throw new ValidationException(['user_id' => __('error_timeoff_no_store')]);
+        }
+        $requested = (int) $request->post('store_id', 0);
+        if ($requested > 0) {
+            if (!in_array($requested, $storeIds, true)) {
+                throw new ValidationException(['store_id' => __('error_timeoff_store_not_member')]);
+            }
+            return $requested;
+        }
+        $managed = $this->managedIds($request);
+        foreach ($storeIds as $sid) {
+            if ($managed === null || in_array($sid, $managed, true)) {
+                return $sid;
+            }
+        }
+        return $storeIds[0];
+    }
+
+    /**
+     * Dates d'une demande de congé : format Y-m-d obligatoire, fin >= début (fin absente = début).
+     * Avant : n'importe quelle chaîne était enregistrée et s'affichait telle quelle au calendrier.
+     *
+     * @return array{0: string, 1: string} [début, fin]
+     * @throws ValidationException
+     */
+    private function validDates(mixed $start, mixed $end): array
+    {
+        $parse = static function (mixed $value): ?\DateTimeImmutable {
+            $date = \DateTimeImmutable::createFromFormat('!Y-m-d', is_string($value) ? trim($value) : '');
+            return ($date !== false && $date->format('Y-m-d') === trim((string) $value)) ? $date : null;
+        };
+        $startDate = $parse($start);
+        $endDate   = ($end === null || trim((string) $end) === '') ? $startDate : $parse($end);
+        if ($startDate === null || $endDate === null) {
+            throw new ValidationException(['start_date' => __('error_timeoff_invalid_date')]);
+        }
+        if ($endDate < $startDate) {
+            throw new ValidationException(['end_date' => __('error_timeoff_end_before_start')]);
+        }
+        return [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')];
+    }
+
+    /** Valeurs de remplacement (:type/:start/:end) pour les notifications de congé. */
+    private function timeoffReplace(string $type, string $startDate, string $endDate): array
+    {
+        return [
+            'type'  => __($type),
+            'start' => $startDate,
+            'end'   => $endDate,
+        ];
     }
 }

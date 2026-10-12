@@ -580,7 +580,7 @@
     "feature_timeoff": "休暇申請",
     "feature_timeoff_desc": "休暇申請の提出と確認。",
     "feedback_anonymous": "匿名で送信する",
-    "feedback_anonymous_hint": "匿名の場合、あなたの名前はマネージャーに表示されません。",
+    "feedback_anonymous_hint": "フィードバック一覧ではお名前は表示されません。管理者が閲覧できるアクティビティログには記録されます。",
     "feedback_cat_app": "アプリについて",
     "feedback_cat_other": "その他",
     "feedback_cat_schedule": "自分のスケジュール",
