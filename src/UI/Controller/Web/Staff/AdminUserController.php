@@ -709,7 +709,7 @@ final class AdminUserController
 
         // Map store_id → store name pour l'affichage
         $storesMap = [];
-        foreach ($this->stores->findAll() as $s) {
+        foreach ($this->stores->findAllWithDeleted() as $s) {
             $storesMap[(int) $s['id']] = $s['name'] ?? '#' . $s['id'];
         }
 

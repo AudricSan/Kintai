@@ -22,11 +22,16 @@ final class DatabaseStoreRepository implements StoreRepositoryInterface
 
     public function findByCode(string $code): ?array
     {
-        $store = EloquentStore::where('code', $code)->first();
+        $store = EloquentStore::where('code', $code)->whereNull('deleted_at')->first();
         return $store ? $store->toArray() : null;
     }
 
     public function findAll(): array
+    {
+        return EloquentStore::whereNull('deleted_at')->get()->toArray();
+    }
+
+    public function findAllWithDeleted(): array
     {
         return EloquentStore::all()->toArray();
     }
@@ -60,17 +65,28 @@ final class DatabaseStoreRepository implements StoreRepositoryInterface
 
     public function delete(int $id): int
     {
-        $store = EloquentStore::find($id);
-        if ($store) {
-            // Alias d'URL du magasin (courant et historique) : SQLite n'applique pas les cascades ici.
-            try {
-                \kintai\Domain\Eloquent\RouteSlug::where('entity_type', 'store')->where('entity_id', $id)->delete();
-            } catch (\Illuminate\Database\QueryException) {
-                // Table route_slugs absente (migration pas encore jouée).
-            }
-            return $store->delete() ? 1 : 0;
+        $store = EloquentStore::whereNull('deleted_at')->find($id);
+        if (!$store) {
+            return 0;
         }
-        return 0;
+
+        // Alias d'URL du magasin (courant et historique) : libérés pour un futur magasin.
+        try {
+            \kintai\Domain\Eloquent\RouteSlug::where('entity_type', 'store')->where('entity_id', $id)->delete();
+        } catch (\Illuminate\Database\QueryException) {
+            // Table route_slugs absente (migration pas encore jouée).
+        }
+
+        // Suppression douce (audit du 13/10/2026, M8) : effacer la ligne supprimait en cascade, sous MySQL,
+        // les shifts, pointages et rapports du magasin, et les laissait orphelins sous SQLite. Le code,
+        // unique et utilisé à la connexion par code, est libéré pour pouvoir être réattribué.
+        $store->fill([
+            'code'       => 'DEL-' . $id . '-' . $store->code,
+            'is_active'  => 0,
+            'deleted_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+        return $store->save() ? 1 : 0;
     }
 
     public function getFeatures(int $storeId): array
