@@ -502,6 +502,8 @@
     "error_owner_only_delete_photos": "オーナーのみが写真投稿を削除できます。",
     "error_owner_only_delete_store": "オーナーのみが店舗を削除できます。",
     "error_owner_role_immutable": "オーナーロールは変更できません。",
+    "error_owner_cannot_remove_self": "オーナーは自分自身のアカウントを削除・無効化・降格できません。別のオーナーに依頼してください。",
+    "error_last_owner": "有効なオーナーが少なくとも1人必要です。先に別のアカウントをオーナーにしてください。",
     "error_owner_role_undeletable": "オーナーロールは削除できません。",
     "error_participant_not_found": "参加者が見つかりません。",
     "error_path_not_allowed": "許可されていないパスです。",
