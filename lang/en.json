@@ -1536,8 +1536,9 @@
     "val_employee_code_taken": "This employee number is already used by another account.",
     "val_field_too_long": "The \":field\" field is too long (:max maximum).",
     "val_field_required": "The \":field\" field is required.",
+    "error_cannot_act_on_self": "You cannot do this on your own account (you would lose your rights): ask another manager or an Owner.",
     "backup_update_step_verify": "Verifying the archive integrity…",
-    "backup_flash_error_release_archive_missing": "Update refused: this release does not provide a verifiable archive (kintai-<version>.zip and SHA256SUMS).",
     "backup_flash_error_checksum_failed": "Update refused: the downloaded archive's checksum does not match the one published with the release (altered or incomplete file).",
+    "backup_flash_error_release_archive_missing": "Update refused: this release does not provide a verifiable archive (kintai-<version>.zip and SHA256SUMS).",
     "backup_flash_error_commit_mismatch": "Update refused: the archive does not match the commit of the release tag."
 }

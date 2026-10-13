@@ -33,6 +33,7 @@ final class DatabaseStoreRepositoryTest extends TestCase
             $table->string('name');
             $table->string('code')->unique();
             $table->integer('is_active')->default(1);
+            $table->timestamp('updated_at')->nullable();
             $table->timestamp('deleted_at')->nullable();
         });
 
@@ -152,12 +153,29 @@ final class DatabaseStoreRepositoryTest extends TestCase
     // delete()
     // -------------------------------------------------------------------------
 
-    public function testDeleteDeletesStore(): void
+    /** Audit M8 : suppression douce, la ligne reste (l'historique qui la référence aussi). */
+    public function testDeleteSoftDeletesTheStoreAndFreesItsCode(): void
     {
         $store = EloquentStore::create(['name' => 'T', 'code' => 'T']);
         $count = $this->repo->delete($store->id);
         $this->assertEquals(1, $count);
-        $this->assertNull(EloquentStore::find($store->id));
+
+        $row = EloquentStore::find($store->id);
+        $this->assertNotNull($row);
+        $this->assertNotNull($row->deleted_at);
+        $this->assertSame(0, (int) $row->is_active);
+        $this->assertSame('DEL-' . $store->id . '-T', $row->code);
+
+        // Absent des listes et de la recherche par code, présent pour l'historique ; le code est réutilisable.
+        $this->assertSame([], $this->repo->findAll());
+        $this->assertNull($this->repo->findByCode('T'));
+        $this->assertCount(1, $this->repo->findAllWithDeleted());
+        $this->assertNotNull($this->repo->findById($store->id));
+        EloquentStore::create(['name' => 'T2', 'code' => 'T']);
+        $this->assertCount(1, $this->repo->findAll());
+
+        // Une seconde suppression ne fait rien.
+        $this->assertSame(0, $this->repo->delete($store->id));
     }
 
     public function testDeleteReturnsZeroWhenNotFound(): void

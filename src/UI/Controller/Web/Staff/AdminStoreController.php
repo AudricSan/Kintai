@@ -6,6 +6,7 @@ namespace kintai\UI\Controller\Web\Staff;
 
 use kintai\UI\Controller\Web\HasAdminAccess;
 
+use kintai\Core\Auth\OwnerGuard;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
@@ -173,7 +174,7 @@ final class AdminStoreController
         foreach ($allFeatureSlugs as $slug) {
             if ($availableSlugs[$slug] ?? true) {
                 // Case proposée sur ce formulaire : on suit la valeur soumise.
-                if ($request->post('feature_' . $slug)) {
+                if ($request->postFlag('feature_' . $slug, $currentlyEnabled($slug)) === 1) {
                     $enabledFeatures[] = $slug;
                 }
             } elseif ($currentlyEnabled($slug)) {
@@ -185,46 +186,55 @@ final class AdminStoreController
             }
         }
 
+        // Champ absent de la requête : valeur actuelle conservée (audit du 13/10/2026, M12). Avant, une requête
+        // partielle désactivait le magasin (is_active absent), vidait ses coordonnées et remettait ses réglages
+        // d'import et de retenues aux valeurs par défaut.
+        $keep   = fn(string $field, mixed $current): mixed => $request->hasPost($field) ? $request->post($field) : $current;
+        $text   = fn(string $field): ?string => $request->hasPost($field) ? (trim((string) $request->post($field, '')) ?: null) : ($store[$field] ?? null);
+        $import = $this->stores->getImportSettings($storeId);
+        $ded    = $this->stores->getDeductionSettings($storeId);
+
         $data = [
-            'code'                  => strtoupper(trim($request->post('code', $store['code'] ?? ''))),
-            'name'                  => $request->post('name', $store['name'] ?? ''),
-            'slug'                  => (string) $request->post('slug', ''),
-            'type'                  => ($tmp = $request->post('type', '')) !== '' ? $tmp : ($store['type'] ?? 'retail'),
-            'timezone'              => ($tmp = $request->post('timezone', '')) !== '' ? $tmp : ($store['timezone'] ?? 'UTC'),
-            'locale'                => ($tmp = $request->post('locale', '')) !== '' ? $tmp : ($store['locale'] ?? 'en'),
-            'currency'              => strtoupper(trim(($tmp = $request->post('currency', '')) !== '' ? $tmp : ($store['currency'] ?? 'EUR'))),
-            'currency_symbol_style' => $request->post('currency_symbol_style', $store['currency_symbol_style'] ?? 'kanji'),
-            'phone'                 => $request->post('phone', '') ?: null,
-            'email'                 => $request->post('email', '') ?: null,
-            'address_street'        => $request->post('address_street', '') ?: null,
-            'address_city'          => $request->post('address_city', '') ?: null,
-            'address_postal'        => $request->post('address_postal', '') ?: null,
-            'address_country'       => $request->post('address_country', '') ?: null,
-            'week_start_day'        => max(1, min(7, (int) $request->post('week_start_day', 1))),
-            'min_shift_minutes'     => (int) $request->post('min_shift_minutes', 120),
-            'max_shift_minutes'     => (int) $request->post('max_shift_minutes', 480),
-            'min_staff_per_day'     => (int) $request->post('min_staff_per_day', 0),
-            'low_staff_hour_start'  => max(-1, min(23, (int) $request->post('low_staff_hour_start', -1))),
-            'low_staff_hour_end'    => max(-1, min(23, (int) $request->post('low_staff_hour_end',   -1))),
-            'is_active'             => $request->post('is_active') === '1' ? 1 : 0,
+            'code'                  => strtoupper(trim((string) $keep('code', $store['code'] ?? ''))),
+            'name'                  => $keep('name', $store['name'] ?? ''),
+            // null = champ absent : le slug manuel existant est conservé (voir StoreService).
+            'slug'                  => $request->hasPost('slug') ? (string) $request->post('slug', '') : null,
+            'type'                  => ($tmp = (string) $request->post('type', '')) !== '' ? $tmp : ($store['type'] ?? 'retail'),
+            'timezone'              => ($tmp = (string) $request->post('timezone', '')) !== '' ? $tmp : ($store['timezone'] ?? 'UTC'),
+            'locale'                => ($tmp = (string) $request->post('locale', '')) !== '' ? $tmp : ($store['locale'] ?? 'en'),
+            'currency'              => strtoupper(trim(($tmp = (string) $request->post('currency', '')) !== '' ? $tmp : ($store['currency'] ?? 'EUR'))),
+            'currency_symbol_style' => $keep('currency_symbol_style', $store['currency_symbol_style'] ?? 'kanji'),
+            'phone'                 => $text('phone'),
+            'email'                 => $text('email'),
+            'address_street'        => $text('address_street'),
+            'address_city'          => $text('address_city'),
+            'address_postal'        => $text('address_postal'),
+            'address_country'       => $text('address_country'),
+            'week_start_day'        => max(1, min(7, (int) $keep('week_start_day', $store['week_start_day'] ?? 1))),
+            'min_shift_minutes'     => (int) $keep('min_shift_minutes', $store['min_shift_minutes'] ?? 120),
+            'max_shift_minutes'     => (int) $keep('max_shift_minutes', $store['max_shift_minutes'] ?? 480),
+            'min_staff_per_day'     => (int) $keep('min_staff_per_day', $store['min_staff_per_day'] ?? 0),
+            'low_staff_hour_start'  => max(-1, min(23, (int) $keep('low_staff_hour_start', $store['low_staff_hour_start'] ?? -1))),
+            'low_staff_hour_end'    => max(-1, min(23, (int) $keep('low_staff_hour_end', $store['low_staff_hour_end'] ?? -1))),
+            'is_active'             => $request->postFlag('is_active', $store['is_active'] ?? 1),
             '_excel_settings'       => [
-                'col_start'               => (int)   $request->post('excel_col_start',             4),
-                'col_end'                 => (int)   $request->post('excel_col_end',               52),
-                'base_hour'               => (int)   $request->post('excel_base_hour',             6),
-                'minutes_per_col'         => (int)   $request->post('excel_minutes_per_col',       30),
-                'block_size'              => (int)   $request->post('excel_block_size',            9),
-                'shift_rows'              => (int)   $request->post('excel_shift_rows',            7),
-                'sheet_filter_pattern'    => (string) $request->post('excel_sheet_filter_pattern', '^\d{4}$'),
-                'auto_pause_after_minutes' => (int)  $request->post('auto_pause_after_minutes',    0),
-                'auto_pause_minutes'      => (int)   $request->post('auto_pause_minutes',          30),
+                'col_start'                => (int)    $keep('excel_col_start',            $import['col_start'] ?? 4),
+                'col_end'                  => (int)    $keep('excel_col_end',              $import['col_end'] ?? 52),
+                'base_hour'                => (int)    $keep('excel_base_hour',            $import['base_hour'] ?? 6),
+                'minutes_per_col'          => (int)    $keep('excel_minutes_per_col',      $import['minutes_per_col'] ?? 30),
+                'block_size'               => (int)    $keep('excel_block_size',           $import['block_size'] ?? 9),
+                'shift_rows'               => (int)    $keep('excel_shift_rows',           $import['shift_rows'] ?? 7),
+                'sheet_filter_pattern'     => (string) $keep('excel_sheet_filter_pattern', $import['sheet_filter_pattern'] ?? '^\d{4}$'),
+                'auto_pause_after_minutes' => (int)    $keep('auto_pause_after_minutes',   $import['auto_pause_after_minutes'] ?? 0),
+                'auto_pause_minutes'       => (int)    $keep('auto_pause_minutes',         $import['auto_pause_minutes'] ?? 30),
             ],
             '_deduction_settings'   => [
-                'enabled'                   => !empty($request->post('ded_enabled')),
-                'health_insurance_rate'     => (float) ($request->post('ded_health_rate') ?? 0),
-                'pension_rate'              => (float) ($request->post('ded_pension_rate') ?? 0),
-                'employment_insurance_rate' => (float) ($request->post('ded_employment_rate') ?? 0),
-                'income_tax_rate'           => (float) ($request->post('ded_income_tax_rate') ?? 0),
-                'resident_tax_monthly'      => (float) ($request->post('ded_resident_tax') ?? 0),
+                'enabled'                   => $request->postFlag('ded_enabled', $ded['enabled'] ?? 0) === 1,
+                'health_insurance_rate'     => (float) $keep('ded_health_rate',     $ded['health_insurance_rate'] ?? 0),
+                'pension_rate'              => (float) $keep('ded_pension_rate',    $ded['pension_rate'] ?? 0),
+                'employment_insurance_rate' => (float) $keep('ded_employment_rate', $ded['employment_insurance_rate'] ?? 0),
+                'income_tax_rate'           => (float) $keep('ded_income_tax_rate', $ded['income_tax_rate'] ?? 0),
+                'resident_tax_monthly'      => (float) $keep('ded_resident_tax',    $ded['resident_tax_monthly'] ?? 0),
             ],
             '_features'             => $enabledFeatures,
         ];
@@ -260,6 +270,16 @@ final class AdminStoreController
      * Le compte ciblé doit exister, et seul un Owner peut agir sur un compte Owner
      * (même règle que les fiches employés : sinon un gérant pouvait toucher à l'Owner).
      */
+    private function ownerGuard(): OwnerGuard
+    {
+        return new OwnerGuard($this->permissions, $this->users);
+    }
+
+    private function callerId(Request $request): int
+    {
+        return (int) ($request->getAttribute('auth_user')['id'] ?? 0);
+    }
+
     private function assertCanManageMember(Request $request, int $userId): void
     {
         if ($this->users->findById($userId) === null) {
@@ -339,6 +359,7 @@ final class AdminStoreController
         $roleId  = (int) $role['id'];
         $userId  = (int) $membership['user_id'];
         $this->assertCanManageMember($request, $userId);
+        $this->ownerGuard()->assertNotSelfUnlessOwner($this->callerId($request), $userId);
         $this->assertCanAssignRole($request, $roleId, $storeId);
         $oldRole = $this->roleSync->storeRoleMapForStore($storeId)[$userId]['name'] ?? '—';
 
@@ -362,6 +383,7 @@ final class AdminStoreController
         }
         $this->assertStoreAccess($request, $storeId);
         $this->assertCanManageMember($request, (int) $membership['user_id']);
+        $this->ownerGuard()->assertNotSelfUnlessOwner($this->callerId($request), (int) $membership['user_id']);
 
         $this->storeService->removeMember($mid, $storeId);
         $this->roleSync->revokeStoreRole((int) $membership['user_id'], $storeId);
@@ -413,7 +435,8 @@ final class AdminStoreController
 
         $overrides    = $this->storeService->getDeductionOverrides($mid);
         $oldSubjectTo = $overrides['subject_to_deductions'] ?? false;
-        $newSubjectTo = !empty($request->post('subject_to_deductions'));
+        // Champ absent : réglage actuel conservé (audit M12) ; la case envoie toujours 0 ou 1 (champ caché).
+        $newSubjectTo = $request->postFlag('subject_to_deductions', $oldSubjectTo) === 1;
         $this->storeService->saveMemberDeductions($mid, $storeId, $newSubjectTo);
         $this->auditLogger->logUpdate($request, 'store.member_deductions_updated', 'store_user', $mid, ['subject_to_deductions' => $oldSubjectTo], ['subject_to_deductions' => $newSubjectTo], [
             'store_id' => $storeId,

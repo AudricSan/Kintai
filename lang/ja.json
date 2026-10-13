@@ -1536,8 +1536,9 @@
     "val_employee_code_taken": "この従業員番号は他のアカウントで既に使用されています。",
     "val_field_too_long": "「:field」が長すぎます（最大 :max）。",
     "val_field_required": "「:field」は必須です。",
+    "error_cannot_act_on_self": "自分自身のアカウントにはこの操作を行えません（権限を失うため）。他の管理者またはオーナーに依頼してください。",
     "backup_update_step_verify": "アーカイブの整合性を確認しています…",
-    "backup_flash_error_release_archive_missing": "更新を拒否しました：このリリースには検証可能なアーカイブ（kintai-<バージョン>.zip と SHA256SUMS）がありません。",
     "backup_flash_error_checksum_failed": "更新を拒否しました：ダウンロードしたアーカイブのチェックサムがリリースで公開されたものと一致しません（改ざんまたは不完全なファイル）。",
+    "backup_flash_error_release_archive_missing": "更新を拒否しました：このリリースには検証可能なアーカイブ（kintai-<バージョン>.zip と SHA256SUMS）がありません。",
     "backup_flash_error_commit_mismatch": "更新を拒否しました：アーカイブがリリースタグのコミットと一致しません。"
 }

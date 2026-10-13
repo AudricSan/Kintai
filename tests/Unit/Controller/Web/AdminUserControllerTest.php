@@ -1095,7 +1095,7 @@ final class AdminUserControllerTest extends TestCase
     // -------------------------------------------------------------------------
 
     /** L'acteur (id 7) est Owner : la garde d'accès le laisse passer, c'est la garde Owner qui doit refuser. */
-    private function actingAsOwner(int $targetId): Request
+    private function actingAsOwner(int $targetId, array $post = []): Request
     {
         $this->roleAssignments->method('findByScope')->willReturn([
             ['id' => 1, 'user_id' => 7, 'role_id' => 10, 'scope_type' => 'global', 'scope_id' => null],
@@ -1103,7 +1103,7 @@ final class AdminUserControllerTest extends TestCase
         ]);
         $this->roles->method('findById')->willReturn(['id' => 10, 'is_system' => 1]);
 
-        $req = $this->makePostRequest([]);
+        $req = $this->makePostRequest($post);
         $req->setAttribute('auth_user', ['id' => 7, 'is_admin' => true]);
         $req->setRouteParams(['id' => (string) $targetId]);
         return $req;
@@ -1138,7 +1138,7 @@ final class AdminUserControllerTest extends TestCase
         $this->users->expects($this->never())->method('save');
 
         $this->expectException(\kintai\Core\Exceptions\ForbiddenException::class);
-        $this->controller->updateUser($this->actingAsOwner(7));
+        $this->controller->updateUser($this->actingAsOwner(7, ['is_active' => '0']));
     }
 
     protected function tearDown(): void
@@ -1182,5 +1182,26 @@ final class AdminUserControllerTest extends TestCase
             mkdir($dir, 0777, true);
         }
         touch($file);
+    }
+
+    /** Audit M12 : sans is_admin ni is_active dans la requête, un Owner ne retire plus le statut Owner ni n'active/désactive. */
+    public function testAnUpdateWithoutTheFlagsKeepsOwnerStatusAndActivity(): void
+    {
+        $this->users->method('findById')->willReturn([
+            'id' => 8, 'is_active' => 1, 'deleted_at' => null, 'email' => 'o2@x.test',
+            'first_name' => 'O', 'last_name' => 'Deux', 'furigana_last_name' => 'オ', 'furigana_first_name' => 'ツー', 'phone' => '090',
+        ]);
+        $saved = null;
+        $this->users->method('save')->willReturnCallback(function (array $d) use (&$saved): array {
+            $saved = $d;
+            return $d;
+        });
+        $this->roleAssignments->expects($this->never())->method('revoke');
+
+        $this->controller->updateUser($this->actingAsOwner(8, ['first_name' => 'Owen']));
+
+        $this->assertSame('Owen', $saved['first_name']);
+        $this->assertSame(1, $saved['is_active']);
+        $this->assertSame('090', $saved['phone']);
     }
 }
