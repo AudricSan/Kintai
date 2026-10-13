@@ -128,6 +128,11 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(LicenseClientService::class),
         ));
 
+        // Points d'extension des bundles (navigation…) : une instance par requête, qui garde ses résultats en cache.
+        $this->container->singleton(\kintai\Core\Extension\ExtensionRegistry::class, fn(Container $c) => new \kintai\Core\Extension\ExtensionRegistry(
+            $c->make(\kintai\Core\BundleManager::class),
+        ));
+
         $this->container->singleton(StoreServiceInterface::class, fn(Container $c) => new StoreService(
             $c->make(StoreRepositoryInterface::class),
             $c->make(StoreUserRepositoryInterface::class),

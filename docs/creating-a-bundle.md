@@ -187,6 +187,40 @@ public function testOnlyTheContractIsUsed(): void
 }
 ```
 
+## Extension points (contract 1.1)
+
+The Core never names a bundle: a bundle **declares** what it adds to the interface by overriding methods of its
+entry class, and the Core renders it. Each bundle is queried in isolation — an exception or a value of the wrong
+type drops its contribution and is logged, the page keeps working. Require `"kintai_contract": "^1.1"` to use them.
+
+### Navigation: `navigation()`
+
+```php
+use kintai\Contract\Extension\NavItem;
+
+public function navigation(): array
+{
+    return [
+        new NavItem(
+            key: 'timeoff',                       // unique, also the key of the user's "hide this entry" preference
+            section: NavItem::REQUESTS,           // MAIN, PLANNING, HR, REQUESTS, REPORTS or SYSTEM
+            label: 'timeoff',                     // translation key (manager view)
+            managerRoute: 'admin.timeoff',        // route name, or null if managers have no page
+            employeeRoute: 'employee.timeoff',    // route name, or null if employees have no page
+            icon: 'leaf',
+            employeeLabel: 'my_timeoff',
+            activePaths: ['/admin/timeoff', '/employee/timeoff'],
+            storeFeature: 'timeoff',              // per-store feature switch, if any
+            order: 10,                            // Core entries use multiples of 10
+            mobile: true,                         // may be picked for the mobile bottom bar
+        ),
+    ];
+}
+```
+
+An entry is shown only when the current role has a route, holds the permission declared on that route, and — if
+`storeFeature` is set — has that feature enabled. Users can hide it from their navigation preferences.
+
 ## The RBAC scope contract: `managed_store_ids`
 
 Every Web route your bundle registers under `middleware: [AuthMiddleware::class, PermissionMiddleware::class]` must declare a `permission:` — either a precise key from `PermissionCatalog`, or `'public'` (a route intentionally left ungated, e.g. self-service/aggregate pages; omitting `permission:` entirely behaves the same way). `PermissionMiddleware` resolves this into a request attribute, `managed_store_ids`, that every controller down the line is expected to read rather than re-deriving:

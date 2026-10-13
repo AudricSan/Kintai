@@ -68,6 +68,17 @@ abstract class Bundle
     }
 
     /**
+     * Point d'extension « navigation » (contrat 1.1) : entrées que le bundle ajoute à la barre du haut et, si elles
+     * y sont éligibles, à la barre mobile. Le Core les rend lui-même ; il ne cite plus aucun bundle par son nom.
+     *
+     * @return list<\kintai\Contract\Extension\NavItem>
+     */
+    public function navigation(): array
+    {
+        return [];
+    }
+
+    /**
      * Boot du bundle, une fois tous les bundles enregistrés.
      */
     public function boot(): void
