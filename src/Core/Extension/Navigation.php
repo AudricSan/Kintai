@@ -28,6 +28,13 @@ final class Navigation
      */
     public const LEGACY_EMPLOYEE_KEYS = ['my_planning' => 'shifts', 'timeclock' => 'timeclocks', 'my_timeoff' => 'timeoff'];
 
+    /** Anciennes clés de la barre mobile (gérant : team, requests ; employé : comme ci-dessus). */
+    public const LEGACY_MOBILE_KEYS = self::LEGACY_EMPLOYEE_KEYS + ['team' => 'users', 'requests' => 'timeoff'];
+
+    /** Barre mobile par défaut (2 à 4 entrées choisies par l'utilisateur, sinon celles-ci). */
+    public const MOBILE_DEFAULT_MANAGER = ['shifts', 'users', 'timeoff'];
+    public const MOBILE_DEFAULT_EMPLOYEE = ['shifts', 'timeclocks', 'timeoff'];
+
     public function __construct(
         private readonly ?ExtensionRegistry $registry = null,
         private readonly ?BundleManager $bundles = null,
@@ -178,12 +185,114 @@ final class Navigation
      */
     public function labelOf(string $key, bool $isManager): string
     {
-        foreach ($this->items() as $item) {
+        foreach ([...$this->items(), ...self::mobileOnlyItems()] as $item) {
             if ($item->key === $key) {
                 return $item->labelFor($isManager);
             }
         }
         return $key;
+    }
+
+    /**
+     * Entrées que l'utilisateur peut placer dans la barre mobile : celles marquées « mobile » qui existent pour son
+     * rôle, plus « Mon profil » côté employé (propre à la barre mobile).
+     *
+     * @return list<NavItem>
+     */
+    public function mobileItems(bool $isManager): array
+    {
+        $items = array_filter($this->items(), static fn(NavItem $i): bool => $i->mobile);
+        array_push($items, ...self::mobileOnlyItems());
+        return array_values(array_filter($items, static fn(NavItem $i): bool => $i->routeFor($isManager) !== null));
+    }
+
+    /** @return list<string> */
+    public function mobileKeys(bool $isManager): array
+    {
+        return array_map(static fn(NavItem $i): string => $i->key, $this->mobileItems($isManager));
+    }
+
+    /**
+     * Choix proposés dans les préférences : entrées mobiles dont la route est permise et la fonctionnalité active.
+     *
+     * @return list<string>
+     */
+    public function mobileChoices(bool $isManager, \Closure $routeVisible, \Closure $feat): array
+    {
+        $keys = [];
+        foreach ($this->mobileItems($isManager) as $item) {
+            if ($item->storeFeature !== null && !$feat($item->storeFeature)) {
+                continue;
+            }
+            if ($item->links === null && !$routeVisible((string) $item->routeFor($isManager))) {
+                continue;
+            }
+            $keys[] = $item->key;
+        }
+        return $keys;
+    }
+
+    /**
+     * Onglets de la barre mobile à afficher : les entrées choisies (ou par défaut) visibles, complétées par les
+     * entrées par défaut si moins de deux le sont.
+     *
+     * @param list<string> $saved
+     * @param array{isManager: bool, path: string, routeVisible: \Closure, feat: \Closure, routeUrl: \Closure, translate: \Closure, view: array<string, mixed>} $ctx
+     * @return list<array{key: string, icon: string, href: string, label: string, active: bool}>
+     */
+    public function mobileTabs(array $saved, array $ctx): array
+    {
+        $default = $ctx['isManager'] ? self::MOBILE_DEFAULT_MANAGER : self::MOBILE_DEFAULT_EMPLOYEE;
+        $byKey = [];
+        foreach ($this->mobileItems($ctx['isManager']) as $item) {
+            $byKey[$item->key] = $item;
+        }
+        $view = ['route_visible' => $ctx['routeVisible'], 'route_url' => $ctx['routeUrl'], 'path' => $ctx['path']] + $ctx['view'];
+
+        $tab = static function (NavItem $item) use ($ctx, $view): ?array {
+            if ($item->storeFeature !== null && !($ctx['feat'])($item->storeFeature)) {
+                return null;
+            }
+            try {
+                $links = $item->linksFor($view, $ctx['isManager']);
+                if ($links === null) {
+                    $route = (string) $item->routeFor($ctx['isManager']);
+                    if (!($ctx['routeVisible'])($route)) {
+                        return null;
+                    }
+                    $links = [['href' => ($ctx['routeUrl'])($route), 'label' => ($ctx['translate'])($item->labelFor($ctx['isManager'])), 'active' => $item->isActive($ctx['path'])]];
+                }
+            } catch (\Throwable) {
+                return null;
+            }
+            // Un seul onglet par entrée : le premier lien (ex. rapports journaliers d'un seul magasin).
+            return $links === [] ? null : ['key' => $item->key, 'icon' => $item->icon] + $links[0];
+        };
+
+        $tabs = [];
+        foreach (self::migrateLegacyMobileKeys($saved !== [] ? $saved : $default) as $key) {
+            if (isset($byKey[$key]) && ($t = $tab($byKey[$key])) !== null) {
+                $tabs[$key] = $t;
+            }
+        }
+        foreach ($default as $key) {
+            if (count($tabs) >= 2) {
+                break;
+            }
+            if (!isset($tabs[$key]) && isset($byKey[$key]) && ($t = $tab($byKey[$key])) !== null) {
+                $tabs[$key] = $t;
+            }
+        }
+        return array_values($tabs);
+    }
+
+    /** @param list<string> $keys @return list<string> */
+    public static function migrateLegacyMobileKeys(array $keys): array
+    {
+        return array_values(array_unique(array_map(
+            static fn(string $k): string => self::LEGACY_MOBILE_KEYS[$k] ?? $k,
+            array_filter($keys, 'is_string'),
+        )));
     }
 
     /** @param list<string> $hidden @return list<string> */
@@ -195,6 +304,14 @@ final class Navigation
         )));
     }
 
+    /** Entrées propres à la barre mobile (absentes de la barre du haut). @return list<NavItem> */
+    public static function mobileOnlyItems(): array
+    {
+        return [
+            new NavItem('my_profile', NavItem::MAIN, 'my_profile', null, 'profile', icon: 'person', activePaths: ['/profile'], mobile: true),
+        ];
+    }
+
     /** @return list<NavItem> */
     public static function coreItems(): array
     {
@@ -203,13 +320,13 @@ final class Navigation
         return [
             new NavItem('shifts', NavItem::PLANNING, 'shifts', 'admin.shifts.timeline', 'employee.shifts.day',
                 icon: 'calendar', employeeLabel: 'my_planning', activePaths: ['/admin/shifts', '/employee/shifts'],
-                storeFeature: 'shifts', order: 10),
+                storeFeature: 'shifts', order: 10, mobile: true),
             new NavItem('calendar', NavItem::PLANNING, 'calendar', 'admin.shifts.calendar', 'admin.shifts.calendar',
                 icon: 'calendar', activePaths: ['/admin/shifts/calendar'], order: 20),
             new NavItem('shift_types', NavItem::PLANNING, 'shift_types', 'admin.shift_types', 'admin.shift_types',
                 icon: 'tag', activePaths: ['/admin/shift-types'], order: 30),
             new NavItem('users', NavItem::HR, 'staff', 'admin.users', 'admin.users',
-                icon: 'users', activePaths: ['/admin/users'], order: 10),
+                icon: 'users', activePaths: ['/admin/users'], order: 10, mobile: true),
             new NavItem('stores', NavItem::HR, 'stores', 'admin.stores', 'admin.stores',
                 icon: 'store', activePaths: ['/admin/stores'], order: 20),
             // Lien direct vers le rapport du magasin quand l'utilisateur n'en gère qu'un, sinon vers la liste.

@@ -16,7 +16,6 @@ use kintai\UI\Components\Flash;
  * @var array  $nav_section_order
  * @var array  $nav_default_sections
  * @var bool   $is_owner
- * @var array  $bottom_nav_pool
  * @var array  $bottom_nav_items
  */
 
@@ -398,24 +397,8 @@ foreach ($nav_section_order ?? array_keys($_navByKey) as $_sk) {
     }
 }
 
-// Barre mobile (étape suivante du plan) : clés et fonctionnalités propres, inchangées pour l'instant.
-$_navFeatMap = [
-    'my_planning' => 'shifts', 'timeclock' => 'timeclock', 'my_timeoff' => 'timeoff', 'swaps' => 'swaps',
-    'open_shifts' => 'open_shifts', 'messages' => 'messages', 'daily_reports' => 'daily_reports', 'my_profile' => null,
-];
-$_bnFeatMap = $_isManagerView ? [
-    'shifts'        => 'shifts',
-    'team'          => null,
-    'requests'      => 'timeoff',
-    'messages'      => 'messages',
-    'swaps'         => 'swaps',
-    'timeclocks'    => 'timeclock',
-    'daily_reports' => 'daily_reports',
-] : $_navFeatMap;
-$_filteredBnPool = array_values(array_filter(
-    $bottom_nav_pool ?? [],
-    fn(string $k) => $_navHasFeat($_bnFeatMap[$k] ?? null)
-));
+// Barre mobile : entrées « mobile » de la navigation réelle, permises et actives pour ce magasin.
+$_filteredBnPool = $_navigation->mobileChoices($_isManagerView, $route_visible ?? fn(string $r): bool => true, $_navHasFeat);
 ?>
 
 <form method="POST" action="<?= $_navSaveAction ?>">
@@ -511,7 +494,7 @@ $_filteredBnPool = array_values(array_filter(
                        <?= in_array($_bnKey, $bottom_nav_items ?? [], true) ? 'checked' : '' ?>>
                 <span class="form-toggle__track"></span>
             </label>
-            <span class="nav-pref-label"><?= __($_bnKey) ?></span>
+            <span class="nav-pref-label"><?= __($_navigation->labelOf($_bnKey, $_isManagerView)) ?></span>
         </div>
     <?php endforeach; ?>
     <?php

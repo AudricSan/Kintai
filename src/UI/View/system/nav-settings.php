@@ -11,7 +11,6 @@ use kintai\UI\Components\Flash;
  * @var string[] $hidden
  * @var string[] $sectionOrder
  * @var string[] $defaultSections
- * @var string[] $bottomNavPool
  * @var string[] $bottomNavItems
  * @var bool|null $isOwner          owner vs manager
  * @var mixed    $store_features
@@ -26,7 +25,6 @@ $hasFeat     = fn(?string $f): bool => $f === null || $isOwnerView || $store_fea
 $_navigation = \kintai\Core\Extension\Navigation::current();
 $_byNav = $_navigation->hideableKeys(true, $route_visible ?? fn(string $r): bool => true, $hasFeat, get_defined_vars());
 
-$bnFeatMap = ['shifts' => 'shifts', 'team' => null, 'requests' => 'timeoff', 'messages' => 'messages', 'swaps' => 'swaps', 'timeclocks' => 'timeclock', 'daily_reports' => 'daily_reports'];
 
 $sections = [];
 foreach ($sectionOrder as $sk) {
@@ -34,7 +32,8 @@ foreach ($sectionOrder as $sk) {
         $sections[$sk] = $_byNav[$sk];
     }
 }
-$bottomNavPool = array_values(array_filter($bottomNavPool, fn(string $k) => $hasFeat($bnFeatMap[$k] ?? null)));
+// Barre mobile : entrées « mobile » de la navigation réelle, permises et actives pour ce magasin.
+$bottomNavPool = $_navigation->mobileChoices(true, $route_visible ?? fn(string $r): bool => true, $hasFeat);
 
 echo Flash::fromQuery('success', ['default' => __('operation_success'), '1' => __('operation_success')])->render();
 ?>
@@ -119,7 +118,7 @@ echo Flash::fromQuery('success', ['default' => __('operation_success'), '1' => _
             <input type="checkbox" name="bottom_nav[]" value="<?= htmlspecialchars($_bnKey) ?>" class="form-toggle__input bottom-nav-check" <?= in_array($_bnKey, $bottomNavItems, true) ? 'checked' : '' ?>>
             <span class="form-toggle__track"></span>
         </label>
-        <span class="nav-pref-label"><?= __($_bnKey) ?></span>
+        <span class="nav-pref-label"><?= __($_navigation->labelOf($_bnKey, true)) ?></span>
     </div>
     <?php endforeach; ?>
     <?php echo Card::make()->body(ob_get_clean())->render(); ?>
