@@ -6,7 +6,7 @@ This document describes how to publish a new Kintai version on GitHub so that de
 
 ## How it works
 
-Auto-update (`GithubUpdateService::checkLatestRelease()`) polls `GET /repos/{GITHUB_UPDATE_REPO}/releases` (the full list, not just the latest one) and downloads the source archive (`zipball_url`) GitHub generates automatically for the selected release's tag. **Nothing to build or upload manually** — a GitHub Release tagged `vX.Y.Z` is enough.
+Auto-update (`GithubUpdateService::checkLatestRelease()`) polls `GET /repos/{GITHUB_UPDATE_REPO}/releases` (the full list, not just the latest one). It applies the archive the `Release` workflow attaches to the selected release — `kintai-vX.Y.Z.zip`: the tag's code (`git archive`) plus `vendor/` (`composer install --no-dev`) and a `release-manifest.json` naming the tag and its commit — together with its `SHA256SUMS` file. Before writing anything, the instance checks the archive's SHA-256 against `SHA256SUMS` and checks that the manifest names this tag and the commit GitHub reports for it (`GET /repos/{repo}/commits/{tag}`); any mismatch, or a release without these two files, is refused. **Nothing to build or upload manually** — the workflow does it. These checks catch an altered, truncated or misattached archive; they do not protect against a compromised GitHub account, which could publish a consistent archive and checksum.
 
 Each instance follows one of three **update channels**, chosen by the Owner on `/admin/update`:
 - **Release** — releases published from `main`, not marked prerelease on GitHub.
@@ -66,7 +66,7 @@ To promote a version forward (develop → alpha → beta → release), merge the
 
 - On each instance, the owner sees "Update available" on `/admin/update` (for the channel it's configured to follow) and can click "Update now".
 - Before applying anything, the instance automatically creates a database + uploads backup and a code snapshot in `storage/backups/`.
-- If `composer.lock` changed, the instance attempts `composer install` automatically (best-effort); on failure or unavailability, a warning prompts a manual run over SSH.
+- `vendor/` comes from the verified archive: the instance never runs `composer` (it used to attempt `composer install` through `shell_exec`, which often failed on shared hosting). Packages dropped by a new version are removed from `vendor/` like any other file the previous update installed.
 
 ## If something goes wrong
 

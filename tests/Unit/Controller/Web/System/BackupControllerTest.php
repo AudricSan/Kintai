@@ -20,10 +20,13 @@ use kintai\Core\Services\TranslationService;
 use kintai\Core\Services\UpdateService;
 use kintai\UI\Controller\Web\System\BackupController;
 use kintai\UI\ViewRenderer;
+use kintai\Tests\Support\VerifiedReleaseFixture;
 use PHPUnit\Framework\TestCase;
 
 final class BackupControllerTest extends TestCase
 {
+    use VerifiedReleaseFixture;
+
     private string $tmpDir;
     private UpdateService $updateService;
     private BackupService $backup;
@@ -82,6 +85,7 @@ final class BackupControllerTest extends TestCase
 
     protected function tearDown(): void
     {
+        $this->clearCachedReleases();
         $this->removeDir($this->tmpDir);
         putenv('KINTAI_STORAGE_PATH');
         $_GET = [];
@@ -145,8 +149,13 @@ final class BackupControllerTest extends TestCase
             $this->settings,
             $this->photoRepo,
             $this->tmpDir,
-            $releaseFetcher,
+            // Releases publiées comme par release.yml : archive vérifiable + SHA256SUMS (audit M10).
+            $releaseFetcher === null ? null : function (string $repo, string $token) use ($releaseFetcher): ?array {
+                $releases = $releaseFetcher($repo, $token);
+                return $releases === null ? null : $this->withAssets($releases);
+            },
             $zipDownloader,
+            $this->commitResolver(),
         );
 
         return new BackupController($this->view, $this->backup, $this->updateService, $githubUpdate, $this->migrator, $this->settings, new AuditLogger());
@@ -257,20 +266,18 @@ final class BackupControllerTest extends TestCase
                 'published_at' => '2026-01-01T00:00:00Z',
                 'target_commitish' => 'main',
             ]],
-            function (string $url, string $dest, string $token): bool {
-                $this->makeReleaseZip($dest, [
-                    'README.md'    => 'v2',
-                    'config/app.php' => "<?php return ['version' => '2.0.0'];",
-                ]);
-                return true;
-            },
+            $this->verifiedDownloader([
+                'README.md'    => 'v2',
+                'config/app.php' => "<?php return ['version' => '2.0.0'];",
+            ]),
         );
 
         $response = $controller->update($this->requestAs(true));
 
         $this->assertSame(302, $response->status());
         $location = $this->locationOf($response);
-        $this->assertStringStartsWith('/admin/update?success=updated_2.0.0_files-2_deleted-0', $location);
+        // 2 fichiers + release-manifest.json de l'archive vérifiée.
+        $this->assertStringStartsWith('/admin/update?success=updated_2.0.0_files-3_deleted-0', $location);
         $this->assertSame('2.0.0', $this->updateService->getCurrentVersion());
         $this->assertFileExists($this->tmpDir . '/README.md');
         $this->assertFalse($this->settings->maintenanceModeEnabled());
@@ -286,11 +293,12 @@ final class BackupControllerTest extends TestCase
                 'zipball_url' => 'https://example.test/zipball/v2.0.0',
                 'target_commitish' => 'main',
             ]],
-            function (string $url, string $dest, string $token) use (&$enabledDuringApply): bool {
-                $enabledDuringApply = $this->settings->maintenanceModeEnabled();
-                $this->makeReleaseZip($dest, ['config/app.php' => "<?php return ['version' => '2.0.0'];"]);
-                return true;
-            },
+            $this->verifiedDownloader(
+                ['config/app.php' => "<?php return ['version' => '2.0.0'];"],
+                function () use (&$enabledDuringApply): void {
+                    $enabledDuringApply = $this->settings->maintenanceModeEnabled();
+                },
+            ),
         );
 
         $this->assertFalse($this->settings->maintenanceModeEnabled());
@@ -311,10 +319,7 @@ final class BackupControllerTest extends TestCase
                 'zipball_url' => 'https://example.test/zipball/v2.0.0',
                 'target_commitish' => 'main',
             ]],
-            function (string $url, string $dest, string $token): bool {
-                $this->makeReleaseZip($dest, ['config/app.php' => "<?php return ['version' => '2.0.0'];"]);
-                return true;
-            },
+            $this->verifiedDownloader(['config/app.php' => "<?php return ['version' => '2.0.0'];"]),
         );
 
         $controller->update($this->requestAs(true));

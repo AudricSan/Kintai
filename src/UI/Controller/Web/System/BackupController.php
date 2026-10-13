@@ -229,7 +229,10 @@ final class BackupController
 
         if (!$result['ok']) {
             $restoreMaintenance();
-            $emit('error', ['message' => (string) $result['error']]);
+            // Code connu (download_failed, checksum_failed…) : message traduit plutôt que le code brut.
+            $code = (string) $result['error'];
+            $text = __('backup_flash_error_' . $code);
+            $emit('error', ['message' => $text !== 'backup_flash_error_' . $code ? $text : $code]);
             exit(0);
         }
 
@@ -377,6 +380,9 @@ final class BackupController
             $decoded === 'error_no_update_available' => ['type' => 'danger', 'text' => __('backup_flash_error_no_update_available')],
             $decoded === 'error_download_failed'     => ['type' => 'danger', 'text' => __('backup_flash_error_download_failed')],
             $decoded === 'error_extract_failed'      => ['type' => 'danger', 'text' => __('backup_flash_error_extract_failed')],
+            $decoded === 'error_release_archive_missing' => ['type' => 'danger', 'text' => __('backup_flash_error_release_archive_missing')],
+            $decoded === 'error_checksum_failed'     => ['type' => 'danger', 'text' => __('backup_flash_error_checksum_failed')],
+            $decoded === 'error_commit_mismatch'     => ['type' => 'danger', 'text' => __('backup_flash_error_commit_mismatch')],
             // Le détail de l'échec est déjà affiché par le layout depuis la session : pas de second bandeau.
             $decoded === 'error_failed' => null,
             // Jamais le texte brut de l'URL (n'importe qui pourrait fabriquer le lien) : le détail d'une erreur
