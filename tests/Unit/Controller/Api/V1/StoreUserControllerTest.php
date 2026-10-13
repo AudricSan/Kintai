@@ -13,6 +13,7 @@ use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\Log;
 use kintai\UI\Controller\Api\V1\StoreUserController;
 use PHPUnit\Framework\MockObject\MockObject;
+use kintai\Core\Exceptions\ForbiddenException;
 use PHPUnit\Framework\TestCase;
 
 final class StoreUserControllerTest extends TestCase
@@ -94,5 +95,46 @@ final class StoreUserControllerTest extends TestCase
             ['user_id' => 77, 'store_id' => 99, 'id' => 1, 'staff_code' => 'B2'],
             ['store_id' => '3', 'id' => '5'],
         ));
+    }
+
+    // -------------------------------------------------------------------------
+    // Sa propre adhésion (audit du 13/10/2026, M13)
+    // -------------------------------------------------------------------------
+
+    private function actingAs(int $userId, Request $req): Request
+    {
+        $req->setAttribute('auth_user', ['id' => $userId]);
+        return $req;
+    }
+
+    public function testACallerCannotDeleteTheirOwnMembership(): void
+    {
+        $this->stores->method('findById')->willReturn(['id' => 3]);
+        $this->storeUsers->method('findById')->willReturn(['id' => 9, 'store_id' => 3, 'user_id' => 2]);
+        $this->storeUsers->expects($this->never())->method('delete');
+
+        $this->expectException(ForbiddenException::class);
+        $this->controller->destroy($this->actingAs(2, $this->request([], ['store_id' => '3', 'id' => '9'])));
+    }
+
+    public function testACallerCannotDeactivateTheirOwnMembership(): void
+    {
+        $this->stores->method('findById')->willReturn(['id' => 3]);
+        $this->storeUsers->method('findById')->willReturn(['id' => 9, 'store_id' => 3, 'user_id' => 2, 'is_active' => 1]);
+        $this->storeUsers->expects($this->never())->method('save');
+
+        $this->expectException(ForbiddenException::class);
+        $this->controller->update($this->actingAs(2, $this->request(['is_active' => 0], ['store_id' => '3', 'id' => '9'])));
+    }
+
+    public function testAnotherMembersMembershipCanStillBeDeleted(): void
+    {
+        $this->stores->method('findById')->willReturn(['id' => 3]);
+        $this->storeUsers->method('findById')->willReturn(['id' => 9, 'store_id' => 3, 'user_id' => 5]);
+        $this->storeUsers->expects($this->once())->method('delete')->with(9);
+
+        $response = $this->controller->destroy($this->actingAs(2, $this->request([], ['store_id' => '3', 'id' => '9'])));
+
+        $this->assertSame(204, $response->status());
     }
 }
