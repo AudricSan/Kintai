@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+// Noms du contrat de bundle (kintai\Contract\…), déclarés avant tout chargement de bundle : voir src/Contract/aliases.php.
+require_once __DIR__ . '/../Contract/aliases.php';
+
 if (!function_exists('csrf_token')) {
     function csrf_token(): string
     {

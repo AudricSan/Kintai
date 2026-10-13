@@ -47,9 +47,12 @@ final class Container
 
     public function has(string $abstract): bool
     {
-        return isset($this->instances[$abstract])
-            || isset($this->singletonDefs[$abstract])
-            || isset($this->bindings[$abstract]);
+        if (isset($this->instances[$abstract]) || isset($this->singletonDefs[$abstract]) || isset($this->bindings[$abstract])) {
+            return true;
+        }
+        // Alias du contrat de bundle : la liaison existe sous le nom réel.
+        $canonical = self::canonicalName($abstract);
+        return $canonical !== $abstract && $this->has($canonical);
     }
 
     /**
@@ -76,8 +79,24 @@ final class Container
             return ($this->bindings[$abstract])($this);
         }
 
-        // 4. Auto-resolve via reflection
+        // 4. Alias (noms du contrat de bundle, kintai\Contract\…) : les liaisons sont enregistrées sous le nom réel
+        //    de la classe ; un bundle qui demande l'alias doit obtenir la même instance.
+        $canonical = self::canonicalName($abstract);
+        if ($canonical !== $abstract) {
+            return $this->make($canonical);
+        }
+
+        // 5. Auto-resolve via reflection
         return $this->resolve($abstract);
+    }
+
+    /** Nom réel d'une classe ou interface désignée par un alias (class_alias), ou le nom tel quel. */
+    public static function canonicalName(string $abstract): string
+    {
+        if (!class_exists($abstract) && !interface_exists($abstract)) {
+            return $abstract;
+        }
+        return (new \ReflectionClass($abstract))->getName();
     }
 
     private function resolve(string $class): object
