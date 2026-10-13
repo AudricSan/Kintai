@@ -6,6 +6,7 @@ namespace kintai\UI\Controller\Api\V1;
 
 use kintai\Core\Api\Paginator;
 use kintai\Core\Auth\CredentialRevoker;
+use kintai\Core\Auth\OwnerGuard;
 use kintai\Core\Auth\PasswordHasher;
 use kintai\Core\Auth\PasswordPolicy;
 use kintai\Core\Auth\PermissionService;
@@ -28,6 +29,7 @@ final class UserController
         private readonly PlanLimitService $planLimits,
         private readonly PermissionService $permissions,
         private readonly StoreUserRepositoryInterface $storeUsers,
+        private readonly OwnerGuard $ownerGuard,
         // Optionnel pour les tests qui construisent le contrôleur à la main.
         private readonly ?CredentialRevoker $revoker = null,
     ) {}
@@ -85,6 +87,10 @@ final class UserController
 
         $body    = $request->json() ?? [];
         $data    = $this->normalizeUser(PayloadValidator::validate($body, ApiPayloadRules::user(), true));
+        // Désactiver un Owner : même garde que la suppression (au moins un Owner actif, pas soi-même).
+        if (!empty($old['is_active']) && array_key_exists('is_active', $data) && empty($data['is_active'])) {
+            $this->ownerGuard->assertCanRemoveOwner((int) ($this->authUser($request)['id'] ?? 0), $id);
+        }
         $newHash = $this->hashFromPayload($body);
         if ($data === [] && $newHash === null) {
             throw new ValidationException(['body' => __('val_no_updatable_field')], __('val_no_updatable_field'));
@@ -111,6 +117,7 @@ final class UserController
         $id = (int) $request->param('id');
         $this->requireUser($id);
         $this->permissions->requireUserAccess($this->authUser($request), 'employees.delete', $id, $this->storeIdsOf($id));
+        $this->ownerGuard->assertCanRemoveOwner((int) ($this->authUser($request)['id'] ?? 0), $id);
 
         $this->users->delete($id);
         $this->revoker?->revokeAllFor($id);

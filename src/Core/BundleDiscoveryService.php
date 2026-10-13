@@ -32,6 +32,12 @@ use kintai\Core\Services\Log;
  */
 final class BundleDiscoveryService
 {
+    /**
+     * Bundles supprimés du projet : une instance qui les avait installés ne doit plus les charger (leur code
+     * dépendrait de classes du Core qui n'existent plus).
+     */
+    public const RETIRED_SLUGS = ['feedback'];
+
     private readonly string $bundlesDir;
     private readonly InstalledBundleManifestStore $installedStore;
     private readonly string $installedBundlesDir;
@@ -124,6 +130,9 @@ final class BundleDiscoveryService
         $discovered = [];
 
         foreach ($this->installedStore->all() as $slug => $info) {
+            if (in_array($slug, self::RETIRED_SLUGS, true)) {
+                continue;
+            }
             $version = $info['active_version'] ?? null;
             if (!is_string($version) || $version === '') {
                 continue;
