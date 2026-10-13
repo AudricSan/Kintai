@@ -214,7 +214,7 @@ Required at the bundle's repository root:
     "version": "1.0.0",
     "description": "Employee feedback (bugs, suggestions) — submission modal, admin list and deletion.",
     "author": { "name": "Your Name", "email": "you@example.com", "url": "https://example.com" },
-    "kintai_core": { "min": "0.1.0", "max": "999.999.999" },
+    "kintai_contract": "^1.0",
     "requires_bundles": {},
     "namespace": "kintai\\Bundles\\Installed\\Feedback",
     "entry_class": "kintai\\Bundles\\Installed\\Feedback\\FeedbackBundle",
@@ -231,8 +231,28 @@ Required at the bundle's repository root:
 | `namespace` | Yes | PSR-4 root for everything under `src/`. |
 | `entry_class` | Yes | Fully-qualified entry class name; its file must exist under `src/` once resolved from `namespace` (checked before activation). |
 | `description`, `author`, `license`, `homepage` | No | Informational only. |
-| `kintai_core.min`/`.max` | No (defaults `0.0.0`/`999.999.999`) | The installer refuses to activate a bundle outside these bounds against the running instance's Core version. A bundle whose views use the `data-*` actions or `csp_nonce()` must set `min` to `0.3.0` — see [Content Security Policy](#content-security-policy-no-inline-scripts). |
+| `kintai_contract` | Recommended | Semver constraint on the **bundle contract** version (see [Versioned bundle contract](#versioned-bundle-contract)), e.g. `^1.0`. When present, it is the only compatibility check and `kintai_core` is ignored. |
+| `kintai_core.min`/`.max` | No (defaults `0.0.0`/`999.999.999`) — **legacy** | Used only when `kintai_contract` is absent. | The installer refuses to activate a bundle outside these bounds against the running instance's Core version. A bundle whose views use the `data-*` actions or `csp_nonce()` must set `min` to `0.3.0` — see [Content Security Policy](#content-security-policy-no-inline-scripts). |
 | `requires_bundles` | No (defaults `{}`) | Slug → version constraint. **Informational only for now** — see Limitations. |
+
+## Versioned bundle contract
+
+The bundle contract has **its own version**, independent of the Core's: `kintai\Contract\Contract::VERSION` (currently `1.0.0`). It follows semver — a minor version only adds things (a class, an optional method, an extension point), a major version removes or changes a signature and is announced in a dedicated "Bundle contract" section of the CHANGELOG.
+
+Declare the contract version your bundle needs in `bundle.json`:
+
+```json
+"kintai_contract": "^1.0"
+```
+
+Supported constraints (Composer rules): `^1.2` (>= 1.2.0, < 2.0.0), `~1.2` / `~1.2.3`, `>=1.0 <2.0` (space = AND), `^1.0 || ^2.0` (OR), `*`, and an exact version.
+
+The Core checks it **twice**:
+
+- **at install time** (market): an incompatible bundle is refused before anything is written to disk;
+- **at boot**: an installed bundle that became incompatible (e.g. after a Core update that raised the contract's major version) is **not loaded**, even if enabled — the application keeps running, the event is logged (`bundle_incompatible_not_loaded`) and the Bundles page shows the reason so the Owner can install a compatible version.
+
+`kintai_core.min`/`max` is still honoured for bundles that don't declare `kintai_contract` yet, but it will be dropped once every bundle has migrated: declare `kintai_contract` in new bundles.
 
 ## Publishing a release
 

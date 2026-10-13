@@ -290,9 +290,10 @@ final class BundleInstallerService
             return null;
         }
 
-        $coreVersion = $this->updateService->getCurrentVersion();
-        if (!$manifest->isCompatibleWithCore($coreVersion)) {
-            $this->lastError = "Ce bundle nécessite Kintai {$manifest->kintaiCoreMin} à {$manifest->kintaiCoreMax} (version installée : {$coreVersion}).";
+        // Contrat de bundle (kintai_contract), ou à défaut ancien intervalle kintai_core.min/max.
+        $incompatible = $manifest->incompatibilityReason($this->updateService->getCurrentVersion());
+        if ($incompatible !== null) {
+            $this->lastError = $incompatible;
             return null;
         }
 

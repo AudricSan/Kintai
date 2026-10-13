@@ -175,7 +175,8 @@ final class BundleInstallerServiceTest extends TestCase
         $result = $service->install('fake-bundle', 'https://github.com/AudricSan/kintai-bundle-fake', '1.0.0');
 
         $this->assertFalse($result->success);
-        $this->assertStringContainsString('nécessite Kintai', (string) $result->error);
+        // Message traduit (clé brute en test unitaire, sans fichiers de langue chargés).
+        $this->assertStringContainsString('bundle_core_incompatible', (string) $result->error);
     }
 
     public function testInstallRejectsWhenEntryClassFileIsMissing(): void

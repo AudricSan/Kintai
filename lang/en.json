@@ -1540,5 +1540,10 @@
     "backup_update_step_verify": "Verifying the archive integrity…",
     "backup_flash_error_checksum_failed": "Update refused: the downloaded archive's checksum does not match the one published with the release (altered or incomplete file).",
     "backup_flash_error_release_archive_missing": "Update refused: this release does not provide a verifiable archive (kintai-<version>.zip and SHA256SUMS).",
-    "backup_flash_error_commit_mismatch": "Update refused: the archive does not match the commit of the release tag."
+    "backup_flash_error_commit_mismatch": "Update refused: the archive does not match the commit of the release tag.",
+    "bundle_incompatible": "Incompatible",
+    "bundle_incompatible_not_loaded": "This bundle is not loaded: :reason Install a compatible version from the market.",
+    "bundle_contract_incompatible": "it requires bundle contract :required, this Kintai provides contract :provided.",
+    "bundle_contract_constraint_invalid": "its contract constraint \":constraint\" is malformed.",
+    "bundle_core_incompatible": "it requires Kintai :min to :max (installed version: :current)."
 }
