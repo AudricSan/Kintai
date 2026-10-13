@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace kintai\UI\Controller\Web;
 
+use kintai\Contract\Extension\DashboardWidget;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Container;
+use kintai\Core\Extension\DashboardWidgets;
 use kintai\Core\Repositories\NotebookEntryRepositoryInterface;
 use kintai\Core\Repositories\ShiftClaimRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
@@ -177,12 +179,17 @@ final class HomeController
         }, $activeClocksNow);
         usort($activeClocksNow, fn($a, $b) => strcmp($a['clock_in_time'] ?? '', $b['clock_in_time'] ?? ''));
 
+        // Widgets proposés : ceux du Core et ceux des bundles actifs (Bundle::dashboardWidgets(), contrat 1.4). Les
+        // widgets historiques d'un bundle qui déclare les siens ne sont plus rendus par le Core ($enabledWidgets).
+        $dashWidgets = DashboardWidgets::current();
+        $widgetKeys  = $dashWidgets->keys(DashboardWidget::MANAGER, self::ADMIN_WIDGETS);
         $saved = $this->dashboardPrefs->getEnabledWidgets((int) $user['id'], 'admin');
-        $enabledWidgets = array_flip(array_values(
+        $enabledAll = array_flip(array_values(
             $saved !== null
-                ? array_intersect($saved, self::ADMIN_WIDGETS)
-                : self::ADMIN_WIDGETS
+                ? array_intersect($saved, $widgetKeys)
+                : $widgetKeys
         ));
+        $enabledWidgets = array_diff_key($enabledAll, array_flip($dashWidgets->replacedLegacyKeys(DashboardWidget::MANAGER)));
 
         // Notes d'équipe épinglées/récentes (organisation entière + stores en scope) — même
         // garde que pendingClaims plus haut : NotebookEntryRepositoryInterface n'est lié au
@@ -258,6 +265,23 @@ final class HomeController
             $hrStats    = $this->buildHrStats($hrStoreIds);
         }
 
+        $userCan = fn(string $perm): bool => $this->permissions->can($user, $perm, null);
+        $bundleWidgets = $dashWidgets->render(
+            DashboardWidget::MANAGER,
+            self::ADMIN_WIDGETS,
+            array_keys($enabledAll),
+            [
+                'user'              => $user,
+                'store_ids'         => array_map('intval', $managedStoreIds ?? array_column($allStores, 'id')),
+                'managed_store_ids' => $managedStoreIds,
+                'stores_map'        => $storesMap,
+                'today'             => $today,
+            ],
+            $this->view,
+            $userCan,
+            $this->storeFeatureCheck(),
+        );
+
         return Response::html($this->view->render('dashboard.index', [
             'title'              => 'Dashboard',
             'stats'              => [
@@ -280,11 +304,22 @@ final class HomeController
             'financial_overview' => $financialOverview,
             'hr_stats'           => $hrStats,
             'notebook_entries'   => $notebookEntries,
-            'user_can'           => fn(string $perm) => $this->permissions->can($user, $perm, null),
+            'user_can'           => $userCan,
 
-            'enabled_widgets'    => $enabledWidgets,
-            'all_widgets'        => self::ADMIN_WIDGETS,
+            'enabled_widgets'     => $enabledWidgets,
+            'enabled_widgets_all' => $enabledAll,
+            'all_widgets'         => $widgetKeys,
+            'bundle_widgets'      => $bundleWidgets,
+            'bundle_widget_meta'  => $dashWidgets->meta(DashboardWidget::MANAGER, self::ADMIN_WIDGETS),
         ], 'layout.app'));
+    }
+
+    /** Fonctionnalité active pour les magasins de l'utilisateur (même règle que $feat dans les vues). */
+    private function storeFeatureCheck(): \Closure
+    {
+        $storeFeatures = $this->view->get('store_features');
+        return static fn(?string $f): bool => feat_bundle($f)
+            && ($f === null || $storeFeatures === null || in_array($f, (array) $storeFeatures, true));
     }
 
     /**
@@ -419,7 +454,12 @@ final class HomeController
         $userId = (int) $user['id'];
 
         $checked = (array) ($request->allPost()['widgets'] ?? []);
-        $widgets = array_values(array_intersect(self::ADMIN_WIDGETS, array_keys($checked)));
+        // Widgets d'un bundle désactivé en ce moment : non proposés, mais conservés pour sa réactivation.
+        $widgets = DashboardWidgets::mergePreferences(
+            DashboardWidgets::current()->keys(DashboardWidget::MANAGER, self::ADMIN_WIDGETS),
+            array_map('strval', array_keys($checked)),
+            $this->dashboardPrefs->getEnabledWidgets($userId, 'admin'),
+        );
 
         $this->dashboardPrefs->saveWidgets($userId, $widgets, 'admin');
 

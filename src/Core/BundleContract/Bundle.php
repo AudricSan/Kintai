@@ -103,6 +103,18 @@ abstract class Bundle
     }
 
     /**
+     * Point d'extension « widgets de tableau de bord » (contrat 1.4) : widgets proposés sur le tableau de bord gérant
+     * ou employé tant que le bundle est actif. Dès qu'un bundle en déclare, le Core n'affiche plus ses widgets
+     * historiques pour ce bundle.
+     *
+     * @return list<\kintai\Contract\Extension\DashboardWidget>
+     */
+    public function dashboardWidgets(): array
+    {
+        return [];
+    }
+
+    /**
      * Boot du bundle, une fois tous les bundles enregistrés.
      */
     public function boot(): void
