@@ -502,6 +502,8 @@
     "error_owner_only_delete_photos": "Only the owner can delete a photo submission.",
     "error_owner_only_delete_store": "Only an owner can delete a store.",
     "error_owner_role_immutable": "The Owner role cannot be modified.",
+    "error_owner_cannot_remove_self": "An Owner cannot delete, deactivate or demote their own account. Ask another Owner to do it.",
+    "error_last_owner": "At least one active Owner must remain. Make another account an Owner first.",
     "error_owner_role_undeletable": "The Owner role cannot be deleted.",
     "error_participant_not_found": "Participant not found.",
     "error_path_not_allowed": "Path not allowed.",

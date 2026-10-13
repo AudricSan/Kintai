@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Controller\Web;
 
+use kintai\Core\Auth\OwnerGuard;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Container;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
@@ -81,6 +82,7 @@ final class AdminUserControllerTest extends TestCase
                 $this->users,
                 new LicenseClientService($this->createMock(AppSettingsRepositoryInterface::class), ['base_url' => '', 'api_key' => '']),
             ),
+            new OwnerGuard(new PermissionService($this->roleAssignments, $this->roles), $this->users),
         );
     }
 
@@ -1075,6 +1077,53 @@ final class AdminUserControllerTest extends TestCase
 
         $this->expectException(\kintai\Core\Exceptions\ForbiddenException::class);
         $this->controller->deleteUserRate($req);
+    }
+
+    // -------------------------------------------------------------------------
+    // Protection des Owners
+    // -------------------------------------------------------------------------
+
+    /** L'acteur (id 7) est Owner : la garde d'accès le laisse passer, c'est la garde Owner qui doit refuser. */
+    private function actingAsOwner(int $targetId): Request
+    {
+        $this->roleAssignments->method('findByScope')->willReturn([
+            ['id' => 1, 'user_id' => 7, 'role_id' => 10, 'scope_type' => 'global', 'scope_id' => null],
+            ['id' => 2, 'user_id' => $targetId, 'role_id' => 10, 'scope_type' => 'global', 'scope_id' => null],
+        ]);
+        $this->roles->method('findById')->willReturn(['id' => 10, 'is_system' => 1]);
+
+        $req = $this->makePostRequest([]);
+        $req->setAttribute('auth_user', ['id' => 7, 'is_admin' => true]);
+        $req->setRouteParams(['id' => (string) $targetId]);
+        return $req;
+    }
+
+    public function testAnOwnerCannotDeleteThemselves(): void
+    {
+        $this->users->method('findById')->willReturn(['id' => 7, 'is_active' => 1, 'deleted_at' => null]);
+        $this->users->expects($this->never())->method('delete');
+
+        $this->expectException(\kintai\Core\Exceptions\ForbiddenException::class);
+        $this->controller->deleteUser($this->actingAsOwner(7));
+    }
+
+    public function testAnOwnerCanDeleteAnotherOwnerWhileOneRemains(): void
+    {
+        $this->users->method('findById')->willReturn(['id' => 8, 'is_active' => 1, 'deleted_at' => null]);
+        $this->users->expects($this->once())->method('delete')->with(8);
+
+        $response = $this->controller->deleteUser($this->actingAsOwner(8));
+
+        $this->assertSame(302, $response->status());
+    }
+
+    public function testAnOwnerCannotDeactivateThemselves(): void
+    {
+        $this->users->method('findById')->willReturn(['id' => 7, 'is_active' => 1, 'deleted_at' => null, 'email' => 'o@x.test']);
+        $this->users->expects($this->never())->method('save');
+
+        $this->expectException(\kintai\Core\Exceptions\ForbiddenException::class);
+        $this->controller->updateUser($this->actingAsOwner(7));
     }
 
     protected function tearDown(): void
