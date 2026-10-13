@@ -12,12 +12,7 @@ declare(strict_types=1);
  * un avertissement "non maintenu par le projet principal". Ce fichier ne fait
  * confiance à aucune auto-déclaration du bundle lui-même : seule cette liste
  * versionnée avec le core fait foi.
- *
- * "feedback" reste dans cette liste bien qu'il ne vive plus dans src/Bundles/ :
- * c'est le bundle pilote de la distribution façon add-on Home Assistant (voir
- * docs/architecture.md "Modular Bundles") — officiel malgré une distribution
- * désormais externe (dépôt kintai-bundle-feedback, registry officiel).
- */
+ * */
 return [
     'daily-report',
     'messaging',
@@ -28,7 +23,6 @@ return [
     'resignation-report',
     'salary-report',
     'hiring-report',
-    'feedback',
     'timeclock',
     'team-directory',
     'notebook',

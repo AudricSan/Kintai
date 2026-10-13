@@ -22,6 +22,7 @@ All notable changes to Kintai are documented here.
 - **Release — v0.3.4 tag created but no GitHub Release published** — `[Unreleased]` had accumulated every entry since v0.1.1 (~129,000 characters) and GitHub rejects a Release body over 125,000 (`HTTP 422: body is too long`), after the workflow had already pushed the tag. `release.yml` now truncates the notes at the last whole line under 120,000 bytes and links to the full `CHANGELOG.md`, and what was already published is archived under a dated section so `[Unreleased]` only carries what is new. See `docs/releasing.md`.
 
 ### Changed
+- Removed — the "feedback" bundle no longer exists. Gone from the Core: its repository, interface, model, `feedbacks.*` permissions, notification type, settings tab, audit labels, configuration entries (`enabled_features`, official bundles), demo data, translation keys and tests. Migration `2026_10_14_000000_remove_feedback_bundle` drops the `employee_feedbacks` table (existing feedback is lost) and cleans the role permissions, the `enabled_bundles` setting and the installed-bundles list; an instance that still has `storage/bundles/feedback` simply no longer loads it (`BundleDiscoveryService::RETIRED_SLUGS`).
 - Dependencies — `composer.lock` refreshed within the existing constraints: `illuminate/*` 13.33.0 → 13.35.0, `nesbot/carbon` 3.14.1 → 3.14.2, PHPUnit and the `symfony/polyfill-*` packages (supersedes the Dependabot bump to 13.34.0).
 
 ## [0.1.2 – 0.3.4] - 2026-10-07
