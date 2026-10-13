@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\UI\Controller\Web\System;
 
+use kintai\Core\Middleware\ApiRateLimitMiddleware;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AppSettingsService;
@@ -49,6 +50,7 @@ final class OwnerSettingsController
                 'maintenance_message'      => $this->settings->maintenanceMessage(),
                 'access_log_enabled'       => $this->settings->accessLogEnabled() ? '1' : '0',
                 'log_retention_days'       => $this->settings->logRetentionDays(),
+                'api_rate_limit_per_minute' => $this->settings->apiRateLimitPerMinute(),
                 'app_mascot_mode'          => $this->settings->mascotMode(),
                 'app_public_url'           => $this->settings->get(PublicUrlResolver::SETTING_KEY),
             ],
@@ -107,6 +109,8 @@ final class OwnerSettingsController
 
         $accessLogEnabled = $request->post('access_log_enabled', '0') === '1' ? '1' : '0';
         $logRetentionDays = max(0, min(3650, (int) $request->post('log_retention_days', '180')));
+        // 0 = pas de limite ; champ absent = valeur actuelle conservée.
+        $apiRateLimit = max(0, min(ApiRateLimitMiddleware::MAX_PER_MINUTE, (int) $request->post('api_rate_limit_per_minute', (string) $this->settings->apiRateLimitPerMinute())));
 
         $mascotMode = (string) $request->post('app_mascot_mode', 'mix');
         $mascotMode = in_array($mascotMode, ['mix', 'kitsune', 'tanuki'], true) ? $mascotMode : 'mix';
@@ -126,6 +130,7 @@ final class OwnerSettingsController
             'maintenance_message'      => $this->settings->maintenanceMessage(),
             'access_log_enabled'      => $this->settings->accessLogEnabled() ? '1' : '0',
             'log_retention_days'      => (string) $this->settings->logRetentionDays(),
+            ApiRateLimitMiddleware::SETTING_KEY => (string) $this->settings->apiRateLimitPerMinute(),
             'app_mascot_mode'         => $this->settings->mascotMode(),
             PublicUrlResolver::SETTING_KEY => $this->settings->get(PublicUrlResolver::SETTING_KEY),
         ], $oldThemeData);
@@ -138,6 +143,7 @@ final class OwnerSettingsController
             'maintenance_message'      => $maintenanceMessage,
             'access_log_enabled'      => $accessLogEnabled,
             'log_retention_days'      => (string) $logRetentionDays,
+            ApiRateLimitMiddleware::SETTING_KEY => (string) $apiRateLimit,
             'app_mascot_mode'         => $mascotMode,
             PublicUrlResolver::SETTING_KEY => $publicUrl,
         ], $newThemeData);

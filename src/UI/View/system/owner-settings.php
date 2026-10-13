@@ -243,6 +243,21 @@ if (($error ?? null) === 'public_url_invalid') {
     echo Card::make()->header(__('activity_log'))->body(ob_get_clean())->render();
     ?>
 
+    <?php
+    ob_start();
+    ?>
+
+    <div class="form-group">
+        <label class="form-label" for="api_rate_limit_per_minute"><?= __('api_rate_limit_per_minute') ?></label>
+        <input type="number" id="api_rate_limit_per_minute" name="api_rate_limit_per_minute" class="form-control w-100" min="0" max="100000"
+            value="<?= (int) ($settings['api_rate_limit_per_minute'] ?? 300) ?>">
+        <p class="form-hint"><?= __('api_rate_limit_per_minute_hint') ?></p>
+    </div>
+
+    <?php
+    echo Card::make()->header(__('api_settings'))->body(ob_get_clean())->render();
+    ?>
+
     <div class="form-actions">
         <?= Button::make(__('save'))->primary()->submit()->render() ?>
         <a href="<?= route_url('home') ?>" class="btn btn--ghost"><?= __('cancel') ?></a>
