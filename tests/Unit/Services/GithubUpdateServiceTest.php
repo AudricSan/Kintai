@@ -13,10 +13,13 @@ use kintai\Core\Services\BackupService;
 use kintai\Core\Services\GithubUpdateService;
 use kintai\Core\Services\UpdateService;
 use PHPUnit\Framework\Attributes\DataProvider;
+use kintai\Tests\Support\VerifiedReleaseFixture;
 use PHPUnit\Framework\TestCase;
 
 final class GithubUpdateServiceTest extends TestCase
 {
+    use VerifiedReleaseFixture;
+
     private string $tmpDir;
     private UpdateService $updateService;
     private BackupService $backup;
@@ -56,6 +59,7 @@ final class GithubUpdateServiceTest extends TestCase
 
     protected function tearDown(): void
     {
+        $this->clearCachedReleases();
         $this->removeDir($this->tmpDir);
         putenv('KINTAI_STORAGE_PATH');
     }
@@ -131,12 +135,11 @@ final class GithubUpdateServiceTest extends TestCase
             $this->writeAppVersion($currentVersion);
         }
 
-        $releaseFetcher = fn(string $repo, string $token): ?array => $releases;
+        // Releases publiées comme par release.yml : archive vérifiable + SHA256SUMS (audit M10).
+        $published = $this->withAssets($releases);
+        $releaseFetcher = fn(string $repo, string $token): ?array => $published;
 
-        $zipDownloader = function (string $url, string $dest, string $token) use ($files): bool {
-            $this->makeReleaseZip($dest, $files);
-            return true;
-        };
+        $zipDownloader = $this->verifiedDownloader($files);
 
         return new GithubUpdateService(
             $this->updateService,
@@ -147,6 +150,7 @@ final class GithubUpdateServiceTest extends TestCase
             $this->tmpDir,
             $releaseFetcher,
             $zipDownloader,
+            $this->commitResolver(),
         );
     }
 
@@ -338,13 +342,13 @@ final class GithubUpdateServiceTest extends TestCase
             $this->makeSettings(),
             $this->photoRepo,
             $this->tmpDir,
-            fn(string $repo, string $token): ?array => [
+            fn(string $repo, string $token): ?array => $this->withAssets([
                 [
                     'tag_name'         => 'v1.0.0',
                     'zipball_url'      => 'https://example.test/zipball/v1.0.0',
                     'target_commitish' => 'main',
                 ],
-            ],
+            ]),
             fn(string $url, string $dest, string $token): bool => false,
         );
 
@@ -369,7 +373,8 @@ final class GithubUpdateServiceTest extends TestCase
 
         $this->assertTrue($result['ok']);
         $this->assertSame('1.0.0', $result['version']);
-        $this->assertSame(3, $result['files_copied']);
+        // 3 fichiers + release-manifest.json (tag et commit de la version installée).
+        $this->assertSame(4, $result['files_copied']);
         $this->assertSame(0, $result['files_deleted']);
         $this->assertSame('1.0.0', $this->updateService->getCurrentVersion());
         $this->assertFileExists($this->tmpDir . '/README.md');
@@ -464,18 +469,22 @@ final class GithubUpdateServiceTest extends TestCase
 
     public function testApplyUpdateNeverDeletesExcludedPaths(): void
     {
-        // Simule un manifeste corrompu qui référencerait un fichier vendor/ —
-        // la liste d'exclusion doit protéger le fichier même dans ce cas.
+        // Simule un manifeste corrompu qui référencerait des fichiers locaux — la liste d'exclusion doit les
+        // protéger même dans ce cas.
+        @mkdir($this->tmpDir . '/storage/app', 0755, true);
+        file_put_contents($this->tmpDir . '/storage/app/should-stay.txt', 'data');
+        file_put_contents($this->tmpDir . '/.env', 'SECRET=1');
         file_put_contents(
             $this->tmpDir . '/storage/app/update-files-manifest.json',
-            json_encode(['vendor/should-stay.txt', 'README.md'])
+            json_encode(['storage/app/should-stay.txt', '.env', 'README.md'])
         );
 
         $service = $this->makeService('v1.0.0', ['README.md' => 'v1 readme']);
         $result = $service->applyUpdate();
 
         $this->assertTrue($result['ok']);
-        $this->assertFileExists($this->tmpDir . '/vendor/should-stay.txt');
+        $this->assertFileExists($this->tmpDir . '/storage/app/should-stay.txt');
+        $this->assertFileExists($this->tmpDir . '/.env');
     }
 
     public function testFirstRunNeverDeletesAnything(): void
@@ -708,5 +717,147 @@ final class GithubUpdateServiceTest extends TestCase
             'null response'           => [null, false],
             'scalar response'         => ['API rate limit exceeded', false],
         ];
+    }
+
+    // -------------------------------------------------------------------------
+    // Intégrité de l'archive (audit du 13/10/2026, M10)
+    // -------------------------------------------------------------------------
+
+    private function serviceWith(array $releases, \Closure $downloader, ?\Closure $commitResolver = null): GithubUpdateService
+    {
+        $this->writeAppVersion('0.0.0');
+        return new GithubUpdateService(
+            $this->updateService,
+            $this->backup,
+            $this->migrator,
+            $this->makeSettings(),
+            $this->photoRepo,
+            $this->tmpDir,
+            fn(string $repo, string $token): ?array => $releases,
+            $downloader,
+            $commitResolver ?? $this->commitResolver(),
+        );
+    }
+
+    private function release(string $tag, bool $withAssets = true): array
+    {
+        $release = ['tag_name' => $tag, 'zipball_url' => 'https://example.test/zipball/' . $tag, 'target_commitish' => 'main'];
+        return $withAssets ? $this->withAssets([$release])[0] : $release;
+    }
+
+    /** Une release sans archive vérifiable (antérieure au mécanisme) n'est pas appliquée, même son zipball. */
+    public function testAReleaseWithoutTheVerifiedArchiveIsRefused(): void
+    {
+        $downloads = 0;
+        $service = $this->serviceWith([$this->release('v1.0.0', false)], function () use (&$downloads): bool {
+            $downloads++;
+            return true;
+        });
+
+        $result = $service->applyUpdate();
+
+        $this->assertSame(['ok' => false, 'error' => 'release_archive_missing'], $result);
+        $this->assertSame(0, $downloads);
+        $this->assertFileDoesNotExist($this->tmpDir . '/README.md');
+    }
+
+    public function testAnArchiveWhoseChecksumDiffersIsRefusedBeforeAnyFileIsWritten(): void
+    {
+        $genuine = $this->verifiedDownloader(['README.md' => 'v1']);
+        // L'archive servie est altérée après publication de l'empreinte.
+        $tampered = function (string $url, string $dest, string $token) use ($genuine): bool {
+            $ok = $genuine($url, $dest, $token);
+            if (str_ends_with($url, '/archive')) {
+                file_put_contents($dest, 'x', FILE_APPEND);
+            }
+            return $ok;
+        };
+
+        $result = $this->serviceWith([$this->release('v1.0.0')], $tampered)->applyUpdate();
+
+        $this->assertSame(['ok' => false, 'error' => 'checksum_failed'], $result);
+        $this->assertFileDoesNotExist($this->tmpDir . '/README.md');
+        $this->assertSame('0.0.0', $this->updateService->getCurrentVersion());
+    }
+
+    public function testAnArchiveBuiltFromAnotherCommitIsRefused(): void
+    {
+        $downloader = $this->verifiedDownloader(['README.md' => 'v1'], null, str_repeat('f', 40));
+
+        $result = $this->serviceWith([$this->release('v1.0.0')], $downloader)->applyUpdate();
+
+        $this->assertSame(['ok' => false, 'error' => 'commit_mismatch'], $result);
+        $this->assertFileDoesNotExist($this->tmpDir . '/README.md');
+    }
+
+    public function testAnUnresolvableTagCommitIsRefused(): void
+    {
+        $service = $this->serviceWith(
+            [$this->release('v1.0.0')],
+            $this->verifiedDownloader(['README.md' => 'v1']),
+            fn(string $repo, string $token, string $tag): ?string => null,
+        );
+
+        $this->assertSame('commit_mismatch', $service->applyUpdate()['error']);
+    }
+
+    public function testComposerIsNoLongerRunAndVendorComesFromTheArchive(): void
+    {
+        $service = $this->makeService('v1.0.0', ['vendor/autoload.php' => '<?php // v1', 'composer.lock' => '{"v":1}']);
+
+        $result = $service->applyUpdate();
+
+        $this->assertTrue($result['ok']);
+        $this->assertSame('bundled', $result['composer']);
+        $this->assertArrayNotHasKey('composer_output', $result);
+        $this->assertSame('<?php // v1', file_get_contents($this->tmpDir . '/vendor/autoload.php'));
+    }
+
+    /** Les paquets retirés d'une version à l'autre disparaissent de vendor/ (fichiers posés par une mise à jour). */
+    public function testVendorFilesDroppedByTheNewReleaseAreRemoved(): void
+    {
+        $this->makeService('v1.0.0', ['vendor/old/pkg.php' => 'old', 'README.md' => 'v1'])->applyUpdate();
+        $this->assertFileExists($this->tmpDir . '/vendor/old/pkg.php');
+
+        $result = $this->makeService('v2.0.0', ['README.md' => 'v2'], currentVersion: '1.0.0')->applyUpdate();
+
+        $this->assertTrue($result['ok']);
+        $this->assertFileDoesNotExist($this->tmpDir . '/vendor/old/pkg.php');
+    }
+
+    public function testLocalDataShippedByMistakeInTheArchiveIsNeverCopied(): void
+    {
+        file_put_contents($this->tmpDir . '/.env', 'SECRET=local');
+
+        $result = $this->makeService('v1.0.0', ['README.md' => 'v1', '.env' => 'SECRET=archive', 'storage/app/database.sqlite' => 'x'])->applyUpdate();
+
+        $this->assertTrue($result['ok']);
+        $this->assertSame('SECRET=local', file_get_contents($this->tmpDir . '/.env'));
+        $this->assertFileDoesNotExist($this->tmpDir . '/storage/app/database.sqlite');
+    }
+
+    public function testChecksumParsing(): void
+    {
+        $file = $this->tmpDir . '/a.zip';
+        file_put_contents($file, 'abc');
+        $hash = hash('sha256', 'abc');
+
+        $this->assertTrue(GithubUpdateService::checksumMatches($file, $hash . '  a.zip' . "\n", 'a.zip'));
+        $this->assertTrue(GithubUpdateService::checksumMatches($file, strtoupper($hash) . ' *a.zip', 'a.zip'), 'mode binaire de sha256sum');
+        $this->assertFalse(GithubUpdateService::checksumMatches($file, $hash . '  autre.zip', 'a.zip'));
+        $this->assertFalse(GithubUpdateService::checksumMatches($file, str_repeat('0', 64) . '  a.zip', 'a.zip'));
+        $this->assertFalse(GithubUpdateService::checksumMatches($file, '', 'a.zip'));
+    }
+
+    public function testManifestMustNameTheSameTag(): void
+    {
+        $root = $this->tmpDir . '/release';
+        @mkdir($root, 0755, true);
+        file_put_contents($root . '/' . GithubUpdateService::RELEASE_MANIFEST, json_encode(['tag' => 'v1.0.0', 'commit' => self::RELEASE_COMMIT]));
+
+        $this->assertTrue(GithubUpdateService::manifestMatches($root, 'v1.0.0', self::RELEASE_COMMIT));
+        $this->assertFalse(GithubUpdateService::manifestMatches($root, 'v2.0.0', self::RELEASE_COMMIT));
+        $this->assertFalse(GithubUpdateService::manifestMatches($root, 'v1.0.0', str_repeat('a', 40)));
+        $this->assertFalse(GithubUpdateService::manifestMatches($this->tmpDir . '/absent', 'v1.0.0', self::RELEASE_COMMIT));
     }
 }
