@@ -802,6 +802,9 @@ final class AdminUserController
 
         // Un Owner ne se désactive pas lui-même, et le dernier Owner actif ne peut être ni désactivé ni dégradé.
         $deactivating = !empty($user['is_active']) && $request->post('is_active') !== '1';
+        if ($deactivating) {
+            $this->ownerGuard->assertNotSelfUnlessOwner((int) ($request->getAttribute('auth_user')['id'] ?? 0), (int) $user['id']);
+        }
         $demoting     = !empty($request->getAttribute('auth_user')['is_admin']) && $request->post('is_admin') !== '1';
         if ($deactivating || $demoting) {
             $this->ownerGuard->assertCanRemoveOwner((int) ($request->getAttribute('auth_user')['id'] ?? 0), (int) $user['id']);
@@ -897,6 +900,7 @@ final class AdminUserController
     {
         $id = (int) $request->param('id');
         $this->assertCanActOnUser($request, $id, 'employees.delete');
+        $this->ownerGuard->assertNotSelfUnlessOwner((int) ($request->getAttribute('auth_user')['id'] ?? 0), $id);
         $this->ownerGuard->assertCanRemoveOwner((int) ($request->getAttribute('auth_user')['id'] ?? 0), $id);
         // Anonymisation plutôt qu'effacement : l'historique (shifts, pointages, paie) reste intact, quel que
         // soit le pilote de base de données (voir UserAnonymizer).

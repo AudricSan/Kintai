@@ -21,6 +21,20 @@ final class OwnerGuard
         private readonly UserRepositoryInterface $users,
     ) {}
 
+    /**
+     * Un gestionnaire qui n'est pas Owner ne peut pas, depuis l'administration ou l'API, se retirer d'un
+     * magasin, changer son propre rôle, se désactiver ni supprimer son compte (audit du 13/10/2026, M13) :
+     * il perdrait ses droits sans pouvoir revenir en arrière. Il passe par un autre gestionnaire ou un Owner
+     * (la suppression de son compte depuis le profil, avec mot de passe, reste possible). Un Owner, de portée
+     * globale, ne perd rien à ces actions : il reste libre (ses propres protections sont ci-dessus).
+     */
+    public function assertNotSelfUnlessOwner(int $actingUserId, int $targetUserId): void
+    {
+        if ($actingUserId === $targetUserId && !$this->isOwner($actingUserId)) {
+            throw new ForbiddenException(__('error_cannot_act_on_self'));
+        }
+    }
+
     public function isOwner(int $userId): bool
     {
         return in_array($userId, $this->permissions->ownerUserIds(), true);
