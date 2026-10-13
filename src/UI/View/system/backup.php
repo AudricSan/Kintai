@@ -29,6 +29,7 @@ ob_start();
 <div class="form-group">
     <label class="form-label"><?= __('backup_auto_enabled') ?></label>
     <label class="form-toggle">
+        <input type="hidden" name="backup_auto_enabled" value="0">
         <input type="checkbox" name="backup_auto_enabled" value="1" class="form-toggle__input"
             <?= $backup_auto_enabled === '1' ? 'checked' : '' ?>>
         <span class="form-toggle__track"></span>

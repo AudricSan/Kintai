@@ -132,6 +132,7 @@ $feat = $feat ?? fn(string $f): bool =>
     <div class="form-group">
         <label class="form-label"><?= __('open_shifts') ?></label>
         <label class="toggle-label">
+            <input type="hidden" name="is_open" value="0">
             <input type="checkbox" name="is_open" value="1" <?= (int)($shift['is_open'] ?? 0) ? 'checked' : '' ?>>
             <?= __('publish_to_bourse') ?>
         </label>

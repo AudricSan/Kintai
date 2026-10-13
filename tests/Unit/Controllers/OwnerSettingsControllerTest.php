@@ -144,7 +144,7 @@ final class OwnerSettingsControllerTest extends TestCase
     public function testSaveDefaultsAccessLogEnabledToOffWhenCheckboxUnchecked(): void
     {
         $controller = $this->makeController(['access_log_enabled' => '1']);
-        $_POST = [];
+        $_POST = ['access_log_enabled' => '0'];
 
         $controller->save(new Request());
 
@@ -261,5 +261,24 @@ final class OwnerSettingsControllerTest extends TestCase
         $controller->save(new Request());
 
         $this->assertSame('300', $this->stored['api_rate_limit_per_minute']);
+    }
+
+    /** Audit M12 : une requête partielle ne coupe plus le journal ni la maintenance, n'efface plus les textes. */
+    public function testFieldsAbsentFromTheRequestKeepTheirValue(): void
+    {
+        $controller = $this->makeController([
+            'access_log_enabled' => '1', 'maintenance_mode_enabled' => '1', 'maintenance_message' => 'Travaux',
+            'app_subtitle' => 'Kintai Tokyo', 'app_login_notice' => 'Bienvenue', 'log_retention_days' => '30',
+        ]);
+        $_POST = [];
+
+        $controller->save(new Request());
+
+        $this->assertSame('1', $this->stored['access_log_enabled']);
+        $this->assertSame('1', $this->stored['maintenance_mode_enabled']);
+        $this->assertSame('Travaux', $this->stored['maintenance_message']);
+        $this->assertSame('Kintai Tokyo', $this->stored['app_subtitle']);
+        $this->assertSame('Bienvenue', $this->stored['app_login_notice']);
+        $this->assertSame('30', $this->stored['log_retention_days']);
     }
 }

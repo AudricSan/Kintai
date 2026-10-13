@@ -311,7 +311,8 @@ final class AuthController
         $userId      = (int) $user['id'];
         $activeCodes = array_column($this->languages->findAllActive(), 'code');
         $default     = $this->languages->findDefault();
-        $language    = $request->post('language', $default['code'] ?? 'fr');
+        // Champ absent : la langue actuelle est conservée (voir le commentaire plus bas).
+        $language    = $request->post('language', $user['language'] ?? ($default['code'] ?? 'fr'));
         if (!in_array($language, $activeCodes, true)) {
             $language = $default['code'] ?? 'fr';
         }
@@ -325,18 +326,17 @@ final class AuthController
             // et avaler l'échec masquerait un vrai problème derrière un "?success=1" trompeur
             // — l'utilisateur croirait sa préférence enregistrée alors qu'elle ne l'est pas.
             $dbUser['language']            = $language;
-            $dbUser['phone']               = trim((string) $request->post('phone', ''));
-            $dbUser['mobile_phone']        = trim((string) $request->post('mobile_phone', ''));
-            $dbUser['postal_code']         = trim((string) $request->post('postal_code', ''));
-            $dbUser['address']             = trim((string) $request->post('address', ''));
-            $dbUser['bio']                 = trim((string) $request->post('bio', ''));
-            $dbUser['skills']              = trim((string) $request->post('skills', ''));
-            $dbUser['languages_spoken']    = trim((string) $request->post('languages_spoken', ''));
-            $dbUser['hobbies']             = trim((string) $request->post('hobbies', ''));
-            $dbUser['show_in_directory']   = $request->post('show_in_directory') === '1' ? 1 : 0;
-            $dbUser['share_email']         = $request->post('share_email') === '1' ? 1 : 0;
-            $dbUser['share_phone']         = $request->post('share_phone') === '1' ? 1 : 0;
-            $dbUser['share_mobile_phone']  = $request->post('share_mobile_phone') === '1' ? 1 : 0;
+            // Un champ absent de la requête garde sa valeur (audit du 13/10/2026, M12) : les cases de
+            // l'annuaire ne sont affichées que si le bundle team-directory est actif, et un enregistrement
+            // du profil les remettait à 0 ; une requête partielle vidait téléphone et adresse.
+            foreach (['phone', 'mobile_phone', 'postal_code', 'address', 'bio', 'skills', 'languages_spoken', 'hobbies'] as $field) {
+                if ($request->hasPost($field)) {
+                    $dbUser[$field] = trim((string) $request->post($field, ''));
+                }
+            }
+            foreach (['show_in_directory', 'share_email', 'share_phone', 'share_mobile_phone'] as $flag) {
+                $dbUser[$flag] = $request->postFlag($flag, $dbUser[$flag] ?? 0);
+            }
             $this->users->save($dbUser);
 
             $_SESSION['locale'] = $language;

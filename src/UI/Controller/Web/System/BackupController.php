@@ -63,8 +63,9 @@ final class BackupController
     public function saveSettings(Request $request): Response
     {
 
-        $autoEnabled = $request->post('backup_auto_enabled', '0') === '1' ? '1' : '0';
-        $maxKeep = max(0, min(365, (int) $request->post('backup_max_keep', '0')));
+        // Champ absent : réglage actuel conservé (audit du 13/10/2026, M12).
+        $autoEnabled = (string) $request->postFlag('backup_auto_enabled', $this->settings->get('backup_auto_enabled', '0') === '1');
+        $maxKeep = max(0, min(365, (int) $request->post('backup_max_keep', $this->settings->get('backup_max_keep', '0'))));
 
         $this->settings->setMany([
             'backup_auto_enabled' => $autoEnabled,

@@ -801,11 +801,15 @@ final class AdminUserController
         ColorRule::assert($request->post('color', $user['color'] ?? '#3B82F6'));
 
         // Un Owner ne se désactive pas lui-même, et le dernier Owner actif ne peut être ni désactivé ni dégradé.
-        $deactivating = !empty($user['is_active']) && $request->post('is_active') !== '1';
+        // Champ absent de la requête : état actuel conservé (audit du 13/10/2026, M12). Avant, une requête sans
+        // is_active désactivait le compte, et sans is_admin (envoyée par un Owner) lui retirait le statut Owner.
+        $newIsActive  = $request->postFlag('is_active', $user['is_active'] ?? 1);
+        $newIsOwner   = $request->postFlag('is_admin', $this->ownerGuard->isOwner((int) $user['id'])) === 1;
+        $deactivating = !empty($user['is_active']) && $newIsActive === 0;
+        $demoting     = !empty($request->getAttribute('auth_user')['is_admin']) && !$newIsOwner;
         if ($deactivating) {
             $this->ownerGuard->assertNotSelfUnlessOwner((int) ($request->getAttribute('auth_user')['id'] ?? 0), (int) $user['id']);
         }
-        $demoting     = !empty($request->getAttribute('auth_user')['is_admin']) && $request->post('is_admin') !== '1';
         if ($deactivating || $demoting) {
             $this->ownerGuard->assertCanRemoveOwner((int) ($request->getAttribute('auth_user')['id'] ?? 0), (int) $user['id']);
         }
@@ -830,30 +834,32 @@ final class AdminUserController
             return $this->updateUserError($request, $user, 'furigana_required');
         }
 
-        $empCode = strtoupper(trim($request->post('employee_code', ''))) ?: null;
+        $empCode = strtoupper(trim((string) $request->post('employee_code', $user['employee_code'] ?? ''))) ?: null;
         if ($empCode !== null && !EmployeeRouteBinder::isValidCode($empCode)) {
             return $this->updateUserError($request, $user, 'employee_code_invalid_url');
         }
+        // Champ facultatif : vide = null, absent = valeur actuelle.
+        $optional = fn(string $field): mixed => $request->hasPost($field) ? ($request->post($field, '') ?: null) : ($user[$field] ?? null);
         $data = array_merge($user, [
             'display_name'       => $request->post('display_name', $user['display_name'] ?? ''),
             'first_name'         => $firstName,
             'last_name'          => $lastName,
             'email'              => $email,
-            'phone'              => $request->post('phone', '') ?: null,
-            'mobile_phone'       => $request->post('mobile_phone', '') ?: null,
+            'phone'              => $optional('phone'),
+            'mobile_phone'       => $optional('mobile_phone'),
             'furigana_last_name'  => $furiganaLastName,
             'furigana_first_name' => $furiganaFirstName,
-            'gender'             => $request->post('gender', '') ?: null,
-            'tax_classification' => $request->post('tax_classification', '') ?: null,
-            'birth_date'         => $request->post('birth_date', '') ?: null,
-            'education'          => $request->post('education', '') ?: null,
-            'postal_code'        => $request->post('postal_code', '') ?: null,
-            'address'            => $request->post('address', '') ?: null,
-            'guarantor_name'     => $request->post('guarantor_name', '') ?: null,
-            'guarantor_phone'    => $request->post('guarantor_phone', '') ?: null,
+            'gender'             => $optional('gender'),
+            'tax_classification' => $optional('tax_classification'),
+            'birth_date'         => $optional('birth_date'),
+            'education'          => $optional('education'),
+            'postal_code'        => $optional('postal_code'),
+            'address'            => $optional('address'),
+            'guarantor_name'     => $optional('guarantor_name'),
+            'guarantor_phone'    => $optional('guarantor_phone'),
             'color'              => $request->post('color', $user['color'] ?? '#3B82F6'),
             'employee_code'      => $empCode,
-            'is_active'          => $request->post('is_active') === '1' ? 1 : 0,
+            'is_active'          => $newIsActive,
         ]);
 
         // Mettre à jour le mot de passe uniquement si fourni
@@ -874,7 +880,7 @@ final class AdminUserController
         // Un non-Owner ne touche donc jamais au statut Owner de la cible, ni
         // dans un sens ni dans l'autre.
         if (!empty($request->getAttribute('auth_user')['is_admin'])) {
-            $this->roleSync->syncOwnerRole((int) $user['id'], $request->post('is_admin') === '1');
+            $this->roleSync->syncOwnerRole((int) $user['id'], $newIsOwner);
         }
         $this->auditLogger->logUpdate($request, 'user.updated', 'user', (int) $user['id'], $user, $data, [], null, null);
 

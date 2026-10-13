@@ -72,15 +72,17 @@ final class OwnerSettingsController
     /** POST /admin/owner-settings */
     public function save(Request $request): Response
     {
-        $subtitle     = substr(trim((string) $request->post('app_subtitle', '')), 0, 100);
-        $loginNotice  = substr(trim((string) $request->post('app_login_notice', '')), 0, 300);
-        $supportEmail = trim((string) $request->post('app_support_email', ''));
+        // Champ absent de la requête : réglage actuel conservé (audit du 13/10/2026, M12). Avant, une requête
+        // partielle effaçait les textes, désactivait le journal d'accès et coupait le mode maintenance.
+        $subtitle     = substr(trim((string) $request->post('app_subtitle', $this->settings->subtitle())), 0, 100);
+        $loginNotice  = substr(trim((string) $request->post('app_login_notice', $this->settings->loginNotice())), 0, 300);
+        $supportEmail = trim((string) $request->post('app_support_email', $this->settings->supportEmail()));
 
         if ($supportEmail !== '' && !filter_var($supportEmail, FILTER_VALIDATE_EMAIL)) {
             $supportEmail = '';
         }
 
-        $darkMode = $request->post('app_theme_dark_mode', '') === 'manual' ? 'manual' : 'auto';
+        $darkMode = $request->post('app_theme_dark_mode', $this->settings->themeDarkMode()) === 'manual' ? 'manual' : 'auto';
 
         // Couleurs personnalisables du thème (voir ThemeColorPalette) : une valeur claire
         // invalide retombe sur la valeur actuellement enregistrée (pas sur le défaut Foxy,
@@ -98,25 +100,25 @@ final class OwnerSettingsController
                 ? $light
                 : $oldThemeData["app_{$group}_color"];
 
-            $dark = strtolower(trim((string) $request->post("app_{$group}_color_dark", '')));
+            $dark = strtolower(trim((string) $request->post("app_{$group}_color_dark", $oldThemeData["app_{$group}_color_dark"])));
             $newThemeData["app_{$group}_color_dark"] = ThemeColorPalette::isValidHex($dark) ? $dark : '';
         }
         $oldThemeData['app_theme_dark_mode'] = $this->settings->themeDarkMode();
         $newThemeData['app_theme_dark_mode'] = $darkMode;
 
-        $maintenanceModeEnabled = $request->post('maintenance_mode_enabled', '0') === '1' ? '1' : '0';
-        $maintenanceMessage     = substr(trim((string) $request->post('maintenance_message', '')), 0, 500);
+        $maintenanceModeEnabled = (string) $request->postFlag('maintenance_mode_enabled', $this->settings->maintenanceModeEnabled());
+        $maintenanceMessage     = substr(trim((string) $request->post('maintenance_message', $this->settings->maintenanceMessage())), 0, 500);
 
-        $accessLogEnabled = $request->post('access_log_enabled', '0') === '1' ? '1' : '0';
-        $logRetentionDays = max(0, min(3650, (int) $request->post('log_retention_days', '180')));
+        $accessLogEnabled = (string) $request->postFlag('access_log_enabled', $this->settings->accessLogEnabled());
+        $logRetentionDays = max(0, min(3650, (int) $request->post('log_retention_days', (string) $this->settings->logRetentionDays())));
         // 0 = pas de limite ; champ absent = valeur actuelle conservée.
         $apiRateLimit = max(0, min(ApiRateLimitMiddleware::MAX_PER_MINUTE, (int) $request->post('api_rate_limit_per_minute', (string) $this->settings->apiRateLimitPerMinute())));
 
-        $mascotMode = (string) $request->post('app_mascot_mode', 'mix');
+        $mascotMode = (string) $request->post('app_mascot_mode', $this->settings->mascotMode());
         $mascotMode = in_array($mascotMode, ['mix', 'kitsune', 'tanuki'], true) ? $mascotMode : 'mix';
 
         // URL publique : une valeur invalide est refusée (l'ancienne est conservée) plutôt qu'enregistrée telle quelle.
-        $publicUrlInput = trim((string) $request->post('app_public_url', ''));
+        $publicUrlInput = trim((string) $request->post('app_public_url', $this->settings->get(PublicUrlResolver::SETTING_KEY)));
         $publicUrl      = $publicUrlInput === '' ? '' : PublicUrlResolver::normalize($publicUrlInput);
         if ($publicUrl === null) {
             return Response::redirect($this->base() . '/admin/owner-settings?error=public_url_invalid');

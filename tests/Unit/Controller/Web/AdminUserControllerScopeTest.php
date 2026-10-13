@@ -190,7 +190,7 @@ final class AdminUserControllerScopeTest extends TestCase
 
         $this->expectException(ForbiddenException::class);
         $this->expectExceptionMessage('error_cannot_act_on_self');
-        // Case « actif » décochée : absente du formulaire.
-        $this->controller->updateUser($this->asManager(self::MANAGER, ['email' => 'm@example.com', 'first_name' => 'M', 'last_name' => 'G']));
+        // Sélecteur « actif » sur « inactif » (un champ absent, lui, laisse l'état inchangé : audit M12).
+        $this->controller->updateUser($this->asManager(self::MANAGER, ['email' => 'm@example.com', 'first_name' => 'M', 'last_name' => 'G', 'is_active' => '0']));
     }
 }
