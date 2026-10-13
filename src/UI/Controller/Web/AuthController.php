@@ -7,6 +7,7 @@ namespace kintai\UI\Controller\Web;
 use kintai\Core\Auth\AuthService;
 use kintai\Core\Auth\PasswordPolicy;
 use kintai\Core\Auth\CredentialRevoker;
+use kintai\Core\Auth\UserAnonymizer;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Request;
 use kintai\Core\Response;
@@ -66,7 +67,14 @@ final class AuthController
         // Optionnel pour ne pas casser les tests qui construisent le contrôleur à la main ;
         // le conteneur l'injecte toujours en production.
         private readonly ?CredentialRevoker $revoker = null,
+        private readonly ?UserAnonymizer $anonymizer = null,
     ) {}
+
+    /** Le conteneur l'injecte toujours ; un test qui supprime un compte doit le fournir. */
+    private function anonymizer(): UserAnonymizer
+    {
+        return $this->anonymizer ?? throw new \LogicException('UserAnonymizer requis pour supprimer un compte.');
+    }
 
     /** @var array<string, string> extension → type MIME (avatars) */
     private const AVATAR_MIME_TYPES = [
@@ -552,45 +560,12 @@ final class AuthController
             return Response::redirect($this->base() . '/profile?tab=data&error=current_password_wrong');
         }
 
-        // La photo de profil est un fichier sur disque, pas juste une colonne :
-        // sans ce nettoyage elle survivrait à l'anonymisation du compte.
-        $existing = $this->users->findById($userId);
-        if (!empty($existing['avatar_path'])) {
-            @unlink(BASE_PATH . '/storage/uploads/avatars/' . basename((string) $existing['avatar_path']));
-        }
-
-        // Anonymize instead of hard delete: keep related records for data integrity
-        $this->users->save([
-            'id'                 => $userId,
-            'first_name'         => '[Supprimé]',
-            'last_name'          => '',
-            'display_name'       => 'Utilisateur supprimé',
-            'email'              => 'deleted-' . $userId . '@kintai.local',
-            'employee_code'      => null,
-            'password_hash'      => '',
-            'phone'              => null,
-            'language'           => null,
-            'is_active'          => 0,
-            'mobile_phone'       => null,
-            'postal_code'        => null,
-            'address'            => null,
-            'avatar_path'        => null,
-            'bio'                => null,
-            'skills'             => null,
-            'languages_spoken'   => null,
-            'hobbies'            => null,
-            'show_in_directory'  => 0,
-            'share_email'        => 0,
-            'share_phone'        => 0,
-            'share_mobile_phone' => 0,
-            'updated_at'         => date('Y-m-d H:i:s'),
-        ]);
+        // Anonymisation (données personnelles, avatar, rôles, jetons) : même traitement que la suppression
+        // par un admin, l'historique reste rattaché au compte.
+        $this->anonymizer()->anonymize($userId);
 
         $this->auditLogger->log($request, 'user.self_deleted', 'user', $userId, [], null, $userId);
 
-        // Le compte est désormais inactif (les sessions et cookies sont de toute façon refusés) :
-        // on purge quand même ses cookies « rester connecté » et jetons d'API.
-        $this->revoker?->revokeAllFor($userId);
         $this->auth->logout();
         return Response::redirect($this->base() . '/login?deleted=1');
     }

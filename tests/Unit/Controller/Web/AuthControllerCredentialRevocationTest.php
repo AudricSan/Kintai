@@ -6,6 +6,7 @@ namespace kintai\Tests\Unit\Controller\Web;
 
 use kintai\Core\Auth\AuthService;
 use kintai\Core\Auth\CredentialRevoker;
+use kintai\Core\Auth\UserAnonymizer;
 use kintai\Core\Repositories\ApiTokenRepositoryInterface;
 use kintai\Core\Repositories\AvailabilityRepositoryInterface;
 use kintai\Core\Repositories\IcalTokenRepositoryInterface;
@@ -96,6 +97,7 @@ final class AuthControllerCredentialRevocationTest extends TestCase
             $this->createMock(LanguageRepositoryInterface::class),
             new AvatarImageOptimizer(),
             new CredentialRevoker($this->remember, $this->api),
+            new UserAnonymizer($this->users, $roleAssignments, new CredentialRevoker($this->remember, $this->api), sys_get_temp_dir()),
         );
     }
 
