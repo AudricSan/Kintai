@@ -502,6 +502,7 @@
     "error_owner_only_delete_photos": "Seul le propriétaire peut supprimer un envoi de photos.",
     "error_owner_only_delete_store": "Seul un owner peut supprimer un store.",
     "error_owner_role_immutable": "Le rôle Owner n'est pas modifiable.",
+    "error_shared_shift_type": "Ce type de shift est partagé avec d'autres magasins. Seul quelqu'un qui gère tous ses magasins (ou un Owner) peut le modifier ou le supprimer ; vous pouvez toujours l'activer ou le désactiver pour votre magasin.",
     "error_owner_role_undeletable": "Le rôle Owner ne peut pas être supprimé.",
     "error_participant_not_found": "Participant introuvable.",
     "error_path_not_allowed": "Chemin non autorisé.",
