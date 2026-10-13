@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Controller\Api\V1;
 
 use kintai\Tests\Support\ApiOwnerAuth;
+use kintai\Core\Auth\PermissionService;
+use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
+use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Services\AuditLogger;
@@ -51,6 +54,66 @@ final class ShiftTypeControllerTest extends TestCase
 
         $data = json_decode($response->body(), true);
         $this->assertSame([1, 2], $data['store_ids']);
+    }
+
+    /** Gérant du magasin 1 seulement (rôle non système avec shifts.update). */
+    private function managerOfStoreOne(): ShiftTypeController
+    {
+        $assignments = $this->createStub(RoleAssignmentRepositoryInterface::class);
+        $assignments->method('findByUser')->willReturn([
+            ['id' => 1, 'user_id' => 9, 'role_id' => 20, 'scope_type' => 'store', 'scope_id' => 1],
+        ]);
+        $assignments->method('findByScope')->willReturn([]);
+        $roles = $this->createStub(RoleRepositoryInterface::class);
+        $roles->method('findById')->willReturn(['id' => 20, 'is_system' => 0]);
+        $roles->method('getPermissions')->willReturn(['shifts.update']);
+        $roles->method('getGlobalPermissionKeys')->willReturn([]);
+
+        return new ShiftTypeController($this->shiftTypes, new AuditLogger(), new PermissionService($assignments, $roles));
+    }
+
+    private function asManager(Request $request): Request
+    {
+        $request->setAttribute('auth_user', ['id' => 9]);
+        return $request;
+    }
+
+    public function testSharedShiftTypeCannotBeDeletedByTheManagerOfOnlyOneOfItsStores(): void
+    {
+        $this->shiftTypes->method('findById')->with(5)->willReturn(['id' => 5, 'code' => 'MORNING']);
+        $this->shiftTypes->method('getStoreIds')->with(5)->willReturn([1, 2]);
+        $this->shiftTypes->expects($this->never())->method('delete');
+
+        $req = $this->asManager(new Request());
+        $req->setRouteParams(['id' => '5']);
+
+        $this->expectException(\kintai\Core\Exceptions\ForbiddenException::class);
+        $this->managerOfStoreOne()->destroy($req);
+    }
+
+    public function testSharedShiftTypeCannotBeUpdatedByTheManagerOfOnlyOneOfItsStores(): void
+    {
+        $this->shiftTypes->method('findById')->with(5)->willReturn(['id' => 5, 'code' => 'MORNING']);
+        $this->shiftTypes->method('getStoreIds')->with(5)->willReturn([1, 2]);
+        $this->shiftTypes->expects($this->never())->method('save');
+
+        $req = $this->asManager(new Request());
+        $req->setRouteParams(['id' => '5']);
+
+        $this->expectException(\kintai\Core\Exceptions\ForbiddenException::class);
+        $this->managerOfStoreOne()->update($req);
+    }
+
+    public function testShiftTypeOfASingleStoreCanBeDeletedByItsManager(): void
+    {
+        $this->shiftTypes->method('findById')->with(5)->willReturn(['id' => 5, 'code' => 'MORNING']);
+        $this->shiftTypes->method('getStoreIds')->with(5)->willReturn([1]);
+        $this->shiftTypes->expects($this->once())->method('delete')->with(5);
+
+        $req = $this->asManager(new Request());
+        $req->setRouteParams(['id' => '5']);
+
+        $this->assertSame(204, $this->managerOfStoreOne()->destroy($req)->status());
     }
 
     public function testStoreWithStoreIdsArraySyncsAllStores(): void

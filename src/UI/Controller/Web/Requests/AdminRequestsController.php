@@ -15,6 +15,7 @@ use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\Services\WidgetGuard;
 use kintai\UI\Controller\Web\HasAdminAccess;
 use kintai\UI\ViewRenderer;
 
@@ -76,24 +77,28 @@ final class AdminRequestsController
         $claims = null;
         $container = Container::getInstance();
         if (feat_bundle('open_shifts') && $can('open_shifts.view') && $container->has(ShiftClaimRepositoryInterface::class)) {
-            $shiftClaims = $container->make(ShiftClaimRepositoryInterface::class);
-            $storeIds    = $managedIds ?? array_map(fn($s) => (int) $s['id'], $this->stores->findAll());
-            $claims      = [];
-            foreach ($storeIds as $storeId) {
-                foreach ($shiftClaims->findPendingByStore($storeId) as $claim) {
-                    $shift = $this->shifts->findById((int) ($claim['shift_id'] ?? 0));
-                    $claims[] = [
-                        'id'         => $claim['id'],
-                        'user_id'    => $claim['user_id'] ?? null,
-                        'store_id'   => $storeId,
-                        'shift_id'   => $claim['shift_id'] ?? null,
-                        'shift_date' => $shift['shift_date'] ?? null,
-                        'start_time' => $shift['start_time'] ?? null,
-                        'end_time'   => $shift['end_time'] ?? null,
-                    ];
+            // Isolé : un bundle défaillant (table absente) ne doit pas faire tomber la page des demandes.
+            $claims = WidgetGuard::run('open_shifts', function () use ($container, $managedIds): array {
+                $shiftClaims = $container->make(ShiftClaimRepositoryInterface::class);
+                $storeIds    = $managedIds ?? array_map(fn($s) => (int) $s['id'], $this->stores->findAll());
+                $found       = [];
+                foreach ($storeIds as $storeId) {
+                    foreach ($shiftClaims->findPendingByStore($storeId) as $claim) {
+                        $shift = $this->shifts->findById((int) ($claim['shift_id'] ?? 0));
+                        $found[] = [
+                            'id'         => $claim['id'],
+                            'user_id'    => $claim['user_id'] ?? null,
+                            'store_id'   => $storeId,
+                            'shift_id'   => $claim['shift_id'] ?? null,
+                            'shift_date' => $shift['shift_date'] ?? null,
+                            'start_time' => $shift['start_time'] ?? null,
+                            'end_time'   => $shift['end_time'] ?? null,
+                        ];
+                    }
                 }
-            }
-            usort($claims, fn($a, $b) => strcmp((string) $a['shift_date'], (string) $b['shift_date']));
+                usort($found, fn($a, $b) => strcmp((string) $a['shift_date'], (string) $b['shift_date']));
+                return $found;
+            }, null);
         }
 
         return Response::html($this->view->render('requests.index', [

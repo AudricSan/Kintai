@@ -5,7 +5,7 @@ declare(strict_types=1);
 /**
  * Génère des données d'exemple réalistes pour tester l'ensemble des bundles
  * (congés, échanges de shift, candidatures shift ouvert, pointages, messagerie,
- * photos de magasin, feedback, démissions, rapports de salaire) sur l'instance
+ * photos de magasin, démissions, rapports de salaire) sur l'instance
  * locale — en vue de la release 1.0.
  *
  * Les LECTURES passent par les repositories habituels (Application/Container).
@@ -441,69 +441,6 @@ foreach ($allStores as $store) {
 }
 echo "  - store_photo_submissions : $countSubmissions ($countImages images)\n";
 
-// ─── 7. Feedback employé (employee_feedbacks) ────────────────────────────
-
-$feedbackCategories = ['shift', 'app', 'management', 'other'];
-$feedbackMessages    = [
-    'Bonne ambiance sur ce shift, merci !',
-    'Le planning a changé au dernier moment, un peu difficile à gérer.',
-    "L'application est pratique pour poser mes congés.",
-    'Manque de personnel sur le service du soir.',
-    'RAS, tout s\'est bien passé.',
-];
-$countFeedback = 0;
-
-foreach ($allStores as $store) {
-    $sid     = (int) $store['id'];
-    $members = $membersByStore[$sid];
-    if ($members === []) {
-        continue;
-    }
-    $pastShifts = array_values(array_filter(
-        $shiftRepo->findByStore($sid),
-        static fn($s) => $s['shift_date'] < $today->format('Y-m-d') && $s['user_id'] !== null
-    ));
-    $usedShiftIds = [];
-    foreach (pickN($pastShifts, min(4, count($pastShifts))) as $shift) {
-        $shiftId = (int) $shift['id'];
-        if (in_array($shiftId, $usedShiftIds, true)) {
-            continue;
-        }
-        $exists = (int) $pdo->query("SELECT COUNT(*) FROM employee_feedbacks WHERE shift_id = $shiftId")->fetchColumn();
-        if ($exists > 0) {
-            continue;
-        }
-        $anonymous = random_int(1, 100) <= 30;
-        insertRow($pdo, 'employee_feedbacks', [
-            'store_id'  => $sid,
-            'user_id'   => $anonymous ? null : (int) $shift['user_id'],
-            'shift_id'  => $shiftId,
-            'category'  => 'shift',
-            'rating'    => random_int(2, 5),
-            'message'   => pick($feedbackMessages),
-            'anonymous' => $anonymous ? 1 : 0,
-            'created_at' => $now,
-        ]);
-        $usedShiftIds[] = $shiftId;
-        $countFeedback++;
-    }
-    foreach (pickN($members, min(3, count($members))) as $member) {
-        $anonymous = random_int(1, 100) <= 30;
-        insertRow($pdo, 'employee_feedbacks', [
-            'store_id'   => $sid,
-            'user_id'    => $anonymous ? null : (int) $member['id'],
-            'shift_id'   => null,
-            'category'   => pick($feedbackCategories),
-            'rating'     => random_int(1, 5),
-            'message'    => pick($feedbackMessages),
-            'anonymous'  => $anonymous ? 1 : 0,
-            'page_path'  => '/dashboard',
-            'created_at' => $now,
-        ]);
-        $countFeedback++;
-    }
-}
-echo "  - employee_feedbacks : $countFeedback\n";
 
 // ─── 8. Démissions (utilisateurs synthétiques + resignation_reports) ────
 

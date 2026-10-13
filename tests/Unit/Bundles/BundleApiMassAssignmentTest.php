@@ -8,13 +8,11 @@ $fixtures = dirname(__DIR__, 2) . '/Fixtures/bundles';
 require_once $fixtures . '/timeoff-1.0.0/src/Controllers/Api/TimeoffRequestController.php';
 require_once $fixtures . '/shift-swap-1.0.0/src/Controllers/Api/ShiftSwapRequestController.php';
 require_once $fixtures . '/shift-claim-1.0.0/src/Controllers/Api/ShiftClaimController.php';
-require_once $fixtures . '/feedback-1.0.0/src/Controllers/Api/FeedbackController.php';
 require_once $fixtures . '/daily-report-1.0.0/src/Controllers/Api/DailyReportController.php';
 require_once $fixtures . '/messaging-1.0.0/src/Controllers/Api/MessageController.php';
 require_once $fixtures . '/timeclock-1.0.0/src/Controllers/Api/TimeclockController.php';
 
 use kintai\Bundles\Installed\DailyReport\Controllers\Api\DailyReportController;
-use kintai\Bundles\Installed\Feedback\Controllers\Api\FeedbackController;
 use kintai\Bundles\Installed\Messaging\Controllers\Api\MessageController;
 use kintai\Bundles\Installed\ShiftClaim\Controllers\Api\ShiftClaimController;
 use kintai\Bundles\Installed\ShiftSwap\Controllers\Api\ShiftSwapRequestController;
@@ -23,7 +21,6 @@ use kintai\Bundles\Installed\Timeclock\Controllers\Api\TimeclockController;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Repositories\DailyReportRepositoryInterface;
-use kintai\Core\Repositories\FeedbackRepositoryInterface;
 use kintai\Core\Repositories\MessageRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
@@ -68,7 +65,7 @@ final class BundleApiMassAssignmentTest extends TestCase
         $roles->method('findById')->willReturn(['id' => 20, 'is_system' => 0]);
         $roles->method('getPermissions')->willReturn([
             'timeoff.create', 'timeoff.update', 'swaps.create', 'swaps.update',
-            'open_shifts.approve', 'feedbacks.update', 'daily_reports.create',
+            'open_shifts.approve', 'daily_reports.create',
         ]);
         $roles->method('getGlobalPermissionKeys')->willReturn([]);
         $this->permissions = new PermissionService($assignments, $roles);
@@ -207,32 +204,6 @@ final class BundleApiMassAssignmentTest extends TestCase
 
         $this->expectException(ForbiddenException::class);
         $controller->store($this->request(['user_id' => self::ME, 'store_id' => self::OTHER, 'shift_id' => 8]));
-    }
-
-    // --------------------------------------------------------------- feedback
-
-    public function testFeedbackCreationForcesAuthorAndIgnoresId(): void
-    {
-        $repo = $this->createMock(FeedbackRepositoryInterface::class);
-        $repo->expects($this->once())->method('save')->with($this->callback(
-            fn(array $d): bool => !array_key_exists('id', $d)
-                && $d['user_id'] === self::ME
-                && $d['store_id'] === self::MY_STORE
-                && $d['message'] === 'bug'
-        ))->willReturn(['id' => 3]);
-        $controller = new FeedbackController($repo, $this->permissions, $this->storeUsers);
-
-        $controller->store($this->request(['id' => 1, 'user_id' => 99, 'store_id' => self::MY_STORE, 'message' => 'bug', 'category' => 'bug']));
-    }
-
-    public function testFeedbackCreationForAnotherStoreIsForbidden(): void
-    {
-        $repo = $this->createMock(FeedbackRepositoryInterface::class);
-        $repo->expects($this->never())->method('save');
-        $controller = new FeedbackController($repo, $this->permissions, $this->storeUsers);
-
-        $this->expectException(ForbiddenException::class);
-        $controller->store($this->request(['store_id' => self::OTHER, 'message' => 'x']));
     }
 
     // ----------------------------------------------------------- daily report
