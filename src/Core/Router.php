@@ -185,7 +185,12 @@ final class Router
     private function addRoute(string $method, string $pattern, array $handler, array $middleware, ?string $name, string|array|null $permission = null): self
     {
         $fullPattern = $this->groupPrefix . $pattern;
-        $fullMiddleware = array_merge($this->groupMiddleware, $middleware);
+        // Un bundle désigne ses middlewares par les noms du contrat (kintai\Contract\Http\Middleware\…) : on garde le
+        // nom réel de la classe, pour que toute comparaison (pipeline, contrôles de permissions, tests) reste valable.
+        $fullMiddleware = array_map(
+            static fn(mixed $m): mixed => is_string($m) ? Container::canonicalName($m) : $m,
+            array_merge($this->groupMiddleware, $middleware),
+        );
 
         // Compile pattern to regex — {name} capture un segment, {name*} capture le reste du chemin, {name:type}
         // capture un segment typé (store, employee…) que l'application traduit en identifiant (voir Routing\).

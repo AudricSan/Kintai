@@ -95,6 +95,98 @@ Your namespace can be anything — by convention, installed bundles use `kintai\
 
 **A repository and interface pair from `src/Core/Repositories/*Interface.php` is also part of the stable surface** you're allowed to depend on (e.g. `FeedbackRepositoryInterface` above) — those are already a stable contract by construction, unrelated to `BundleContract`.
 
+## The contract surface: `kintai\Contract\…`
+
+A bundle may only use the names below (plus its own classes). Each one is a **stable alias** of the Core class that
+implements it today (`src/Contract/surface.php` is the reference list), so the Core can reorganise its own code
+without breaking bundles. Import them exactly like any class — type hints, `instanceof`, `catch` and constructor
+injection all work, the container resolves an alias to the binding of the class behind it.
+
+```php
+use kintai\Contract\Bundle;
+use kintai\Contract\Http\Request;
+use kintai\Contract\Http\Response;
+use kintai\Contract\Exceptions\NotFoundException;
+use kintai\Contract\Data\StoreRepositoryInterface;
+```
+
+**Stable** names are guaranteed for the whole major version of the contract. **Provisional** names are exposed for
+the transition and will be replaced by a later step of the contract plan (see their description); they only go
+away with a new major version.
+
+| Name | Status | Role |
+|---|---|---|
+| `kintai\Contract\Bundle` | stable | Base class of every bundle (entry point). |
+| `kintai\Contract\BundleManifest` | stable | Parsed bundle.json. |
+| `kintai\Contract\Container` | stable | Dependency container (register your own bindings). |
+| `kintai\Contract\Http\Request` | stable | HTTP request. |
+| `kintai\Contract\Http\Response` | stable | HTTP response. |
+| `kintai\Contract\Http\Router` | stable | Route declaration (routes.php). |
+| `kintai\Contract\Http\Paginator` | stable | API list pagination. |
+| `kintai\Contract\Http\Middleware\AuthMiddleware` | stable | Web session required. |
+| `kintai\Contract\Http\Middleware\PermissionMiddleware` | stable | Web permission required. |
+| `kintai\Contract\Http\Middleware\ApiAuthMiddleware` | stable | API token required. |
+| `kintai\Contract\Http\Middleware\ApiPermissionMiddleware` | stable | API permission required. |
+| `kintai\Contract\Http\Concerns\HasBaseUrl` | stable | URL prefix (subfolder installs). |
+| `kintai\Contract\Http\Concerns\HasAdminAccess` | **provisional** | Manager's store scope; to be replaced by CurrentUser/Gate (step 2). |
+| `kintai\Contract\Http\Concerns\HasStoreFeatureCheck` | **provisional** | Per-store feature check; to be replaced by the storeFeatures extension point (step 2). |
+| `kintai\Contract\Http\Concerns\HasStaffReportCrud` | **provisional** | Shared HR-report CRUD; moves into the bundles concerned (step 4). |
+| `kintai\Contract\Exceptions\NotFoundException` | stable | 404. |
+| `kintai\Contract\Exceptions\ForbiddenException` | stable | 403. |
+| `kintai\Contract\Exceptions\ValidationException` | stable | 422 with per-field errors. |
+| `kintai\Contract\Exceptions\ConflictException` | stable | 409. |
+| `kintai\Contract\Auth\PermissionService` | stable | Permission and scope checks. |
+| `kintai\Contract\Auth\AuthService` | **provisional** | Session user; to be replaced by CurrentUser (step 2). |
+| `kintai\Contract\Data\UserRepositoryInterface` | stable | Accounts. |
+| `kintai\Contract\Data\StoreRepositoryInterface` | stable | Stores. |
+| `kintai\Contract\Data\StoreUserRepositoryInterface` | stable | Store memberships. |
+| `kintai\Contract\Data\ShiftRepositoryInterface` | stable | Shifts. |
+| `kintai\Contract\Data\ShiftTypeRepositoryInterface` | stable | Shift types. |
+| `kintai\Contract\Data\UserShiftTypeRateRepositoryInterface` | stable | Per-user hourly rates. |
+| `kintai\Contract\Data\AppSettingsRepositoryInterface` | stable | Instance settings. |
+| `kintai\Contract\Database\Migration` | stable | Base class of the bundle's migrations. |
+| `kintai\Contract\Services\AuditLogger` | stable | Activity log. |
+| `kintai\Contract\Services\NotificationService` | stable | Notifications (and push). |
+| `kintai\Contract\Services\TranslationService` | stable | Translations. |
+| `kintai\Contract\Services\ImageCompressionService` | stable | Image compression. |
+| `kintai\Contract\Services\ShiftWageCalculator` | stable | Cost of a shift (single source of the payroll computation). |
+| `kintai\Contract\Services\ShiftServiceInterface` | **provisional** | Shift creation; to be replaced by a targeted write API (step 3). |
+| `kintai\Contract\Services\StoreStatsServiceInterface` | **provisional** | Store statistics; to be replaced by providers (step 3). |
+| `kintai\Contract\View\ViewRenderer` | stable | Renders the bundle's views. |
+| `kintai\Contract\View\Components\Badge` | stable | UI component (`Badge`). |
+| `kintai\Contract\View\Components\Button` | stable | UI component (`Button`). |
+| `kintai\Contract\View\Components\Card` | stable | UI component (`Card`). |
+| `kintai\Contract\View\Components\EmptyState` | stable | UI component (`EmptyState`). |
+| `kintai\Contract\View\Components\FilterBar` | stable | UI component (`FilterBar`). |
+| `kintai\Contract\View\Components\Flash` | stable | UI component (`Flash`). |
+| `kintai\Contract\View\Components\Form` | stable | UI component (`Form`). |
+| `kintai\Contract\View\Components\Modal` | stable | UI component (`Modal`). |
+| `kintai\Contract\View\Components\Pagination` | stable | UI component (`Pagination`). |
+| `kintai\Contract\View\Components\Table` | stable | UI component (`Table`). |
+
+### Bundle-owned classes still living in the Core
+
+Some repositories, models and services belong to a bundle but still live in the Core (e.g.
+`TimeoffRequestRepositoryInterface`, `DailyReportPdfService`). They will move into their bundle's repository
+(step 4 of the plan). Until then, a bundle keeps importing them from `kintai\Core\…` and lists them explicitly
+in its contract-usage test.
+
+### Checking your bundle
+
+Kintai's `tests/Support/ContractUsageScanner.php` (loaded by the bundles' PHPUnit harness) reports every
+`kintai\Core\…`, `kintai\UI\…` or `kintai\Domain\…` reference outside the contract:
+
+```php
+public function testOnlyTheContractIsUsed(): void
+{
+    $root = dirname(__DIR__);
+    $this->assertSame([], ContractUsageScanner::violations(
+        [$root . '/src', $root . '/Views', $root . '/routes.php'],
+        [/* bundle-owned classes still living in the Core */],
+    ));
+}
+```
+
 ## The RBAC scope contract: `managed_store_ids`
 
 Every Web route your bundle registers under `middleware: [AuthMiddleware::class, PermissionMiddleware::class]` must declare a `permission:` — either a precise key from `PermissionCatalog`, or `'public'` (a route intentionally left ungated, e.g. self-service/aggregate pages; omitting `permission:` entirely behaves the same way). `PermissionMiddleware` resolves this into a request attribute, `managed_store_ids`, that every controller down the line is expected to read rather than re-deriving:
