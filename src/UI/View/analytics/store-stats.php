@@ -216,7 +216,9 @@ function deltaChip(mixed $val, bool $invertColor = false, string $suffix = '%'):
                 <thead><tr><th><?= __('employee') ?></th><th><?= __('hours') ?></th><th></th></tr></thead>
                 <tbody>
                 <?php
-                $maxH = $hoursByUser ? max($hoursByUser) : 1;
+                // Un magasin sans horaire peut avoir des employés à 0 h : jamais de division par zéro.
+                $maxH = $hoursByUser ? max($hoursByUser) : 0;
+                $maxH = $maxH > 0 ? $maxH : 1;
                 foreach ($hoursByUser as $uid => $h): ?>
                     <tr>
                         <td><a href="<?= $BASE_URL ?>/admin/users/<?= employee_segment((int) $uid) ?>/edit"><?= htmlspecialchars(userName($usersMap, (int) $uid)) ?></a></td>
