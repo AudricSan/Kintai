@@ -13,6 +13,7 @@ use kintai\Core\Services\Log;
 use kintai\Core\Services\StoreServiceInterface;
 use kintai\UI\Controller\Api\V1\StoreController;
 use PHPUnit\Framework\MockObject\MockObject;
+use kintai\Core\Exceptions\ValidationException;
 use PHPUnit\Framework\TestCase;
 
 final class StoreControllerTest extends TestCase
@@ -61,5 +62,72 @@ final class StoreControllerTest extends TestCase
 
         $this->expectException(PlanLimitExceededException::class);
         $this->controller->store($this->makeJsonRequest(['code' => 'ST01', 'name' => 'Store A']));
+    }
+
+    // -------------------------------------------------------------------------
+    // Validation de la modification (audit du 13/10/2026, M9)
+    // -------------------------------------------------------------------------
+
+    private function updateRequest(array $body): Request
+    {
+        $req = $this->makeJsonRequest($body);
+        $req->setRouteParams(['id' => '5']);
+        return $req;
+    }
+
+    /** PUT /api/v1/stores/{id} avec {} était accepté (200 sans rien changer). */
+    public function testUpdateWithAnEmptyBodyIsRefused(): void
+    {
+        $this->stores->method('findById')->willReturn(['id' => 5, 'code' => 'TKY']);
+        $this->stores->expects($this->never())->method('save');
+
+        $this->expectException(ValidationException::class);
+        $this->controller->update($this->updateRequest([]));
+    }
+
+    /** @return array<string, array{array<string, mixed>}> */
+    public static function invalidStoreUpdates(): array
+    {
+        return [
+            'nom vide'            => [['name' => '']],
+            'fuseau inconnu'      => [['timezone' => 'Mars/Olympus']],
+            'type inconnu'        => [['type' => 'casino']],
+            'jour de semaine'     => [['week_start_day' => 9]],
+            'heure creuse'        => [['low_staff_hour_start' => 30]],
+            'code mal forme'      => [['code' => 'a b']],
+            'email invalide'      => [['email' => 'pas-un-email']],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidStoreUpdates')]
+    public function testUpdateRefusesInvalidValues(array $body): void
+    {
+        $this->stores->method('findById')->willReturn(['id' => 5, 'code' => 'TKY']);
+        $this->stores->expects($this->never())->method('save');
+
+        $this->expectException(ValidationException::class);
+        $this->controller->update($this->updateRequest($body));
+    }
+
+    public function testUpdateRefusesACodeUsedByAnotherStore(): void
+    {
+        $this->stores->method('findById')->willReturn(['id' => 5, 'code' => 'TKY']);
+        $this->stores->method('findByCode')->with('OSK')->willReturn(['id' => 6, 'code' => 'OSK']);
+        $this->stores->expects($this->never())->method('save');
+
+        $this->expectException(ValidationException::class);
+        $this->controller->update($this->updateRequest(['code' => 'osk']));
+    }
+
+    public function testUpdateWritesOnlyTheValidatedFields(): void
+    {
+        $this->stores->method('findById')->willReturn(['id' => 5, 'code' => 'TKY']);
+        $this->stores->expects($this->once())->method('save')
+            ->with(['name' => 'Tokyo Est', 'is_active' => 0, 'id' => 5])
+            ->willReturn(['id' => 5, 'name' => 'Tokyo Est']);
+
+        $response = $this->controller->update($this->updateRequest(['name' => ' Tokyo Est ', 'is_active' => false, 'created_at' => 'x', 'daily_report_settings' => '{}']));
+
+        $this->assertSame(200, $response->status());
     }
 }

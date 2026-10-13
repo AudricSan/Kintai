@@ -1529,5 +1529,11 @@
     "api_rate_limit_per_minute_hint": "Beyond this, the API answers 429 until the next minute. Without a token, the limit applies per IP address; each IP is also capped at 10 times this value. 0 = no limit.",
     "api_settings": "API",
     "api_rate_limit_per_minute": "API requests per minute and per token",
-    "error_too_many_requests": "Too many requests. Try again in a moment."
+    "error_too_many_requests": "Too many requests. Try again in a moment.",
+    "val_no_updatable_field": "The request contains no updatable field.",
+    "val_field_out_of_range": "The \":field\" field is outside the allowed values.",
+    "val_field_invalid": "The \":field\" field has an invalid format.",
+    "val_employee_code_taken": "This employee number is already used by another account.",
+    "val_field_too_long": "The \":field\" field is too long (:max maximum).",
+    "val_field_required": "The \":field\" field is required."
 }

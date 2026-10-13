@@ -10,6 +10,8 @@ use kintai\Core\Repositories\AvailabilityRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Validation\ApiPayloadRules;
+use kintai\Core\Validation\PayloadValidator;
 
 final class AvailabilityController
 {
@@ -48,9 +50,8 @@ final class AvailabilityController
     /** POST /api/v1/availabilities — `store_id` obligatoire (la permission est vérifiée sur ce magasin). */
     public function store(Request $request): Response
     {
-        $data = $request->json() ?? [];
-        unset($data['id']);
-        $this->permissions->requireOnStore($this->authUser($request), 'shifts.update', $data['store_id'] ?? null);
+        $data = PayloadValidator::validate($request->json() ?? [], ApiPayloadRules::availability());
+        $this->permissions->requireOnStore($this->authUser($request), 'shifts.update', $data['store_id']);
 
         $saved = $this->availabilities->save($data);
         $this->auditLogger->log($request, 'availability.created', 'availability', resourceId: (int) ($saved['id'] ?? 0) ?: null, details: $data, storeId: (int) $data['store_id']);
@@ -63,7 +64,7 @@ final class AvailabilityController
         $old = $this->requireAvailability($request, 'shifts.update');
         $id  = (int) $old['id'];
 
-        $data = $request->json() ?? [];
+        $data = PayloadValidator::validateUpdate($request->json() ?? [], ApiPayloadRules::availability());
         // Déplacer une disponibilité vers un autre magasin exige aussi le droit sur la destination.
         if (isset($data['store_id']) && (int) $data['store_id'] !== (int) $old['store_id']) {
             $this->permissions->requireOnStore($this->authUser($request), 'shifts.update', $data['store_id']);

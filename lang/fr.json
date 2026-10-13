@@ -1529,5 +1529,11 @@
     "api_rate_limit_per_minute_hint": "Au-delà, l'API répond 429 jusqu'à la minute suivante. Sans jeton, la limite s'applique par adresse IP ; chaque IP est en plus plafonnée à 10 fois cette valeur. 0 = pas de limite.",
     "api_settings": "API",
     "api_rate_limit_per_minute": "Requêtes API par minute et par jeton",
-    "error_too_many_requests": "Trop de requêtes. Réessayez dans un instant."
+    "error_too_many_requests": "Trop de requêtes. Réessayez dans un instant.",
+    "val_no_updatable_field": "Aucun champ modifiable dans la requête.",
+    "val_field_out_of_range": "Le champ « :field » est hors des valeurs permises.",
+    "val_field_invalid": "Le champ « :field » n'a pas un format valide.",
+    "val_employee_code_taken": "Ce numéro d’employé est déjà utilisé par un autre compte.",
+    "val_field_too_long": "Le champ « :field » est trop long (:max au maximum).",
+    "val_field_required": "Le champ « :field » est obligatoire."
 }

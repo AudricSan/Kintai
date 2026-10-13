@@ -15,10 +15,11 @@ use kintai\Core\Exceptions\ValidationException;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
-use kintai\Core\Validation\ColorRule;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\PlanLimitService;
+use kintai\Core\Validation\ApiPayloadRules;
+use kintai\Core\Validation\PayloadValidator;
 
 final class UserController
 {
@@ -67,13 +68,10 @@ final class UserController
     {
         $this->planLimits->assertCanCreateEmployee();
 
-        $data = $request->json() ?? [];
-        if (array_key_exists('color', $data)) {
-            ColorRule::assert($data['color']);
-        }
-        unset($data['id'], $data['password_hash']);
-        $data['password_hash'] = $this->hashFromPayload($data) ?? PasswordHasher::hash(PasswordPolicy::DEFAULT_PASSWORD);
-        unset($data['password']);
+        $body = $request->json() ?? [];
+        $data = $this->normalizeUser(PayloadValidator::validate($body, ApiPayloadRules::user()));
+        $this->assertIdentityAvailable($data, 0);
+        $data['password_hash'] = $this->hashFromPayload($body) ?? PasswordHasher::hash(PasswordPolicy::DEFAULT_PASSWORD);
 
         $saved = $this->users->save($data);
         $this->auditLogger->log($request, 'user.created', 'user', resourceId: (int) ($saved['id'] ?? 0) ?: null, details: $this->withoutSecrets($data));
@@ -87,16 +85,17 @@ final class UserController
         $old = $this->requireUser($id);
         $this->permissions->requireUserAccess($this->authUser($request), 'employees.update', $id, $this->storeIdsOf($id));
 
-        $data = $request->json() ?? [];
-        if (array_key_exists('color', $data)) {
-            ColorRule::assert($data['color']);
-        }
-        unset($data['id'], $data['password_hash']);
+        $body    = $request->json() ?? [];
+        $data    = $this->normalizeUser(PayloadValidator::validate($body, ApiPayloadRules::user(), true));
+        // Désactiver un Owner : même garde que la suppression (au moins un Owner actif, pas soi-même).
         if (!empty($old['is_active']) && array_key_exists('is_active', $data) && empty($data['is_active'])) {
             $this->ownerGuard->assertCanRemoveOwner((int) ($this->authUser($request)['id'] ?? 0), $id);
         }
-        $newHash = $this->hashFromPayload($data);
-        unset($data['password']);
+        $newHash = $this->hashFromPayload($body);
+        if ($data === [] && $newHash === null) {
+            throw new ValidationException(['body' => __('val_no_updatable_field')], __('val_no_updatable_field'));
+        }
+        $this->assertIdentityAvailable($data, $id);
         if ($newHash !== null) {
             $data['password_hash'] = $newHash;
         }
@@ -144,6 +143,35 @@ final class UserController
     private function storeIdsOf(int $userId): array
     {
         return array_map(fn(array $m): int => (int) $m['store_id'], $this->storeUsers->findByUser($userId));
+    }
+
+    /** Code employé en majuscules (comme le formulaire web) ; nom affiché déduit du prénom et du nom à défaut. */
+    private function normalizeUser(array $data): array
+    {
+        if (isset($data['employee_code'])) {
+            $data['employee_code'] = strtoupper($data['employee_code']);
+        }
+        if (!isset($data['display_name']) && isset($data['first_name'], $data['last_name'])) {
+            $data['display_name'] = trim($data['first_name'] . ' ' . $data['last_name']);
+        }
+        return $data;
+    }
+
+    /** E-mail et code employé uniques : un doublon finissait en erreur SQL (500). */
+    private function assertIdentityAvailable(array $data, int $userId): void
+    {
+        if (isset($data['email'])) {
+            $other = $this->users->findByEmail($data['email']);
+            if ($other !== null && (int) $other['id'] !== $userId) {
+                throw new ValidationException(['email' => __('email_taken')], __('email_taken'));
+            }
+        }
+        if (isset($data['employee_code'])) {
+            $other = $this->users->findByEmployeeCode($data['employee_code']);
+            if ($other !== null && (int) $other['id'] !== $userId) {
+                throw new ValidationException(['employee_code' => __('val_employee_code_taken')], __('val_employee_code_taken'));
+            }
+        }
     }
 
     /** Hash du champ `password` du corps, null s'il est absent ; 422 s'il est trop court. */
