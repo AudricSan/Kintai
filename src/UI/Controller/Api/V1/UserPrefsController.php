@@ -9,6 +9,8 @@ use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserNavPrefsRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\Validation\ApiPayloadRules;
+use kintai\Core\Validation\PayloadValidator;
 
 final class UserPrefsController
 {
@@ -38,9 +40,9 @@ final class UserPrefsController
         $userId        = (int) $request->param('user_id');
         $this->guard->require($request, $userId, 'employees.update');
 
-        $data          = $request->json() ?? [];
+        $data          = PayloadValidator::validate($request->json() ?? [], ApiPayloadRules::dashboardPrefs());
         $dashboardType = (string) ($data['dashboard_type'] ?? 'admin');
-        $widgets       = (array) ($data['widgets'] ?? []);
+        $widgets       = $data['widgets'] ?? [];
 
         $this->dashboardPrefs->saveWidgets($userId, $widgets, $dashboardType);
 
@@ -69,8 +71,8 @@ final class UserPrefsController
         $userId = (int) $request->param('user_id');
         $this->guard->require($request, $userId, 'employees.update');
 
-        $data   = $request->json() ?? [];
-        $hidden = (array) ($data['hidden'] ?? []);
+        $data   = PayloadValidator::validate($request->json() ?? [], ApiPayloadRules::navPrefs());
+        $hidden = $data['hidden'] ?? [];
 
         $this->navPrefs->saveHidden($userId, $hidden);
 

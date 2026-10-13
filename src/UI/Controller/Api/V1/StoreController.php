@@ -13,7 +13,8 @@ use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\StoreServiceInterface;
-use kintai\Core\Validation\StoreValidator;
+use kintai\Core\Validation\ApiPayloadRules;
+use kintai\Core\Validation\PayloadValidator;
 
 final class StoreController
 {
@@ -63,11 +64,16 @@ final class StoreController
         $old = $this->requireStore($request, 'stores.update');
         $id  = (int) $old['id'];
 
-        $data = $request->json() ?? [];
-        // Même contrôle de devise que le formulaire web (StoreService::updateStore) : la valeur est affichée dans les statistiques.
-        $currencyErrors = StoreValidator::currencyErrors($data);
-        if ($currencyErrors !== []) {
-            throw new ValidationException(['currency' => $currencyErrors[0]], $currencyErrors[0]);
+        // Mise à jour partielle : seuls les champs fournis changent, chacun contrôlé (la devise comme le
+        // formulaire web, car elle s'affiche dans les statistiques).
+        $data = PayloadValidator::validateUpdate($request->json() ?? [], ApiPayloadRules::storeUpdate());
+        if (isset($data['code'])) {
+            $data['code'] = strtoupper($data['code']);
+            $other = $this->stores->findByCode($data['code']);
+            if ($other !== null && (int) $other['id'] !== $id) {
+                $message = __('val_store_code_taken', ['code' => $data['code']]);
+                throw new ValidationException(['code' => $message], $message);
+            }
         }
 
         $saved = $this->stores->save(array_merge($data, ['id' => $id]));

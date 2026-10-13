@@ -1529,5 +1529,11 @@
     "api_rate_limit_per_minute_hint": "これを超えると、次の1分までAPIは429を返します。トークンがない場合はIPアドレスごとに制限されます。さらに各IPはこの値の10倍が上限です。0 = 制限なし。",
     "api_settings": "API",
     "api_rate_limit_per_minute": "トークンごとの1分あたりのAPIリクエスト数",
-    "error_too_many_requests": "リクエストが多すぎます。しばらくしてから再試行してください。"
+    "error_too_many_requests": "リクエストが多すぎます。しばらくしてから再試行してください。",
+    "val_no_updatable_field": "更新できる項目がリクエストに含まれていません。",
+    "val_field_out_of_range": "「:field」が許可された範囲外です。",
+    "val_field_invalid": "「:field」の形式が正しくありません。",
+    "val_employee_code_taken": "この従業員番号は他のアカウントで既に使用されています。",
+    "val_field_too_long": "「:field」が長すぎます（最大 :max）。",
+    "val_field_required": "「:field」は必須です。"
 }
