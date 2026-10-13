@@ -23,6 +23,7 @@ use kintai\Core\Services\EmployeeStatsService;
 use kintai\Core\Services\PdfCjkFontResolver;
 use kintai\Core\Services\PlanLimitService;
 use kintai\Core\Services\RoleAssignmentSyncService;
+use kintai\Core\Validation\ColorRule;
 use kintai\UI\ViewRenderer;
 use kintai\UI\Controller\Web\HasAdminAccess;
 use kintai\Core\Routing\EmployeeRouteBinder;
@@ -400,6 +401,7 @@ final class AdminUserController
 
     public function storeUser(Request $request): Response
     {
+        ColorRule::assert($request->post('color', '#3B82F6'));
         try {
             $this->planLimits->assertCanCreateEmployee();
         } catch (PlanLimitExceededException) {
@@ -532,6 +534,7 @@ final class AdminUserController
         $empCode     = strtoupper(trim($request->post('employee_code', ''))) ?: null;
         $password    = $request->post('password', '');
         $color       = $request->post('color', '#3B82F6');
+        ColorRule::assert($color);
         // Seul un requérant déjà Owner peut créer un autre compte Owner (voir
         // storeUser()/updateUser() pour la même garde).
         $isAdmin     = !empty($request->getAttribute('auth_user')['is_admin']) && $request->post('is_admin') === '1';
@@ -781,6 +784,7 @@ final class AdminUserController
             throw new NotFoundException(__('error_user_not_found'));
         }
         $this->assertCanActOnUser($request, (int) $user['id'], 'employees.update');
+        ColorRule::assert($request->post('color', $user['color'] ?? '#3B82F6'));
 
         $email = trim($request->post('email', $user['email'] ?? ''));
         if ($email !== ($user['email'] ?? '')) {

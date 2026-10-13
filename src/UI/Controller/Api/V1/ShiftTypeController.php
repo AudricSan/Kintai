@@ -9,6 +9,7 @@ use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Request;
+use kintai\Core\Validation\ColorRule;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
 
@@ -64,6 +65,9 @@ final class ShiftTypeController
     public function store(Request $request): Response
     {
         $data     = $request->json() ?? [];
+        if (array_key_exists('color', $data)) {
+            ColorRule::assert($data['color']);
+        }
         $storeIds = $this->extractStoreIds($data);
         unset($data['id'], $data['store_id'], $data['store_ids']);
 
@@ -88,6 +92,9 @@ final class ShiftTypeController
         $old      = $this->requireType($request, 'shifts.update');
         $id       = (int) $old['id'];
         $data     = $request->json() ?? [];
+        if (array_key_exists('color', $data)) {
+            ColorRule::assert($data['color']);
+        }
         $storeIds = $this->extractStoreIds($data);
         unset($data['store_id'], $data['store_ids']);
 

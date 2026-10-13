@@ -12,6 +12,7 @@ use kintai\Core\Services\Log;
 use kintai\UI\Controller\Web\Scheduling\AdminShiftTypeController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
+use kintai\Core\Exceptions\ValidationException;
 use PHPUnit\Framework\TestCase;
 
 final class AdminShiftTypeControllerTest extends TestCase
@@ -286,5 +287,34 @@ final class AdminShiftTypeControllerTest extends TestCase
             mkdir($dir, 0777, true);
         }
         touch($file);
+    }
+
+    /** Audit M1 : couleur forgée refusée (le sélecteur de couleur du formulaire n'envoie que des hexadécimaux). */
+    public function testStoreShiftTypeRejectsAnInvalidColor(): void
+    {
+        $_POST = ['code' => 'MORNING', 'name' => 'Matin', 'store_ids' => ['1'], 'color' => 'red;position:fixed'];
+        $req = $this->makePostRequest($_POST);
+        $req->setAttribute('managed_store_ids', null);
+
+        $this->shiftTypes->expects($this->never())->method('save');
+
+        $this->expectException(ValidationException::class);
+        $this->controller->storeShiftType($req);
+    }
+
+    public function testUpdateShiftTypeRejectsAnInvalidColor(): void
+    {
+        $this->shiftTypes->method('findById')->with(5)->willReturn(['id' => 5, 'code' => 'MORNING', 'name' => 'Matin']);
+        $this->shiftTypes->method('getStoreIds')->with(5)->willReturn([1]);
+
+        $_POST = ['code' => 'MORNING', 'name' => 'Matin', 'store_ids' => ['1'], 'color' => '"><b>'];
+        $req = $this->makePostRequest($_POST);
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => 5]);
+
+        $this->shiftTypes->expects($this->never())->method('save');
+
+        $this->expectException(ValidationException::class);
+        $this->controller->updateShiftType($req);
     }
 }

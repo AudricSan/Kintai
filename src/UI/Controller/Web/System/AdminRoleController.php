@@ -13,6 +13,7 @@ use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
+use kintai\Core\Validation\ColorRule;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\RoleAssignmentSyncService;
@@ -107,6 +108,8 @@ final class AdminRoleController
             return Response::redirect($this->base() . '/admin/roles/create?error=invalid_name');
         }
 
+        ColorRule::assert($request->post('color', ''), 'color', true);
+
         $saved = $this->roles->save([
             'name'        => $name,
             'slug'        => $slug,
@@ -160,6 +163,8 @@ final class AdminRoleController
         if ($name === '') {
             return Response::redirect($this->base() . '/admin/roles/' . $role['id'] . '/edit?error=invalid_name');
         }
+
+        ColorRule::assert($request->post('color', ''), 'color', true);
 
         $newRole = $this->roles->save([
             'id'          => $role['id'],

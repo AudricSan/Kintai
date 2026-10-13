@@ -1542,5 +1542,6 @@
     "store_slug_invalid": "The URL slug may only contain lowercase letters, digits and single hyphens, with at least one letter (60 characters maximum).",
     "store_slug_reserved": "This URL slug is reserved by the application. Please choose another one.",
     "store_slug_taken": "This URL slug is already used (or was used) by another store.",
-    "employee_code_invalid_url": "The employee number may only contain letters, digits, hyphens and underscores, and cannot start with \"ID-\"."
+    "employee_code_invalid_url": "The employee number may only contain letters, digits, hyphens and underscores, and cannot start with \"ID-\".",
+    "error_invalid_color": "Invalid colour: use the hexadecimal format #RRGGBB (for example #6366f1)."
 }
