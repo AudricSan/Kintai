@@ -15,6 +15,12 @@ use kintai\Core\Services\AuditLogger;
 
 final class AuthController
 {
+    /**
+     * Durée de vie d'un jeton quand le client ne fournit pas expires_in, et plafond de expires_in : 90 jours.
+     * Avant l'audit du 13/10/2026, un jeton sans expires_in n'expirait jamais.
+     */
+    public const TOKEN_TTL = 90 * 86400;
+
     public function __construct(
         private readonly AuthService $auth,
         private readonly ApiTokenRepositoryInterface $tokens,
@@ -32,6 +38,19 @@ final class AuthController
         $data     = $request->json() ?? [];
         $password = (string) ($data['password'] ?? '');
         $name     = (string) ($data['token_name'] ?? 'API');
+
+        // Contrôlé avant l'authentification : une requête mal formée n'est pas un échec de connexion.
+        $ttl = self::TOKEN_TTL;
+        if (array_key_exists('expires_in', $data)) {
+            $requested = is_bool($data['expires_in']) ? false : filter_var($data['expires_in'], FILTER_VALIDATE_INT);
+            if ($requested === false || $requested <= 0) {
+                return Response::apiError(
+                    'expires_in doit être un nombre entier de secondes strictement positif.',
+                    422, 'INVALID_EXPIRES_IN'
+                );
+            }
+            $ttl = min($requested, self::TOKEN_TTL);
+        }
 
         if (isset($data['email'])) {
             $ok = $this->auth->attempt((string) $data['email'], $password);
@@ -75,9 +94,7 @@ final class AuthController
 
         $user      = $this->auth->user();
         $rawToken  = bin2hex(random_bytes(32));
-        $expiresAt = isset($data['expires_in'])
-            ? date('Y-m-d H:i:s', time() + (int) $data['expires_in'])
-            : null;
+        $expiresAt = date('Y-m-d H:i:s', time() + $ttl);
 
         $record = $this->tokens->save([
             'user_id'    => (int) $user['id'],

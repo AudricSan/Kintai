@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Controller\Api\V1;
 
 use kintai\Core\Auth\CredentialRevoker;
+use kintai\Core\Auth\OwnerGuard;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Auth\UserTargetGuard;
 use kintai\Core\Exceptions\ForbiddenException;
@@ -107,7 +108,7 @@ final class ApiStoreScopeTest extends TestCase
             $this->users,
             new LicenseClientService($this->createStub(AppSettingsRepositoryInterface::class), ['base_url' => '', 'api_key' => '']),
         );
-        return new UserController($this->users, new AuditLogger(), $planLimits, $this->permissions, $this->storeUsers, $revoker);
+        return new UserController($this->users, new AuditLogger(), $planLimits, $this->permissions, $this->storeUsers, new OwnerGuard($this->permissions, $this->users), $revoker);
     }
 
     // ---------------------------------------------------------------- shifts

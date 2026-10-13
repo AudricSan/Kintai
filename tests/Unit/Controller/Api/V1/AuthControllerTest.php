@@ -389,4 +389,70 @@ final class AuthControllerTest extends TestCase
         $_GET    = [];
         $_POST   = [];
     }
+
+    // -------------------------------------------------------------------------
+    // Échéance des jetons (audit du 13/10/2026, M9)
+    // -------------------------------------------------------------------------
+
+    /** Prépare une connexion réussie et renvoie la date d'expiration transmise au dépôt. */
+    private function loginAndCaptureExpiry(array $extra): array
+    {
+        $hash = password_hash('secret-passphrase', PASSWORD_BCRYPT, ['cost' => 4]);
+        $row  = ['id' => 7, 'email' => 'alice@example.com', 'password_hash' => $hash, 'is_active' => true, 'deleted_at' => null];
+        $this->users->method('findByEmail')->willReturn($row);
+        $this->users->method('findById')->willReturn($row);
+
+        $saved = null;
+        $this->tokens->method('save')->willReturnCallback(function (array $d) use (&$saved): array {
+            $saved = $d;
+            return $d + ['id' => 1];
+        });
+
+        $req = $this->makeRequest('POST', '/api/v1/auth/login', json: ['email' => 'alice@example.com', 'password' => 'secret-passphrase'] + $extra);
+        $response = $this->controller->login($req);
+
+        return [$response, $saved];
+    }
+
+    public function testTokenWithoutExpiresInExpiresAfterNinetyDays(): void
+    {
+        [$response, $saved] = $this->loginAndCaptureExpiry([]);
+
+        $this->assertSame(201, $response->status());
+        $this->assertNotNull($saved['expires_at']);
+        $this->assertEqualsWithDelta(time() + AuthController::TOKEN_TTL, strtotime($saved['expires_at']), 5);
+        $this->assertSame($saved['expires_at'], json_decode($response->body(), true)['expires_at']);
+    }
+
+    public function testShorterExpiresInIsHonoured(): void
+    {
+        [, $saved] = $this->loginAndCaptureExpiry(['expires_in' => 3600]);
+
+        $this->assertEqualsWithDelta(time() + 3600, strtotime($saved['expires_at']), 5);
+    }
+
+    public function testExpiresInAboveTheCeilingIsCapped(): void
+    {
+        [, $saved] = $this->loginAndCaptureExpiry(['expires_in' => 10 * 365 * 86400]);
+
+        $this->assertEqualsWithDelta(time() + AuthController::TOKEN_TTL, strtotime($saved['expires_at']), 5);
+    }
+
+    /** @return array<string, array{mixed}> */
+    public static function invalidExpiresIn(): array
+    {
+        return ['zero' => [0], 'negatif' => [-60], 'texte' => ['bientot'], 'decimal' => [1.5], 'booleen' => [true], 'null' => [null]];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidExpiresIn')]
+    public function testInvalidExpiresInIsRejectedWithoutIssuingAToken(mixed $expiresIn): void
+    {
+        $this->tokens->expects($this->never())->method('save');
+
+        $req = $this->makeRequest('POST', '/api/v1/auth/login', json: ['email' => 'alice@example.com', 'password' => 'x', 'expires_in' => $expiresIn]);
+        $response = $this->controller->login($req);
+
+        $this->assertSame(422, $response->status());
+        $this->assertNull($req->getAttribute('auth_failed'));
+    }
 }

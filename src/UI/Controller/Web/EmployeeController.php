@@ -22,6 +22,7 @@ use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\Services\WidgetGuard;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\NotificationService;
 use kintai\UI\Controller\Web\HasBaseUrl;
@@ -127,26 +128,29 @@ final class EmployeeController
         ) {
             $container = Container::getInstance();
             if ($container->has(NotebookEntryRepositoryInterface::class)) {
-                $notebook   = $container->make(NotebookEntryRepositoryInterface::class);
-                $myStoreIds = array_map(fn($m) => (int) $m['store_id'], $this->storeUsers->findByUser($userId));
-                $now        = date('Y-m-d H:i:s');
-                $notebookEntries = array_values(array_filter(
-                    $notebook->findVisibleForStores($myStoreIds),
-                    fn($n) => empty($n['expires_at']) || $n['expires_at'] > $now
-                ));
-                usort($notebookEntries, function ($a, $b) {
-                    $pinCmp = (int) ($b['pinned'] ?? 0) <=> (int) ($a['pinned'] ?? 0);
-                    return $pinCmp !== 0 ? $pinCmp : strcmp($b['created_at'] ?? '', $a['created_at'] ?? '');
+                // Isolé : un bundle défaillant (table absente) ne doit pas faire tomber tout le tableau de bord.
+                $notebookEntries = WidgetGuard::run('team_notes', function () use ($container, $userId, $storesMap): array {
+                    $notebook   = $container->make(NotebookEntryRepositoryInterface::class);
+                    $myStoreIds = array_map(fn($m) => (int) $m['store_id'], $this->storeUsers->findByUser($userId));
+                    $now        = date('Y-m-d H:i:s');
+                    $entries = array_values(array_filter(
+                        $notebook->findVisibleForStores($myStoreIds),
+                        fn($n) => empty($n['expires_at']) || $n['expires_at'] > $now
+                    ));
+                    usort($entries, function ($a, $b) {
+                        $pinCmp = (int) ($b['pinned'] ?? 0) <=> (int) ($a['pinned'] ?? 0);
+                        return $pinCmp !== 0 ? $pinCmp : strcmp($b['created_at'] ?? '', $a['created_at'] ?? '');
+                    });
+                    $entries = array_slice($entries, 0, self::NOTEBOOK_WIDGET_LIMIT);
+                    return array_map(function (array $n) use ($storesMap): array {
+                        $author = $n['author_id'] !== null ? $this->users->findById((int) $n['author_id']) : null;
+                        $n['author_name'] = $author !== null
+                            ? trim(($author['last_name'] ?? '') . ' ' . ($author['first_name'] ?? '')) ?: ($author['email'] ?? '#' . $n['author_id'])
+                            : null;
+                        $n['store_name'] = $n['store_id'] !== null ? ($storesMap[(int) $n['store_id']] ?? null) : null;
+                        return $n;
+                    }, $entries);
                 });
-                $notebookEntries = array_slice($notebookEntries, 0, self::NOTEBOOK_WIDGET_LIMIT);
-                $notebookEntries = array_map(function (array $n) use ($storesMap): array {
-                    $author = $n['author_id'] !== null ? $this->users->findById((int) $n['author_id']) : null;
-                    $n['author_name'] = $author !== null
-                        ? trim(($author['last_name'] ?? '') . ' ' . ($author['first_name'] ?? '')) ?: ($author['email'] ?? '#' . $n['author_id'])
-                        : null;
-                    $n['store_name'] = $n['store_id'] !== null ? ($storesMap[(int) $n['store_id']] ?? null) : null;
-                    return $n;
-                }, $notebookEntries);
             }
         }
 

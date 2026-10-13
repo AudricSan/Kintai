@@ -154,4 +154,11 @@ final class AppSettingsService
     {
         return max(0, (int) $this->get('log_retention_days', '180'));
     }
+
+    /** Requêtes API autorisées par minute et par jeton (ApiRateLimitMiddleware) ; 0 = pas de limite. */
+    public function apiRateLimitPerMinute(): int
+    {
+        $default = (string) \kintai\Core\Middleware\ApiRateLimitMiddleware::DEFAULT_PER_MINUTE;
+        return max(0, (int) $this->get(\kintai\Core\Middleware\ApiRateLimitMiddleware::SETTING_KEY, $default));
+    }
 }
