@@ -235,6 +235,7 @@ $section = function (string $titleKey, string $body, string $span = '') use ($as
             <?php if (!$hasUnifiedRoleSelect): ?>
             <div class="form-group employee-info-grid__owner">
                 <label class="form-toggle form-toggle--labeled">
+                    <input type="hidden" name="is_admin" value="0"<?= $formAttr ?>>
                     <input type="checkbox" name="is_admin" value="1" class="form-toggle__input"<?= $formAttr ?> <?= !empty($user['is_admin']) ? 'checked' : '' ?>>
                     <span class="form-toggle__track"></span>
                     <span><?= htmlspecialchars($owner_role_name) ?></span>
