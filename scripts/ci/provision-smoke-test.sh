@@ -52,7 +52,7 @@ provision --admin-email="$EMAIL" --admin-password="$PASSWORD" --app-url=/Kintai 
 [ -e config/database.local.php ] && fail "une entrée refusée a quand même écrit la configuration"
 
 # ─── Installation ────────────────────────────────────────────────────────
-provision --admin-email="$EMAIL" --admin-password="$PASSWORD" --app-url=https://kintai.example.com/ \
+provision --admin-email="$EMAIL" --admin-password="$PASSWORD" --app-url=https://kintai.example.com/ --seed \
   || fail "provision.php a échoué"
 grep -q "Undefined array key\|Warning:" "$WORK/out.txt" && grep -v "Module .* is already loaded" "$WORK/out.txt" | grep -q "Warning:" \
   && fail "avertissements PHP pendant l'installation"
@@ -61,6 +61,12 @@ grep -q "Undefined array key\|Warning:" "$WORK/out.txt" && grep -v "Module .* is
 tables=$(sql "SELECT COUNT(*) FROM sqlite_master WHERE type='table'")
 [ "$tables" -ge 40 ] || fail "seulement $tables tables créées"
 [ "$(sql "SELECT COUNT(*) FROM users WHERE email='$EMAIL'")" = "1" ] || fail "compte admin absent"
+# Données de démonstration (--seed) : 2 magasins, 6 comptes + l'admin, des shifts, 2 gérants.
+[ "$(sql "SELECT COUNT(*) FROM stores")" = "2" ] || fail "--seed : 2 magasins attendus"
+[ "$(sql "SELECT COUNT(*) FROM users")" = "7" ] || fail "--seed : 7 comptes attendus (6 de démonstration + l'admin)"
+[ "$(sql "SELECT COUNT(*) FROM shifts")" -gt 0 ] || fail "--seed : aucun shift créé"
+managers=$(sql "SELECT COUNT(*) FROM role_assignments ra JOIN roles r ON r.id = ra.role_id WHERE r.slug='manager'")
+[ "$managers" = "2" ] || fail "--seed : 2 gérants attendus, $managers trouvés"
 owner=$(sql "SELECT COUNT(*) FROM role_assignments ra JOIN roles r ON r.id = ra.role_id JOIN users u ON u.id = ra.user_id WHERE r.slug='owner' AND u.email='$EMAIL'")
 [ "$owner" = "1" ] || fail "le compte admin n'a pas le rôle Owner"
 [ "$(sql "SELECT value FROM app_settings WHERE key='app_public_url'")" = "https://kintai.example.com" ] || fail "URL publique non enregistrée"
