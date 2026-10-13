@@ -197,4 +197,69 @@ final class NavigationTest extends TestCase
     {
         $this->assertSame(['shifts', 'timeclocks', 'timeoff', 'messages'], Navigation::migrateLegacyKeys(['my_planning', 'timeclock', 'my_timeoff', 'messages', 'timeoff']));
     }
+
+    // -------------------------------------------------------------------------
+    // Barre mobile (étape 2c)
+    // -------------------------------------------------------------------------
+
+    private function mobileCtx(array $over = []): array
+    {
+        return $over + [
+            'isManager'    => true,
+            'path'         => '/admin/timeoff',
+            'routeVisible' => fn(string $r): bool => true,
+            'feat'         => fn(string $f): bool => true,
+            'routeUrl'     => fn(string $r): string => '/' . str_replace('.', '/', $r),
+            'translate'    => fn(string $k): string => 'T:' . $k,
+            'view'         => [],
+        ];
+    }
+
+    public function testMobileDefaultsPerRole(): void
+    {
+        $nav = $this->navigation(['timeoff' => null, 'timeclock' => null]);
+
+        $manager = array_column($nav->mobileTabs([], $this->mobileCtx()), 'key');
+        $employee = array_column($nav->mobileTabs([], $this->mobileCtx(['isManager' => false, 'path' => '/employee'])), 'key');
+
+        $this->assertSame(['shifts', 'users', 'timeoff'], $manager);
+        $this->assertSame(['shifts', 'timeclocks', 'timeoff'], $employee);
+    }
+
+    /** Choix enregistrés sous les anciennes clés (team, requests, my_timeoff…) : toujours honorés. */
+    public function testSavedLegacyMobileKeysAreHonoured(): void
+    {
+        $nav = $this->navigation(['timeoff' => null, 'messaging' => null]);
+
+        $tabs = $nav->mobileTabs(['team', 'requests', 'messages'], $this->mobileCtx());
+
+        $this->assertSame(['users', 'timeoff', 'messages'], array_column($tabs, 'key'));
+        $this->assertTrue($tabs[1]['active']);
+        $this->assertSame('/admin/timeoff', $tabs[1]['href']);
+    }
+
+    public function testMobileTabsFallBackToDefaultsWhenFewerThanTwoAreVisible(): void
+    {
+        $nav = $this->navigation(['messaging' => null, 'timeoff' => null]);
+
+        $tabs = $nav->mobileTabs(['messages'], $this->mobileCtx(['feat' => fn(string $f): bool => $f !== 'messages']));
+
+        $this->assertSame(['shifts', 'users'], array_column($tabs, 'key'));
+    }
+
+    public function testEmployeeCanPickTheirProfileButNotStaffWithoutPermission(): void
+    {
+        $nav = $this->navigation([]);
+
+        $choices = $nav->mobileChoices(false, fn(string $r): bool => $r !== 'admin.users', fn(string $f): bool => true);
+
+        $this->assertContains('my_profile', $choices);
+        $this->assertNotContains('users', $choices);
+        $this->assertSame('my_profile', $nav->labelOf('my_profile', false));
+    }
+
+    public function testLegacyMobileKeysAreMigrated(): void
+    {
+        $this->assertSame(['users', 'timeoff', 'shifts', 'timeclocks'], Navigation::migrateLegacyMobileKeys(['team', 'requests', 'my_planning', 'timeclock', 'my_timeoff']));
+    }
 }

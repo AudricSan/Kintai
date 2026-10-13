@@ -612,8 +612,6 @@ final class EmployeeController
     private const NAV_EMPLOYEE_SECTIONS = ['planning', 'requests', 'statistics', 'account'];
 
     // Items disponibles pour la barre de navigation inférieure mobile (hors "home" toujours présent)
-    private const BOTTOM_NAV_POOL     = ['my_planning', 'timeclock', 'my_timeoff', 'messages', 'swaps', 'open_shifts', 'my_profile'];
-    private const BOTTOM_NAV_DEFAULT  = ['my_planning', 'timeclock', 'my_timeoff'];
 
     /**
      * L'employé gère son menu depuis l'onglet "nav" de son profil (une seule UI,
@@ -654,7 +652,7 @@ final class EmployeeController
         }
 
         $rawBottom   = array_values((array) $request->post('bottom_nav', []));
-        $bottomItems = array_values(array_intersect($rawBottom, self::BOTTOM_NAV_POOL));
+        $bottomItems = array_values(array_intersect($rawBottom, \kintai\Core\Extension\Navigation::current()->mobileKeys(false)));
         $count       = count($bottomItems);
         if ($count >= 2 && $count <= 4) {
             $this->navPrefs->saveBottomNavItems($userId, $bottomItems);

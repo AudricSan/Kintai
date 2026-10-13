@@ -28,13 +28,9 @@ final class AuthController
     use HasBaseUrl;
     private const NAV_OWNER_SECTIONS   = ['planning', 'hr', 'requests', 'statistics', 'system'];
     private const NAV_MANAGER_SECTIONS = ['planning', 'hr', 'requests', 'statistics'];
-    private const BOTTOM_NAV_POOL    = ['shifts', 'team', 'requests', 'messages', 'swaps', 'timeclocks', 'daily_reports'];
-    private const BOTTOM_NAV_DEFAULT = ['shifts', 'team', 'requests'];
 
     // Entrées masquables : calculées par la vue depuis kintai\Core\Extension\Navigation (mêmes clés que la barre du haut).
     private const NAV_EMPLOYEE_SECTIONS       = ['planning', 'requests', 'statistics', 'account'];
-    private const BOTTOM_NAV_POOL_EMPLOYEE    = ['my_planning', 'timeclock', 'my_timeoff', 'messages', 'swaps', 'open_shifts', 'my_profile'];
-    private const BOTTOM_NAV_DEFAULT_EMPLOYEE = ['my_planning', 'timeclock', 'my_timeoff'];
 
     public function __construct(
         private readonly ViewRenderer $view,
@@ -238,12 +234,10 @@ final class AuthController
         $isOwner       = !empty($user['is_admin']);
         if ($isManagerView) {
             $defaultSecs = $isOwner ? self::NAV_OWNER_SECTIONS : self::NAV_MANAGER_SECTIONS;
-            $bnPool      = self::BOTTOM_NAV_POOL;
-            $bnDefault   = self::BOTTOM_NAV_DEFAULT;
+            $bnDefault   = \kintai\Core\Extension\Navigation::MOBILE_DEFAULT_MANAGER;
         } else {
             $defaultSecs = self::NAV_EMPLOYEE_SECTIONS;
-            $bnPool      = self::BOTTOM_NAV_POOL_EMPLOYEE;
-            $bnDefault   = self::BOTTOM_NAV_DEFAULT_EMPLOYEE;
+            $bnDefault   = \kintai\Core\Extension\Navigation::MOBILE_DEFAULT_EMPLOYEE;
         }
 
         $navHidden   = $this->navPrefs->getHidden($userId);
@@ -253,7 +247,7 @@ final class AuthController
             $defaultSecs
         )));
 
-        $bnSaved   = $this->navPrefs->getBottomNavItems($userId);
+        $bnSaved   = \kintai\Core\Extension\Navigation::migrateLegacyMobileKeys($this->navPrefs->getBottomNavItems($userId));
         $bnItems   = !empty($bnSaved) ? $bnSaved : $bnDefault;
 
         return Response::html($this->view->render('auth.profile', [
@@ -270,7 +264,6 @@ final class AuthController
             'nav_default_sections' => $defaultSecs,
             'is_owner'             => $isOwner,
             'is_manager_view'      => $isManagerView,
-            'bottom_nav_pool'      => $bnPool,
             'bottom_nav_items'     => $bnItems,
         ], 'layout.app'));
     }
