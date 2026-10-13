@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\UI\Controller\Web\System;
 
+use kintai\Core\Auth\OwnerGuard;
 use kintai\Core\Auth\PermissionCatalog;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
@@ -13,6 +14,7 @@ use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
+use kintai\Core\Validation\ColorRule;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\RoleAssignmentSyncService;
@@ -59,6 +61,7 @@ final class AdminRoleController
         private readonly AuditLogger $auditLogger,
         private readonly StoreUserRepositoryInterface $storeUsers,
         private readonly RoleAssignmentSyncService $roleSync,
+        private readonly OwnerGuard $ownerGuard,
     ) {}
 
     /** GET /admin/roles */
@@ -106,6 +109,8 @@ final class AdminRoleController
         if ($name === '' || $slug === '') {
             return Response::redirect($this->base() . '/admin/roles/create?error=invalid_name');
         }
+
+        ColorRule::assert($request->post('color', ''), 'color', true);
 
         $saved = $this->roles->save([
             'name'        => $name,
@@ -160,6 +165,8 @@ final class AdminRoleController
         if ($name === '') {
             return Response::redirect($this->base() . '/admin/roles/' . $role['id'] . '/edit?error=invalid_name');
         }
+
+        ColorRule::assert($request->post('color', ''), 'color', true);
 
         $newRole = $this->roles->save([
             'id'          => $role['id'],
@@ -281,6 +288,7 @@ final class AdminRoleController
 
         $userId = (int) $assignment['user_id'];
         if ($isOwnerRole) {
+            $this->ownerGuard->assertCanRemoveOwner((int) ($request->getAttribute('auth_user')['id'] ?? 0), $userId);
             $this->roleSync->syncOwnerRole($userId, false);
         } else {
             $this->roleSync->revokeStoreRole($userId, (int) $assignment['scope_id']);

@@ -6,6 +6,7 @@ namespace kintai\UI\Controller\Api\V1;
 
 use kintai\Core\Api\Paginator;
 use kintai\Core\Auth\CredentialRevoker;
+use kintai\Core\Auth\OwnerGuard;
 use kintai\Core\Auth\PasswordHasher;
 use kintai\Core\Auth\PasswordPolicy;
 use kintai\Core\Auth\PermissionService;
@@ -14,6 +15,7 @@ use kintai\Core\Exceptions\ValidationException;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
+use kintai\Core\Validation\ColorRule;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\PlanLimitService;
@@ -26,6 +28,7 @@ final class UserController
         private readonly PlanLimitService $planLimits,
         private readonly PermissionService $permissions,
         private readonly StoreUserRepositoryInterface $storeUsers,
+        private readonly OwnerGuard $ownerGuard,
         // Optionnel pour les tests qui construisent le contrôleur à la main.
         private readonly ?CredentialRevoker $revoker = null,
     ) {}
@@ -65,6 +68,9 @@ final class UserController
         $this->planLimits->assertCanCreateEmployee();
 
         $data = $request->json() ?? [];
+        if (array_key_exists('color', $data)) {
+            ColorRule::assert($data['color']);
+        }
         unset($data['id'], $data['password_hash']);
         $data['password_hash'] = $this->hashFromPayload($data) ?? PasswordHasher::hash(PasswordPolicy::DEFAULT_PASSWORD);
         unset($data['password']);
@@ -82,7 +88,13 @@ final class UserController
         $this->permissions->requireUserAccess($this->authUser($request), 'employees.update', $id, $this->storeIdsOf($id));
 
         $data = $request->json() ?? [];
+        if (array_key_exists('color', $data)) {
+            ColorRule::assert($data['color']);
+        }
         unset($data['id'], $data['password_hash']);
+        if (!empty($old['is_active']) && array_key_exists('is_active', $data) && empty($data['is_active'])) {
+            $this->ownerGuard->assertCanRemoveOwner((int) ($this->authUser($request)['id'] ?? 0), $id);
+        }
         $newHash = $this->hashFromPayload($data);
         unset($data['password']);
         if ($newHash !== null) {
@@ -106,6 +118,7 @@ final class UserController
         $id = (int) $request->param('id');
         $this->requireUser($id);
         $this->permissions->requireUserAccess($this->authUser($request), 'employees.delete', $id, $this->storeIdsOf($id));
+        $this->ownerGuard->assertCanRemoveOwner((int) ($this->authUser($request)['id'] ?? 0), $id);
 
         $this->users->delete($id);
         $this->revoker?->revokeAllFor($id);
