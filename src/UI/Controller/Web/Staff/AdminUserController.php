@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace kintai\UI\Controller\Web\Staff;
 
 use kintai\Core\Auth\CredentialRevoker;
+use kintai\Core\Auth\OwnerGuard;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
@@ -43,6 +44,7 @@ final class AdminUserController
         private readonly RoleAssignmentSyncService $roleSync,
         private readonly PermissionService $permissions,
         private readonly PlanLimitService $planLimits,
+        private readonly OwnerGuard $ownerGuard,
         // Optionnel pour les tests qui construisent le contrôleur à la main.
         private readonly ?CredentialRevoker $revoker = null,
     ) {}
@@ -782,6 +784,13 @@ final class AdminUserController
         }
         $this->assertCanActOnUser($request, (int) $user['id'], 'employees.update');
 
+        // Un Owner ne se désactive pas lui-même, et le dernier Owner actif ne peut être ni désactivé ni dégradé.
+        $deactivating = !empty($user['is_active']) && $request->post('is_active') !== '1';
+        $demoting     = !empty($request->getAttribute('auth_user')['is_admin']) && $request->post('is_admin') !== '1';
+        if ($deactivating || $demoting) {
+            $this->ownerGuard->assertCanRemoveOwner((int) ($request->getAttribute('auth_user')['id'] ?? 0), (int) $user['id']);
+        }
+
         $email = trim($request->post('email', $user['email'] ?? ''));
         if ($email !== ($user['email'] ?? '')) {
             $existing = $this->users->findByEmail($email);
@@ -872,6 +881,7 @@ final class AdminUserController
     {
         $id = (int) $request->param('id');
         $this->assertCanActOnUser($request, $id, 'employees.delete');
+        $this->ownerGuard->assertCanRemoveOwner((int) ($request->getAttribute('auth_user')['id'] ?? 0), $id);
         $this->users->delete($id);
         $this->revoker?->revokeAllFor($id);
         $this->auditLogger->log($request, 'user.deleted', 'user', $id, []);
