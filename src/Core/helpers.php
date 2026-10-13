@@ -497,7 +497,6 @@ if (!function_exists('notification_type_catalog')) {
             'shift_claim_withdrawn'  => ['label' => __('notif_shift_claim_withdrawn'), 'icon' => '⊘'],
             'daily_report_submitted' => ['label' => __('notif_daily_report_submitted'), 'icon' => '📝'],
             'daily_report_validated' => ['label' => __('notif_daily_report_validated'), 'icon' => '✓'],
-            'feedback_submitted'     => ['label' => __('notif_feedback_submitted'), 'icon' => '💬'],
             'swap_requested'         => ['label' => __('notif_swap_requested'), 'icon' => '⇄'],
             'swap_peer_accepted'     => ['label' => __('notif_swap_peer_accepted'), 'icon' => '⇄'],
             'swap_peer_refused'      => ['label' => __('notif_swap_peer_refused'), 'icon' => '⇄'],
@@ -514,5 +513,17 @@ if (!function_exists('notification_type_catalog')) {
     function notification_type_icon(string $type): string
     {
         return notification_type_catalog()[$type]['icon'] ?? '•';
+    }
+}
+
+if (!function_exists('safe_color')) {
+    /**
+     * Couleur utilisable dans un attribut style="" ou data-* : la valeur si c'est un hexadécimal
+     * valide, sinon le repli. Ceinture et bretelles en plus de la validation à la saisie
+     * (ColorRule) pour les données déjà en base ou écrites par un bundle.
+     */
+    function safe_color(mixed $value, string $fallback = '#6366f1'): string
+    {
+        return \kintai\Core\Validation\ColorRule::safe($value, $fallback);
     }
 }
