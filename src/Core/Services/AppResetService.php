@@ -6,6 +6,7 @@ namespace kintai\Core\Services;
 
 use Illuminate\Database\Capsule\Manager as Capsule;
 use kintai\Core\Database\MigrationRunner;
+use kintai\Core\Database\SqliteForeignKeys;
 
 /**
  * Réinitialisation de l'application depuis /admin/backup (bouton "Danger zone").
@@ -109,9 +110,12 @@ final class AppResetService
             $conn->statement('SET FOREIGN_KEY_CHECKS = 0');
         }
 
-        foreach ($tables as $table) {
-            $this->capsule->table($table)->truncate();
-        }
+        // Sous SQLite aussi les clés étrangères sont actives : vidage dans un ordre quelconque sans elles.
+        SqliteForeignKeys::without($conn, function () use ($tables): void {
+            foreach ($tables as $table) {
+                $this->capsule->table($table)->truncate();
+            }
+        });
 
         if ($isMysql) {
             $conn->statement('SET FOREIGN_KEY_CHECKS = 1');

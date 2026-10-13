@@ -17,6 +17,13 @@ trait HandlesMigrationExecution
 {
     private function runMigrationFile(string $file, string $name): void
     {
+        // Clés étrangères SQLite suspendues le temps de la migration : une table modifiée y est reconstruite,
+        // ce qui déclencherait les cascades des tables qui la référencent (voir SqliteForeignKeys).
+        SqliteForeignKeys::without($this->capsule->getConnection(), fn() => $this->requireAndRun($file, $name));
+    }
+
+    private function requireAndRun(string $file, string $name): void
+    {
         try {
             $migrationClass = require $file;
 
