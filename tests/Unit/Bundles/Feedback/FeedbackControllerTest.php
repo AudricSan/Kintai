@@ -120,6 +120,36 @@ final class FeedbackControllerTest extends TestCase
         $this->assertSame(302, $response->status());
     }
 
+    /** Audit n°7 : `/\evil.example` passait le filtre de `return_to` et redirigeait hors du site. */
+    #[\PHPUnit\Framework\Attributes\DataProvider('returnToCases')]
+    public function testSubmitOnlyRedirectsBackToInternalPaths(string $returnTo, bool $kept): void
+    {
+        $_POST = ['category' => 'other', 'message' => '', 'return_to' => $returnTo];
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1]);
+        $this->storeUsers->method('findByUser')->with(1)->willReturn([['store_id' => 5]]);
+
+        $response = $this->controller->submit($req);
+
+        $location = (string) ((fn() => $this->headers['Location'] ?? '')->call($response));
+        $this->assertSame(302, $response->status());
+        $kept
+            ? $this->assertStringStartsWith($returnTo, $location)
+            : $this->assertStringNotContainsString('evil.example', $location);
+    }
+
+    /** @return array<string, array{string, bool}> */
+    public static function returnToCases(): array
+    {
+        return [
+            'chemin interne'    => ['/employee/planning', true],
+            'site externe'      => ['https://evil.example/', false],
+            'schéma relatif'    => ['//evil.example/', false],
+            'antislash'         => ['/\evil.example/', false],
+            'retour à la ligne' => ["/ok\r\nLocation: https://evil.example", false],
+        ];
+    }
+
     public function testSubmitSavesAnonymousFeedback(): void
     {
         $_POST = [

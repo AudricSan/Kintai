@@ -64,7 +64,7 @@ final class PushTokenController
             throw new ValidationException(['token' => [__('validation_device_token_required')]]);
         }
 
-        $this->tokens->deleteByToken($token);
+        $this->tokens->deleteByToken($token, $userId);
         return Response::empty();
     }
 }
