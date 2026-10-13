@@ -58,6 +58,32 @@ final class BundleInstallerService
         return $this->run($slug, $repositoryUrl, $version, $sourceRegistryUrl, dryRun: false, onProgress: $onProgress, expectedCommit: $expectedCommit);
     }
 
+    /** Identifiant d'un bundle : devient un nom de dossier sous storage/bundles/, donc jamais de `/`, `..` ni majuscule. */
+    public static function isValidSlug(string $slug): bool
+    {
+        return preg_match('/^[a-z0-9][a-z0-9-]{0,62}$/', $slug) === 1;
+    }
+
+    /** Numéro de version (X.Y.Z, suffixe de pré-version optionnel) : même raison, il devient un nom de dossier. */
+    public static function isValidVersion(string $version): bool
+    {
+        return preg_match('/^\d{1,5}\.\d{1,5}\.\d{1,5}(?:-[0-9A-Za-z][0-9A-Za-z.-]{0,30})?$/', $version) === 1;
+    }
+
+    /** Pose lastError et renvoie false si le couple slug/version ne peut pas servir de chemin disque. */
+    private function acceptsIdentity(string $slug, ?string $version = null): bool
+    {
+        if (!self::isValidSlug($slug)) {
+            $this->lastError = "Identifiant de bundle invalide : « {$slug} ».";
+            return false;
+        }
+        if ($version !== null && !self::isValidVersion($version)) {
+            $this->lastError = "Numéro de version invalide : « {$version} ».";
+            return false;
+        }
+        return true;
+    }
+
     public function dryRun(string $slug, string $repositoryUrl, string $version, ?string $expectedCommit = null): BundleInstallResult
     {
         return $this->run($slug, $repositoryUrl, $version, null, dryRun: true, expectedCommit: $expectedCommit);
@@ -73,6 +99,10 @@ final class BundleInstallerService
     public function uninstall(string $slug): bool
     {
         $this->lastError = null;
+
+        if (!$this->acceptsIdentity($slug)) {
+            return false;
+        }
 
         if ($this->installedBundles->find($slug) === null) {
             $this->lastError = "Le bundle {$slug} n'est pas géré par l'installateur (bundle du monorepo ou déjà désinstallé).";
@@ -95,6 +125,11 @@ final class BundleInstallerService
      */
     public function rollback(string $slug, string $version): bool
     {
+        $this->lastError = null;
+        if (!$this->acceptsIdentity($slug, $version)) {
+            return false;
+        }
+
         $bundleDir = $this->bundlesDir() . "/{$slug}/{$version}";
         if (!is_dir($bundleDir)) {
             $this->lastError = "La version {$version} de {$slug} n'est pas présente sur ce serveur.";
@@ -115,6 +150,12 @@ final class BundleInstallerService
     {
         $this->lastError = null;
         $progress = $onProgress ?? function (int $percent, string $label): void {};
+
+        // Avant tout chemin disque : sinon un slug « ../.. » déplaçait la création, l'extraction et la
+        // suppression du dossier de préparation hors de storage/bundles.
+        if (!$this->acceptsIdentity($slug, $version)) {
+            return BundleInstallResult::failure($this->lastError);
+        }
 
         $stagingContainer = $this->bundlesDir() . "/{$slug}/.staging/{$version}";
         $zipPath = $stagingContainer . '.zip';
