@@ -1536,5 +1536,9 @@
     "val_employee_code_taken": "Ce numéro d’employé est déjà utilisé par un autre compte.",
     "val_field_too_long": "Le champ « :field » est trop long (:max au maximum).",
     "val_field_required": "Le champ « :field » est obligatoire.",
-    "error_cannot_act_on_self": "Vous ne pouvez pas faire cette action sur votre propre compte (vous perdriez vos droits) : demandez à un autre gestionnaire ou à un Owner."
+    "error_cannot_act_on_self": "Vous ne pouvez pas faire cette action sur votre propre compte (vous perdriez vos droits) : demandez à un autre gestionnaire ou à un Owner.",
+    "backup_update_step_verify": "Vérification de l'intégrité de l'archive…",
+    "backup_flash_error_checksum_failed": "Mise à jour refusée : l'empreinte de l'archive téléchargée ne correspond pas à celle publiée avec la release (fichier altéré ou incomplet).",
+    "backup_flash_error_release_archive_missing": "Mise à jour refusée : cette release ne fournit pas d'archive vérifiable (kintai-<version>.zip et SHA256SUMS).",
+    "backup_flash_error_commit_mismatch": "Mise à jour refusée : l'archive ne correspond pas au commit du tag de la release."
 }
