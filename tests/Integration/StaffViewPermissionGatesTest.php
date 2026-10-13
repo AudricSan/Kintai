@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Integration;
 
+use kintai\Core\BundleManager;
 use kintai\Core\Container;
 use kintai\Core\Router;
+use kintai\Tests\Support\FakeBundleManagerFactory;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\TestCase;
 
@@ -64,7 +66,37 @@ final class StaffViewPermissionGatesTest extends TestCase
 
     public function testUsersListShowsRowActionsWhenPermissionsGranted(): void
     {
-        $html = $this->view->renderPartial('staff.users', [
+        // Liens fournis par les bundles salary-report et resignation-report (Bundle::actions(), repli historique) :
+        // seulement quand ils sont actifs.
+        $container = Container::getInstance();
+        $container->instance(BundleManager::class, FakeBundleManagerFactory::withActiveSlugs(['salary-report', 'resignation-report']));
+        try {
+            $html = $this->renderUsersWithAllPermissions();
+        } finally {
+            $instances = new \ReflectionProperty(Container::class, 'instances');
+            $all = $instances->getValue($container);
+            unset($all[BundleManager::class]);
+            $instances->setValue($container, $all);
+        }
+
+        $this->assertStringContainsString('/admin/users/create', $html);
+        $this->assertStringContainsString('employee-report/5/stats', $html);
+        $this->assertStringContainsString('reports/salary/create?user_id=5', $html);
+        $this->assertStringContainsString('reports/resignation/create?user_id=5', $html);
+    }
+
+    public function testUsersListHidesBundleActionsWhenTheirBundlesAreInactive(): void
+    {
+        $html = $this->renderUsersWithAllPermissions();
+
+        $this->assertStringContainsString('employee-report/5/stats', $html);
+        $this->assertStringNotContainsString('reports/salary/create', $html);
+        $this->assertStringNotContainsString('reports/resignation/create', $html);
+    }
+
+    private function renderUsersWithAllPermissions(): string
+    {
+        return $this->view->renderPartial('staff.users', [
             'BASE_URL'         => '',
             'users'            => [['id' => 5, 'display_name' => 'Jean Dupont', 'email' => 'j@d.com', 'is_admin' => 0, 'is_active' => 1]],
             'user_stats'       => [],
@@ -74,11 +106,6 @@ final class StaffViewPermissionGatesTest extends TestCase
             'user_store_map'   => [5 => 1],
             'user_can'         => $this->canFn(['employees.create', 'payroll.view', 'payroll.generate', 'resignation_reports.create']),
         ]);
-
-        $this->assertStringContainsString('/admin/users/create', $html);
-        $this->assertStringContainsString('employee-report/5/stats', $html);
-        $this->assertStringContainsString('reports/salary/create?user_id=5', $html);
-        $this->assertStringContainsString('reports/resignation/create?user_id=5', $html);
     }
 
     // -------------------------------------------------------------------------

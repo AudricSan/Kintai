@@ -155,11 +155,10 @@ $exportQuery = $filter_store_id !== 0 ? '?store_id=' . $filter_store_id : '';
         if ($can('payroll.view')) {
             $panel .= '<a href="' . $BASE_URL . '/admin/stores/' . store_segment($sId) . '/employee-report/' . employee_segment($uid) . '/stats" class="row-actions__link">📊 ' . htmlspecialchars(__('employee_stats')) . '</a>';
         }
-        if ($can('payroll.generate') && bundle_enabled('salary-report')) {
-            $panel .= '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/reports/salary/create?user_id=' . $uid . '" class="row-actions__link">💰 ' . htmlspecialchars(__('salary_report')) . '</a>';
-        }
-        if ($can('resignation_reports.create')) {
-            $panel .= '<a href="' . $BASE_URL . '/admin/stores/' . $sId . '/reports/resignation/create?user_id=' . $uid . '" class="row-actions__link row-actions__link--danger">✕ ' . htmlspecialchars(__('resign')) . '</a>';
+        // Liens des bundles (rapport de salaire, démission… — Bundle::actions(), contrat 1.6).
+        foreach (\kintai\Core\Extension\Actions::current()->links(\kintai\Contract\Extension\Action::EMPLOYEE_ROW, ['user_id' => $uid, 'store_id' => $sId], $can) as $_a) {
+            $panel .= '<a href="' . htmlspecialchars($_a['href']) . '" class="row-actions__link' . ($_a['style'] === 'danger' ? ' row-actions__link--danger' : '') . '">'
+                . ($_a['icon'] !== '' ? $_a['icon'] . ' ' : '') . htmlspecialchars($_a['label']) . '</a>';
         }
         if ($panel === '') {
             return '';

@@ -105,8 +105,11 @@ if ($_canManage) {
             <a href="<?= route_url('admin.shifts.conflicts') ?><?= $filter_store_id ? '?store_id=' . $filter_store_id : '' ?><?= $filter_month ? ($filter_store_id ? '&' : '?') . 'month=' . $filter_month : '' ?>" class="btn btn--ghost btn--sm">⚡ <?= __('conflict_view') ?></a>
             <a href="<?= route_url('admin.shifts.import') ?>" class="btn btn--ghost btn--sm">↑ <?= __('import_excel') ?></a>
             <?= Button::make('+ ' . __('new_shift'))->primary()->sm()->link(route_url('admin.shifts.create'))->render() ?>
-        <?php elseif (feat_bundle('swaps')): ?>
-            <?= Button::make('⇄ ' . __('request_swap'))->primary()->sm()->link(route_url('employee.swaps.create'))->render() ?>
+        <?php else: ?>
+            <?php // Liens des bundles (demande d'échange… — Bundle::actions(), contrat 1.6). ?>
+            <?php foreach (\kintai\Core\Extension\Actions::current()->links(\kintai\Contract\Extension\Action::SHIFTS_EMPLOYEE, [], $user_can ?? fn(string $k): bool => true) as $_a): ?>
+            <?= Button::make(($_a['icon'] !== '' ? $_a['icon'] . ' ' : '') . $_a['label'])->{$_a['style'] === 'danger' ? 'danger' : ($_a['style'] === 'primary' ? 'primary' : 'ghost')}()->sm()->link($_a['href'])->render() ?>
+            <?php endforeach; ?>
         <?php endif; ?>
     </div>
 </div>
