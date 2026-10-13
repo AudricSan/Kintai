@@ -119,6 +119,7 @@ away with a new major version.
 | `kintai\Contract\Bundle` | stable | Base class of every bundle (entry point). |
 | `kintai\Contract\BundleManifest` | stable | Parsed bundle.json. |
 | `kintai\Contract\Container` | stable | Dependency container (register your own bindings). |
+| `kintai\Contract\Cron\CronJob` | stable | Scheduled job declared by `Bundle::cronJobs()` (contract 1.8). |
 | `kintai\Contract\Http\Request` | stable | HTTP request. |
 | `kintai\Contract\Http\Response` | stable | HTTP response. |
 | `kintai\Contract\Http\Router` | stable | Route declaration (routes.php). |
@@ -378,6 +379,41 @@ their translated label when your bundle is disabled, as long as the translation 
 Activity log entries you write (`AuditLogger`) get their label the same way: ship `audit_{action}` in your `lang/`
 files, dots and dashes replaced by underscores (`timeoff.approved` → `audit_timeoff_approved`). Require
 `"kintai_contract": "^1.7"` for `notificationTypes()`; the translation conventions need nothing.
+
+### Scheduled jobs: `cronJobs()` (contract 1.8)
+
+```php
+use kintai\Contract\Cron\CronJob;
+use kintai\Contract\Http\Request;
+use kintai\Contract\Http\Response;
+
+final class SendRemindersJob implements CronJob
+{
+    public function __construct(private readonly ReminderService $reminders) {}
+
+    public function getName(): string
+    {
+        return 'timeoff-reminders';               // lowercase letters, digits, dashes
+    }
+
+    public function run(Request $request): Response
+    {
+        return Response::json(['ok' => true, 'sent' => $this->reminders->sendDue()]);
+    }
+}
+
+// In your Bundle class:
+public function cronJobs(): array
+{
+    return [SendRemindersJob::class];             // resolved by the container
+}
+```
+
+While your bundle is active, an external scheduler (cron-job.org, a server crontab…) runs the job by calling
+`/cron/run/{name}` with a cron token the Owner created (`?token=` or `Authorization: Bearer`). Core names (`backup`,
+`log-purge`, `license-check`) and names already taken are refused (logged); a class that can't be built is skipped.
+`auto-validate` is the historical daily-report job: the Core keeps running it until `daily-report` declares its own
+under that name. Require `"kintai_contract": "^1.8"`.
 
 ## The RBAC scope contract: `managed_store_ids`
 

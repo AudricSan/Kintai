@@ -9,9 +9,19 @@ use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\CronTokenRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\Services\Log;
 
 final class CronRunner
 {
+    /** Tâches du Core : un bundle ne peut pas les remplacer. */
+    public const CORE_JOBS = ['backup', 'log-purge', 'license-check'];
+
+    /**
+     * Tâches historiques du Core appartenant à un bundle : nom => slug. Le bundle peut la reprendre sous le même nom
+     * en la déclarant (Bundle::cronJobs()) ; le Core n'enregistre alors plus la sienne.
+     */
+    public const LEGACY_BUNDLE_JOBS = ['auto-validate' => 'daily-report'];
+
     /** @var array<string, CronJobInterface> */
     private array $jobs = [];
 
@@ -22,6 +32,44 @@ final class CronRunner
     public function register(CronJobInterface $job): void
     {
         $this->jobs[$job->getName()] = $job;
+    }
+
+    /**
+     * Enregistre les tâches déclarées par les bundles actifs (Bundle::cronJobs(), contrat 1.8). Chaque tâche est
+     * isolée : une classe impossible à construire, un nom invalide, réservé au Core ou déjà pris est ignoré et
+     * journalisé.
+     *
+     * @param array<string, list<class-string>> $bySlug
+     * @param callable(class-string): object    $make
+     */
+    public function registerBundleJobs(array $bySlug, callable $make): void
+    {
+        foreach ($bySlug as $slug => $classes) {
+            foreach ($classes as $class) {
+                try {
+                    $job = $make($class);
+                    $name = $job instanceof CronJobInterface ? $job->getName() : '';
+                } catch (\Throwable $e) {
+                    $this->warn('bundle_extension_failed', $slug, $e->getMessage());
+                    continue;
+                }
+                $legacyOwner = self::LEGACY_BUNDLE_JOBS[$name] ?? null;
+                if (preg_match('/^[a-z][a-z0-9-]{1,40}$/', $name) !== 1 || in_array($name, self::CORE_JOBS, true)
+                    || (isset($this->jobs[$name]) && $legacyOwner !== $slug)) {
+                    $this->warn('bundle_extension_invalid', $slug, $name);
+                    continue;
+                }
+                $this->jobs[$name] = $job;
+            }
+        }
+    }
+
+    private function warn(string $event, string $slug, string $detail): void
+    {
+        try {
+            Log::warning($event, ['bundle' => $slug, 'point' => 'cronJobs', 'detail' => $detail]);
+        } catch (\Throwable) {
+        }
     }
 
     public function run(string $jobName, Request $request): Response
