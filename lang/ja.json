@@ -1545,5 +1545,6 @@
     "bundle_incompatible_not_loaded": "このバンドルは読み込まれていません：:reason マーケットから対応バージョンをインストールしてください。",
     "bundle_contract_incompatible": "バンドル契約 :required が必要ですが、この Kintai が提供する契約は :provided です。",
     "bundle_contract_constraint_invalid": "契約の制約「:constraint」の形式が正しくありません。",
-    "bundle_core_incompatible": "Kintai :min〜:max が必要です（インストール済み：:current）。"
+    "bundle_core_incompatible": "Kintai :min〜:max が必要です（インストール済み：:current）。",
+    "photos": "写真"
 }

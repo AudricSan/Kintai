@@ -28,26 +28,10 @@ final class AuthController
     use HasBaseUrl;
     private const NAV_OWNER_SECTIONS   = ['planning', 'hr', 'requests', 'statistics', 'system'];
     private const NAV_MANAGER_SECTIONS = ['planning', 'hr', 'requests', 'statistics'];
-    private const NAV_OWNER_KEYS = [
-        'shifts', 'calendar', 'shift_types', 'timeclocks',
-        'users', 'stores',
-        'timeoff', 'swaps', 'open_shifts', 'messages',
-        'daily_reports', 'audit_log',
-    ];
-    private const NAV_MANAGER_KEYS = [
-        'shifts', 'calendar', 'shift_types', 'timeclocks',
-        'timeoff', 'swaps', 'open_shifts', 'messages',
-        'employee_report', 'daily_reports',
-    ];
     private const BOTTOM_NAV_POOL    = ['shifts', 'team', 'requests', 'messages', 'swaps', 'timeclocks', 'daily_reports'];
     private const BOTTOM_NAV_DEFAULT = ['shifts', 'team', 'requests'];
 
-    // Vocabulaire de nav pour un employé simple (ni admin, ni manager d'un store)
-    private const NAV_EMPLOYEE_KEYS = [
-        'my_planning', 'timeclock',
-        'my_timeoff', 'swaps', 'open_shifts', 'messages',
-        'my_profile',
-    ];
+    // Entrées masquables : calculées par la vue depuis kintai\Core\Extension\Navigation (mêmes clés que la barre du haut).
     private const NAV_EMPLOYEE_SECTIONS       = ['planning', 'requests', 'statistics', 'account'];
     private const BOTTOM_NAV_POOL_EMPLOYEE    = ['my_planning', 'timeclock', 'my_timeoff', 'messages', 'swaps', 'open_shifts', 'my_profile'];
     private const BOTTOM_NAV_DEFAULT_EMPLOYEE = ['my_planning', 'timeclock', 'my_timeoff'];
@@ -254,20 +238,12 @@ final class AuthController
         $isOwner       = !empty($user['is_admin']);
         if ($isManagerView) {
             $defaultSecs = $isOwner ? self::NAV_OWNER_SECTIONS : self::NAV_MANAGER_SECTIONS;
-            $allowedKeys = $isOwner ? self::NAV_OWNER_KEYS : self::NAV_MANAGER_KEYS;
             $bnPool      = self::BOTTOM_NAV_POOL;
             $bnDefault   = self::BOTTOM_NAV_DEFAULT;
         } else {
             $defaultSecs = self::NAV_EMPLOYEE_SECTIONS;
-            $allowedKeys = self::NAV_EMPLOYEE_KEYS;
             $bnPool      = self::BOTTOM_NAV_POOL_EMPLOYEE;
             $bnDefault   = self::BOTTOM_NAV_DEFAULT_EMPLOYEE;
-            // L'onglet "Rapports journaliers" n'est proposé dans le menu personnalisable
-            // que si l'employé a effectivement le droit d'en créer pour au moins un store
-            // (calculé globalement par DailyReportNavMiddleware).
-            if (!empty($this->view->get('daily_report_staff_stores'))) {
-                $allowedKeys[] = 'daily_reports';
-            }
         }
 
         $navHidden   = $this->navPrefs->getHidden($userId);
@@ -292,7 +268,6 @@ final class AuthController
             'nav_hidden'           => $navHidden,
             'nav_section_order'    => $navSecOrder,
             'nav_default_sections' => $defaultSecs,
-            'nav_allowed_keys'     => $allowedKeys,
             'is_owner'             => $isOwner,
             'is_manager_view'      => $isManagerView,
             'bottom_nav_pool'      => $bnPool,

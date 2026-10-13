@@ -32,14 +32,19 @@ final class NavItem
      * @param string|null                      $employeeRoute  Nom de route côté employé, ou null s'il n'y en a pas
      * @param string                           $icon           Clé d'icône du Core (calendar, clock, leaf, arrows…)
      * @param string|null                      $employeeLabel  Clé de traduction côté employé (défaut : $label)
-     * @param list<string>                     $activePaths    Préfixes de chemin qui rendent l'entrée active
+     * @param list<string>                     $activePaths    Préfixes de chemin qui rendent l'entrée active ; « *fragment »
+     *                                                         = le chemin contient le fragment
      * @param string|null                      $storeFeature   Fonctionnalité par magasin requise (ex. « timeoff »)
      * @param string|null                      $badge          Nom de la variable de vue contenant un compteur à afficher
      * @param int                              $order          Ordre dans la section (les entrées du Core vont de 10 en 10)
      * @param bool                             $mobile         Éligible à la barre de navigation mobile
      * @param \Closure|null                    $links          Plusieurs liens au lieu d'un seul : fn(array $vue, bool $gérant):
      *                                                         list<array{href: string, label: string, active: bool}> ;
-     *                                                         ex. un lien par magasin (la permission de la route reste exigée)
+     *                                                         ex. un lien par magasin. La fonction décide seule de ce qui est
+     *                                                         visible ; $vue contient route_visible (fn(string $route): bool),
+     *                                                         route_url (fn(string $route): string),
+     *                                                         path, isOwner, BASE_URL et les autres variables de la page ;
+     *                                                         aucun lien = entrée masquée.
      */
     public function __construct(
         public readonly string $key,
@@ -100,8 +105,13 @@ final class NavItem
 
     public function isActive(string $path): bool
     {
-        foreach ($this->activePaths as $prefix) {
-            if ($prefix !== '' && str_starts_with($path, $prefix)) {
+        foreach ($this->activePaths as $pattern) {
+            // « *fragment » : le chemin contient le fragment (ex. « */reports/hiring » couvre aussi
+            // /admin/stores/3/reports/hiring) ; sinon, préfixe.
+            $matches = str_starts_with($pattern, '*')
+                ? $pattern !== '*' && str_contains($path, substr($pattern, 1))
+                : $pattern !== '' && str_starts_with($path, $pattern);
+            if ($matches) {
                 return true;
             }
         }

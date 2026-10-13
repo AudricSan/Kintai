@@ -14,20 +14,7 @@ use kintai\UI\ViewRenderer;
 final class AdminController
 {
     use HasBaseUrl;
-    private const NAV_OWNER_KEYS = [
-        'shifts', 'calendar', 'shift_types', 'timeclocks',
-        'users', 'stores',
-        'timeoff', 'swaps', 'open_shifts', 'messages',
-        'hiring_report', 'daily_reports', 'resignation_report', 'salary_report', 'photos',
-        'audit_log',
-    ];
-
-    private const NAV_MANAGER_KEYS = [
-        'shifts', 'calendar', 'shift_types', 'timeclocks',
-        'timeoff', 'swaps', 'open_shifts', 'messages',
-        'employee_report', 'hiring_report', 'daily_reports', 'resignation_report', 'salary_report', 'photos',
-    ];
-
+    // Entrées masquables : calculées par la vue depuis kintai\Core\Extension\Navigation (mêmes clés que la barre du haut).
     private const NAV_OWNER_SECTIONS   = ['planning', 'hr', 'requests', 'statistics', 'system'];
     private const NAV_MANAGER_SECTIONS = ['planning', 'hr', 'requests', 'statistics'];
 
@@ -47,7 +34,6 @@ final class AdminController
         $isOwner   = !empty($user['is_admin']);
         $userId    = (int) $user['id'];
 
-        $allowedKeys     = $isOwner ? self::NAV_OWNER_KEYS : self::NAV_MANAGER_KEYS;
         $defaultSections = $isOwner ? self::NAV_OWNER_SECTIONS : self::NAV_MANAGER_SECTIONS;
         $hidden          = $this->navPrefs->getHidden($userId);
         $rawOrder        = $this->navPrefs->getSectionOrder($userId);
@@ -62,7 +48,6 @@ final class AdminController
 
         return Response::html($this->view->render('system.nav-settings', [
             'hidden'          => $hidden,
-            'allowedKeys'     => $allowedKeys,
             'isOwner'         => $isOwner,
             'sectionOrder'    => $sectionOrder,
             'defaultSections' => $defaultSections,
