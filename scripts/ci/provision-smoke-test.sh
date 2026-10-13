@@ -43,7 +43,7 @@ sql() { php -r '$d = new PDO("sqlite:" . $argv[1]); echo $d->query($argv[2])->fe
 provision() { php scripts/provision.php "$@" > "$WORK/out.txt" 2>&1; }
 
 EMAIL="provision-smoke@kintai.test"
-PASSWORD="$(php -r 'echo bin2hex(random_bytes(12));')"
+PASSWORD="$(php -r 'echo bin2hex(random_bytes(12));' 2>/dev/null | tail -n 1)"
 
 # ─── Refus attendus, avant toute écriture ───────────────────────────────
 provision --admin-email=not-an-email --admin-password="$PASSWORD" && fail "e-mail invalide accepté"
@@ -95,5 +95,16 @@ curl -s -o /dev/null -c "$JAR" -b "$JAR" -X POST "$BASE/login" \
 code=$(curl -s -o "$WORK/home.html" -w '%{http_code}' -c "$JAR" -b "$JAR" "$BASE/")
 [ "$code" = "200" ] || fail "GET / après connexion a répondu $code"
 grep -q 'name="password"' "$WORK/home.html" && fail "toujours sur la page de connexion après login"
+
+# ─── API : connexion, jeton, appel authentifié ───────────────────────────
+# Une installation neuve n'avait pas la colonne api_tokens.expires_at : la connexion API répondait 500.
+api_resp=$(curl -s -w '%{http_code}' -X POST "$BASE/api/v1/auth/login" -H 'Content-Type: application/json' \
+  --data "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\",\"name\":\"smoke\"}")
+api_code=${api_resp: -3}
+[ "$api_code" = "201" ] || fail "POST /api/v1/auth/login a répondu $api_code (attendu 201) : ${api_resp%???}"
+api_token=$(printf '%s' "$api_resp" | head -n1 | grep -oE '"token":"[a-f0-9]+"' | cut -d'"' -f4)
+[ -n "$api_token" ] || fail "jeton API absent de la réponse de connexion"
+code=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $api_token" "$BASE/api/v1/auth/me")
+[ "$code" = "200" ] || fail "GET /api/v1/auth/me avec le jeton a répondu $code"
 
 echo "OK : installation en ligne de commande ($tables tables), refus attendus, compte Owner, URL publique et connexion fonctionnels."

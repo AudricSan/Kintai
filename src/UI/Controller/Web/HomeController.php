@@ -19,6 +19,7 @@ use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\Services\WidgetGuard;
 use kintai\Core\Services\DashboardAlertService;
 use kintai\Core\Services\ShiftWageCalculator;
 use kintai\Core\Services\StoreStatsServiceInterface;
@@ -110,11 +111,14 @@ final class HomeController
         if (feat_bundle('open_shifts')) {
             $container = Container::getInstance();
             if ($container->has(ShiftClaimRepositoryInterface::class)) {
-                $shiftClaims   = $container->make(ShiftClaimRepositoryInterface::class);
-                $pendingClaims = array_values(array_filter(
-                    $shiftClaims->findAll(),
-                    fn($c) => ($c['status'] ?? '') === 'pending' && $inScope((int) ($c['store_id'] ?? 0))
-                ));
+                // Isolé : un bundle défaillant (table absente) ne doit pas faire tomber tout le tableau de bord.
+                $pendingClaims = WidgetGuard::run('open_shifts', function () use ($container, $inScope): array {
+                    $shiftClaims = $container->make(ShiftClaimRepositoryInterface::class);
+                    return array_values(array_filter(
+                        $shiftClaims->findAll(),
+                        fn($c) => ($c['status'] ?? '') === 'pending' && $inScope((int) ($c['store_id'] ?? 0))
+                    ));
+                });
             }
         }
 
@@ -192,25 +196,27 @@ final class HomeController
         ) {
             $container = Container::getInstance();
             if ($container->has(NotebookEntryRepositoryInterface::class)) {
-                $notebook = $container->make(NotebookEntryRepositoryInterface::class);
-                $now = date('Y-m-d H:i:s');
-                $notebookEntries = array_values(array_filter(
-                    $notebook->findVisibleForStores($managedStoreIds ?? array_column($allStores, 'id')),
-                    fn($n) => empty($n['expires_at']) || $n['expires_at'] > $now
-                ));
-                usort($notebookEntries, function ($a, $b) {
-                    $pinCmp = (int) ($b['pinned'] ?? 0) <=> (int) ($a['pinned'] ?? 0);
-                    return $pinCmp !== 0 ? $pinCmp : strcmp($b['created_at'] ?? '', $a['created_at'] ?? '');
+                $notebookEntries = WidgetGuard::run('team_notes', function () use ($container, $managedStoreIds, $allStores, $storesMap): array {
+                    $notebook = $container->make(NotebookEntryRepositoryInterface::class);
+                    $now = date('Y-m-d H:i:s');
+                    $entries = array_values(array_filter(
+                        $notebook->findVisibleForStores($managedStoreIds ?? array_column($allStores, 'id')),
+                        fn($n) => empty($n['expires_at']) || $n['expires_at'] > $now
+                    ));
+                    usort($entries, function ($a, $b) {
+                        $pinCmp = (int) ($b['pinned'] ?? 0) <=> (int) ($a['pinned'] ?? 0);
+                        return $pinCmp !== 0 ? $pinCmp : strcmp($b['created_at'] ?? '', $a['created_at'] ?? '');
+                    });
+                    $entries = array_slice($entries, 0, self::NOTEBOOK_WIDGET_LIMIT);
+                    return array_map(function (array $n) use ($storesMap): array {
+                        $author = $n['author_id'] !== null ? $this->users->findById((int) $n['author_id']) : null;
+                        $n['author_name'] = $author !== null
+                            ? trim(($author['last_name'] ?? '') . ' ' . ($author['first_name'] ?? '')) ?: ($author['email'] ?? '#' . $n['author_id'])
+                            : null;
+                        $n['store_name'] = $n['store_id'] !== null ? ($storesMap[(int) $n['store_id']] ?? null) : null;
+                        return $n;
+                    }, $entries);
                 });
-                $notebookEntries = array_slice($notebookEntries, 0, self::NOTEBOOK_WIDGET_LIMIT);
-                $notebookEntries = array_map(function (array $n) use ($storesMap): array {
-                    $author = $n['author_id'] !== null ? $this->users->findById((int) $n['author_id']) : null;
-                    $n['author_name'] = $author !== null
-                        ? trim(($author['last_name'] ?? '') . ' ' . ($author['first_name'] ?? '')) ?: ($author['email'] ?? '#' . $n['author_id'])
-                        : null;
-                    $n['store_name'] = $n['store_id'] !== null ? ($storesMap[(int) $n['store_id']] ?? null) : null;
-                    return $n;
-                }, $notebookEntries);
             }
         }
 
