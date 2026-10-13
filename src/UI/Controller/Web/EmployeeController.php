@@ -105,7 +105,7 @@ final class EmployeeController
 
 
         $storesMap   = [];
-        foreach ($this->stores->findAll() as $s) {
+        foreach ($this->stores->findAllWithDeleted() as $s) {
             $storesMap[(int) $s['id']] = $s['name'] ?? ('#' . $s['id']);
         }
 
@@ -237,7 +237,7 @@ final class EmployeeController
             $typesMap[(int) $t['id']] = $t;
         }
         $storesMap = [];
-        foreach ($this->stores->findAll() as $s) {
+        foreach ($this->stores->findAllWithDeleted() as $s) {
             $storesMap[(int) $s['id']] = $s['name'] ?? '';
         }
 
@@ -338,7 +338,7 @@ final class EmployeeController
             $typesMap[(int) $t['id']] = $t;
         }
         $storesMap = [];
-        foreach ($this->stores->findAll() as $s) {
+        foreach ($this->stores->findAllWithDeleted() as $s) {
             $storesMap[(int) $s['id']] = $s['name'] ?? '#' . $s['id'];
         }
 

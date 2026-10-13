@@ -33,6 +33,7 @@ use kintai\UI\Controller\Api\V1\ShiftController;
 use kintai\UI\Controller\Api\V1\StoreController;
 use kintai\UI\Controller\Api\V1\UserController;
 use PHPUnit\Framework\MockObject\MockObject;
+use kintai\Core\Auth\UserAnonymizer;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -419,5 +420,45 @@ final class ApiStoreScopeTest extends TestCase
 
         $this->expectException(ValidationException::class);
         $controller->store($this->request(self::MANAGER, [], ['store_id' => self::STORE_A, 'user_id' => 30, 'day_of_week' => 7, 'start_time' => '09:00', 'end_time' => '17:00']));
+    }
+
+    // ------------------------------------------- suppression = anonymisation (audit M8)
+
+    public function testDestroyAnonymizesTheAccountInsteadOfDeletingIt(): void
+    {
+        $this->users->method('findById')->with(31)->willReturn(['id' => 31, 'is_active' => 1]);
+        $this->storeUsers->method('findByUser')->with(31)->willReturn([['store_id' => self::STORE_A]]);
+        $this->users->expects($this->never())->method('delete');
+        $this->users->expects($this->once())->method('save')->with($this->callback(
+            fn(array $d): bool => $d['id'] === 31 && $d['is_active'] === 0 && $d['email'] === 'deleted-31@kintai.local'
+        ))->willReturnArgument(0);
+
+        $planLimits = new PlanLimitService(
+            $this->createStub(StoreRepositoryInterface::class),
+            $this->users,
+            new LicenseClientService($this->createStub(AppSettingsRepositoryInterface::class), ['base_url' => '', 'api_key' => '']),
+        );
+        $revoker = new CredentialRevoker($this->createStub(RememberTokenRepositoryInterface::class), $this->createStub(ApiTokenRepositoryInterface::class));
+        $controller = new UserController(
+            $this->users, new AuditLogger(), $planLimits, $this->permissions, $this->storeUsers,
+            new OwnerGuard($this->permissions, $this->users), $revoker,
+            new UserAnonymizer($this->users, $this->createStub(RoleAssignmentRepositoryInterface::class), $revoker, sys_get_temp_dir()),
+        );
+
+        $response = $controller->destroy($this->request(self::MANAGER, ['id' => '31']));
+
+        $this->assertSame(204, $response->status());
+    }
+
+    public function testDeletedAccountsAreNoLongerListed(): void
+    {
+        $this->users->method('findAll')->willReturn([
+            ['id' => 31, 'deleted_at' => null],
+            ['id' => 32, 'deleted_at' => '2026-10-16 09:00:00'],
+        ]);
+
+        $response = $this->userController()->index($this->request(self::OWNER));
+
+        $this->assertSame([31], array_column(json_decode($response->body(), true)['data'], 'id'));
     }
 }

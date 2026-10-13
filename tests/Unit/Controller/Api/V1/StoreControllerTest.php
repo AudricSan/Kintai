@@ -130,4 +130,17 @@ final class StoreControllerTest extends TestCase
 
         $this->assertSame(200, $response->status());
     }
+
+    /** DELETE /api/v1/stores/{id} passe par StoreService (suppression douce + rôles retirés), comme le web. */
+    public function testDestroyDelegatesToTheStoreService(): void
+    {
+        $this->stores->method('findById')->willReturn(['id' => 5]);
+        $this->stores->expects($this->never())->method('delete');
+        $this->storeService->expects($this->once())->method('deleteStore')->with(5);
+
+        $req = $this->makeJsonRequest([]);
+        $req->setRouteParams(['id' => '5']);
+
+        $this->assertSame(204, $this->controller->destroy($req)->status());
+    }
 }
