@@ -461,4 +461,39 @@ final class ApiStoreScopeTest extends TestCase
 
         $this->assertSame([31], array_column(json_decode($response->body(), true)['data'], 'id'));
     }
+
+    // ------------------------------------------- actions sur soi-même (audit M13)
+
+    public function testAManagerCannotDeleteTheirOwnAccountThroughTheApi(): void
+    {
+        $this->users->method('findById')->willReturn(['id' => self::MANAGER, 'is_active' => 1]);
+        $this->storeUsers->method('findByUser')->willReturn([['store_id' => self::STORE_A]]);
+        $this->users->expects($this->never())->method('save');
+
+        $this->expectException(ForbiddenException::class);
+        $this->expectExceptionMessage('error_cannot_act_on_self');
+        $this->userController()->destroy($this->request(self::MANAGER, ['id' => (string) self::MANAGER]));
+    }
+
+    public function testAManagerCannotDeactivateThemselvesThroughTheApi(): void
+    {
+        $this->users->method('findById')->willReturn(['id' => self::MANAGER, 'is_active' => 1, 'email' => 'm@kintai.test']);
+        $this->storeUsers->method('findByUser')->willReturn([['store_id' => self::STORE_A]]);
+        $this->users->expects($this->never())->method('save');
+
+        $this->expectException(ForbiddenException::class);
+        $this->expectExceptionMessage('error_cannot_act_on_self');
+        $this->userController()->update($this->request(self::MANAGER, ['id' => (string) self::MANAGER], ['is_active' => false]));
+    }
+
+    public function testAManagerCanStillEditTheirOwnProfileFieldsThroughTheApi(): void
+    {
+        $this->users->method('findById')->willReturn(['id' => self::MANAGER, 'is_active' => 1, 'email' => 'm@kintai.test']);
+        $this->storeUsers->method('findByUser')->willReturn([['store_id' => self::STORE_A]]);
+        $this->users->expects($this->once())->method('save')->willReturnArgument(0);
+
+        $response = $this->userController()->update($this->request(self::MANAGER, ['id' => (string) self::MANAGER], ['phone' => '090-0000-0000']));
+
+        $this->assertSame(200, $response->status());
+    }
 }

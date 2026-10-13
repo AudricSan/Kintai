@@ -169,4 +169,28 @@ final class AdminUserControllerScopeTest extends TestCase
 
         $this->assertSame(302, $response->status());
     }
+
+    // ------------------------------------------- actions sur soi-même (audit M13)
+
+    public function testManagerCannotDeleteTheirOwnAccountFromTheAdmin(): void
+    {
+        $this->target(self::MANAGER, self::STORE_A);
+        $this->users->expects($this->never())->method('save');
+
+        $this->expectException(ForbiddenException::class);
+        $this->expectExceptionMessage('error_cannot_act_on_self');
+        $this->controller->deleteUser($this->asManager(self::MANAGER));
+    }
+
+    public function testManagerCannotDeactivateThemselvesFromTheAdmin(): void
+    {
+        $this->users->method('findById')->with(self::MANAGER)->willReturn(['id' => self::MANAGER, 'email' => 'm@example.com', 'is_active' => 1]);
+        $this->storeUsers->method('findByUser')->with(self::MANAGER)->willReturn([['store_id' => self::STORE_A]]);
+        $this->users->expects($this->never())->method('save');
+
+        $this->expectException(ForbiddenException::class);
+        $this->expectExceptionMessage('error_cannot_act_on_self');
+        // Sélecteur « actif » sur « inactif » (un champ absent, lui, laisse l'état inchangé : audit M12).
+        $this->controller->updateUser($this->asManager(self::MANAGER, ['email' => 'm@example.com', 'first_name' => 'M', 'last_name' => 'G', 'is_active' => '0']));
+    }
 }

@@ -87,7 +87,7 @@ final class AdminShiftTypeController
             'start_time'  => $request->post('start_time', '08:00'),
             'end_time'    => $request->post('end_time', '16:00'),
             'color'       => $request->post('color', '#6366f1'),
-            'hourly_rate' => $request->post('hourly_rate') !== '' ? (float) $request->post('hourly_rate') : null,
+            'hourly_rate' => (float) $request->post('hourly_rate', 0),
             'is_active'   => 1,
         ]);
         $this->shiftTypes->syncStores((int) $savedType['id'], $storeIds);
@@ -150,8 +150,9 @@ final class AdminShiftTypeController
             'start_time'  => $request->post('start_time', $type['start_time'] ?? '08:00'),
             'end_time'    => $request->post('end_time', $type['end_time'] ?? '16:00'),
             'color'       => $request->post('color', $type['color'] ?? '#6366f1'),
-            'hourly_rate' => $request->post('hourly_rate') !== '' ? (float) $request->post('hourly_rate') : null,
-            'is_active'   => $request->post('is_active') === '1' ? 1 : 0,
+            // Champ absent : valeur actuelle (audit M12) ; vide : 0 (la colonne n'accepte pas null).
+            'hourly_rate' => $request->hasPost('hourly_rate') ? (float) $request->post('hourly_rate', 0) : (float) ($type['hourly_rate'] ?? 0),
+            'is_active'   => $request->postFlag('is_active', $type['is_active'] ?? 1),
         ]);
 
         $this->shiftTypes->save($newData);

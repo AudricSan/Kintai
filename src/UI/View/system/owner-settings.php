@@ -199,6 +199,7 @@ if (($error ?? null) === 'public_url_invalid') {
     <div class="form-group">
         <label class="form-label"><?= __('maintenance_mode_enabled') ?></label>
         <label class="form-toggle">
+            <input type="hidden" name="maintenance_mode_enabled" value="0">
             <input type="checkbox" name="maintenance_mode_enabled" value="1" class="form-toggle__input"
                 <?= ($settings['maintenance_mode_enabled'] ?? '0') === '1' ? 'checked' : '' ?>>
             <span class="form-toggle__track"></span>
@@ -225,6 +226,7 @@ if (($error ?? null) === 'public_url_invalid') {
     <div class="form-group">
         <label class="form-label"><?= __('access_log_enabled') ?></label>
         <label class="form-toggle">
+            <input type="hidden" name="access_log_enabled" value="0">
             <input type="checkbox" name="access_log_enabled" value="1" class="form-toggle__input"
                 <?= ($settings['access_log_enabled'] ?? '1') === '1' ? 'checked' : '' ?>>
             <span class="form-toggle__track"></span>
