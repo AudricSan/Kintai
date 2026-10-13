@@ -13,6 +13,11 @@ $pending_claims    ??= [];
 $notebook_entries  ??= [];
 $enabled_widgets        ??= array_flip(\kintai\UI\Controller\Web\HomeController::ADMIN_WIDGETS);
 $all_widgets            ??= \kintai\UI\Controller\Web\HomeController::ADMIN_WIDGETS;
+// Widgets des bundles (Bundle::dashboardWidgets(), contrat 1.4) : HTML déjà rendu par le contrôleur, affiché en fin
+// de page ; $enabled_widgets_all = choix de l'utilisateur, y compris ces widgets (panneau « Personnaliser »).
+$bundle_widgets         ??= [];
+$bundle_widget_meta     ??= ['labels' => [], 'permissions' => [], 'features' => []];
+$enabled_widgets_all    ??= $enabled_widgets;
 
 function admin_widget_on(string $key, array $enabled): bool
 {
@@ -34,14 +39,14 @@ $_widgetFeatMap = [
     'pending_swaps'    => 'swaps',
     'timeclocks_today' => 'timeclock',
     'team_notes'       => 'notes',
-];
+] + $bundle_widget_meta['features'];
 // Widgets masqués (panneau de personnalisation + affichage) si la permission requise manque
 $_widgetPermMap = [
     'store_stats_summary' => 'payroll.view',
     'financial_overview'  => 'payroll.view',
     'hr_absenteeism'      => 'payroll.view',
     'team_notes'          => 'notebook.view',
-];
+] + $bundle_widget_meta['permissions'];
 // Filtrer all_widgets par features/permissions pour le panneau de personnalisation
 $all_widgets = array_values(array_filter(
     $all_widgets,
@@ -50,12 +55,12 @@ $all_widgets = array_values(array_filter(
 // Retirer des enabled_widgets les widgets dont la feature/permission est indisponible
 foreach ($_widgetFeatMap as $_wk => $_wf) {
     if (!$feat($_wf)) {
-        unset($enabled_widgets[$_wk]);
+        unset($enabled_widgets[$_wk], $enabled_widgets_all[$_wk]);
     }
 }
 foreach ($_widgetPermMap as $_wk => $_wp) {
     if (!$can($_wp)) {
-        unset($enabled_widgets[$_wk]);
+        unset($enabled_widgets[$_wk], $enabled_widgets_all[$_wk]);
     }
 }
 
@@ -71,7 +76,7 @@ $widgetLabels = [
     'pending_swaps'        => __('widget_pending_swaps'),
     'timeclocks_today' => __('widget_timeclocks_today'),
     'team_notes'           => __('widget_team_notes'),
-];
+] + $bundle_widget_meta['labels'];
 
 // Données de graphiques accumulées par les différents widgets, émises une seule fois
 // (un seul <script id="kintai-stats-data">) pour éviter une collision d'ID si
@@ -100,7 +105,7 @@ $_dashChartData = [];
                 <?php foreach ($all_widgets as $wk): ?>
                 <label class="dash-widget-item">
                     <input type="checkbox" name="widgets[<?= htmlspecialchars($wk) ?>]" value="1"
-                           <?= admin_widget_on($wk, $enabled_widgets) ? 'checked' : '' ?>>
+                           <?= admin_widget_on($wk, $enabled_widgets_all) ? 'checked' : '' ?>>
                     <span><?= htmlspecialchars($widgetLabels[$wk] ?? $wk) ?></span>
                 </label>
                 <?php endforeach; ?>
@@ -668,3 +673,7 @@ $hasMultipleStores = count($shiftsByStore) > 1;
     <?php endif; ?>
 </div>
 <?php endif; ?>
+
+<?php foreach ($bundle_widgets as $_bundleWidget): ?>
+<?= $_bundleWidget['html'] ?>
+<?php endforeach; ?>

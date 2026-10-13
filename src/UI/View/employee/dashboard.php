@@ -20,6 +20,11 @@ $stats       = $employee_month_stats ?? null;
 $stores_map  = $stores_map ?? [];
 $activeClock = $active_clock ?? null;
 $widgets     = $enabled_widgets ?? array_flip($all_widgets ?? []);
+// Widgets des bundles (Bundle::dashboardWidgets(), contrat 1.4) : HTML déjà rendu par le contrôleur, affiché en fin
+// de page ; $widgetsAll = choix de l'utilisateur, y compris ces widgets (panneau « Personnaliser »).
+$bundle_widgets     ??= [];
+$bundle_widget_meta ??= ['labels' => [], 'permissions' => [], 'features' => []];
+$widgetsAll  = $enabled_widgets_all ?? $widgets;
 
 function widget_on(string $key, array $widgets): bool {
     return isset($widgets[$key]);
@@ -38,22 +43,22 @@ $_empWidgetFeatMap = [
     'pending_timeoff' => 'timeoff',
     'pending_swaps'   => 'swaps',
     'team_notes'      => 'notes',
-];
+] + $bundle_widget_meta['features'];
 $_empWidgetPermMap = [
     'team_notes' => 'notebook.view',
-];
+] + $bundle_widget_meta['permissions'];
 $all_widgets = array_values(array_filter(
     $all_widgets ?? [],
     fn(string $wk) => $feat($_empWidgetFeatMap[$wk] ?? null) && (!isset($_empWidgetPermMap[$wk]) || $can($_empWidgetPermMap[$wk]))
 ));
 foreach ($_empWidgetFeatMap as $_wk => $_wf) {
     if (!$feat($_wf)) {
-        unset($widgets[$_wk]);
+        unset($widgets[$_wk], $widgetsAll[$_wk]);
     }
 }
 foreach ($_empWidgetPermMap as $_wk => $_wp) {
     if (!$can($_wp)) {
-        unset($widgets[$_wk]);
+        unset($widgets[$_wk], $widgetsAll[$_wk]);
     }
 }
 
@@ -82,11 +87,11 @@ ob_start();
             'pending_timeoff'=> __('my_pending_timeoff'),
             'pending_swaps'  => __('pending_swaps'),
             'team_notes'     => __('my_team_notes'),
-        ];
+        ] + $bundle_widget_meta['labels'];
         foreach ($all_widgets as $wk): ?>
         <label class="dash-widget-item">
             <input type="checkbox" name="widgets[<?= htmlspecialchars($wk) ?>]" value="1"
-                   <?= widget_on($wk, $widgets) ? 'checked' : '' ?>>
+                   <?= widget_on($wk, $widgetsAll) ? 'checked' : '' ?>>
             <span><?= htmlspecialchars($widgetLabels[$wk] ?? $wk) ?></span>
         </label>
         <?php endforeach; ?>
@@ -370,5 +375,9 @@ echo Card::make()
     ->render();
 ?>
 <?php endif; ?>
+
+<?php foreach ($bundle_widgets as $_bundleWidget): ?>
+<?= $_bundleWidget['html'] ?>
+<?php endforeach; ?>
 
 <script src="<?= $BASE_URL ?>/assets/js/modules/dashboard.js"></script>

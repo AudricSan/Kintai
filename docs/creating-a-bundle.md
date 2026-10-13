@@ -270,6 +270,41 @@ its features has every feature on; disabling your bundle keeps each store's choi
 them. A key already declared by the Core or another bundle is ignored (logged). Require
 `"kintai_contract": "^1.3"`.
 
+### Dashboard widgets: `dashboardWidgets()` (contract 1.4)
+
+```php
+use kintai\Contract\Extension\DashboardWidget;
+
+public function dashboardWidgets(): array
+{
+    return [
+        new DashboardWidget(
+            key: 'team_notes',                    // unique on that dashboard, also the user's preference key
+            audience: DashboardWidget::MANAGER,   // MANAGER ("/") or EMPLOYEE ("/employee")
+            label: 'widget_team_notes',           // translation key shown in the "Customize" panel
+            view: 'notebook::widgets.dashboard',  // your namespaced view (loadViewsFrom())
+            data: fn(array $ctx): array => [      // variables passed to the view
+                'entries' => $this->app->container()->make(NotebookEntryRepositoryInterface::class)
+                    ->findVisibleForStores($ctx['store_ids']),
+            ],
+            permission: 'notebook.view',
+            storeFeature: 'notes',
+            order: 10,
+        ),
+    ];
+}
+```
+
+Your widgets are listed in the dashboard's "Customize" panel (on by default) and rendered after the Core's own
+widgets, for users holding `permission` whose stores have `storeFeature` on. `data` receives the context: `user`,
+`store_ids` (the stores the manager handles, or the employee's own stores), `managed_store_ids` (`null` = every
+store, manager side), `stores_map` (id => name) and `today`. Load only what the widget shows — `data` runs on every
+dashboard view. An exception in `data` or in the view removes that widget only (logged). Render a full card
+(`<div class="card card--mt">…</div>`). Core keys can't be reused, except the keys of the widgets the Core used to
+render for your bundle (`pending_timeoff`, `pending_swaps`, `timeclocks_today`, `timeclock`, `team_notes`): reusing
+them keeps users' choices. As soon as your bundle declares a widget, the Core stops rendering its historical
+widgets for it. Require `"kintai_contract": "^1.4"`.
+
 ## The RBAC scope contract: `managed_store_ids`
 
 Every Web route your bundle registers under `middleware: [AuthMiddleware::class, PermissionMiddleware::class]` must declare a `permission:` — either a precise key from `PermissionCatalog`, or `'public'` (a route intentionally left ungated, e.g. self-service/aggregate pages; omitting `permission:` entirely behaves the same way). `PermissionMiddleware` resolves this into a request attribute, `managed_store_ids`, that every controller down the line is expected to read rather than re-deriving:

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\Core\Extension;
 
+use kintai\Contract\Extension\DashboardWidget;
 use kintai\Contract\Extension\NavItem;
 use kintai\Contract\Extension\StoreFeature;
 use kintai\Core\BundleContract\Bundle;
@@ -27,6 +28,9 @@ final class ExtensionRegistry
 
     /** @var list<StoreFeature>|null */
     private ?array $storeFeatures = null;
+
+    /** @var array<string, list<DashboardWidget>>|null */
+    private ?array $dashboardWidgets = null;
 
     /** @var list<string>|null */
     private ?array $permissionDeclarers = null;
@@ -161,6 +165,34 @@ final class ExtensionRegistry
             }
         }
         return $slugs;
+    }
+
+    /**
+     * Widgets de tableau de bord déclarés par les bundles actifs, par slug de bundle (les doublons de clé sont
+     * départagés par kintai\Core\Extension\DashboardWidgets, qui connaît les widgets du Core).
+     *
+     * @return array<string, list<DashboardWidget>>
+     */
+    public function dashboardWidgetsByBundle(): array
+    {
+        if ($this->dashboardWidgets !== null) {
+            return $this->dashboardWidgets;
+        }
+
+        $bySlug = [];
+        foreach ($this->bundles->getBundles() as $bundle) {
+            $widgets = $this->contributionsOf($bundle, 'dashboardWidgets', DashboardWidget::class);
+            if ($widgets !== []) {
+                $bySlug[$bundle->getName()] = $widgets;
+            }
+        }
+        return $this->dashboardWidgets = $bySlug;
+    }
+
+    /** Slugs des bundles actifs qui déclarent des widgets (leurs widgets historiques ne sont plus rendus par le Core). */
+    public function bundlesDeclaringDashboardWidgets(): array
+    {
+        return array_keys($this->dashboardWidgetsByBundle());
     }
 
     /**

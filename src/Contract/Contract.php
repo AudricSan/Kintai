@@ -18,10 +18,12 @@ namespace kintai\Contract;
 final class Contract
 {
     /** Version du contrat fournie par ce Core. */
-    public const VERSION = '1.3.0';
+    public const VERSION = '1.4.0';
 
     /*
      * Historique :
+     * - 1.4.0 : point d'extension Bundle::dashboardWidgets() et kintai\Contract\Extension\DashboardWidget
+     *   (widgets des tableaux de bord gérant et employé).
      * - 1.3.0 : point d'extension Bundle::storeFeatures() et kintai\Contract\Extension\StoreFeature
      *   (fonctionnalités activables par magasin).
      * - 1.2.0 : point d'extension Bundle::permissions() (catégories de permissions du bundle).

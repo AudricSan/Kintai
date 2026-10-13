@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\UI\Controller\Web;
 
+use kintai\Contract\Extension\DashboardWidget;
 use kintai\Core\Container;
+use kintai\Core\Extension\DashboardWidgets;
 use kintai\Core\Repositories\AvailabilityRepositoryInterface;
 use kintai\Core\Repositories\IcalTokenRepositoryInterface;
 use kintai\Core\Repositories\NotebookEntryRepositoryInterface;
@@ -110,12 +112,17 @@ final class EmployeeController
         }
 
         $activeClock = $this->timeclocks->findActiveByUser($userId);
+        // Widgets proposés : ceux du Core et ceux des bundles actifs (Bundle::dashboardWidgets(), contrat 1.4). Les
+        // widgets historiques d'un bundle qui déclare les siens ne sont plus rendus par le Core ($enabledWidgets).
+        $dashWidgets = DashboardWidgets::current();
+        $widgetKeys  = $dashWidgets->keys(DashboardWidget::EMPLOYEE, self::EMPLOYEE_WIDGETS);
         $saved       = $this->dashboardPrefs->getEnabledWidgets($userId, 'employee');
-        $enabledWidgets = array_flip(array_values(
+        $enabledAll  = array_flip(array_values(
             $saved !== null
-                ? array_intersect($saved, self::EMPLOYEE_WIDGETS)
-                : self::EMPLOYEE_WIDGETS
+                ? array_intersect($saved, $widgetKeys)
+                : $widgetKeys
         ));
+        $enabledWidgets = array_diff_key($enabledAll, array_flip($dashWidgets->replacedLegacyKeys(DashboardWidget::EMPLOYEE)));
 
         // Notes d'équipe épinglées/récentes (organisation entière + mes stores) — même garde
         // que le widget "Bourse aux shifts" du dashboard admin : NotebookEntryRepositoryInterface
@@ -154,6 +161,25 @@ final class EmployeeController
             }
         }
 
+        $userCan = fn(string $perm): bool => $this->permissions->can($user, $perm, null);
+        $storeFeatures = $this->view->get('store_features');
+        $bundleWidgets = $dashWidgets->render(
+            DashboardWidget::EMPLOYEE,
+            self::EMPLOYEE_WIDGETS,
+            array_keys($enabledAll),
+            [
+                'user'              => $user,
+                'store_ids'         => array_map(fn($m) => (int) $m['store_id'], $this->storeUsers->findByUser($userId)),
+                'managed_store_ids' => null,
+                'stores_map'        => $storesMap,
+                'today'             => $today,
+            ],
+            $this->view,
+            $userCan,
+            static fn(?string $f): bool => feat_bundle($f)
+                && ($f === null || $storeFeatures === null || in_array($f, (array) $storeFeatures, true)),
+        );
+
         return Response::html($this->view->render('employee.dashboard', [
             'title'            => __('dashboard'),
             'user'             => $user,
@@ -165,9 +191,12 @@ final class EmployeeController
             'stores_map'       => $storesMap,
             'active_clock'     => $activeClock,
             'notebook_entries' => $notebookEntries,
-            'user_can'         => fn(string $perm) => $this->permissions->can($user, $perm, null),
+            'user_can'         => $userCan,
             'enabled_widgets'  => $enabledWidgets,
-            'all_widgets'      => self::EMPLOYEE_WIDGETS,
+            'enabled_widgets_all' => $enabledAll,
+            'all_widgets'      => $widgetKeys,
+            'bundle_widgets'   => $bundleWidgets,
+            'bundle_widget_meta' => $dashWidgets->meta(DashboardWidget::EMPLOYEE, self::EMPLOYEE_WIDGETS),
         ], 'layout.app'));
     }
 
@@ -596,8 +625,13 @@ final class EmployeeController
         $userId  = (int) ($user['id'] ?? 0);
         $body    = $request->allPost();
         $checked = $body['widgets'] ?? [];
-        $widgets = array_values(array_intersect(self::EMPLOYEE_WIDGETS, array_keys($checked)));
         $oldWidgets = $this->dashboardPrefs->getEnabledWidgets($userId, 'employee');
+        // Widgets d'un bundle désactivé en ce moment : non proposés, mais conservés pour sa réactivation.
+        $widgets = DashboardWidgets::mergePreferences(
+            DashboardWidgets::current()->keys(DashboardWidget::EMPLOYEE, self::EMPLOYEE_WIDGETS),
+            array_map('strval', array_keys((array) $checked)),
+            $oldWidgets,
+        );
         $this->dashboardPrefs->saveWidgets($userId, $widgets, 'employee');
         $this->auditLogger->logUpdate($request, 'dashboard_prefs.updated', 'user_dashboard_prefs', $userId, $oldWidgets, $widgets, []);
         return Response::redirect($this->base() . '/employee?success=prefs');
