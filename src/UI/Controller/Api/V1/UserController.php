@@ -6,6 +6,7 @@ namespace kintai\UI\Controller\Api\V1;
 
 use kintai\Core\Api\Paginator;
 use kintai\Core\Auth\CredentialRevoker;
+use kintai\Core\Auth\UserAnonymizer;
 use kintai\Core\Auth\OwnerGuard;
 use kintai\Core\Auth\PasswordHasher;
 use kintai\Core\Auth\PasswordPolicy;
@@ -32,14 +33,22 @@ final class UserController
         private readonly OwnerGuard $ownerGuard,
         // Optionnel pour les tests qui construisent le contrôleur à la main.
         private readonly ?CredentialRevoker $revoker = null,
+        private readonly ?UserAnonymizer $anonymizer = null,
     ) {}
+
+    /** Le conteneur l'injecte toujours ; un test qui supprime un compte doit le fournir. */
+    private function anonymizer(): UserAnonymizer
+    {
+        return $this->anonymizer ?? throw new \LogicException('UserAnonymizer requis pour supprimer un compte.');
+    }
 
     /** GET /api/v1/users?page=1&limit=20 */
     public function index(Request $request): Response
     {
         [$page, $limit] = Paginator::params($request);
         $authUser = $this->authUser($request);
-        $items    = $this->users->findAll();
+        // Comptes supprimés (anonymisés) : conservés pour l'historique, plus listés.
+        $items    = array_values(array_filter($this->users->findAll(), fn(array $u): bool => empty($u['deleted_at'])));
 
         // Hors portée illimitée, seuls les membres des magasins gérés (et soi-même) sont listés.
         if (!$this->permissions->hasUnrestrictedGrant($authUser, 'employees.view')) {
@@ -119,8 +128,8 @@ final class UserController
         $this->permissions->requireUserAccess($this->authUser($request), 'employees.delete', $id, $this->storeIdsOf($id));
         $this->ownerGuard->assertCanRemoveOwner((int) ($this->authUser($request)['id'] ?? 0), $id);
 
-        $this->users->delete($id);
-        $this->revoker?->revokeAllFor($id);
+        // Anonymisation plutôt qu'effacement (même résultat sous SQLite et MySQL, historique conservé).
+        $this->anonymizer()->anonymize($id);
         $this->auditLogger->log($request, 'user.deleted', 'user', resourceId: $id);
         return Response::empty();
     }

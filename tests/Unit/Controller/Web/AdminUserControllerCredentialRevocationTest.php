@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Controller\Web;
 
 use kintai\Core\Auth\CredentialRevoker;
+use kintai\Core\Auth\UserAnonymizer;
 use kintai\Core\Auth\OwnerGuard;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Container;
@@ -97,6 +98,7 @@ final class AdminUserControllerCredentialRevocationTest extends TestCase
             ),
             new OwnerGuard(new PermissionService($roleAssignments, $roles), $this->users),
             new CredentialRevoker($this->remember, $this->api),
+            new UserAnonymizer($this->users, $roleAssignments, new CredentialRevoker($this->remember, $this->api), sys_get_temp_dir()),
         );
     }
 
