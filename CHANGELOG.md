@@ -7,6 +7,7 @@ All notable changes to Kintai are documented here.
 ## [Unreleased]
 
 ### Added
+- Bundles — versioned bundle contract (step 1a of the contract plan): the contract now has its own semver version, `kintai\Contract\Contract::VERSION` (`1.0.0`), independent of the Core's. A bundle declares the version it needs in `bundle.json` (`"kintai_contract": "^1.0"`, Composer-style constraints parsed by `kintai\Contract\VersionConstraint`); `kintai_core.min`/`max` is still honoured when it is absent. The check now runs at boot as well as at install: an installed bundle that became incompatible is no longer loaded (even if enabled), the event is logged and the Bundles page shows a translated reason. Before, `kintai_core.max` was `999.999.999` everywhere and nothing was checked after installation. See `docs/creating-a-bundle.md`.
 - API — rate limiting (audit of 2026-10-13, M9): every `/api/*` route, bundle routes included, is now limited per token (per IP without a token) by the global `ApiRateLimitMiddleware` — 300 requests per minute by default, adjustable by the Owner in *Owner settings → API* (`api_rate_limit_per_minute`, `0` = no limit). Each IP is also capped at 10 times the limit, so a script rotating tokens cannot get a fresh budget on every request. Responses carry `X-RateLimit-Limit` / `X-RateLimit-Remaining`; above the limit the API answers `429` with `Retry-After`. New read-only `Response::headers()`.
 
 ### Fixed

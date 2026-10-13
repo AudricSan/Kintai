@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\Core\BundleContract;
 
+use kintai\Contract\Contract;
+use kintai\Contract\VersionConstraint;
+
 /**
  * Contenu parsé et validé du bundle.json d'un bundle installé dynamiquement
  * (voir docs/creating-a-bundle.md pour le format complet). Fait partie du
@@ -28,6 +31,9 @@ final readonly class BundleManifest
         public string $kintaiCoreMin,
         public string $kintaiCoreMax,
         public array $requiresBundles,
+        // Contrainte semver sur la version du contrat (« kintai_contract » : « ^1.0 »), ou null si le bundle ne la
+        // déclare pas encore : on retombe alors sur kintai_core.min/max (bundles antérieurs au contrat versionné).
+        public ?string $contractConstraint = null,
     ) {
     }
 
@@ -56,7 +62,31 @@ final readonly class BundleManifest
             kintaiCoreMin: is_string($core['min'] ?? null) ? $core['min'] : '0.0.0',
             kintaiCoreMax: is_string($core['max'] ?? null) ? $core['max'] : '999.999.999',
             requiresBundles: array_map('strval', $requiresBundles),
+            contractConstraint: is_string($data['kintai_contract'] ?? null) && trim($data['kintai_contract']) !== ''
+                ? trim($data['kintai_contract'])
+                : null,
         );
+    }
+
+    /**
+     * Raison pour laquelle ce bundle ne peut pas tourner sur ce Core, ou null s'il est compatible. La contrainte
+     * de contrat prime ; sans elle, l'intervalle kintai_core.min/max s'applique (ancien format).
+     */
+    public function incompatibilityReason(string $coreVersion, string $contractVersion = Contract::VERSION): ?string
+    {
+        if ($this->contractConstraint !== null) {
+            $constraint = VersionConstraint::parse($this->contractConstraint);
+            if ($constraint === null) {
+                return __('bundle_contract_constraint_invalid', ['constraint' => $this->contractConstraint]);
+            }
+            return $constraint->allows($contractVersion)
+                ? null
+                : __('bundle_contract_incompatible', ['required' => $this->contractConstraint, 'provided' => $contractVersion]);
+        }
+
+        return $this->isCompatibleWithCore($coreVersion)
+            ? null
+            : __('bundle_core_incompatible', ['min' => $this->kintaiCoreMin, 'max' => $this->kintaiCoreMax, 'current' => $coreVersion]);
     }
 
     public function isCompatibleWithCore(string $coreVersion): bool

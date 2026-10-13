@@ -52,8 +52,14 @@ echo Flash::fromQuery('error', [
                                 <?php if (!$b['official']): ?>
                                     <span class="badge badge--warning badge--sm"><?= __('bundle_third_party') ?></span>
                                 <?php endif; ?>
+                                <?php if (!empty($b['incompatible'])): ?>
+                                    <span class="badge badge--danger badge--sm"><?= __('bundle_incompatible') ?></span>
+                                <?php endif; ?>
                             </span>
                             <span class="feature-card__desc"><?= htmlspecialchars($b['desc']) ?></span>
+                            <?php if (!empty($b['incompatible'])): ?>
+                                <span class="form-hint text-danger"><?= htmlspecialchars(__('bundle_incompatible_not_loaded', ['reason' => $b['incompatible']])) ?></span>
+                            <?php endif; ?>
                             <?php if (!$b['official']): ?>
                                 <span class="form-hint"><?= __('bundle_third_party_warning') ?></span>
                             <?php endif; ?>

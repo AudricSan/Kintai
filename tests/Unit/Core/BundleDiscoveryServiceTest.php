@@ -157,14 +157,14 @@ final class BundleDiscoveryServiceTest extends TestCase
         $this->assertNotSame('9.9.9', $discovered['fake-collision-bundle']['version']);
     }
 
-    private function writeFakeInstalledBundle(string $installedDir, string $slug, string $version, ?string $manifestVersion = null): void
+    private function writeFakeInstalledBundle(string $installedDir, string $slug, string $version, ?string $manifestVersion = null, array $extraManifest = []): void
     {
         $className = 'FakeInstalledBundle_' . str_replace('-', '_', $slug) . '_' . str_replace('.', '_', $version);
         $namespace = 'kintai\\Bundles\\Installed\\' . $className;
         $bundleRoot = $installedDir . '/' . $slug . '/' . $version;
         mkdir($bundleRoot . '/src', 0777, true);
 
-        file_put_contents($bundleRoot . '/bundle.json', json_encode([
+        file_put_contents($bundleRoot . '/bundle.json', json_encode($extraManifest + [
             'slug'        => $slug,
             'name'        => 'Fake Installed Bundle',
             'version'     => $manifestVersion ?? $version,
@@ -206,5 +206,42 @@ final class BundleDiscoveryServiceTest extends TestCase
         PHP);
 
         require $bundleRoot . '/' . $dirName . 'Bundle.php';
+    }
+
+    // -------------------------------------------------------------------------
+    // Contrat de bundle versionné (kintai_contract)
+    // -------------------------------------------------------------------------
+
+    private function discoverOne(string $slug, string $version, array $manifest, string $coreVersion = '1.0.0'): array
+    {
+        $installedDir = sys_get_temp_dir() . '/kintai-installed-' . uniqid();
+        $this->writeFakeInstalledBundle($installedDir, $slug, $version, null, $manifest);
+        $store = new InstalledBundleManifestStore($installedDir . '/installed.json');
+        $store->setActiveVersion($slug, $version);
+
+        $service = new BundleDiscoveryService(sys_get_temp_dir() . '/kintai-does-not-exist-' . uniqid(), $store, $installedDir, $coreVersion);
+        return $service->discover()[$slug];
+    }
+
+    public function testABundleRequiringTheProvidedContractIsCompatible(): void
+    {
+        $meta = $this->discoverOne('contract-ok', '1.0.0', ['kintai_contract' => '^1.0']);
+
+        $this->assertNull($meta['incompatible']);
+    }
+
+    /** Un bundle devenu incompatible reste listé (l'Owner voit pourquoi) mais porte la raison : il ne sera pas chargé. */
+    public function testABundleRequiringAFutureContractIsFlaggedIncompatible(): void
+    {
+        $meta = $this->discoverOne('contract-future', '1.0.0', ['kintai_contract' => '^99.0']);
+
+        $this->assertNotNull($meta['incompatible']);
+    }
+
+    /** Sans kintai_contract, l'ancien intervalle kintai_core.min/max s'applique encore (bundles existants). */
+    public function testWithoutAContractTheLegacyCoreRangeStillApplies(): void
+    {
+        $this->assertNull($this->discoverOne('legacy-ok', '1.0.0', ['kintai_core' => ['min' => '0.3.0', 'max' => '999.999.999']], '0.5.0')['incompatible']);
+        $this->assertNotNull($this->discoverOne('legacy-old-core', '1.0.0', ['kintai_core' => ['min' => '0.9.0', 'max' => '999.999.999']], '0.5.0')['incompatible']);
     }
 }
