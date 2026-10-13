@@ -409,22 +409,17 @@ final class AdminRoleController
     }
 
     /**
-     * Catégories du catalogue dont le bundle porteur est activé (les
-     * catégories Core, sans bundle associé, sont toujours visibles).
+     * Catégories proposées : Core, bundles actifs déclarants (Bundle::permissions()) et repli historique des bundles
+     * actifs non déclarants — voir PermissionCatalog::forActiveBundles().
      */
     private function visiblePermissionCategories(): array
     {
-        return array_filter(
-            PermissionCatalog::CATEGORIES,
-            fn(string $category): bool => $this->isCategoryVisible($category),
-            ARRAY_FILTER_USE_KEY
-        );
+        return PermissionCatalog::forActiveBundles();
     }
 
     private function isCategoryVisible(string $category): bool
     {
-        $bundle = PermissionCatalog::CATEGORY_BUNDLES[$category] ?? null;
-        return $bundle === null || bundle_enabled($bundle);
+        return array_key_exists($category, $this->visiblePermissionCategories());
     }
 
     private function roleHolders(int $roleId): array

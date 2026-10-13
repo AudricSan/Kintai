@@ -21,6 +21,12 @@ final class ExtensionRegistry
     /** @var list<NavItem>|null */
     private ?array $navigation = null;
 
+    /** @var array<string, list<string>>|null */
+    private ?array $permissions = null;
+
+    /** @var list<string>|null */
+    private ?array $permissionDeclarers = null;
+
     public function __construct(private readonly BundleManager $bundles) {}
 
     /**
@@ -68,6 +74,54 @@ final class ExtensionRegistry
             }
         }
         return $slugs;
+    }
+
+    /**
+     * Catégories de permissions déclarées par les bundles actifs (catégorie => actions). Une catégorie ou une action
+     * mal formée, ou une catégorie déjà déclarée (par le Core ou un autre bundle), est ignorée et journalisée.
+     *
+     * @param list<string> $reserved Catégories du Core, jamais redéfinissables
+     * @return array<string, list<string>>
+     */
+    public function permissions(array $reserved = []): array
+    {
+        if ($this->permissions !== null) {
+            return $this->permissions;
+        }
+
+        $categories = [];
+        $declarers = [];
+        foreach ($this->bundles->getBundles() as $bundle) {
+            try {
+                $declared = $bundle->permissions();
+            } catch (\Throwable $e) {
+                Log::warning('bundle_extension_failed', ['bundle' => $bundle->getName(), 'point' => 'permissions', 'error' => $e->getMessage()]);
+                continue;
+            }
+            if (!is_array($declared) || $declared === []) {
+                continue;
+            }
+            $declarers[] = $bundle->getName();
+            foreach ($declared as $category => $actions) {
+                $valid = is_string($category) && preg_match('/^[a-z][a-z0-9_]{1,40}$/', $category) === 1 && is_array($actions)
+                    && $actions !== [] && array_filter($actions, static fn($a): bool => !is_string($a) || preg_match('/^[a-z][a-z0-9_]{1,40}$/', $a) !== 1) === [];
+                if (!$valid || in_array($category, $reserved, true) || isset($categories[$category])) {
+                    Log::warning('bundle_extension_invalid', ['bundle' => $bundle->getName(), 'point' => 'permissions', 'category' => is_string($category) ? $category : null]);
+                    continue;
+                }
+                $categories[$category] = array_values(array_unique($actions));
+            }
+        }
+
+        $this->permissionDeclarers = $declarers;
+        return $this->permissions = $categories;
+    }
+
+    /** Slugs des bundles actifs qui déclarent leurs permissions (leurs catégories historiques ne s'appliquent plus). */
+    public function bundlesDeclaringPermissions(): array
+    {
+        $this->permissions();
+        return $this->permissionDeclarers ?? [];
     }
 
     /**

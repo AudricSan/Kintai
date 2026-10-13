@@ -74,6 +74,40 @@ final class PermissionCatalog
         'notebook.view', 'notebook.create', 'notebook.manage',
     ];
 
+    /** Catégories du Core : toujours présentes, jamais redéfinissables par un bundle. */
+    public const CORE_CATEGORIES = ['employees', 'shifts', 'stores', 'payroll'];
+
+    /**
+     * Catégories proposées dans la page des rôles : celles du Core, celles déclarées par les bundles actifs
+     * (Bundle::permissions(), contrat 1.2) et, en repli, les catégories historiques (CATEGORIES) des bundles actifs
+     * qui ne déclarent encore rien. Une catégorie de bundle inactif n'est pas proposée ; ses clés restent en base.
+     *
+     * @return array<string, list<string>>
+     */
+    public static function forActiveBundles(): array
+    {
+        $registry = null;
+        try {
+            $container = \kintai\Core\Container::getInstance();
+            if ($container->has(\kintai\Core\Extension\ExtensionRegistry::class)) {
+                $registry = $container->make(\kintai\Core\Extension\ExtensionRegistry::class);
+            }
+        } catch (\Throwable) {
+        }
+
+        $declared = $registry?->permissions(self::CORE_CATEGORIES) ?? [];
+        $declaring = $registry?->bundlesDeclaringPermissions() ?? [];
+
+        $categories = [];
+        foreach (self::CATEGORIES as $category => $actions) {
+            $bundle = self::CATEGORY_BUNDLES[$category] ?? null;
+            if ($bundle === null || (bundle_enabled($bundle) && !in_array($bundle, $declaring, true))) {
+                $categories[$category] = $actions;
+            }
+        }
+        return $categories + $declared;
+    }
+
     /** @return string[] Toutes les clés de permission ("categorie.action"), aplaties. */
     public static function all(): array
     {

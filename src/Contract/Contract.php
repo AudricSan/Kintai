@@ -18,10 +18,11 @@ namespace kintai\Contract;
 final class Contract
 {
     /** Version du contrat fournie par ce Core. */
-    public const VERSION = '1.1.0';
+    public const VERSION = '1.2.0';
 
     /*
      * Historique :
+     * - 1.2.0 : point d'extension Bundle::permissions() (catégories de permissions du bundle).
      * - 1.1.0 : points d'extension d'interface — Bundle::navigation() et kintai\Contract\Extension\NavItem.
      * - 1.0.0 : surface initiale (src/Contract/surface.php).
      */
