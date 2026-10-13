@@ -14,6 +14,7 @@ use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\Log;
 use kintai\UI\Controller\Api\V1\ShiftTypeController;
 use PHPUnit\Framework\MockObject\MockObject;
+use kintai\Core\Exceptions\ValidationException;
 use PHPUnit\Framework\TestCase;
 
 final class ShiftTypeControllerTest extends TestCase
@@ -184,5 +185,37 @@ final class ShiftTypeControllerTest extends TestCase
         $this->shiftTypes->method('getStoreIds')->willReturn([4, 5]);
 
         $this->controller->update($req);
+    }
+
+    /** Audit M1 : une couleur qui n'est pas un hexadécimal est refusée (422) avant toute écriture. */
+    public function testStoreRejectsAnInvalidColor(): void
+    {
+        $this->shiftTypes->expects($this->never())->method('save');
+
+        $this->expectException(ValidationException::class);
+        $this->controller->store($this->makeJsonRequest(['code' => 'X', 'name' => 'X', 'color' => 'red;position:fixed', 'store_ids' => [1]]));
+    }
+
+    public function testUpdateRejectsAnInvalidColor(): void
+    {
+        $this->shiftTypes->method('findById')->willReturn(['id' => 5, 'code' => 'X']);
+        $this->shiftTypes->method('getStoreIds')->willReturn([1]);
+        $this->shiftTypes->expects($this->never())->method('save');
+
+        $req = $this->makeJsonRequest(['color' => '"><script>']);
+        $req->setRouteParams(['id' => '5']);
+
+        $this->expectException(ValidationException::class);
+        $this->controller->update($req);
+    }
+
+    public function testStoreAcceptsAHexColor(): void
+    {
+        $this->shiftTypes->method('save')->willReturn(['id' => 9]);
+        $this->shiftTypes->method('getStoreIds')->willReturn([1]);
+
+        $response = $this->controller->store($this->makeJsonRequest(['code' => 'X', 'name' => 'X', 'color' => '#a1b2c3', 'store_ids' => [1]]));
+
+        $this->assertSame(201, $response->status());
     }
 }

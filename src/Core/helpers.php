@@ -515,3 +515,15 @@ if (!function_exists('notification_type_catalog')) {
         return notification_type_catalog()[$type]['icon'] ?? '•';
     }
 }
+
+if (!function_exists('safe_color')) {
+    /**
+     * Couleur utilisable dans un attribut style="" ou data-* : la valeur si c'est un hexadécimal
+     * valide, sinon le repli. Ceinture et bretelles en plus de la validation à la saisie
+     * (ColorRule) pour les données déjà en base ou écrites par un bundle.
+     */
+    function safe_color(mixed $value, string $fallback = '#6366f1'): string
+    {
+        return \kintai\Core\Validation\ColorRule::safe($value, $fallback);
+    }
+}

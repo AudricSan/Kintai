@@ -1524,5 +1524,6 @@
     "store_slug_reserved": "Ce slug d'URL est réservé par l'application. Choisissez-en un autre.",
     "store_slug_taken": "Ce slug d'URL est déjà utilisé (ou l'a été) par un autre magasin.",
     "employee_code_invalid_url": "Le numéro d'employé ne peut contenir que des lettres, des chiffres, des tirets et des tirets bas, et ne peut pas commencer par « ID- ».",
-    "error_shared_shift_type": "Ce type de shift est partagé avec d'autres magasins. Seul quelqu'un qui gère tous ses magasins (ou un Owner) peut le modifier ou le supprimer ; vous pouvez toujours l'activer ou le désactiver pour votre magasin."
+    "error_shared_shift_type": "Ce type de shift est partagé avec d'autres magasins. Seul quelqu'un qui gère tous ses magasins (ou un Owner) peut le modifier ou le supprimer ; vous pouvez toujours l'activer ou le désactiver pour votre magasin.",
+    "error_invalid_color": "Couleur invalide : utilisez le format hexadécimal #RRGGBB (par exemple #6366f1)."
 }

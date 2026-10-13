@@ -15,6 +15,7 @@ use kintai\Core\Exceptions\ValidationException;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
+use kintai\Core\Validation\ColorRule;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\PlanLimitService;
@@ -67,6 +68,9 @@ final class UserController
         $this->planLimits->assertCanCreateEmployee();
 
         $data = $request->json() ?? [];
+        if (array_key_exists('color', $data)) {
+            ColorRule::assert($data['color']);
+        }
         unset($data['id'], $data['password_hash']);
         $data['password_hash'] = $this->hashFromPayload($data) ?? PasswordHasher::hash(PasswordPolicy::DEFAULT_PASSWORD);
         unset($data['password']);
@@ -84,6 +88,9 @@ final class UserController
         $this->permissions->requireUserAccess($this->authUser($request), 'employees.update', $id, $this->storeIdsOf($id));
 
         $data = $request->json() ?? [];
+        if (array_key_exists('color', $data)) {
+            ColorRule::assert($data['color']);
+        }
         unset($data['id'], $data['password_hash']);
         if (!empty($old['is_active']) && array_key_exists('is_active', $data) && empty($data['is_active'])) {
             $this->ownerGuard->assertCanRemoveOwner((int) ($this->authUser($request)['id'] ?? 0), $id);
