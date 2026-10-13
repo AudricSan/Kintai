@@ -143,4 +143,16 @@ final class RouteBindersTest extends TestCase
     {
         $this->assertSame($valid, EmployeeRouteBinder::isValidCode($code));
     }
+
+    /** Audit M8 : un magasin supprimé (suppression douce) n'est plus joignable, même par son identifiant. */
+    public function testADeletedStoreNoLongerResolves(): void
+    {
+        $stores = $this->createStub(StoreRepositoryInterface::class);
+        $stores->method('findById')->willReturnCallback(
+            fn(int $id) => $id === 4 ? ['id' => 4, 'deleted_at' => '2026-10-16 09:00:00'] : null
+        );
+        $binder = new StoreRouteBinder(new InMemoryRouteSlugRepository(), $stores);
+
+        $this->assertNull($binder->resolve('4'));
+    }
 }
