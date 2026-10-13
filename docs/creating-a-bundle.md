@@ -221,6 +221,29 @@ public function navigation(): array
 An entry is shown only when the current role has a route, holds the permission declared on that route, and — if
 `storeFeature` is set — has that feature enabled. Users can hide it from their navigation preferences.
 
+### Permissions: `permissions()` (contract 1.2)
+
+```php
+public function permissions(): array
+{
+    return [
+        'timeoff' => ['view', 'create', 'update', 'delete', 'approve'],  // category => actions
+    ];
+}
+```
+
+Each `category.action` pair becomes a permission key you can put on your routes (`permission: 'timeoff.approve'`)
+and that Owners grant from the Roles page while your bundle is active. Names are lowercase `snake_case`. The Core
+categories (`employees`, `shifts`, `stores`, `payroll`) can't be redefined, and a category already declared by
+another bundle is ignored (logged). The Roles page labels a category with the translation key
+`perm_category_{category}` and an action with the Core's label for the common actions (`view`, `create`, `update`,
+`delete`, `approve`, …), otherwise with the action name itself as a translation key — ship those keys in your
+bundle's `lang/`. Disabling the bundle hides the category from the Roles page but keeps the grants in the
+database, so re-enabling it restores them. Require `"kintai_contract": "^1.2"`.
+
+Official bundles that don't declare their permissions yet keep the categories historically listed in
+`PermissionCatalog::CATEGORIES`; once a bundle declares `permissions()`, only its declaration counts.
+
 ## The RBAC scope contract: `managed_store_ids`
 
 Every Web route your bundle registers under `middleware: [AuthMiddleware::class, PermissionMiddleware::class]` must declare a `permission:` — either a precise key from `PermissionCatalog`, or `'public'` (a route intentionally left ungated, e.g. self-service/aggregate pages; omitting `permission:` entirely behaves the same way). `PermissionMiddleware` resolves this into a request attribute, `managed_store_ids`, that every controller down the line is expected to read rather than re-deriving:

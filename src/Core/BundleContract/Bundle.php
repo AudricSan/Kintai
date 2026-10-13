@@ -79,6 +79,19 @@ abstract class Bundle
     }
 
     /**
+     * Point d'extension « permissions » (contrat 1.2) : catégories de permissions apportées par le bundle, sous la
+     * forme catégorie => actions (ex. ['timeoff' => ['view', 'create', 'approve']]). Elles apparaissent dans la page
+     * des rôles tant que le bundle est actif ; les clés « catégorie.action » restent valides en base s'il est
+     * désactivé. Une catégorie du Core (employees, shifts, stores, payroll) ne peut pas être redéfinie.
+     *
+     * @return array<string, list<string>>
+     */
+    public function permissions(): array
+    {
+        return [];
+    }
+
+    /**
      * Boot du bundle, une fois tous les bundles enregistrés.
      */
     public function boot(): void
