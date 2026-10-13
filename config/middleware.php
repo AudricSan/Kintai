@@ -8,6 +8,8 @@ return [
         \kintai\Core\Middleware\SessionMiddleware::class,
         \kintai\Core\Middleware\RememberMeMiddleware::class,
         \kintai\Core\Middleware\SecurityHeadersMiddleware::class,
+        // Limitation de débit de /api/* (toutes routes, bundles compris), avant tout le reste du traitement.
+        \kintai\Core\Middleware\ApiRateLimitMiddleware::class,
         \kintai\Core\Middleware\CsrfMiddleware::class,
         \kintai\Core\Middleware\I18nMiddleware::class,
         \kintai\Core\Middleware\AppSettingsMiddleware::class,

@@ -159,7 +159,6 @@ $router->group('/employee', function ($r) {
     $r->get('/nav-settings',  [EmployeeController::class, 'navSettings'],     name: 'employee.nav_settings');
     $r->post('/nav-settings', [EmployeeController::class, 'saveNavSettings'], name: 'employee.nav_settings.save');
 
-    // Feedback : bundle pilote distribué hors monorepo, routes chargées depuis storage/bundles/feedback/ une fois installé (voir docs/architecture.md)
 
     // Échanges de shifts : bundle distribué hors monorepo, routes chargées depuis storage/bundles/shift-swap/ une fois installé (voir docs/architecture.md)
 
@@ -278,7 +277,6 @@ $router->group('/admin', function ($r) {
     $r->get('/activity', [ActivityController::class, 'index'], name: 'admin.activity', permission: 'stores.view');
     $r->get('/activity/export', [ActivityController::class, 'export'], name: 'admin.activity.export', permission: 'stores.view');
 
-    // Feedbacks : bundle pilote distribué hors monorepo, routes chargées depuis storage/bundles/feedback/ une fois installé (voir docs/architecture.md)
 
     // Diagnostic mail
     $r->get('/mail-test',  [MailTestController::class, 'show'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.mail_test', permission: 'public');
@@ -440,7 +438,6 @@ $router->group('/api/v1', function ($r) {
     $r->post('/notifications/{id}/read',   [ApiNotificationController::class, 'markRead'],    name: 'api.v1.notifications.read', permission: 'public');
     $r->delete('/notifications/{id}',      [ApiNotificationController::class, 'destroy'],     name: 'api.v1.notifications.destroy', permission: 'public');
 
-    // Feedbacks : bundle pilote distribué hors monorepo, routes chargées depuis storage/bundles/feedback/ une fois installé (voir docs/architecture.md)
 
     // Journal d'activité
     $r->get('/activity', [ApiActivityController::class, 'index'], name: 'api.v1.activity.index', permission: 'stores.view');
