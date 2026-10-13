@@ -6,6 +6,7 @@ namespace kintai\Tests\Unit\Controller\Web;
 
 use kintai\Core\Auth\AuthService;
 use kintai\Core\Auth\CredentialRevoker;
+use kintai\Core\Auth\UserAnonymizer;
 use kintai\Core\Repositories\ApiTokenRepositoryInterface;
 use kintai\Core\Repositories\AvailabilityRepositoryInterface;
 use kintai\Core\Repositories\IcalTokenRepositoryInterface;
@@ -89,6 +90,12 @@ final class AuthControllerOwnerCannotDeleteTest extends TestCase
             $this->createMock(LanguageRepositoryInterface::class),
             new AvatarImageOptimizer(),
             new CredentialRevoker($this->createMock(RememberTokenRepositoryInterface::class), $this->createMock(ApiTokenRepositoryInterface::class)),
+            new UserAnonymizer(
+                $this->users,
+                $assignments,
+                new CredentialRevoker($this->createMock(RememberTokenRepositoryInterface::class), $this->createMock(ApiTokenRepositoryInterface::class)),
+                sys_get_temp_dir(),
+            ),
         );
     }
 

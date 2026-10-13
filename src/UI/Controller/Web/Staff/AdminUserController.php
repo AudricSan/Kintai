@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace kintai\UI\Controller\Web\Staff;
 
 use kintai\Core\Auth\CredentialRevoker;
+use kintai\Core\Auth\UserAnonymizer;
 use kintai\Core\Auth\OwnerGuard;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ForbiddenException;
@@ -48,7 +49,14 @@ final class AdminUserController
         private readonly OwnerGuard $ownerGuard,
         // Optionnel pour les tests qui construisent le contrôleur à la main.
         private readonly ?CredentialRevoker $revoker = null,
+        private readonly ?UserAnonymizer $anonymizer = null,
     ) {}
+
+    /** Le conteneur l'injecte toujours ; un test qui supprime un compte doit le fournir. */
+    private function anonymizer(): UserAnonymizer
+    {
+        return $this->anonymizer ?? throw new \LogicException('UserAnonymizer requis pour supprimer un compte.');
+    }
 
     /**
      * Garde d'accès à l'employé ciblé par une route /admin/users/{id}/... : la permission doit être
@@ -99,6 +107,8 @@ final class AdminUserController
         } else {
             $users = $this->users->findAll();
         }
+        // Comptes supprimés (anonymisés) : conservés pour l'historique, plus listés.
+        $users = array_values(array_filter($users, fn(array $u): bool => empty($u['deleted_at'])));
         $users = $this->enrichIsAdmin($users);
 
         // Statistiques du mois en cours — même source que le dashboard employé et le
@@ -305,6 +315,8 @@ final class AdminUserController
         } else {
             $users = $this->users->findAll();
         }
+        // Comptes supprimés (anonymisés) : conservés pour l'historique, plus listés.
+        $users = array_values(array_filter($users, fn(array $u): bool => empty($u['deleted_at'])));
         $users = $this->enrichIsAdmin($users);
 
         $availableStores = $this->availableStores($managedIds);
@@ -709,7 +721,7 @@ final class AdminUserController
 
         // Map store_id → store name pour l'affichage
         $storesMap = [];
-        foreach ($this->stores->findAll() as $s) {
+        foreach ($this->stores->findAllWithDeleted() as $s) {
             $storesMap[(int) $s['id']] = $s['name'] ?? '#' . $s['id'];
         }
 
@@ -886,8 +898,9 @@ final class AdminUserController
         $id = (int) $request->param('id');
         $this->assertCanActOnUser($request, $id, 'employees.delete');
         $this->ownerGuard->assertCanRemoveOwner((int) ($request->getAttribute('auth_user')['id'] ?? 0), $id);
-        $this->users->delete($id);
-        $this->revoker?->revokeAllFor($id);
+        // Anonymisation plutôt qu'effacement : l'historique (shifts, pointages, paie) reste intact, quel que
+        // soit le pilote de base de données (voir UserAnonymizer).
+        $this->anonymizer()->anonymize($id);
         $this->auditLogger->log($request, 'user.deleted', 'user', $id, []);
         return Response::redirect($this->base() . '/admin/users?success=deleted');
     }
