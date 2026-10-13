@@ -362,6 +362,23 @@ with that feature on. A key already used in the slot is ignored; an exception in
 Until `salary-report`, `resignation-report` and `shift-swap` declare theirs, the Core keeps showing their historical
 links — only while those bundles are active. Require `"kintai_contract": "^1.6"`.
 
+### Notifications and activity log labels (contract 1.7)
+
+```php
+public function notificationTypes(): array
+{
+    return ['timeoff_approved' => '✓', 'timeoff_refused' => '✗'];   // type => icon
+}
+```
+
+Declare the types of the notifications your bundle creates, with their icon; the label is the translation
+`notif_{type}` from your bundle's `lang/` files. Core types can't be redefined. Notifications already received keep
+their translated label when your bundle is disabled, as long as the translation exists.
+
+Activity log entries you write (`AuditLogger`) get their label the same way: ship `audit_{action}` in your `lang/`
+files, dots and dashes replaced by underscores (`timeoff.approved` → `audit_timeoff_approved`). Require
+`"kintai_contract": "^1.7"` for `notificationTypes()`; the translation conventions need nothing.
+
 ## The RBAC scope contract: `managed_store_ids`
 
 Every Web route your bundle registers under `middleware: [AuthMiddleware::class, PermissionMiddleware::class]` must declare a `permission:` — either a precise key from `PermissionCatalog`, or `'public'` (a route intentionally left ungated, e.g. self-service/aggregate pages; omitting `permission:` entirely behaves the same way). `PermissionMiddleware` resolves this into a request attribute, `managed_store_ids`, that every controller down the line is expected to read rather than re-deriving:

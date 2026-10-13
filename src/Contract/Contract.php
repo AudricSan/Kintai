@@ -18,10 +18,12 @@ namespace kintai\Contract;
 final class Contract
 {
     /** Version du contrat fournie par ce Core. */
-    public const VERSION = '1.6.0';
+    public const VERSION = '1.7.0';
 
     /*
      * Historique :
+     * - 1.7.0 : point d'extension Bundle::notificationTypes() ; libellés des notifications (notif_{type}) et du
+     *   journal d'activité (audit_{action}) trouvés par convention dans les traductions du bundle.
      * - 1.6.0 : point d'extension Bundle::actions() et kintai\Contract\Extension\Action (liens d'action dans les
      *   emplacements des pages du Core).
      * - 1.5.0 : point d'extension Bundle::viewVariables() (variables partagées avec les vues des pages

@@ -477,9 +477,26 @@ if (!function_exists('notification_type_catalog')) {
      * maintenaient chacune leur propre copie de ce tableau, et un type ajouté d'un
      * côté sans l'autre s'affichait avec sa clé technique brute au lieu d'un libellé
      * traduit (ex. notebook_entry_created, initialement oublié dans l'un des deux).
+     *
+     * Types du Core et types historiques des bundles officiels (toujours connus : les notifications déjà reçues
+     * restent affichées même si leur bundle est désactivé), plus ceux déclarés par les bundles actifs
+     * (Bundle::notificationTypes(), contrat 1.7, libellé « notif_{type} »).
      */
     function notification_type_catalog(): array
     {
+        $declared = [];
+        try {
+            $container = \kintai\Core\Container::getInstance();
+            if ($container->has(\kintai\Core\Extension\ExtensionRegistry::class)) {
+                $declared = $container->make(\kintai\Core\Extension\ExtensionRegistry::class)->notificationTypes();
+            }
+        } catch (\Throwable) {
+        }
+        $bundleTypes = [];
+        foreach ($declared as $type => $icon) {
+            $bundleTypes[$type] = ['label' => __('notif_' . $type), 'icon' => $icon !== '' ? $icon : '•'];
+        }
+
         return [
             'message_received'       => ['label' => __('notif_message_received'), 'icon' => '✉'],
             'timeoff_approved'       => ['label' => __('notif_timeoff_approved'), 'icon' => '✓'],
@@ -502,17 +519,44 @@ if (!function_exists('notification_type_catalog')) {
             'swap_peer_refused'      => ['label' => __('notif_swap_peer_refused'), 'icon' => '⇄'],
             'swap_cancelled'         => ['label' => __('notif_swap_cancelled'), 'icon' => '⇄'],
             'notebook_entry_created' => ['label' => __('notif_notebook_entry_created'), 'icon' => '📓'],
-        ];
+        ] + $bundleTypes;
     }
 
+    /** Libellé d'un type : catalogue, sinon traduction « notif_{type} » si elle existe (bundle inactif), sinon le type. */
     function notification_type_label(string $type): string
     {
-        return notification_type_catalog()[$type]['label'] ?? $type;
+        return notification_type_catalog()[$type]['label'] ?? translation_or($type, 'notif_' . $type);
     }
 
     function notification_type_icon(string $type): string
     {
         return notification_type_catalog()[$type]['icon'] ?? '•';
+    }
+}
+
+if (!function_exists('translation_or')) {
+    /**
+     * Traduction de $key si elle existe (Core ou bundles, voir JsonTranslationRepository), sinon $fallback. Sert aux
+     * libellés trouvés par convention de nommage (notif_{type}, audit_{action}) : un bundle les fournit dans ses
+     * fichiers lang/ sans que le Core ait à les connaître.
+     */
+    function translation_or(string $fallback, string $key): string
+    {
+        $translated = __($key);
+        return $translated !== $key ? $translated : $fallback;
+    }
+}
+
+if (!function_exists('audit_action_label')) {
+    /**
+     * Libellé d'une action du journal d'activité : liste connue de la vue, sinon traduction « audit_{action} » (points
+     * remplacés par des tirets bas, ex. timeoff.approved → audit_timeoff_approved), sinon l'action brute.
+     *
+     * @param array<string, string> $known
+     */
+    function audit_action_label(string $action, array $known = []): string
+    {
+        return $known[$action] ?? translation_or($action, 'audit_' . str_replace(['.', '-'], '_', $action));
     }
 }
 
