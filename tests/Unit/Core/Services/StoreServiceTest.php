@@ -14,6 +14,8 @@ use kintai\Core\Services\LicenseClientService;
 use kintai\Core\Services\PlanLimitService;
 use kintai\Core\Services\StoreService;
 use PHPUnit\Framework\MockObject\MockObject;
+use kintai\Core\Exceptions\NotFoundException;
+use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use PHPUnit\Framework\TestCase;
 
 final class StoreServiceTest extends TestCase
@@ -175,5 +177,53 @@ final class StoreServiceTest extends TestCase
         $this->stores->expects($this->once())->method('save')->willReturn($store);
 
         $this->service->updateStore(1, ['code' => 'A1', 'name' => 'Store A renamed']);
+    }
+
+    // -------------------------------------------------------------------------
+    // Suppression (audit du 13/10/2026, M8)
+    // -------------------------------------------------------------------------
+
+    private function serviceWithAssignments(RoleAssignmentRepositoryInterface $assignments): StoreService
+    {
+        return new StoreService(
+            $this->stores,
+            $this->createMock(StoreUserRepositoryInterface::class),
+            $this->createMock(UserRepositoryInterface::class),
+            $this->createMock(LanguageRepositoryInterface::class),
+            new PlanLimitService(
+                $this->stores,
+                $this->createMock(UserRepositoryInterface::class),
+                new LicenseClientService($this->createMock(AppSettingsRepositoryInterface::class), ['base_url' => '', 'api_key' => '']),
+            ),
+            null,
+            $assignments,
+        );
+    }
+
+    public function testDeleteStoreSoftDeletesAndRevokesRolesScopedToIt(): void
+    {
+        $this->stores->method('findById')->with(7)->willReturn(['id' => 7, 'deleted_at' => null]);
+        $this->stores->expects($this->once())->method('delete')->with(7)->willReturn(1);
+
+        $assignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
+        $assignments->method('findByScope')->with('store', 7)->willReturn([['id' => 21], ['id' => 22]]);
+        $revoked = [];
+        $assignments->expects($this->exactly(2))->method('revoke')->willReturnCallback(function (int $id) use (&$revoked): int {
+            $revoked[] = $id;
+            return 1;
+        });
+
+        $this->serviceWithAssignments($assignments)->deleteStore(7);
+
+        $this->assertSame([21, 22], $revoked);
+    }
+
+    public function testDeletingAnAlreadyDeletedStoreIsNotFound(): void
+    {
+        $this->stores->method('findById')->willReturn(['id' => 7, 'deleted_at' => '2026-10-16 09:00:00']);
+        $this->stores->expects($this->never())->method('delete');
+
+        $this->expectException(NotFoundException::class);
+        $this->service->deleteStore(7);
     }
 }

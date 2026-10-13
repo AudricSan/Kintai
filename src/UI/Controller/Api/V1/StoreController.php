@@ -87,7 +87,7 @@ final class StoreController
         $old = $this->requireStore($request, 'stores.delete');
         $id  = (int) $old['id'];
 
-        $this->stores->delete($id);
+        $this->storeService->deleteStore($id);
         $this->auditLogger->log($request, 'store.deleted', 'store', resourceId: $id);
         return Response::empty();
     }

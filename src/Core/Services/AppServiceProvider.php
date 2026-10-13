@@ -135,6 +135,7 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(LanguageRepositoryInterface::class),
             $c->make(PlanLimitService::class),
             $c->make(\kintai\Core\Routing\RouteSlugService::class),
+            $c->make(\kintai\Core\Repositories\RoleAssignmentRepositoryInterface::class),
         ));
 
         $this->container->singleton(StoreStatsServiceInterface::class, fn(Container $c) => new StoreStatsService(
