@@ -7,6 +7,7 @@ namespace kintai\Tests\Unit\Controller\Api\V1;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Tests\Support\ApiOwnerAuth;
 use kintai\Core\Exceptions\PlanLimitExceededException;
+use kintai\Core\Auth\OwnerGuard;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
@@ -38,6 +39,7 @@ final class UserControllerTest extends TestCase
             ),
             ApiOwnerAuth::permissions($this),
             $this->createMock(StoreUserRepositoryInterface::class),
+            new OwnerGuard(ApiOwnerAuth::permissions($this), $this->users),
         );
     }
 
@@ -63,6 +65,30 @@ final class UserControllerTest extends TestCase
         $response = $this->controller->store($this->makeJsonRequest(['email' => 'new@example.com']));
 
         $this->assertSame(201, $response->status());
+    }
+
+    public function testAnOwnerCannotDeleteThemselvesThroughTheApi(): void
+    {
+        $this->users->method('findById')->willReturn(['id' => ApiOwnerAuth::OWNER_ID, 'is_active' => 1, 'deleted_at' => null]);
+        $this->users->expects($this->never())->method('delete');
+
+        $req = ApiOwnerAuth::owner(new Request());
+        $req->setRouteParams(['id' => (string) ApiOwnerAuth::OWNER_ID]);
+
+        $this->expectException(\kintai\Core\Exceptions\ForbiddenException::class);
+        $this->controller->destroy($req);
+    }
+
+    public function testAnOwnerCannotDeactivateThemselvesThroughTheApi(): void
+    {
+        $this->users->method('findById')->willReturn(['id' => ApiOwnerAuth::OWNER_ID, 'is_active' => 1, 'deleted_at' => null]);
+        $this->users->expects($this->never())->method('save');
+
+        $req = $this->makeJsonRequest(['is_active' => 0]);
+        $req->setRouteParams(['id' => (string) ApiOwnerAuth::OWNER_ID]);
+
+        $this->expectException(\kintai\Core\Exceptions\ForbiddenException::class);
+        $this->controller->update($req);
     }
 
     public function testStoreThrowsWhenFreePlanEmployeeLimitReached(): void
