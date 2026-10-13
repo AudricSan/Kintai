@@ -9,6 +9,7 @@ use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Request;
+use kintai\Core\Validation\ColorRule;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
 use kintai\UI\Controller\Web\HasAdminAccess;
@@ -73,6 +74,7 @@ final class AdminShiftTypeController
 
     public function storeShiftType(Request $request): Response
     {
+        ColorRule::assert($request->post('color', '#6366f1'));
         $storeIds = $this->postedStoreIds($request);
         if ($storeIds === []) {
             return Response::redirect($this->base() . '/admin/shift-types/create?error=store_required');
@@ -137,6 +139,8 @@ final class AdminShiftTypeController
             $outOfScopeStoreIds = array_values(array_diff($existingStoreIds, $visibleStoreIds));
             $submittedStoreIds = array_values(array_unique(array_merge($submittedStoreIds, $outOfScopeStoreIds)));
         }
+
+        ColorRule::assert($request->post('color', $type['color'] ?? '#6366f1'));
 
         $newData = array_merge($type, [
             'code'        => strtoupper(trim($request->post('code', $type['code'] ?? ''))),

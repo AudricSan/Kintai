@@ -17,6 +17,7 @@ use kintai\Core\Services\Log;
 use kintai\Core\Services\PlanLimitService;
 use kintai\UI\Controller\Api\V1\UserController;
 use PHPUnit\Framework\MockObject\MockObject;
+use kintai\Core\Exceptions\ValidationException;
 use PHPUnit\Framework\TestCase;
 
 final class UserControllerTest extends TestCase
@@ -72,5 +73,27 @@ final class UserControllerTest extends TestCase
 
         $this->expectException(PlanLimitExceededException::class);
         $this->controller->store($this->makeJsonRequest(['email' => 'new@example.com']));
+    }
+
+    /** Audit M1 : couleur de compte non hexadécimale refusée en création comme en modification. */
+    public function testStoreRejectsAnInvalidColor(): void
+    {
+        $this->users->method('countActive')->willReturn(1);
+        $this->users->expects($this->never())->method('save');
+
+        $this->expectException(ValidationException::class);
+        $this->controller->store($this->makeJsonRequest(['email' => 'new@example.com', 'color' => 'red;position:fixed']));
+    }
+
+    public function testUpdateRejectsAnInvalidColor(): void
+    {
+        $this->users->method('findById')->willReturn(['id' => 4, 'email' => 'a@example.com']);
+        $this->users->expects($this->never())->method('save');
+
+        $req = $this->makeJsonRequest(['color' => 'url(javascript:x)']);
+        $req->setRouteParams(['id' => '4']);
+
+        $this->expectException(ValidationException::class);
+        $this->controller->update($req);
     }
 }
