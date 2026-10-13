@@ -1541,5 +1541,9 @@
     "store_slug_invalid": "URLスラッグには小文字・数字・単一のハイフンのみ使用でき、英字を1文字以上含める必要があります（最大60文字）。",
     "store_slug_reserved": "このURLスラッグはアプリケーションで予約されています。別のものを選んでください。",
     "store_slug_taken": "このURLスラッグは他の店舗で使用中（または使用済み）です。",
-    "employee_code_invalid_url": "従業員番号には英数字・ハイフン・アンダースコアのみ使用でき、「ID-」で始めることはできません。"
+    "employee_code_invalid_url": "従業員番号には英数字・ハイフン・アンダースコアのみ使用でき、「ID-」で始めることはできません。",
+    "api_settings": "API",
+    "api_rate_limit_per_minute": "トークンごとの1分あたりのAPIリクエスト数",
+    "api_rate_limit_per_minute_hint": "これを超えると、次の1分までAPIは429を返します。トークンがない場合はIPアドレスごとに制限されます。さらに各IPはこの値の10倍が上限です。0 = 制限なし。",
+    "error_too_many_requests": "リクエストが多すぎます。しばらくしてから再試行してください。"
 }

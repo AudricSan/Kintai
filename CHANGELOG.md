@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Added
+- API — rate limiting (audit of 2026-10-13, M9): every `/api/*` route, bundle routes included, is now limited per token (per IP without a token) by the global `ApiRateLimitMiddleware` — 300 requests per minute by default, adjustable by the Owner in *Owner settings → API* (`api_rate_limit_per_minute`, `0` = no limit). Each IP is also capped at 10 times the limit, so a script rotating tokens cannot get a fresh budget on every request. Responses carry `X-RateLimit-Limit` / `X-RateLimit-Remaining`; above the limit the API answers `429` with `Retry-After`. New read-only `Response::headers()`.
+
 ### Fixed
 - Security — hardening from the audit of 2026-10-13 (round 2): the bundle installer now validates `slug` and `version` before building any disk path (a slug such as `../..` moved the staging directory outside `storage/bundles`); `POST /notifications/{id}/read` only redirects to an internal path (open redirect); the "report an issue" modal only links to a real GitHub issue URL and no longer crashes every page on `?ri_success[]=x`; the iCal feed of a deactivated account or of an employee who left the store is no longer served; push-token unsubscription only removes the logged-in user's own device.
 - Bundles audit 2026-10-13 (fixtures and tests; the fixes themselves live in the bundles' repositories): shift-swap — approving an already accepted swap swapped the shifts back, and approve/refuse/delete ignored the request status and the current owners of the shifts; timeoff — approve/refuse ignored the request status, dates were not validated and the store was always the employee's first one; notebook — "whole organisation" notes could be edited by a single-store manager. The anonymous-feedback hint no longer claims the identity is invisible to managers: it stays in the activity log.

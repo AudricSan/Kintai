@@ -1542,5 +1542,9 @@
     "store_slug_invalid": "The URL slug may only contain lowercase letters, digits and single hyphens, with at least one letter (60 characters maximum).",
     "store_slug_reserved": "This URL slug is reserved by the application. Please choose another one.",
     "store_slug_taken": "This URL slug is already used (or was used) by another store.",
-    "employee_code_invalid_url": "The employee number may only contain letters, digits, hyphens and underscores, and cannot start with \"ID-\"."
+    "employee_code_invalid_url": "The employee number may only contain letters, digits, hyphens and underscores, and cannot start with \"ID-\".",
+    "api_settings": "API",
+    "api_rate_limit_per_minute": "API requests per minute and per token",
+    "api_rate_limit_per_minute_hint": "Beyond this, the API answers 429 until the next minute. Without a token, the limit applies per IP address; each IP is also capped at 10 times this value. 0 = no limit.",
+    "error_too_many_requests": "Too many requests. Try again in a moment."
 }
