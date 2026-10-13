@@ -118,6 +118,24 @@ final class BundleDiscoveryServiceTest extends TestCase
         $this->assertSame('1.1.8', $discovered['fake-baseline-bundle']['version']);
     }
 
+    /** Un bundle supprimé du projet (feedback) encore installé sur une instance ne doit plus être chargé. */
+    public function testRetiredBundleStillInstalledIsNotDiscovered(): void
+    {
+        $installedDir = sys_get_temp_dir() . '/kintai-installed-' . uniqid();
+        $this->writeFakeInstalledBundle($installedDir, 'feedback', '1.1.0');
+
+        $store = new InstalledBundleManifestStore($installedDir . '/installed.json');
+        $store->setActiveVersion('feedback', '1.1.0');
+
+        $service = new BundleDiscoveryService(
+            sys_get_temp_dir() . '/kintai-does-not-exist-' . uniqid(),
+            $store,
+            $installedDir,
+        );
+
+        $this->assertArrayNotHasKey('feedback', $service->discover());
+    }
+
     public function testLegacySlugWinsOverAnInstalledBundleWithTheSameSlug(): void
     {
         $legacyDir = sys_get_temp_dir() . '/kintai-bundle-discovery-' . uniqid();

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\UI\Controller\Web\System;
 
+use kintai\Core\Auth\OwnerGuard;
 use kintai\Core\Auth\PermissionCatalog;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
@@ -60,6 +61,7 @@ final class AdminRoleController
         private readonly AuditLogger $auditLogger,
         private readonly StoreUserRepositoryInterface $storeUsers,
         private readonly RoleAssignmentSyncService $roleSync,
+        private readonly OwnerGuard $ownerGuard,
     ) {}
 
     /** GET /admin/roles */
@@ -286,6 +288,7 @@ final class AdminRoleController
 
         $userId = (int) $assignment['user_id'];
         if ($isOwnerRole) {
+            $this->ownerGuard->assertCanRemoveOwner((int) ($request->getAttribute('auth_user')['id'] ?? 0), $userId);
             $this->roleSync->syncOwnerRole($userId, false);
         } else {
             $this->roleSync->revokeStoreRole($userId, (int) $assignment['scope_id']);

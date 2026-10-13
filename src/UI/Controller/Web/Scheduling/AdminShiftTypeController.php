@@ -105,6 +105,7 @@ final class AdminShiftTypeController
         }
         $storeIds = $this->shiftTypes->getStoreIds((int) $type['id']);
         $this->assertAnyStoreAccess($request, $storeIds);
+        $this->assertManagesEveryStore($request, $storeIds);
 
         return Response::html($this->view->render('scheduling.shift-types-form', [
             'title'              => 'Modifier ' . htmlspecialchars($type['name'] ?? ''),
@@ -123,6 +124,7 @@ final class AdminShiftTypeController
         }
         $existingStoreIds = $this->shiftTypes->getStoreIds((int) $type['id']);
         $this->assertAnyStoreAccess($request, $existingStoreIds);
+        $this->assertManagesEveryStore($request, $existingStoreIds);
 
         $submittedStoreIds = $this->postedStoreIds($request);
         if ($submittedStoreIds === []) {
@@ -160,6 +162,24 @@ final class AdminShiftTypeController
         return Response::redirect($this->base() . '/admin/shift-types?success=updated');
     }
 
+    /**
+     * Un type de shift est partagé entre les magasins où il est activé : le modifier ou le supprimer change les
+     * shifts et la paie de tous. Il faut donc gérer chacun de ces magasins (ou n'avoir aucune restriction de
+     * magasin). Un gérant peut en revanche l'activer ou le désactiver pour son propre magasin (toggleShiftTypeStore).
+     *
+     * @param int[] $typeStoreIds
+     */
+    private function assertManagesEveryStore(Request $request, array $typeStoreIds): void
+    {
+        $managedIds = $this->managedIds($request);
+        if ($managedIds === null) {
+            return;
+        }
+        if (array_diff(array_map('intval', $typeStoreIds), $managedIds) !== []) {
+            throw new ForbiddenException(__('error_shared_shift_type'));
+        }
+    }
+
     public function deleteShiftType(Request $request): Response
     {
         $id   = (int) $request->param('id');
@@ -167,6 +187,7 @@ final class AdminShiftTypeController
         $storeIds = $type !== null ? $this->shiftTypes->getStoreIds($id) : [];
         if ($type !== null) {
             $this->assertAnyStoreAccess($request, $storeIds);
+            $this->assertManagesEveryStore($request, $storeIds);
         }
         $this->shiftTypes->delete($id);
         $this->auditLogger->log($request, 'shift_type.deleted', 'shift_type', $id, ['code' => $type['code'] ?? '', 'name' => $type['name'] ?? ''], $storeIds[0] ?? null);
