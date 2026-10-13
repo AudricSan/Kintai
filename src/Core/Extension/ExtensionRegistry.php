@@ -32,6 +32,9 @@ final class ExtensionRegistry
     /** @var array<string, list<DashboardWidget>>|null */
     private ?array $dashboardWidgets = null;
 
+    /** @var array<string, array<string, \Closure>>|null */
+    private ?array $viewVariables = null;
+
     /** @var list<string>|null */
     private ?array $permissionDeclarers = null;
 
@@ -193,6 +196,41 @@ final class ExtensionRegistry
     public function bundlesDeclaringDashboardWidgets(): array
     {
         return array_keys($this->dashboardWidgetsByBundle());
+    }
+
+    /**
+     * Variables de vue déclarées par les bundles actifs, par slug de bundle : nom => fonction. Un nom mal formé ou
+     * une valeur qui n'est pas une fonction est ignoré et journalisé.
+     *
+     * @return array<string, array<string, \Closure>>
+     */
+    public function viewVariablesByBundle(): array
+    {
+        if ($this->viewVariables !== null) {
+            return $this->viewVariables;
+        }
+
+        $bySlug = [];
+        foreach ($this->bundles->getBundles() as $bundle) {
+            try {
+                $declared = $bundle->viewVariables();
+            } catch (\Throwable $e) {
+                Log::warning('bundle_extension_failed', ['bundle' => $bundle->getName(), 'point' => 'viewVariables', 'error' => $e->getMessage()]);
+                continue;
+            }
+            $valid = [];
+            foreach (is_array($declared) ? $declared : [] as $name => $resolve) {
+                if (is_string($name) && preg_match('/^[a-z][a-z0-9_]{1,60}$/', $name) === 1 && $resolve instanceof \Closure) {
+                    $valid[$name] = $resolve;
+                } else {
+                    Log::warning('bundle_extension_invalid', ['bundle' => $bundle->getName(), 'point' => 'viewVariables']);
+                }
+            }
+            if ($valid !== []) {
+                $bySlug[$bundle->getName()] = $valid;
+            }
+        }
+        return $this->viewVariables = $bySlug;
     }
 
     /**
