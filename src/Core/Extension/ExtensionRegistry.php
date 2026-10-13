@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\Core\Extension;
 
+use kintai\Contract\Extension\Action;
 use kintai\Contract\Extension\DashboardWidget;
 use kintai\Contract\Extension\NavItem;
 use kintai\Contract\Extension\StoreFeature;
@@ -34,6 +35,9 @@ final class ExtensionRegistry
 
     /** @var array<string, array<string, \Closure>>|null */
     private ?array $viewVariables = null;
+
+    /** @var array<string, list<Action>>|null */
+    private ?array $actions = null;
 
     /** @var list<string>|null */
     private ?array $permissionDeclarers = null;
@@ -231,6 +235,28 @@ final class ExtensionRegistry
             }
         }
         return $this->viewVariables = $bySlug;
+    }
+
+    /**
+     * Liens d'action déclarés par les bundles actifs, par slug de bundle (les doublons de clé dans un emplacement sont
+     * départagés par kintai\Core\Extension\Actions).
+     *
+     * @return array<string, list<Action>>
+     */
+    public function actionsByBundle(): array
+    {
+        if ($this->actions !== null) {
+            return $this->actions;
+        }
+
+        $bySlug = [];
+        foreach ($this->bundles->getBundles() as $bundle) {
+            $actions = $this->contributionsOf($bundle, 'actions', Action::class);
+            if ($actions !== []) {
+                $bySlug[$bundle->getName()] = $actions;
+            }
+        }
+        return $this->actions = $bySlug;
     }
 
     /**

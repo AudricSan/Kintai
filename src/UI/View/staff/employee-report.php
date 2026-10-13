@@ -72,9 +72,10 @@ $currencyStyle = store_currency_style($store);
         </span>
     </h2>
     <div class="page-header__actions">
-        <?php if (bundle_enabled('salary-report')): ?>
-        <?= Button::make('💰 ' . __('salary_report'))->primary()->sm()->link($BASE_URL . '/admin/stores/' . (int) $store['id'] . '/reports/salary/create')->render() ?>
-        <?php endif; ?>
+        <?php $_actionCan = $user_can ?? fn(string $k): bool => true; // Liens des bundles (rapport de salaire… — Bundle::actions(), contrat 1.6). ?>
+        <?php foreach (\kintai\Core\Extension\Actions::current()->links(\kintai\Contract\Extension\Action::STORE_REPORT, ['store_id' => (int) $store['id']], $_actionCan) as $_a): ?>
+        <?= Button::make(($_a['icon'] !== '' ? $_a['icon'] . ' ' : '') . $_a['label'])->{$_a['style'] === 'danger' ? 'danger' : ($_a['style'] === 'primary' ? 'primary' : 'ghost')}()->sm()->link($_a['href'])->render() ?>
+        <?php endforeach; ?>
         <?= Button::make('⎙ ' . __('export_pdf'))->primary()->sm()->attrs(['data-on-click' => '@print'])->render() ?>
         <?= Button::make(__('statistics'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . store_segment((int) $store['id']) . '/stats')->render() ?>
         <?= Button::make(__('back'))->ghost()->sm()->link(back_url(route_url('admin.stores')))->render() ?>
@@ -183,13 +184,14 @@ $currencyStyle = store_currency_style($store);
         $t->column(__('absence_days_col'), fn($stat) => '<span class="td-right td-mono ' . ((($stat['abs_days'] ?? 0) > 3) ? 'erep-val--warn' : '') . '">' . ((($stat['abs_days'] ?? 0) > 0) ? $stat['abs_days'] : '—') . '</span>', 'td-right')
             ->column(__('swaps_col'), fn($stat) => '<span class="td-right td-mono">' . (($stat['swaps'] ?? 0) > 0 ? $stat['swaps'] : '—') . '</span>', 'td-right')
             ->column(__('max_consec_col'), fn($stat) => '<span class="td-right td-mono ' . ((($stat['max_consec'] ?? 0) >= 6) ? 'erep-val--warn' : '') . '">' . (($stat['max_consec'] ?? 0) > 0 ? $stat['max_consec'] : '—') . '</span>', 'td-right')
-            ->column(__('actions'), function($stat, $uid) use ($BASE_URL, $store, $period) {
+            ->column(__('actions'), function($stat, $uid) use ($BASE_URL, $store, $period, $_actionCan) {
                 $uid = (int) $uid;
                 $statsUrl = $BASE_URL . '/admin/stores/' . store_segment((int) $store['id']) . '/employee-report/' . employee_segment($uid) . '/stats?period=' . $period;
-                $salaryUrl = $BASE_URL . '/admin/stores/' . (int) $store['id'] . '/reports/salary/create?user_id=' . $uid;
                 $html = Button::make('📊 ' . __('view_stats'))->ghost()->sm()->link($statsUrl)->render();
-                if (bundle_enabled('salary-report')) {
-                    $html .= Button::make('💰 ' . __('salary_report'))->ghost()->sm()->link($salaryUrl)->render();
+                // Liens des bundles (rapport de salaire… — Bundle::actions(), contrat 1.6).
+                $context = ['store_id' => (int) $store['id'], 'user_id' => $uid, 'period' => (int) $period];
+                foreach (\kintai\Core\Extension\Actions::current()->links(\kintai\Contract\Extension\Action::STORE_REPORT_ROW, $context, $_actionCan) as $_a) {
+                    $html .= Button::make(($_a['icon'] !== '' ? $_a['icon'] . ' ' : '') . $_a['label'])->{$_a['style'] === 'danger' ? 'danger' : ($_a['style'] === 'primary' ? 'primary' : 'ghost')}()->sm()->link($_a['href'])->render();
                 }
                 return $html;
             })

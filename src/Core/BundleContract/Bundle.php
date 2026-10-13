@@ -127,6 +127,17 @@ abstract class Bundle
     }
 
     /**
+     * Point d'extension « actions » (contrat 1.6) : liens ajoutés dans les emplacements des pages du Core (menu
+     * d'une ligne du personnel, fiche employé, rapport employés, planning employé — voir Action::SLOTS).
+     *
+     * @return list<\kintai\Contract\Extension\Action>
+     */
+    public function actions(): array
+    {
+        return [];
+    }
+
+    /**
      * Boot du bundle, une fois tous les bundles enregistrés.
      */
     public function boot(): void

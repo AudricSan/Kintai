@@ -283,12 +283,10 @@ endforeach;
             <?php foreach ($user_memberships as $m): ?>
                 <?php $sid = (int) $m['store_id']; ?>
                 <div class="btn-group mb-sm">
-                    <?php if ($can('resignation_reports.create')): ?>
-                    <a href="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/reports/resignation/create?user_id=<?= (int)$user['id'] ?>" class="btn btn--danger btn--sm"><?= __('resign') ?> — <?= htmlspecialchars($m['store_name'] ?? '') ?></a>
-                    <?php endif; ?>
-                    <?php if ($can('payroll.generate') && bundle_enabled('salary-report')): ?>
-                    <a href="<?= $BASE_URL ?>/admin/stores/<?= $sid ?>/reports/salary/create?user_id=<?= (int)$user['id'] ?>" class="btn btn--ghost btn--sm"><?= __('salary_report') ?> — <?= htmlspecialchars($m['store_name'] ?? '') ?></a>
-                    <?php endif; ?>
+                    <?php // Liens des bundles (démission, rapport de salaire… — Bundle::actions(), contrat 1.6). ?>
+                    <?php foreach (\kintai\Core\Extension\Actions::current()->links(\kintai\Contract\Extension\Action::EMPLOYEE_STORE, ['user_id' => (int) $user['id'], 'store_id' => $sid, 'store_name' => $m['store_name'] ?? ''], $can) as $_a): ?>
+                    <a href="<?= htmlspecialchars($_a['href']) ?>" class="btn <?= $_a['style'] === 'danger' ? 'btn--danger' : ($_a['style'] === 'primary' ? 'btn--primary' : 'btn--ghost') ?> btn--sm"><?= $_a['icon'] !== '' ? $_a['icon'] . ' ' : '' ?><?= htmlspecialchars($_a['label']) ?> — <?= htmlspecialchars($m['store_name'] ?? '') ?></a>
+                    <?php endforeach; ?>
                 </div>
             <?php endforeach; ?>
         <?php else: ?>

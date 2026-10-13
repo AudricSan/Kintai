@@ -1,0 +1,123 @@
+<?php
+
+declare(strict_types=1);
+
+namespace kintai\Tests\Unit\Core\Extension;
+
+use kintai\Contract\Extension\Action;
+use kintai\Core\BundleContract\Bundle;
+use kintai\Core\BundleManager;
+use kintai\Core\Extension\Actions;
+use kintai\Core\Extension\ExtensionRegistry;
+use PHPUnit\Framework\TestCase;
+
+/**
+ * Liens d'action des bundles dans les pages du Core (étape 2h du contrat de bundle) : déclarations des bundles actifs
+ * (Bundle::actions(), contrat 1.6), repli historique (salary-report, resignation-report, shift-swap), filtres.
+ */
+final class ActionsTest extends TestCase
+{
+    private mixed $scriptName = null;
+
+    protected function setUp(): void
+    {
+        // base_url() se déduit de SCRIPT_NAME : application servie à la racine.
+        $this->scriptName = $_SERVER['SCRIPT_NAME'] ?? null;
+        $_SERVER['SCRIPT_NAME'] = '/index.php';
+    }
+
+    protected function tearDown(): void
+    {
+        if ($this->scriptName === null) {
+            unset($_SERVER['SCRIPT_NAME']);
+        } else {
+            $_SERVER['SCRIPT_NAME'] = $this->scriptName;
+        }
+    }
+
+    /** @param array<string, mixed> $active slug => actions déclarées (list, ou \Throwable levée) */
+    private function actions(array $active): Actions
+    {
+        $bundles = [];
+        foreach ($active as $slug => $declared) {
+            $bundle = new class extends Bundle {
+                public string $slug = '';
+                public mixed $declared = [];
+
+                public function __construct() {}
+
+                public function getName(): string
+                {
+                    return $this->slug;
+                }
+
+                public function register(): void {}
+
+                public function actions(): array
+                {
+                    if ($this->declared instanceof \Throwable) {
+                        throw $this->declared;
+                    }
+                    return $this->declared;
+                }
+            };
+            $bundle->slug = $slug;
+            $bundle->declared = $declared;
+            $bundles['B' . $slug] = $bundle;
+        }
+        $manager = (new \ReflectionClass(BundleManager::class))->newInstanceWithoutConstructor();
+        (new \ReflectionProperty($manager, 'bundles'))->setValue($manager, $bundles);
+
+        return new Actions(new ExtensionRegistry($manager), $manager);
+    }
+
+    private static function keys(array $links): array
+    {
+        return array_column($links, 'key');
+    }
+
+    /** Sans déclaration : mêmes liens qu'avant, mais seulement pour les bundles actifs (démission comprise). */
+    public function testLegacyActionsFollowActiveBundles(): void
+    {
+        $all = fn(string $p): bool => true;
+        $ctx = ['user_id' => 3, 'store_id' => 5];
+
+        $both = $this->actions(['salary-report' => [], 'resignation-report' => []]);
+        $links = $both->links(Action::EMPLOYEE_ROW, $ctx, $all);
+        $this->assertSame(['salary_report', 'resign'], self::keys($links));
+        $this->assertSame('/admin/stores/5/reports/salary/create?user_id=3', $links[0]['href']);
+        $this->assertSame('danger', $links[1]['style']);
+        $this->assertSame(['resign', 'salary_report'], self::keys($both->links(Action::EMPLOYEE_STORE, $ctx + ['store_name' => 'S'], $all)));
+        $this->assertSame('/admin/stores/5/reports/salary/create', $both->links(Action::STORE_REPORT, ['store_id' => 5], $all)[0]['href']);
+
+        $this->assertSame([], $this->actions([])->links(Action::EMPLOYEE_ROW, $ctx, $all), 'aucun bundle actif : aucun lien');
+        $this->assertSame(['salary_report'], self::keys($both->links(Action::EMPLOYEE_ROW, $ctx, fn(string $p): bool => $p === 'payroll.generate')));
+    }
+
+    public function testDeclaringBundleReplacesItsLegacyActions(): void
+    {
+        $actions = $this->actions([
+            'salary-report' => [
+                new Action('payslip', Action::EMPLOYEE_ROW, 'payslip', fn(array $c): string => '/payslip/' . $c['user_id'], '🧾', order: 5),
+                new Action('hidden', Action::EMPLOYEE_ROW, 'hidden', fn(): ?string => null),
+                new Action('broken', Action::EMPLOYEE_ROW, 'broken', fn(): string => throw new \RuntimeException('kaput')),
+                new Action('needs_feature', Action::EMPLOYEE_ROW, 'f', fn(): string => '/f', storeFeature: 'payslips'),
+            ],
+            'resignation-report' => [],
+            'acme' => [new Action('resign', Action::EMPLOYEE_ROW, 'stolen', fn(): string => '/stolen', order: 99), 'pas une action'],
+            'boom' => new \RuntimeException('kaput'),
+        ]);
+
+        $links = $actions->links(Action::EMPLOYEE_ROW, ['user_id' => 3, 'store_id' => 5], fn(): bool => true, fn(?string $f): bool => false);
+
+        $this->assertSame(['payslip', 'resign'], self::keys($links));
+        $this->assertSame('/payslip/3', $links[0]['href']);
+        $this->assertSame('/admin/stores/5/reports/resignation/create?user_id=3', $links[1]['href'], 'clé déjà prise : la première gagne');
+    }
+
+    public function testInvalidActionIsRejected(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        new Action('ok_key', 'nowhere', 'label', fn(): string => '/');
+    }
+}

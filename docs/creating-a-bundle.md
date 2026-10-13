@@ -325,6 +325,43 @@ lowercase `snake_case`, preferably prefixed with your bundle's name; Core names 
 only (logged). Until `messaging` and `daily-report` declare theirs, the Core keeps computing
 `unread_messages_count` and `daily_report_staff_stores` for them. Require `"kintai_contract": "^1.5"`.
 
+### Action links: `actions()` (contract 1.6)
+
+```php
+use kintai\Contract\Extension\Action;
+
+public function actions(): array
+{
+    return [
+        new Action(
+            key: 'salary_report',
+            slot: Action::EMPLOYEE_ROW,           // where the link goes, see below
+            label: 'salary_report',               // translation key
+            url: fn(array $ctx): ?string =>      // null hides the link for this context
+                route_url('salary_reports.create', ['id' => $ctx['store_id']]) . '?user_id=' . $ctx['user_id'],
+            icon: '💰',
+            style: Action::DEFAULT,               // DEFAULT, PRIMARY or DANGER
+            permission: 'payroll.generate',
+        ),
+    ];
+}
+```
+
+Slots and the context each one passes to `url`:
+
+| Slot | Where | Context |
+|---|---|---|
+| `Action::EMPLOYEE_ROW` | "⋮" menu of a row of the staff list | `user_id`, `store_id` (main store) |
+| `Action::EMPLOYEE_STORE` | "Reports" card of the employee form, once per store | `user_id`, `store_id`, `store_name` |
+| `Action::STORE_REPORT` | Header of a store's employee report | `store_id` |
+| `Action::STORE_REPORT_ROW` | Row of a store's employee report | `store_id`, `user_id`, `period` |
+| `Action::SHIFTS_EMPLOYEE` | Employee schedule toolbar (list, calendar, day) | none |
+
+The Core renders the link in the slot's own style, only for users holding `permission` and, if `storeFeature` is set,
+with that feature on. A key already used in the slot is ignored; an exception in `url` drops that link (logged).
+Until `salary-report`, `resignation-report` and `shift-swap` declare theirs, the Core keeps showing their historical
+links — only while those bundles are active. Require `"kintai_contract": "^1.6"`.
+
 ## The RBAC scope contract: `managed_store_ids`
 
 Every Web route your bundle registers under `middleware: [AuthMiddleware::class, PermissionMiddleware::class]` must declare a `permission:` — either a precise key from `PermissionCatalog`, or `'public'` (a route intentionally left ungated, e.g. self-service/aggregate pages; omitting `permission:` entirely behaves the same way). `PermissionMiddleware` resolves this into a request attribute, `managed_store_ids`, that every controller down the line is expected to read rather than re-deriving:
