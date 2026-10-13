@@ -39,6 +39,9 @@ final class ExtensionRegistry
     /** @var array<string, list<Action>>|null */
     private ?array $actions = null;
 
+    /** @var array<string, string>|null */
+    private ?array $notificationTypes = null;
+
     /** @var list<string>|null */
     private ?array $permissionDeclarers = null;
 
@@ -257,6 +260,38 @@ final class ExtensionRegistry
             }
         }
         return $this->actions = $bySlug;
+    }
+
+    /**
+     * Types de notification déclarés par les bundles actifs : type => icône. Un type mal formé, une icône qui n'est pas
+     * une chaîne courte ou un type déjà déclaré est ignoré et journalisé.
+     *
+     * @return array<string, string>
+     */
+    public function notificationTypes(): array
+    {
+        if ($this->notificationTypes !== null) {
+            return $this->notificationTypes;
+        }
+
+        $types = [];
+        foreach ($this->bundles->getBundles() as $bundle) {
+            try {
+                $declared = $bundle->notificationTypes();
+            } catch (\Throwable $e) {
+                Log::warning('bundle_extension_failed', ['bundle' => $bundle->getName(), 'point' => 'notificationTypes', 'error' => $e->getMessage()]);
+                continue;
+            }
+            foreach (is_array($declared) ? $declared : [] as $type => $icon) {
+                if (!is_string($type) || preg_match('/^[a-z][a-z0-9_]{1,60}$/', $type) !== 1 || !is_string($icon)
+                    || mb_strlen($icon) > 8 || isset($types[$type])) {
+                    Log::warning('bundle_extension_invalid', ['bundle' => $bundle->getName(), 'point' => 'notificationTypes']);
+                    continue;
+                }
+                $types[$type] = $icon;
+            }
+        }
+        return $this->notificationTypes = $types;
     }
 
     /**

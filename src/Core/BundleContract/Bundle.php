@@ -138,6 +138,17 @@ abstract class Bundle
     }
 
     /**
+     * Point d'extension « types de notification » (contrat 1.7) : type => icône (un emoji) des notifications créées
+     * par le bundle. Le libellé est la traduction « notif_{type} » (fichiers lang/ du bundle).
+     *
+     * @return array<string, string>
+     */
+    public function notificationTypes(): array
+    {
+        return [];
+    }
+
+    /**
      * Boot du bundle, une fois tous les bundles enregistrés.
      */
     public function boot(): void

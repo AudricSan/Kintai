@@ -217,7 +217,7 @@ $exportUrl = route_url('admin.activity.export') . ($exportParams ? '?' . http_bu
                 <select id="al-action" name="action" class="form-control form-control-sm" data-submit-on-change>
                     <option value=""><?= __('all') ?></option>
                     <?php foreach ($actions as $a):
-                        $alLabel = $actionLabels[$a] ?? $a; ?>
+                        $alLabel = audit_action_label($a, $actionLabels); ?>
                         <option value="<?= htmlspecialchars($a) ?>" <?= $actionFilter === $a ? 'selected' : '' ?>><?= htmlspecialchars($alLabel) ?></option>
                     <?php endforeach; ?>
                 </select>
@@ -272,7 +272,7 @@ $exportUrl = route_url('admin.activity.export') . ($exportParams ? '?' . http_bu
                     default    => 'primary',
                 };
                 $action = $row['action'] ?? '';
-                $label  = $action ? ($actionLabelsLocal[$action] ?? $action) : '—';
+                $label  = $action ? audit_action_label($action, $actionLabelsLocal) : '—';
                 $uid    = (int) ($row['user_id'] ?? 0);
                 $uname  = $uid > 0 ? ($users_map[$uid] ?? '#' . $uid) : '—';
                 $context = $row['context'] ?? [];
@@ -314,7 +314,7 @@ $exportUrl = route_url('admin.activity.export') . ($exportParams ? '?' . http_bu
                     default    => 'primary',
                 };
                 $action = $row['action'] ?? '';
-                $label  = $action ? ($actionLabelsLocal[$action] ?? $action) : '—';
+                $label  = $action ? audit_action_label($action, $actionLabelsLocal) : '—';
                 return Badge::make($row['level'] ?? '')->variant($levelClass)->render()
                     . ($action ? Badge::make($label)->primary()->render() : '—');
             })
