@@ -1535,5 +1535,6 @@
     "val_field_invalid": "The \":field\" field has an invalid format.",
     "val_employee_code_taken": "This employee number is already used by another account.",
     "val_field_too_long": "The \":field\" field is too long (:max maximum).",
-    "val_field_required": "The \":field\" field is required."
+    "val_field_required": "The \":field\" field is required.",
+    "error_cannot_act_on_self": "You cannot do this on your own account (you would lose your rights): ask another manager or an Owner."
 }
