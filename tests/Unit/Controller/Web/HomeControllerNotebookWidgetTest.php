@@ -159,6 +159,23 @@ final class HomeControllerNotebookWidgetTest extends TestCase
         $this->assertSame('Dupont Jean', $data['notebook_entries'][0]['author_name']);
     }
 
+    /** Bundle actif mais défaillant (table absente après une mise à jour sans migration) : le tableau de bord s'ouvre quand même. */
+    public function testDashboardStillOpensWhenTheNotebookTableIsMissing(): void
+    {
+        Container::getInstance()->instance(BundleManager::class, FakeBundleManagerFactory::withActiveSlugs(['notebook']));
+
+        $notebookRepo = $this->createMock(NotebookEntryRepositoryInterface::class);
+        $notebookRepo->method('findVisibleForStores')->willThrowException(new \RuntimeException('no such table: notebook_entries'));
+        Container::getInstance()->instance(NotebookEntryRepositoryInterface::class, $notebookRepo);
+
+        $controller = $this->buildController(['kpi_counters', 'team_notes'], grantNotebookView: true);
+        $response   = $controller->index($this->request());
+        $data       = json_decode($response->body(), true);
+
+        $this->assertSame(200, $response->status());
+        $this->assertSame([], $data['notebook_entries']);
+    }
+
     public function testDashboardSkipsNotebookQueryWhenWidgetDisabled(): void
     {
         Container::getInstance()->instance(BundleManager::class, FakeBundleManagerFactory::withActiveSlugs(['notebook']));
