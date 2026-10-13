@@ -232,12 +232,20 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(TranslationRepositoryInterface::class),
         ));
 
+        // Tâches du Core, puis celles des bundles actifs (Bundle::cronJobs(), contrat 1.8). auto-validate (rapports
+        // journaliers) reste enregistrée par le Core en repli, et remplacée si daily-report déclare la sienne.
         $this->container->singleton(CronRunner::class, function (Container $c) {
             $runner = new CronRunner($c->make(CronTokenRepositoryInterface::class));
             $runner->register($c->make(AutoValidateJob::class));
             $runner->register($c->make(BackupJob::class));
             $runner->register($c->make(LogPurgeJob::class));
             $runner->register($c->make(LicenseCheckJob::class));
+            if ($c->has(\kintai\Core\Extension\ExtensionRegistry::class)) {
+                $runner->registerBundleJobs(
+                    $c->make(\kintai\Core\Extension\ExtensionRegistry::class)->cronJobsByBundle(),
+                    fn(string $class): object => $c->make($class),
+                );
+            }
             return $runner;
         });
     }

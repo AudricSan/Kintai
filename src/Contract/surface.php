@@ -19,6 +19,7 @@ return [
     'kintai\\Contract\\Bundle' => ['target' => 'kintai\\Core\\BundleContract\\Bundle', 'status' => 'stable', 'role' => 'Classe de base de tout bundle (point d\'entrée).'],
     'kintai\\Contract\\BundleManifest' => ['target' => 'kintai\\Core\\BundleContract\\BundleManifest', 'status' => 'stable', 'role' => 'bundle.json analysé.'],
     'kintai\\Contract\\Container' => ['target' => 'kintai\\Core\\Container', 'status' => 'stable', 'role' => 'Conteneur d\'injection (enregistrement des liaisons du bundle).'],
+    'kintai\\Contract\\Cron\\CronJob' => ['target' => 'kintai\\Core\\Cron\\CronJobInterface', 'status' => 'stable', 'role' => 'Tâche planifiée déclarée par Bundle::cronJobs() (contrat 1.8).'],
     'kintai\\Contract\\Http\\Request' => ['target' => 'kintai\\Core\\Request', 'status' => 'stable', 'role' => 'Requête HTTP.'],
     'kintai\\Contract\\Http\\Response' => ['target' => 'kintai\\Core\\Response', 'status' => 'stable', 'role' => 'Réponse HTTP.'],
     'kintai\\Contract\\Http\\Router' => ['target' => 'kintai\\Core\\Router', 'status' => 'stable', 'role' => 'Déclaration des routes (routes.php).'],
