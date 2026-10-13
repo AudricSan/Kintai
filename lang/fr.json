@@ -1535,5 +1535,6 @@
     "val_field_invalid": "Le champ « :field » n'a pas un format valide.",
     "val_employee_code_taken": "Ce numéro d’employé est déjà utilisé par un autre compte.",
     "val_field_too_long": "Le champ « :field » est trop long (:max au maximum).",
-    "val_field_required": "Le champ « :field » est obligatoire."
+    "val_field_required": "Le champ « :field » est obligatoire.",
+    "error_cannot_act_on_self": "Vous ne pouvez pas faire cette action sur votre propre compte (vous perdriez vos droits) : demandez à un autre gestionnaire ou à un Owner."
 }

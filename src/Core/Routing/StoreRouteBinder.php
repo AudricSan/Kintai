@@ -46,7 +46,8 @@ final class StoreRouteBinder implements RouteParamBinder
         }
 
         // Ancien lien par identifiant numérique.
-        if (ctype_digit($segment) && $this->stores->findById((int) $segment) !== null) {
+        $store = ctype_digit($segment) ? $this->stores->findById((int) $segment) : null;
+        if ($store !== null && empty($store['deleted_at'])) {
             $id = (int) $segment;
             return new BoundParam($id, !isset($current[$id]));
         }

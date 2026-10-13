@@ -422,4 +422,29 @@ final class AdminStoreControllerTest extends TestCase
         $this->assertSame(9.15, $captured['_deduction_settings']['pension_rate']);
         $this->assertSame(['shifts', 'photos'], $captured['_features']);
     }
+
+    /** Audit M13 : un gérant ne se retire pas lui-même de son magasin (il perdrait ses droits). */
+    public function testAManagerCannotRemoveTheirOwnMembership(): void
+    {
+        $req = $this->prepareManagerScenario([]);
+        $this->storeUsers->method('findById')->with(9)->willReturn(['id' => 9, 'store_id' => 1, 'user_id' => 2]);
+        $this->users->method('findById')->willReturn(['id' => 2]);
+        $this->storeUsers->expects($this->never())->method('delete');
+
+        $this->expectException(\kintai\Core\Exceptions\ForbiddenException::class);
+        $this->expectExceptionMessage('error_cannot_act_on_self');
+        $this->controller->removeMember($req);
+    }
+
+    /** Même un rôle qu'il aurait le droit d'attribuer : il ne change pas le sien. */
+    public function testAManagerCannotChangeTheirOwnRole(): void
+    {
+        $req = $this->prepareManagerScenario(['role_id' => '31']);
+        $this->storeUsers->method('findById')->with(9)->willReturn(['id' => 9, 'store_id' => 1, 'user_id' => 2]);
+        $this->users->method('findById')->willReturn(['id' => 2]);
+
+        $this->expectException(\kintai\Core\Exceptions\ForbiddenException::class);
+        $this->expectExceptionMessage('error_cannot_act_on_self');
+        $this->controller->updateMemberRole($req);
+    }
 }

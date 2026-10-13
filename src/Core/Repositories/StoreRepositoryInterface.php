@@ -18,9 +18,15 @@ interface StoreRepositoryInterface
     public function findByCode(string $code): ?array;
 
     /**
-     * Retourne tous les stores.
+     * Retourne tous les stores, sauf les supprimés (deleted_at renseigné).
      */
     public function findAll(): array;
+
+    /**
+     * Retourne tous les stores, supprimés compris : pour retrouver le nom du magasin d'un shift ou d'un
+     * pointage ancien. Ne jamais l'utiliser pour une liste ou un sélecteur.
+     */
+    public function findAllWithDeleted(): array;
 
     /**
      * Retourne les stores actifs (deleted_at IS NULL, is_active = 1).
@@ -38,8 +44,9 @@ interface StoreRepositoryInterface
     public function save(array $data): array;
 
     /**
-     * Supprime un store par son ID.
-     * @return int Nombre de lignes supprimées (0 ou 1).
+     * Supprime un store (suppression douce : deleted_at, inactif, code et alias d'URL libérés ; l'historique
+     * qui le référence reste en base). La ligne n'est jamais effacée.
+     * @return int Nombre de stores supprimés (0 ou 1).
      */
     public function delete(int $id): int;
 

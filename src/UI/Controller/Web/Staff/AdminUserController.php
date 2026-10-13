@@ -721,7 +721,7 @@ final class AdminUserController
 
         // Map store_id → store name pour l'affichage
         $storesMap = [];
-        foreach ($this->stores->findAll() as $s) {
+        foreach ($this->stores->findAllWithDeleted() as $s) {
             $storesMap[(int) $s['id']] = $s['name'] ?? '#' . $s['id'];
         }
 
@@ -807,6 +807,9 @@ final class AdminUserController
         $newIsOwner   = $request->postFlag('is_admin', $this->ownerGuard->isOwner((int) $user['id'])) === 1;
         $deactivating = !empty($user['is_active']) && $newIsActive === 0;
         $demoting     = !empty($request->getAttribute('auth_user')['is_admin']) && !$newIsOwner;
+        if ($deactivating) {
+            $this->ownerGuard->assertNotSelfUnlessOwner((int) ($request->getAttribute('auth_user')['id'] ?? 0), (int) $user['id']);
+        }
         if ($deactivating || $demoting) {
             $this->ownerGuard->assertCanRemoveOwner((int) ($request->getAttribute('auth_user')['id'] ?? 0), (int) $user['id']);
         }
@@ -903,6 +906,7 @@ final class AdminUserController
     {
         $id = (int) $request->param('id');
         $this->assertCanActOnUser($request, $id, 'employees.delete');
+        $this->ownerGuard->assertNotSelfUnlessOwner((int) ($request->getAttribute('auth_user')['id'] ?? 0), $id);
         $this->ownerGuard->assertCanRemoveOwner((int) ($request->getAttribute('auth_user')['id'] ?? 0), $id);
         // Anonymisation plutôt qu'effacement : l'historique (shifts, pointages, paie) reste intact, quel que
         // soit le pilote de base de données (voir UserAnonymizer).

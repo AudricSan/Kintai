@@ -1535,5 +1535,6 @@
     "val_field_invalid": "「:field」の形式が正しくありません。",
     "val_employee_code_taken": "この従業員番号は他のアカウントで既に使用されています。",
     "val_field_too_long": "「:field」が長すぎます（最大 :max）。",
-    "val_field_required": "「:field」は必須です。"
+    "val_field_required": "「:field」は必須です。",
+    "error_cannot_act_on_self": "自分自身のアカウントにはこの操作を行えません（権限を失うため）。他の管理者またはオーナーに依頼してください。"
 }
