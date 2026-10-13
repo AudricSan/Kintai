@@ -229,4 +229,37 @@ final class OwnerSettingsControllerTest extends TestCase
 
         $this->assertSame(302, $response->status());
     }
+
+    /** Limite de débit de l'API (audit M9) : réglable par l'Owner, 0 = désactivée, valeur bornée. */
+    public function testSaveStoresTheApiRateLimit(): void
+    {
+        $controller = $this->makeController();
+        $_POST = ['api_rate_limit_per_minute' => '120'];
+
+        $controller->save(new Request());
+
+        $this->assertSame('120', $this->stored['api_rate_limit_per_minute']);
+    }
+
+    public function testSaveClampsTheApiRateLimit(): void
+    {
+        $controller = $this->makeController();
+        $_POST = ['api_rate_limit_per_minute' => '-5'];
+        $controller->save(new Request());
+        $this->assertSame('0', $this->stored['api_rate_limit_per_minute']);
+
+        $_POST = ['api_rate_limit_per_minute' => '999999999'];
+        $controller->save(new Request());
+        $this->assertSame('100000', $this->stored['api_rate_limit_per_minute']);
+    }
+
+    public function testSaveKeepsTheCurrentApiRateLimitWhenTheFieldIsAbsent(): void
+    {
+        $controller = $this->makeController();
+        $_POST = [];
+
+        $controller->save(new Request());
+
+        $this->assertSame('300', $this->stored['api_rate_limit_per_minute']);
+    }
 }

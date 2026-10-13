@@ -1525,5 +1525,9 @@
     "store_slug_taken": "このURLスラッグは他の店舗で使用中（または使用済み）です。",
     "employee_code_invalid_url": "従業員番号には英数字・ハイフン・アンダースコアのみ使用でき、「ID-」で始めることはできません。",
     "error_shared_shift_type": "このシフトタイプは他の店舗と共有されています。すべての店舗を管理している人（またはオーナー）のみ編集・削除できます。自分の店舗での有効／無効の切り替えは可能です。",
-    "error_invalid_color": "色の形式が正しくありません。16進数の #RRGGBB 形式（例：#6366f1）で指定してください。"
+    "error_invalid_color": "色の形式が正しくありません。16進数の #RRGGBB 形式（例：#6366f1）で指定してください。",
+    "api_rate_limit_per_minute_hint": "これを超えると、次の1分までAPIは429を返します。トークンがない場合はIPアドレスごとに制限されます。さらに各IPはこの値の10倍が上限です。0 = 制限なし。",
+    "api_settings": "API",
+    "api_rate_limit_per_minute": "トークンごとの1分あたりのAPIリクエスト数",
+    "error_too_many_requests": "リクエストが多すぎます。しばらくしてから再試行してください。"
 }

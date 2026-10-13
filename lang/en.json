@@ -1525,5 +1525,9 @@
     "store_slug_taken": "This URL slug is already used (or was used) by another store.",
     "employee_code_invalid_url": "The employee number may only contain letters, digits, hyphens and underscores, and cannot start with \"ID-\".",
     "error_shared_shift_type": "This shift type is shared with other stores. Only someone who manages all of its stores (or an Owner) can edit or delete it; you can still enable or disable it for your own store.",
-    "error_invalid_color": "Invalid colour: use the hexadecimal format #RRGGBB (for example #6366f1)."
+    "error_invalid_color": "Invalid colour: use the hexadecimal format #RRGGBB (for example #6366f1).",
+    "api_rate_limit_per_minute_hint": "Beyond this, the API answers 429 until the next minute. Without a token, the limit applies per IP address; each IP is also capped at 10 times this value. 0 = no limit.",
+    "api_settings": "API",
+    "api_rate_limit_per_minute": "API requests per minute and per token",
+    "error_too_many_requests": "Too many requests. Try again in a moment."
 }

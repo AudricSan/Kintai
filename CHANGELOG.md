@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Added
+- API — rate limiting (audit of 2026-10-13, M9): every `/api/*` route, bundle routes included, is now limited per token (per IP without a token) by the global `ApiRateLimitMiddleware` — 300 requests per minute by default, adjustable by the Owner in *Owner settings → API* (`api_rate_limit_per_minute`, `0` = no limit). Each IP is also capped at 10 times the limit, so a script rotating tokens cannot get a fresh budget on every request. Responses carry `X-RateLimit-Limit` / `X-RateLimit-Remaining`; above the limit the API answers `429` with `Retry-After`. New read-only `Response::headers()`.
+
 ### Fixed
 - i18n — raw translation keys shown on screen: `year`, `all_months` and `all_years` (used by the hiring and resignation report filters but only shipped by the salary-report bundle) now live in the Core `lang/*.json`, and `role_add_holders_hint` was missing in Japanese. A new test checks that every locale in `lang/` carries the same keys (a language added later is covered automatically) and that every literal `__('key')` used in `src/` exists.
 - API — `POST /api/v1/auth/login` answered 500 on every fresh install: the `api_tokens.expires_at` column, written by the login and read by `ApiAuthMiddleware`, existed in no migration (only in databases inherited from an old schema). A migration adds it, and the CI provisioning smoke test now logs in through the API and calls `/api/v1/auth/me` with the token.
