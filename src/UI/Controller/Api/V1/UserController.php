@@ -99,6 +99,7 @@ final class UserController
         // Désactiver un Owner : même garde que la suppression (au moins un Owner actif, pas soi-même).
         if (!empty($old['is_active']) && array_key_exists('is_active', $data) && empty($data['is_active'])) {
             $this->ownerGuard->assertCanRemoveOwner((int) ($this->authUser($request)['id'] ?? 0), $id);
+            $this->ownerGuard->assertNotSelfUnlessOwner((int) ($this->authUser($request)['id'] ?? 0), $id);
         }
         $newHash = $this->hashFromPayload($body);
         if ($data === [] && $newHash === null) {
@@ -127,6 +128,7 @@ final class UserController
         $this->requireUser($id);
         $this->permissions->requireUserAccess($this->authUser($request), 'employees.delete', $id, $this->storeIdsOf($id));
         $this->ownerGuard->assertCanRemoveOwner((int) ($this->authUser($request)['id'] ?? 0), $id);
+        $this->ownerGuard->assertNotSelfUnlessOwner((int) ($this->authUser($request)['id'] ?? 0), $id);
 
         // Anonymisation plutôt qu'effacement (même résultat sous SQLite et MySQL, historique conservé).
         $this->anonymizer()->anonymize($id);

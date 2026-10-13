@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace kintai\UI\Controller\Api\V1;
 
+use kintai\Core\Auth\OwnerGuard;
+use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Exceptions\ValidationException;
 use kintai\Core\Repositories\StoreRepositoryInterface;
@@ -20,7 +22,20 @@ final class StoreUserController
         private readonly StoreRepositoryInterface $stores,
         private readonly UserRepositoryInterface $users,
         private readonly AuditLogger $auditLogger,
+        // Facultatif pour les tests qui construisent le contrôleur à la main : sans lui, personne n'est Owner.
+        private readonly ?OwnerGuard $ownerGuard = null,
     ) {}
+
+    /** Un gestionnaire non-Owner ne désactive ni ne supprime sa propre adhésion (voir OwnerGuard). */
+    private function assertNotSelf(Request $request, int $targetUserId): void
+    {
+        $callerId = (int) ($request->getAttribute('auth_user')['id'] ?? 0);
+        if ($this->ownerGuard !== null) {
+            $this->ownerGuard->assertNotSelfUnlessOwner($callerId, $targetUserId);
+        } elseif ($callerId === $targetUserId) {
+            throw new ForbiddenException(__('error_cannot_act_on_self'));
+        }
+    }
 
     /** GET /api/v1/stores/{store_id}/members */
     public function index(Request $request): Response
@@ -82,6 +97,9 @@ final class StoreUserController
         // `user_id` et `store_id` sont immuables : une adhésion ne change ni de personne ni de magasin.
         $data = $this->allowedFields($request->json() ?? []);
         unset($data['user_id']);
+        if (array_key_exists('is_active', $data) && empty($data['is_active']) && !empty($existing['is_active'] ?? 1)) {
+            $this->assertNotSelf($request, (int) $existing['user_id']);
+        }
         return Response::json($this->storeUsers->save(array_merge($existing, $data, ['id' => $id, 'store_id' => $storeId])));
     }
 
@@ -111,6 +129,8 @@ final class StoreUserController
         if ($existing === null || (int) $existing['store_id'] !== $storeId) {
             throw new NotFoundException(__('error_member_not_found'));
         }
+
+        $this->assertNotSelf($request, (int) $existing['user_id']);
 
         $this->storeUsers->delete($id);
         $this->auditLogger->log($request, 'store_user.deleted', 'store_user', resourceId: $id, storeId: $storeId);
