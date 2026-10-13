@@ -31,6 +31,10 @@ use kintai\Core\Services\RoleAssignmentSyncService;
 use kintai\UI\Controller\Web\Staff\AdminUserController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
+use kintai\Core\Auth\UserAnonymizer;
+use kintai\Core\Auth\CredentialRevoker;
+use kintai\Core\Repositories\RememberTokenRepositoryInterface;
+use kintai\Core\Repositories\ApiTokenRepositoryInterface;
 use PHPUnit\Framework\TestCase;
 
 final class AdminUserControllerTest extends TestCase
@@ -83,6 +87,13 @@ final class AdminUserControllerTest extends TestCase
                 new LicenseClientService($this->createMock(AppSettingsRepositoryInterface::class), ['base_url' => '', 'api_key' => '']),
             ),
             new OwnerGuard(new PermissionService($this->roleAssignments, $this->roles), $this->users),
+            null,
+            new UserAnonymizer(
+                $this->users,
+                $this->roleAssignments,
+                new CredentialRevoker($this->createStub(RememberTokenRepositoryInterface::class), $this->createStub(ApiTokenRepositoryInterface::class)),
+                sys_get_temp_dir(),
+            ),
         );
     }
 
@@ -1110,7 +1121,11 @@ final class AdminUserControllerTest extends TestCase
     public function testAnOwnerCanDeleteAnotherOwnerWhileOneRemains(): void
     {
         $this->users->method('findById')->willReturn(['id' => 8, 'is_active' => 1, 'deleted_at' => null]);
-        $this->users->expects($this->once())->method('delete')->with(8);
+        // Anonymisation (audit M8) : la ligne n'est jamais effacée.
+        $this->users->expects($this->never())->method('delete');
+        $this->users->expects($this->once())->method('save')->with($this->callback(
+            fn(array $d): bool => $d['id'] === 8 && $d['is_active'] === 0 && $d['deleted_at'] !== null
+        ))->willReturnArgument(0);
 
         $response = $this->controller->deleteUser($this->actingAsOwner(8));
 
