@@ -11,7 +11,7 @@ final class LicenseServiceProvider extends ServiceProvider
     public const SETTINGS_KEY = 'enabled_bundles';
 
     /** Défauts si ni réglage Owner ni config/license.php — à garder identique à config/license.php (vérifié par un test). */
-    public const DEFAULT_FEATURES = ['daily-report', 'messaging', 'store-photos', 'timeoff', 'shift-swap', 'shift-claim', 'resignation-report', 'salary-report', 'hiring-report', 'feedback', 'timeclock', 'team-directory', 'notebook'];
+    public const DEFAULT_FEATURES = ['daily-report', 'messaging', 'store-photos', 'timeoff', 'shift-swap', 'shift-claim', 'resignation-report', 'salary-report', 'hiring-report', 'timeclock', 'team-directory', 'notebook'];
 
     public function register(): void
     {

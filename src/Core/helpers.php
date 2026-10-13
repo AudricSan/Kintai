@@ -497,7 +497,6 @@ if (!function_exists('notification_type_catalog')) {
             'shift_claim_withdrawn'  => ['label' => __('notif_shift_claim_withdrawn'), 'icon' => '⊘'],
             'daily_report_submitted' => ['label' => __('notif_daily_report_submitted'), 'icon' => '📝'],
             'daily_report_validated' => ['label' => __('notif_daily_report_validated'), 'icon' => '✓'],
-            'feedback_submitted'     => ['label' => __('notif_feedback_submitted'), 'icon' => '💬'],
             'swap_requested'         => ['label' => __('notif_swap_requested'), 'icon' => '⇄'],
             'swap_peer_accepted'     => ['label' => __('notif_swap_peer_accepted'), 'icon' => '⇄'],
             'swap_peer_refused'      => ['label' => __('notif_swap_peer_refused'), 'icon' => '⇄'],
