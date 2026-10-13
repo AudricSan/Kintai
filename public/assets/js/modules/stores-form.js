@@ -3,7 +3,7 @@
  */
 (function () {
     /* ── Toggle déductions ─────────────────────── */
-    var dedToggle = document.querySelector('[name="ded_enabled"]');
+    var dedToggle = document.querySelector('input[type="checkbox"][name="ded_enabled"]');
     if (dedToggle) {
         dedToggle.addEventListener('change', function () {
             var fields = document.getElementById('ded-fields');

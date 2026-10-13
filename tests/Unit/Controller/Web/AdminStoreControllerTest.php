@@ -148,7 +148,11 @@ final class AdminStoreControllerTest extends TestCase
 
     public function testUpdateStorePersistsPhotosFeatureSlug(): void
     {
-        $_POST = ['name' => 'Test Store', 'feature_photos' => '1'];
+        // Cases décochées : le champ caché envoie « 0 » (audit M12 : absent = inchangé).
+        $_POST = ['name' => 'Test Store', 'feature_photos' => '1'] + array_fill_keys(
+            ['feature_shifts', 'feature_timeclock', 'feature_timeoff', 'feature_swaps', 'feature_open_shifts', 'feature_messages', 'feature_daily_reports', 'feature_notes'],
+            '0'
+        );
         $req = new Request();
         $req->setAttribute('managed_store_ids', null);
         $req->setRouteParams(['id' => '1']);
@@ -364,5 +368,58 @@ final class AdminStoreControllerTest extends TestCase
             mkdir($dir, 0777, true);
         }
         touch($file);
+    }
+
+    /**
+     * Audit M12 : POST /admin/stores/{id}/edit sans is_active désactivait le magasin ; sans coordonnées ni
+     * réglages, il les vidait ou les remettait aux valeurs par défaut.
+     */
+    public function testUpdateStoreKeepsFieldsAbsentFromTheRequest(): void
+    {
+        $_POST = ['name' => 'Tokyo Est'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '1']);
+
+        $this->stores->method('findById')->with(1)->willReturn([
+            'id' => 1, 'name' => 'Tokyo', 'code' => 'TKY', 'is_active' => 1, 'phone' => '03-0000-0000',
+            'week_start_day' => 7, 'min_shift_minutes' => 60,
+        ]);
+        $this->stores->method('getFeatures')->willReturn(['shifts', 'photos']);
+        $this->stores->method('getImportSettings')->willReturn(['col_start' => 2, 'base_hour' => 8]);
+        $this->stores->method('getDeductionSettings')->willReturn(['enabled' => 1, 'pension_rate' => 9.15]);
+
+        $captured = null;
+        $storeService = $this->createMock(StoreServiceInterface::class);
+        $storeService->method('updateStore')->willReturnCallback(function (int $id, array $data) use (&$captured) {
+            $captured = $data;
+            return ['id' => $id] + $data;
+        });
+
+        $controller = new AdminStoreController(
+            new ViewRenderer(sys_get_temp_dir()),
+            $this->users,
+            $this->stores,
+            $this->storeUsers,
+            new AuditLogger(),
+            $storeService,
+            $this->storeStatsService,
+            new FeatureManager(['messaging', 'daily-report', 'store-photos', 'timeoff', 'shift-swap', 'shift-claim', 'timeclock']),
+            new RoleAssignmentSyncService($this->roles, $this->roleAssignments),
+            new PermissionService($this->roleAssignments, $this->roles),
+        );
+
+        $controller->updateStore($req);
+
+        $this->assertSame('Tokyo Est', $captured['name']);
+        $this->assertSame(1, $captured['is_active']);
+        $this->assertSame('03-0000-0000', $captured['phone']);
+        $this->assertSame('TKY', $captured['code']);
+        $this->assertNull($captured['slug'], 'slug absent : le slug manuel existant est conservé');
+        $this->assertSame([7, 60], [$captured['week_start_day'], $captured['min_shift_minutes']]);
+        $this->assertSame([2, 8], [$captured['_excel_settings']['col_start'], $captured['_excel_settings']['base_hour']]);
+        $this->assertTrue($captured['_deduction_settings']['enabled']);
+        $this->assertSame(9.15, $captured['_deduction_settings']['pension_rate']);
+        $this->assertSame(['shifts', 'photos'], $captured['_features']);
     }
 }

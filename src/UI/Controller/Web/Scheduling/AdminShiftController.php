@@ -762,7 +762,8 @@ final class AdminShiftController
         $shiftDate = $request->post('shift_date', $shift['shift_date'] ?? '');
         $endsDate  = $crossMidnight ? date('Y-m-d', strtotime($shiftDate . ' +1 day')) : $shiftDate;
 
-        $isOpen  = $request->post('is_open') === '1';
+        // Champ absent : état actuel conservé (audit du 13/10/2026, M12).
+        $isOpen  = $request->postFlag('is_open', $shift['is_open'] ?? 0) === 1;
         $wasOpen = (int) ($shift['is_open'] ?? 0) === 1;
 
         // M-1 : passage de is_open=1 → 0 via le formulaire : annuler les candidatures pending
@@ -794,11 +795,11 @@ final class AdminShiftController
             'cross_midnight'   => $crossMidnight,
             'starts_at'        => $shiftDate . ' ' . $startTime . ':00',
             'ends_at'          => $endsDate  . ' ' . $endTime   . ':00',
-            'notes'            => $request->post('notes', '') ?: null,
+            'notes'            => $request->hasPost('notes') ? ($request->post('notes', '') ?: null) : ($shift['notes'] ?? null),
             'is_open'          => $isOpen ? 1 : 0,
-            'open_shift_note'  => $request->post('open_shift_note', '') ?: null,
-            'hourly_rate_override' => $this->postedOverride($request, 'hourly_rate_override'),
-            'net_minutes_override' => $this->postedOverride($request, 'net_minutes_override'),
+            'open_shift_note'  => $request->hasPost('open_shift_note') ? ($request->post('open_shift_note', '') ?: null) : ($shift['open_shift_note'] ?? null),
+            'hourly_rate_override' => $request->hasPost('hourly_rate_override') ? $this->postedOverride($request, 'hourly_rate_override') : ($shift['hourly_rate_override'] ?? null),
+            'net_minutes_override' => $request->hasPost('net_minutes_override') ? $this->postedOverride($request, 'net_minutes_override') : ($shift['net_minutes_override'] ?? null),
         ]));
 
         $this->auditLogger->logUpdate($request, 'shift.updated', 'shift', (int) $shift['id'], $old, $saved, [], $newStoreId);

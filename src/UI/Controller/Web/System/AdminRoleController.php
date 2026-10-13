@@ -168,12 +168,13 @@ final class AdminRoleController
 
         ColorRule::assert($request->post('color', ''), 'color', true);
 
+        // Champ absent de la requête : valeur actuelle conservée (audit du 13/10/2026, M12).
         $newRole = $this->roles->save([
             'id'          => $role['id'],
             'name'        => $name,
-            'color'       => $request->post('color', '') ?: null,
-            'description' => trim($request->post('description', '')) ?: null,
-            'is_manager'  => $request->post('is_manager') ? 1 : 0,
+            'color'       => $request->hasPost('color') ? ($request->post('color', '') ?: null) : ($role['color'] ?? null),
+            'description' => $request->hasPost('description') ? (trim((string) $request->post('description', '')) ?: null) : ($role['description'] ?? null),
+            'is_manager'  => $request->postFlag('is_manager', $role['is_manager'] ?? 0),
         ]);
 
         $oldPermissions = $this->roles->getPermissions((int) $role['id']);

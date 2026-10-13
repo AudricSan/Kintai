@@ -352,7 +352,7 @@ final class BackupControllerTest extends TestCase
         $controller = $this->makeController();
         $this->settings->setMany(['backup_auto_enabled' => '1']);
 
-        $_POST = ['backup_max_keep' => '0'];
+        $_POST = ['backup_max_keep' => '0', 'backup_auto_enabled' => '0'];
         $controller->saveSettings($this->requestAs(true));
         $_POST = [];
 

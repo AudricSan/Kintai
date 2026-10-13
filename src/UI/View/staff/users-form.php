@@ -121,6 +121,7 @@ echo Flash::fromQuery('error', [
                                     <?= csrf_field() ?>
                                     <input type="hidden" name="_redirect_to" value="<?= htmlspecialchars($BASE_URL . '/admin/users/' . employee_segment((int) $user['id']) . '/edit?success=deductions_saved') ?>">
                                     <label class="form-toggle" title="<?= htmlspecialchars(__('subject_to_deductions')) ?>">
+                                        <input type="hidden" name="subject_to_deductions" value="0">
                                         <input type="checkbox" name="subject_to_deductions" value="1" class="form-toggle__input" <?= $subject ? 'checked' : '' ?> data-submit-on-change>
                                         <span class="form-toggle__track"></span>
                                     </label>
@@ -146,6 +147,7 @@ echo Flash::fromQuery('error', [
                                     <?= csrf_field() ?>
                                     <input type="hidden" name="_redirect_to" value="<?= htmlspecialchars($BASE_URL . '/admin/users/' . employee_segment((int) $user['id']) . '/edit?success=deductions_saved') ?>">
                                     <label class="form-toggle" title="<?= htmlspecialchars(__('subject_to_deductions')) ?>">
+                                        <input type="hidden" name="subject_to_deductions" value="0">
                                         <input type="checkbox" name="subject_to_deductions" value="1" class="form-toggle__input" <?= $subject ? 'checked' : '' ?> data-submit-on-change>
                                         <span class="form-toggle__track"></span>
                                     </label>
@@ -214,6 +216,7 @@ foreach ($user_memberships as $m):
         <?= csrf_field() ?>
         <input type="hidden" name="_redirect_to" value="<?= htmlspecialchars($BASE_URL . '/admin/users/' . employee_segment((int) $user['id']) . '/edit?success=deductions_saved') ?>">
         <label class="form-toggle form-toggle--labeled">
+            <input type="hidden" name="subject_to_deductions" value="0">
             <input type="checkbox" name="subject_to_deductions" value="1" class="form-toggle__input" <?= $subject ? 'checked' : '' ?> data-submit-on-change>
             <span class="form-toggle__track"></span>
             <span><?= __('subject_to_deductions') ?></span>
