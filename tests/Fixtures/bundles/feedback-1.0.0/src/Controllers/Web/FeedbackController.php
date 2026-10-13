@@ -66,7 +66,10 @@ final class FeedbackController
 
         $returnTo = trim((string) $request->post('return_to', ''));
         // Valider que le chemin ne sort pas du domaine (commence par / et ne contient pas //)
-        if ($returnTo === '' || !str_starts_with($returnTo, '/') || str_contains($returnTo, '//')) {
+        // Chemin interne uniquement. L'antislash et les caractères de contrôle sont refusés : `/\evil.example`
+        // passait le test précédent, et les navigateurs le lisent comme `//evil.example`.
+        if ($returnTo === '' || !str_starts_with($returnTo, '/') || str_contains($returnTo, '//')
+            || str_contains($returnTo, '\\') || preg_match('/[\x00-\x1F\x7F]/', $returnTo) === 1) {
             $returnTo = $this->base() . '/';
         }
 
@@ -118,14 +121,14 @@ final class FeedbackController
         );
 
         if ($storeId !== null) {
-            $this->notifyManagers($storeId, 'notif_feedback_submitted_body', (int) ($saved['id'] ?? 0));
+            $this->notifyManagers($storeId, (int) ($saved['id'] ?? 0), $category, $anonymous ? null : $userId);
         }
 
         return Response::redirect($returnTo . '?fb_success=sent');
     }
 
     /** Notifie les membres du store détenant feedbacks.view qu'un nouveau feedback existe. */
-    private function notifyManagers(int $storeId, string $bodyKey, int $referenceId): void
+    private function notifyManagers(int $storeId, int $referenceId, string $category, ?int $authorId): void
     {
         $recipients = [];
         foreach ($this->storeUsers->findByStore($storeId) as $m) {
@@ -136,7 +139,28 @@ final class FeedbackController
             }
         }
         if ($recipients !== []) {
-            $this->notifs->notifyMany($recipients, 'feedback_submitted', $bodyKey, [], $referenceId);
+            $categoryLabel = match ($category) {
+                'shift'    => __('feedback_cat_shift'),
+                'schedule' => __('feedback_cat_schedule'),
+                'app'      => __('feedback_cat_app'),
+                default    => __('feedback_cat_other'),
+            };
+            $author = __('feedback_anonymous_author');
+            if ($authorId !== null) {
+                $authorUser = $this->users->findById($authorId);
+                $fullName   = trim(($authorUser['last_name'] ?? '') . ' ' . ($authorUser['first_name'] ?? ''));
+                $author     = $fullName !== '' ? $fullName : ('#' . $authorId);
+            }
+            $store = $this->stores->findById($storeId);
+
+            $this->notifs->notifyMany(
+                $recipients,
+                'feedback_submitted',
+                'notif_feedback_submitted_body',
+                ['category' => $categoryLabel, 'author' => $author, 'store' => $store['name'] ?? ''],
+                $referenceId,
+                '/admin/feedbacks'
+            );
         }
     }
 

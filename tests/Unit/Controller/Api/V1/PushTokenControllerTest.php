@@ -77,7 +77,7 @@ final class PushTokenControllerTest extends TestCase
     public function testDestroyUnregistersToken(): void
     {
         $this->users->method('findById')->with(20)->willReturn(['id' => 20]);
-        $this->tokens->expects($this->once())->method('deleteByToken')->with('device-abc');
+        $this->tokens->expects($this->once())->method('deleteByToken')->with('device-abc', 20);
 
         $req = $this->requestWithJson(['token' => 'device-abc'], ['user_id' => '20']);
         $response = $this->controller->destroy($req);
