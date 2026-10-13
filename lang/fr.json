@@ -1542,5 +1542,11 @@
     "store_slug_invalid": "Le slug d'URL ne peut contenir que des minuscules, des chiffres et des tirets simples, avec au moins une lettre (60 caractères maximum).",
     "store_slug_reserved": "Ce slug d'URL est réservé par l'application. Choisissez-en un autre.",
     "store_slug_taken": "Ce slug d'URL est déjà utilisé (ou l'a été) par un autre magasin.",
-    "employee_code_invalid_url": "Le numéro d'employé ne peut contenir que des lettres, des chiffres, des tirets et des tirets bas, et ne peut pas commencer par « ID- »."
+    "employee_code_invalid_url": "Le numéro d'employé ne peut contenir que des lettres, des chiffres, des tirets et des tirets bas, et ne peut pas commencer par « ID- ».",
+    "val_field_required": "Le champ « :field » est obligatoire.",
+    "val_field_invalid": "Le champ « :field » n'a pas un format valide.",
+    "val_field_too_long": "Le champ « :field » est trop long (:max au maximum).",
+    "val_field_out_of_range": "Le champ « :field » est hors des valeurs permises.",
+    "val_no_updatable_field": "Aucun champ modifiable dans la requête.",
+    "val_employee_code_taken": "Ce numéro d’employé est déjà utilisé par un autre compte."
 }
