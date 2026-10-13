@@ -502,7 +502,8 @@
     "error_owner_only_delete_photos": "Only the owner can delete a photo submission.",
     "error_owner_only_delete_store": "Only an owner can delete a store.",
     "error_owner_role_immutable": "The Owner role cannot be modified.",
-    "error_shared_shift_type": "This shift type is shared with other stores. Only someone who manages all of its stores (or an Owner) can edit or delete it; you can still enable or disable it for your own store.",
+    "error_owner_cannot_remove_self": "An Owner cannot delete, deactivate or demote their own account. Ask another Owner to do it.",
+    "error_last_owner": "At least one active Owner must remain. Make another account an Owner first.",
     "error_owner_role_undeletable": "The Owner role cannot be deleted.",
     "error_participant_not_found": "Participant not found.",
     "error_path_not_allowed": "Path not allowed.",
@@ -806,6 +807,9 @@
     "mon_abbr": "Mon",
     "monday": "Monday",
     "month": "Month",
+    "year": "Year",
+    "all_months": "All months",
+    "all_years": "All years",
     "monthly_customers": "Customers per month",
     "monthly_fixed": "fixed monthly",
     "monthly_hours_chart": "Monthly net hours trend (12 months)",
@@ -1543,5 +1547,6 @@
     "store_slug_invalid": "The URL slug may only contain lowercase letters, digits and single hyphens, with at least one letter (60 characters maximum).",
     "store_slug_reserved": "This URL slug is reserved by the application. Please choose another one.",
     "store_slug_taken": "This URL slug is already used (or was used) by another store.",
-    "employee_code_invalid_url": "The employee number may only contain letters, digits, hyphens and underscores, and cannot start with \"ID-\"."
+    "employee_code_invalid_url": "The employee number may only contain letters, digits, hyphens and underscores, and cannot start with \"ID-\".",
+    "error_shared_shift_type": "This shift type is shared with other stores. Only someone who manages all of its stores (or an Owner) can edit or delete it; you can still enable or disable it for your own store."
 }

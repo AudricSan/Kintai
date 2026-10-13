@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Controller\Web;
 
 use kintai\Core\Auth\CredentialRevoker;
+use kintai\Core\Auth\OwnerGuard;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Container;
 use kintai\Core\Repositories\ApiTokenRepositoryInterface;
@@ -94,6 +95,7 @@ final class AdminUserControllerCredentialRevocationTest extends TestCase
                 $this->users,
                 new LicenseClientService($this->createMock(AppSettingsRepositoryInterface::class), ['base_url' => '', 'api_key' => '']),
             ),
+            new OwnerGuard(new PermissionService($roleAssignments, $roles), $this->users),
             new CredentialRevoker($this->remember, $this->api),
         );
     }

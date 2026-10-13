@@ -502,7 +502,8 @@
     "error_owner_only_delete_photos": "オーナーのみが写真投稿を削除できます。",
     "error_owner_only_delete_store": "オーナーのみが店舗を削除できます。",
     "error_owner_role_immutable": "オーナーロールは変更できません。",
-    "error_shared_shift_type": "このシフトタイプは他の店舗と共有されています。すべての店舗を管理している人（またはオーナー）のみ編集・削除できます。自分の店舗での有効／無効の切り替えは可能です。",
+    "error_owner_cannot_remove_self": "オーナーは自分自身のアカウントを削除・無効化・降格できません。別のオーナーに依頼してください。",
+    "error_last_owner": "有効なオーナーが少なくとも1人必要です。先に別のアカウントをオーナーにしてください。",
     "error_owner_role_undeletable": "オーナーロールは削除できません。",
     "error_participant_not_found": "参加者が見つかりません。",
     "error_path_not_allowed": "許可されていないパスです。",
@@ -806,6 +807,9 @@
     "mon_abbr": "月",
     "monday": "月曜日",
     "month": "月",
+    "year": "年",
+    "all_months": "全月",
+    "all_years": "全年度",
     "monthly_customers": "月次来客数",
     "monthly_fixed": "月額固定",
     "monthly_hours_chart": "月別純時間の推移（12ヶ月）",
@@ -1201,6 +1205,7 @@
     "role_holder_added": "従業員をこの役割に追加しました。",
     "role_holder_removed": "従業員をこの役割から削除しました。",
     "role_holders": "この役割を持つユーザー",
+    "role_add_holders_hint": "追加する従業員",
     "role_in_use": "この役割は現在少なくとも1人のユーザーに割り当てられています。先に解除してください。",
     "role_invalid": "無効な役割です。",
     "role_invalid_holder": "店舗と1人以上の従業員を選択してください。",
@@ -1542,5 +1547,6 @@
     "store_slug_invalid": "URLスラッグには小文字・数字・単一のハイフンのみ使用でき、英字を1文字以上含める必要があります（最大60文字）。",
     "store_slug_reserved": "このURLスラッグはアプリケーションで予約されています。別のものを選んでください。",
     "store_slug_taken": "このURLスラッグは他の店舗で使用中（または使用済み）です。",
-    "employee_code_invalid_url": "従業員番号には英数字・ハイフン・アンダースコアのみ使用でき、「ID-」で始めることはできません。"
+    "employee_code_invalid_url": "従業員番号には英数字・ハイフン・アンダースコアのみ使用でき、「ID-」で始めることはできません。",
+    "error_shared_shift_type": "このシフトタイプは他の店舗と共有されています。すべての店舗を管理している人（またはオーナー）のみ編集・削除できます。自分の店舗での有効／無効の切り替えは可能です。"
 }
