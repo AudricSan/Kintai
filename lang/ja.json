@@ -502,6 +502,7 @@
     "error_owner_only_delete_photos": "オーナーのみが写真投稿を削除できます。",
     "error_owner_only_delete_store": "オーナーのみが店舗を削除できます。",
     "error_owner_role_immutable": "オーナーロールは変更できません。",
+    "error_shared_shift_type": "このシフトタイプは他の店舗と共有されています。すべての店舗を管理している人（またはオーナー）のみ編集・削除できます。自分の店舗での有効／無効の切り替えは可能です。",
     "error_owner_role_undeletable": "オーナーロールは削除できません。",
     "error_participant_not_found": "参加者が見つかりません。",
     "error_path_not_allowed": "許可されていないパスです。",

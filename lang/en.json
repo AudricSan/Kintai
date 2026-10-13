@@ -502,6 +502,7 @@
     "error_owner_only_delete_photos": "Only the owner can delete a photo submission.",
     "error_owner_only_delete_store": "Only an owner can delete a store.",
     "error_owner_role_immutable": "The Owner role cannot be modified.",
+    "error_shared_shift_type": "This shift type is shared with other stores. Only someone who manages all of its stores (or an Owner) can edit or delete it; you can still enable or disable it for your own store.",
     "error_owner_role_undeletable": "The Owner role cannot be deleted.",
     "error_participant_not_found": "Participant not found.",
     "error_path_not_allowed": "Path not allowed.",
