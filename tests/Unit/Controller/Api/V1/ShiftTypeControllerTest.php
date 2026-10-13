@@ -54,7 +54,7 @@ final class ShiftTypeControllerTest extends TestCase
 
     public function testStoreWithStoreIdsArraySyncsAllStores(): void
     {
-        $req = $this->makeJsonRequest(['code' => 'MORNING', 'name' => 'Matin', 'store_ids' => [1, 2]]);
+        $req = $this->makeJsonRequest(['code' => 'MORNING', 'name' => 'Matin', 'start_time' => '08:00', 'end_time' => '16:00', 'store_ids' => [1, 2]]);
 
         $this->shiftTypes->method('save')->willReturn(['id' => 9]);
         $this->shiftTypes->expects($this->once())->method('syncStores')->with(9, [1, 2]);
@@ -68,7 +68,7 @@ final class ShiftTypeControllerTest extends TestCase
     /** store_id scalaire (rétrocompatibilité) : toujours accepté, converti en tableau à 1 élément. */
     public function testStoreWithLegacyScalarStoreId(): void
     {
-        $req = $this->makeJsonRequest(['code' => 'MORNING', 'name' => 'Matin', 'store_id' => 3]);
+        $req = $this->makeJsonRequest(['code' => 'MORNING', 'name' => 'Matin', 'start_time' => '08:00', 'end_time' => '16:00', 'store_id' => 3]);
 
         $this->shiftTypes->method('save')->willReturn(['id' => 9]);
         $this->shiftTypes->expects($this->once())->method('syncStores')->with(9, [3]);
@@ -79,7 +79,7 @@ final class ShiftTypeControllerTest extends TestCase
 
     public function testStoreDoesNotPassStoreIdKeyToRepositorySave(): void
     {
-        $req = $this->makeJsonRequest(['code' => 'MORNING', 'name' => 'Matin', 'store_id' => 3]);
+        $req = $this->makeJsonRequest(['code' => 'MORNING', 'name' => 'Matin', 'start_time' => '08:00', 'end_time' => '16:00', 'store_id' => 3]);
 
         $captured = null;
         $this->shiftTypes->method('save')->willReturnCallback(function (array $d) use (&$captured) {

@@ -1541,5 +1541,11 @@
     "store_slug_invalid": "URLスラッグには小文字・数字・単一のハイフンのみ使用でき、英字を1文字以上含める必要があります（最大60文字）。",
     "store_slug_reserved": "このURLスラッグはアプリケーションで予約されています。別のものを選んでください。",
     "store_slug_taken": "このURLスラッグは他の店舗で使用中（または使用済み）です。",
-    "employee_code_invalid_url": "従業員番号には英数字・ハイフン・アンダースコアのみ使用でき、「ID-」で始めることはできません。"
+    "employee_code_invalid_url": "従業員番号には英数字・ハイフン・アンダースコアのみ使用でき、「ID-」で始めることはできません。",
+    "val_field_required": "「:field」は必須です。",
+    "val_field_invalid": "「:field」の形式が正しくありません。",
+    "val_field_too_long": "「:field」が長すぎます（最大 :max）。",
+    "val_field_out_of_range": "「:field」が許可された範囲外です。",
+    "val_no_updatable_field": "更新できる項目がリクエストに含まれていません。",
+    "val_employee_code_taken": "この従業員番号は他のアカウントで既に使用されています。"
 }

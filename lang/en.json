@@ -1542,5 +1542,11 @@
     "store_slug_invalid": "The URL slug may only contain lowercase letters, digits and single hyphens, with at least one letter (60 characters maximum).",
     "store_slug_reserved": "This URL slug is reserved by the application. Please choose another one.",
     "store_slug_taken": "This URL slug is already used (or was used) by another store.",
-    "employee_code_invalid_url": "The employee number may only contain letters, digits, hyphens and underscores, and cannot start with \"ID-\"."
+    "employee_code_invalid_url": "The employee number may only contain letters, digits, hyphens and underscores, and cannot start with \"ID-\".",
+    "val_field_required": "The \":field\" field is required.",
+    "val_field_invalid": "The \":field\" field has an invalid format.",
+    "val_field_too_long": "The \":field\" field is too long (:max maximum).",
+    "val_field_out_of_range": "The \":field\" field is outside the allowed values.",
+    "val_no_updatable_field": "The request contains no updatable field.",
+    "val_employee_code_taken": "This employee number is already used by another account."
 }
