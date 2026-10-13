@@ -46,6 +46,8 @@ final class BundleDiscoveryService
         ?string $bundlesDir = null,
         ?InstalledBundleManifestStore $installedStore = null,
         ?string $installedBundlesDir = null,
+        // Version du Core courante (config/app.php) ; injectable pour les tests.
+        private readonly ?string $coreVersion = null,
     ) {
         $this->bundlesDir = $bundlesDir ?? BASE_PATH . '/src/Bundles';
         $this->installedStore = $installedStore ?? new InstalledBundleManifestStore();
@@ -165,6 +167,9 @@ final class BundleDiscoveryService
                     // ne porte que la ligne de base "X.Y.0", Z est calculé par le
                     // workflow de release du bundle.
                     'version'     => $version,
+                    // Bundle devenu incompatible (mise à jour du Core, contrat relevé) : listé pour que l'Owner le
+                    // voie, jamais chargé (voir BundleServiceProvider). null = compatible.
+                    'incompatible' => $manifest->incompatibilityReason($this->coreVersion()),
                 ];
             } catch (\Throwable) {
                 continue;
@@ -172,5 +177,14 @@ final class BundleDiscoveryService
         }
 
         return $discovered;
+    }
+
+    private function coreVersion(): string
+    {
+        if ($this->coreVersion !== null) {
+            return $this->coreVersion;
+        }
+        $config = defined('BASE_PATH') && is_file(BASE_PATH . '/config/app.php') ? require BASE_PATH . '/config/app.php' : [];
+        return is_array($config) && is_string($config['version'] ?? null) ? $config['version'] : '0.0.0';
     }
 }

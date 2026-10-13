@@ -42,6 +42,7 @@ final class BundleSettingsController
                 'version'  => $meta['version'],
                 'enabled'  => $this->features->isEnabled($key),
                 'official' => in_array($key, $official, true),
+                'incompatible' => $meta['incompatible'] ?? null,
             ];
         }
 
