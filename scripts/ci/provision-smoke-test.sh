@@ -90,4 +90,15 @@ code=$(curl -s -o "$WORK/home.html" -w '%{http_code}' -c "$JAR" -b "$JAR" "$BASE
 [ "$code" = "200" ] || fail "GET / après connexion a répondu $code"
 grep -q 'name="password"' "$WORK/home.html" && fail "toujours sur la page de connexion après login"
 
+# ─── API : connexion, jeton, appel authentifié ───────────────────────────
+# Une installation neuve n'avait pas la colonne api_tokens.expires_at : la connexion API répondait 500.
+api_resp=$(curl -s -w '
+%{http_code}' -X POST "$BASE/api/v1/auth/login" -H 'Content-Type: application/json'   --data "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\",\"name\":\"smoke\"}")
+api_code=$(printf '%s' "$api_resp" | tail -n1)
+[ "$api_code" = "201" ] || fail "POST /api/v1/auth/login a répondu $api_code (attendu 201) : $(printf '%s' "$api_resp" | head -n1)"
+api_token=$(printf '%s' "$api_resp" | head -n1 | sed -E 's/.*"token":"([^"]+)".*//')
+[ -n "$api_token" ] || fail "jeton API absent de la réponse de connexion"
+code=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $api_token" "$BASE/api/v1/auth/me")
+[ "$code" = "200" ] || fail "GET /api/v1/auth/me avec le jeton a répondu $code"
+
 echo "OK : installation en ligne de commande ($tables tables), refus attendus, compte Owner, URL publique et connexion fonctionnels."
