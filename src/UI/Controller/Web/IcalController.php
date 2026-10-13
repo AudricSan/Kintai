@@ -10,6 +10,7 @@ use kintai\Core\Repositories\IcalTokenRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
+use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
@@ -31,6 +32,7 @@ final class IcalController
         private readonly UserRepositoryInterface            $users,
         private readonly AuthService                        $auth,
         private readonly AuditLogger                        $auditLogger,
+        private readonly StoreUserRepositoryInterface       $storeUsers,
     ) {}
 
     /**
@@ -53,6 +55,12 @@ final class IcalController
 
         if (!$store || !$user) {
             throw new NotFoundException(__('error_resource_not_found'));
+        }
+
+        // Le jeton survit à la désactivation du compte et au départ du magasin : sans ce contrôle, un
+        // ancien employé continuait de recevoir le planning (et les congés) de l'équipe dans son agenda.
+        if (empty($user['is_active']) || $this->storeUsers->findMembership($storeId, $userId) === null) {
+            throw new NotFoundException(__('error_ical_feed_not_found'));
         }
 
         $cutoff = date('Y-m-d H:i:s', strtotime('-30 days'));

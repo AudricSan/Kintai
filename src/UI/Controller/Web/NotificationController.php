@@ -73,8 +73,8 @@ final class NotificationController
             return Response::json(['ok' => true]);
         }
 
-        $ref = $request->post('redirect', '');
-        return Response::redirect($ref ?: '/notifications');
+        // Chemin interne uniquement : une destination absolue ou en `//` faisait de cette route une redirection ouverte.
+        return Response::redirect(safe_redirect_path((string) $request->post('redirect', ''), $this->base() . '/notifications'));
     }
 
     public function markAllRead(Request $request): Response
@@ -131,9 +131,10 @@ final class NotificationController
      */
     public function pushUnsubscribe(Request $request): Response
     {
-        $token = trim((string) ($request->json('token') ?? ''));
+        $userId = (int) $this->auth->user()['id'];
+        $token  = trim((string) ($request->json('token') ?? ''));
         if ($token !== '') {
-            $this->pushTokens->deleteByToken($token);
+            $this->pushTokens->deleteByToken($token, $userId);
         }
 
         return Response::json(['ok' => true]);

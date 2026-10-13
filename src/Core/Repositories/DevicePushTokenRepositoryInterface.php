@@ -13,7 +13,11 @@ interface DevicePushTokenRepositoryInterface
     /** Upsert par token (un jeton FCM peut migrer d'un utilisateur à l'autre sur un appareil partagé). */
     public function save(array $data): array;
 
-    public function deleteByToken(string $token): int;
+    /**
+     * @param int|null $userId Si fourni, ne supprime que le jeton de CET utilisateur : la désinscription
+     *                         d'un utilisateur ne doit pas retirer l'appareil d'un autre compte.
+     */
+    public function deleteByToken(string $token, ?int $userId = null): int;
 
     public function touchLastUsed(int $id): void;
 }

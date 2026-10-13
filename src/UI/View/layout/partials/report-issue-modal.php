@@ -7,8 +7,14 @@
  * Variables disponibles via ViewRenderer::share() : $BASE_URL
  */
 
-$riError   = $_GET['ri_error']   ?? null;
-$riSuccess = $_GET['ri_success'] ?? null;
+// Valeurs lues dans l'URL : uniquement des chaînes (?ri_success[]=x faisait planter htmlspecialchars() sur
+// chaque page), et le lien « voir l'incident » n'est affiché que s'il pointe vraiment vers une issue GitHub
+// (sinon une URL forgée y plaçait n'importe quelle destination).
+$riError   = is_string($_GET['ri_error'] ?? null) ? $_GET['ri_error'] : null;
+$riSuccess = is_string($_GET['ri_success'] ?? null)
+    && preg_match('#^https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/issues/\d+$#', $_GET['ri_success']) === 1
+    ? $_GET['ri_success']
+    : null;
 // Rouverte d'office après un envoi (succès ou erreur) pour afficher le résultat.
 $riOpen    = $riError !== null || $riSuccess !== null;
 ?>
