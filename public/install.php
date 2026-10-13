@@ -50,18 +50,6 @@ function pdo_options(): array
     ];
 }
 
-function run_seeds(PDO $pdo, string $dir): void
-{
-    $files = glob($dir . '/*.sql') ?: [];
-    sort($files);
-    foreach ($files as $file) {
-        $sql = trim((string) file_get_contents($file));
-        if ($sql !== '') {
-            $pdo->exec($sql);
-        }
-    }
-}
-
 // ─── Installation logic ───────────────────────────────────────────────────────
 
 $errors  = [];
@@ -179,9 +167,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $runner->run();
 
             if ($runSeeds) {
-                $pdo = $app->container()->make(Capsule::class)->getConnection()->getPdo();
-                run_seeds($pdo, BASE_PATH . '/database/seeds/' . $dbDriver);
-                unset($pdo);
+                // Données de démonstration du Core, écrites par les modèles (indépendantes du pilote et du schéma).
+                (new \kintai\Core\Database\DemoDataSeeder())->run();
             }
 
             // ── Step D: Create admin user via the framework ───────────────
@@ -391,7 +378,7 @@ $defaultUsername = env('DB_USERNAME', 'root');
             <div class="check-row" id="seeds-row">
                 <input type="checkbox" id="run_seeds" name="run_seeds"
                        <?= isset($_POST['run_seeds']) ? 'checked' : '' ?>>
-                <label for="run_seeds">Run database seeders</label>
+                <label for="run_seeds">Add demo data (2 stores, 6 accounts, 2 weeks of schedule)</label>
             </div>
 
             <button type="submit" class="btn">Install Kintai</button>
