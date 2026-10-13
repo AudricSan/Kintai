@@ -180,6 +180,7 @@ ob_start();
     <?php if (bundle_enabled('team-directory')): ?>
     <div class="form-group">
         <label class="form-toggle form-toggle--labeled">
+            <input type="hidden" name="show_in_directory" value="0">
             <input type="checkbox" name="show_in_directory" value="1" class="form-toggle__input"
                    <?= (($user['show_in_directory'] ?? 1) != 0) ? 'checked' : '' ?>>
             <span class="form-toggle__track"></span>
@@ -192,18 +193,21 @@ ob_start();
         <p class="form-hint"><?= __('share_contact_info_hint') ?></p>
         <div class="share-toggle-list">
             <label class="form-toggle form-toggle--labeled">
+                <input type="hidden" name="share_email" value="0">
                 <input type="checkbox" name="share_email" value="1" class="form-toggle__input"
                        <?= (($user['share_email'] ?? 0) != 0) ? 'checked' : '' ?>>
                 <span class="form-toggle__track"></span>
                 <span><?= __('email') ?></span>
             </label>
             <label class="form-toggle form-toggle--labeled">
+                <input type="hidden" name="share_phone" value="0">
                 <input type="checkbox" name="share_phone" value="1" class="form-toggle__input"
                        <?= (($user['share_phone'] ?? 0) != 0) ? 'checked' : '' ?>>
                 <span class="form-toggle__track"></span>
                 <span><?= __('phone') ?></span>
             </label>
             <label class="form-toggle form-toggle--labeled">
+                <input type="hidden" name="share_mobile_phone" value="0">
                 <input type="checkbox" name="share_mobile_phone" value="1" class="form-toggle__input"
                        <?= (($user['share_mobile_phone'] ?? 0) != 0) ? 'checked' : '' ?>>
                 <span class="form-toggle__track"></span>

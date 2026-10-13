@@ -125,7 +125,8 @@ final class AuthControllerProfileFieldsTest extends TestCase
 
     public function testShowInDirectoryDefaultsToDisabledWhenCheckboxUnchecked(): void
     {
-        $_POST = ['language' => 'fr'];
+        // Case décochée : le champ caché envoie « 0 ».
+        $_POST = ['language' => 'fr', 'show_in_directory' => '0'];
 
         $saved = null;
         $this->users->method('save')->willReturnCallback(function (array $d) use (&$saved) {
@@ -153,5 +154,28 @@ final class AuthControllerProfileFieldsTest extends TestCase
         $this->assertSame(0, $saved['share_email']);
         $this->assertSame(0, $saved['share_phone']);
         $this->assertSame(0, $saved['share_mobile_phone']);
+    }
+
+    /**
+     * Audit M12 : les cases de l'annuaire ne sont affichées que si le bundle team-directory est actif ; un
+     * enregistrement du profil sans elles les remettait à 0. Une requête partielle vidait aussi les coordonnées.
+     */
+    public function testFieldsAbsentFromTheRequestKeepTheirValue(): void
+    {
+        // Compte du setUp : show_in_directory = 1, aucune coordonnée.
+        $_POST = ['bio' => 'Bonjour'];
+
+        $saved = null;
+        $this->users->method('save')->willReturnCallback(function (array $d) use (&$saved) {
+            $saved = $d;
+            return $d;
+        });
+
+        $this->controller->updateProfile(new Request());
+
+        $this->assertSame('Bonjour', $saved['bio']);
+        $this->assertSame(1, $saved['show_in_directory'], 'case absente : valeur conservée');
+        $this->assertArrayNotHasKey('phone', $saved, 'champ absent : non réécrit (pas vidé)');
+        $this->assertSame(0, $saved['share_email']);
     }
 }

@@ -116,6 +116,26 @@ final class Request
         return $this->post[$key] ?? $default;
     }
 
+    /** Le champ est-il présent dans le corps POST (même vide) ? */
+    public function hasPost(string $key): bool
+    {
+        return array_key_exists($key, $this->post);
+    }
+
+    /**
+     * Case à cocher d'un formulaire de modification : 1 si cochée ('1', 'on', 'true'), 0 si envoyée
+     * décochée (les vues placent un champ caché « 0 » devant chaque case), valeur actuelle si le champ est
+     * absent de la requête. Avant l'audit du 13/10/2026 (M12), un champ absent valait « décoché » :
+     * une requête partielle désactivait un magasin ou masquait un profil sans le vouloir.
+     */
+    public function postFlag(string $key, mixed $current): int
+    {
+        if (!$this->hasPost($key)) {
+            return empty($current) ? 0 : 1;
+        }
+        return in_array($this->post[$key], ['1', 'on', 'true', 1, true], true) ? 1 : 0;
+    }
+
     public function allPost(): array
     {
         return $this->post;

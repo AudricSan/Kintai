@@ -151,6 +151,7 @@ $dedResidentTax = $ded['resident_tax_monthly'] ?? 0;
         <div class="card-body form-stack">
             <div class="form-group form-group--inline">
                 <label class="form-check">
+                    <input type="hidden" name="ded_enabled" value="0">
                     <input type="checkbox" name="ded_enabled" value="1" <?= $dedEnabled ? 'checked' : '' ?>>
                     <span><?= __('deductions_enabled') ?></span>
                 </label>
@@ -343,6 +344,7 @@ $dedResidentTax = $ded['resident_tax_monthly'] ?? 0;
                     <?php if (!$isAvailable($slug)) continue; ?>
                     <?php $on = $isEnabled($slug); ?>
                     <label class="feature-card">
+                        <input type="hidden" name="feature_<?= $slug ?>" value="0">
                         <input type="checkbox" name="feature_<?= $slug ?>" value="1"
                                <?= $on ? 'checked' : '' ?> class="feature-card__input">
                         <div class="feature-card__icon"><?= $info['icon'] ?></div>
