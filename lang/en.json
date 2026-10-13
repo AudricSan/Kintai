@@ -1545,5 +1545,6 @@
     "bundle_incompatible_not_loaded": "This bundle is not loaded: :reason Install a compatible version from the market.",
     "bundle_contract_incompatible": "it requires bundle contract :required, this Kintai provides contract :provided.",
     "bundle_contract_constraint_invalid": "its contract constraint \":constraint\" is malformed.",
-    "bundle_core_incompatible": "it requires Kintai :min to :max (installed version: :current)."
+    "bundle_core_incompatible": "it requires Kintai :min to :max (installed version: :current).",
+    "photos": "Photos"
 }

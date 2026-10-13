@@ -15,7 +15,6 @@ use kintai\UI\Components\Flash;
  * @var array  $nav_hidden
  * @var array  $nav_section_order
  * @var array  $nav_default_sections
- * @var array  $nav_allowed_keys
  * @var bool   $is_owner
  * @var array  $bottom_nav_pool
  * @var array  $bottom_nav_items
@@ -382,64 +381,28 @@ else: ?>
 // défensive avec le même principe appliqué à shifts-timeline.php/shifts-calendar.php.
 $_isManagerView = $is_manager_view ?? false;
 
-if ($_isManagerView) {
-    $_navFeatMap = [
-        'shifts'          => 'shifts',
-        'calendar'        => 'shifts',
-        'shift_types'     => 'shifts',
-        'timeclocks'      => 'timeclock',
-        'users'           => null,
-        'stores'          => null,
-        'timeoff'         => 'timeoff',
-        'swaps'           => 'swaps',
-        'open_shifts'     => 'open_shifts',
-        'messages'        => 'messages',
-        'employee_report' => null,
-        'daily_reports'   => 'daily_reports',
-        'audit_log'       => null,
-    ];
-    $_navAllSections = [
-        'planning'   => ['shifts', 'calendar', 'shift_types', 'timeclocks'],
-        'hr'         => ['users', 'stores'],
-        'requests'   => ['timeoff', 'swaps', 'open_shifts', 'messages'],
-        'statistics' => ['employee_report', 'daily_reports'],
-        'system'     => ['audit_log'],
-    ];
-    $_navSaveAction = route_url('admin.nav_settings');
-} else {
-    $_navFeatMap = [
-        'my_planning'   => 'shifts',
-        'timeclock'     => 'timeclock',
-        'my_timeoff'    => 'timeoff',
-        'swaps'         => 'swaps',
-        'open_shifts'   => 'open_shifts',
-        'messages'      => 'messages',
-        'daily_reports' => 'daily_reports',
-        'my_profile'    => null,
-    ];
-    $_navAllSections = [
-        'planning'   => ['my_planning', 'timeclock'],
-        'requests'   => ['my_timeoff', 'swaps', 'open_shifts', 'messages'],
-        'statistics' => ['daily_reports'],
-        'account'    => ['my_profile'],
-    ];
-    $_navSaveAction = route_url('employee.nav_settings');
-}
+$_navSaveAction = route_url($_isManagerView ? 'admin.nav_settings' : 'employee.nav_settings');
 
 $_navHasFeat = fn(?string $f): bool =>
     $f === null || ($is_owner ?? false) || $store_features === null || in_array($f, (array) $store_features, true);
 
+// Entrées masquables : la navigation réelle du rôle (Core + bundles actifs, voir kintai\Core\Extension\Navigation),
+// avec les mêmes clés que la barre du haut — l'ancienne liste employé (my_planning, my_timeoff…) n'y
+// correspondait pas, si bien que masquer une entrée depuis le profil n'avait aucun effet.
+$_navigation = \kintai\Core\Extension\Navigation::current();
+$_navByKey = $_navigation->hideableKeys($_isManagerView, $route_visible ?? fn(string $r): bool => true, $_navHasFeat, get_defined_vars());
 $_navSections = [];
-foreach ($_navAllSections as $_sk => $_keys) {
-    $filtered = array_values(array_filter(
-        array_intersect($_keys, $nav_allowed_keys),
-        fn(string $k) => $_navHasFeat($_navFeatMap[$k] ?? null)
-    ));
-    if (!empty($filtered)) {
-        $_navSections[$_sk] = $filtered;
+foreach ($nav_section_order ?? array_keys($_navByKey) as $_sk) {
+    if (!empty($_navByKey[$_sk])) {
+        $_navSections[$_sk] = $_navByKey[$_sk];
     }
 }
 
+// Barre mobile (étape suivante du plan) : clés et fonctionnalités propres, inchangées pour l'instant.
+$_navFeatMap = [
+    'my_planning' => 'shifts', 'timeclock' => 'timeclock', 'my_timeoff' => 'timeoff', 'swaps' => 'swaps',
+    'open_shifts' => 'open_shifts', 'messages' => 'messages', 'daily_reports' => 'daily_reports', 'my_profile' => null,
+];
 $_bnFeatMap = $_isManagerView ? [
     'shifts'        => 'shifts',
     'team'          => null,
@@ -512,7 +475,7 @@ $_filteredBnPool = array_values(array_filter(
                                <?= !in_array($_k, $nav_hidden, true) ? 'checked' : '' ?>>
                         <span class="form-toggle__track"></span>
                     </label>
-                    <span class="nav-pref-label"><?= __($_k) ?></span>
+                    <span class="nav-pref-label"><?= __($_navigation->labelOf($_k, $_isManagerView)) ?></span>
                 </div>
             <?php endforeach; ?>
         </div>

@@ -9,7 +9,6 @@ use kintai\UI\Components\Flash;
  * l'onglet "nav" de son profil (staff/profile.php) — pas de duplication ici.
  *
  * @var string[] $hidden
- * @var string[] $allowedKeys
  * @var string[] $sectionOrder
  * @var string[] $defaultSections
  * @var string[] $bottomNavPool
@@ -22,37 +21,18 @@ use kintai\UI\Components\Flash;
 $isOwnerView = !empty($isOwner);
 $hasFeat     = fn(?string $f): bool => $f === null || $isOwnerView || $store_features === null || in_array($f, (array) $store_features, true);
 
-$featMap = [
-    'shifts'      => 'shifts', 'calendar' => 'shifts', 'shift_types' => 'shifts',
-    'timeclocks'  => 'timeclock', 'users' => null, 'stores' => null,
-    'timeoff'     => 'timeoff', 'swaps' => 'swaps', 'open_shifts' => 'open_shifts',
-    'messages'    => 'messages', 'employee_report' => null, 'daily_reports' => 'daily_reports',
-    'photos'      => null, 'audit_log' => null,
-    'hiring_report' => null, 'resignation_report' => null, 'salary_report' => null,
-];
-// Les rapports RH sont des bundles activables/désactivables globalement (pas des feature
-// flags par store) — voir _sidebar.php, qui les gate via bundle_enabled(). Une clé absente
-// d'ici n'est pas soumise à ce filtre supplémentaire.
-$bundleMap = [
-    'hiring_report'      => 'hiring-report',
-    'resignation_report' => 'resignation-report',
-    'salary_report'      => 'salary-report',
-];
-$allSections = [
-    'planning'   => ['shifts', 'calendar', 'shift_types', 'timeclocks'],
-    'hr'         => ['users', 'stores'],
-    'requests'   => ['timeoff', 'swaps', 'open_shifts', 'messages'],
-    'statistics' => ['hiring_report', 'employee_report', 'daily_reports', 'resignation_report', 'salary_report', 'photos'],
-    'system'     => ['audit_log'],
-];
+// Entrées masquables construites à partir de la navigation réelle (Core + bundles actifs, voir
+// kintai\Core\Extension\Navigation) : même liste que la barre du haut, plus de table recopiée à la main.
+$_navigation = \kintai\Core\Extension\Navigation::current();
+$_byNav = $_navigation->hideableKeys(true, $route_visible ?? fn(string $r): bool => true, $hasFeat, get_defined_vars());
+
 $bnFeatMap = ['shifts' => 'shifts', 'team' => null, 'requests' => 'timeoff', 'messages' => 'messages', 'swaps' => 'swaps', 'timeclocks' => 'timeclock', 'daily_reports' => 'daily_reports'];
 
 $sections = [];
-foreach ($allSections as $sk => $keys) {
-    $f = array_values(array_filter(array_intersect($keys, $allowedKeys), fn(string $k) =>
-        $hasFeat($featMap[$k] ?? null) && (!isset($bundleMap[$k]) || bundle_enabled($bundleMap[$k]))
-    ));
-    if (!empty($f)) $sections[$sk] = $f;
+foreach ($sectionOrder as $sk) {
+    if (!empty($_byNav[$sk])) {
+        $sections[$sk] = $_byNav[$sk];
+    }
 }
 $bottomNavPool = array_values(array_filter($bottomNavPool, fn(string $k) => $hasFeat($bnFeatMap[$k] ?? null)));
 
@@ -110,7 +90,7 @@ echo Flash::fromQuery('success', ['default' => __('operation_success'), '1' => _
                     <input type="checkbox" name="nav[<?= $key ?>]" value="1" class="form-toggle__input" <?= !in_array($key, $hidden, true) ? 'checked' : '' ?>>
                     <span class="form-toggle__track"></span>
                 </label>
-                <span class="nav-pref-label"><?= __($key) ?></span>
+                <span class="nav-pref-label"><?= __($_navigation->labelOf($key, true)) ?></span>
                 <input type="hidden" name="nav_available[]" value="<?= htmlspecialchars($key) ?>">
             </div>
             <?php endforeach; ?>
