@@ -14,10 +14,13 @@ use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\BackupService;
 use kintai\Core\Services\GithubUpdateService;
 use kintai\Core\Services\UpdateService;
+use kintai\UI\Controller\Web\HasBaseUrl;
 use kintai\UI\ViewRenderer;
 
 final class BackupController
 {
+    use HasBaseUrl;
+
     public function __construct(
         private readonly ViewRenderer $view,
         private readonly BackupService $backup,
@@ -35,7 +38,7 @@ final class BackupController
         $filename = (string) $request->query('filename', '');
         $path = $this->backup->getPath($filename);
         if ($filename === '' || !file_exists($path)) {
-            return Response::redirect('/admin/backup?success=error_not_found');
+            return Response::redirect($this->base() . '/admin/backup?success=error_not_found');
         }
 
         return Response::fileStream($path, 'application/zip', basename($path));
@@ -73,7 +76,7 @@ final class BackupController
             'backup_max_keep'     => $maxKeep,
         ]);
 
-        return Response::redirect('/admin/backup?success=settings_saved');
+        return Response::redirect($this->base() . '/admin/backup?success=settings_saved');
     }
 
     public function updatePage(Request $request): Response
@@ -122,7 +125,7 @@ final class BackupController
 
         $this->auditLogger->log($request, 'update.channel_changed', 'system', null, ['channel' => $channel]);
 
-        return Response::redirect('/admin/update?success=channel_' . $channel);
+        return Response::redirect($this->base() . '/admin/update?success=channel_' . $channel);
     }
 
     /** POST /admin/update/apply — applique la dernière release GitHub disponible. */
@@ -139,7 +142,7 @@ final class BackupController
                 $result = $this->githubUpdate->applyUpdate();
             } catch (\Throwable $e) {
                 SessionFlash::put('danger', __('error_prefix') . $e->getMessage());
-                return Response::redirect('/admin/update?success=error_failed');
+                return Response::redirect($this->base() . '/admin/update?success=error_failed');
             }
 
             if (!$result['ok']) {
@@ -147,10 +150,10 @@ final class BackupController
                 // tout autre texte passe par la session, jamais par l'URL.
                 $code = (string) $result['error'];
                 if (preg_match('/^[a-z_]{1,60}$/', $code) === 1) {
-                    return Response::redirect('/admin/update?success=error_' . $code);
+                    return Response::redirect($this->base() . '/admin/update?success=error_' . $code);
                 }
                 SessionFlash::put('danger', __('error_prefix') . $code);
-                return Response::redirect('/admin/update?success=error_failed');
+                return Response::redirect($this->base() . '/admin/update?success=error_failed');
             }
 
             $summary = sprintf(
@@ -169,7 +172,7 @@ final class BackupController
                 'migrations_applied' => $result['migrations_applied'],
             ]);
 
-            return Response::redirect('/admin/update?success=' . urlencode($summary));
+            return Response::redirect($this->base() . '/admin/update?success=' . urlencode($summary));
         } finally {
             if (!$wasMaintenanceEnabled) {
                 $this->settings->setMany(['maintenance_mode_enabled' => '0']);
@@ -255,10 +258,10 @@ final class BackupController
                 'size'     => $result['size'],
                 'source'   => 'manual',
             ]);
-            return Response::redirect('/admin/backup?success=created_' . urlencode($result['filename']));
+            return Response::redirect($this->base() . '/admin/backup?success=created_' . urlencode($result['filename']));
         } catch (\Throwable $e) {
             SessionFlash::put('danger', __('error_prefix') . $e->getMessage());
-            return Response::redirect('/admin/backup?success=error_failed');
+            return Response::redirect($this->base() . '/admin/backup?success=error_failed');
         }
     }
 
@@ -268,17 +271,17 @@ final class BackupController
         $filename = trim((string) $request->post('filename', ''));
 
         if ($filename === '') {
-            return Response::redirect('/admin/backup?success=error_no_file');
+            return Response::redirect($this->base() . '/admin/backup?success=error_no_file');
         }
 
         try {
             $this->backup->restore($filename);
             $this->backup->enforceRetention($this->settings->backupMaxKeep());
             $this->auditLogger->log($request, 'backup.restored', 'system', null, ['filename' => $filename]);
-            return Response::redirect('/admin/backup?success=restored');
+            return Response::redirect($this->base() . '/admin/backup?success=restored');
         } catch (\Throwable $e) {
             SessionFlash::put('danger', __('error_prefix') . $e->getMessage());
-            return Response::redirect('/admin/backup?success=error_failed');
+            return Response::redirect($this->base() . '/admin/backup?success=error_failed');
         }
     }
 
@@ -288,12 +291,12 @@ final class BackupController
         $filename = trim((string) $request->post('filename', ''));
 
         if ($filename === '') {
-            return Response::redirect('/admin/backup?success=error_no_file');
+            return Response::redirect($this->base() . '/admin/backup?success=error_no_file');
         }
 
         $this->backup->delete($filename);
         $this->auditLogger->log($request, 'backup.deleted', 'system', null, ['filename' => $filename]);
-        return Response::redirect('/admin/backup?success=deleted');
+        return Response::redirect($this->base() . '/admin/backup?success=deleted');
     }
 
     public function migrate(Request $request): Response
@@ -308,11 +311,11 @@ final class BackupController
             try {
                 $count = $this->migrator->run();
                 $this->auditLogger->log($request, 'system.migration_applied', 'system', null, ['migrations_applied' => $count]);
-                return Response::redirect('/admin/update?success=migrated');
+                return Response::redirect($this->base() . '/admin/update?success=migrated');
             } catch (\Throwable $e) {
                 $this->auditLogger->log($request, 'db.migration_failed', 'system', null, ['error' => $e->getMessage()]);
                 SessionFlash::put('danger', __('error_prefix') . $e->getMessage());
-                return Response::redirect('/admin/update?success=error_failed');
+                return Response::redirect($this->base() . '/admin/update?success=error_failed');
             }
         } finally {
             if (!$wasMaintenanceEnabled) {
@@ -326,7 +329,7 @@ final class BackupController
 
         $count = $this->backup->deleteAll();
         $this->auditLogger->log($request, 'backup.deleted_all', 'system', null, ['count' => $count]);
-        return Response::redirect('/admin/backup?success=deleted_all_' . $count);
+        return Response::redirect($this->base() . '/admin/backup?success=deleted_all_' . $count);
     }
 
     /**
