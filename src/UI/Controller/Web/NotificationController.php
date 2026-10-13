@@ -86,7 +86,7 @@ final class NotificationController
             return Response::json(['ok' => true]);
         }
 
-        return Response::redirect('/notifications');
+        return Response::redirect($this->base() . '/notifications');
     }
 
     public function deleteAll(Request $request): Response
@@ -98,7 +98,7 @@ final class NotificationController
             return Response::json(['ok' => true]);
         }
 
-        return Response::redirect('/notifications');
+        return Response::redirect($this->base() . '/notifications');
     }
 
     /**

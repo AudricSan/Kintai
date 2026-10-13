@@ -159,6 +159,12 @@ final class Response
         return $this;
     }
 
+    /** @return array<string, string> En-têtes définis sur la réponse (lecture seule, pour les tests et les middlewares). */
+    public function headers(): array
+    {
+        return $this->headers;
+    }
+
     public function status(): int
     {
         return $this->status;

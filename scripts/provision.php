@@ -35,6 +35,7 @@ use Illuminate\Database\Capsule\Manager as Capsule;
 use kintai\Core\Application;
 use kintai\Core\Auth\PasswordHasher;
 use kintai\Core\Auth\PasswordPolicy;
+use kintai\Core\Database\DemoDataSeeder;
 use kintai\Core\Database\MigrationRunner;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
@@ -139,18 +140,6 @@ function pdo_options(): array
     ];
 }
 
-function run_seeds(PDO $pdo, string $dir): void
-{
-    $files = glob($dir . '/*.sql') ?: [];
-    sort($files);
-    foreach ($files as $file) {
-        $sql = trim((string) file_get_contents($file));
-        if ($sql !== '') {
-            $pdo->exec($sql);
-        }
-    }
-}
-
 // Application coupe l'affichage des erreurs hors mode debug : sans ce filet, une erreur arrêtait le script sans
 // aucun message (code de sortie 255 et rien d'autre).
 try {
@@ -221,10 +210,10 @@ try {
     // ─── Step 5 : Seeders ────────────────────────────────────────────────────
 
     if ($runSeeds) {
-        $pdo = $app->container()->make(Capsule::class)->getConnection()->getPdo();
-        run_seeds($pdo, BASE_PATH . '/database/seeds/' . $dbDriver);
-        unset($pdo);
-        echo "[Kintai] Seeders exécutés.\n";
+        // Données de démonstration du Core, écrites par les modèles (indépendantes du pilote et du schéma).
+        $seeded = (new DemoDataSeeder())->run();
+        echo "[Kintai] Données de démonstration : {$seeded['stores']} magasins, {$seeded['users']} comptes "
+            . "(mot de passe " . DemoDataSeeder::PASSWORD . "), {$seeded['shifts']} shifts.\n";
     }
 
     // ─── Step 6 : Create admin user (rôle Owner) ─────────────────────────────
