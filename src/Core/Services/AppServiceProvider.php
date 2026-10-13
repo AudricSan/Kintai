@@ -157,7 +157,7 @@ final class AppServiceProvider extends ServiceProvider
         ));
 
         // DailyReportPermissionService/PdfService/MailService/AutoValidateService liés ici,
-        // pas par le bundle "daily-report" : DailyReportNavMiddleware (middleware global,
+        // pas par le bundle "daily-report" : BundleViewDataMiddleware (middleware global,
         // partagé sur toute page authentifiée) et AutoValidateJob/CronController en
         // dépendent directement, et doivent continuer de fonctionner même si ce bundle
         // est désactivé ou désinstallé — même raison que DailyReportRepositoryInterface

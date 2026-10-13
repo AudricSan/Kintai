@@ -305,6 +305,26 @@ render for your bundle (`pending_timeoff`, `pending_swaps`, `timeclocks_today`, 
 them keeps users' choices. As soon as your bundle declares a widget, the Core stops rendering its historical
 widgets for it. Require `"kintai_contract": "^1.4"`.
 
+### View variables: `viewVariables()` (contract 1.5)
+
+```php
+public function viewVariables(): array
+{
+    return [
+        // name => fn(array $user): mixed, shared with every view of authenticated pages
+        'unread_messages_count' => fn(array $user): int =>
+            $this->app->container()->make(MessageRepositoryInterface::class)->countUnread((int) $user['id']),
+    ];
+}
+```
+
+Use it for the few values your navigation or layout needs on every page — typically the counter named in a
+`NavItem`'s `badge`. Each function runs on every authenticated page, so keep it to one cheap query. Names are
+lowercase `snake_case`, preferably prefixed with your bundle's name; Core names (`auth_user`, `managed_store_ids`,
+`store_features`, …) and names already declared by another bundle are refused, and an exception drops that variable
+only (logged). Until `messaging` and `daily-report` declare theirs, the Core keeps computing
+`unread_messages_count` and `daily_report_staff_stores` for them. Require `"kintai_contract": "^1.5"`.
+
 ## The RBAC scope contract: `managed_store_ids`
 
 Every Web route your bundle registers under `middleware: [AuthMiddleware::class, PermissionMiddleware::class]` must declare a `permission:` — either a precise key from `PermissionCatalog`, or `'public'` (a route intentionally left ungated, e.g. self-service/aggregate pages; omitting `permission:` entirely behaves the same way). `PermissionMiddleware` resolves this into a request attribute, `managed_store_ids`, that every controller down the line is expected to read rather than re-deriving:

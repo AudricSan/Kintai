@@ -115,6 +115,18 @@ abstract class Bundle
     }
 
     /**
+     * Point d'extension « variables de vue » (contrat 1.5) : variables partagées avec toutes les vues des pages
+     * authentifiées, sous la forme nom => fn(array $utilisateur): mixed (ex. un compteur affiché en badge dans la
+     * navigation, voir NavItem::$badge). Chaque fonction est appelée à chaque page : elle doit rester légère.
+     *
+     * @return array<string, \Closure(array): mixed>
+     */
+    public function viewVariables(): array
+    {
+        return [];
+    }
+
+    /**
      * Boot du bundle, une fois tous les bundles enregistrés.
      */
     public function boot(): void

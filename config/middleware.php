@@ -15,8 +15,8 @@ return [
         \kintai\Core\Middleware\AppSettingsMiddleware::class,
         \kintai\Core\Middleware\MaintenanceModeMiddleware::class,
         \kintai\Core\Middleware\PasswordReminderMiddleware::class,
-        \kintai\Core\Middleware\DailyReportNavMiddleware::class,
-        \kintai\Core\Middleware\MessageCountMiddleware::class,
+        // Variables de vue des bundles (Bundle::viewVariables()) et managed_store_ids pour la navigation.
+        \kintai\Core\Middleware\BundleViewDataMiddleware::class,
         \kintai\Core\Middleware\NotificationMiddleware::class,
     ],
 ];
