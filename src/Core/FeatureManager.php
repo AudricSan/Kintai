@@ -7,13 +7,12 @@ namespace kintai\Core;
 final class FeatureManager
 {
     /**
-     * Association slug de feature par-store (store_features, coché sur la fiche
-     * magasin) → slug du bundle Core dont il dépend. Un slug absent d'ici est
-     * une fonctionnalité Core, toujours disponible quel que soit l'état des
-     * bundles. Source de vérité unique : réutilisée par AdminStoreController
-     * (quelles cases proposer sur la fiche magasin) et par les vues (sidebar,
-     * bottom nav, dashboards) pour ne pas générer de lien vers une route dont
-     * le bundle est désactivé au niveau de l'instance.
+     * Association historique slug de feature par-store → slug du bundle officiel qui la porte. N'est plus lue par le
+     * Core : les fonctionnalités par magasin viennent de kintai\Core\Extension\StoreFeatures (déclarations des
+     * bundles, contrat 1.3, et repli historique). Conservée pour les bundles qui la lisaient encore ; disparaîtra
+     * avec le repli (étape 5 du plan du contrat).
+     *
+     * @deprecated Utiliser kintai\Core\Extension\StoreFeatures.
      */
     public const STORE_FEATURE_BUNDLE_MAP = [
         'messages'      => 'messaging',

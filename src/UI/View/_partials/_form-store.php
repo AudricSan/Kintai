@@ -322,26 +322,15 @@ $dedResidentTax = $ded['resident_tax_monthly'] ?? 0;
         <div class="card-body form-stack">
             <p class="form-hint"><?= __('store_features_hint') ?></p>
             <?php
-            $allFeatureSlugs = [
-                'shifts'        => ['label' => __('feature_shifts'),        'desc' => __('feature_shifts_desc'),        'icon' => '📅'],
-                'timeclock'     => ['label' => __('feature_timeclock'),      'desc' => __('feature_timeclock_desc'),      'icon' => '🕐'],
-                'timeoff'       => ['label' => __('feature_timeoff'),        'desc' => __('feature_timeoff_desc'),        'icon' => '🏖'],
-                'swaps'         => ['label' => __('feature_swaps'),          'desc' => __('feature_swaps_desc'),          'icon' => '🔄'],
-                'open_shifts'   => ['label' => __('feature_open_shifts'),    'desc' => __('feature_open_shifts_desc'),    'icon' => '📋'],
-                'messages'      => ['label' => __('feature_messages'),       'desc' => __('feature_messages_desc'),       'icon' => '💬'],
-                'daily_reports' => ['label' => __('feature_daily_reports'),  'desc' => __('feature_daily_reports_desc'),  'icon' => '📊'],
-                'photos'        => ['label' => __('feature_photos'),        'desc' => __('feature_photos_desc'),        'icon' => '📷'],
-                'notes'         => ['label' => __('feature_notes'),          'desc' => __('feature_notes_desc'),          'icon' => '📝'],
-            ];
+            // Cartes fournies par le contrôleur : Core et bundles actifs (Bundle::storeFeatures(), contrat 1.3, ou
+            // repli historique). Une fonctionnalité de bundle désactivé au niveau instance n'est pas proposée ici.
+            $featureCards ??= [];
             $enabledFeatures ??= null;
             $isEnabled = fn(string $slug): bool => $enabledFeatures === null || in_array($slug, $enabledFeatures, true);
-            // Un slug lié à un bundle désactivé au niveau instance (/admin/bundles) n'est pas proposé ici.
-            $availableFeatureSlugs ??= [];
-            $isAvailable = fn(string $slug): bool => $availableFeatureSlugs[$slug] ?? true;
             ?>
             <div class="feature-cards">
-                <?php foreach ($allFeatureSlugs as $slug => $info): ?>
-                    <?php if (!$isAvailable($slug)) continue; ?>
+                <?php foreach ($featureCards as $info): ?>
+                    <?php $slug = $info['key']; ?>
                     <?php $on = $isEnabled($slug); ?>
                     <label class="feature-card">
                         <input type="hidden" name="feature_<?= $slug ?>" value="0">

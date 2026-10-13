@@ -92,6 +92,17 @@ abstract class Bundle
     }
 
     /**
+     * Point d'extension « fonctionnalités par magasin » (contrat 1.3) : cases proposées sur la fiche magasin tant
+     * que le bundle est actif, enregistrées dans store_features sous leur clé.
+     *
+     * @return list<\kintai\Contract\Extension\StoreFeature>
+     */
+    public function storeFeatures(): array
+    {
+        return [];
+    }
+
+    /**
      * Boot du bundle, une fois tous les bundles enregistrés.
      */
     public function boot(): void

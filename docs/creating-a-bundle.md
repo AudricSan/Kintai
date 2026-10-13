@@ -187,7 +187,7 @@ public function testOnlyTheContractIsUsed(): void
 }
 ```
 
-## Extension points (contract 1.1)
+## Extension points (contract 1.1+)
 
 The Core never names a bundle: a bundle **declares** what it adds to the interface by overriding methods of its
 entry class, and the Core renders it. Each bundle is queried in isolation — an exception or a value of the wrong
@@ -243,6 +243,32 @@ database, so re-enabling it restores them. Require `"kintai_contract": "^1.2"`.
 
 Official bundles that don't declare their permissions yet keep the categories historically listed in
 `PermissionCatalog::CATEGORIES`; once a bundle declares `permissions()`, only its declaration counts.
+
+### Per-store features: `storeFeatures()` (contract 1.3)
+
+```php
+use kintai\Contract\Extension\StoreFeature;
+
+public function storeFeatures(): array
+{
+    return [
+        new StoreFeature(
+            key: 'timeoff',                       // stored in store_features, lowercase snake_case
+            label: 'feature_timeoff',             // translation key of the card title
+            description: 'feature_timeoff_desc',  // translation key of the card description
+            icon: '🏖',
+            order: 30,                            // Core features use multiples of 10
+        ),
+    ];
+}
+```
+
+While your bundle is active, each feature is offered as a switch in the "Features" card of the store form. Check
+it on your employee pages with `HasStoreFeatureCheck::assertFeature($request, 'timeoff')`, and give the same key
+as `storeFeature` to your `NavItem`s so they disappear for stores that turned it off. A store that has never saved
+its features has every feature on; disabling your bundle keeps each store's choice, so re-enabling it restores
+them. A key already declared by the Core or another bundle is ignored (logged). Require
+`"kintai_contract": "^1.3"`.
 
 ## The RBAC scope contract: `managed_store_ids`
 
