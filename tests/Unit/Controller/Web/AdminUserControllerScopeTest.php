@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Controller\Web;
 
+use kintai\Core\Auth\OwnerGuard;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Container;
 use kintai\Core\Exceptions\ForbiddenException;
@@ -89,6 +90,7 @@ final class AdminUserControllerScopeTest extends TestCase
                 $this->users,
                 new LicenseClientService($this->createStub(AppSettingsRepositoryInterface::class), ['base_url' => '', 'api_key' => '']),
             ),
+            new OwnerGuard(new PermissionService($assignments, $roles), $this->users),
         );
     }
 

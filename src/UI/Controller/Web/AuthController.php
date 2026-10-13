@@ -540,6 +540,12 @@ final class AuthController
         $userId   = (int) $user['id'];
         $password = (string) $request->post('password', '');
 
+        // Un Owner ne supprime pas son propre compte : la suppression anonymise et désactive le compte, ce qui
+        // pourrait laisser l'instance sans administrateur. Il doit d'abord céder le rôle à un autre Owner.
+        if ($this->auth->isAdmin()) {
+            return Response::redirect($this->base() . '/profile?tab=data&error=owner_cannot_delete');
+        }
+
         // Toujours vérifier : un hash vide fait échouer password_verify(), donc refuse l'action.
         $storedHash = (string) ($user['password_hash'] ?? '');
         if (!password_verify($password, $storedHash)) {

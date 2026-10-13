@@ -46,6 +46,7 @@ $errMsg = match ($_GET['error'] ?? '') {
     'password_mismatch'      => __('password_mismatch'),
     'password_too_short'     => __('password_too_short'),
     'current_password_wrong' => __('current_password_wrong'),
+    'owner_cannot_delete'    => __('error_owner_cannot_remove_self'),
     'avatar_invalid'         => __('avatar_invalid'),
     default                  => '',
 };
