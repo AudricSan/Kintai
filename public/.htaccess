@@ -1,5 +1,10 @@
 RewriteEngine On
 
+# Transmettre l'en-tete Authorization a PHP : Apache le retire, et l'API a jeton (Bearer) repondait
+# MISSING_TOKEN a toute requete. Repris par Request::withAuthorizationHeader().
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
 # Pages d'erreur statiques (secours quand PHP est indisponible : crash, module
 # desactive, etc.) - ne remplacent PAS les pages PHP habituelles (celles-ci
 # envoient deja leur propre corps de reponse, Apache ne les intercepte pas ;
