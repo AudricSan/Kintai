@@ -6,7 +6,8 @@ namespace kintai\Tests\Unit\Controller\Web;
 
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Container;
-use kintai\Core\FeatureManager;
+use kintai\Tests\Support\FakeBundleManagerFactory;
+use kintai\Core\Extension\StoreFeatures;
 use kintai\Core\Repositories\LogRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
@@ -64,7 +65,7 @@ final class AdminStoreControllerTest extends TestCase
             new AuditLogger(),
             $this->createMock(StoreServiceInterface::class),
             $this->storeStatsService,
-            new FeatureManager(['messaging', 'daily-report', 'store-photos']),
+            new StoreFeatures(null, FakeBundleManagerFactory::withActiveSlugs(['messaging', 'daily-report', 'store-photos'])),
             new RoleAssignmentSyncService($this->roles, $this->roleAssignments),
             new PermissionService($this->roleAssignments, $this->roles),
         );
@@ -124,7 +125,7 @@ final class AdminStoreControllerTest extends TestCase
             new AuditLogger(),
             $this->createMock(StoreServiceInterface::class),
             $this->storeStatsService,
-            new FeatureManager(['daily-report']), // messaging et store-photos désactivés
+            new StoreFeatures(null, FakeBundleManagerFactory::withActiveSlugs(['daily-report'])), // messaging et store-photos désactivés
             new RoleAssignmentSyncService($this->roles, $this->roleAssignments),
             new PermissionService($this->roleAssignments, $this->roles),
         );
@@ -185,7 +186,7 @@ final class AdminStoreControllerTest extends TestCase
             // Tous les bundles de fonctionnalités par-store activés, pour que ce test ne
             // couvre que la soumission normale d'une case cochée (voir
             // testUpdateStorePreservesFeatureHiddenByDisabledBundle pour le cas masqué).
-            new FeatureManager(['messaging', 'daily-report', 'store-photos', 'timeoff', 'shift-swap', 'shift-claim', 'timeclock']),
+            new StoreFeatures(null, FakeBundleManagerFactory::withActiveSlugs(['messaging', 'daily-report', 'store-photos', 'timeoff', 'shift-swap', 'shift-claim', 'timeclock'])),
             new RoleAssignmentSyncService($this->roles, $this->roleAssignments),
             new PermissionService($this->roleAssignments, $this->roles),
         );
@@ -226,7 +227,7 @@ final class AdminStoreControllerTest extends TestCase
             new AuditLogger(),
             $storeService,
             $this->storeStatsService,
-            new FeatureManager(['daily-report']), // messaging et store-photos désactivés
+            new StoreFeatures(null, FakeBundleManagerFactory::withActiveSlugs(['daily-report'])), // messaging et store-photos désactivés
             new RoleAssignmentSyncService($this->roles, $this->roleAssignments),
             new PermissionService($this->roleAssignments, $this->roles),
         );
@@ -404,7 +405,7 @@ final class AdminStoreControllerTest extends TestCase
             new AuditLogger(),
             $storeService,
             $this->storeStatsService,
-            new FeatureManager(['messaging', 'daily-report', 'store-photos', 'timeoff', 'shift-swap', 'shift-claim', 'timeclock']),
+            new StoreFeatures(null, FakeBundleManagerFactory::withActiveSlugs(['messaging', 'daily-report', 'store-photos', 'timeoff', 'shift-swap', 'shift-claim', 'timeclock'])),
             new RoleAssignmentSyncService($this->roles, $this->roleAssignments),
             new PermissionService($this->roleAssignments, $this->roles),
         );
@@ -446,5 +447,61 @@ final class AdminStoreControllerTest extends TestCase
         $this->expectException(\kintai\Core\Exceptions\ForbiddenException::class);
         $this->expectExceptionMessage('error_cannot_act_on_self');
         $this->controller->updateMemberRole($req);
+    }
+
+    /**
+     * Étape 2e : une fonctionnalité déclarée par un bundle actif (Bundle::storeFeatures()) est proposée et enregistrée ;
+     * une clé d'un bundle aujourd'hui inactif, déjà enregistrée pour le magasin, est conservée.
+     */
+    public function testUpdateStoreSavesBundleDeclaredFeatureAndKeepsUnknownOnes(): void
+    {
+        $_POST = ['name' => 'Test Store', 'feature_shifts' => '1', 'feature_acme_board' => '1'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => '1']);
+
+        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Test Store']);
+        $this->stores->method('getFeatures')->with(1)->willReturn(['shifts', 'gone_bundle_feature']);
+
+        $captured = null;
+        $storeService = $this->createMock(StoreServiceInterface::class);
+        $storeService->method('updateStore')->willReturnCallback(function (int $id, array $data) use (&$captured) {
+            $captured = $data;
+            return ['id' => $id] + $data;
+        });
+
+        $acme = new class extends \kintai\Core\BundleContract\Bundle {
+            public function __construct() {}
+
+            public function getName(): string
+            {
+                return 'acme';
+            }
+
+            public function register(): void {}
+
+            public function storeFeatures(): array
+            {
+                return [new \kintai\Contract\Extension\StoreFeature('acme_board', 'acme_board')];
+            }
+        };
+        $manager = (new \ReflectionClass(\kintai\Core\BundleManager::class))->newInstanceWithoutConstructor();
+        (new \ReflectionProperty($manager, 'bundles'))->setValue($manager, ['acme' => $acme]);
+
+        $controller = new AdminStoreController(
+            new ViewRenderer(sys_get_temp_dir()),
+            $this->users,
+            $this->stores,
+            $this->storeUsers,
+            new AuditLogger(),
+            $storeService,
+            $this->storeStatsService,
+            new StoreFeatures(new \kintai\Core\Extension\ExtensionRegistry($manager), $manager),
+            new RoleAssignmentSyncService($this->roles, $this->roleAssignments),
+            new PermissionService($this->roleAssignments, $this->roles),
+        );
+
+        $this->assertSame(302, $controller->updateStore($req)->status());
+        $this->assertSame(['shifts', 'acme_board', 'gone_bundle_feature'], $captured['_features']);
     }
 }

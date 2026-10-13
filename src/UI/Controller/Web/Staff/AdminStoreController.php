@@ -10,7 +10,7 @@ use kintai\Core\Auth\OwnerGuard;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
-use kintai\Core\FeatureManager;
+use kintai\Core\Extension\StoreFeatures;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
@@ -35,24 +35,26 @@ final class AdminStoreController
         private readonly AuditLogger $auditLogger,
         private readonly StoreServiceInterface $storeService,
         private readonly StoreStatsServiceInterface $storeStatsService,
-        private readonly FeatureManager $features,
+        private readonly StoreFeatures $storeFeatures,
         private readonly RoleAssignmentSyncService $roleSync,
         private readonly PermissionService $permissions,
         private readonly ?RouteSlugService $routeSlugs = null,
     ) {}
 
     /**
-     * Pour chaque slug de feature par-store, indique s'il est proposable :
-     * true pour les fonctionnalités Core, et pour les fonctionnalités de bundle
-     * dont le bundle est activé au niveau de l'instance (/admin/bundles).
+     * Cartes de la section « Fonctionnalités » de la fiche magasin : Core et bundles actifs (Bundle::storeFeatures(),
+     * contrat 1.3, ou repli historique), déjà triées.
+     *
+     * @return list<array{key: string, label: string, desc: string, icon: string}>
      */
-    private function availableFeatureSlugs(): array
+    private function storeFeatureCards(): array
     {
-        $map = [];
-        foreach (FeatureManager::STORE_FEATURE_BUNDLE_MAP as $slug => $bundleKey) {
-            $map[$slug] = $this->features->isEnabled($bundleKey);
-        }
-        return $map;
+        return array_map(static fn($f): array => [
+            'key'   => $f->key,
+            'label' => __($f->label),
+            'desc'  => $f->description !== '' ? __($f->description) : '',
+            'icon'  => $f->icon,
+        ], $this->storeFeatures->available());
     }
 
     public function stores(Request $request): Response
@@ -77,7 +79,7 @@ final class AdminStoreController
             'title'                 => 'Nouveau store',
             'mode'                  => 'create',
             'store'                 => [],
-            'availableFeatureSlugs' => $this->availableFeatureSlugs(),
+            'featureCards'          => $this->storeFeatureCards(),
         ], 'layout.app'));
     }
 
@@ -151,7 +153,7 @@ final class AdminStoreController
             'enabledFeatures'   => ($_ef = $this->stores->getFeatures($storeId)) !== [] ? $_ef : null,
             'importSettings'    => $this->stores->getImportSettings($storeId),
             'routeSlug'         => $this->routeSlugs?->currentStoreSlug($storeId),
-            'availableFeatureSlugs' => $this->availableFeatureSlugs(),
+            'featureCards'          => $this->storeFeatureCards(),
         ], 'layout.app'));
     }
 
@@ -164,24 +166,28 @@ final class AdminStoreController
         $storeId = (int) $store['id'];
         $this->assertStoreAccess($request, $storeId);
 
-        $allFeatureSlugs = ['shifts', 'timeclock', 'timeoff', 'swaps', 'open_shifts', 'messages', 'daily_reports', 'photos', 'notes'];
-        $availableSlugs = $this->availableFeatureSlugs();
+        $availableSlugs = $this->storeFeatures->availableKeys();
         $currentFeatures = $this->stores->getFeatures($storeId);
         // Aucune ligne en base = jamais configuré → toutes actives par défaut (cf. l'affichage plus bas).
         $currentlyEnabled = fn(string $slug): bool => $currentFeatures === [] || in_array($slug, $currentFeatures, true);
 
         $enabledFeatures = [];
-        foreach ($allFeatureSlugs as $slug) {
-            if ($availableSlugs[$slug] ?? true) {
-                // Case proposée sur ce formulaire : on suit la valeur soumise.
-                if ($request->postFlag('feature_' . $slug, $currentlyEnabled($slug)) === 1) {
-                    $enabledFeatures[] = $slug;
-                }
-            } elseif ($currentlyEnabled($slug)) {
-                // Case masquée car son bundle est désactivé au niveau instance : le champ
-                // n'a pas pu être soumis, on conserve l'état actuel au lieu de le traiter
-                // comme décoché — sinon éditer un store désactive silencieusement toute
-                // fonctionnalité de bundle qui se trouvait indisponible à ce moment-là.
+        foreach ($availableSlugs as $slug) {
+            // Case proposée sur ce formulaire : on suit la valeur soumise.
+            if ($request->postFlag('feature_' . $slug, $currentlyEnabled($slug)) === 1) {
+                $enabledFeatures[] = $slug;
+            }
+        }
+        // Fonctionnalités non proposées (bundle désactivé au niveau instance) : le champ n'a pas pu être soumis, on
+        // conserve l'état actuel au lieu de le traiter comme décoché — sinon éditer un store désactive
+        // silencieusement toute fonctionnalité de bundle indisponible à ce moment-là. Pour un magasin jamais
+        // configuré, les fonctionnalités historiques des bundles officiels restent actives comme avant.
+        $hidden = $currentFeatures !== [] ? $currentFeatures : array_map(
+            static fn($f): string => $f->key,
+            array_merge(...array_values(StoreFeatures::legacyBundleFeatures()))
+        );
+        foreach ($hidden as $slug) {
+            if (!in_array($slug, $availableSlugs, true) && !in_array($slug, $enabledFeatures, true)) {
                 $enabledFeatures[] = $slug;
             }
         }

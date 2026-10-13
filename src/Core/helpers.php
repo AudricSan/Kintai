@@ -203,11 +203,8 @@ if (!function_exists('feat_bundle')) {
      */
     function feat_bundle(?string $slug): bool
     {
-        if ($slug === null) {
-            return true;
-        }
-        $bundle = \kintai\Core\FeatureManager::STORE_FEATURE_BUNDLE_MAP[$slug] ?? null;
-        return $bundle === null || bundle_enabled($bundle);
+        // Fonctionnalités du Core, des bundles actifs (déclarées ou historiques) : voir Extension\StoreFeatures.
+        return $slug === null || \kintai\Core\Extension\StoreFeatures::current()->isAvailable($slug);
     }
 }
 

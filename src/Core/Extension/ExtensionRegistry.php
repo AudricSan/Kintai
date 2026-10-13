@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace kintai\Core\Extension;
 
 use kintai\Contract\Extension\NavItem;
+use kintai\Contract\Extension\StoreFeature;
 use kintai\Core\BundleContract\Bundle;
 use kintai\Core\BundleManager;
 use kintai\Core\Services\Log;
@@ -23,6 +24,9 @@ final class ExtensionRegistry
 
     /** @var array<string, list<string>>|null */
     private ?array $permissions = null;
+
+    /** @var list<StoreFeature>|null */
+    private ?array $storeFeatures = null;
 
     /** @var list<string>|null */
     private ?array $permissionDeclarers = null;
@@ -122,6 +126,41 @@ final class ExtensionRegistry
     {
         $this->permissions();
         return $this->permissionDeclarers ?? [];
+    }
+
+    /**
+     * Fonctionnalités par magasin déclarées par les bundles actifs. Une clé déjà fournie par un autre bundle est
+     * ignorée (la première gagne).
+     *
+     * @return list<StoreFeature>
+     */
+    public function storeFeatures(): array
+    {
+        if ($this->storeFeatures !== null) {
+            return $this->storeFeatures;
+        }
+
+        $features = [];
+        foreach ($this->collect('storeFeatures', StoreFeature::class) as $feature) {
+            if (isset($features[$feature->key])) {
+                Log::warning('bundle_extension_duplicate_key', ['point' => 'storeFeatures', 'key' => $feature->key]);
+                continue;
+            }
+            $features[$feature->key] = $feature;
+        }
+        return $this->storeFeatures = array_values($features);
+    }
+
+    /** Slugs des bundles actifs qui déclarent leurs fonctionnalités par magasin (leur repli historique ne s'applique plus). */
+    public function bundlesDeclaringStoreFeatures(): array
+    {
+        $slugs = [];
+        foreach ($this->bundles->getBundles() as $bundle) {
+            if ($this->contributionsOf($bundle, 'storeFeatures', StoreFeature::class) !== []) {
+                $slugs[] = $bundle->getName();
+            }
+        }
+        return $slugs;
     }
 
     /**
