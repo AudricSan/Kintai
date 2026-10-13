@@ -78,4 +78,23 @@ final class OwnerGuardTest extends TestCase
         $this->guard([1 => [], 3 => ['active' => false]])->assertCanRemoveOwner(1, 3);
         $this->addToAssertionCount(1);
     }
+
+    // -------------------------------------------------------------------------
+    // Actions d'un gestionnaire sur lui-même (audit du 13/10/2026, M13)
+    // -------------------------------------------------------------------------
+
+    public function testANonOwnerCannotActOnThemselves(): void
+    {
+        $this->expectException(ForbiddenException::class);
+        $this->expectExceptionMessage('error_cannot_act_on_self');
+        $this->guard([1 => []])->assertNotSelfUnlessOwner(5, 5);
+    }
+
+    public function testAnOwnerMayActOnThemselvesAndAnyoneMayActOnOthers(): void
+    {
+        $guard = $this->guard([1 => []]);
+        $guard->assertNotSelfUnlessOwner(1, 1);
+        $guard->assertNotSelfUnlessOwner(5, 6);
+        $this->addToAssertionCount(2);
+    }
 }

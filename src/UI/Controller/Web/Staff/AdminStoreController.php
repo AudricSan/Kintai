@@ -6,6 +6,7 @@ namespace kintai\UI\Controller\Web\Staff;
 
 use kintai\UI\Controller\Web\HasAdminAccess;
 
+use kintai\Core\Auth\OwnerGuard;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
@@ -269,6 +270,16 @@ final class AdminStoreController
      * Le compte ciblé doit exister, et seul un Owner peut agir sur un compte Owner
      * (même règle que les fiches employés : sinon un gérant pouvait toucher à l'Owner).
      */
+    private function ownerGuard(): OwnerGuard
+    {
+        return new OwnerGuard($this->permissions, $this->users);
+    }
+
+    private function callerId(Request $request): int
+    {
+        return (int) ($request->getAttribute('auth_user')['id'] ?? 0);
+    }
+
     private function assertCanManageMember(Request $request, int $userId): void
     {
         if ($this->users->findById($userId) === null) {
@@ -348,6 +359,7 @@ final class AdminStoreController
         $roleId  = (int) $role['id'];
         $userId  = (int) $membership['user_id'];
         $this->assertCanManageMember($request, $userId);
+        $this->ownerGuard()->assertNotSelfUnlessOwner($this->callerId($request), $userId);
         $this->assertCanAssignRole($request, $roleId, $storeId);
         $oldRole = $this->roleSync->storeRoleMapForStore($storeId)[$userId]['name'] ?? '—';
 
@@ -371,6 +383,7 @@ final class AdminStoreController
         }
         $this->assertStoreAccess($request, $storeId);
         $this->assertCanManageMember($request, (int) $membership['user_id']);
+        $this->ownerGuard()->assertNotSelfUnlessOwner($this->callerId($request), (int) $membership['user_id']);
 
         $this->storeService->removeMember($mid, $storeId);
         $this->roleSync->revokeStoreRole((int) $membership['user_id'], $storeId);
