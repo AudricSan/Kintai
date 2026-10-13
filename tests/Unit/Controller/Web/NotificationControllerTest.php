@@ -102,6 +102,20 @@ final class NotificationControllerTest extends TestCase
         $this->assertSame(302, $response->status());
     }
 
+    public function testRedirectsKeepTheSubfolderPrefixWhenInstalledInASubfolder(): void
+    {
+        $previous = $_SERVER['SCRIPT_NAME'] ?? null;
+        $_SERVER['SCRIPT_NAME'] = '/Kintai/index.php';
+        try {
+            $response = $this->controller->deleteAll($this->makeRequest());
+        } finally {
+            $previous === null ? $_SERVER['SCRIPT_NAME'] = '/index.php' : $_SERVER['SCRIPT_NAME'] = $previous;
+        }
+
+        $location = (string) ((fn() => $this->headers['Location'] ?? '')->call($response));
+        $this->assertSame('/Kintai/notifications', $location);
+    }
+
     public function testDeleteAllReturnsJsonForAjaxRequests(): void
     {
         $this->notifications->expects($this->once())->method('deleteAllForUser')->with(5);
