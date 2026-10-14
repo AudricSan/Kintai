@@ -625,7 +625,6 @@ final class AdminStoreController
         ], $storeId);
 
         $empName        = trim(($user['last_name'] ?? '') . ' ' . ($user['first_name'] ?? '')) ?: ($user['email'] ?? '');
-        $salaryReportUrl = $this->base() . '/admin/stores/' . $storeId . '/reports/salary/create?user_id=' . $userId;
 
         return Response::html($this->view->render('staff.employee-stats', array_merge($data, [
             'title'           => 'Statistiques — ' . $empName,
@@ -633,7 +632,6 @@ final class AdminStoreController
             'user'            => $user,
             'membership'      => $membership,
             'currency'        => $store['currency'] ?? 'EUR',
-            'salaryReportUrl' => $salaryReportUrl,
         ]), 'layout.app'));
     }
 

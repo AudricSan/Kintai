@@ -355,12 +355,12 @@ Slots and the context each one passes to `url`:
 | `Action::EMPLOYEE_ROW` | "⋮" menu of a row of the staff list | `user_id`, `store_id` (main store) |
 | `Action::EMPLOYEE_STORE` | "Reports" card of the employee form, once per store | `user_id`, `store_id`, `store_name` |
 | `Action::STORE_REPORT` | Header of a store's employee report | `store_id` |
-| `Action::STORE_REPORT_ROW` | Row of a store's employee report | `store_id`, `user_id`, `period` |
+| `Action::STORE_REPORT_ROW` | Row of a store's employee report, and header of that employee's stats page | `store_id`, `user_id`, `period` |
 | `Action::SHIFTS_EMPLOYEE` | Employee schedule toolbar (list, calendar, day) | none |
 
 The Core renders the link in the slot's own style, only for users holding `permission` and, if `storeFeature` is set,
 with that feature on. A key already used in the slot is ignored; an exception in `url` drops that link (logged).
-Until `salary-report` and `shift-swap` declare theirs, the Core keeps showing their historical
+Until `shift-swap` declares its own, the Core keeps showing their historical
 links — only while those bundles are active. Require `"kintai_contract": "^1.6"`.
 
 ### Notifications and activity log labels (contract 1.7)

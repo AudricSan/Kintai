@@ -28,7 +28,6 @@ use kintai\UI\Components\Table;
  * @var array  $dowChart       ['Lun' => float, ...]
  * @var array  $recentShifts
  * @var array  $storeTypesMap
- * @var string $salaryReportUrl
  * @var string $BASE_URL
  */
 
@@ -75,7 +74,11 @@ $reportUrl = $BASE_URL . '/admin/stores/' . store_segment((int) $store['id']) . 
     <span class="page-count"><?= htmlspecialchars($store['name'] ?? '') ?></span>
   </h2>
   <div class="page-header__actions">
-    <?= Button::make('💰 ' . __('salary_report'))->primary()->sm()->link(htmlspecialchars($salaryReportUrl))->render() ?>
+    <?php // Liens des bundles pour cet employé dans ce magasin (rapport de salaire… — Bundle::actions(), contrat 1.6) :
+    // même emplacement qu'une ligne du rapport employés, style par défaut = bouton principal de l'en-tête. ?>
+    <?php foreach (\kintai\Core\Extension\Actions::current()->links(\kintai\Contract\Extension\Action::STORE_REPORT_ROW, ['store_id' => (int) $store['id'], 'user_id' => (int) $user['id'], 'period' => (int) $period], $user_can ?? fn(string $k): bool => true) as $_a): ?>
+    <?= Button::make(($_a['icon'] !== '' ? $_a['icon'] . ' ' : '') . $_a['label'])->{$_a['style'] === 'danger' ? 'danger' : ($_a['style'] === 'ghost' ? 'ghost' : 'primary')}()->sm()->link($_a['href'])->render() ?>
+    <?php endforeach; ?>
     <?= Button::make('← ' . __('back_to_report'))->ghost()->sm()->link(htmlspecialchars($reportUrl))->render() ?>
   </div>
 </div>
