@@ -44,7 +44,7 @@ Kintai est le pont entre le tableur Excel et l'ERP d'entreprise : planning, poin
 
 **Temps & présence** — Pointage clock-in/out avec chronomètre en direct, édition admin du pointage, estimation automatique du salaire à partir des shifts/pauses/taux horaires/déductions.
 
-**Espace employé** — Tableau de bord personnalisé, disponibilités hebdomadaires, demandes de congés, échanges de shifts, flux iCal, widget de feedback flottant.
+**Espace employé** — Tableau de bord personnalisé, disponibilités hebdomadaires, demandes de congés, échanges de shifts, flux iCal.
 
 **Communication** — Messagerie interne par fils de discussion (mise à jour en direct via SSE), centre de notifications avec toasts et statut lu/non lu.
 
@@ -64,7 +64,7 @@ Détail complet dans [docs/i18n/architecture.fr.md](architecture.fr.md) et [docs
 | :--- | :--- |
 | Super admin | Tous les magasins, journal d'audit, configuration globale |
 | Manager/admin magasin | Planning, personnel, congés, échanges, rapports et stats de son/ses magasin(s) |
-| Staff | Son propre planning, pointage, congés, échanges, messages, feedback |
+| Staff | Son propre planning, pointage, congés, échanges, messages |
 
 Flux typique : shifts créés ou importés → conflits vérifiés → employés notifiés → présence pointée → rapports journaliers validés → paie estimée.
 

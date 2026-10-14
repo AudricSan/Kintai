@@ -37,9 +37,6 @@ final class RepositoryServiceProvider extends ServiceProvider
         $this->container->singleton(InstalledBundleRepositoryInterface::class, fn() => new DatabaseInstalledBundleRepository());
 
 
-        // Feedback : bundle pilote distribué hors monorepo (voir docs/architecture.md
-        // "Modular Bundles") — le binding est fait par FeedbackBundle::register() lui-même,
-        // une fois le bundle installé dans storage/bundles/feedback/.
 
         // Traductions (fichiers JSON, voir lang/languages.json et lang/{code}.json). Chaque
         // bundle legacy peut définir ses propres src/Bundles/<Name>/lang/{code}.json, et

@@ -36,7 +36,7 @@ Kintai is the bridge between a spreadsheet and an enterprise ERP: scheduling, cl
 
 **Leave & availability** — Weekly availability declarations and leave requests, with manager approval workflow.
 
-**Employee self-service** — Personalized dashboard, iCal feed, floating feedback widget, self clock-in/out.
+**Employee self-service** — Personalized dashboard, iCal feed, self clock-in/out.
 
 **HR paperwork** — Auto-generated hiring reports on employee creation, resignation/offboarding reports, and salary reports with period autofill and PDF export.
 
@@ -64,7 +64,7 @@ Full breakdown in [docs/architecture.md](docs/architecture.md) and [docs/databas
 | :--- | :--- |
 | Owner | All stores, audit log, global configuration, bundle & role management |
 | Store manager/admin | Planning, staff, leave, swaps, reports and stats for their store(s) |
-| Staff | Own schedule, clock-in/out, leave, swaps, open shifts, messages, feedback |
+| Staff | Own schedule, clock-in/out, leave, swaps, open shifts, messages |
 
 Fine-grained permissions on top of these roles are configurable per instance — see the RBAC note above.
 
