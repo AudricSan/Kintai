@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace kintai\UI\Controller\Api\V1;
 
+use kintai\Contract\Event\OpenShiftClosed;
 use kintai\Core\Api\Paginator;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\NotFoundException;
+use kintai\Core\Extension\Events;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
@@ -88,6 +90,11 @@ final class ShiftController
         }
 
         $saved = $this->shifts->save(array_merge($data, ['id' => $id]));
+        // Shift retiré de la bourse (contrat 1.17) : les bundles qui l'écoutent (shift-claim) l'apprennent.
+        if (!empty($old['is_open']) && array_key_exists('is_open', $data) && empty($data['is_open'])) {
+            $authId = (int) ($this->authUser($request)['id'] ?? 0);
+            Events::current()->dispatch(new OpenShiftClosed($saved, $authId > 0 ? $authId : null));
+        }
         $this->auditLogger->logUpdate($request, 'shift.updated', 'shift', resourceId: $id, oldData: $old, newData: $saved, extraContext: $data, storeId: (int) ($saved['store_id'] ?? 0) ?: null);
         return Response::json($saved);
     }

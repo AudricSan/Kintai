@@ -468,8 +468,39 @@ never stops the Core action nor the other bundles' listeners. Available events:
 | Event | When | Data |
 |---|---|---|
 | `EmployeeCreated` | right after an account is created: "New employee" form, Excel import quick-create, `POST /api/v1/users` | `user`, `storeId` (store the employee was assigned to, `null` if none — always `null` from the API), `createdBy`, `source` |
+| `OpenShiftClosed` (1.17) | a shift published to the open-shift board stops being so (`is_open` 1 → 0) from the shift form or `PUT /api/v1/shifts/{id}` | `shift` (the saved row), `closedBy` |
 
-`hiring-report` creates the employee's hiring report this way. Require `"kintai_contract": "^1.13"`.
+`hiring-report` creates the employee's hiring report this way, and `shift-claim` withdraws the pending claims of a
+closed open shift. Require `"kintai_contract": "^1.13"` (`^1.17` for `OpenShiftClosed`).
+
+### Shift form sections: `shiftFormSections()` (contract 1.17)
+
+```php
+use kintai\Contract\Extension\ShiftFormSection;
+
+public function shiftFormSections(): array
+{
+    return [
+        new ShiftFormSection(
+            key: 'open_shift',
+            view: 'shift-claim::shift-form-section',          // rendered with $shift, $mode ('create'|'edit'), $BASE_URL
+            fields: ['is_open', 'open_shift_note'],
+            actionsView: 'shift-claim::shift-form-actions',   // edit page only, next to "Save"
+            storeFeature: 'open_shifts',
+        ),
+    ];
+}
+```
+
+The Core renders your `view` inside the shift form (create page, edit page and the timeline's dialog) and, on the
+edit page, your `actionsView` in the action bar. Both sit **inside** the shift form: a button that targets your own
+route uses `formaction`/`formmethod` (with `formnovalidate`) — never a nested `<form>`, which browsers ignore. On save,
+the Core writes the `fields` you declared into the shift, and only those, among the columns it opens to bundles
+(`ShiftFormSections::WRITABLE_SHIFT_COLUMNS`: `is_open`, `open_shift_note`); a field nobody declares is ignored, so a
+shift cannot be opened without the bundle. With `storeFeature`, the section only shows when that feature is on. A key
+already taken is ignored; an exception while rendering drops that section (logged). Until `shift-claim` declares
+its own, the Core keeps showing its historical open-shift fields and buttons while that bundle is active. Require
+`"kintai_contract": "^1.17"`.
 
 ## Providers: data the Core reads from your bundle (contract 1.9+)
 

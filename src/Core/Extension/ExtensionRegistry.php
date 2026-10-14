@@ -8,6 +8,7 @@ use kintai\Contract\Extension\Action;
 use kintai\Contract\Extension\DashboardWidget;
 use kintai\Contract\Extension\NavItem;
 use kintai\Contract\Extension\ProfileSection;
+use kintai\Contract\Extension\ShiftFormSection;
 use kintai\Contract\Extension\StoreFeature;
 use kintai\Contract\Provider\AbsenceProvider;
 use kintai\Contract\Provider\AttendanceProvider;
@@ -67,6 +68,9 @@ final class ExtensionRegistry
 
     /** @var array<string, list<SalesProvider>>|null */
     private ?array $salesProviders = null;
+
+    /** @var array<string, list<ShiftFormSection>>|null */
+    private ?array $shiftFormSections = null;
 
     /** @var list<string>|null */
     private ?array $permissionDeclarers = null;
@@ -494,6 +498,28 @@ final class ExtensionRegistry
             }
         }
         return $this->salesProviders = $bySlug;
+    }
+
+    /**
+     * Sections du formulaire de shift déclarées par les bundles actifs, par slug de bundle (doublons de clé départagés
+     * par kintai\Core\Extension\ShiftFormSections).
+     *
+     * @return array<string, list<ShiftFormSection>>
+     */
+    public function shiftFormSectionsByBundle(): array
+    {
+        if ($this->shiftFormSections !== null) {
+            return $this->shiftFormSections;
+        }
+
+        $bySlug = [];
+        foreach ($this->bundles->getBundles() as $bundle) {
+            $sections = $this->contributionsOf($bundle, 'shiftFormSections', ShiftFormSection::class);
+            if ($sections !== []) {
+                $bySlug[$bundle->getName()] = $sections;
+            }
+        }
+        return $this->shiftFormSections = $bySlug;
     }
 
     /**
