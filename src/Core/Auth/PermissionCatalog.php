@@ -19,7 +19,6 @@ final class PermissionCatalog
         'shifts'               => ['view', 'create', 'update', 'delete', 'import'],
         'stores'               => ['view', 'create', 'update', 'delete'],
         'payroll'              => ['view', 'generate', 'export'],
-        'hiring_reports'       => ['view', 'create', 'update', 'delete'],
         'timeoff'              => ['view', 'create', 'update', 'approve', 'delete'],
         'swaps'                => ['view', 'create', 'update', 'approve', 'delete'],
         'timeclock'            => ['view', 'update', 'delete'],
@@ -35,7 +34,6 @@ final class PermissionCatalog
      * valides en base et réapparaissent si le bundle est réactivé.
      */
     public const CATEGORY_BUNDLES = [
-        'hiring_reports'      => 'hiring-report',
         'timeoff'             => 'timeoff',
         'swaps'               => 'shift-swap',
         'timeclock'           => 'timeclock',
@@ -53,7 +51,6 @@ final class PermissionCatalog
         'shifts.view', 'shifts.create', 'shifts.update', 'shifts.delete', 'shifts.import',
         'stores.view', 'stores.update',
         'payroll.view', 'payroll.generate', 'payroll.export',
-        'hiring_reports.view', 'hiring_reports.create', 'hiring_reports.update', 'hiring_reports.delete',
         'timeoff.view', 'timeoff.create', 'timeoff.update', 'timeoff.approve', 'timeoff.delete',
         'swaps.view', 'swaps.create', 'swaps.update', 'swaps.approve', 'swaps.delete',
         'timeclock.view', 'timeclock.update', 'timeclock.delete',

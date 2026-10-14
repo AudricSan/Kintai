@@ -37,7 +37,6 @@ final class BundleTranslationsRealFilesTest extends TestCase
     {
         return [
             'DailyReport'       => ['bundle_daily_report', 'daily-report-1.0.0'],
-            'HiringReport'      => ['bundle_hiring_report', 'hiring-report-1.0.0'],
             'ShiftSwap'         => ['bundle_shift_swap', 'shift-swap-1.0.0'],
             'SalaryReport'      => ['sr_pdf', 'salary-report-1.0.0'],
             'ShiftClaim'        => ['bundle_shift_claim', 'shift-claim-1.0.0'],
