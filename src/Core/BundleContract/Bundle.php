@@ -183,6 +183,17 @@ abstract class Bundle
     }
 
     /**
+     * Fournisseurs de pointages (contrat 1.11) : le Core les lit pour le tableau de bord (pointages en cours ou
+     * oubliés, retards), sans connaître les tables du bundle.
+     *
+     * @return list<\kintai\Contract\Provider\AttendanceProvider>
+     */
+    public function attendanceProviders(): array
+    {
+        return [];
+    }
+
+    /**
      * Boot du bundle, une fois tous les bundles enregistrés.
      */
     public function boot(): void

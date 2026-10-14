@@ -9,6 +9,7 @@ use kintai\Contract\Extension\DashboardWidget;
 use kintai\Contract\Extension\NavItem;
 use kintai\Contract\Extension\StoreFeature;
 use kintai\Contract\Provider\AbsenceProvider;
+use kintai\Contract\Provider\AttendanceProvider;
 use kintai\Contract\Provider\PendingRequestsProvider;
 use kintai\Core\BundleContract\Bundle;
 use kintai\Core\BundleManager;
@@ -52,6 +53,9 @@ final class ExtensionRegistry
 
     /** @var array<string, list<AbsenceProvider>>|null */
     private ?array $absenceProviders = null;
+
+    /** @var array<string, list<AttendanceProvider>>|null */
+    private ?array $attendanceProviders = null;
 
     /** @var list<string>|null */
     private ?array $permissionDeclarers = null;
@@ -380,6 +384,27 @@ final class ExtensionRegistry
             }
         }
         return $this->absenceProviders = $bySlug;
+    }
+
+    /**
+     * Fournisseurs de pointages déclarés par les bundles actifs, par slug de bundle.
+     *
+     * @return array<string, list<AttendanceProvider>>
+     */
+    public function attendanceProvidersByBundle(): array
+    {
+        if ($this->attendanceProviders !== null) {
+            return $this->attendanceProviders;
+        }
+
+        $bySlug = [];
+        foreach ($this->bundles->getBundles() as $bundle) {
+            $providers = $this->contributionsOf($bundle, 'attendanceProviders', AttendanceProvider::class);
+            if ($providers !== []) {
+                $bySlug[$bundle->getName()] = $providers;
+            }
+        }
+        return $this->attendanceProviders = $bySlug;
     }
 
     /**

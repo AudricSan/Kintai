@@ -7,6 +7,7 @@ namespace kintai\Core\Services;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
+use kintai\Core\Extension\Attendances;
 use kintai\Core\Repositories\TimeclockRepositoryInterface;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
@@ -154,7 +155,8 @@ final class DashboardAlertService
         $threshold = date('Y-m-d H:i:s', strtotime('-' . self::STALE_TIMECLOCK_HOURS . ' hours'));
         $result = [];
 
-        foreach ($this->timeclocks->findAll() as $tc) {
+        // Pointages lus à travers les fournisseurs (Bundle::attendanceProviders()), repli sur la table des pointages.
+        foreach (Attendances::current($this->timeclocks)->all() as $tc) {
             $sid = (int) ($tc['store_id'] ?? 0);
             if (!in_array($sid, $storeIds, true) || !empty($tc['clock_out_time'])) {
                 continue;
