@@ -14,6 +14,7 @@ use kintai\Contract\Provider\AbsenceProvider;
 use kintai\Contract\Provider\AttendanceProvider;
 use kintai\Contract\Provider\PendingRequestsProvider;
 use kintai\Contract\Provider\SalesProvider;
+use kintai\Contract\Provider\SwapProvider;
 use kintai\Core\BundleContract\Bundle;
 use kintai\Core\BundleManager;
 use kintai\Core\Services\Log;
@@ -71,6 +72,9 @@ final class ExtensionRegistry
 
     /** @var array<string, list<ShiftFormSection>>|null */
     private ?array $shiftFormSections = null;
+
+    /** @var array<string, list<SwapProvider>>|null */
+    private ?array $swapProviders = null;
 
     /** @var list<string>|null */
     private ?array $permissionDeclarers = null;
@@ -520,6 +524,27 @@ final class ExtensionRegistry
             }
         }
         return $this->shiftFormSections = $bySlug;
+    }
+
+    /**
+     * Fournisseurs d'échanges de shifts déclarés par les bundles actifs, par slug de bundle.
+     *
+     * @return array<string, list<SwapProvider>>
+     */
+    public function swapProvidersByBundle(): array
+    {
+        if ($this->swapProviders !== null) {
+            return $this->swapProviders;
+        }
+
+        $bySlug = [];
+        foreach ($this->bundles->getBundles() as $bundle) {
+            $providers = $this->contributionsOf($bundle, 'swapProviders', SwapProvider::class);
+            if ($providers !== []) {
+                $bySlug[$bundle->getName()] = $providers;
+            }
+        }
+        return $this->swapProviders = $bySlug;
     }
 
     /**

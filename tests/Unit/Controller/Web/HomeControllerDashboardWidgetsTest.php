@@ -64,14 +64,7 @@ final class HomeControllerDashboardWidgetsTest extends TestCase
             $this->createMock(RoleAssignmentRepositoryInterface::class),
             $this->createMock(RoleRepositoryInterface::class),
         );
-        $dashboardAlerts = new DashboardAlertService(
-            $shifts,
-            $users,
-            $storeUsers,
-            $timeoffRequests,
-            $swapRequests,
-            $timeclocks,
-        );
+        $dashboardAlerts = new DashboardAlertService($shifts, $users, $storeUsers, $timeclocks);
 
         $this->controller = new HomeController(
             new ViewRenderer(sys_get_temp_dir()),

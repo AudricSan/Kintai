@@ -239,6 +239,17 @@ abstract class Bundle
     }
 
     /**
+     * Fournisseurs d'échanges de shifts (contrat 1.18) : le Core les lit pour ses statistiques (nombre d'échanges d'un
+     * employé), sans connaître les tables du bundle.
+     *
+     * @return list<\kintai\Contract\Provider\SwapProvider>
+     */
+    public function swapProviders(): array
+    {
+        return [];
+    }
+
+    /**
      * Boot du bundle, une fois tous les bundles enregistrés.
      */
     public function boot(): void

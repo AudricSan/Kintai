@@ -144,7 +144,7 @@ final class PendingRequestsTest extends TestCase
 
         $old = $pending->olderThan([1, 2], '2026-10-10 00:00:00');
 
-        $this->assertSame([['type' => 'acme', 'id' => 9, 'store_id' => 1, 'created_at' => '2026-09-15 10:00:00'], ['type' => 'timeoff', 'id' => 1, 'store_id' => 1, 'created_at' => '2026-10-01 09:00:00']], $old);
+        $this->assertSame([['type' => 'acme', 'label' => 'pending_acme', 'id' => 9, 'store_id' => 1, 'created_at' => '2026-09-15 10:00:00'], ['type' => 'timeoff', 'label' => 'pending_timeoff', 'id' => 1, 'store_id' => 1, 'created_at' => '2026-10-01 09:00:00']], $old);
     }
 
     public function testInvalidColumnIsRejected(): void

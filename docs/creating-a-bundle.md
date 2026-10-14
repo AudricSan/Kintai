@@ -549,6 +549,8 @@ dashboard's "Pending requests" counter and stale-request alerts — only for use
 styles: `TEXT`, `BADGE`, `USER` (user id, shown as a name), `STORE` (store id, shown as a name), `TIME` (`HH:MM`).
 Return requests in display order. An exception drops your section only (logged). Until `timeoff` and `shift-swap`
 declare theirs, the Core keeps its own providers for them. Require `"kintai_contract": "^1.9"`.
+The manager dashboard's "stale requests" alert also reads them: a request pending for more than three days is
+listed with its provider's `label()`.
 
 ### Absences: `absenceProviders()` (contract 1.10)
 
@@ -627,6 +629,30 @@ The Core reads it for a store's profitability page, and bundles read it through 
 entered as running totals, convert it to the day's values yourself, after the status filter. Days of every declared
 provider are merged; a failing provider is skipped (logged). Without any active provider there are no sales, and the
 Core hides a store's profitability page. `daily-report` is the sales provider. Require `"kintai_contract": "^1.14"`.
+
+### Shift swaps: `swapProviders()` (contract 1.18)
+
+```php
+use kintai\Contract\Provider\Swap;
+use kintai\Contract\Provider\SwapProvider;
+
+final class RequestSwaps implements SwapProvider
+{
+    public function swaps(?array $storeIds, ?string $from = null, ?string $to = null): array
+    {
+        return array_map(fn(array $r) => new Swap(
+            (int) $r['id'], (int) $r['store_id'],
+            (int) $r['requester_id'], (int) $r['target_user_id'],
+            $r['created_at'],                  // Y-m-d H:i:s ($from/$to filter on its date, inclusive)
+            $r['status'],                      // every status, the Core filters what it needs
+        ), $this->requests->find($storeIds, $from, $to));
+    }
+}
+```
+
+The Core counts an employee's swaps with it ("Swaps" column of a store's employee report, employee stats page).
+Swaps of every declared provider are merged; a failing provider is skipped (logged). Until a bundle declares one, the
+Core keeps reading the historical swap table. Require `"kintai_contract": "^1.18"`.
 
 ## The RBAC scope contract: `managed_store_ids`
 

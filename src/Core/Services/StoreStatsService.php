@@ -11,6 +11,7 @@ use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Extension\Absences;
 use kintai\Core\Extension\Sales;
+use kintai\Core\Extension\Swaps;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
@@ -712,7 +713,7 @@ final class StoreStatsService implements StoreStatsServiceInterface
         }
 
         $swapCount = 0;
-        foreach ($this->swapRequests->findByStore($storeId) as $sw) {
+        foreach (Swaps::current($this->swapRequests)->forStore($storeId) as $sw) {
             if (((int) ($sw['requester_id'] ?? 0) === $userId || (int) ($sw['target_user_id'] ?? 0) === $userId)
                 && ($sw['created_at'] ?? '') >= $since
             ) {
@@ -808,7 +809,7 @@ final class StoreStatsService implements StoreStatsServiceInterface
         );
 
         $allSwaps = array_filter(
-            $this->swapRequests->findByStore($storeId),
+            Swaps::current($this->swapRequests)->forStore($storeId),
             fn($sw) => ($sw['created_at'] ?? '') >= $since
         );
 
