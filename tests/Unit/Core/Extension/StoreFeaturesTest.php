@@ -70,7 +70,7 @@ final class StoreFeaturesTest extends TestCase
         $all = array_fill_keys(array_keys(StoreFeatures::legacyBundleFeatures()), []);
 
         $this->assertSame(
-            ['shifts', 'timeclock', 'timeoff', 'swaps', 'open_shifts', 'messages', 'daily_reports'],
+            ['shifts', 'timeclock', 'timeoff', 'swaps', 'open_shifts', 'daily_reports'],
             self::keys($this->features($all))
         );
     }
@@ -80,10 +80,10 @@ final class StoreFeaturesTest extends TestCase
         $features = $this->features([
             'timeoff' => [new StoreFeature('timeoff_v2', 'feature_timeoff', 'feature_timeoff_desc', '🏖', 35)],
             'acme'    => [new StoreFeature('acme_board', 'acme_board', '', '🧩', 5)],
-            'messaging' => [],
+            'shift-claim' => [],
         ]);
 
-        $this->assertSame(['acme_board', 'shifts', 'timeoff_v2', 'messages'], self::keys($features));
+        $this->assertSame(['acme_board', 'shifts', 'timeoff_v2', 'open_shifts'], self::keys($features));
     }
 
     public function testBrokenOrDuplicateDeclarationsAreIgnored(): void

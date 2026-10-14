@@ -11,7 +11,7 @@ use kintai\Core\Middleware\ApiAuthMiddleware;
 use kintai\Core\Router;
 
 /**
- * Régression : les routes /api/v1/* des bundles Messaging et DailyReport
+ * Régression : les routes /api/v1/* du bundle DailyReport (celles de Messaging sont testées dans son dépôt)
  * doivent être protégées par ApiAuthMiddleware, comme toutes les autres
  * routes /api/v1/*. Elles ne l'étaient pas avant ce correctif.
  */
@@ -24,36 +24,6 @@ final class BundleApiRoutesAuthTest extends TestCase
         require $path;
 
         return $router;
-    }
-
-    #[DataProvider('messagingApiRoutesProvider')]
-    public function testMessagingApiRoutesRequireAuth(string $method, string $path): void
-    {
-        $router = $this->loadRoutes(dirname(__DIR__, 3) . '/tests/Fixtures/bundles/messaging-1.0.0/routes.php');
-
-        [$route] = $router->dispatch($method, $path);
-
-        $this->assertContains(
-            ApiAuthMiddleware::class,
-            $route->middleware,
-            "$method $path must be protected by ApiAuthMiddleware"
-        );
-    }
-
-    public static function messagingApiRoutesProvider(): array
-    {
-        return [
-            ['GET', '/api/v1/messages/threads'],
-            ['POST', '/api/v1/messages/threads'],
-            ['GET', '/api/v1/messages/threads/1/messages'],
-            ['POST', '/api/v1/messages/threads/1/messages'],
-            ['GET', '/api/v1/messages/threads/1/participants'],
-            ['POST', '/api/v1/messages/threads/1/participants'],
-            ['GET', '/api/v1/messages/threads/1/participants/2'],
-            ['GET', '/api/v1/messages/threads/1'],
-            ['DELETE', '/api/v1/messages/threads/1'],
-            ['DELETE', '/api/v1/messages/1'],
-        ];
     }
 
     #[DataProvider('dailyReportApiRoutesProvider')]

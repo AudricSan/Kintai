@@ -17,7 +17,7 @@ Bootstrapped by `DatabaseServiceProvider` (`src/Core/Database/DatabaseServicePro
 - **Scheduling:** `Shift`, `ShiftType`, `Availability`, `ShiftClaim`, `ShiftSwapRequest`
 - **Time & pay:** `Timeclock`, `TimeoffRequest`, `UserShiftTypeRate`, `StoreDeductionSetting`
 - **Daily reports & HR:** `DailyReport`, `HiringReport`, `ResignationReport`, `SalaryReport`, `Feedback`
-- **Communication:** `MessageThread`, `ThreadMessage`, `ThreadParticipant`, `Notification`
+- **Communication:** `Notification`
 - **System & settings:** `ActivityEntry`, `AppSetting`, `ApiToken`, `CronToken`, `IcalToken`, `PasswordResetToken`, `ImportAlias`, `StoreFeature`, `StoreImportSetting`, `UserDashboardPref`, `UserNavPref`
 
 The full, current list is always the source of truth: `ls src/Domain/Eloquent/`.

@@ -15,7 +15,6 @@ final class FeatureManager
      * @deprecated Utiliser kintai\Core\Extension\StoreFeatures.
      */
     public const STORE_FEATURE_BUNDLE_MAP = [
-        'messages'      => 'messaging',
         'daily_reports' => 'daily-report',
         'timeoff'       => 'timeoff',
         'swaps'         => 'shift-swap',

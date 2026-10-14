@@ -26,7 +26,6 @@ final class PermissionCatalog
         'timeclock'            => ['view', 'update', 'delete'],
         'open_shifts'          => ['view', 'publish', 'approve'],
         'daily_reports'        => ['view', 'create', 'update', 'submit', 'approve', 'delete'],
-        'messaging'            => ['view', 'send', 'delete'],
     ];
 
     /**
@@ -44,7 +43,6 @@ final class PermissionCatalog
         'timeclock'           => 'timeclock',
         'open_shifts'         => 'shift-claim',
         'daily_reports'       => 'daily-report',
-        'messaging'           => 'messaging',
     ];
 
     /**
@@ -65,7 +63,6 @@ final class PermissionCatalog
         'open_shifts.view', 'open_shifts.publish', 'open_shifts.approve',
         'daily_reports.view', 'daily_reports.create', 'daily_reports.update',
         'daily_reports.submit', 'daily_reports.approve', 'daily_reports.delete',
-        'messaging.view', 'messaging.send', 'messaging.delete',
     ];
 
     /** Catégories du Core : toujours présentes, jamais redéfinissables par un bundle. */

@@ -58,7 +58,6 @@ final class StoreFeatures
             'timeoff'      => [$f('timeoff', '🏖', 30)],
             'shift-swap'   => [$f('swaps', '🔄', 40)],
             'shift-claim'  => [$f('open_shifts', '📋', 50)],
-            'messaging'    => [$f('messages', '💬', 60)],
             'daily-report' => [$f('daily_reports', '📊', 70)],
         ];
     }

@@ -8,7 +8,6 @@ use Closure;
 use kintai\Core\Auth\AuthService;
 use kintai\Core\Container;
 use kintai\Core\Extension\ExtensionRegistry;
-use kintai\Core\Repositories\MessageRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Request;
@@ -21,9 +20,10 @@ use kintai\UI\ViewRenderer;
  * Variables partagées avec toutes les vues des pages authentifiées :
  * - `managed_store_ids` (Core) : null pour l'Owner, magasins gérés pour un gérant (liens par magasin de la navigation) ;
  * - celles déclarées par les bundles actifs (point d'extension Bundle::viewVariables(), contrat 1.5) ;
- * - en repli, celles historiquement calculées par le Core pour un bundle qui ne déclare encore rien :
- *   `daily_report_staff_stores` (daily-report, magasins où l'employé rédige les rapports journaliers) et
- *   `unread_messages_count` (messaging, badge de la navigation). Ce repli disparaîtra à l'étape 5 du plan du contrat.
+ * - en repli, celle historiquement calculée par le Core pour daily-report tant qu'il ne déclare rien :
+ *   `daily_report_staff_stores` (magasins où l'employé rédige les rapports journaliers). Ce repli disparaîtra avec
+ *   l'extraction de daily-report (étape 4 du plan du contrat). Le badge des messages non lus
+ *   (`unread_messages_count`) vient du bundle messaging.
  *
  * Remplace DailyReportNavMiddleware et MessageCountMiddleware.
  */
@@ -61,8 +61,8 @@ final class BundleViewDataMiddleware implements MiddlewareInterface
     }
 
     /**
-     * Variables des bundles : déclarées par les bundles actifs, puis repli historique pour daily-report et messaging
-     * s'ils ne déclarent rien. Chaque variable est isolée : une exception la retire (journalisée).
+     * Variables des bundles : déclarées par les bundles actifs, puis repli historique pour daily-report s'il ne
+     * déclare rien. Chaque variable est isolée : une exception la retire (journalisée).
      *
      * @return array<string, mixed>
      */
@@ -89,9 +89,6 @@ final class BundleViewDataMiddleware implements MiddlewareInterface
         if (!isset($declared['daily-report']) && !array_key_exists('daily_report_staff_stores', $values)) {
             $values['daily_report_staff_stores'] = $isManager ? [] : $this->dailyReportStaffStores($user);
         }
-        if (!isset($declared['messaging']) && !array_key_exists('unread_messages_count', $values)) {
-            $values['unread_messages_count'] = $this->unreadMessagesCount($user);
-        }
 
         return $values;
     }
@@ -117,16 +114,6 @@ final class BundleViewDataMiddleware implements MiddlewareInterface
             return $accessible;
         } catch (\Throwable) {
             return [];
-        }
-    }
-
-    private function unreadMessagesCount(array $user): int
-    {
-        try {
-            return $this->container->make(MessageRepositoryInterface::class)->countUnread((int) $user['id']);
-        } catch (\Throwable) {
-            // Bundle absent ou table pas encore créée : badge à 0.
-            return 0;
         }
     }
 }
