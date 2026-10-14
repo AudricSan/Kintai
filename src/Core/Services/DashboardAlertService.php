@@ -43,7 +43,7 @@ final class DashboardAlertService
         return [
             'unfilled_shifts'     => $this->unfilledUpcomingShifts($storeIds, $storesMap),
             'users_without_shift' => $this->usersWithoutShiftThisWeek($storeIds, $storesMap),
-            'stale_requests'      => $this->staleRequests($storeIds),
+            'stale_requests'      => $this->staleRequests($storeIds, $storesMap),
             'stale_timeclocks'    => $this->staleTimeclocks($storeIds, $storesMap),
         ];
     }
@@ -106,7 +106,7 @@ final class DashboardAlertService
         return array_values($result);
     }
 
-    private function staleRequests(array $storeIds): array
+    private function staleRequests(array $storeIds, array $storesMap = []): array
     {
         $threshold = date('Y-m-d H:i:s', strtotime('-' . self::STALE_REQUEST_DAYS . ' days'));
         $result = [];
@@ -123,6 +123,7 @@ final class DashboardAlertService
                 'type'       => 'timeoff',
                 'id'         => (int) $r['id'],
                 'store_id'   => $sid,
+                'store_name' => $storesMap[$sid] ?? ('#' . $sid),
                 'created_at' => (string) ($r['created_at'] ?? ''),
             ];
         }
@@ -139,6 +140,7 @@ final class DashboardAlertService
                 'type'       => 'swap',
                 'id'         => (int) $r['id'],
                 'store_id'   => $sid,
+                'store_name' => $storesMap[$sid] ?? ('#' . $sid),
                 'created_at' => (string) ($r['created_at'] ?? ''),
             ];
         }

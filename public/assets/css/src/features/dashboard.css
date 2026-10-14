@@ -71,3 +71,26 @@
 
 .dash-detail-table { font-size: var(--text-xs-2); }
 
+/* ── Widget « Alertes » ─────────────────────────── */
+.dash-alerts {
+    display: grid;
+    gap: var(--space-4);
+}
+
+.dash-alerts__list {
+    list-style: none;
+    margin: var(--space-2) 0 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-1);
+}
+
+.dash-alerts__item {
+    font-size: var(--text-sm);
+}
+
+.dash-alerts__more {
+    margin-top: var(--space-1);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+}
