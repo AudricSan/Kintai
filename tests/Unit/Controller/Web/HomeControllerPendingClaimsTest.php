@@ -101,6 +101,14 @@ final class HomeControllerPendingClaimsTest extends TestCase
             $shiftsRepo, $usersRepo, $storeUsersRepo, $timeoffRepo, $swapsRepo, $timeclocksRepo,
         );
 
+        // Le compteur lit les demandes à travers les fournisseurs (PendingRequests), qui prennent leurs dépôts dans le
+        // conteneur.
+        $container = Container::getInstance();
+        $container->instance(TimeoffRequestRepositoryInterface::class, $timeoffRepo);
+        $container->instance(ShiftSwapRequestRepositoryInterface::class, $swapsRepo);
+        $container->instance(ShiftRepositoryInterface::class, $shiftsRepo);
+        $container->instance(StoreRepositoryInterface::class, $storesRepo);
+
         return new HomeController(
             new ViewRenderer(sys_get_temp_dir()),
             $usersRepo,
@@ -144,9 +152,9 @@ final class HomeControllerPendingClaimsTest extends TestCase
         Container::getInstance()->instance(BundleManager::class, FakeBundleManagerFactory::withActiveSlugs(['timeoff', 'shift-claim']));
 
         $claimsRepo = $this->createMock(ShiftClaimRepositoryInterface::class);
-        $claimsRepo->method('findAll')->willReturn([
-            ['id' => 1, 'store_id' => 1, 'status' => 'pending'],
-            ['id' => 2, 'store_id' => 1, 'status' => 'approved'],
+        // findPendingByStore() ne renvoie que les candidatures en attente (l'approuvée n'y figure pas).
+        $claimsRepo->method('findPendingByStore')->with(1)->willReturn([
+            ['id' => 1, 'store_id' => 1, 'shift_id' => 10, 'user_id' => 5, 'status' => 'pending'],
         ]);
         Container::getInstance()->instance(ShiftClaimRepositoryInterface::class, $claimsRepo);
 

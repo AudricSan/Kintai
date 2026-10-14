@@ -415,6 +415,55 @@ While your bundle is active, an external scheduler (cron-job.org, a server cront
 `auto-validate` is the historical daily-report job: the Core keeps running it until `daily-report` declares its own
 under that name. Require `"kintai_contract": "^1.8"`.
 
+## Providers: data the Core reads from your bundle (contract 1.9+)
+
+Some Core pages need data your bundle owns. Instead of reading your tables, the Core asks a **provider** your bundle
+implements. Without an active provider the Core simply shows less — never an error.
+
+### Pending requests: `pendingRequestsProviders()` (contract 1.9)
+
+```php
+use kintai\Contract\Provider\PendingRequest;
+use kintai\Contract\Provider\PendingRequestsProvider;
+
+final class PendingLeaveProvider implements PendingRequestsProvider
+{
+    public function __construct(private readonly LeaveRepository $leaves) {}
+
+    public function key(): string { return 'timeoff'; }
+    public function label(): string { return 'pending_timeoff'; }         // section title (translation key)
+    public function emptyLabel(): string { return 'no_pending_request'; }
+    public function permission(): string { return 'timeoff.view'; }
+    public function storeFeature(): ?string { return 'timeoff'; }
+    public function order(): int { return 10; }
+    public function manageUrl(): string { return route_url('admin.timeoff'); }
+
+    public function pending(?array $storeIds): array                      // null = every store
+    {
+        return array_map(fn(array $r) => new PendingRequest(
+            id: (int) $r['id'], storeId: (int) $r['store_id'], userId: (int) $r['user_id'], createdAt: $r['created_at'],
+            columns: [
+                ['label' => 'user', 'value' => (int) $r['user_id'], 'style' => PendingRequest::USER],
+                ['label' => 'type', 'value' => $r['type'], 'style' => PendingRequest::BADGE],
+                ['label' => 'from', 'value' => $r['start_date']],
+            ],
+        ), $this->leaves->pendingForStores($storeIds));
+    }
+}
+
+// In your Bundle class:
+public function pendingRequestsProviders(): array
+{
+    return [new PendingLeaveProvider($this->app->container()->make(LeaveRepository::class))];
+}
+```
+
+The Core uses it for the "Requests" page (one section per provider, a table built from your columns), the
+dashboard's "Pending requests" counter and stale-request alerts — only for users holding `permission`. Column
+styles: `TEXT`, `BADGE`, `USER` (user id, shown as a name), `STORE` (store id, shown as a name), `TIME` (`HH:MM`).
+Return requests in display order. An exception drops your section only (logged). Until `timeoff`, `shift-swap` and
+`shift-claim` declare theirs, the Core keeps its own providers for them. Require `"kintai_contract": "^1.9"`.
+
 ## The RBAC scope contract: `managed_store_ids`
 
 Every Web route your bundle registers under `middleware: [AuthMiddleware::class, PermissionMiddleware::class]` must declare a `permission:` — either a precise key from `PermissionCatalog`, or `'public'` (a route intentionally left ungated, e.g. self-service/aggregate pages; omitting `permission:` entirely behaves the same way). `PermissionMiddleware` resolves this into a request attribute, `managed_store_ids`, that every controller down the line is expected to read rather than re-deriving:

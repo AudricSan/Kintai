@@ -8,6 +8,7 @@ use kintai\Contract\Extension\Action;
 use kintai\Contract\Extension\DashboardWidget;
 use kintai\Contract\Extension\NavItem;
 use kintai\Contract\Extension\StoreFeature;
+use kintai\Contract\Provider\PendingRequestsProvider;
 use kintai\Core\BundleContract\Bundle;
 use kintai\Core\BundleManager;
 use kintai\Core\Services\Log;
@@ -44,6 +45,9 @@ final class ExtensionRegistry
 
     /** @var array<string, list<class-string>>|null */
     private ?array $cronJobs = null;
+
+    /** @var array<string, list<PendingRequestsProvider>>|null */
+    private ?array $pendingRequestsProviders = null;
 
     /** @var list<string>|null */
     private ?array $permissionDeclarers = null;
@@ -330,6 +334,27 @@ final class ExtensionRegistry
             }
         }
         return $this->cronJobs = $bySlug;
+    }
+
+    /**
+     * Fournisseurs de demandes en attente déclarés par les bundles actifs, par slug de bundle.
+     *
+     * @return array<string, list<PendingRequestsProvider>>
+     */
+    public function pendingRequestsProvidersByBundle(): array
+    {
+        if ($this->pendingRequestsProviders !== null) {
+            return $this->pendingRequestsProviders;
+        }
+
+        $bySlug = [];
+        foreach ($this->bundles->getBundles() as $bundle) {
+            $providers = $this->contributionsOf($bundle, 'pendingRequestsProviders', PendingRequestsProvider::class);
+            if ($providers !== []) {
+                $bySlug[$bundle->getName()] = $providers;
+            }
+        }
+        return $this->pendingRequestsProviders = $bySlug;
     }
 
     /**
