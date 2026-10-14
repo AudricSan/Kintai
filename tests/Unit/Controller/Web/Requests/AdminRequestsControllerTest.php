@@ -12,12 +12,12 @@ use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
-use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Extension\ExtensionRegistry;
 use kintai\Tests\Support\FakeBundleManagerFactory;
 use kintai\Tests\Support\FakeClaimsProvider;
+use kintai\Tests\Support\FakePendingTimeoffProvider;
 use kintai\UI\Controller\Web\Requests\AdminRequestsController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\TestCase;
@@ -25,10 +25,10 @@ use PHPUnit\Framework\TestCase;
 /**
  * Page de résumé "Demandes" (admin.requests) : agrège congés, échanges de
  * shifts et candidatures bourse aux shifts en attente, lus à travers les
- * fournisseurs (PendingRequests, repli historique des congés ici). Chaque section n'est
+ * fournisseurs déclarés par les bundles (PendingRequests). Chaque section n'est
  * présente que si son bundle est actif ET que l'utilisateur a la permission
  * "*.view" correspondante — sinon elle reste absente de la page. Les
- * échanges et les candidatures viennent des fournisseurs déclarés par shift-swap et shift-claim : sans eux, leur
+ * congés, échanges et candidatures viennent des fournisseurs déclarés par timeoff, shift-swap et shift-claim : sans eux, leur
  * section disparaît proprement, sans faire planter le contrôleur.
  */
 final class AdminRequestsControllerTest extends TestCase
@@ -51,12 +51,16 @@ final class AdminRequestsControllerTest extends TestCase
         $instance->setValue(null, null);
     }
 
-    private function enableBundles(array $slugs): void
+    /** @param list<array<string, mixed>> $timeoff demandes de congé fournies par timeoff, s'il est actif */
+    private function enableBundles(array $slugs, array $timeoff = []): void
     {
-        Container::getInstance()->instance(BundleManager::class, FakeBundleManagerFactory::withActiveSlugs($slugs));
+        $pending = in_array('timeoff', $slugs, true) ? ['timeoff' => [new FakePendingTimeoffProvider($timeoff)]] : [];
+        $manager = FakeBundleManagerFactory::withActiveSlugs($slugs, [], $pending);
+        Container::getInstance()->instance(BundleManager::class, $manager);
+        Container::getInstance()->instance(ExtensionRegistry::class, new ExtensionRegistry($manager));
     }
 
-    private function buildController(bool $isAdmin, array $timeoff = []): AdminRequestsController
+    private function buildController(bool $isAdmin): AdminRequestsController
     {
         $usersRepo = $this->createMock(UserRepositoryInterface::class);
         $usersRepo->method('findAll')->willReturn([
@@ -73,10 +77,6 @@ final class AdminRequestsControllerTest extends TestCase
         $shiftsRepo = $this->createMock(ShiftRepositoryInterface::class);
         $shiftsRepo->method('findById')->willReturn(['id' => 10, 'shift_date' => '2026-08-10', 'start_time' => '09:00:00', 'end_time' => '17:00:00']);
 
-        $timeoffRepo = $this->createMock(TimeoffRequestRepositoryInterface::class);
-        $timeoffRepo->method('findAll')->willReturn($timeoff);
-
-
         $roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
         $roleAssignments->method('findByUser')->willReturn($isAdmin ? [] : [
             ['id' => 1, 'role_id' => 5, 'scope_type' => 'store', 'scope_id' => 1],
@@ -89,7 +89,6 @@ final class AdminRequestsControllerTest extends TestCase
         // Les demandes sont lues à travers les fournisseurs (PendingRequests), qui prennent leurs dépôts dans le
         // conteneur.
         $container = Container::getInstance();
-        $container->instance(TimeoffRequestRepositoryInterface::class, $timeoffRepo);
         $container->instance(ShiftRepositoryInterface::class, $shiftsRepo);
         $container->instance(StoreRepositoryInterface::class, $storesRepo);
 
@@ -136,14 +135,13 @@ final class AdminRequestsControllerTest extends TestCase
 
     public function testTimeoffFilteredToPendingAndScopedToManagedStore(): void
     {
-        $this->enableBundles(['timeoff', 'shift-swap']);
-
         $timeoff = [
             ['id' => 1, 'store_id' => 1, 'status' => 'pending', 'user_id' => 1],
             ['id' => 2, 'store_id' => 1, 'status' => 'approved', 'user_id' => 1],
             ['id' => 3, 'store_id' => 2, 'status' => 'pending', 'user_id' => 2],
         ];
-        $controller = $this->buildController(false, $timeoff);
+        $this->enableBundles(['timeoff', 'shift-swap'], $timeoff);
+        $controller = $this->buildController(false);
         $response   = $controller->index($this->request(false, [1]));
         $data       = json_decode($response->body(), true);
 
@@ -155,7 +153,7 @@ final class AdminRequestsControllerTest extends TestCase
     public function testClaimsPresentAndEnrichedWithShiftInfoWhenBundleEnabled(): void
     {
         // Candidatures en attente déclarées par shift-claim (fournisseur du contrat 1.9).
-        $manager = FakeBundleManagerFactory::withActiveSlugs(['timeoff', 'shift-swap', 'shift-claim'], [], ['shift-claim' => [
+        $manager = FakeBundleManagerFactory::withActiveSlugs(['shift-swap', 'shift-claim'], [], ['shift-claim' => [
             new FakeClaimsProvider([FakeClaimsProvider::claim(1, 1, 1, '2026-08-10', '09:00:00', '17:00:00')]),
         ]]);
         Container::getInstance()->instance(BundleManager::class, $manager);

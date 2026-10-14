@@ -10,24 +10,14 @@ use kintai\Core\BundleContract\Bundle;
 use kintai\Core\BundleManager;
 use kintai\Core\Extension\Absences;
 use kintai\Core\Extension\ExtensionRegistry;
-use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Fournisseur d'absences (étape 3b du contrat de bundle, contrat 1.10) : repli sur la table des congés tant qu'aucun
- * bundle ne déclare de fournisseur, sinon absences des fournisseurs additionnées, isolées et au format historique.
+ * Fournisseur d'absences (étape 3b du contrat de bundle, contrat 1.10) : absences des fournisseurs déclarés
+ * additionnées, isolées et au format historique ; aucune sans fournisseur.
  */
 final class AbsencesTest extends TestCase
 {
-    private TimeoffRequestRepositoryInterface $legacy;
-
-    protected function setUp(): void
-    {
-        $this->legacy = $this->createMock(TimeoffRequestRepositoryInterface::class);
-        $this->legacy->method('findByUser')->willReturn([['id' => 1, 'user_id' => 4, 'store_id' => 1, 'start_date' => '2026-10-01', 'end_date' => '2026-10-02', 'type' => 'vacation', 'status' => 'approved']]);
-        $this->legacy->method('findByStore')->willReturn([['id' => 2, 'user_id' => 5, 'store_id' => 1, 'start_date' => '2026-10-03', 'end_date' => '2026-10-03', 'type' => 'sick', 'status' => 'pending']]);
-    }
-
     /** @param array<string, list<AbsenceProvider>> $active */
     private function absences(array $active): Absences
     {
@@ -58,7 +48,7 @@ final class AbsencesTest extends TestCase
         $manager = (new \ReflectionClass(BundleManager::class))->newInstanceWithoutConstructor();
         (new \ReflectionProperty($manager, 'bundles'))->setValue($manager, $bundles);
 
-        return new Absences(new ExtensionRegistry($manager), $this->legacy);
+        return new Absences(new ExtensionRegistry($manager));
     }
 
     private static function provider(array $absences, ?\Throwable $fail = null): AbsenceProvider
@@ -81,13 +71,13 @@ final class AbsencesTest extends TestCase
         };
     }
 
-    public function testLegacyTableWhenNoProviderIsDeclared(): void
+    /** Sans fournisseur (timeoff désactivé ou désinstallé) : aucune absence. */
+    public function testNoAbsenceWithoutProvider(): void
     {
-        $absences = $this->absences(['timeoff' => []]);
-
-        $this->assertSame(1, $absences->forUser(4)[0]['id']);
-        $this->assertSame(2, $absences->forStore(1)[0]['id']);
-        $this->assertSame([], (new Absences(null, null))->forUser(4));
+        foreach ([$this->absences(['timeoff' => []]), new Absences()] as $absences) {
+            $this->assertSame([], $absences->forUser(4));
+            $this->assertSame([], $absences->forStore(1));
+        }
     }
 
     public function testDeclaredProvidersAreMergedIsolatedAndShapedLikeTheLegacyRows(): void
@@ -101,7 +91,7 @@ final class AbsencesTest extends TestCase
 
         $rows = $absences->forUser(4);
 
-        $this->assertSame([10, 20], array_column($rows, 'id'), 'repli abandonné dès qu\'un fournisseur est déclaré');
+        $this->assertSame([10, 20], array_column($rows, 'id'));
         $this->assertSame(['id' => 10, 'user_id' => 4, 'store_id' => 1, 'start_date' => '2026-10-05', 'end_date' => '2026-10-06', 'type' => 'vacation', 'status' => 'approved'], $rows[0]);
         $this->assertSame([4], $leave->lastUsers);
         $this->assertNull($leave->lastStores);

@@ -21,7 +21,6 @@ use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\NotificationRepositoryInterface;
 use kintai\Core\Repositories\PasswordResetRepositoryInterface;
-use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Repositories\LanguageRepositoryInterface;
@@ -99,7 +98,6 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(ShiftRepositoryInterface::class),
             $c->make(ShiftTypeRepositoryInterface::class),
             $c->make(UserRepositoryInterface::class),
-            $c->make(TimeoffRequestRepositoryInterface::class),
         ));
 
         $this->container->singleton(LicenseTokenVerifier::class, function (Container $c) {
@@ -146,7 +144,6 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(ShiftRepositoryInterface::class),
             $c->make(ShiftTypeRepositoryInterface::class),
             $c->make(StoreUserRepositoryInterface::class),
-            $c->make(TimeoffRequestRepositoryInterface::class),
             $c->make(UserShiftTypeRateRepositoryInterface::class),
             $c->make(UserRepositoryInterface::class),
             $c->make(RoleAssignmentSyncService::class),

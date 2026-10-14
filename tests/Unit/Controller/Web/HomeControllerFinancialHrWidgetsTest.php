@@ -11,7 +11,6 @@ use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
-use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
@@ -54,9 +53,6 @@ final class HomeControllerFinancialHrWidgetsTest extends TestCase
         $shiftTypesRepo = $this->createMock(ShiftTypeRepositoryInterface::class);
         $shiftTypesRepo->method('findByStore')->willReturn([]);
 
-        $timeoffRepo = $this->createMock(TimeoffRequestRepositoryInterface::class);
-        $timeoffRepo->method('findAll')->willReturn([]);
-
         $dashboardPrefs = $this->createMock(UserDashboardPrefsRepositoryInterface::class);
         $dashboardPrefs->method('getEnabledWidgets')->willReturn($enabledWidgets);
 
@@ -94,7 +90,6 @@ final class HomeControllerFinancialHrWidgetsTest extends TestCase
             $storesRepo,
             $shiftsRepo,
             $shiftTypesRepo,
-            $timeoffRepo,
             $dashboardPrefs,
             $storeUsersRepo,
             $storeStats,

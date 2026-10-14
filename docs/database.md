@@ -15,7 +15,7 @@ Bootstrapped by `DatabaseServiceProvider` (`src/Core/Database/DatabaseServicePro
 
 - **Tenancy:** `User`, `Store`, `StoreUser`
 - **Scheduling:** `Shift`, `ShiftType`, `Availability`
-- **Time & pay:** `TimeoffRequest`, `UserShiftTypeRate`, `StoreDeductionSetting`
+- **Time & pay:** `UserShiftTypeRate`, `StoreDeductionSetting`
 - **HR:** `Feedback`
 - **Communication:** `Notification`
 - **System & settings:** `ActivityEntry`, `AppSetting`, `ApiToken`, `CronToken`, `IcalToken`, `PasswordResetToken`, `ImportAlias`, `StoreFeature`, `StoreImportSetting`, `UserDashboardPref`, `UserNavPref`

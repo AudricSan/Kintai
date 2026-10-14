@@ -363,7 +363,10 @@ final class AdminRoleControllerTest extends TestCase
 
     public function testUpdateRoleAcceptsBundleCategoryWhenBundleEnabled(): void
     {
-        Container::getInstance()->instance(BundleManager::class, FakeBundleManagerFactory::withActiveSlugs(['timeoff']));
+        // timeoff déclare sa catégorie de permissions (contrat 1.2).
+        $manager = FakeBundleManagerFactory::withActiveSlugs(['timeoff'], permissions: ['timeoff' => ['timeoff' => ['view', 'create', 'update', 'approve', 'delete']]]);
+        Container::getInstance()->instance(BundleManager::class, $manager);
+        Container::getInstance()->instance(\kintai\Core\Extension\ExtensionRegistry::class, new \kintai\Core\Extension\ExtensionRegistry($manager));
 
         $this->roles->method('findById')->willReturn(['id' => 2, 'name' => 'Manager', 'is_system' => 0]);
         $this->roles->method('getPermissions')->willReturn([]);

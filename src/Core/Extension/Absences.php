@@ -6,27 +6,22 @@ namespace kintai\Core\Extension;
 
 use kintai\Contract\Provider\Absence;
 use kintai\Core\Container;
-use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Services\Log;
 
 /**
- * Absences des employés, lues à travers des fournisseurs (étape 3 du contrat de bundle) :
- * - celles des fournisseurs déclarés par les bundles actifs (Bundle::absenceProviders(), contrat 1.10), additionnées ;
- * - à défaut, en repli, les congés de la table historique (TimeoffRequestRepositoryInterface), comme jusqu'ici — y
- *   compris quand le bundle timeoff est désactivé. Ce repli disparaîtra avec l'extraction de timeoff (étape 4).
+ * Absences des employés, lues à travers des fournisseurs (étape 3 du contrat de bundle) : celles des fournisseurs
+ * déclarés par les bundles actifs (Bundle::absenceProviders(), contrat 1.10), additionnées. Sans fournisseur (bundle
+ * timeoff désactivé ou désinstallé), il n'y a aucune absence.
  *
  * Les lignes renvoyées gardent la forme historique (id, user_id, store_id, start_date, end_date, type, status) pour
  * que les calculs du Core (planning, iCal, statistiques) restent inchangés.
  */
 final class Absences
 {
-    public function __construct(
-        private readonly ?ExtensionRegistry $registry,
-        private readonly ?TimeoffRequestRepositoryInterface $legacy,
-    ) {}
+    public function __construct(private readonly ?ExtensionRegistry $registry = null) {}
 
-    /** Instance de la requête courante, avec le dépôt historique de l'appelant comme repli. */
-    public static function current(?TimeoffRequestRepositoryInterface $legacy): self
+    /** Instance de la requête courante (registre des extensions), ou aucune absence si indisponible. */
+    public static function current(): self
     {
         try {
             $container = Container::getInstance();
@@ -34,35 +29,30 @@ final class Absences
         } catch (\Throwable) {
             $registry = null;
         }
-        return new self($registry, $legacy);
+        return new self($registry);
     }
 
     /** @return list<array<string, mixed>> Absences de tous statuts de l'employé. */
     public function forUser(int $userId): array
     {
-        return $this->rows([$userId], null) ?? ($this->legacy?->findByUser($userId) ?? []);
+        return $this->rows([$userId], null);
     }
 
     /** @return list<array<string, mixed>> Absences de tous statuts du magasin. */
     public function forStore(int $storeId): array
     {
-        return $this->rows(null, [$storeId]) ?? ($this->legacy?->findByStore($storeId) ?? []);
+        return $this->rows(null, [$storeId]);
     }
 
     /**
-     * Absences des fournisseurs déclarés, ou null si aucun bundle actif n'en déclare (repli historique).
+     * Absences des fournisseurs déclarés (aucune si aucun bundle actif n'en déclare).
      *
-     * @return list<array<string, mixed>>|null
+     * @return list<array<string, mixed>>
      */
-    private function rows(?array $userIds, ?array $storeIds): ?array
+    private function rows(?array $userIds, ?array $storeIds): array
     {
-        $bySlug = $this->registry?->absenceProvidersByBundle() ?? [];
-        if ($bySlug === []) {
-            return null;
-        }
-
         $rows = [];
-        foreach ($bySlug as $slug => $providers) {
+        foreach ($this->registry?->absenceProvidersByBundle() ?? [] as $slug => $providers) {
             foreach ($providers as $provider) {
                 try {
                     foreach ($provider->absences($userIds, $storeIds) as $absence) {

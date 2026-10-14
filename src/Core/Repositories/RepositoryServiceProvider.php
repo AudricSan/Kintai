@@ -18,12 +18,6 @@ final class RepositoryServiceProvider extends ServiceProvider
         $this->container->singleton(ShiftTypeRepositoryInterface::class, fn() => new DatabaseShiftTypeRepository());
         $this->container->singleton(ShiftRepositoryInterface::class, fn() => new DatabaseShiftRepository());
         $this->container->singleton(AvailabilityRepositoryInterface::class, fn() => new DatabaseAvailabilityRepository());
-        // TimeoffRequestRepositoryInterface reste ici : StoreStatsService, ShiftService, AdminShiftController,
-        // IcalController et HomeController en dépendent tous pour des calculs qui doivent
-        // continuer de fonctionner même si le bundle "timeoff" est désactivé ou
-        // désinstallé. Le bundle lui-même (legacy ou distribué, voir kintai-bundle-timeoff)
-        // n'a plus besoin de la lier.
-        $this->container->singleton(TimeoffRequestRepositoryInterface::class, fn() => new DatabaseTimeoffRequestRepository());
         $this->container->singleton(UserShiftTypeRateRepositoryInterface::class, fn() => new DatabaseUserShiftTypeRateRepository());
         $this->container->singleton(IcalTokenRepositoryInterface::class, fn() => new DatabaseIcalTokenRepository());
         $this->container->singleton(UserDashboardPrefsRepositoryInterface::class, fn() => new DatabaseUserDashboardPrefsRepository());

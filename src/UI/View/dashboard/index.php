@@ -1,7 +1,6 @@
 <?php
 /** @var array  $stats */
 /** @var array  $shifts_today */
-/** @var array  $pending_timeoff */
 /** @var array  $users_map          id → display_name */
 /** @var array  $enabled_widgets    key → index (array_flip) */
 /** @var array  $all_widgets        ordered list of widget keys */
@@ -33,7 +32,6 @@ $can = $user_can ?? fn(string $k): bool => true;
 
 // Widgets désactivés si la feature associée est indisponible
 $_widgetFeatMap = [
-    'pending_timeoff'  => 'timeoff',
 ] + $bundle_widget_meta['features'];
 // Widgets masqués (panneau de personnalisation + affichage) si la permission requise manque
 $_widgetPermMap = [
@@ -66,7 +64,6 @@ $widgetLabels = [
     'financial_overview'   => __('widget_financial_overview'),
     'hr_absenteeism'       => __('widget_hr_absenteeism'),
     'shifts_today'         => __('widget_shifts_today'),
-    'pending_timeoff'      => __('widget_pending_timeoff'),
 ] + $bundle_widget_meta['labels'];
 
 // Données de graphiques accumulées par les différents widgets, émises une seule fois
@@ -187,8 +184,8 @@ $_alertGroups = [
         return $can('employees.view') ? '<a href="' . route_url('admin.users.edit', ['id' => $a['id']]) . '">' . $text . '</a>' : $text;
     }],
     'stale_requests' => [__('dashboard_alerts_stale_requests'), static function (array $a): string {
-        // Libellé court pour les congés, sinon celui du fournisseur de la demande (contrat 1.9).
-        $type = ['timeoff' => __('timeoff')][$a['type']] ?? __($a['label'] ?? $a['type']);
+        // Libellé du fournisseur de la demande (contrat 1.9).
+        $type = __($a['label'] ?? $a['type']);
         return '<a href="' . route_url('admin.requests') . '">' . htmlspecialchars($type . ' #' . $a['id'] . ' · ' . ($a['store_name'] ?? '') . ' · ' . substr($a['created_at'], 0, 10)) . '</a>';
     }],
     'stale_timeclocks' => [__('dashboard_alerts_stale_timeclocks'), static function (array $a): string {
@@ -558,44 +555,6 @@ $hasMultipleStores = count($shiftsByStore) > 1;
         </div>
         <?php endif; ?>
     <?php endif; ?>
-</div>
-<?php endif; ?>
-
-<?php if (admin_widget_on('pending_timeoff', $enabled_widgets) && $can('timeoff.view')): ?>
-<!-- Demandes en attente -->
-<div class="dash-two-col card--mt">
-
-    <?php if (admin_widget_on('pending_timeoff', $enabled_widgets) && $feat('timeoff') && $can('timeoff.view')): ?>
-    <div class="card">
-        <div class="card-header">
-            <span><?= __('pending_timeoff') ?></span>
-            <a href="<?= route_url('admin.timeoff') ?>" class="card-header-link"><?= __('view_all') ?></a>
-        </div>
-        <?php if (empty($pending_timeoff)): ?>
-            <div class="empty-state"><?= __('no_pending_request') ?></div>
-        <?php else: ?>
-            <div class="table-wrap">
-                <table class="data-table" data-mob-stack>
-                    <thead>
-                        <tr><th>#</th><th><?= __('user') ?></th><th><?= __('type') ?></th><th><?= __('from') ?></th><th><?= __('to') ?></th></tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($pending_timeoff as $req): ?>
-                            <tr>
-                                <td data-label="#"><?= (int) $req['id'] ?></td>
-                                <td data-label="<?= htmlspecialchars(__('user')) ?>"><a href="<?= $BASE_URL ?>/admin/users/<?= employee_segment((int)($req['user_id'] ?? 0)) ?>/edit"><?= htmlspecialchars($users_map[(int)($req['user_id'] ?? 0)] ?? ('User #' . (int)($req['user_id'] ?? 0))) ?></a></td>
-                                <td data-label="<?= htmlspecialchars(__('type')) ?>"><span class="badge badge--pending"><?= htmlspecialchars((string) ($req['type'] ?? '—')) ?></span></td>
-                                <td data-label="<?= htmlspecialchars(__('from')) ?>"><?= htmlspecialchars((string) ($req['start_date'] ?? '—')) ?></td>
-                                <td data-label="<?= htmlspecialchars(__('to')) ?>"><?= htmlspecialchars((string) ($req['end_date'] ?? '—')) ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-        <?php endif; ?>
-    </div>
-    <?php endif; ?>
-
 </div>
 <?php endif; ?>
 

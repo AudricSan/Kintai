@@ -15,7 +15,6 @@ use kintai\Contract\Event\OpenShiftClosed;
 use kintai\Core\Extension\Absences;
 use kintai\Core\Extension\Events;
 use kintai\Core\Extension\ShiftFormSections;
-use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Request;
@@ -43,7 +42,6 @@ final class AdminShiftController
         private readonly AuditLogger $auditLogger,
         private readonly NotificationService $notifs,
         private readonly ShiftServiceInterface $shiftService,
-        private readonly TimeoffRequestRepositoryInterface $timeoffRequests,
         private readonly PermissionService $permissions,
     ) {}
 
@@ -77,8 +75,8 @@ final class AdminShiftController
         if ($userId <= 0 || $shiftDate === '') {
             return false;
         }
-        // Absences lues à travers les fournisseurs (Bundle::absenceProviders()), repli sur la table des congés.
-        foreach (Absences::current($this->timeoffRequests)->forUser($userId) as $req) {
+        // Absences lues à travers les fournisseurs (Bundle::absenceProviders()) ; aucune sans bundle timeoff.
+        foreach (Absences::current()->forUser($userId) as $req) {
             if (($req['status'] ?? '') !== 'approved') continue;
             if (($req['start_date'] ?? '') <= $shiftDate && $shiftDate <= ($req['end_date'] ?? '')) {
                 return true;

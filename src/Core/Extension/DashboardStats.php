@@ -13,8 +13,7 @@ use kintai\Core\Services\Log;
  * Cartes de statistiques du tableau de bord employé apportées par les bundles (point d'extension
  * Bundle::dashboardStats(), contrat 1.19) :
  * - celles déclarées par les bundles actifs ;
- * - en repli, celle que le Core affichait jusqu'ici pour timeoff (« Congés en attente ») actif qui ne déclare
- *   encore rien, avec la valeur calculée par l'appelant. Ce repli disparaîtra avec l'extraction de timeoff (étape 4).
+ * - en repli, celles du Core pour les bundles qui ne déclarent rien (aucune depuis l'extraction de timeoff).
  */
 final class DashboardStats
 {
@@ -40,14 +39,12 @@ final class DashboardStats
     /**
      * Cartes historiques du Core, par slug de bundle.
      *
-     * @param array{timeoff?: int} $legacyValues valeurs calculées par l'appelant (demandes en attente)
+     * @param array<string, int> $legacyValues valeurs calculées par l'appelant (demandes en attente)
      * @return array<string, list<DashboardStat>>
      */
     public static function legacyBundleStats(array $legacyValues): array
     {
         return [
-            'timeoff' => [new DashboardStat('pending_timeoff', 'pending_timeoff', static fn(): int => (int) ($legacyValues['timeoff'] ?? 0),
-                '🌴', 'warning', 'timeoff', 10)],
         ];
     }
 
@@ -57,7 +54,7 @@ final class DashboardStats
      *
      * @param array<string, mixed>    $context
      * @param callable(?string): bool $feat         Fonctionnalité par magasin active ?
-     * @param array{timeoff?: int} $legacyValues
+     * @param array<string, int> $legacyValues
      * @return list<array{key: string, label: string, value: int|string, icon: string, tone: string}>
      */
     public function cards(array $context, callable $feat, array $legacyValues = []): array

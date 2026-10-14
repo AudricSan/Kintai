@@ -10,7 +10,6 @@ use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
-use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Services\RoleAssignmentSyncService;
@@ -40,8 +39,6 @@ final class StoreStatsServiceStoreStatsCacheTest extends TestCase
         $users->method('findAll')->willReturn([
             ['id' => 10, 'first_name' => 'Aiko', 'last_name' => 'Sato', 'email' => 'a@kintai.test', 'password_hash' => '$2y$12$secret'],
         ]);
-        $timeoff = $this->createStub(TimeoffRequestRepositoryInterface::class);
-        $timeoff->method('findByStore')->willReturn([]);
         $rates = $this->createStub(UserShiftTypeRateRepositoryInterface::class);
         $rates->method('findByUser')->willReturn([]);
 
@@ -50,7 +47,6 @@ final class StoreStatsServiceStoreStatsCacheTest extends TestCase
             $this->shifts,
             $shiftTypes,
             $storeUsers,
-            $timeoff,
             $rates,
             $users,
             new RoleAssignmentSyncService(

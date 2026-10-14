@@ -12,7 +12,6 @@ use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
-use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Extension\Attendances;
 use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
@@ -33,7 +32,6 @@ final class HomeController
         'financial_overview',
         'hr_absenteeism',
         'shifts_today',
-        'pending_timeoff',
     ];
 
     /** Fenêtre glissante (jours) du widget "Aperçu statistiques", alignée sur la période "30 jours" des pages analytics. */
@@ -54,7 +52,6 @@ final class HomeController
         private readonly StoreRepositoryInterface $stores,
         private readonly ShiftRepositoryInterface $shifts,
         private readonly ShiftTypeRepositoryInterface $shiftTypes,
-        private readonly TimeoffRequestRepositoryInterface $timeoffRequests,
         private readonly UserDashboardPrefsRepositoryInterface $dashboardPrefs,
         private readonly StoreUserRepositoryInterface $storeUsers,
         private readonly StoreStatsServiceInterface $storeStats,
@@ -87,9 +84,6 @@ final class HomeController
 
         $allStores   = array_values(array_filter($this->stores->findAll(), fn($s) => $inScope((int) $s['id'])));
         $shiftsToday = array_values(array_filter($this->shifts->findAllByDate($today), fn($s) => $inScope((int) ($s['store_id'] ?? 0))));
-        $allTimeoff  = array_values(array_filter($this->timeoffRequests->findAll(), fn($r) => $inScope((int) ($r['store_id'] ?? 0))));
-
-        $pendingTimeoff = array_values(array_filter($allTimeoff, fn($r) => ($r['status'] ?? '') === 'pending'));
 
         $storesMap = [];
         foreach ($allStores as $s) {
@@ -219,7 +213,6 @@ final class HomeController
                 'pending_requests' => $pending->count($managedStoreIds, $canSeeRequests, $requestsFeat),
             ],
             'shifts_today'       => $shiftsToday,
-            'pending_timeoff'    => $pendingTimeoff,
             'pending_requests_visible' => $pending->hasVisible($canSeeRequests, $requestsFeat),
             'users_map'          => $usersMap,
             'sort'               => $sort,

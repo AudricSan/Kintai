@@ -11,12 +11,11 @@ use kintai\Core\BundleManager;
 use kintai\Core\Container;
 use kintai\Core\Extension\ExtensionRegistry;
 use kintai\Core\Extension\PendingRequests;
-use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use PHPUnit\Framework\TestCase;
 
 /**
  * Fournisseurs de demandes en attente (étape 3 du contrat de bundle, contrat 1.9) : déclarations des bundles actifs,
- * repli historique, filtres permission/fonctionnalité, isolation, compteur et demandes anciennes.
+ * filtres permission/fonctionnalité, isolation, compteur et demandes anciennes.
  */
 final class PendingRequestsTest extends TestCase
 {
@@ -25,13 +24,6 @@ final class PendingRequestsTest extends TestCase
     protected function setUp(): void
     {
         $this->container = new Container();
-        $timeoff = $this->createMock(TimeoffRequestRepositoryInterface::class);
-        $timeoff->method('findAll')->willReturn([
-            ['id' => 1, 'store_id' => 1, 'user_id' => 4, 'status' => 'pending', 'type' => 'paid', 'start_date' => '2026-10-20', 'end_date' => '2026-10-21', 'created_at' => '2026-10-01 09:00:00'],
-            ['id' => 2, 'store_id' => 2, 'user_id' => 5, 'status' => 'pending', 'created_at' => '2026-10-13 09:00:00'],
-            ['id' => 3, 'store_id' => 1, 'user_id' => 6, 'status' => 'approved', 'created_at' => '2026-09-01 09:00:00'],
-        ]);
-        $this->container->instance(TimeoffRequestRepositoryInterface::class, $timeoff);
     }
 
     private static function provider(string $key, array $requests, string $permission = 'acme.view', ?string $feature = null, int $order = 100, ?\Throwable $fail = null): PendingRequestsProvider
@@ -94,19 +86,10 @@ final class PendingRequestsTest extends TestCase
         return static fn(): bool => true;
     }
 
-    /** Repli historique de timeoff : mêmes demandes et colonnes que l'ancienne page, filtrées par magasin. */
-    public function testLegacyTimeoffProvider(): void
+    /** Plus de repli : un bundle actif qui ne déclare rien n'a pas de section (le Core n'en connaît aucune). */
+    public function testNoSectionWithoutDeclaredProvider(): void
     {
-        $sections = $this->pending(['timeoff' => []])->sections([1], self::all(), self::all());
-
-        $this->assertSame(['timeoff'], array_column($sections, 'key'));
-        $this->assertSame('', $sections[0]['manage_url'], 'route absente : section sans lien');
-        $this->assertCount(1, $sections[0]['requests']);
-        $request = $sections[0]['requests'][0];
-        $this->assertSame(1, $request->id);
-        $this->assertSame(['#', 'user', 'type', 'from', 'to'], array_column($request->columns, 'label'));
-        $this->assertSame(PendingRequest::BADGE, $request->columns[2]['style']);
-
+        $this->assertSame([], $this->pending(['timeoff' => []])->sections([1], self::all(), self::all()));
         $this->assertSame([], $this->pending([])->sections(null, self::all(), self::all()), 'bundle inactif : aucune section');
     }
 
@@ -138,7 +121,7 @@ final class PendingRequestsTest extends TestCase
     public function testOlderThanMergesAllKindsOldestFirst(): void
     {
         $pending = $this->pending([
-            'timeoff' => [],
+            'timeoff' => [self::provider('timeoff', [new PendingRequest(1, 1, 4, '2026-10-01 09:00:00'), new PendingRequest(2, 2, 5, '2026-10-13 09:00:00')])],
             'acme'    => [self::provider('acme', [new PendingRequest(9, 1, 4, '2026-09-15 10:00:00'), new PendingRequest(10, 1, 4, '')])],
         ]);
 

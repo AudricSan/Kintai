@@ -59,6 +59,14 @@ final class NavigationTest extends TestCase
             storeFeature: 'messages', badge: 'unread_messages_count', order: 40, mobile: true)];
     }
 
+    /** Entrée déclarée par timeoff (il n'a plus de repli dans le Core). */
+    private static function timeoff(): array
+    {
+        return [new NavItem('timeoff', NavItem::REQUESTS, 'timeoff', 'admin.timeoff', 'employee.timeoff',
+            icon: 'leaf', employeeLabel: 'my_timeoff', activePaths: ['/admin/timeoff', '/employee/timeoff'],
+            storeFeature: 'timeoff', order: 10, mobile: true)];
+    }
+
     /** Entrée déclarée par timeclock (il n'a plus de repli dans le Core). */
     private static function timeclock(): array
     {
@@ -93,14 +101,13 @@ final class NavigationTest extends TestCase
         $this->assertSame(['shifts', 'calendar', 'shift_types', 'users', 'stores', 'employee_report', 'audit_log', 'settings'], $keys);
     }
 
-    /** Bundle actif d'avant le contrat 1.1 (ne déclare rien) : ses entrées historiques sont reprises. */
-    public function testAnActiveBundleThatDeclaresNothingGetsItsLegacyEntries(): void
+    /** Plus d'entrée historique : un bundle actif qui ne déclare rien n'apparaît pas dans la navigation. */
+    public function testAnActiveBundleThatDeclaresNothingHasNoEntry(): void
     {
         $keys = self::keys($this->navigation(['timeoff' => null, 'shift-swap' => null])->items());
 
-        $this->assertContains('timeoff', $keys);
-        $this->assertNotContains('swaps', $keys, 'shift-swap extrait : plus d\'entrée historique');
-        $this->assertNotContains('timeclocks', $keys, 'bundle inactif : rien');
+        $this->assertNotContains('timeoff', $keys);
+        $this->assertNotContains('swaps', $keys);
     }
 
     /** Un bundle qui déclare sa navigation remplace ses entrées historiques. */
@@ -126,7 +133,7 @@ final class NavigationTest extends TestCase
 
     public function testVisibleAppliesHiddenFeaturePermissionAndRole(): void
     {
-        $items = $this->navigation(['timeoff' => null, 'shift-swap' => null, 'messaging' => self::messaging()])->items();
+        $items = $this->navigation(['timeoff' => self::timeoff(), 'shift-swap' => null, 'messaging' => self::messaging()])->items();
 
         $visible = Navigation::visible($items, $this->ctx([
             'hidden'       => ['swaps'],
@@ -143,7 +150,7 @@ final class NavigationTest extends TestCase
 
     public function testEmployeeViewUsesEmployeeRoutesAndLabels(): void
     {
-        $items = $this->navigation(['timeoff' => null])->items();
+        $items = $this->navigation(['timeoff' => self::timeoff()])->items();
 
         $visible = Navigation::visible($items, $this->ctx(['isManager' => false, 'path' => '/employee/timeoff', 'view' => ['isOwner' => false]]));
 
@@ -189,7 +196,7 @@ final class NavigationTest extends TestCase
 
     public function testHideableKeysFollowTheSameRules(): void
     {
-        $nav = $this->navigation(['timeoff' => null]);
+        $nav = $this->navigation(['timeoff' => self::timeoff()]);
 
         $keys = $nav->hideableKeys(true, fn(string $r): bool => $r !== 'admin.activity', fn(string $f): bool => true, ['isOwner' => true]);
 
@@ -224,7 +231,7 @@ final class NavigationTest extends TestCase
 
     public function testMobileDefaultsPerRole(): void
     {
-        $nav = $this->navigation(['timeoff' => null, 'timeclock' => self::timeclock()]);
+        $nav = $this->navigation(['timeoff' => self::timeoff(), 'timeclock' => self::timeclock()]);
 
         $manager = array_column($nav->mobileTabs([], $this->mobileCtx()), 'key');
         $employee = array_column($nav->mobileTabs([], $this->mobileCtx(['isManager' => false, 'path' => '/employee'])), 'key');
@@ -236,7 +243,7 @@ final class NavigationTest extends TestCase
     /** Choix enregistrés sous les anciennes clés (team, requests, my_timeoff…) : toujours honorés. */
     public function testSavedLegacyMobileKeysAreHonoured(): void
     {
-        $nav = $this->navigation(['timeoff' => null, 'messaging' => self::messaging()]);
+        $nav = $this->navigation(['timeoff' => self::timeoff(), 'messaging' => self::messaging()]);
 
         $tabs = $nav->mobileTabs(['team', 'requests', 'messages'], $this->mobileCtx());
 
@@ -247,7 +254,7 @@ final class NavigationTest extends TestCase
 
     public function testMobileTabsFallBackToDefaultsWhenFewerThanTwoAreVisible(): void
     {
-        $nav = $this->navigation(['messaging' => self::messaging(), 'timeoff' => null]);
+        $nav = $this->navigation(['messaging' => self::messaging(), 'timeoff' => self::timeoff()]);
 
         $tabs = $nav->mobileTabs(['messages'], $this->mobileCtx(['feat' => fn(string $f): bool => $f !== 'messages']));
 

@@ -44,15 +44,6 @@ final class HelpersFeatBundleTest extends TestCase
         $this->assertFalse(bundle_enabled('shift-swap'));
     }
 
-    public function testFeatBundleResolvesStoreFeatureSlugToItsOwningBundle(): void
-    {
-        // 'timeoff' (store_features) dépend du bundle 'timeoff', actif ici.
-        $this->assertTrue(feat_bundle('timeoff'));
-        // Bundle 'timeoff' absent : sa fonctionnalité ne l'est plus.
-        Container::getInstance()->instance(BundleManager::class, FakeBundleManagerFactory::withActiveSlugs(['daily-report', 'messaging']));
-        $this->assertFalse(feat_bundle('timeoff'));
-    }
-
     public function testFeatBundleAllowsSlugsWithNoOwningBundle(): void
     {
         // Un slug store_features sans bundle associé (ou null) n'est jamais bloqué ici :

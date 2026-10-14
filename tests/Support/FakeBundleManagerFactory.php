@@ -26,20 +26,36 @@ final class FakeBundleManagerFactory
      *        attente déclarés, par slug (Bundle::pendingRequestsProviders())
      * @param array<string, list<\kintai\Contract\Provider\AttendanceProvider>> $attendance fournisseurs de pointages
      *        déclarés, par slug (Bundle::attendanceProviders())
+     * @param array<string, list<\kintai\Contract\Provider\AbsenceProvider>> $absence fournisseurs d'absences déclarés,
+     *        par slug (Bundle::absenceProviders())
+     * @param array<string, array<string, list<string>>> $permissions catégories de permissions déclarées, par slug
+     *        (Bundle::permissions())
      */
-    public static function withActiveSlugs(array $activeSlugs, array $actions = [], array $pending = [], array $attendance = []): BundleManager
+    public static function withActiveSlugs(array $activeSlugs, array $actions = [], array $pending = [], array $attendance = [], array $absence = [], array $permissions = []): BundleManager
     {
         $manager = (new \ReflectionClass(BundleManager::class))->newInstanceWithoutConstructor();
 
         $bundles = [];
         foreach ($activeSlugs as $slug) {
-            $bundles[$slug] = new class ($slug, $actions[$slug] ?? [], $pending[$slug] ?? [], $attendance[$slug] ?? []) extends Bundle {
+            $bundles[$slug] = new class ($slug, $actions[$slug] ?? [], $pending[$slug] ?? [], $attendance[$slug] ?? [], $absence[$slug] ?? [], $permissions[$slug] ?? []) extends Bundle {
                 public function __construct(
                     private readonly string $slug,
                     private readonly array $declaredActions,
                     private readonly array $declaredPending,
                     private readonly array $declaredAttendance,
+                    private readonly array $declaredAbsence,
+                    private readonly array $declaredPermissions,
                 ) {
+                }
+
+                public function permissions(): array
+                {
+                    return $this->declaredPermissions;
+                }
+
+                public function absenceProviders(): array
+                {
+                    return $this->declaredAbsence;
                 }
 
                 public function attendanceProviders(): array

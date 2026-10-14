@@ -534,9 +534,6 @@ if (!function_exists('notification_type_catalog')) {
         }
 
         return [
-            'timeoff_approved'       => ['label' => __('notif_timeoff_approved'), 'icon' => '✓'],
-            'timeoff_refused'        => ['label' => __('notif_timeoff_refused'), 'icon' => '✗'],
-            'timeoff_submitted'      => ['label' => __('notif_timeoff_submitted'), 'icon' => '🏖'],
             'shift_assigned'         => ['label' => __('notif_shift_assigned'), 'icon' => '📅'],
             'shift_updated'          => ['label' => __('notif_shift_updated'), 'icon' => '🔄'],
             'shift_deleted'          => ['label' => __('notif_shift_deleted'), 'icon' => '🗑'],

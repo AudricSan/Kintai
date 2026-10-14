@@ -58,18 +58,13 @@ final class DashboardStatsTest extends TestCase
         return array_column($cards, 'key');
     }
 
-    /** Sans déclaration : les cartes historiques des bundles actifs, avec les valeurs de l'appelant. */
-    public function testLegacyCardsFollowActiveBundles(): void
+    /** Plus de carte historique : un bundle actif qui ne déclare rien n'a pas de carte. */
+    public function testNoCardWithoutDeclaration(): void
     {
         $all = fn(?string $f): bool => true;
-        $cards = $this->stats(['timeoff' => [], 'shift-swap' => []])->cards([], $all, ['timeoff' => 2]);
 
-        // shift-swap n'a plus de carte historique : sans déclaration, rien.
-        $this->assertSame(['pending_timeoff'], self::keys($cards));
-        $this->assertSame([2], array_column($cards, 'value'));
-        $this->assertSame(['warning'], array_column($cards, 'tone'));
+        $this->assertSame([], $this->stats(['timeoff' => [], 'shift-swap' => []])->cards([], $all));
         $this->assertSame([], $this->stats([])->cards([], $all), 'aucun bundle actif : aucune carte');
-        $this->assertSame(['pending_timeoff'], self::keys($this->stats(['timeoff' => [], 'shift-swap' => []])->cards([], fn(?string $f): bool => $f !== 'swaps')));
     }
 
     public function testDeclaredCardsReplaceTheLegacyOnesAndAreIsolated(): void
