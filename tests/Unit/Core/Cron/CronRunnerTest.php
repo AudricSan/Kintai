@@ -156,6 +156,28 @@ final class CronRunnerTest extends TestCase
         return new Request();
     }
 
+    // -------------------------------------------------------------------------
+    // runLocal() — ligne de commande (scripts/cron.php), sans jeton
+    // -------------------------------------------------------------------------
+
+    public function testRunLocalExecutesJobWithoutToken(): void
+    {
+        $expected = Response::json(['ok' => true]);
+        $this->sampleJob->expects($this->once())->method('run')->willReturn($expected);
+        $this->cronTokens->expects($this->never())->method('findByToken');
+
+        $_SERVER = ['REQUEST_METHOD' => 'GET', 'REQUEST_URI' => '/cron/run/test-job', 'SCRIPT_NAME' => '/index.php'];
+        $_GET = ['date' => '2026-10-13'];
+
+        $this->assertSame($expected, $this->runner->runLocal('test-job', new Request()));
+    }
+
+    public function testRunLocalThrowsNotFoundWhenJobUnknown(): void
+    {
+        $this->expectException(NotFoundException::class);
+        $this->runner->runLocal('nope', $this->requestWithBearer('x'));
+    }
+
     private function requestWithBearer(string $token): Request
     {
         $_SERVER = [

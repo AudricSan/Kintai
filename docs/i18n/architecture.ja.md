@@ -73,5 +73,6 @@ Webルートは店舗と従業員をデータベースIDではなく読みやす
 - **`photo-retention.php`** — 設定可能な保持期間（`photo_retention_days`／`photo_cleanup_delay` 設定）を過ぎた店舗写真アップロードを削除します。
 - **`consolidate-daily-photo-reports.php`** — 同日・同一店舗の写真投稿を遡って1件のレポートに統合します（`--dry-run` 対応）。詳細は `StorePhotoConsolidationService` を参照。
 - **`auto-validate-reports.php`** — 店舗の締め切り時刻を過ぎても未承認のままの日報を自動承認します。外部スケジューラー向けにトークン保護されたHTTPエンドポイント（`/cron/auto-validate`）としても公開されています。
+- **`cron.php`** — Coreおよび有効なバンドルのあらゆる定期タスクを、トークンなしでコマンドラインから実行します（`php scripts/cron.php` で一覧表示、`php scripts/cron.php auto-validate --date=2026-10-13` でURLと同じパラメーターを渡します）：SSHアクセスとローカルのcrontabがあるサーバー向けです。SSHのない共用ホスティングでは、ホスティングの定期タスクがcronトークン付きで `/cron/run/{job}` を呼び出します。
 - **`create-cron-token.php`** — 汎用cronランナー（`/cron/run/{job}`）用のトークンを発行します。
 - **`seed-demo-data.php`** — ローカルテスト用に、全バンドルを横断したリアルなサンプルデータを生成します（再シードは `--force`）。

@@ -103,6 +103,19 @@ final class CronRunner
         return $job->run($request);
     }
 
+    /**
+     * Lance une tâche sans jeton : réservé à la ligne de commande (scripts/cron.php, crontab d'un serveur avec accès
+     * SSH), où l'accès au serveur vaut autorisation. Les appels HTTP passent toujours par run(), avec jeton.
+     */
+    public function runLocal(string $jobName, Request $request): Response
+    {
+        $job = $this->jobs[$jobName] ?? null;
+        if ($job === null) {
+            throw new NotFoundException(__('error_cron_unknown_job', ['job' => $jobName]));
+        }
+        return $job->run($request);
+    }
+
     /** @return CronJobInterface[] */
     public function getJobs(): array
     {
