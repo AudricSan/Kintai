@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Liens d'action des bundles dans les pages du Core (étape 2h du contrat de bundle) : déclarations des bundles actifs
- * (Bundle::actions(), contrat 1.6), repli historique (salary-report, shift-swap), filtres.
+ * (Bundle::actions(), contrat 1.6), repli historique (shift-swap), filtres.
  */
 final class ActionsTest extends TestCase
 {
@@ -82,18 +82,32 @@ final class ActionsTest extends TestCase
         ];
     }
 
+    /** Liens « Rapport de salaire » tels que les déclare le bundle salary-report (il n'a plus de repli dans le Core). */
+    private static function salaryActions(): array
+    {
+        $salary = static fn(array $c): string => '/admin/stores/' . (int) $c['store_id'] . '/reports/salary/create'
+            . (isset($c['user_id']) ? '?user_id=' . (int) $c['user_id'] : '');
+
+        return [
+            new Action('salary_report', Action::EMPLOYEE_ROW, 'salary_report', $salary, '💰', permission: 'payroll.generate', order: 10),
+            new Action('salary_report', Action::EMPLOYEE_STORE, 'salary_report', $salary, permission: 'payroll.generate', order: 20),
+            new Action('salary_report', Action::STORE_REPORT, 'salary_report', static fn(array $c): string => $salary(['store_id' => $c['store_id']]), '💰', Action::PRIMARY, order: 10),
+            new Action('salary_report', Action::STORE_REPORT_ROW, 'salary_report', $salary, '💰', order: 10),
+        ];
+    }
+
     private static function keys(array $links): array
     {
         return array_column($links, 'key');
     }
 
-    /** Repli (salary-report, sans déclaration) et déclarations (resignation-report) : seulement pour les bundles actifs. */
-    public function testLegacyActionsFollowActiveBundles(): void
+    /** Déclarations des bundles actifs, ordonnées et filtrées par permission. */
+    public function testDeclaredActionsOfActiveBundles(): void
     {
         $all = fn(string $p): bool => true;
         $ctx = ['user_id' => 3, 'store_id' => 5];
 
-        $both = $this->actions(['salary-report' => [], 'resignation-report' => self::resignActions()]);
+        $both = $this->actions(['salary-report' => self::salaryActions(), 'resignation-report' => self::resignActions()]);
         $links = $both->links(Action::EMPLOYEE_ROW, $ctx, $all);
         $this->assertSame(['salary_report', 'resign'], self::keys($links));
         $this->assertSame('/admin/stores/5/reports/salary/create?user_id=3', $links[0]['href']);
@@ -105,7 +119,16 @@ final class ActionsTest extends TestCase
         $this->assertSame(['salary_report'], self::keys($both->links(Action::EMPLOYEE_ROW, $ctx, fn(string $p): bool => $p === 'payroll.generate')));
     }
 
-    public function testDeclaringBundleReplacesItsLegacyActions(): void
+    /** Repli historique : seulement shift-swap, et seulement s'il est actif sans rien déclarer. */
+    public function testLegacyActionsFollowActiveBundles(): void
+    {
+        $this->assertSame(['shift-swap'], array_keys(Actions::legacyBundleActions()));
+        $this->assertSame(['request_swap'], array_map(fn(Action $a): string => $a->key, $this->actions(['shift-swap' => []])->inSlot(Action::SHIFTS_EMPLOYEE)));
+        $this->assertSame([], $this->actions([])->inSlot(Action::SHIFTS_EMPLOYEE));
+        $this->assertSame([], $this->actions(['shift-swap' => [new Action('other', Action::EMPLOYEE_ROW, 'o', fn(): string => '/o')]])->inSlot(Action::SHIFTS_EMPLOYEE));
+    }
+
+    public function testDeclaringBundleActionsAreFilteredAndDeduplicated(): void
     {
         $actions = $this->actions([
             'salary-report' => [

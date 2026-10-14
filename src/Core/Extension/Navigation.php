@@ -411,10 +411,6 @@ final class Navigation
                         return $links;
                     }),
             ],
-            'salary-report' => [
-                new NavItem('salary_report', NavItem::REPORTS, 'salary_report', 'admin.reports.salary', 'admin.reports.salary',
-                    icon: 'money', activePaths: ['*/reports/salary'], order: 50),
-            ],
         ];
     }
 }

@@ -64,8 +64,6 @@ final class RepositoryServiceProvider extends ServiceProvider
         $this->container->singleton(BundleRegistryRepositoryInterface::class, fn() => new DatabaseBundleRegistryRepository());
         $this->container->singleton(InstalledBundleRepositoryInterface::class, fn() => new DatabaseInstalledBundleRepository());
 
-        // Rapports
-        // Salaire : bundle distribué hors monorepo (kintai-bundle-salary-report), voir docs/architecture.md
 
         // Feedback : bundle pilote distribué hors monorepo (voir docs/architecture.md
         // "Modular Bundles") — le binding est fait par FeedbackBundle::register() lui-même,

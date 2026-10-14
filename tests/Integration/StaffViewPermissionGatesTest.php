@@ -11,6 +11,7 @@ use kintai\Core\Container;
 use kintai\Core\Router;
 use kintai\Tests\Support\FakeBundleManagerFactory;
 use kintai\UI\ViewRenderer;
+use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -68,10 +69,12 @@ final class StaffViewPermissionGatesTest extends TestCase
 
     public function testUsersListShowsRowActionsWhenPermissionsGranted(): void
     {
-        // Liens fournis par les bundles salary-report (repli historique) et resignation-report (Bundle::actions()) :
+        // Liens fournis par les bundles salary-report et resignation-report (Bundle::actions()) :
         // seulement quand ils sont actifs.
         $container = Container::getInstance();
-        $manager = FakeBundleManagerFactory::withActiveSlugs(['salary-report', 'resignation-report'], ['resignation-report' => [
+        $manager = FakeBundleManagerFactory::withActiveSlugs(['salary-report', 'resignation-report'], ['salary-report' => [
+            new Action('salary_report', Action::EMPLOYEE_ROW, 'salary_report', static fn(array $c): string => '/admin/stores/' . (int) $c['store_id'] . '/reports/salary/create?user_id=' . (int) $c['user_id'], '💰', permission: 'payroll.generate', order: 10),
+        ], 'resignation-report' => [
             new Action('resign', Action::EMPLOYEE_ROW, 'resign', static fn(array $c): string => '/admin/stores/' . (int) $c['store_id'] . '/reports/resignation/create?user_id=' . (int) $c['user_id'], '✕', Action::DANGER, 'resignation_reports.create', order: 20),
         ]]);
         $container->instance(BundleManager::class, $manager);
@@ -230,5 +233,55 @@ final class StaffViewPermissionGatesTest extends TestCase
 
         $this->assertStringNotContainsString('readonly_no_permission_notice', $html);
         $this->assertStringNotContainsString('<fieldset disabled', $html);
+    }
+
+    // -------------------------------------------------------------------------
+    // staff/employee-stats.php
+    // -------------------------------------------------------------------------
+
+    /**
+     * Le bouton « Rapport de salaire » des statistiques d'un employé vient des liens déclarés par les bundles pour une
+     * ligne du rapport employés (Action::STORE_REPORT_ROW) : absent sans salary-report actif (il était codé en dur et
+     * menait à une page inexistante quand le bundle était désactivé)…
+     *
+     * Processus séparé : la vue déclare des fonctions, elle ne peut être rendue qu'une fois par processus.
+     */
+    #[RunInSeparateProcess]
+    public function testEmployeeStatsHasNoBundleLinkWithoutActiveBundle(): void
+    {
+        $this->assertStringNotContainsString('reports/salary/create', $this->renderEmployeeStats());
+    }
+
+    /** … et présent, en bouton principal de l'en-tête, avec salary-report actif. */
+    #[RunInSeparateProcess]
+    public function testEmployeeStatsShowsTheLinksOfActiveBundles(): void
+    {
+        $container = Container::getInstance();
+        $manager = FakeBundleManagerFactory::withActiveSlugs(['salary-report'], ['salary-report' => [
+            new Action('salary_report', Action::STORE_REPORT_ROW, 'salary_report', static fn(array $c): string => '/admin/stores/' . (int) $c['store_id'] . '/reports/salary/create?user_id=' . (int) $c['user_id'], '💰', order: 10),
+        ]]);
+        $container->instance(BundleManager::class, $manager);
+        $container->instance(ExtensionRegistry::class, new ExtensionRegistry($manager));
+        try {
+            $html = $this->renderEmployeeStats();
+        } finally {
+            $instances = new \ReflectionProperty(Container::class, 'instances');
+            $all = $instances->getValue($container);
+            unset($all[BundleManager::class], $all[ExtensionRegistry::class]);
+            $instances->setValue($container, $all);
+        }
+
+        $this->assertMatchesRegularExpression('#class="btn btn--primary btn--sm" href="/admin/stores/4/reports/salary/create\?user_id=9">💰 #', $html);
+    }
+
+    private function renderEmployeeStats(): string
+    {
+        return $this->view->renderPartial('staff.employee-stats', [
+            'BASE_URL' => '', 'store' => ['id' => 4, 'name' => 'Shibuya'], 'user' => ['id' => 9, 'last_name' => 'Sato', 'first_name' => 'Hanako'],
+            'membership' => ['role_name' => 'Staff', 'role_is_managing' => false], 'period' => 30, 'since' => '2026-09-14',
+            'today' => '2026-10-14', 'currency' => 'JPY', 'totalShifts' => 0, 'grossHours' => 0.0, 'netHours' => 0.0, 'cost' => 0.0,
+            'anyRate' => false, 'workDays' => 0, 'absDays' => 0, 'maxConsec' => 0, 'swapCount' => 0, 'monthlyHours' => [],
+            'typeHours' => [], 'dowChart' => [], 'recentShifts' => [], 'storeTypesMap' => [], 'user_can' => $this->canFn([]),
+        ]);
     }
 }
