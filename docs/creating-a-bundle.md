@@ -302,8 +302,8 @@ widgets, for users holding `permission` whose stores have `storeFeature` on. `da
 store, manager side), `stores_map` (id => name) and `today`. Load only what the widget shows — `data` runs on every
 dashboard view. An exception in `data` or in the view removes that widget only (logged). Render a full card
 (`<div class="card card--mt">…</div>`). Core keys can't be reused, except the keys of the widgets the Core used to
-render for your bundle (`pending_timeoff`, `pending_swaps`, `timeclocks_today`, `timeclock`, `team_notes`): reusing
-them keeps users' choices. As soon as your bundle declares a widget, the Core stops rendering its historical
+render for your bundle (`pending_timeoff`, `pending_swaps`, `timeclocks_today`, `timeclock`): reusing them keeps
+users' choices (`notebook` kept `team_notes` this way when it was extracted). As soon as your bundle declares a widget, the Core stops rendering its historical
 widgets for it. Require `"kintai_contract": "^1.4"`.
 
 ### View variables: `viewVariables()` (contract 1.5)

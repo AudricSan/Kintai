@@ -518,7 +518,6 @@ if (!function_exists('notification_type_catalog')) {
             'swap_peer_accepted'     => ['label' => __('notif_swap_peer_accepted'), 'icon' => '⇄'],
             'swap_peer_refused'      => ['label' => __('notif_swap_peer_refused'), 'icon' => '⇄'],
             'swap_cancelled'         => ['label' => __('notif_swap_cancelled'), 'icon' => '⇄'],
-            'notebook_entry_created' => ['label' => __('notif_notebook_entry_created'), 'icon' => '📓'],
         ] + $bundleTypes;
     }
 

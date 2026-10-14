@@ -16,7 +16,7 @@ use kintai\UI\ViewRenderer;
  * - ceux déclarés par les bundles actifs (point d'extension Bundle::dashboardWidgets(), contrat 1.4), rendus ici à
  *   partir de la vue du bundle et affichés après ceux du Core.
  *
- * Les widgets historiques que le Core affiche pour un bundle (demandes de congé, échanges, pointages, notes) restent
+ * Les widgets historiques que le Core affiche pour un bundle (demandes de congé, échanges, pointages) restent
  * affichés tant que ce bundle ne déclare aucun widget ; dès qu'il en déclare, seuls les siens comptent. Un bundle peut
  * reprendre la clé de son widget historique pour conserver les préférences des utilisateurs.
  */
@@ -28,13 +28,11 @@ final class DashboardWidgets
             'pending_timeoff'  => 'timeoff',
             'pending_swaps'    => 'shift-swap',
             'timeclocks_today' => 'timeclock',
-            'team_notes'       => 'notebook',
         ],
         DashboardWidget::EMPLOYEE => [
             'timeclock'       => 'timeclock',
             'pending_timeoff' => 'timeoff',
             'pending_swaps'   => 'shift-swap',
-            'team_notes'      => 'notebook',
         ],
     ];
 

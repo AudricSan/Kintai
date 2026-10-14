@@ -22,7 +22,7 @@ final class CoreTranslationsCompletenessTest extends TestCase
      * Clés que le Core référence mais que le bundle concerné traduit lui-même (lien de la barre
      * du haut, libellé de type de notification) : elles ne sont affichées que si le bundle est actif.
      */
-    private const BUNDLE_OWNED = ['hiring_reports', 'notif_notebook_entry_created'];
+    private const BUNDLE_OWNED = ['hiring_reports'];
 
     /** @return array<string, array<string, string>> locale => clés */
     private function locales(): array

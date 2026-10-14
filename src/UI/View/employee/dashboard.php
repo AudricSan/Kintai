@@ -42,11 +42,8 @@ $_empWidgetFeatMap = [
     'timeclock'       => 'timeclock',
     'pending_timeoff' => 'timeoff',
     'pending_swaps'   => 'swaps',
-    'team_notes'      => 'notes',
 ] + $bundle_widget_meta['features'];
-$_empWidgetPermMap = [
-    'team_notes' => 'notebook.view',
-] + $bundle_widget_meta['permissions'];
+$_empWidgetPermMap = $bundle_widget_meta['permissions'];
 $all_widgets = array_values(array_filter(
     $all_widgets ?? [],
     fn(string $wk) => $feat($_empWidgetFeatMap[$wk] ?? null) && (!isset($_empWidgetPermMap[$wk]) || $can($_empWidgetPermMap[$wk]))
@@ -62,7 +59,6 @@ foreach ($_empWidgetPermMap as $_wk => $_wp) {
     }
 }
 
-$notebook_entries ??= [];
 ?>
 
 <div class="page-header">
@@ -86,7 +82,6 @@ ob_start();
             'monthly_stats'  => __('monthly_stats'),
             'pending_timeoff'=> __('my_pending_timeoff'),
             'pending_swaps'  => __('pending_swaps'),
-            'team_notes'     => __('my_team_notes'),
         ] + $bundle_widget_meta['labels'];
         foreach ($all_widgets as $wk): ?>
         <label class="dash-widget-item">
@@ -338,39 +333,6 @@ ob_start();
 <?php
 echo Card::make()
     ->header('<span>' . __('pending_swaps') . '</span> ' . Button::make(__('view_all'))->ghost()->sm()->link(route_url('employee.swaps'))->render())
-    ->body(ob_get_clean())
-    ->render();
-?>
-<?php endif; ?>
-
-<?php if (widget_on('team_notes', $widgets)): ?>
-<?php if ($notebookCss = bundle_asset('notebook', 'css/notebook.css')): ?>
-<link rel="stylesheet" href="<?= $notebookCss ?>">
-<?php endif; ?>
-<?php
-ob_start();
-if (empty($notebook_entries)):
-    echo '<div class="empty-state">' . __('no_notebook_entries') . '</div>';
-else:
-    foreach ($notebook_entries as $entry):
-        $pinned = !empty($entry['pinned']);
-        ?>
-        <div class="notebook-widget-item<?= $pinned ? ' notebook-widget-item--pinned' : '' ?>">
-            <?php if ($pinned): ?>
-                <span class="notebook-widget-item__pin" title="<?= htmlspecialchars(__('notebook_pinned')) ?>">📌</span>
-            <?php endif; ?>
-            <p class="notebook-widget-item__content"><?= nl2br(htmlspecialchars($entry['content'] ?? '')) ?></p>
-            <div class="notebook-widget-item__meta">
-                <span><?= htmlspecialchars($entry['author_name'] ?? __('notebook_anonymous_author')) ?></span>
-                <span>·</span>
-                <span><?= htmlspecialchars($entry['store_name'] ?? __('notebook_org_wide')) ?></span>
-            </div>
-        </div>
-        <?php
-    endforeach;
-endif;
-echo Card::make()
-    ->header('<span>' . __('my_team_notes') . '</span> ' . Button::make(__('view_all'))->ghost()->sm()->link(route_url('notebook.index'))->render())
     ->body(ob_get_clean())
     ->render();
 ?>

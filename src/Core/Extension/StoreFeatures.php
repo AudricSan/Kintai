@@ -61,7 +61,6 @@ final class StoreFeatures
             'messaging'    => [$f('messages', '💬', 60)],
             'daily-report' => [$f('daily_reports', '📊', 70)],
             'store-photos' => [$f('photos', '📷', 80)],
-            'notebook'     => [$f('notes', '📝', 90)],
         ];
     }
 

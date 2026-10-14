@@ -70,7 +70,7 @@ final class StoreFeaturesTest extends TestCase
         $all = array_fill_keys(array_keys(StoreFeatures::legacyBundleFeatures()), []);
 
         $this->assertSame(
-            ['shifts', 'timeclock', 'timeoff', 'swaps', 'open_shifts', 'messages', 'daily_reports', 'photos', 'notes'],
+            ['shifts', 'timeclock', 'timeoff', 'swaps', 'open_shifts', 'messages', 'daily_reports', 'photos'],
             self::keys($this->features($all))
         );
     }

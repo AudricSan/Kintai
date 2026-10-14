@@ -28,7 +28,6 @@ final class PermissionCatalog
         'open_shifts'          => ['view', 'publish', 'approve'],
         'daily_reports'        => ['view', 'create', 'update', 'submit', 'approve', 'delete'],
         'messaging'            => ['view', 'send', 'delete'],
-        'notebook'             => ['view', 'create', 'manage'],
     ];
 
     /**
@@ -48,7 +47,6 @@ final class PermissionCatalog
         'open_shifts'         => 'shift-claim',
         'daily_reports'       => 'daily-report',
         'messaging'           => 'messaging',
-        'notebook'            => 'notebook',
     ];
 
     /**
@@ -71,7 +69,6 @@ final class PermissionCatalog
         'daily_reports.view', 'daily_reports.create', 'daily_reports.update',
         'daily_reports.submit', 'daily_reports.approve', 'daily_reports.delete',
         'messaging.view', 'messaging.send', 'messaging.delete',
-        'notebook.view', 'notebook.create', 'notebook.manage',
     ];
 
     /** Catégories du Core : toujours présentes, jamais redéfinissables par un bundle. */

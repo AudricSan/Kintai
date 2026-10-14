@@ -19,7 +19,7 @@ use PHPUnit\Framework\TestCase;
  */
 final class DashboardWidgetsTest extends TestCase
 {
-    private const CORE = ['kpi_counters', 'shifts_today', 'pending_timeoff', 'pending_swaps', 'team_notes'];
+    private const CORE = ['kpi_counters', 'shifts_today', 'pending_timeoff', 'pending_swaps'];
 
     private string $views;
 
@@ -109,7 +109,7 @@ final class DashboardWidgetsTest extends TestCase
             'notebook' => [self::w('my_notes', DashboardWidget::EMPLOYEE)],
         ]);
 
-        $this->assertSame(['pending_timeoff', 'team_notes'], $dash->replacedLegacyKeys(DashboardWidget::MANAGER));
+        $this->assertSame(['pending_timeoff'], $dash->replacedLegacyKeys(DashboardWidget::MANAGER));
         $this->assertSame(
             ['kpi_counters', 'shifts_today', 'pending_swaps', 'timeoff_calendar', 'pending_timeoff'],
             $dash->keys(DashboardWidget::MANAGER, self::CORE)
