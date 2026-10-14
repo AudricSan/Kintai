@@ -110,6 +110,22 @@ final class PermissionExtensionTest extends TestCase
         }
     }
 
+    /** Une catégorie déclarée garde sa place historique ; une nouvelle catégorie vient après. */
+    public function testCategoriesKeepTheHistoricalOrder(): void
+    {
+        $this->registry([
+            'acme'     => ['acme_tasks' => ['view']],
+            'notebook' => ['notebook' => ['view', 'create', 'manage']],
+            'timeoff'  => [],
+            'messaging' => ['messaging' => ['view', 'send', 'delete']],
+        ]);
+
+        $this->assertSame(
+            ['employees', 'shifts', 'stores', 'payroll', 'timeoff', 'messaging', 'notebook', 'acme_tasks'],
+            array_keys(PermissionCatalog::forActiveBundles())
+        );
+    }
+
     public function testCoreCategoriesHaveNoOwningBundle(): void
     {
         foreach (PermissionCatalog::CORE_CATEGORIES as $core) {
