@@ -80,7 +80,7 @@ final class DashboardAlertServiceTest extends TestCase
         $manager = FakeBundleManagerFactory::withActiveSlugs(array_unique([...array_keys($providers), ...array_keys($attendance)]), [], $providers, $attendance);
         Container::getInstance()->instance(ExtensionRegistry::class, new ExtensionRegistry($manager));
 
-        return new DashboardAlertService($shifts, $users, $storeUsers, new PendingRequests(new ExtensionRegistry($manager), $manager));
+        return new DashboardAlertService($shifts, $users, $storeUsers, new PendingRequests(new ExtensionRegistry($manager)));
     }
 
     /** @param list<PendingRequest> $requests */

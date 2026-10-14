@@ -139,7 +139,7 @@ final class HomeController
                 ? array_intersect($saved, $widgetKeys)
                 : $widgetKeys
         ));
-        $enabledWidgets = array_diff_key($enabledAll, array_flip($dashWidgets->replacedLegacyKeys(DashboardWidget::MANAGER)));
+        $enabledWidgets = $enabledAll;
 
         // Aperçu statistiques (heures, coût, scores) : même permission que les pages analytics
         // complètes (admin.stores.stats), calculé uniquement si le widget est actif pour éviter

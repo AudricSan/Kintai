@@ -50,7 +50,7 @@ final class StoreFeaturesTest extends TestCase
         $manager = (new \ReflectionClass(BundleManager::class))->newInstanceWithoutConstructor();
         (new \ReflectionProperty($manager, 'bundles'))->setValue($manager, $bundles);
 
-        return new StoreFeatures(new ExtensionRegistry($manager), $manager);
+        return new StoreFeatures(new ExtensionRegistry($manager));
     }
 
     private static function keys(StoreFeatures $features): array
@@ -62,17 +62,6 @@ final class StoreFeaturesTest extends TestCase
     {
         $this->assertSame(['shifts'], self::keys($this->features([])));
         $this->assertSame(['shifts'], (new StoreFeatures())->availableKeys());
-    }
-
-    /** Sans aucune déclaration, la fiche magasin est identique à l'ancienne liste écrite à la main. */
-    public function testLegacyFallbackMatchesTheHistoricalList(): void
-    {
-        $all = array_fill_keys(array_keys(StoreFeatures::legacyBundleFeatures()), []);
-
-        $this->assertSame(
-            ['shifts'],
-            self::keys($this->features($all))
-        );
     }
 
     public function testDeclaredFeaturesReplaceTheLegacyOnesOfTheirBundle(): void

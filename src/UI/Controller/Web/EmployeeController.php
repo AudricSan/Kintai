@@ -93,7 +93,7 @@ final class EmployeeController
                 ? array_intersect($saved, $widgetKeys)
                 : $widgetKeys
         ));
-        $enabledWidgets = array_diff_key($enabledAll, array_flip($dashWidgets->replacedLegacyKeys(DashboardWidget::EMPLOYEE)));
+        $enabledWidgets = $enabledAll;
 
         $userCan = fn(string $perm): bool => $this->permissions->can($user, $perm, null);
         $storeFeatures = $this->view->get('store_features');

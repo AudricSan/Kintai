@@ -22,16 +22,6 @@ final class PermissionCatalog
     ];
 
     /**
-     * Catégories de permissions portées par un bundle optionnel (catégorie →
-     * slug du bundle). Une catégorie absente d'ici est du Core, toujours
-     * proposée. L'UI des rôles masque les catégories dont le bundle est
-     * désactivé (leurs routes n'existent alors pas) ; les clés restent
-     * valides en base et réapparaissent si le bundle est réactivé.
-     */
-    public const CATEGORY_BUNDLES = [
-    ];
-
-    /**
      * Ensemble de permissions par défaut du rôle "Manager" seedé à l'installation.
      * Reflète les capacités de gestion de store actuelles (hors réglages
      * d'instance, réservés à Owner).
@@ -47,9 +37,9 @@ final class PermissionCatalog
     public const CORE_CATEGORIES = ['employees', 'shifts', 'stores', 'payroll'];
 
     /**
-     * Catégories proposées dans la page des rôles : celles du Core, celles déclarées par les bundles actifs
-     * (Bundle::permissions(), contrat 1.2) et, en repli, les catégories historiques (CATEGORIES) des bundles actifs
-     * qui ne déclarent encore rien. Une catégorie de bundle inactif n'est pas proposée ; ses clés restent en base.
+     * Catégories proposées dans la page des rôles : celles du Core, puis celles déclarées par les bundles actifs
+     * (Bundle::permissions(), contrat 1.2) dans l'ordre de leur déclaration. Une catégorie de bundle inactif n'est pas
+     * proposée ; ses clés restent en base et réapparaissent si le bundle est réactivé.
      *
      * @return array<string, list<string>>
      */
@@ -64,25 +54,7 @@ final class PermissionCatalog
         } catch (\Throwable) {
         }
 
-        $declared = $registry?->permissions(self::CORE_CATEGORIES) ?? [];
-        $declaring = $registry?->bundlesDeclaringPermissions() ?? [];
-
-        $categories = [];
-        foreach (self::CATEGORIES as $category => $actions) {
-            $bundle = self::CATEGORY_BUNDLES[$category] ?? null;
-            if ($bundle === null || (bundle_enabled($bundle) && !in_array($bundle, $declaring, true))) {
-                $categories[$category] = $actions;
-            }
-        }
-        $categories += $declared;
-
-        // Ordre stable de la page des rôles : celui du catalogue historique pour les catégories connues (qu'elles
-        // viennent du repli ou d'une déclaration), puis les nouvelles catégories dans l'ordre de leur déclaration.
-        $known = array_flip(array_keys(self::CATEGORIES));
-        $position = array_flip(array_keys($categories));
-        uksort($categories, static fn(string $a, string $b): int =>
-            [isset($known[$a]) ? 0 : 1, $known[$a] ?? $position[$a]] <=> [isset($known[$b]) ? 0 : 1, $known[$b] ?? $position[$b]]);
-        return $categories;
+        return self::CATEGORIES + ($registry?->permissions(self::CORE_CATEGORIES) ?? []);
     }
 
     /** @return string[] Toutes les clés de permission ("categorie.action"), aplaties. */

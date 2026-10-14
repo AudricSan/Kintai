@@ -80,9 +80,6 @@ final class ExtensionRegistry
     /** @var array<string, list<DashboardStat>>|null */
     private ?array $dashboardStats = null;
 
-    /** @var list<string>|null */
-    private ?array $permissionDeclarers = null;
-
     public function __construct(private readonly BundleManager $bundles) {}
 
     /**
@@ -116,23 +113,6 @@ final class ExtensionRegistry
     }
 
     /**
-     * Slugs des bundles actifs qui déclarent au moins une entrée de navigation : pour eux, le Core n'affiche plus ses
-     * entrées de repli (bundles d'avant le contrat 1.1, qui ne déclarent rien).
-     *
-     * @return list<string>
-     */
-    public function bundlesDeclaringNavigation(): array
-    {
-        $slugs = [];
-        foreach ($this->bundles->getBundles() as $bundle) {
-            if ($this->contributionsOf($bundle, 'navigation', NavItem::class) !== []) {
-                $slugs[] = $bundle->getName();
-            }
-        }
-        return $slugs;
-    }
-
-    /**
      * Catégories de permissions déclarées par les bundles actifs (catégorie => actions). Une catégorie ou une action
      * mal formée, ou une catégorie déjà déclarée (par le Core ou un autre bundle), est ignorée et journalisée.
      *
@@ -146,7 +126,6 @@ final class ExtensionRegistry
         }
 
         $categories = [];
-        $declarers = [];
         foreach ($this->bundles->getBundles() as $bundle) {
             try {
                 $declared = $bundle->permissions();
@@ -157,7 +136,6 @@ final class ExtensionRegistry
             if (!is_array($declared) || $declared === []) {
                 continue;
             }
-            $declarers[] = $bundle->getName();
             foreach ($declared as $category => $actions) {
                 $valid = is_string($category) && preg_match('/^[a-z][a-z0-9_]{1,40}$/', $category) === 1 && is_array($actions)
                     && $actions !== [] && array_filter($actions, static fn($a): bool => !is_string($a) || preg_match('/^[a-z][a-z0-9_]{1,40}$/', $a) !== 1) === [];
@@ -169,15 +147,7 @@ final class ExtensionRegistry
             }
         }
 
-        $this->permissionDeclarers = $declarers;
         return $this->permissions = $categories;
-    }
-
-    /** Slugs des bundles actifs qui déclarent leurs permissions (leurs catégories historiques ne s'appliquent plus). */
-    public function bundlesDeclaringPermissions(): array
-    {
-        $this->permissions();
-        return $this->permissionDeclarers ?? [];
     }
 
     /**
@@ -203,18 +173,6 @@ final class ExtensionRegistry
         return $this->storeFeatures = array_values($features);
     }
 
-    /** Slugs des bundles actifs qui déclarent leurs fonctionnalités par magasin (leur repli historique ne s'applique plus). */
-    public function bundlesDeclaringStoreFeatures(): array
-    {
-        $slugs = [];
-        foreach ($this->bundles->getBundles() as $bundle) {
-            if ($this->contributionsOf($bundle, 'storeFeatures', StoreFeature::class) !== []) {
-                $slugs[] = $bundle->getName();
-            }
-        }
-        return $slugs;
-    }
-
     /**
      * Widgets de tableau de bord déclarés par les bundles actifs, par slug de bundle (les doublons de clé sont
      * départagés par kintai\Core\Extension\DashboardWidgets, qui connaît les widgets du Core).
@@ -235,12 +193,6 @@ final class ExtensionRegistry
             }
         }
         return $this->dashboardWidgets = $bySlug;
-    }
-
-    /** Slugs des bundles actifs qui déclarent des widgets (leurs widgets historiques ne sont plus rendus par le Core). */
-    public function bundlesDeclaringDashboardWidgets(): array
-    {
-        return array_keys($this->dashboardWidgetsByBundle());
     }
 
     /**

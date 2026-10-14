@@ -6,17 +6,6 @@ namespace kintai\Core;
 
 final class FeatureManager
 {
-    /**
-     * Association historique slug de feature par-store → slug du bundle officiel qui la porte. N'est plus lue par le
-     * Core : les fonctionnalités par magasin viennent de kintai\Core\Extension\StoreFeatures (déclarations des
-     * bundles, contrat 1.3, et repli historique). Conservée pour les bundles qui la lisaient encore ; disparaîtra
-     * avec le repli (étape 5 du plan du contrat).
-     *
-     * @deprecated Utiliser kintai\Core\Extension\StoreFeatures.
-     */
-    public const STORE_FEATURE_BUNDLE_MAP = [
-    ];
-
     private array $enabledFeatures = [];
 
     public function __construct(array $enabledFeatures = [])

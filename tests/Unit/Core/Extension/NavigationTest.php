@@ -47,7 +47,7 @@ final class NavigationTest extends TestCase
         $manager = (new \ReflectionClass(BundleManager::class))->newInstanceWithoutConstructor();
         (new \ReflectionProperty($manager, 'bundles'))->setValue($manager, $bundles);
 
-        return new Navigation(new ExtensionRegistry($manager), $manager);
+        return new Navigation(new ExtensionRegistry($manager));
     }
 
     /** @return list<string> */

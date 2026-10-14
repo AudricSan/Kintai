@@ -121,7 +121,6 @@ final class NavigationExtensionTest extends TestCase
         $keys = array_map(fn(NavItem $i): string => $i->key, $registry->navigation());
 
         $this->assertSame(['timeclocks', 'messages', 'timeoff'], $keys);
-        $this->assertEqualsCanonicalizing(['timeoff', 'timeclock', 'messaging'], $registry->bundlesDeclaringNavigation());
     }
 
     /** Un bundle défaillant perd sa contribution ; la navigation des autres reste intacte. */
@@ -136,7 +135,6 @@ final class NavigationExtensionTest extends TestCase
         $keys = array_map(fn(NavItem $i): string => $i->key, $registry->navigation());
 
         $this->assertSame(['timeoff', 'valid_one'], $keys);
-        $this->assertNotContains('broken', $registry->bundlesDeclaringNavigation());
     }
 
     public function testADuplicateKeyIsIgnored(): void

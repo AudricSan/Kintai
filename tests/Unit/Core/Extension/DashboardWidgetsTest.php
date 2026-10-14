@@ -73,7 +73,7 @@ final class DashboardWidgetsTest extends TestCase
         $manager = (new \ReflectionClass(BundleManager::class))->newInstanceWithoutConstructor();
         (new \ReflectionProperty($manager, 'bundles'))->setValue($manager, $bundles);
 
-        return new DashboardWidgets(new ExtensionRegistry($manager), $manager);
+        return new DashboardWidgets(new ExtensionRegistry($manager));
     }
 
     private static function w(string $key, string $audience = DashboardWidget::MANAGER, string $view = 'acme::widgets.ok', ?\Closure $data = null, ?string $permission = null, ?string $feature = null, int $order = 100): DashboardWidget
@@ -93,15 +93,14 @@ final class DashboardWidgetsTest extends TestCase
         $dash = $this->widgets(['timeoff' => []]);
 
         $this->assertSame(self::CORE, $dash->keys(DashboardWidget::MANAGER, self::CORE));
-        $this->assertSame([], $dash->replacedLegacyKeys(DashboardWidget::MANAGER));
         $this->assertSame(self::CORE, (new DashboardWidgets())->keys(DashboardWidget::MANAGER, self::CORE));
     }
 
     /**
-     * Plus aucun widget historique de bundle : les widgets déclarés s'ajoutent après ceux du Core ; un bundle ne
-     * peut reprendre ni la clé d'un widget du Core, ni celle déjà prise par un autre bundle.
+     * Les widgets déclarés s'ajoutent après ceux du Core ; un bundle ne peut reprendre ni la clé d'un widget du Core,
+     * ni celle déjà prise par un autre bundle.
      */
-    public function testDeclaringBundleReplacesItsLegacyWidgets(): void
+    public function testDeclaredWidgetsComeAfterTheCoreOnesWithoutTakingTheirKeys(): void
     {
         $dash = $this->widgets([
             'timeoff'  => [self::w('pending_timeoff', order: 20), self::w('timeoff_calendar', order: 10)],
@@ -109,7 +108,6 @@ final class DashboardWidgetsTest extends TestCase
             'notebook' => [self::w('my_notes', DashboardWidget::EMPLOYEE)],
         ]);
 
-        $this->assertSame([], $dash->replacedLegacyKeys(DashboardWidget::MANAGER), 'plus aucun widget historique de bundle');
         $this->assertSame(
             ['kpi_counters', 'shifts_today', 'pending_timeoff', 'pending_swaps', 'timeoff_calendar'],
             $dash->keys(DashboardWidget::MANAGER, self::CORE)

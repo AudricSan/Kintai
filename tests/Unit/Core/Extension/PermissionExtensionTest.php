@@ -75,7 +75,6 @@ final class PermissionExtensionTest extends TestCase
         $registry = $this->registry(['acme' => ['acme_tasks' => ['view', 'edit', 'view']]]);
 
         $this->assertSame(['acme_tasks' => ['view', 'edit']], $registry->permissions(PermissionCatalog::CORE_CATEGORIES));
-        $this->assertSame(['acme'], $registry->bundlesDeclaringPermissions());
     }
 
     public function testCoreDuplicateAndMalformedCategoriesAreIgnored(): void
@@ -89,29 +88,16 @@ final class PermissionExtensionTest extends TestCase
         $this->assertSame(['acme_ok' => ['view']], $registry->permissions(PermissionCatalog::CORE_CATEGORIES));
     }
 
-    public function testCatalogMergesCoreDeclaredAndLegacyFallback(): void
+    public function testCatalogMergesCoreAndDeclaredCategories(): void
     {
-        // timeoff ne déclare rien : repli sur ses catégories historiques ; shift-swap déclare : les siennes remplacent
-        // l'historique ; daily-report est inactif : sa catégorie disparaît.
-        $this->registry(['timeoff' => [], 'shift-swap' => ['shift_swaps_v2' => ['view']]]);
+        // timeoff ne déclare rien : aucune catégorie (plus de repli) ; shift-swap déclare la sienne.
+        $this->registry(['timeoff' => [], 'shift-swap' => ['swaps' => ['view']]]);
 
-        $categories = PermissionCatalog::forActiveBundles();
-
-        foreach (PermissionCatalog::CORE_CATEGORIES as $core) {
-            $this->assertArrayHasKey($core, $categories);
-        }
-        $this->assertArrayHasKey('shift_swaps_v2', $categories);
-        foreach (PermissionCatalog::CATEGORY_BUNDLES as $category => $bundle) {
-            if ($bundle === 'timeoff') {
-                $this->assertArrayHasKey($category, $categories);
-            } else {
-                $this->assertArrayNotHasKey($category, $categories, $category);
-            }
-        }
+        $this->assertSame(['employees', 'shifts', 'stores', 'payroll', 'swaps'], array_keys(PermissionCatalog::forActiveBundles()));
     }
 
-    /** Une catégorie déclarée garde sa place historique ; une nouvelle catégorie vient après. */
-    public function testCategoriesKeepTheHistoricalOrder(): void
+    /** Catégories du Core d'abord, puis celles des bundles dans l'ordre de leur déclaration. */
+    public function testCoreCategoriesComeFirstThenDeclaredOnes(): void
     {
         $this->registry([
             'acme'     => ['acme_tasks' => ['view']],
@@ -126,15 +112,9 @@ final class PermissionExtensionTest extends TestCase
         );
     }
 
-    public function testCoreCategoriesHaveNoOwningBundle(): void
+    /** Le catalogue ne contient plus que les catégories du Core : celles des bundles viennent de leurs déclarations. */
+    public function testCatalogOnlyHoldsCoreCategories(): void
     {
-        foreach (PermissionCatalog::CORE_CATEGORIES as $core) {
-            $this->assertArrayHasKey($core, PermissionCatalog::CATEGORIES);
-            $this->assertArrayNotHasKey($core, PermissionCatalog::CATEGORY_BUNDLES);
-        }
-        $this->assertSame(
-            PermissionCatalog::CORE_CATEGORIES,
-            array_values(array_diff(array_keys(PermissionCatalog::CATEGORIES), array_keys(PermissionCatalog::CATEGORY_BUNDLES)))
-        );
+        $this->assertSame(PermissionCatalog::CORE_CATEGORIES, array_keys(PermissionCatalog::CATEGORIES));
     }
 }
