@@ -11,6 +11,7 @@ use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Extension\Absences;
+use kintai\Core\Extension\Sales;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
@@ -37,6 +38,8 @@ final class StoreStatsService implements StoreStatsServiceInterface
         private readonly UserRepositoryInterface $users,
         private readonly DailyReportRepositoryInterface $dailyReports,
         private readonly RoleAssignmentSyncService $roleSync,
+        // Ventes journalières (contrat 1.14) ; sans elles (tests), le repli historique sur $dailyReports.
+        private readonly ?Sales $sales = null,
     ) {}
 
     public function storeStats(int $storeId, int $period, int $minShiftMin = 0, int $maxShiftMin = 0): array
@@ -535,20 +538,9 @@ final class StoreStatsService implements StoreStatsServiceInterface
 
     public function storeProfitability(int $storeId, string $from, string $to): array
     {
-        $reports = array_values(array_filter(
-            $this->dailyReports->findByStoreAndDateRange($storeId, $from, $to),
-            fn($r) => empty($r['deleted_at'])
-        ));
-        usort($reports, fn($a, $b) => strcmp($a['report_date'], $b['report_date']));
-
-        // Rapports en mode "cumulatif (saisie)" : sales_total/labor_cost/... contiennent
-        // déjà le cumul depuis le début de la période plutôt qu'une valeur du jour —
-        // les ramener à des deltas journaliers avant tout calcul agrégé (voir
-        // DailyReportDataNormalizer), sans quoi sommer sur la plage compterait
-        // chaque jour plusieurs fois.
-        $store = $this->stores->findById($storeId);
-        $cumulativeMode = $store !== null ? DailyReportDataNormalizer::cumulativeModeOf($store) : 'per_day';
-        $reports = DailyReportDataNormalizer::toDailyDeltas($reports, $cumulativeMode);
+        // Ventes du jour (fournisseurs du contrat 1.14) : déjà ramenées à des valeurs quotidiennes, même quand le
+        // magasin saisit ses rapports en cumulé.
+        $reports = ($this->sales ?? new Sales(null, $this->dailyReports, $this->stores))->dailySales($storeId, $from, $to);
 
         $allShifts     = array_values(array_filter(
             $this->shifts->findByStore($storeId),

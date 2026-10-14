@@ -131,6 +131,8 @@ final class AppServiceProvider extends ServiceProvider
         $this->container->singleton(\kintai\Core\Extension\ExtensionRegistry::class, fn(Container $c) => new \kintai\Core\Extension\ExtensionRegistry(
             $c->make(\kintai\Core\BundleManager::class),
         ));
+        // Ventes journalières (contrat 1.14), aussi exposées aux bundles (kintai\Contract\Services\Sales).
+        $this->container->bind(\kintai\Core\Extension\Sales::class, fn() => \kintai\Core\Extension\Sales::current());
 
         $this->container->singleton(StoreServiceInterface::class, fn(Container $c) => new StoreService(
             $c->make(StoreRepositoryInterface::class),
@@ -153,6 +155,7 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(UserRepositoryInterface::class),
             $c->make(DailyReportRepositoryInterface::class),
             $c->make(RoleAssignmentSyncService::class),
+            $c->make(\kintai\Core\Extension\Sales::class),
         ));
 
         // DailyReportPermissionService/PdfService/MailService/AutoValidateService liés ici,

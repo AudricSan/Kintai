@@ -18,10 +18,12 @@ namespace kintai\Contract;
 final class Contract
 {
     /** Version du contrat fournie par ce Core. */
-    public const VERSION = '1.13.0';
+    public const VERSION = '1.14.0';
 
     /*
      * Historique :
+     * - 1.14.0 : fournisseur de ventes — Bundle::salesProviders(), interface kintai\Contract\Provider\SalesProvider et
+     *   objet DailySales ; lecture des ventes par les bundles via kintai\Contract\Services\Sales.
      * - 1.13.0 : point d'extension Bundle::eventListeners() et premier événement du Core,
      *   kintai\Contract\Event\EmployeeCreated (employé créé).
      * - 1.12.0 : point d'extension Bundle::profileSections() et kintai\Contract\Extension\ProfileSection (sections du
