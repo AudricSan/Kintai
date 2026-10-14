@@ -181,18 +181,6 @@ final class PermissionMapsTest extends TestCase
         }
     }
 
-    public function testCategoryBundleMapOnlyReferencesCatalogCategories(): void
-    {
-        $this->assertSame([], array_diff(array_keys(PermissionCatalog::CATEGORY_BUNDLES), array_keys(PermissionCatalog::CATEGORIES)));
-        foreach (array_keys(PermissionCatalog::CATEGORY_BUNDLES) as $category) {
-            $this->assertArrayHasKey(
-                $category,
-                PermissionCatalog::CATEGORIES,
-                "CATEGORY_BUNDLES référence une catégorie inconnue : '$category'."
-            );
-        }
-    }
-
     public function testBundleRoutesAreActuallyPartOfTheInspectedRoutes(): void
     {
         // Garde-fou contre le retour de l'angle mort : si le chargement des routes de bundles casse (dossier déplacé,

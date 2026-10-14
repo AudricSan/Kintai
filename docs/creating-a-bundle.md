@@ -244,9 +244,6 @@ another bundle is ignored (logged). The Roles page labels a category with the tr
 bundle's `lang/`. Disabling the bundle hides the category from the Roles page but keeps the grants in the
 database, so re-enabling it restores them. Require `"kintai_contract": "^1.2"`.
 
-Official bundles that don't declare their permissions yet keep the categories historically listed in
-`PermissionCatalog::CATEGORIES`; once a bundle declares `permissions()`, only its declaration counts.
-
 ### Per-store features: `storeFeatures()` (contract 1.3)
 
 ```php
@@ -303,11 +300,10 @@ widgets, for users holding `permission` whose stores have `storeFeature` on. `da
 `store_ids` (the stores the manager handles, or the employee's own stores), `managed_store_ids` (`null` = every
 store, manager side), `stores_map` (id => name) and `today`. Load only what the widget shows — `data` runs on every
 dashboard view. An exception in `data` or in the view removes that widget only (logged). Render a full card
-(`<div class="card card--mt">…</div>`). Core keys can't be reused, except the keys of the widgets the Core used to
-render for your bundle (`pending_timeoff`, `pending_swaps`, `timeclocks_today`, `timeclock`): reusing them keeps
-users' choices (`notebook` kept `team_notes`, `shift-swap` kept `pending_swaps` and `timeclock` kept `timeclocks_today`
-and `timeclock` this way when they were extracted). As soon as your bundle declares a widget, the Core stops rendering its historical
-widgets for it. Require `"kintai_contract": "^1.4"`.
+(`<div class="card card--mt">…</div>`). Core keys can't be reused. A bundle that takes over a widget the Core used
+to render keeps its key so users keep their choices (`notebook` kept `team_notes`, `timeoff` kept `pending_timeoff`,
+`shift-swap` kept `pending_swaps` and `timeclock` kept `timeclocks_today` and `timeclock` when they were extracted).
+Require `"kintai_contract": "^1.4"`.
 
 ### View variables: `viewVariables()` (contract 1.5)
 

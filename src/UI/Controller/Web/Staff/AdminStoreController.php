@@ -181,13 +181,8 @@ final class AdminStoreController
         }
         // Fonctionnalités non proposées (bundle désactivé au niveau instance) : le champ n'a pas pu être soumis, on
         // conserve l'état actuel au lieu de le traiter comme décoché — sinon éditer un store désactive
-        // silencieusement toute fonctionnalité de bundle indisponible à ce moment-là. Pour un magasin jamais
-        // configuré, les fonctionnalités historiques des bundles officiels restent actives comme avant.
-        $hidden = $currentFeatures !== [] ? $currentFeatures : array_map(
-            static fn($f): string => $f->key,
-            array_merge(...array_values(StoreFeatures::legacyBundleFeatures()))
-        );
-        foreach ($hidden as $slug) {
+        // silencieusement toute fonctionnalité de bundle indisponible à ce moment-là.
+        foreach ($currentFeatures as $slug) {
             if (!in_array($slug, $availableSlugs, true) && !in_array($slug, $enabledFeatures, true)) {
                 $enabledFeatures[] = $slug;
             }

@@ -6,15 +6,12 @@ namespace kintai\Core\Extension;
 
 use kintai\Contract\Provider\PendingRequest;
 use kintai\Contract\Provider\PendingRequestsProvider;
-use kintai\Core\BundleManager;
 use kintai\Core\Container;
-use kintai\Core\Extension\Legacy\LegacyPendingRequests;
 use kintai\Core\Services\WidgetGuard;
 
 /**
- * Demandes en attente de toutes sortes, lues à travers des fournisseurs (étape 3 du contrat de bundle) :
- * - ceux déclarés par les bundles actifs (Bundle::pendingRequestsProviders(), contrat 1.9) ;
- * - en repli, ceux du Core pour les bundles qui ne déclarent rien (aucun depuis l'extraction de timeoff).
+ * Demandes en attente de toutes sortes, lues à travers les fournisseurs déclarés par les bundles actifs
+ * (Bundle::pendingRequestsProviders(), contrat 1.9).
  *
  * Utilisé par la page « Demandes », le compteur du tableau de bord et les alertes. Chaque fournisseur est isolé : une
  * exception le retire (journalisée) sans casser la page.
@@ -24,30 +21,21 @@ final class PendingRequests
     /** @var list<PendingRequestsProvider>|null */
     private ?array $providers = null;
 
-    public function __construct(
-        private readonly ?ExtensionRegistry $registry = null,
-        private readonly ?BundleManager $bundles = null,
-        private readonly ?Container $container = null,
-    ) {}
+    public function __construct(private readonly ?ExtensionRegistry $registry = null) {}
 
-    /** Instance de la requête courante, ou aucun fournisseur si le conteneur est indisponible. */
+    /** Instance de la requête courante (registre des extensions), ou aucun fournisseur si indisponible. */
     public static function current(): self
     {
         try {
             $container = Container::getInstance();
-            return new self(
-                $container->has(ExtensionRegistry::class) ? $container->make(ExtensionRegistry::class) : null,
-                $container->has(BundleManager::class) ? $container->make(BundleManager::class) : null,
-                $container,
-            );
+            return new self($container->has(ExtensionRegistry::class) ? $container->make(ExtensionRegistry::class) : null);
         } catch (\Throwable) {
             return new self();
         }
     }
 
     /**
-     * Fournisseurs : déclarés par les bundles actifs, puis historiques des bundles actifs qui ne déclarent rien ;
-     * triés par ordre. Une clé déjà fournie n'est pas reprise.
+     * Fournisseurs déclarés par les bundles actifs, triés par ordre. Une clé déjà fournie n'est pas reprise.
      *
      * @return list<PendingRequestsProvider>
      */
@@ -59,13 +47,6 @@ final class PendingRequests
 
         $declared = $this->registry?->pendingRequestsProvidersByBundle() ?? [];
         $all = array_merge(...array_values($declared) ?: [[]]);
-        if ($this->container !== null) {
-            foreach (LegacyPendingRequests::forBundles($this->container) as $slug => $legacy) {
-                if ($this->bundles?->isActive($slug) && !isset($declared[$slug])) {
-                    $all[] = $legacy;
-                }
-            }
-        }
 
         $byKey = [];
         foreach ($all as $provider) {

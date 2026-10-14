@@ -5,15 +5,12 @@ declare(strict_types=1);
 namespace kintai\Core\Extension;
 
 use kintai\Contract\Extension\NavItem;
-use kintai\Core\BundleManager;
 use kintai\Core\Container;
 
 /**
  * Navigation de la barre du haut et des préférences de navigation, construite à partir de données :
  * - les entrées du Core (planning, personnel, rapports du Core, système) ;
- * - les entrées déclarées par les bundles actifs (point d'extension Bundle::navigation(), contrat 1.1) ;
- * - en repli, les entrées historiques d'un bundle actif qui ne déclare encore rien (bundles d'avant le contrat
- *   1.1). Ce repli disparaîtra quand tous les bundles déclareront leur navigation (étape 5 du plan du contrat).
+ * - les entrées déclarées par les bundles actifs (point d'extension Bundle::navigation(), contrat 1.1).
  *
  * Une même clé sert à la barre du haut et aux préférences (« masquer cette entrée ») pour tous les rôles.
  */
@@ -35,43 +32,29 @@ final class Navigation
     public const MOBILE_DEFAULT_MANAGER = ['shifts', 'users', 'timeoff'];
     public const MOBILE_DEFAULT_EMPLOYEE = ['shifts', 'timeclocks', 'timeoff'];
 
-    public function __construct(
-        private readonly ?ExtensionRegistry $registry = null,
-        private readonly ?BundleManager $bundles = null,
-    ) {}
+    public function __construct(private readonly ?ExtensionRegistry $registry = null) {}
 
-    /** Instance de la requête courante (registre des extensions et bundles actifs), ou Core seul si indisponible. */
+    /** Instance de la requête courante (registre des extensions), ou Core seul si indisponible. */
     public static function current(): self
     {
         try {
             $container = Container::getInstance();
-            return new self(
-                $container->has(ExtensionRegistry::class) ? $container->make(ExtensionRegistry::class) : null,
-                $container->has(BundleManager::class) ? $container->make(BundleManager::class) : null,
-            );
+            return new self($container->has(ExtensionRegistry::class) ? $container->make(ExtensionRegistry::class) : null);
         } catch (\Throwable) {
             return new self();
         }
     }
 
     /**
-     * Toutes les entrées : Core, bundles déclarants, repli des bundles actifs non déclarants ; triées par section
-     * puis par ordre. Une clé déjà présente n'est pas reprise.
+     * Toutes les entrées : Core, puis bundles actifs déclarants ; triées par section puis par ordre. Une clé déjà
+     * présente n'est pas reprise.
      *
      * @return list<NavItem>
      */
     public function items(): array
     {
         $items = self::coreItems();
-        $declared = $this->registry?->navigation() ?? [];
-        $declaring = $this->registry?->bundlesDeclaringNavigation() ?? [];
-
-        foreach (self::legacyBundleItems() as $slug => $legacy) {
-            if ($this->bundles?->isActive($slug) && !in_array($slug, $declaring, true)) {
-                array_push($items, ...$legacy);
-            }
-        }
-        array_push($items, ...$declared);
+        array_push($items, ...($this->registry?->navigation() ?? []));
 
         $unique = [];
         foreach ($items as $item) {
@@ -356,18 +339,6 @@ final class Navigation
                     $active = array_filter($settingsPaths, static fn(string $p): bool => str_starts_with($path, $p)) !== [];
                     return [['href' => ($view['route_url'])('admin.owner_settings'), 'label' => __('settings'), 'active' => $active]];
                 }),
-        ];
-    }
-
-    /**
-     * Entrées historiques des bundles officiels, utilisées seulement pour un bundle actif qui ne déclare pas encore sa
-     * navigation (versions d'avant le contrat 1.1).
-     *
-     * @return array<string, list<NavItem>>
-     */
-    public static function legacyBundleItems(): array
-    {
-        return [
         ];
     }
 }

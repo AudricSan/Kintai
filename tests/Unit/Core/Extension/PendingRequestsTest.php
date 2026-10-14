@@ -78,7 +78,7 @@ final class PendingRequestsTest extends TestCase
         $manager = (new \ReflectionClass(BundleManager::class))->newInstanceWithoutConstructor();
         (new \ReflectionProperty($manager, 'bundles'))->setValue($manager, $bundles);
 
-        return new PendingRequests(new ExtensionRegistry($manager), $manager, $this->container);
+        return new PendingRequests(new ExtensionRegistry($manager));
     }
 
     private static function all(): \Closure

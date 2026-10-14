@@ -50,7 +50,7 @@ final class DashboardStatsTest extends TestCase
         $manager = (new \ReflectionClass(BundleManager::class))->newInstanceWithoutConstructor();
         (new \ReflectionProperty($manager, 'bundles'))->setValue($manager, $bundles);
 
-        return new DashboardStats(new ExtensionRegistry($manager), $manager);
+        return new DashboardStats(new ExtensionRegistry($manager));
     }
 
     private static function keys(array $cards): array
@@ -76,7 +76,7 @@ final class DashboardStatsTest extends TestCase
             ],
             'acme' => [new DashboardStat('acme_tasks', 'acme', fn(): string => '3/5', '🧩', order: 5), 'pas une carte'],
             'boom' => new \RuntimeException('kaput'),
-        ])->cards(['user' => ['id' => 2]], fn(?string $f): bool => true, ['swaps' => 99]);
+        ])->cards(['user' => ['id' => 2]], fn(?string $f): bool => true);
 
         $this->assertSame(['acme_tasks', 'pending_swaps'], self::keys($cards));
         $this->assertSame(['3/5', 42], array_column($cards, 'value'));

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace kintai\Core\Extension;
 
 use kintai\Contract\Extension\DashboardWidget;
-use kintai\Core\BundleManager;
 use kintai\Core\Container;
 use kintai\Core\Services\WidgetGuard;
 use kintai\UI\ViewRenderer;
@@ -15,57 +14,38 @@ use kintai\UI\ViewRenderer;
  * - ceux du Core, rendus par la vue du tableau de bord ;
  * - ceux déclarés par les bundles actifs (point d'extension Bundle::dashboardWidgets(), contrat 1.4), rendus ici à
  *   partir de la vue du bundle et affichés après ceux du Core.
- *
- * Les widgets historiques que le Core affiche pour un bundle (demandes de congé, échanges, pointages) restent
- * affichés tant que ce bundle ne déclare aucun widget ; dès qu'il en déclare, seuls les siens comptent. Un bundle peut
- * reprendre la clé de son widget historique pour conserver les préférences des utilisateurs.
  */
 final class DashboardWidgets
 {
-    /** Widgets historiques du Core qui appartiennent à un bundle : public => clé => slug du bundle. */
-    public const LEGACY_BUNDLE_WIDGETS = [
-        DashboardWidget::MANAGER => [
-        ],
-        DashboardWidget::EMPLOYEE => [
-        ],
-    ];
+    public function __construct(private readonly ?ExtensionRegistry $registry = null) {}
 
-    public function __construct(
-        private readonly ?ExtensionRegistry $registry = null,
-        private readonly ?BundleManager $bundles = null,
-    ) {}
-
-    /** Instance de la requête courante (registre des extensions et bundles actifs), ou Core seul si indisponible. */
+    /** Instance de la requête courante (registre des extensions), ou Core seul si indisponible. */
     public static function current(): self
     {
         try {
             $container = Container::getInstance();
-            return new self(
-                $container->has(ExtensionRegistry::class) ? $container->make(ExtensionRegistry::class) : null,
-                $container->has(BundleManager::class) ? $container->make(BundleManager::class) : null,
-            );
+            return new self($container->has(ExtensionRegistry::class) ? $container->make(ExtensionRegistry::class) : null);
         } catch (\Throwable) {
             return new self();
         }
     }
 
     /**
-     * Widgets déclarés par les bundles actifs pour ce public, triés par ordre. Une clé déjà prise (widget du Core qui
-     * n'est pas l'historique du bundle déclarant, ou widget d'un autre bundle) est ignorée.
+     * Widgets déclarés par les bundles actifs pour ce public, triés par ordre. Une clé déjà prise (widget du Core ou
+     * d'un autre bundle) est ignorée.
      *
      * @param list<string> $coreKeys Widgets du Core pour ce public
      * @return list<DashboardWidget>
      */
     public function declared(string $audience, array $coreKeys): array
     {
-        $legacy = self::LEGACY_BUNDLE_WIDGETS[$audience] ?? [];
         $widgets = [];
-        foreach ($this->registry?->dashboardWidgetsByBundle() ?? [] as $slug => $declared) {
+        foreach ($this->registry?->dashboardWidgetsByBundle() ?? [] as $declared) {
             foreach ($declared as $widget) {
                 if ($widget->audience !== $audience || isset($widgets[$widget->key])) {
                     continue;
                 }
-                if (in_array($widget->key, $coreKeys, true) && ($legacy[$widget->key] ?? null) !== $slug) {
+                if (in_array($widget->key, $coreKeys, true)) {
                     continue;
                 }
                 $widgets[$widget->key] = $widget;
@@ -77,36 +57,20 @@ final class DashboardWidgets
     }
 
     /**
-     * Clés de tous les widgets proposés pour ce public : ceux du Core (sans les historiques des bundles déclarants),
-     * puis ceux déclarés par les bundles.
+     * Clés de tous les widgets proposés pour ce public : ceux du Core, puis ceux déclarés par les bundles.
      *
      * @param list<string> $coreKeys
      * @return list<string>
      */
     public function keys(string $audience, array $coreKeys): array
     {
-        $replaced = $this->replacedLegacyKeys($audience);
-        $keys = array_values(array_filter($coreKeys, static fn(string $k): bool => !in_array($k, $replaced, true)));
+        $keys = array_values($coreKeys);
         foreach ($this->declared($audience, $coreKeys) as $widget) {
             if (!in_array($widget->key, $keys, true)) {
                 $keys[] = $widget->key;
             }
         }
         return $keys;
-    }
-
-    /**
-     * Widgets historiques du Core que le Core ne rend plus lui-même, parce que leur bundle déclare ses widgets.
-     *
-     * @return list<string>
-     */
-    public function replacedLegacyKeys(string $audience): array
-    {
-        $declaring = $this->registry?->bundlesDeclaringDashboardWidgets() ?? [];
-        return array_keys(array_filter(
-            self::LEGACY_BUNDLE_WIDGETS[$audience] ?? [],
-            static fn(string $slug): bool => in_array($slug, $declaring, true)
-        ));
     }
 
     /**
