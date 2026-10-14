@@ -90,6 +90,7 @@ final class BundleInstallerServiceTest extends TestCase
             'version'     => '1.0.0',
             'namespace'   => 'kintai\\Bundles\\Installed\\FakeBundle',
             'entry_class' => 'kintai\\Bundles\\Installed\\FakeBundle\\FakeBundleBundle',
+            'kintai_contract' => '^1.0',
             'kintai_core' => ['min' => '0.1.0', 'max' => '0.9.0'],
         ], $manifestOverrides);
 
@@ -165,8 +166,8 @@ final class BundleInstallerServiceTest extends TestCase
 
     public function testInstallRejectsWhenIncompatibleWithCoreVersion(): void
     {
-        // Le Core factice est en 0.5.0 ; ce manifeste exige 1.0.0+.
-        $zipPath = $this->buildFixtureZip(['kintai_core' => ['min' => '1.0.0', 'max' => '2.0.0']]);
+        // Ce manifeste exige un contrat que ce Core ne fournit pas.
+        $zipPath = $this->buildFixtureZip(['kintai_contract' => '^99.0']);
         $service = $this->makeService(
             fn() => 'https://example.test/fake.zip',
             function (string $url, string $dest) use ($zipPath) { return copy($zipPath, $dest); },
@@ -176,7 +177,22 @@ final class BundleInstallerServiceTest extends TestCase
 
         $this->assertFalse($result->success);
         // Message traduit (clé brute en test unitaire, sans fichiers de langue chargés).
-        $this->assertStringContainsString('bundle_core_incompatible', (string) $result->error);
+        $this->assertStringContainsString('bundle_contract_incompatible', (string) $result->error);
+    }
+
+    /** Bundle antérieur au contrat versionné (sans « kintai_contract ») : refusé, quelle que soit sa plage kintai_core. */
+    public function testInstallRejectsABundleWithoutContract(): void
+    {
+        $zipPath = $this->buildFixtureZip(['kintai_contract' => null, 'kintai_core' => ['min' => '0.1.0', 'max' => '999.999.999']]);
+        $service = $this->makeService(
+            fn() => 'https://example.test/fake.zip',
+            function (string $url, string $dest) use ($zipPath) { return copy($zipPath, $dest); },
+        );
+
+        $result = $service->install('fake-bundle', 'https://github.com/AudricSan/kintai-bundle-fake', '1.0.0');
+
+        $this->assertFalse($result->success);
+        $this->assertStringContainsString('bundle_contract_missing', (string) $result->error);
     }
 
     public function testInstallRejectsWhenEntryClassFileIsMissing(): void

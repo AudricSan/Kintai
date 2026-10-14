@@ -138,12 +138,12 @@ final class BundleManifestTest extends TestCase
         $this->assertNotNull($this->manifestWith(['kintai_contract' => 'latest'])->incompatibilityReason('1.0.0', '1.0.0'));
     }
 
-    public function testWithoutAContractTheCoreRangeDecides(): void
+    /** Sans contrat déclaré, le bundle est incompatible : sa plage kintai_core, même ouverte, ne compte plus. */
+    public function testWithoutAContractTheBundleIsIncompatible(): void
     {
-        $manifest = $this->manifestWith(['kintai_core' => ['min' => '0.3.0', 'max' => '0.9.0']]);
+        $manifest = $this->manifestWith(['kintai_core' => ['min' => '0.1.0', 'max' => '999.999.999']]);
 
         $this->assertNull($manifest->contractConstraint);
-        $this->assertNull($manifest->incompatibilityReason('0.5.0'));
-        $this->assertNotNull($manifest->incompatibilityReason('1.0.0'));
+        $this->assertSame('bundle_contract_missing', $manifest->incompatibilityReason('0.5.0'));
     }
 }

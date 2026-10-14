@@ -699,7 +699,7 @@ $r->get('/stores/{id:store}/reports/{uid:employee}', [ReportController::class, '
 - **Generate links with `route_url()`, passing the id** (`route_url('store_photos.index', ['id' => $storeId])`): it emits the readable, encoded segment. For a URL you build by hand, use `store_segment($storeId)` / `employee_segment($userId)` instead of the raw id — never the employee's name.
 - **Old links keep working:** a numeric id is resolved and a GET is redirected `301` to the readable URL (a POST is served as is), so bookmarks, e-mails and notifications sent before your bundle migrated are not broken.
 - **Only type what designates a store or an employee.** A report, a photo or a membership id stays a plain `{id}`.
-- **Requires a Core that ships typed route parameters** (see its CHANGELOG): set `kintai_core.min` in `bundle.json` accordingly, since an older Core would read `{id:store}` as a literal segment.
+- **Requires a Core that ships typed route parameters** (see its CHANGELOG): require a `kintai_contract` that such a Core provides, since an older Core would read `{id:store}` as a literal segment.
 
 ## Database migrations
 
@@ -744,7 +744,7 @@ This mechanism is deliberately Core-agnostic: your repository interface and Eloq
 
 ## Assets
 
-**Requires `kintai_core.min: "0.2.0"` or later.** If your bundle needs its own CSS or JS, don't ask for it to be added to Kintai's own `public/assets/` — that was the situation for every bundle before this mechanism existed, and it defeated the entire point of distributing bundles as separate repositories (a CSS tweak meant a Core PR). Ship it yourself, from your own `public/` directory (a sibling of `src/`, `Views/`, `routes.php` — same rule as everything else in the required layout above):
+If your bundle needs its own CSS or JS, don't ask for it to be added to Kintai's own `public/assets/` — that was the situation for every bundle before this mechanism existed, and it defeated the entire point of distributing bundles as separate repositories (a CSS tweak meant a Core PR). Ship it yourself, from your own `public/` directory (a sibling of `src/`, `Views/`, `routes.php` — same rule as everything else in the required layout above):
 
 ```
 your-bundle/
@@ -808,8 +808,8 @@ Required at the bundle's repository root:
 | `namespace` | Yes | PSR-4 root for everything under `src/`. |
 | `entry_class` | Yes | Fully-qualified entry class name; its file must exist under `src/` once resolved from `namespace` (checked before activation). |
 | `description`, `author`, `license`, `homepage` | No | Informational only. |
-| `kintai_contract` | Recommended | Semver constraint on the **bundle contract** version (see [Versioned bundle contract](#versioned-bundle-contract)), e.g. `^1.0`. When present, it is the only compatibility check and `kintai_core` is ignored. |
-| `kintai_core.min`/`.max` | No (defaults `0.0.0`/`999.999.999`) — **legacy** | Used only when `kintai_contract` is absent. | The installer refuses to activate a bundle outside these bounds against the running instance's Core version. A bundle whose views use the `data-*` actions or `csp_nonce()` must set `min` to `0.3.0` — see [Content Security Policy](#content-security-policy-no-inline-scripts). |
+| `kintai_contract` | Yes | Semver constraint on the **bundle contract** version (see [Versioned bundle contract](#versioned-bundle-contract)), e.g. `^1.19`. It is the only compatibility check: a bundle without it predates the versioned contract and is refused at install time and never loaded at boot. |
+| `kintai_core.min`/`.max` | No — **informational** | Ignored by the compatibility check since the contract became mandatory (bundles published before it declared an open range and broke when the Core removed internal classes). |
 | `requires_bundles` | No (defaults `{}`) | Slug → version constraint. **Informational only for now** — see Limitations. |
 
 ## Versioned bundle contract
@@ -827,7 +827,10 @@ Supported constraints (Composer rules): `^1.2` (>= 1.2.0, < 2.0.0), `~1.2` / `~1
 The Core checks it **twice**:
 
 - **at install time** (market): an incompatible bundle is refused before anything is written to disk;
-- **at boot**: an installed bundle that became incompatible (e.g. after a Core update that raised the contract's major version) is **not loaded**, even if enabled — the application keeps running, the event is logged (`bundle_incompatible_not_loaded`) and the Bundles page shows the reason so the Owner can install a compatible version.
+- **at boot**: an installed bundle that became incompatible (e.g. after a Core update that raised the contract's major version) is **not loaded**, even if enabled — the application keeps running, the event is logged (`bundle_incompatible_not_loaded`) and the Bundles page shows the reason so the Owner can install a compatible version;
+- **before a Core update**: `/admin/update` reads the contract version of the offered release and lists the installed bundles it would no longer load.
+
+A bundle without `kintai_contract` is treated as incompatible everywhere, including one dropped by hand into `src/Bundles/{Name}/` (which needs a `bundle.json` next to its class).
 
 `kintai_core.min`/`max` is still honoured for bundles that don't declare `kintai_contract` yet, but it will be dropped once every bundle has migrated: declare `kintai_contract` in new bundles.
 
@@ -859,7 +862,7 @@ Kintai sends `script-src 'self' 'nonce-…'` (`SecurityHeadersMiddleware`): the 
 
 `data-on-*` only calls a **function you defined yourself** on `window` (a function declaration in your script, or `window.f = …`): browser built-ins such as `eval` or `setTimeout` are refused on purpose, so that an injected attribute cannot become a way to run code. `Button`/`Modal` attribute values are already HTML-escaped by the component — pass the raw value, not `htmlspecialchars()` output.
 
-**Version requirement.** The `data-*` actions and `csp_nonce()` exist from **Kintai Core 0.3.0**. A bundle that uses them must declare `"kintai_core": { "min": "0.3.0", … }` in its `bundle.json`, so the installer refuses it on an older Core instead of installing controls that do nothing. Conversely, this is a **breaking change for existing bundles**: a bundle written before 0.3.0 that still uses inline handlers keeps working on a Core older than 0.3.0, but its buttons, selects and confirmations stop working on 0.3.0 and later until it is migrated. `tests/Unit/Security/NoInlineScriptGuardTest.php` in Kintai fails as soon as a Core view reintroduces an inline handler; do the same check on your own views.
+**Version requirement.** The `data-*` actions and `csp_nonce()` exist from **Kintai Core 0.3.0**. Every Core that provides the bundle contract (1.0 shipped with Core 0.3.6) has them, so declaring `kintai_contract` — now mandatory — is enough: an older Core refuses the bundle instead of installing controls that do nothing. Conversely, this is a **breaking change for existing bundles**: a bundle written before 0.3.0 that still uses inline handlers keeps working on a Core older than 0.3.0, but its buttons, selects and confirmations stop working on 0.3.0 and later until it is migrated. `tests/Unit/Security/NoInlineScriptGuardTest.php` in Kintai fails as soon as a Core view reintroduces an inline handler; do the same check on your own views.
 
 ### Migrating an existing bundle
 
@@ -867,7 +870,7 @@ Kintai sends `script-src 'self' 'nonce-…'` (`SecurityHeadersMiddleware`): the 
 2. Replace each with the matching `data-*` attribute from the table above. A `confirm()` becomes `data-confirm`; a handler that called `event.stopPropagation()` needs `data-stop-propagation`, otherwise a delegated ancestor fires too.
 3. Make sure every function called through `data-on-*` is defined **on `window`**: a function declaration in a classic script, or `window.f = …`. A top-level `const f = …` or `let f = …` is not a property of `window` and is refused.
 4. Put the nonce on the inline `<script>` blocks you keep: `<script nonce="<?= csp_nonce() ?>">`.
-5. Raise `kintai_core.min` to `0.3.0` and add the CI check below.
+5. Declare `kintai_contract` and add the CI check below.
 
 ### Checking in CI
 
