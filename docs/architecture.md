@@ -71,5 +71,6 @@ Web routes address stores and employees by a readable segment instead of a datab
 ## ⏱ Ops & CLI Scripts
 Beyond `scripts/db-migrate.php` (see [Database Strategy](database.md)) and `scripts/check-translations.php` (see [Contributing](../CONTRIBUTING.md)), a few standalone CLI scripts back recurring maintenance jobs — each boots the full `Application` and is meant to be run headless (cron, a scheduled task, or manually):
 - **`auto-validate-reports.php`** — auto-validates daily reports left unvalidated past their store's cutoff time; also exposed as a token-protected HTTP endpoint (`/cron/auto-validate`) for external schedulers.
+- **`cron.php`** — runs any scheduled job, the Core's and those of active bundles, from the command line without a token (`php scripts/cron.php` lists them; `php scripts/cron.php auto-validate --date=2026-10-13` passes the same parameters as the URL): for a server with SSH access and a local crontab. On shared hosting without SSH, the host's scheduled tasks call `/cron/run/{job}` with a cron token instead.
 - **`create-cron-token.php`** — issues a token for the generic cron runner (`/cron/run/{job}`).
 - **`seed-demo-data.php`** — generates realistic sample data across every bundle for local testing (`--force` to reseed).

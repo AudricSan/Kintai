@@ -352,6 +352,42 @@ if (!function_exists('mascot_active')) {
     }
 }
 
+if (!function_exists('kintai_load_env_file')) {
+    /**
+     * Chargeur .env, partagé par le front controller (public/index.php) et les scripts en ligne de commande
+     * (scripts/cron.php) — nécessaire sur OVH (FastCGI), où le SetEnv du .htaccess n'atteint pas PHP.
+     * Priorité : .env.local (dev) → .env.ovh (production OVH) → .env (générique) ; un seul fichier chargé. Les
+     * variables déjà présentes dans l'environnement système ne sont jamais écrasées.
+     */
+    function kintai_load_env_file(string $basePath): void
+    {
+        foreach (['.env.local', '.env.ovh', '.env'] as $name) {
+            $file = $basePath . '/' . $name;
+            if (!file_exists($file)) {
+                continue;
+            }
+            foreach (file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+                $line = trim($line);
+                if ($line === '' || $line[0] === '#' || !str_contains($line, '=')) {
+                    continue;
+                }
+                [$k, $v] = explode('=', $line, 2);
+                $k = trim($k);
+                $v = trim($v);
+                if (strlen($v) >= 2 && $v[0] === $v[-1] && ($v[0] === '"' || $v[0] === "'")) {
+                    $v = substr($v, 1, -1);
+                }
+                if ($k !== '' && !isset($_ENV[$k])) {
+                    putenv("$k=$v");
+                    $_ENV[$k]    = $v;
+                    $_SERVER[$k] = $v;
+                }
+            }
+            break; // un seul fichier chargé
+        }
+    }
+}
+
 if (!function_exists('kintai_normalize_script_name')) {
     /**
      * Ramène SCRIPT_NAME à l'URL réellement vue par le visiteur quand le .htaccess racine a réécrit la
