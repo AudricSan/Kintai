@@ -1,4 +1,7 @@
 {
+    "bundle_contract_missing": "it declares no bundle contract version (\"kintai_contract\"): it predates the bundle contract and is no longer loaded. Install its latest version.",
+    "update_bundles_incompatible_title": "Bundles to update after this update",
+    "update_bundles_incompatible_hint": "This version provides bundle contract :contract. The bundles below will no longer be loaded until you update them from the bundle catalogue.",
     "3days": "3 Days",
     "absence_days_col": "Abs. days",
     "absence_rate": "Absence rate",

@@ -1,4 +1,7 @@
 {
+    "bundle_contract_missing": "契約バージョン（「kintai_contract」）を宣言していません。バンドル契約より前のバンドルのため、読み込まれません。最新版をインストールしてください。",
+    "update_bundles_incompatible_title": "この更新の後に更新が必要なバンドル",
+    "update_bundles_incompatible_hint": "このバージョンはバンドル契約 :contract を提供します。以下のバンドルは、バンドルカタログから更新するまで読み込まれません。",
     "3days": "3日間",
     "absence_days_col": "欠勤日",
     "absence_rate": "欠勤率",

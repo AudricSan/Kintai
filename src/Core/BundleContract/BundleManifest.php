@@ -32,7 +32,8 @@ final readonly class BundleManifest
         public string $kintaiCoreMax,
         public array $requiresBundles,
         // Contrainte semver sur la version du contrat (« kintai_contract » : « ^1.0 »), ou null si le bundle ne la
-        // déclare pas encore : on retombe alors sur kintai_core.min/max (bundles antérieurs au contrat versionné).
+        // déclare pas : il est alors incompatible (bundle antérieur au contrat versionné). kintai_core.min/max n'est
+        // plus qu'informatif.
         public ?string $contractConstraint = null,
     ) {
     }
@@ -69,8 +70,11 @@ final readonly class BundleManifest
     }
 
     /**
-     * Raison pour laquelle ce bundle ne peut pas tourner sur ce Core, ou null s'il est compatible. La contrainte
-     * de contrat prime ; sans elle, l'intervalle kintai_core.min/max s'applique (ancien format).
+     * Raison pour laquelle ce bundle ne peut pas tourner sur ce Core, ou null s'il est compatible. Seule la
+     * contrainte de contrat compte : un bundle qui n'en déclare pas date d'avant le contrat versionné et s'appuie
+     * sur des classes internes du Core qui ont pu disparaître (son ancien intervalle kintai_core.min/max, toujours
+     * ouvert, ne le protégeait pas) ; il est donc incompatible, à l'installation comme au démarrage.
+     * $coreVersion est conservé pour la compatibilité de la signature.
      */
     public function incompatibilityReason(string $coreVersion, string $contractVersion = Contract::VERSION): ?string
     {
@@ -84,9 +88,7 @@ final readonly class BundleManifest
                 : __('bundle_contract_incompatible', ['required' => $this->contractConstraint, 'provided' => $contractVersion]);
         }
 
-        return $this->isCompatibleWithCore($coreVersion)
-            ? null
-            : __('bundle_core_incompatible', ['min' => $this->kintaiCoreMin, 'max' => $this->kintaiCoreMax, 'current' => $coreVersion]);
+        return __('bundle_contract_missing');
     }
 
     public function isCompatibleWithCore(string $coreVersion): bool

@@ -56,6 +56,8 @@ final class GithubUpdateService
      * @param \Closure|null $releaseFetcher fn(string $repo, string $token, int $page): ?array — une page de releases GitHub, ou null pour signaler un échec (surchargeable pour les tests)
      * @param \Closure|null $zipDownloader  fn(string $url, string $dest, string $token): bool — surchargeable pour les tests
      * @param \Closure|null $commitResolver fn(string $repo, string $token, string $tag): ?string — commit du tag (surchargeable pour les tests)
+     * @param \Closure|null $fileFetcher    fn(string $repo, string $token, string $tag, string $path): ?string — contenu d'un fichier
+     *                                     du dépôt à ce tag (surchargeable pour les tests)
      */
     public function __construct(
         private readonly UpdateService $updateService,
@@ -66,6 +68,7 @@ final class GithubUpdateService
         private readonly ?\Closure $releaseFetcher = null,
         private readonly ?\Closure $zipDownloader = null,
         private readonly ?\Closure $commitResolver = null,
+        private readonly ?\Closure $fileFetcher = null,
     ) {
         $this->basePath = $basePath ?? BASE_PATH;
         $this->manifestFile = storage_path('app/update-files-manifest.json');
@@ -506,6 +509,25 @@ final class GithubUpdateService
             && ($manifest['tag'] ?? null) === $tag
             && is_string($manifest['commit'] ?? null)
             && hash_equals(strtolower($tagCommit), strtolower($manifest['commit']));
+    }
+
+    /**
+     * Version du contrat de bundle (kintai\Contract\Contract::VERSION) fournie par la release de ce tag, lue dans
+     * son code sur GitHub, ou null si elle est illisible (réseau, release antérieure au contrat versionné).
+     */
+    public function contractVersionAt(string $tag): ?string
+    {
+        $path = 'src/Contract/Contract.php';
+        if ($this->fileFetcher !== null) {
+            $source = ($this->fileFetcher)($this->repo, $this->token, $tag, $path);
+        } else {
+            $headers = ['User-Agent: Kintai-UpdateCheck/1.0'];
+            if ($this->token !== '') {
+                $headers[] = 'Authorization: Bearer ' . $this->token;
+            }
+            $source = $this->httpGet('https://raw.githubusercontent.com/' . $this->repo . '/' . rawurlencode($tag) . '/' . $path, $headers, 10);
+        }
+        return is_string($source) && preg_match("/const VERSION = '(\\d+\\.\\d+\\.\\d+)'/", $source, $m) === 1 ? $m[1] : null;
     }
 
     /** Commit vers lequel pointe le tag sur GitHub (GET /repos/{repo}/commits/{tag}), ou null. */

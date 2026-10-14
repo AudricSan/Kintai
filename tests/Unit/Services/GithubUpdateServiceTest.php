@@ -149,6 +149,30 @@ final class GithubUpdateServiceTest extends TestCase
         );
     }
 
+    /** Version du contrat de bundle d'une release, lue dans son src/Contract/Contract.php (avertissement de /admin/update). */
+    public function testContractVersionAtReadsTheContractOfTheRelease(): void
+    {
+        $asked = [];
+        $make = function (?string $source) use (&$asked): GithubUpdateService {
+            return new GithubUpdateService(
+            $this->updateService,
+            $this->backup,
+            $this->migrator,
+            $this->makeSettings(),
+            $this->tmpDir,
+            fileFetcher: function (string $repo, string $token, string $tag, string $path) use (&$asked, $source): ?string {
+                $asked[] = [$tag, $path];
+                return $source;
+            },
+            );
+        };
+
+        $this->assertSame('1.19.0', $make("<?php\nfinal class Contract\n{\n    public const VERSION = '1.19.0';\n}\n")->contractVersionAt('v0.4.0-alpha'));
+        $this->assertSame(['v0.4.0-alpha', 'src/Contract/Contract.php'], $asked[0]);
+        $this->assertNull($make(null)->contractVersionAt('v0.4.0'), 'fichier illisible');
+        $this->assertNull($make('<?php // pas de contrat')->contractVersionAt('v0.1.0'), 'release antérieure au contrat');
+    }
+
     public function testCheckLatestReleaseReturnsNullWhenNoReleaseFound(): void
     {
         $service = new GithubUpdateService(

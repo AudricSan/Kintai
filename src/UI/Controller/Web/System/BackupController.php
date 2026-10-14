@@ -12,6 +12,7 @@ use kintai\Core\SessionFlash;
 use kintai\Core\Services\AppSettingsService;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\BackupService;
+use kintai\Core\BundleDiscoveryService;
 use kintai\Core\Services\GithubUpdateService;
 use kintai\Core\Services\UpdateService;
 use kintai\UI\Controller\Web\HasBaseUrl;
@@ -90,6 +91,15 @@ final class BackupController
             ? $this->githubUpdate->condenseReleaseNotes((string) $updateInfo['release_notes'])
             : '';
 
+        // Bundles installés que la release proposée ne chargerait plus (contrat qu'ils n'acceptent pas) : la page les
+        // liste avant que l'Owner applique la mise à jour. Contrat illisible : pas d'avertissement possible.
+        $targetContract = $updateInfo !== null && !empty($updateInfo['has_update'])
+            ? $this->githubUpdate->contractVersionAt((string) $updateInfo['tag_name'])
+            : null;
+        $incompatibleBundles = $targetContract !== null
+            ? (new BundleDiscoveryService())->installedIncompatibleWith($targetContract)
+            : [];
+
         $currentChannel = $this->settings->updateChannel();
         $otherChannelsHistory = [];
         foreach (['release', 'beta', 'alpha'] as $channel) {
@@ -110,6 +120,8 @@ final class BackupController
             'releaseNotesCondensed'     => $releaseNotesCondensed,
             'repoReleasesUrl'           => $this->githubUpdate->getRepoReleasesUrl(),
             'flash'                     => $flash,
+            'targetContract'            => $targetContract,
+            'incompatibleBundles'       => $incompatibleBundles,
         ], 'layout.app'));
     }
 

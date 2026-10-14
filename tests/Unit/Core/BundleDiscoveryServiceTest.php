@@ -187,11 +187,18 @@ final class BundleDiscoveryServiceTest extends TestCase
         require $bundleRoot . '/src/' . $className . 'Bundle.php';
     }
 
-    private function writeFakeLegacyBundle(string $legacyDir, string $dirName, string $slug): void
+    /** @param array<string, mixed>|null $manifest bundle.json à côté de la classe (null : aucun) */
+    private function writeFakeLegacyBundle(string $legacyDir, string $dirName, string $slug, ?array $manifest = null): void
     {
         $namespace = 'kintai\\Bundles\\' . $dirName;
         $bundleRoot = $legacyDir . '/' . $dirName;
         mkdir($bundleRoot, 0777, true);
+        if ($manifest !== null) {
+            file_put_contents($bundleRoot . '/bundle.json', json_encode($manifest + [
+                'slug' => $slug, 'name' => 'Fake Legacy Bundle', 'version' => '1.0.0', 'namespace' => $namespace,
+                'entry_class' => $namespace . '\\' . $dirName . 'Bundle',
+            ]));
+        }
 
         file_put_contents($bundleRoot . '/' . $dirName . 'Bundle.php', <<<PHP
         <?php
@@ -238,10 +245,44 @@ final class BundleDiscoveryServiceTest extends TestCase
         $this->assertNotNull($meta['incompatible']);
     }
 
-    /** Sans kintai_contract, l'ancien intervalle kintai_core.min/max s'applique encore (bundles existants). */
-    public function testWithoutAContractTheLegacyCoreRangeStillApplies(): void
+    /** Sans kintai_contract (bundles publiés avant le contrat versionné) : listé mais jamais chargé, même avec une plage kintai_core ouverte. */
+    public function testWithoutAContractTheBundleIsNotLoaded(): void
     {
-        $this->assertNull($this->discoverOne('legacy-ok', '1.0.0', ['kintai_core' => ['min' => '0.3.0', 'max' => '999.999.999']], '0.5.0')['incompatible']);
-        $this->assertNotNull($this->discoverOne('legacy-old-core', '1.0.0', ['kintai_core' => ['min' => '0.9.0', 'max' => '999.999.999']], '0.5.0')['incompatible']);
+        $this->assertSame('bundle_contract_missing', $this->discoverOne('legacy-ok', '1.0.0', ['kintai_core' => ['min' => '0.1.0', 'max' => '999.999.999']], '0.5.0')['incompatible']);
+    }
+
+    /** Bundle déposé dans src/Bundles/ : même règle qu'un bundle installé, son bundle.json doit déclarer le contrat. */
+    public function testALegacyDropInBundleNeedsAContract(): void
+    {
+        $dir = sys_get_temp_dir() . '/kintai-legacy-contract-' . uniqid();
+        $this->writeFakeLegacyBundle($dir, 'FakeNoManifestBundle', 'fake-no-manifest');
+        $this->writeFakeLegacyBundle($dir, 'FakeContractBundle', 'fake-contract', ['kintai_contract' => '^1.0']);
+        $empty = sys_get_temp_dir() . '/kintai-installed-' . uniqid();
+        mkdir($empty, 0777, true);
+
+        $found = (new BundleDiscoveryService($dir, new InstalledBundleManifestStore($empty . '/installed.json'), $empty, '1.0.0'))->discover();
+
+        $this->assertSame('bundle_contract_missing', $found['fake-no-manifest']['incompatible']);
+        $this->assertNull($found['fake-contract']['incompatible']);
+    }
+
+    /** Avertissement de /admin/update : bundles installés qu'un Core fournissant ce contrat ne chargerait pas. */
+    public function testInstalledIncompatibleWithATargetContract(): void
+    {
+        $installedDir = sys_get_temp_dir() . '/kintai-installed-' . uniqid();
+        $this->writeFakeInstalledBundle($installedDir, 'still-ok', '1.0.0', null, ['kintai_contract' => '^1.5']);
+        $this->writeFakeInstalledBundle($installedDir, 'needs-v2', '1.0.0', null, ['kintai_contract' => '^2.0']);
+        $this->writeFakeInstalledBundle($installedDir, 'no-contract', '1.0.0');
+        $store = new InstalledBundleManifestStore($installedDir . '/installed.json');
+        foreach (['still-ok', 'needs-v2', 'no-contract'] as $slug) {
+            $store->setActiveVersion($slug, '1.0.0');
+        }
+        $service = new BundleDiscoveryService(sys_get_temp_dir() . '/kintai-does-not-exist-' . uniqid(), $store, $installedDir, '1.0.0');
+
+        $incompatible = $service->installedIncompatibleWith('1.6.0');
+
+        $this->assertSame(['needs-v2', 'no-contract'], array_column($incompatible, 'slug'));
+        $this->assertSame('bundle_contract_missing', $incompatible[1]['reason']);
+        $this->assertSame(['still-ok', 'no-contract'], array_column($service->installedIncompatibleWith('2.1.0'), 'slug'));
     }
 }

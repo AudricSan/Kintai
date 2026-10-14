@@ -1,4 +1,7 @@
 {
+    "bundle_contract_missing": "il ne déclare pas de version de contrat (« kintai_contract ») : il date d'avant le contrat de bundle et n'est plus chargé. Installez sa dernière version.",
+    "update_bundles_incompatible_title": "Bundles à mettre à jour après cette mise à jour",
+    "update_bundles_incompatible_hint": "Cette version fournit le contrat de bundle :contract. Les bundles ci-dessous ne seront plus chargés tant que vous ne les aurez pas mis à jour depuis le catalogue de bundles.",
     "3days": "3 jours",
     "absence_days_col": "J. abs.",
     "absence_rate": "Taux d'absentéisme",
