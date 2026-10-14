@@ -9,11 +9,9 @@ require_once $fixtures . '/timeoff-1.0.0/src/Controllers/Api/TimeoffRequestContr
 require_once $fixtures . '/shift-swap-1.0.0/src/Controllers/Api/ShiftSwapRequestController.php';
 require_once $fixtures . '/shift-claim-1.0.0/src/Controllers/Api/ShiftClaimController.php';
 require_once $fixtures . '/daily-report-1.0.0/src/Controllers/Api/DailyReportController.php';
-require_once $fixtures . '/messaging-1.0.0/src/Controllers/Api/MessageController.php';
 require_once $fixtures . '/timeclock-1.0.0/src/Controllers/Api/TimeclockController.php';
 
 use kintai\Bundles\Installed\DailyReport\Controllers\Api\DailyReportController;
-use kintai\Bundles\Installed\Messaging\Controllers\Api\MessageController;
 use kintai\Bundles\Installed\ShiftClaim\Controllers\Api\ShiftClaimController;
 use kintai\Bundles\Installed\ShiftSwap\Controllers\Api\ShiftSwapRequestController;
 use kintai\Bundles\Installed\TimeOff\Controllers\Api\TimeoffRequestController;
@@ -21,7 +19,6 @@ use kintai\Bundles\Installed\Timeclock\Controllers\Api\TimeclockController;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Repositories\DailyReportRepositoryInterface;
-use kintai\Core\Repositories\MessageRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\ShiftClaimRepositoryInterface;
@@ -228,50 +225,6 @@ final class BundleApiMassAssignmentTest extends TestCase
             'id' => 1, 'author_id' => 99, 'store_id' => self::MY_STORE, 'notes' => 'RAS',
             'status' => 'validated', 'validated_by' => 99, 'is_finalized' => 1,
         ]));
-    }
-
-    // -------------------------------------------------------------- messaging
-
-    public function testMessageCreationIgnoresIdSoItCannotHijackAnotherThreadsMessage(): void
-    {
-        $repo = $this->createMock(MessageRepositoryInterface::class);
-        $repo->method('findThreadById')->willReturn(['id' => 10]);
-        $repo->method('findParticipant')->willReturn(['thread_id' => 10, 'user_id' => self::ME]);
-        $repo->expects($this->once())->method('saveMessage')->with($this->callback(
-            fn(array $d): bool => !array_key_exists('id', $d)
-                && $d['thread_id'] === 10
-                && $d['sender_id'] === self::ME
-                && $d['body'] === 'bonjour'
-        ))->willReturn(['id' => 77]);
-        $controller = new MessageController($repo, $this->storeUsers);
-
-        $controller->addMessage($this->request(['id' => 55, 'thread_id' => 99, 'sender_id' => 1, 'body' => 'bonjour'], ['id' => '10']));
-    }
-
-    public function testParticipantCreationIgnoresIdAndOtherFields(): void
-    {
-        $repo = $this->createMock(MessageRepositoryInterface::class);
-        $repo->method('findThreadById')->willReturn(['id' => 10]);
-        $repo->method('findParticipant')->willReturn(['thread_id' => 10, 'user_id' => self::ME]);
-        $repo->expects($this->once())->method('saveParticipant')->with($this->callback(
-            fn(array $d): bool => !array_key_exists('id', $d)
-                && $d['thread_id'] === 10
-                && $d['user_id'] === self::ME
-                && $d['is_read'] === 0
-        ))->willReturn(['id' => 4]);
-        $controller = new MessageController($repo, $this->storeUsers);
-
-        $controller->addParticipant($this->request(['id' => 9, 'thread_id' => 99, 'user_id' => self::ME, 'is_read' => 1], ['id' => '10']));
-    }
-
-    public function testThreadCreationInAStoreTheCallerDoesNotBelongToIsForbidden(): void
-    {
-        $repo = $this->createMock(MessageRepositoryInterface::class);
-        $repo->expects($this->never())->method('saveThread');
-        $controller = new MessageController($repo, $this->storeUsers);
-
-        $this->expectException(ForbiddenException::class);
-        $controller->createThread($this->request(['store_id' => self::OTHER, 'subject' => 's']));
     }
 
     // --------------------------------------------------------------- timeclock

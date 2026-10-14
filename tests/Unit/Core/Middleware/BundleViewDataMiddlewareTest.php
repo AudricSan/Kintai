@@ -10,7 +10,6 @@ use kintai\Core\BundleManager;
 use kintai\Core\Container;
 use kintai\Core\Extension\ExtensionRegistry;
 use kintai\Core\Middleware\BundleViewDataMiddleware;
-use kintai\Core\Repositories\MessageRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
@@ -20,7 +19,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Variables de vue des bundles (étape 2g du contrat de bundle) : déclarations des bundles actifs
- * (Bundle::viewVariables(), contrat 1.5), noms réservés, isolation, repli historique daily-report/messaging.
+ * (Bundle::viewVariables(), contrat 1.5), noms réservés, isolation, repli historique daily-report (messaging fournit son badge).
  */
 final class BundleViewDataMiddlewareTest extends TestCase
 {
@@ -68,13 +67,6 @@ final class BundleViewDataMiddlewareTest extends TestCase
         return new BundleViewDataMiddleware($this->container);
     }
 
-    private function bindMessages(int $unread): void
-    {
-        $messages = $this->createMock(MessageRepositoryInterface::class);
-        $messages->method('countUnread')->with(7)->willReturn($unread);
-        $this->container->instance(MessageRepositoryInterface::class, $messages);
-    }
-
     private function bindDailyReports(): void
     {
         $storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
@@ -93,15 +85,14 @@ final class BundleViewDataMiddlewareTest extends TestCase
         $this->container->instance(DailyReportPermissionService::class, $permissions);
     }
 
-    /** Aucun bundle ne déclare : mêmes variables qu'avec DailyReportNavMiddleware et MessageCountMiddleware. */
+    /** Aucun bundle ne déclare : même variable qu'avec DailyReportNavMiddleware ; plus de badge des messages calculé par le Core. */
     public function testLegacyFallbackMatchesTheFormerMiddlewares(): void
     {
-        $this->bindMessages(3);
         $this->bindDailyReports();
         $mw = $this->middleware(['messaging' => [], 'daily-report' => []]);
 
         $this->assertSame(
-            ['daily_report_staff_stores' => [['id' => 2, 'name' => 'S2']], 'unread_messages_count' => 3],
+            ['daily_report_staff_stores' => [['id' => 2, 'name' => 'S2']]],
             $mw->variables(['id' => 7], false)
         );
         $this->assertSame([], $mw->variables(['id' => 7], true)['daily_report_staff_stores'], 'gérant : liste vide');
@@ -111,12 +102,11 @@ final class BundleViewDataMiddlewareTest extends TestCase
     {
         $mw = $this->middleware([]);
 
-        $this->assertSame(['daily_report_staff_stores' => [], 'unread_messages_count' => 0], $mw->variables(['id' => 7], false));
+        $this->assertSame(['daily_report_staff_stores' => []], $mw->variables(['id' => 7], false));
     }
 
     public function testDeclaringBundleReplacesItsFallback(): void
     {
-        $this->bindMessages(3);
         $mw = $this->middleware([
             'messaging' => ['unread_messages_count' => fn(array $u): int => 40 + $u['id']],
             'acme'      => [

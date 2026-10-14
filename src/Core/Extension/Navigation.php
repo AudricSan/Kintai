@@ -388,11 +388,6 @@ final class Navigation
                     icon: 'plus', activePaths: ['/admin/open-shifts', '/employee/open-shifts'],
                     storeFeature: 'open_shifts', order: 30, mobile: true),
             ],
-            'messaging' => [
-                new NavItem('messages', NavItem::REQUESTS, 'messages', 'admin.messages', 'employee.messages',
-                    icon: 'message', activePaths: ['/admin/messages', '/employee/messages'],
-                    storeFeature: 'messages', badge: 'unread_messages_count', order: 40, mobile: true),
-            ],
             'hiring-report' => [
                 new NavItem('hiring_report', NavItem::REPORTS, 'hiring_reports', 'admin.reports.hiring', 'admin.reports.hiring',
                     icon: 'person', activePaths: ['*/reports/hiring'], order: 10),

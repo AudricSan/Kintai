@@ -117,11 +117,11 @@ final class PermissionExtensionTest extends TestCase
             'acme'     => ['acme_tasks' => ['view']],
             'daily-report' => ['daily_reports' => ['view']],
             'timeoff'  => [],
-            'messaging' => ['messaging' => ['view', 'send', 'delete']],
+            'shift-swap' => ['swaps' => ['view']],
         ]);
 
         $this->assertSame(
-            ['employees', 'shifts', 'stores', 'payroll', 'timeoff', 'daily_reports', 'messaging', 'acme_tasks'],
+            ['employees', 'shifts', 'stores', 'payroll', 'timeoff', 'swaps', 'daily_reports', 'acme_tasks'],
             array_keys(PermissionCatalog::forActiveBundles())
         );
     }

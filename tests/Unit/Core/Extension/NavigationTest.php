@@ -51,6 +51,14 @@ final class NavigationTest extends TestCase
     }
 
     /** @return list<string> */
+    /** Entrée déclarée par le bundle messaging (le Core n'a plus de repli pour lui). */
+    private static function messaging(): array
+    {
+        return [new NavItem('messages', NavItem::REQUESTS, 'messages', 'admin.messages', 'employee.messages',
+            icon: 'message', activePaths: ['/admin/messages', '/employee/messages'],
+            storeFeature: 'messages', badge: 'unread_messages_count', order: 40, mobile: true)];
+    }
+
     private static function keys(array $items): array
     {
         return array_map(fn(NavItem $i): string => $i->key, $items);
@@ -80,10 +88,10 @@ final class NavigationTest extends TestCase
     /** Bundle actif d'avant le contrat 1.1 (ne déclare rien) : ses entrées historiques sont reprises. */
     public function testAnActiveBundleThatDeclaresNothingGetsItsLegacyEntries(): void
     {
-        $keys = self::keys($this->navigation(['timeoff' => null, 'messaging' => null])->items());
+        $keys = self::keys($this->navigation(['timeoff' => null, 'shift-swap' => null])->items());
 
         $this->assertContains('timeoff', $keys);
-        $this->assertContains('messages', $keys);
+        $this->assertContains('swaps', $keys);
         $this->assertNotContains('timeclocks', $keys, 'bundle inactif : rien');
     }
 
@@ -110,7 +118,7 @@ final class NavigationTest extends TestCase
 
     public function testVisibleAppliesHiddenFeaturePermissionAndRole(): void
     {
-        $items = $this->navigation(['timeoff' => null, 'shift-swap' => null, 'messaging' => null])->items();
+        $items = $this->navigation(['timeoff' => null, 'shift-swap' => null, 'messaging' => self::messaging()])->items();
 
         $visible = Navigation::visible($items, $this->ctx([
             'hidden'       => ['swaps'],
@@ -150,7 +158,7 @@ final class NavigationTest extends TestCase
 
     public function testBadgeComesFromTheNamedViewVariable(): void
     {
-        $items = $this->navigation(['messaging' => null])->items();
+        $items = $this->navigation(['messaging' => self::messaging()])->items();
 
         $visible = Navigation::visible($items, $this->ctx(['view' => ['isOwner' => true, 'unread_messages_count' => 3]]));
 
@@ -229,7 +237,7 @@ final class NavigationTest extends TestCase
     /** Choix enregistrés sous les anciennes clés (team, requests, my_timeoff…) : toujours honorés. */
     public function testSavedLegacyMobileKeysAreHonoured(): void
     {
-        $nav = $this->navigation(['timeoff' => null, 'messaging' => null]);
+        $nav = $this->navigation(['timeoff' => null, 'messaging' => self::messaging()]);
 
         $tabs = $nav->mobileTabs(['team', 'requests', 'messages'], $this->mobileCtx());
 
@@ -240,7 +248,7 @@ final class NavigationTest extends TestCase
 
     public function testMobileTabsFallBackToDefaultsWhenFewerThanTwoAreVisible(): void
     {
-        $nav = $this->navigation(['messaging' => null, 'timeoff' => null]);
+        $nav = $this->navigation(['messaging' => self::messaging(), 'timeoff' => null]);
 
         $tabs = $nav->mobileTabs(['messages'], $this->mobileCtx(['feat' => fn(string $f): bool => $f !== 'messages']));
 
