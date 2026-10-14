@@ -13,7 +13,7 @@ use kintai\Core\Services\Log;
  * Liens d'action des bundles dans les emplacements des pages du Core, construits à partir de données :
  * - ceux déclarés par les bundles actifs (point d'extension Bundle::actions(), contrat 1.6) ;
  * - en repli, ceux que le Core affichait jusqu'ici pour un bundle actif qui ne déclare encore rien (salary-report,
- *   resignation-report, shift-swap). Ce repli disparaîtra à l'étape 5 du plan du contrat.
+ *   shift-swap). Ce repli disparaîtra à l'étape 5 du plan du contrat.
  */
 final class Actions
 {
@@ -46,7 +46,6 @@ final class Actions
         $base = static fn(): string => base_url();
         $salary = static fn(array $c): string => $base() . '/admin/stores/' . (int) $c['store_id'] . '/reports/salary/create'
             . (isset($c['user_id']) ? '?user_id=' . (int) $c['user_id'] : '');
-        $resign = static fn(array $c): string => $base() . '/admin/stores/' . (int) $c['store_id'] . '/reports/resignation/create?user_id=' . (int) $c['user_id'];
 
         return [
             'salary-report' => [
@@ -54,10 +53,6 @@ final class Actions
                 new Action('salary_report', Action::EMPLOYEE_STORE, 'salary_report', $salary, permission: 'payroll.generate', order: 20),
                 new Action('salary_report', Action::STORE_REPORT, 'salary_report', static fn(array $c): string => $salary(['store_id' => $c['store_id']]), '💰', Action::PRIMARY, order: 10),
                 new Action('salary_report', Action::STORE_REPORT_ROW, 'salary_report', $salary, '💰', order: 10),
-            ],
-            'resignation-report' => [
-                new Action('resign', Action::EMPLOYEE_ROW, 'resign', $resign, '✕', Action::DANGER, 'resignation_reports.create', order: 20),
-                new Action('resign', Action::EMPLOYEE_STORE, 'resign', $resign, '', Action::DANGER, 'resignation_reports.create', order: 10),
             ],
             'shift-swap' => [
                 new Action('request_swap', Action::SHIFTS_EMPLOYEE, 'request_swap', static fn(): string => route_url('employee.swaps.create'), '⇄', Action::PRIMARY, order: 10),

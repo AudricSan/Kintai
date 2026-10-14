@@ -19,16 +19,24 @@ use kintai\Core\BundleManager;
  */
 final class FakeBundleManagerFactory
 {
-    /** @param string[] $activeSlugs */
-    public static function withActiveSlugs(array $activeSlugs): BundleManager
+    /**
+     * @param string[] $activeSlugs
+     * @param array<string, list<\kintai\Contract\Extension\Action>> $actions actions déclarées, par slug (Bundle::actions())
+     */
+    public static function withActiveSlugs(array $activeSlugs, array $actions = []): BundleManager
     {
         $manager = (new \ReflectionClass(BundleManager::class))->newInstanceWithoutConstructor();
 
         $bundles = [];
         foreach ($activeSlugs as $slug) {
-            $bundles[$slug] = new class ($slug) extends Bundle {
-                public function __construct(private readonly string $slug)
+            $bundles[$slug] = new class ($slug, $actions[$slug] ?? []) extends Bundle {
+                public function __construct(private readonly string $slug, private readonly array $declaredActions)
                 {
+                }
+
+                public function actions(): array
+                {
+                    return $this->declaredActions;
                 }
 
                 public function getName(): string

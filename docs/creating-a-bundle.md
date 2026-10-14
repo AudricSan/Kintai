@@ -360,7 +360,7 @@ Slots and the context each one passes to `url`:
 
 The Core renders the link in the slot's own style, only for users holding `permission` and, if `storeFeature` is set,
 with that feature on. A key already used in the slot is ignored; an exception in `url` drops that link (logged).
-Until `salary-report`, `resignation-report` and `shift-swap` declare theirs, the Core keeps showing their historical
+Until `salary-report` and `shift-swap` declare theirs, the Core keeps showing their historical
 links — only while those bundles are active. Require `"kintai_contract": "^1.6"`.
 
 ### Notifications and activity log labels (contract 1.7)
