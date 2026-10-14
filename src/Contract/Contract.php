@@ -18,10 +18,12 @@ namespace kintai\Contract;
 final class Contract
 {
     /** Version du contrat fournie par ce Core. */
-    public const VERSION = '1.12.0';
+    public const VERSION = '1.13.0';
 
     /*
      * Historique :
+     * - 1.13.0 : point d'extension Bundle::eventListeners() et premier événement du Core,
+     *   kintai\Contract\Event\EmployeeCreated (employé créé).
      * - 1.12.0 : point d'extension Bundle::profileSections() et kintai\Contract\Extension\ProfileSection (sections du
      *   formulaire « Mes informations » du profil).
      * - 1.11.0 : fournisseur de pointages — Bundle::attendanceProviders(), interface

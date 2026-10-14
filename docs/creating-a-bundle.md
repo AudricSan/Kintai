@@ -441,6 +441,33 @@ and routes. Ship a hidden `0` field before each checkbox so unchecking works. A 
 exception while rendering drops that section (logged). The Core has no section of its own: `team-directory` ships
 the directory checkboxes this way. Require `"kintai_contract": "^1.12"`.
 
+### Core events: `eventListeners()` (contract 1.13)
+
+```php
+use kintai\Contract\Event\EmployeeCreated;
+
+public function eventListeners(): array
+{
+    return [
+        EmployeeCreated::class => function (EmployeeCreated $event): void {
+            // $event->user (users row, without secrets), $event->storeId (?int), $event->createdBy (?int),
+            // $event->source ('form', 'excel_import' or 'api')
+        },
+    ];
+}
+```
+
+The Core announces what happens on its side so your bundle can react without the Core knowing about it. One listener
+per event class (`kintai\Contract\Event\…`); anything else is ignored and logged. A listener that throws is logged and
+never stops the Core action nor the other bundles' listeners. Available events:
+
+| Event | When | Data |
+|---|---|---|
+| `EmployeeCreated` | right after an account is created: "New employee" form, Excel import quick-create, `POST /api/v1/users` | `user`, `storeId` (store the employee was assigned to, `null` if none — always `null` from the API), `createdBy`, `source` |
+
+`hiring-report` creates the employee's hiring report this way. Until it listens, the Core still creates that report
+itself. Require `"kintai_contract": "^1.13"`.
+
 ## Providers: data the Core reads from your bundle (contract 1.9+)
 
 Some Core pages need data your bundle owns. Instead of reading your tables, the Core asks a **provider** your bundle

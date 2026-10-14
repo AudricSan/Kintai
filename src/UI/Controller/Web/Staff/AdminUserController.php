@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\UI\Controller\Web\Staff;
 
+use kintai\Contract\Event\EmployeeCreated;
 use kintai\Core\Auth\CredentialRevoker;
 use kintai\Core\Auth\UserAnonymizer;
 use kintai\Core\Auth\OwnerGuard;
@@ -11,6 +12,7 @@ use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Exceptions\PlanLimitExceededException;
+use kintai\Core\Extension\Events;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
@@ -50,7 +52,23 @@ final class AdminUserController
         // Optionnel pour les tests qui construisent le contrôleur à la main.
         private readonly ?CredentialRevoker $revoker = null,
         private readonly ?UserAnonymizer $anonymizer = null,
+        private readonly ?Events $events = null,
     ) {}
+
+    /** Annonce des événements aux bundles (contrat 1.13) : celle de la requête courante, sauf si un test en fournit une. */
+    private function events(): Events
+    {
+        return $this->events ?? Events::current();
+    }
+
+    /**
+     * Repli historique : sans bundle hiring-report actif qui écoute EmployeeCreated, le Core crée lui-même le rapport
+     * d'embauche (comportement d'avant le contrat 1.13). Disparaît à l'extraction du bundle (étape 4).
+     */
+    private function hiringReportHandledByBundle(): bool
+    {
+        return $this->events()->isListenedBy('hiring-report', EmployeeCreated::class);
+    }
 
     /** Le conteneur l'injecte toujours ; un test qui supprime un compte doit le fournir. */
     private function anonymizer(): UserAnonymizer
@@ -496,8 +514,8 @@ final class AdminUserController
                 $this->roleSync->syncStoreRoleById((int) $saved['id'], $storeId, (int) $role['id']);
             }
 
-            // Générer automatiquement le rapport d'embauche
-            $this->hiringReports->save([
+            // Générer automatiquement le rapport d'embauche (repli, voir hiringReportHandledByBundle())
+            if (!$this->hiringReportHandledByBundle()) $this->hiringReports->save([
                 'store_id'           => $storeId,
                 'user_id'            => (int) $saved['id'],
                 'employee_number'    => $empCode,
@@ -520,6 +538,10 @@ final class AdminUserController
                 'hired_by'           => $request->post('display_name', ''),
                 'created_by'         => $request->getAttribute('auth_user')['id'] ?? 0,
             ]);
+        }
+
+        if (!empty($saved['id'])) {
+            $this->events()->dispatch(new EmployeeCreated($saved, $storeId > 0 ? $storeId : null, self::authUserId($request), 'form'));
         }
 
         $this->auditLogger->log($request, 'user.created', 'user', (int) ($saved['id'] ?? 0), [
@@ -640,8 +662,8 @@ final class AdminUserController
                 $this->roleSync->syncStoreRoleById((int) $saved['id'], $storeId, (int) $role['id']);
             }
 
-            // Générer automatiquement le rapport d'embauche
-            $this->hiringReports->save([
+            // Générer automatiquement le rapport d'embauche (repli, voir hiringReportHandledByBundle())
+            if (!$this->hiringReportHandledByBundle()) $this->hiringReports->save([
                 'store_id'        => $storeId,
                 'user_id'         => (int) $saved['id'],
                 'employee_number' => $empCode,
@@ -649,6 +671,8 @@ final class AdminUserController
                 'created_by'      => $request->getAttribute('auth_user')['id'] ?? 0,
             ]);
         }
+
+        $this->events()->dispatch(new EmployeeCreated($saved, $storeId > 0 ? $storeId : null, self::authUserId($request), 'excel_import'));
 
         $this->auditLogger->log($request, 'user.created', 'user', (int) $saved['id'], [
             'email'  => $email,
@@ -1015,4 +1039,10 @@ final class AdminUserController
         return Response::redirect($this->base() . '/admin/users/' . employee_segment($userId) . '/edit?success=rate_deleted');
     }
 
+    /** Identifiant de l'utilisateur connecté, null si inconnu. */
+    private static function authUserId(Request $request): ?int
+    {
+        $id = (int) ($request->getAttribute('auth_user')['id'] ?? 0);
+        return $id > 0 ? $id : null;
+    }
 }

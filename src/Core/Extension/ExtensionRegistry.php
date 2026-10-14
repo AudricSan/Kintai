@@ -61,6 +61,9 @@ final class ExtensionRegistry
     /** @var array<string, list<ProfileSection>>|null */
     private ?array $profileSections = null;
 
+    /** @var array<string, array<class-string, callable>>|null */
+    private ?array $eventListeners = null;
+
     /** @var list<string>|null */
     private ?array $permissionDeclarers = null;
 
@@ -431,6 +434,41 @@ final class ExtensionRegistry
             }
         }
         return $this->profileSections = $bySlug;
+    }
+
+    /**
+     * Auditeurs d'événements déclarés par les bundles actifs, par slug de bundle puis par classe d'événement. Seuls
+     * les événements du contrat (kintai\Contract\Event\…) sont acceptés.
+     *
+     * @return array<string, array<class-string, callable>>
+     */
+    public function eventListenersByBundle(): array
+    {
+        if ($this->eventListeners !== null) {
+            return $this->eventListeners;
+        }
+
+        $bySlug = [];
+        foreach ($this->bundles->getBundles() as $bundle) {
+            try {
+                $declared = $bundle->eventListeners();
+            } catch (\Throwable $e) {
+                Log::warning('bundle_extension_failed', ['bundle' => $bundle->getName(), 'point' => 'eventListeners', 'error' => $e->getMessage()]);
+                continue;
+            }
+            $valid = [];
+            foreach (is_array($declared) ? $declared : [] as $event => $listener) {
+                if (is_string($event) && str_starts_with($event, 'kintai\\Contract\\Event\\') && class_exists($event) && is_callable($listener)) {
+                    $valid[$event] = $listener;
+                } else {
+                    Log::warning('bundle_extension_invalid', ['bundle' => $bundle->getName(), 'point' => 'eventListeners']);
+                }
+            }
+            if ($valid !== []) {
+                $bySlug[$bundle->getName()] = $valid;
+            }
+        }
+        return $this->eventListeners = $bySlug;
     }
 
     /**
