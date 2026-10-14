@@ -87,9 +87,7 @@ final class HomeControllerPendingClaimsTest extends TestCase
         $roles = $this->createMock(RoleRepositoryInterface::class);
         $permissions = new PermissionService($roleAssignments, $roles);
 
-        $dashboardAlerts = new DashboardAlertService(
-            $shiftsRepo, $usersRepo, $storeUsersRepo, $timeoffRepo, $swapsRepo, $timeclocksRepo,
-        );
+        $dashboardAlerts = new DashboardAlertService($shiftsRepo, $usersRepo, $storeUsersRepo, $timeclocksRepo);
 
         // Le compteur lit les demandes à travers les fournisseurs (PendingRequests), qui prennent leurs dépôts dans le
         // conteneur.

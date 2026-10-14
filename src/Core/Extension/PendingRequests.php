@@ -128,7 +128,7 @@ final class PendingRequests
      * Demandes déposées avant $threshold (Y-m-d H:i:s), toutes sortes confondues, les plus anciennes en premier.
      *
      * @param list<int> $storeIds
-     * @return list<array{type: string, id: int, store_id: int, created_at: string}>
+     * @return list<array{type: string, label: string, id: int, store_id: int, created_at: string}>
      */
     public function olderThan(array $storeIds, string $threshold): array
     {
@@ -136,7 +136,7 @@ final class PendingRequests
         foreach ($this->sections($storeIds, static fn(): bool => true, static fn(): bool => true) as $section) {
             foreach ($section['requests'] as $request) {
                 if ($request->createdAt !== '' && $request->createdAt <= $threshold) {
-                    $old[] = ['type' => $section['key'], 'id' => $request->id, 'store_id' => $request->storeId, 'created_at' => $request->createdAt];
+                    $old[] = ['type' => $section['key'], 'label' => $section['label'], 'id' => $request->id, 'store_id' => $request->storeId, 'created_at' => $request->createdAt];
                 }
             }
         }

@@ -80,14 +80,7 @@ final class HomeControllerWeeklyHoursTrendTest extends TestCase
         $roles->method('getPermissions')->with(5)->willReturn(['payroll.view']);
         $permissions = new PermissionService($roleAssignments, $roles);
 
-        $dashboardAlerts = new DashboardAlertService(
-            $shiftsRepo,
-            $usersRepo,
-            $storeUsersRepo,
-            $timeoffRepo,
-            $swapsRepo,
-            $timeclocksRepo,
-        );
+        $dashboardAlerts = new DashboardAlertService($shiftsRepo, $usersRepo, $storeUsersRepo, $timeclocksRepo);
 
         return new HomeController(
             new ViewRenderer(sys_get_temp_dir()),

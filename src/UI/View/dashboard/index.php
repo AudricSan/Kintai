@@ -194,7 +194,8 @@ $_alertGroups = [
         return $can('employees.view') ? '<a href="' . route_url('admin.users.edit', ['id' => $a['id']]) . '">' . $text . '</a>' : $text;
     }],
     'stale_requests' => [__('dashboard_alerts_stale_requests'), static function (array $a): string {
-        $type = ['timeoff' => __('timeoff'), 'swap' => __('swaps')][$a['type']] ?? $a['type'];
+        // Libellé court pour les congés et les échanges, sinon celui du fournisseur de la demande (contrat 1.9).
+        $type = ['timeoff' => __('timeoff'), 'swaps' => __('swaps')][$a['type']] ?? __($a['label'] ?? $a['type']);
         return '<a href="' . route_url('admin.requests') . '">' . htmlspecialchars($type . ' #' . $a['id'] . ' · ' . ($a['store_name'] ?? '') . ' · ' . substr($a['created_at'], 0, 10)) . '</a>';
     }],
     'stale_timeclocks' => [__('dashboard_alerts_stale_timeclocks'), static function (array $a): string {
