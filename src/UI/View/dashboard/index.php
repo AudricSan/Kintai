@@ -18,9 +18,12 @@ $bundle_widgets         ??= [];
 $bundle_widget_meta     ??= ['labels' => [], 'permissions' => [], 'features' => []];
 $enabled_widgets_all    ??= $enabled_widgets;
 
-function admin_widget_on(string $key, array $enabled): bool
-{
-    return array_key_exists($key, $enabled);
+// Garde : la vue peut être rendue plusieurs fois dans un même processus (tests).
+if (!function_exists('admin_widget_on')) {
+    function admin_widget_on(string $key, array $enabled): bool
+    {
+        return array_key_exists($key, $enabled);
+    }
 }
 
 // Feature-gating : null = toutes features actives (owner/is_admin), array = liste des features autorisées
@@ -180,6 +183,57 @@ $_alertTotal = $dashboard_alerts !== null
         + count($dashboard_alerts['stale_requests']) + count($dashboard_alerts['stale_timeclocks'])
     : 0;
 ?>
+<?php if (admin_widget_on('dashboard_alerts', $enabled_widgets) && $dashboard_alerts !== null): ?>
+<?php
+// Alertes actionnables (DashboardAlertService) : 4 groupes, 5 éléments affichés par groupe au plus.
+$_alertLimit = 5;
+$_alertTime  = static fn(string $t): string => substr($t, 0, 5);
+$_alertGroups = [
+    'unfilled_shifts' => [__('dashboard_alerts_unfilled_shifts'), static function (array $a) use ($can, $_alertTime): string {
+        $text = htmlspecialchars($a['shift_date'] . ' ' . $_alertTime($a['start_time']) . '–' . $_alertTime($a['end_time']) . ' · ' . $a['store_name']);
+        return $can('shifts.view') ? '<a href="' . route_url('admin.shifts.edit', ['id' => $a['id']]) . '">' . $text . '</a>' : $text;
+    }],
+    'users_without_shift' => [__('dashboard_alerts_users_without_shift'), static function (array $a) use ($can): string {
+        $text = htmlspecialchars($a['name'] . ' · ' . $a['store_name']);
+        return $can('employees.view') ? '<a href="' . route_url('admin.users.edit', ['id' => $a['id']]) . '">' . $text . '</a>' : $text;
+    }],
+    'stale_requests' => [__('dashboard_alerts_stale_requests'), static function (array $a): string {
+        $type = ['timeoff' => __('timeoff'), 'swap' => __('swaps')][$a['type']] ?? $a['type'];
+        return '<a href="' . route_url('admin.requests') . '">' . htmlspecialchars($type . ' #' . $a['id'] . ' · ' . ($a['store_name'] ?? '') . ' · ' . substr($a['created_at'], 0, 10)) . '</a>';
+    }],
+    'stale_timeclocks' => [__('dashboard_alerts_stale_timeclocks'), static function (array $a): string {
+        return htmlspecialchars($a['user_name'] . ' · ' . $a['store_name'] . ' · ' . substr($a['clock_in_time'], 0, 16));
+    }],
+];
+?>
+<!-- Alertes -->
+<div class="card card--mt">
+    <div class="card-header">
+        <span><?= __('widget_dashboard_alerts') ?> <span class="page-count">(<?= $_alertTotal ?>)</span></span>
+    </div>
+    <?php if ($_alertTotal === 0): ?>
+        <div class="empty-state"><?= __('dashboard_alerts_none') ?></div>
+    <?php else: ?>
+        <div class="card-body dash-alerts">
+            <?php foreach ($_alertGroups as $_ak => [$_alabel, $_aformat]): ?>
+                <?php $_aitems = $dashboard_alerts[$_ak]; if ($_aitems === []) continue; ?>
+                <div class="dash-alerts__group">
+                    <div class="sstat-sublabel--strong"><?= htmlspecialchars($_alabel) ?> <span class="page-count">(<?= count($_aitems) ?>)</span></div>
+                    <ul class="dash-alerts__list">
+                        <?php foreach (array_slice($_aitems, 0, $_alertLimit) as $_aitem): ?>
+                            <li class="dash-alerts__item"><?= $_aformat($_aitem) ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                    <?php if (count($_aitems) > $_alertLimit): ?>
+                        <div class="dash-alerts__more"><?= __('dashboard_alerts_more', ['count' => count($_aitems) - $_alertLimit]) ?></div>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
+</div>
+<?php unset($_alertLimit, $_alertTime, $_alertGroups, $_ak, $_alabel, $_aformat, $_aitems, $_aitem); ?>
+<?php endif; ?>
 
 <?php
 $store_stats_rows          ??= [];

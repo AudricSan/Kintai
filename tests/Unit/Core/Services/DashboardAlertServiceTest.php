@@ -169,6 +169,7 @@ final class DashboardAlertServiceTest extends TestCase
         $ids = array_column($result['stale_requests'], 'id');
         $this->assertContains(1, $ids);
         $this->assertContains(10, $ids);
+        $this->assertSame(['Store 1'], array_values(array_unique(array_column($result['stale_requests'], 'store_name'))));
     }
 
     public function testDetectsStaleOpenTimeclock(): void
