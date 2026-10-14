@@ -50,6 +50,7 @@ return [
     'kintai\\Contract\\Services\\NotificationService' => ['target' => 'kintai\\Core\\Services\\NotificationService', 'status' => 'stable', 'role' => 'Notifications (et push).'],
     'kintai\\Contract\\Services\\TranslationService' => ['target' => 'kintai\\Core\\Services\\TranslationService', 'status' => 'stable', 'role' => 'Traductions.'],
     'kintai\\Contract\\Services\\ImageCompressionService' => ['target' => 'kintai\\Core\\Services\\ImageCompressionService', 'status' => 'stable', 'role' => 'Compression d\'images.'],
+    'kintai\\Contract\\Services\\Mailer' => ['target' => 'kintai\\Core\\Mail\\MailerService', 'status' => 'stable', 'role' => 'Envoi d\'e-mails par le transport configuré de l\'instance : send(destinataires, sujet, HTML, pièces jointes) (contrat 1.15).'],
     'kintai\\Contract\\Services\\Sales' => ['target' => 'kintai\\Core\\Extension\\Sales', 'status' => 'stable', 'role' => 'Ventes journalières des magasins, lues auprès des fournisseurs (contrat 1.14).'],
     'kintai\\Contract\\Services\\ShiftWageCalculator' => ['target' => 'kintai\\Core\\Services\\ShiftWageCalculator', 'status' => 'stable', 'role' => 'Coût d\'un shift (source unique du calcul de salaire).'],
     'kintai\\Contract\\Services\\ShiftServiceInterface' => ['target' => 'kintai\\Core\\Services\\ShiftServiceInterface', 'status' => 'provisoire', 'role' => 'Création de shifts ; remplacé par une écriture ciblée (étape 3).'],
