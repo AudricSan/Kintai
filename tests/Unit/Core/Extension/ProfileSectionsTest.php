@@ -14,7 +14,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Sections du profil apportées par les bundles (étape 4, contrat 1.12) : déclarations des bundles actifs
- * (Bundle::profileSections()), repli historique de team-directory, cases limitées aux colonnes ouvertes, rendu isolé.
+ * (Bundle::profileSections()), aucun repli du Core, cases limitées aux colonnes ouvertes, rendu isolé.
  */
 final class ProfileSectionsTest extends TestCase
 {
@@ -70,7 +70,7 @@ final class ProfileSectionsTest extends TestCase
         $manager = (new \ReflectionClass(BundleManager::class))->newInstanceWithoutConstructor();
         (new \ReflectionProperty($manager, 'bundles'))->setValue($manager, $bundles);
 
-        return new ProfileSections(new ExtensionRegistry($manager), $manager);
+        return new ProfileSections(new ExtensionRegistry($manager));
     }
 
     private static function keys(ProfileSections $sections): array
@@ -87,25 +87,24 @@ final class ProfileSectionsTest extends TestCase
         $this->assertSame([], (new ProfileSections())->flags(), 'sans registre : rien');
     }
 
-    /** team-directory actif sans déclaration : la section historique et ses quatre cases, comme avant. */
-    public function testLegacyDirectorySectionWhileTeamDirectoryDoesNotDeclare(): void
+    /** team-directory actif sans déclaration (version d'avant le contrat 1.12) : le Core n'affiche plus rien. */
+    public function testNoFallbackForABundleThatDoesNotDeclare(): void
     {
         $sections = $this->sections(['team-directory' => []]);
 
-        $this->assertSame(['directory'], self::keys($sections));
-        $this->assertSame('auth._profile_directory', $sections->sections()[0]->view);
-        $this->assertSame(['show_in_directory', 'share_email', 'share_phone', 'share_mobile_phone'], $sections->flags());
+        $this->assertSame([], $sections->sections());
+        $this->assertSame([], $sections->flags());
     }
 
-    public function testDeclaredSectionReplacesTheLegacyOne(): void
+    public function testDeclaredSectionIsShownWithItsFlags(): void
     {
         $sections = $this->sections(['team-directory' => [
-            new ProfileSection('directory', 'team-directory::profile-section', ['show_in_directory'], 5),
+            new ProfileSection('directory', 'team-directory::profile-section', ['show_in_directory', 'share_email'], 5),
         ]]);
 
         $this->assertCount(1, $sections->sections());
         $this->assertSame('team-directory::profile-section', $sections->sections()[0]->view);
-        $this->assertSame(['show_in_directory'], $sections->flags());
+        $this->assertSame(['show_in_directory', 'share_email'], $sections->flags());
     }
 
     /** Une colonne hors de la liste ouverte aux bundles n'est jamais enregistrée par le profil. */

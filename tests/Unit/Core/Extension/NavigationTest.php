@@ -182,7 +182,7 @@ final class NavigationTest extends TestCase
 
     public function testHideableKeysFollowTheSameRules(): void
     {
-        $nav = $this->navigation(['timeoff' => null, 'team-directory' => null]);
+        $nav = $this->navigation(['timeoff' => null]);
 
         $keys = $nav->hideableKeys(true, fn(string $r): bool => $r !== 'admin.activity', fn(string $f): bool => true, ['isOwner' => true]);
 
