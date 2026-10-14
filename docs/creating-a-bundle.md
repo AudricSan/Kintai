@@ -2,9 +2,9 @@
 
 🌐 **English** · [Français](i18n/creating-a-bundle.fr.md) · [日本語](i18n/creating-a-bundle.ja.md)
 
-This document is for anyone writing a Kintai bundle meant to be **distributed independently** — its own Git repository, its own version history, installable from `/admin/bundles/market` without ever touching Kintai's own codebase. It doesn't cover the older, still-supported pattern of dropping a bundle directly into `src/Bundles/` inside the main repo (see `docs/architecture.md` → "Modular Bundles" for that) — that path still works for the 11 bundles that ship with Kintai today, but a new bundle, especially a third-party one, should use the model described here.
+This document is for anyone writing a Kintai bundle meant to be **distributed independently** — its own Git repository, its own version history, installable from `/admin/bundles/market` without ever touching Kintai's own codebase. It doesn't cover the older, still-supported pattern of dropping a bundle directly into `src/Bundles/` inside the main repo (see `docs/architecture.md` → "Modular Bundles" for that) — that path is still scanned for a bundle dropped in by hand, but every official bundle is distributed the way described here and a new bundle, especially a third-party one, should be too.
 
-`kintai-bundle-feedback` (the "Feedback" bundle, extracted from Kintai's own monorepo as the pilot for this whole mechanism) is a complete, real-world example — worth keeping open in a second tab while reading this.
+`kintai-bundle-notebook` (the team notebook: its own model, repository, migrations, views, dashboard widgets and declarations) is a small, complete, real-world example — worth keeping open in a second tab while reading this.
 
 ## Why a separate repository, and why no `git clone`
 
@@ -59,41 +59,52 @@ abstract class Bundle
 }
 ```
 
-A minimal, real example (`kintai-bundle-feedback`'s actual entry class, trimmed):
+A minimal, real example (`kintai-bundle-notebook`'s actual entry class, trimmed):
 
 ```php
 <?php
 
 declare(strict_types=1);
 
-namespace kintai\Bundles\Installed\Feedback;
+namespace kintai\Bundles\Installed\Notebook;
 
-use kintai\Core\BundleContract\Bundle;
-use kintai\Core\Repositories\FeedbackRepositoryInterface;
-use kintai\Core\Repositories\DatabaseFeedbackRepository;
+use kintai\Bundles\Installed\Notebook\Repositories\DatabaseNotebookEntryRepository;
+use kintai\Bundles\Installed\Notebook\Repositories\NotebookEntryRepositoryInterface;
+use kintai\Contract\Bundle;
+use kintai\Contract\Extension\StoreFeature;
 
-final class FeedbackBundle extends Bundle
+final class NotebookBundle extends Bundle
 {
-    public function getName(): string { return 'feedback'; }
-    public function getVersion(): string { return '1.0.0'; }
-    public function getLabel(): string { return __('bundle_feedback'); }
-    public function getDescription(): string { return __('bundle_feedback_desc'); }
+    public function getName(): string { return 'notebook'; }
+    public function getVersion(): string { return '1.2.0'; }
+    public function getLabel(): string { return __('bundle_notebook'); }
+    public function getDescription(): string { return __('bundle_notebook_desc'); }
 
     public function register(): void
     {
+        // The bundle owns its repository (and its table, created by its own migrations).
         $this->app->container()->singleton(
-            FeedbackRepositoryInterface::class,
-            fn() => new DatabaseFeedbackRepository()
+            NotebookEntryRepositoryInterface::class,
+            fn() => new DatabaseNotebookEntryRepository()
         );
-        $this->loadViewsFrom($this->getPath() . '/Views', 'feedback');
+        $this->loadViewsFrom($this->getPath() . '/Views', 'notebook');
         $this->loadRoutesFrom($this->getPath() . '/routes.php');
+        $this->loadAssetsFrom('public');
+    }
+
+    // What it brings to the Core is declared (see "Extension points" below).
+    public function permissions(): array { return ['notebook' => ['view', 'create', 'manage']]; }
+
+    public function storeFeatures(): array
+    {
+        return [new StoreFeature('notes', 'feature_notes', 'feature_notes_desc', '📝', 90)];
     }
 }
 ```
 
 Your namespace can be anything — by convention, installed bundles use `kintai\Bundles\Installed\{Name}\`, deliberately distinct from the legacy monorepo convention (`kintai\Bundles\{Name}\`) so the two autoloading mechanisms (Composer's own PSR-4 for `src/Bundles/`, and a dedicated `spl_autoload_register` for anything under `storage/bundles/`) can never collide on the same class name.
 
-**A repository and interface pair from `src/Core/Repositories/*Interface.php` is also part of the stable surface** you're allowed to depend on (e.g. `FeedbackRepositoryInterface` above) — those are already a stable contract by construction, unrelated to `BundleContract`.
+**A bundle never depends on the Core's repositories or models**: it owns its own (as above) and only uses the `kintai\Contract\…` names listed below. Data the Core needs from it goes through a declared provider.
 
 ## The contract surface: `kintai\Contract\…`
 
@@ -786,15 +797,15 @@ Required at the bundle's repository root:
 
 ```json
 {
-    "slug": "feedback",
-    "name": "Retours utilisateurs",
+    "slug": "notebook",
+    "name": "Carnet de notes",
     "version": "1.0.0",
-    "description": "Employee feedback (bugs, suggestions) — submission modal, admin list and deletion.",
+    "description": "Team notebook — notes shown on the manager and employee dashboards, pinning, automatic expiry.",
     "author": { "name": "Your Name", "email": "you@example.com", "url": "https://example.com" },
     "kintai_contract": "^1.0",
     "requires_bundles": {},
-    "namespace": "kintai\\Bundles\\Installed\\Feedback",
-    "entry_class": "kintai\\Bundles\\Installed\\Feedback\\FeedbackBundle",
+    "namespace": "kintai\\Bundles\\Installed\\Notebook",
+    "entry_class": "kintai\\Bundles\\Installed\\Notebook\\NotebookBundle",
     "license": "AGPL-3.0-only",
     "homepage": "https://github.com/you/your-bundle"
 }
@@ -838,7 +849,7 @@ A bundle without `kintai_contract` is treated as incompatible everywhere, includ
 
 1. Bump `version` in `bundle.json` (and `getVersion()` in your entry class — they must agree).
 2. Tag the commit `vX.Y.Z` and push the tag.
-3. Create a GitHub Release for that tag (`gh release create vX.Y.Z --generate-notes`, or a CI workflow that does the same on tag push — see `kintai-bundle-feedback`'s `.github/workflows/release.yml` for a minimal one). Nothing to build: the Release's auto-generated `zipball_url` is exactly what `BundleInstallerService` downloads.
+3. Create a GitHub Release for that tag (`gh release create vX.Y.Z --generate-notes`, or a CI workflow that does the same on tag push — see `kintai-bundle-notebook`'s `.github/workflows/release.yml`). Nothing to build: the Release's auto-generated `zipball_url` is exactly what `BundleInstallerService` downloads.
 
 ## Content Security Policy: no inline scripts
 
@@ -932,4 +943,4 @@ Two ways to get discovered:
 
 ## Reference implementation
 
-[`kintai-bundle-feedback`](https://github.com/AudricSan/kintai-bundle-feedback) is the pilot bundle this whole mechanism was built to validate — a complete, working, minimal example of everything above, extracted from Kintai's own `src/Bundles/Feedback/` without any behavior change.
+[`kintai-bundle-notebook`](https://github.com/AudricSan/kintai-bundle-notebook) is a small, complete example of everything above: its own model, repository and migrations, declared permissions, store feature, dashboard widgets and notification type, tests running against the real Core. The former pilot, `kintai-bundle-feedback`, has been retired (the Core no longer loads it).
