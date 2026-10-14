@@ -172,6 +172,17 @@ abstract class Bundle
     }
 
     /**
+     * Fournisseurs d'absences (contrat 1.10) : le Core les lit pour le planning (conflits, affichage), l'export iCal
+     * et les statistiques, sans connaître les tables du bundle.
+     *
+     * @return list<\kintai\Contract\Provider\AbsenceProvider>
+     */
+    public function absenceProviders(): array
+    {
+        return [];
+    }
+
+    /**
      * Boot du bundle, une fois tous les bundles enregistrés.
      */
     public function boot(): void

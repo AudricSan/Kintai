@@ -11,6 +11,7 @@ use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
+use kintai\Core\Extension\Absences;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
@@ -74,7 +75,8 @@ final class IcalController
         $shifts = array_merge($shifts, $this->shifts->findRecentDeletionsByUserAndStore($userId, $storeId, $cutoff));
 
         $timeoffs = array_values(array_filter(
-            $this->timeoffRequests->findByUser($userId),
+            // Absences lues à travers les fournisseurs (Bundle::absenceProviders()), repli sur la table des congés.
+            Absences::current($this->timeoffRequests)->forUser($userId),
             fn($t) => (int) ($t['store_id'] ?? 0) === $storeId && ($t['status'] ?? '') === 'approved'
         ));
 

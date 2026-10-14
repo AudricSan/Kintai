@@ -8,6 +8,7 @@ use kintai\Contract\Extension\Action;
 use kintai\Contract\Extension\DashboardWidget;
 use kintai\Contract\Extension\NavItem;
 use kintai\Contract\Extension\StoreFeature;
+use kintai\Contract\Provider\AbsenceProvider;
 use kintai\Contract\Provider\PendingRequestsProvider;
 use kintai\Core\BundleContract\Bundle;
 use kintai\Core\BundleManager;
@@ -48,6 +49,9 @@ final class ExtensionRegistry
 
     /** @var array<string, list<PendingRequestsProvider>>|null */
     private ?array $pendingRequestsProviders = null;
+
+    /** @var array<string, list<AbsenceProvider>>|null */
+    private ?array $absenceProviders = null;
 
     /** @var list<string>|null */
     private ?array $permissionDeclarers = null;
@@ -355,6 +359,27 @@ final class ExtensionRegistry
             }
         }
         return $this->pendingRequestsProviders = $bySlug;
+    }
+
+    /**
+     * Fournisseurs d'absences déclarés par les bundles actifs, par slug de bundle.
+     *
+     * @return array<string, list<AbsenceProvider>>
+     */
+    public function absenceProvidersByBundle(): array
+    {
+        if ($this->absenceProviders !== null) {
+            return $this->absenceProviders;
+        }
+
+        $bySlug = [];
+        foreach ($this->bundles->getBundles() as $bundle) {
+            $providers = $this->contributionsOf($bundle, 'absenceProviders', AbsenceProvider::class);
+            if ($providers !== []) {
+                $bySlug[$bundle->getName()] = $providers;
+            }
+        }
+        return $this->absenceProviders = $bySlug;
     }
 
     /**

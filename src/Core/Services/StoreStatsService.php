@@ -10,6 +10,7 @@ use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
+use kintai\Core\Extension\Absences;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
@@ -120,7 +121,7 @@ final class StoreStatsService implements StoreStatsServiceInterface
         }
 
         $allTimeoffs = array_filter(
-            $this->timeoffRequests->findByStore($storeId),
+            Absences::current($this->timeoffRequests)->forStore($storeId),
             fn($t) => ($t['start_date'] ?? '') >= $since
         );
 
@@ -713,7 +714,7 @@ final class StoreStatsService implements StoreStatsServiceInterface
         }
 
         $absDays = 0;
-        foreach ($this->timeoffRequests->findByStore($storeId) as $t) {
+        foreach (Absences::current($this->timeoffRequests)->forStore($storeId) as $t) {
             if ((int) ($t['user_id'] ?? 0) !== $userId) continue;
             if (($t['status'] ?? '') !== 'approved') continue;
             if (($t['start_date'] ?? '') < $since) continue;
@@ -812,7 +813,7 @@ final class StoreStatsService implements StoreStatsServiceInterface
         }
 
         $allTimeoffs = array_filter(
-            $this->timeoffRequests->findByStore($storeId),
+            Absences::current($this->timeoffRequests)->forStore($storeId),
             fn($t) => ($t['start_date'] ?? '') >= $since && ($t['status'] ?? '') === 'approved'
         );
 
