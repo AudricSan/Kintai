@@ -16,7 +16,7 @@ Amorcé par `DatabaseServiceProvider` (`src/Core/Database/DatabaseServiceProvide
 - **Tenancy :** `User`, `Store`, `StoreUser`
 - **Planning :** `Shift`, `ShiftType`, `Availability`, `ShiftClaim`, `ShiftSwapRequest`
 - **Temps & paie :** `Timeclock`, `TimeoffRequest`, `UserShiftTypeRate`, `StoreDeductionSetting`
-- **Rapports journaliers & RH :** `DailyReport`, `HiringReport`, `ResignationReport`, `SalaryReport`, `Feedback`
+- **Rapports journaliers & RH :** `DailyReport`, `HiringReport`, `SalaryReport`, `Feedback`
 - **Communication :** `MessageThread`, `ThreadMessage`, `ThreadParticipant`, `Notification`
 - **Système & paramètres :** `ActivityEntry`, `AppSetting`, `ApiToken`, `CronToken`, `IcalToken`, `PasswordResetToken`, `ImportAlias`, `StoreFeature`, `StoreImportSetting`, `StorePhotoImage`, `StorePhotoSubmission`, `UserDashboardPref`, `UserNavPref`
 

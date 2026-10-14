@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Integration;
 
+use kintai\Contract\Extension\Action;
 use kintai\Core\BundleManager;
+use kintai\Core\Extension\ExtensionRegistry;
 use kintai\Core\Container;
 use kintai\Core\Router;
 use kintai\Tests\Support\FakeBundleManagerFactory;
@@ -66,16 +68,20 @@ final class StaffViewPermissionGatesTest extends TestCase
 
     public function testUsersListShowsRowActionsWhenPermissionsGranted(): void
     {
-        // Liens fournis par les bundles salary-report et resignation-report (Bundle::actions(), repli historique) :
+        // Liens fournis par les bundles salary-report (repli historique) et resignation-report (Bundle::actions()) :
         // seulement quand ils sont actifs.
         $container = Container::getInstance();
-        $container->instance(BundleManager::class, FakeBundleManagerFactory::withActiveSlugs(['salary-report', 'resignation-report']));
+        $manager = FakeBundleManagerFactory::withActiveSlugs(['salary-report', 'resignation-report'], ['resignation-report' => [
+            new Action('resign', Action::EMPLOYEE_ROW, 'resign', static fn(array $c): string => '/admin/stores/' . (int) $c['store_id'] . '/reports/resignation/create?user_id=' . (int) $c['user_id'], '✕', Action::DANGER, 'resignation_reports.create', order: 20),
+        ]]);
+        $container->instance(BundleManager::class, $manager);
+        $container->instance(ExtensionRegistry::class, new ExtensionRegistry($manager));
         try {
             $html = $this->renderUsersWithAllPermissions();
         } finally {
             $instances = new \ReflectionProperty(Container::class, 'instances');
             $all = $instances->getValue($container);
-            unset($all[BundleManager::class]);
+            unset($all[BundleManager::class], $all[ExtensionRegistry::class]);
             $instances->setValue($container, $all);
         }
 

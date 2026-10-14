@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Liens d'action des bundles dans les pages du Core (étape 2h du contrat de bundle) : déclarations des bundles actifs
- * (Bundle::actions(), contrat 1.6), repli historique (salary-report, resignation-report, shift-swap), filtres.
+ * (Bundle::actions(), contrat 1.6), repli historique (salary-report, shift-swap), filtres.
  */
 final class ActionsTest extends TestCase
 {
@@ -71,18 +71,29 @@ final class ActionsTest extends TestCase
         return new Actions(new ExtensionRegistry($manager), $manager);
     }
 
+    /** Liens « Licencier » tels que les déclare le bundle resignation-report (il n'a plus de repli dans le Core). */
+    private static function resignActions(): array
+    {
+        $resign = static fn(array $c): string => '/admin/stores/' . (int) $c['store_id'] . '/reports/resignation/create?user_id=' . (int) $c['user_id'];
+
+        return [
+            new Action('resign', Action::EMPLOYEE_ROW, 'resign', $resign, '✕', Action::DANGER, 'resignation_reports.create', order: 20),
+            new Action('resign', Action::EMPLOYEE_STORE, 'resign', $resign, '', Action::DANGER, 'resignation_reports.create', order: 10),
+        ];
+    }
+
     private static function keys(array $links): array
     {
         return array_column($links, 'key');
     }
 
-    /** Sans déclaration : mêmes liens qu'avant, mais seulement pour les bundles actifs (démission comprise). */
+    /** Repli (salary-report, sans déclaration) et déclarations (resignation-report) : seulement pour les bundles actifs. */
     public function testLegacyActionsFollowActiveBundles(): void
     {
         $all = fn(string $p): bool => true;
         $ctx = ['user_id' => 3, 'store_id' => 5];
 
-        $both = $this->actions(['salary-report' => [], 'resignation-report' => []]);
+        $both = $this->actions(['salary-report' => [], 'resignation-report' => self::resignActions()]);
         $links = $both->links(Action::EMPLOYEE_ROW, $ctx, $all);
         $this->assertSame(['salary_report', 'resign'], self::keys($links));
         $this->assertSame('/admin/stores/5/reports/salary/create?user_id=3', $links[0]['href']);
@@ -103,7 +114,7 @@ final class ActionsTest extends TestCase
                 new Action('broken', Action::EMPLOYEE_ROW, 'broken', fn(): string => throw new \RuntimeException('kaput')),
                 new Action('needs_feature', Action::EMPLOYEE_ROW, 'f', fn(): string => '/f', storeFeature: 'payslips'),
             ],
-            'resignation-report' => [],
+            'resignation-report' => self::resignActions(),
             'acme' => [new Action('resign', Action::EMPLOYEE_ROW, 'stolen', fn(): string => '/stolen', order: 99), 'pas une action'],
             'boom' => new \RuntimeException('kaput'),
         ]);

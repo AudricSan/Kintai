@@ -415,10 +415,6 @@ final class Navigation
                         return $links;
                     }),
             ],
-            'resignation-report' => [
-                new NavItem('resignation_report', NavItem::REPORTS, 'resignation_report', 'admin.reports.resignation', 'admin.reports.resignation',
-                    icon: 'exit', activePaths: ['*/reports/resignation'], order: 40),
-            ],
             'salary-report' => [
                 new NavItem('salary_report', NavItem::REPORTS, 'salary_report', 'admin.reports.salary', 'admin.reports.salary',
                     icon: 'money', activePaths: ['*/reports/salary'], order: 50),
