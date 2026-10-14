@@ -464,6 +464,31 @@ styles: `TEXT`, `BADGE`, `USER` (user id, shown as a name), `STORE` (store id, s
 Return requests in display order. An exception drops your section only (logged). Until `timeoff`, `shift-swap` and
 `shift-claim` declare theirs, the Core keeps its own providers for them. Require `"kintai_contract": "^1.9"`.
 
+### Absences: `absenceProviders()` (contract 1.10)
+
+```php
+use kintai\Contract\Provider\Absence;
+use kintai\Contract\Provider\AbsenceProvider;
+
+final class LeaveAbsences implements AbsenceProvider
+{
+    public function absences(?array $userIds, ?array $storeIds): array   // null = no filter
+    {
+        return array_map(fn(array $r) => new Absence(
+            (int) $r['id'], (int) $r['user_id'], (int) $r['store_id'],
+            $r['start_date'], $r['end_date'],                              // Y-m-d, end included
+            $r['type'], $r['status'],                                      // Absence::APPROVED, PENDING, REFUSED…
+        ), $this->leaves->find($userIds, $storeIds));
+    }
+}
+```
+
+Return absences of **every** status: the Core filters dates and statuses itself. It uses them to flag a shift
+planned during an approved absence, to show absences on the schedule, in the employee's iCal feed and in the
+absenteeism statistics. Absences of every declared provider are added up; a failing provider is skipped (logged).
+Until a bundle declares one, the Core keeps reading the historical leave table. Require
+`"kintai_contract": "^1.10"`.
+
 ## The RBAC scope contract: `managed_store_ids`
 
 Every Web route your bundle registers under `middleware: [AuthMiddleware::class, PermissionMiddleware::class]` must declare a `permission:` — either a precise key from `PermissionCatalog`, or `'public'` (a route intentionally left ungated, e.g. self-service/aggregate pages; omitting `permission:` entirely behaves the same way). `PermissionMiddleware` resolves this into a request attribute, `managed_store_ids`, that every controller down the line is expected to read rather than re-deriving:

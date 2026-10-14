@@ -6,6 +6,7 @@ namespace kintai\Core\Services;
 
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
+use kintai\Core\Extension\Absences;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 
@@ -77,8 +78,10 @@ final class ShiftService implements ShiftServiceInterface
     public function getTimeoffForCalendar(array $userIds, string $startDate, string $endDate): array
     {
         $timeoffByDate = [];
+        // Absences lues à travers les fournisseurs (Bundle::absenceProviders()), repli sur la table des congés.
+        $absences = Absences::current($this->timeoffRequests);
         foreach ($userIds as $uid) {
-            foreach ($this->timeoffRequests->findByUser($uid) as $req) {
+            foreach ($absences->forUser((int) $uid) as $req) {
                 if (($req['status'] ?? '') !== 'approved') continue;
                 $start = max($req['start_date'] ?? '', $startDate);
                 $end   = min($req['end_date'] ?? '', $endDate);
