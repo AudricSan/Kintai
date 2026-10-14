@@ -207,7 +207,7 @@ final class PermissionMapsTest extends TestCase
         );
 
         $names = array_filter(array_map(static fn(Route $r) => $r->name, $all));
-        foreach (['admin.timeoff', 'admin.swap_requests'] as $expected) {
+        foreach (['admin.timeoff', 'admin.timeclocks'] as $expected) {
             $this->assertNotEmpty(
                 array_filter($names, static fn($n) => str_starts_with((string) $n, $expected)),
                 "Aucune route '$expected*' : les routes de bundle ne sont pas chargées."

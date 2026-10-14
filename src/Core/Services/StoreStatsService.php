@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace kintai\Core\Services;
 
 use kintai\Core\Repositories\ShiftRepositoryInterface;
-use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
@@ -33,7 +32,6 @@ final class StoreStatsService implements StoreStatsServiceInterface
         private readonly ShiftTypeRepositoryInterface $shiftTypes,
         private readonly StoreUserRepositoryInterface $storeUsers,
         private readonly TimeoffRequestRepositoryInterface $timeoffRequests,
-        private readonly ShiftSwapRequestRepositoryInterface $swapRequests,
         private readonly UserShiftTypeRateRepositoryInterface $userRates,
         private readonly UserRepositoryInterface $users,
         private readonly RoleAssignmentSyncService $roleSync,
@@ -713,7 +711,7 @@ final class StoreStatsService implements StoreStatsServiceInterface
         }
 
         $swapCount = 0;
-        foreach (Swaps::current($this->swapRequests)->forStore($storeId) as $sw) {
+        foreach (Swaps::current()->forStore($storeId) as $sw) {
             if (((int) ($sw['requester_id'] ?? 0) === $userId || (int) ($sw['target_user_id'] ?? 0) === $userId)
                 && ($sw['created_at'] ?? '') >= $since
             ) {
@@ -809,7 +807,7 @@ final class StoreStatsService implements StoreStatsServiceInterface
         );
 
         $allSwaps = array_filter(
-            Swaps::current($this->swapRequests)->forStore($storeId),
+            Swaps::current()->forStore($storeId),
             fn($sw) => ($sw['created_at'] ?? '') >= $since
         );
 

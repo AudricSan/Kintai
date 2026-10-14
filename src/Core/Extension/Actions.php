@@ -5,68 +5,38 @@ declare(strict_types=1);
 namespace kintai\Core\Extension;
 
 use kintai\Contract\Extension\Action;
-use kintai\Core\BundleManager;
 use kintai\Core\Container;
 use kintai\Core\Services\Log;
 
 /**
- * Liens d'action des bundles dans les emplacements des pages du Core, construits à partir de données :
- * - ceux déclarés par les bundles actifs (point d'extension Bundle::actions(), contrat 1.6) ;
- * - en repli, ceux que le Core affichait jusqu'ici pour un bundle actif qui ne déclare encore rien
- *   (shift-swap). Ce repli disparaîtra à l'étape 5 du plan du contrat.
+ * Liens d'action des bundles dans les emplacements des pages du Core, construits à partir de données : ceux déclarés
+ * par les bundles actifs (point d'extension Bundle::actions(), contrat 1.6). Le Core n'en ajoute aucun de lui-même.
  */
 final class Actions
 {
-    public function __construct(
-        private readonly ?ExtensionRegistry $registry = null,
-        private readonly ?BundleManager $bundles = null,
-    ) {}
+    public function __construct(private readonly ?ExtensionRegistry $registry = null) {}
 
-    /** Instance de la requête courante (registre des extensions et bundles actifs), ou aucune action si indisponible. */
+    /** Instance de la requête courante (registre des extensions), ou aucune action si indisponible. */
     public static function current(): self
     {
         try {
             $container = Container::getInstance();
-            return new self(
-                $container->has(ExtensionRegistry::class) ? $container->make(ExtensionRegistry::class) : null,
-                $container->has(BundleManager::class) ? $container->make(BundleManager::class) : null,
-            );
+            return new self($container->has(ExtensionRegistry::class) ? $container->make(ExtensionRegistry::class) : null);
         } catch (\Throwable) {
             return new self();
         }
     }
 
     /**
-     * Actions historiques du Core, par slug de bundle.
-     *
-     * @return array<string, list<Action>>
-     */
-    public static function legacyBundleActions(): array
-    {
-        return [
-            'shift-swap' => [
-                new Action('request_swap', Action::SHIFTS_EMPLOYEE, 'request_swap', static fn(): string => route_url('employee.swaps.create'), '⇄', Action::PRIMARY, order: 10),
-            ],
-        ];
-    }
-
-    /**
-     * Actions de l'emplacement : bundles actifs déclarants, repli des bundles actifs non déclarants ; triées par ordre.
+     * Actions de l'emplacement déclarées par les bundles actifs, triées par ordre.
      * Une clé déjà présente dans l'emplacement n'est pas reprise.
      *
      * @return list<Action>
      */
     public function inSlot(string $slot): array
     {
-        $declaredBySlug = $this->registry?->actionsByBundle() ?? [];
-
         $all = [];
-        foreach (self::legacyBundleActions() as $slug => $legacy) {
-            if ($this->bundles?->isActive($slug) && !isset($declaredBySlug[$slug])) {
-                array_push($all, ...$legacy);
-            }
-        }
-        foreach ($declaredBySlug as $declared) {
+        foreach ($this->registry?->actionsByBundle() ?? [] as $declared) {
             array_push($all, ...$declared);
         }
 

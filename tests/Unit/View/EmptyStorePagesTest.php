@@ -6,7 +6,6 @@ namespace kintai\Tests\Unit\View;
 
 use kintai\Core\Container;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
-use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
@@ -54,7 +53,6 @@ final class EmptyStorePagesTest extends TestCase
             $this->createStub(ShiftTypeRepositoryInterface::class),
             $this->createStub(StoreUserRepositoryInterface::class),
             $this->createStub(TimeoffRequestRepositoryInterface::class),
-            $this->createStub(ShiftSwapRequestRepositoryInterface::class),
             $this->createStub(UserShiftTypeRateRepositoryInterface::class),
             $this->createStub(UserRepositoryInterface::class),
             $roleSync,

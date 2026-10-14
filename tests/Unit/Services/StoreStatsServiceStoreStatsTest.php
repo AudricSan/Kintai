@@ -8,7 +8,6 @@ use PHPUnit\Framework\TestCase;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
-use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
@@ -54,7 +53,6 @@ final class StoreStatsServiceStoreStatsTest extends TestCase
             $shiftTypes,
             $storeUsers,
             $timeoffRequests,
-            $this->createStub(ShiftSwapRequestRepositoryInterface::class),
             $userRates,
             $users,
             new RoleAssignmentSyncService(

@@ -91,7 +91,7 @@ final class NavigationTest extends TestCase
         $keys = self::keys($this->navigation(['timeoff' => null, 'shift-swap' => null])->items());
 
         $this->assertContains('timeoff', $keys);
-        $this->assertContains('swaps', $keys);
+        $this->assertNotContains('swaps', $keys, 'shift-swap extrait : plus d\'entrée historique');
         $this->assertNotContains('timeclocks', $keys, 'bundle inactif : rien');
     }
 

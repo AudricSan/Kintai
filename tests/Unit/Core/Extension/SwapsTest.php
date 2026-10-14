@@ -10,12 +10,10 @@ use kintai\Core\BundleContract\Bundle;
 use kintai\Core\BundleManager;
 use kintai\Core\Extension\ExtensionRegistry;
 use kintai\Core\Extension\Swaps;
-use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Échanges de shifts lus à travers des fournisseurs (contrat 1.18) : fournisseurs des bundles actifs, sinon repli sur
- * la table historique des échanges.
+ * Échanges de shifts lus à travers des fournisseurs (contrat 1.18) : fournisseurs des bundles actifs seulement.
  */
 final class SwapsTest extends TestCase
 {
@@ -72,12 +70,10 @@ final class SwapsTest extends TestCase
     public function testDeclaredProvidersAreMerged(): void
     {
         $calls = [];
-        $legacy = $this->createMock(ShiftSwapRequestRepositoryInterface::class);
-        $legacy->expects($this->never())->method('findByStore');
         $swaps = new Swaps($this->registry([
             'shift-swap' => [self::provider([new Swap(3, 4, 7, 8, '2026-10-01 09:00:00', 'pending')], $calls), 'pas un fournisseur'],
             'boom'       => [self::provider(new \RuntimeException('kaput'))],
-        ]), $legacy);
+        ]));
 
         $this->assertSame(
             [['id' => 3, 'store_id' => 4, 'requester_id' => 7, 'target_user_id' => 8, 'created_at' => '2026-10-01 09:00:00', 'status' => 'pending']],
@@ -86,14 +82,11 @@ final class SwapsTest extends TestCase
         $this->assertSame([[4]], $calls);
     }
 
-    /** Sans fournisseur : la table historique des échanges, comme avant. */
-    public function testLegacyFallbackReadsTheHistoricalTable(): void
+    /** Sans fournisseur (shift-swap désactivé ou désinstallé) : aucun échange à compter. */
+    public function testWithoutProviderThereIsNoSwap(): void
     {
-        $legacy = $this->createStub(ShiftSwapRequestRepositoryInterface::class);
-        $legacy->method('findByStore')->willReturn([['id' => 1, 'store_id' => 4, 'requester_id' => 7]]);
-
-        $this->assertSame([['id' => 1, 'store_id' => 4, 'requester_id' => 7]], (new Swaps($this->registry([]), $legacy))->forStore(4));
-        $this->assertSame([], (new Swaps(null, null))->forStore(4));
+        $this->assertSame([], (new Swaps($this->registry(['shift-swap' => []])))->forStore(4));
+        $this->assertSame([], (new Swaps())->forStore(4));
     }
 
     public function testInvalidDateIsRejected(): void

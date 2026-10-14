@@ -6,17 +6,14 @@ namespace kintai\Tests\Unit\Bundles;
 
 $fixtures = dirname(__DIR__, 2) . '/Fixtures/bundles';
 require_once $fixtures . '/timeoff-1.0.0/src/Controllers/Api/TimeoffRequestController.php';
-require_once $fixtures . '/shift-swap-1.0.0/src/Controllers/Api/ShiftSwapRequestController.php';
 require_once $fixtures . '/timeclock-1.0.0/src/Controllers/Api/TimeclockController.php';
 
-use kintai\Bundles\Installed\ShiftSwap\Controllers\Api\ShiftSwapRequestController;
 use kintai\Bundles\Installed\TimeOff\Controllers\Api\TimeoffRequestController;
 use kintai\Bundles\Installed\Timeclock\Controllers\Api\TimeclockController;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
-use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\TimeclockRepositoryInterface;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
@@ -53,7 +50,7 @@ final class BundleApiMassAssignmentTest extends TestCase
         $roles = $this->createStub(RoleRepositoryInterface::class);
         $roles->method('findById')->willReturn(['id' => 20, 'is_system' => 0]);
         $roles->method('getPermissions')->willReturn([
-            'timeoff.create', 'timeoff.update', 'swaps.create', 'swaps.update',
+            'timeoff.create', 'timeoff.update',
         ]);
         $roles->method('getGlobalPermissionKeys')->willReturn([]);
         $this->permissions = new PermissionService($assignments, $roles);
@@ -132,36 +129,6 @@ final class BundleApiMassAssignmentTest extends TestCase
         $controller = new TimeoffRequestController($repo, new AuditLogger(), $this->permissions, $this->storeUsers);
 
         $controller->update($this->request(['status' => 'approved', 'store_id' => self::OTHER, 'user_id' => 1], ['id' => '7']));
-    }
-
-    // ------------------------------------------------------------- shift swap
-
-    public function testSwapCreationIsForcedPendingAndIgnoresId(): void
-    {
-        $repo = $this->createMock(ShiftSwapRequestRepositoryInterface::class);
-        $repo->expects($this->once())->method('save')->with($this->callback(
-            fn(array $d): bool => !array_key_exists('id', $d)
-                && $d['status'] === 'pending'
-                && !array_key_exists('approved_by_id', $d)
-                && $d['store_id'] === self::MY_STORE
-                && $d['requester_id'] === self::ME
-        ))->willReturn(['id' => 12]);
-        $controller = new ShiftSwapRequestController($repo, new AuditLogger(), $this->permissions);
-
-        $controller->store($this->request([
-            'id' => 3, 'store_id' => self::MY_STORE, 'status' => 'approved', 'approved_by_id' => 99,
-            'requester_shift_id' => 4, 'target_shift_id' => 5,
-        ]));
-    }
-
-    public function testSwapCreationForAnotherStoreIsForbidden(): void
-    {
-        $repo = $this->createMock(ShiftSwapRequestRepositoryInterface::class);
-        $repo->expects($this->never())->method('save');
-        $controller = new ShiftSwapRequestController($repo, new AuditLogger(), $this->permissions);
-
-        $this->expectException(ForbiddenException::class);
-        $controller->store($this->request(['store_id' => self::OTHER, 'requester_shift_id' => 4]));
     }
 
     // --------------------------------------------------------------- timeclock

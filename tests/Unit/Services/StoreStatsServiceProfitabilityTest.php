@@ -14,7 +14,6 @@ use kintai\Core\Extension\Sales;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
-use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
@@ -46,7 +45,6 @@ final class StoreStatsServiceProfitabilityTest extends TestCase
             $shiftTypes,
             $storeUsers,
             $this->createStub(TimeoffRequestRepositoryInterface::class),
-            $this->createStub(ShiftSwapRequestRepositoryInterface::class),
             $this->createStub(UserShiftTypeRateRepositoryInterface::class),
             $this->createStub(UserRepositoryInterface::class),
             new RoleAssignmentSyncService(

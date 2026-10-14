@@ -21,7 +21,6 @@ use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\NotificationRepositoryInterface;
 use kintai\Core\Repositories\PasswordResetRepositoryInterface;
-use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
@@ -148,7 +147,6 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(ShiftTypeRepositoryInterface::class),
             $c->make(StoreUserRepositoryInterface::class),
             $c->make(TimeoffRequestRepositoryInterface::class),
-            $c->make(ShiftSwapRequestRepositoryInterface::class),
             $c->make(UserShiftTypeRateRepositoryInterface::class),
             $c->make(UserRepositoryInterface::class),
             $c->make(RoleAssignmentSyncService::class),

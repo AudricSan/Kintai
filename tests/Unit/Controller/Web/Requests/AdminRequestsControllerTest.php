@@ -10,7 +10,6 @@ use kintai\Core\Container;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
-use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
@@ -26,11 +25,11 @@ use PHPUnit\Framework\TestCase;
 /**
  * Page de résumé "Demandes" (admin.requests) : agrège congés, échanges de
  * shifts et candidatures bourse aux shifts en attente, lus à travers les
- * fournisseurs (PendingRequests, repli historique ici). Chaque section n'est
+ * fournisseurs (PendingRequests, repli historique des congés ici). Chaque section n'est
  * présente que si son bundle est actif ET que l'utilisateur a la permission
  * "*.view" correspondante — sinon elle reste absente de la page. Les
- * candidatures viennent du fournisseur déclaré par shift-claim : bundle
- * désactivé, la section disparaît proprement, sans faire planter le contrôleur.
+ * échanges et les candidatures viennent des fournisseurs déclarés par shift-swap et shift-claim : sans eux, leur
+ * section disparaît proprement, sans faire planter le contrôleur.
  */
 final class AdminRequestsControllerTest extends TestCase
 {
@@ -57,7 +56,7 @@ final class AdminRequestsControllerTest extends TestCase
         Container::getInstance()->instance(BundleManager::class, FakeBundleManagerFactory::withActiveSlugs($slugs));
     }
 
-    private function buildController(bool $isAdmin, array $timeoff = [], array $swaps = []): AdminRequestsController
+    private function buildController(bool $isAdmin, array $timeoff = []): AdminRequestsController
     {
         $usersRepo = $this->createMock(UserRepositoryInterface::class);
         $usersRepo->method('findAll')->willReturn([
@@ -77,8 +76,6 @@ final class AdminRequestsControllerTest extends TestCase
         $timeoffRepo = $this->createMock(TimeoffRequestRepositoryInterface::class);
         $timeoffRepo->method('findAll')->willReturn($timeoff);
 
-        $swapsRepo = $this->createMock(ShiftSwapRequestRepositoryInterface::class);
-        $swapsRepo->method('findAll')->willReturn($swaps);
 
         $roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
         $roleAssignments->method('findByUser')->willReturn($isAdmin ? [] : [
@@ -93,7 +90,6 @@ final class AdminRequestsControllerTest extends TestCase
         // conteneur.
         $container = Container::getInstance();
         $container->instance(TimeoffRequestRepositoryInterface::class, $timeoffRepo);
-        $container->instance(ShiftSwapRequestRepositoryInterface::class, $swapsRepo);
         $container->instance(ShiftRepositoryInterface::class, $shiftsRepo);
         $container->instance(StoreRepositoryInterface::class, $storesRepo);
 
@@ -114,7 +110,7 @@ final class AdminRequestsControllerTest extends TestCase
         return $req;
     }
 
-    public function testTimeoffAndSwapsPresentButClaimsNullWhenShiftClaimBundleDisabled(): void
+    public function testOnlyTimeoffPresentWhenSwapAndClaimBundlesDeclareNothing(): void
     {
         $this->enableBundles(['timeoff', 'shift-swap']);
 
@@ -123,7 +119,7 @@ final class AdminRequestsControllerTest extends TestCase
         $data       = json_decode($response->body(), true);
 
         $this->assertSame([], $data['timeoff']);
-        $this->assertSame([], $data['swaps']);
+        $this->assertArrayNotHasKey('swaps', $data, 'shift-swap actif sans fournisseur déclaré');
         $this->assertArrayNotHasKey('open_shifts', $data);
     }
 

@@ -14,7 +14,7 @@ Bootstrapped by `DatabaseServiceProvider` (`src/Core/Database/DatabaseServicePro
 40 `final` Eloquent models, all following the same pattern: `$guarded = []`, `$timestamps = false`, no behavior beyond relationships/casts. Grouped by domain:
 
 - **Tenancy:** `User`, `Store`, `StoreUser`
-- **Scheduling:** `Shift`, `ShiftType`, `Availability`, `ShiftSwapRequest`
+- **Scheduling:** `Shift`, `ShiftType`, `Availability`
 - **Time & pay:** `Timeclock`, `TimeoffRequest`, `UserShiftTypeRate`, `StoreDeductionSetting`
 - **HR:** `Feedback`
 - **Communication:** `Notification`
