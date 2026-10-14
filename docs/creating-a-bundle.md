@@ -498,9 +498,8 @@ route uses `formaction`/`formmethod` (with `formnovalidate`) — never a nested 
 the Core writes the `fields` you declared into the shift, and only those, among the columns it opens to bundles
 (`ShiftFormSections::WRITABLE_SHIFT_COLUMNS`: `is_open`, `open_shift_note`); a field nobody declares is ignored, so a
 shift cannot be opened without the bundle. With `storeFeature`, the section only shows when that feature is on. A key
-already taken is ignored; an exception while rendering drops that section (logged). Until `shift-claim` declares
-its own, the Core keeps showing its historical open-shift fields and buttons while that bundle is active. Require
-`"kintai_contract": "^1.17"`.
+already taken is ignored; an exception while rendering drops that section (logged). The Core has no section of its
+own: `shift-claim` ships the open-shift fields and buttons this way. Require `"kintai_contract": "^1.17"`.
 
 ## Providers: data the Core reads from your bundle (contract 1.9+)
 
@@ -548,8 +547,8 @@ public function pendingRequestsProviders(): array
 The Core uses it for the "Requests" page (one section per provider, a table built from your columns), the
 dashboard's "Pending requests" counter and stale-request alerts — only for users holding `permission`. Column
 styles: `TEXT`, `BADGE`, `USER` (user id, shown as a name), `STORE` (store id, shown as a name), `TIME` (`HH:MM`).
-Return requests in display order. An exception drops your section only (logged). Until `timeoff`, `shift-swap` and
-`shift-claim` declare theirs, the Core keeps its own providers for them. Require `"kintai_contract": "^1.9"`.
+Return requests in display order. An exception drops your section only (logged). Until `timeoff` and `shift-swap`
+declare theirs, the Core keeps its own providers for them. Require `"kintai_contract": "^1.9"`.
 
 ### Absences: `absenceProviders()` (contract 1.10)
 

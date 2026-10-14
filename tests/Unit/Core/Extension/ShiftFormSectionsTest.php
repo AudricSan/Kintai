@@ -14,8 +14,8 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Sections du formulaire de shift apportées par les bundles (contrat 1.17) : déclarations des bundles actifs
- * (Bundle::shiftFormSections()), repli historique pour shift-claim, champs limités aux colonnes ouvertes, fonctionnalité
- * par magasin, rendu isolé.
+ * (Bundle::shiftFormSections()), aucune section du Core, champs limités aux colonnes ouvertes, fonctionnalité par
+ * magasin, rendu isolé.
  */
 final class ShiftFormSectionsTest extends TestCase
 {
@@ -72,7 +72,7 @@ final class ShiftFormSectionsTest extends TestCase
         $manager = (new \ReflectionClass(BundleManager::class))->newInstanceWithoutConstructor();
         (new \ReflectionProperty($manager, 'bundles'))->setValue($manager, $bundles);
 
-        return new ShiftFormSections(new ExtensionRegistry($manager), $manager);
+        return new ShiftFormSections(new ExtensionRegistry($manager));
     }
 
     private function view(): ViewRenderer
@@ -106,17 +106,12 @@ final class ShiftFormSectionsTest extends TestCase
         $this->assertSame('<p>acme create 0</p>', $sections->renderFields([], 'create', fn(string $f): bool => true, $this->view()));
     }
 
-    /** shift-claim actif sans déclaration : la section historique du Core ; déclarée : la sienne seulement. */
-    public function testLegacyOpenShiftSectionFollowsShiftClaim(): void
+    /** Le Core n'a aucune section de lui-même, même avec shift-claim actif sans déclaration. */
+    public function testNoSectionWithoutDeclaration(): void
     {
         $this->assertSame([], $this->sections([])->sections());
-        $this->assertSame(['open_shift'], array_map(fn(ShiftFormSection $s): string => $s->key, $this->sections(['shift-claim' => []])->sections()));
-        $this->assertSame(['is_open', 'open_shift_note'], $this->sections(['shift-claim' => []])->fields());
-        $this->assertSame('scheduling._legacy_open_shift_fields', $this->sections(['shift-claim' => []])->sections()[0]->view);
-
-        $declared = $this->sections(['shift-claim' => [new ShiftFormSection('open_shift', 'acme::fields', ['is_open'])]])->sections();
-        $this->assertCount(1, $declared);
-        $this->assertSame('acme::fields', $declared[0]->view);
+        $this->assertSame([], $this->sections(['shift-claim' => []])->sections());
+        $this->assertSame([], $this->sections(['shift-claim' => []])->fields());
     }
 
     public function testInvalidSectionIsRejected(): void

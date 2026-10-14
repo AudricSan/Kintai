@@ -14,7 +14,7 @@ Kintaiは唯一のデータアクセス層として **Eloquent ORM**（`illumina
 40個の `final` Eloquentモデルがあり、いずれも同じパターンに従います：`$guarded = []`、`$timestamps = false`、リレーション/キャスト以外のロジックは持ちません。ドメイン別の分類：
 
 - **テナンシー：** `User`、`Store`、`StoreUser`
-- **シフト管理：** `Shift`、`ShiftType`、`Availability`、`ShiftClaim`、`ShiftSwapRequest`
+- **シフト管理：** `Shift`、`ShiftType`、`Availability`、`ShiftSwapRequest`
 - **勤怠・給与：** `Timeclock`、`TimeoffRequest`、`UserShiftTypeRate`、`StoreDeductionSetting`
 - **人事：** `Feedback`
 - **コミュニケーション：** `MessageThread`、`ThreadMessage`、`ThreadParticipant`、`Notification`

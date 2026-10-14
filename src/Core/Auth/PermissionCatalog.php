@@ -22,7 +22,6 @@ final class PermissionCatalog
         'timeoff'              => ['view', 'create', 'update', 'approve', 'delete'],
         'swaps'                => ['view', 'create', 'update', 'approve', 'delete'],
         'timeclock'            => ['view', 'update', 'delete'],
-        'open_shifts'          => ['view', 'publish', 'approve'],
     ];
 
     /**
@@ -36,7 +35,6 @@ final class PermissionCatalog
         'timeoff'             => 'timeoff',
         'swaps'               => 'shift-swap',
         'timeclock'           => 'timeclock',
-        'open_shifts'         => 'shift-claim',
     ];
 
     /**
@@ -52,7 +50,6 @@ final class PermissionCatalog
         'timeoff.view', 'timeoff.create', 'timeoff.update', 'timeoff.approve', 'timeoff.delete',
         'swaps.view', 'swaps.create', 'swaps.update', 'swaps.approve', 'swaps.delete',
         'timeclock.view', 'timeclock.update', 'timeclock.delete',
-        'open_shifts.view', 'open_shifts.publish', 'open_shifts.approve',
     ];
 
     /** Catégories du Core : toujours présentes, jamais redéfinissables par un bundle. */

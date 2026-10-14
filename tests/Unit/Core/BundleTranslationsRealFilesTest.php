@@ -37,7 +37,6 @@ final class BundleTranslationsRealFilesTest extends TestCase
     {
         return [
             'ShiftSwap'         => ['bundle_shift_swap', 'shift-swap-1.0.0'],
-            'ShiftClaim'        => ['bundle_shift_claim', 'shift-claim-1.0.0'],
             'Timeclock'         => ['bundle_timeclock', 'timeclock-1.0.0'],
             'TimeOff'           => ['bundle_timeoff', 'timeoff-1.0.0'],
         ];

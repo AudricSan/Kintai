@@ -5,17 +5,13 @@ declare(strict_types=1);
 namespace kintai\Core\Extension;
 
 use kintai\Contract\Extension\ShiftFormSection;
-use kintai\Core\BundleManager;
 use kintai\Core\Container;
 use kintai\Core\Services\Log;
 use kintai\UI\ViewRenderer;
 
 /**
  * Sections du formulaire de shift apportées par les bundles actifs (point d'extension Bundle::shiftFormSections(),
- * contrat 1.17), par exemple les champs « Shift ouvert » de shift-claim :
- * - celles déclarées par les bundles actifs ;
- * - en repli, celle que le Core affichait jusqu'ici pour shift-claim actif qui ne déclare encore rien (vues
- *   scheduling/_legacy_open_shift_*). Ce repli disparaîtra avec l'extraction de shift-claim (étape 4).
+ * contrat 1.17), par exemple les champs « Shift ouvert » de shift-claim. Le Core n'en affiche aucune de lui-même.
  */
 final class ShiftFormSections
 {
@@ -25,47 +21,29 @@ final class ShiftFormSections
      */
     public const WRITABLE_SHIFT_COLUMNS = ['is_open', 'open_shift_note'];
 
-    public function __construct(
-        private readonly ?ExtensionRegistry $registry = null,
-        private readonly ?BundleManager $bundles = null,
-    ) {}
+    public function __construct(private readonly ?ExtensionRegistry $registry = null) {}
 
-    /** Instance de la requête courante (registre des extensions et bundles actifs), ou aucune section si indisponible. */
+    /** Instance de la requête courante (registre des extensions), ou aucune section si indisponible. */
     public static function current(): self
     {
         try {
             $container = Container::getInstance();
-            return new self(
-                $container->has(ExtensionRegistry::class) ? $container->make(ExtensionRegistry::class) : null,
-                $container->has(BundleManager::class) ? $container->make(BundleManager::class) : null,
-            );
+            return new self($container->has(ExtensionRegistry::class) ? $container->make(ExtensionRegistry::class) : null);
         } catch (\Throwable) {
             return new self();
         }
     }
 
-    /** Section historique du Core pour shift-claim (repli). */
-    public static function legacyOpenShiftSection(): ShiftFormSection
-    {
-        return new ShiftFormSection('open_shift', 'scheduling._legacy_open_shift_fields', ['is_open', 'open_shift_note'],
-            actionsView: 'scheduling._legacy_open_shift_actions', storeFeature: 'open_shifts');
-    }
-
     /**
-     * Sections des bundles actifs, triées par ordre (une clé déjà prise n'est pas reprise), puis le repli de shift-claim
-     * s'il est actif sans rien déclarer.
+     * Sections des bundles actifs, triées par ordre (une clé déjà prise n'est pas reprise).
      *
      * @return list<ShiftFormSection>
      */
     public function sections(): array
     {
-        $declared = $this->registry?->shiftFormSectionsByBundle() ?? [];
         $all = [];
-        foreach ($declared as $sections) {
+        foreach ($this->registry?->shiftFormSectionsByBundle() ?? [] as $sections) {
             array_push($all, ...$sections);
-        }
-        if (!isset($declared['shift-claim']) && $this->bundles?->isActive('shift-claim')) {
-            $all[] = self::legacyOpenShiftSection();
         }
 
         $sections = [];

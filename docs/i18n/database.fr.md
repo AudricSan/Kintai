@@ -14,7 +14,7 @@ Amorcé par `DatabaseServiceProvider` (`src/Core/Database/DatabaseServiceProvide
 40 modèles Eloquent `final`, suivant tous le même schéma : `$guarded = []`, `$timestamps = false`, aucun comportement au-delà des relations/casts. Regroupés par domaine :
 
 - **Tenancy :** `User`, `Store`, `StoreUser`
-- **Planning :** `Shift`, `ShiftType`, `Availability`, `ShiftClaim`, `ShiftSwapRequest`
+- **Planning :** `Shift`, `ShiftType`, `Availability`, `ShiftSwapRequest`
 - **Temps & paie :** `Timeclock`, `TimeoffRequest`, `UserShiftTypeRate`, `StoreDeductionSetting`
 - **RH :** `Feedback`
 - **Communication :** `MessageThread`, `ThreadMessage`, `ThreadParticipant`, `Notification`

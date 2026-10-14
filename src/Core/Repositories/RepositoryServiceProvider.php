@@ -42,7 +42,6 @@ final class RepositoryServiceProvider extends ServiceProvider
         $this->container->singleton(TimeclockRepositoryInterface::class, fn() => new DatabaseTimeclockRepository());
         $this->container->singleton(UserDashboardPrefsRepositoryInterface::class, fn() => new DatabaseUserDashboardPrefsRepository());
         $this->container->singleton(UserNavPrefsRepositoryInterface::class, fn() => new DatabaseUserNavPrefsRepository());
-        // Bourse aux shifts : bundle distribué hors monorepo (kintai-bundle-shift-claim), voir docs/architecture.md
         $this->container->singleton(NotificationRepositoryInterface::class, fn() => new DatabaseNotificationRepository());
         $this->container->singleton(ApiTokenRepositoryInterface::class, fn() => new DatabaseApiTokenRepository());
         $this->container->singleton(ImportAliasRepositoryInterface::class, fn() => new DatabaseImportAliasRepository());

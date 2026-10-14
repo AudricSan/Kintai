@@ -7,10 +7,8 @@ namespace kintai\Tests\Unit\Bundles;
 $fixtures = dirname(__DIR__, 2) . '/Fixtures/bundles';
 require_once $fixtures . '/timeoff-1.0.0/src/Controllers/Api/TimeoffRequestController.php';
 require_once $fixtures . '/shift-swap-1.0.0/src/Controllers/Api/ShiftSwapRequestController.php';
-require_once $fixtures . '/shift-claim-1.0.0/src/Controllers/Api/ShiftClaimController.php';
 require_once $fixtures . '/timeclock-1.0.0/src/Controllers/Api/TimeclockController.php';
 
-use kintai\Bundles\Installed\ShiftClaim\Controllers\Api\ShiftClaimController;
 use kintai\Bundles\Installed\ShiftSwap\Controllers\Api\ShiftSwapRequestController;
 use kintai\Bundles\Installed\TimeOff\Controllers\Api\TimeoffRequestController;
 use kintai\Bundles\Installed\Timeclock\Controllers\Api\TimeclockController;
@@ -18,7 +16,6 @@ use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
-use kintai\Core\Repositories\ShiftClaimRepositoryInterface;
 use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\TimeclockRepositoryInterface;
@@ -57,7 +54,6 @@ final class BundleApiMassAssignmentTest extends TestCase
         $roles->method('findById')->willReturn(['id' => 20, 'is_system' => 0]);
         $roles->method('getPermissions')->willReturn([
             'timeoff.create', 'timeoff.update', 'swaps.create', 'swaps.update',
-            'open_shifts.approve',
         ]);
         $roles->method('getGlobalPermissionKeys')->willReturn([]);
         $this->permissions = new PermissionService($assignments, $roles);
@@ -166,36 +162,6 @@ final class BundleApiMassAssignmentTest extends TestCase
 
         $this->expectException(ForbiddenException::class);
         $controller->store($this->request(['store_id' => self::OTHER, 'requester_shift_id' => 4]));
-    }
-
-    // ------------------------------------------------------------ shift claim
-
-    public function testClaimCreationIsForcedPendingAndIgnoresId(): void
-    {
-        $repo = $this->createMock(ShiftClaimRepositoryInterface::class);
-        $repo->expects($this->once())->method('save')->with($this->callback(
-            fn(array $d): bool => !array_key_exists('id', $d)
-                && $d['status'] === 'pending'
-                && !array_key_exists('resolved_by', $d)
-                && $d['user_id'] === self::ME
-                && $d['shift_id'] === 8
-        ))->willReturn(['id' => 2]);
-        $controller = new ShiftClaimController($repo, $this->permissions, $this->storeUsers);
-
-        $controller->store($this->request([
-            'id' => 1, 'user_id' => self::ME, 'store_id' => self::MY_STORE, 'shift_id' => 8,
-            'status' => 'approved', 'resolved_by' => 99,
-        ]));
-    }
-
-    public function testClaimCreationForAnotherStoreIsForbidden(): void
-    {
-        $repo = $this->createMock(ShiftClaimRepositoryInterface::class);
-        $repo->expects($this->never())->method('save');
-        $controller = new ShiftClaimController($repo, $this->permissions, $this->storeUsers);
-
-        $this->expectException(ForbiddenException::class);
-        $controller->store($this->request(['user_id' => self::ME, 'store_id' => self::OTHER, 'shift_id' => 8]));
     }
 
     // --------------------------------------------------------------- timeclock

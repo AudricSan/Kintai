@@ -22,16 +22,26 @@ final class FakeBundleManagerFactory
     /**
      * @param string[] $activeSlugs
      * @param array<string, list<\kintai\Contract\Extension\Action>> $actions actions déclarées, par slug (Bundle::actions())
+     * @param array<string, list<\kintai\Contract\Provider\PendingRequestsProvider>> $pending fournisseurs de demandes en
+     *        attente déclarés, par slug (Bundle::pendingRequestsProviders())
      */
-    public static function withActiveSlugs(array $activeSlugs, array $actions = []): BundleManager
+    public static function withActiveSlugs(array $activeSlugs, array $actions = [], array $pending = []): BundleManager
     {
         $manager = (new \ReflectionClass(BundleManager::class))->newInstanceWithoutConstructor();
 
         $bundles = [];
         foreach ($activeSlugs as $slug) {
-            $bundles[$slug] = new class ($slug, $actions[$slug] ?? []) extends Bundle {
-                public function __construct(private readonly string $slug, private readonly array $declaredActions)
+            $bundles[$slug] = new class ($slug, $actions[$slug] ?? [], $pending[$slug] ?? []) extends Bundle {
+                public function __construct(
+                    private readonly string $slug,
+                    private readonly array $declaredActions,
+                    private readonly array $declaredPending,
+                ) {
+                }
+
+                public function pendingRequestsProviders(): array
                 {
+                    return $this->declaredPending;
                 }
 
                 public function actions(): array
