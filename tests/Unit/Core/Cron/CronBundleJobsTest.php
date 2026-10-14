@@ -32,14 +32,14 @@ final class NamedTestJob implements CronJobInterface
 
 /**
  * Tâches planifiées des bundles (étape 2j du contrat de bundle) : Bundle::cronJobs() (contrat 1.8), noms réservés,
- * reprise de la tâche historique auto-validate par daily-report, isolation.
+ * isolation (plus de tâche historique du Core reprise par un bundle).
  */
 final class CronBundleJobsTest extends TestCase
 {
     private function runner(): CronRunner
     {
         $runner = new CronRunner($this->createMock(CronTokenRepositoryInterface::class));
-        foreach (['auto-validate', 'backup', 'log-purge', 'license-check'] as $core) {
+        foreach (['backup', 'log-purge', 'license-check'] as $core) {
             $runner->register(new NamedTestJob($core));
         }
         return $runner;
@@ -59,7 +59,6 @@ final class CronBundleJobsTest extends TestCase
     public function testBundleJobsAreRegisteredWithReservedNamesProtected(): void
     {
         $runner = $this->runner();
-        $legacy = $runner->getJob('auto-validate');
 
         $runner->registerBundleJobs(
             [
@@ -70,8 +69,8 @@ final class CronBundleJobsTest extends TestCase
             self::make(['A\\Sync' => 'acme-sync', 'A\\Backup' => 'backup', 'A\\BadName' => 'Bad Name', 'A\\AutoValidate' => 'auto-validate', 'O\\Sync' => 'acme-sync', 'D\\AutoValidate' => 'auto-validate']),
         );
 
-        $this->assertSame(['auto-validate', 'backup', 'log-purge', 'license-check', 'acme-sync'], array_keys($runner->getJobs()));
-        $this->assertNotSame($legacy, $runner->getJob('auto-validate'), 'daily-report reprend sa tâche historique');
+        $this->assertSame(['backup', 'log-purge', 'license-check', 'acme-sync', 'auto-validate'], array_keys($runner->getJobs()));
+        $this->assertSame('auto-validate', $runner->getJob('auto-validate')->getName(), 'première déclaration retenue (acme)');
     }
 
     public function testRegistryKeepsOnlyCronJobClasses(): void

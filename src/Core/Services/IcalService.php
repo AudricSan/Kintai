@@ -16,7 +16,7 @@ final class IcalService
      * Le contenu est produit dans la langue de l'employé propriétaire du flux : ordre de
      * résolution override implicite absent ici → langue de l'utilisateur ($user['language'])
      * → locale du store ($store['locale']) → 'fr' par défaut (même pattern que
-     * DailyReportMailService::resolveLocale()).
+     * l'e-mail des rapports journaliers du bundle daily-report).
      *
      * @param array $shifts   Shifts de l'employé dans ce store (déjà filtrés par store_id)
      * @param array $timeoffs Congés approuvés de l'employé dans ce store (déjà filtrés)

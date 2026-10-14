@@ -179,15 +179,6 @@ final class NavigationTest extends TestCase
         $this->assertArrayHasKey('planning', $visible);
     }
 
-    public function testDailyReportsLinksDependOnPermissionOrStaffStores(): void
-    {
-        $items = $this->navigation(['daily-report' => null])->items();
-        $item = array_values(array_filter($items, fn(NavItem $i): bool => $i->key === 'daily_reports'))[0];
-
-        $none = $item->linksFor(['route_visible' => fn(string $r): bool => false, 'path' => '/', 'daily_report_staff_stores' => []], false);
-        $this->assertSame([], $none);
-    }
-
     public function testHideableKeysFollowTheSameRules(): void
     {
         $nav = $this->navigation(['timeoff' => null]);

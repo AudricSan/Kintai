@@ -10,6 +10,7 @@ use kintai\Core\Auth\OwnerGuard;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
+use kintai\Core\Extension\Sales;
 use kintai\Core\Extension\StoreFeatures;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
@@ -573,6 +574,10 @@ final class AdminStoreController
     {
         $storeId = (int) $request->param('id');
         $this->assertStoreAccess($request, $storeId);
+        // Sans fournisseur de ventes actif (daily-report), la page n'a rien à montrer : elle n'est pas proposée.
+        if (!Sales::current()->available()) {
+            throw new NotFoundException(__('error_404_message'));
+        }
 
         $store = $this->stores->findById($storeId);
         if ($store === null) {
@@ -596,6 +601,9 @@ final class AdminStoreController
             'from'     => $from,
             'to'       => $to,
             'preset'   => $preset,
+            // Lien vers les rapports journaliers du magasin, si le bundle qui les fournit est là.
+            'daily_reports_url' => \kintai\Core\Container::getInstance()->make(\kintai\Core\Router::class)->routeByName('admin.daily_reports.index') !== null
+                ? $this->base() . '/admin/stores/' . $storeId . '/daily-reports' : null,
         ]), 'layout.app'));
     }
 

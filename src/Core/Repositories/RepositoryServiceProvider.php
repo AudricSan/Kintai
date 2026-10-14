@@ -26,7 +26,7 @@ final class RepositoryServiceProvider extends ServiceProvider
         // n'a plus besoin de la lier.
         $this->container->singleton(TimeoffRequestRepositoryInterface::class, fn() => new DatabaseTimeoffRequestRepository());
         // ShiftSwapRequestRepositoryInterface reste ici (même raison que Timeclock/
-        // DailyReport ci-dessus) : StoreStatsService, HomeController et le tableau de
+        // Timeoff ci-dessus) : StoreStatsService, HomeController et le tableau de
         // bord d'EmployeeController en dépendent pour des calculs qui doivent continuer
         // de fonctionner même si le bundle "shift-swap" est désactivé ou désinstallé.
         // Le bundle lui-même (legacy ou distribué, voir kintai-bundle-shift-swap) n'a
@@ -40,13 +40,6 @@ final class RepositoryServiceProvider extends ServiceProvider
         // fonctionner même si ce bundle est désactivé ou désinstallé. Le bundle lui-même
         // (legacy ou distribué, voir kintai-bundle-timeclock) n'a plus besoin de la lier.
         $this->container->singleton(TimeclockRepositoryInterface::class, fn() => new DatabaseTimeclockRepository());
-        // DailyReportRepositoryInterface reste ici (même raison que Timeclock ci-dessus,
-        // trouvée en cassant la prod lors de l'extraction du bundle DailyReport hors du
-        // monorepo — voir CHANGELOG) : StoreStatsService en dépend pour ses calculs de
-        // statistiques magasin, qui doivent continuer de fonctionner même si le bundle
-        // "daily-report" est désactivé ou désinstallé. Le bundle lui-même (legacy ou
-        // distribué, voir kintai-bundle-daily-report) n'a plus besoin de la lier.
-        $this->container->singleton(DailyReportRepositoryInterface::class, fn() => new DatabaseDailyReportRepository());
         $this->container->singleton(UserDashboardPrefsRepositoryInterface::class, fn() => new DatabaseUserDashboardPrefsRepository());
         $this->container->singleton(UserNavPrefsRepositoryInterface::class, fn() => new DatabaseUserNavPrefsRepository());
         // Bourse aux shifts : bundle distribué hors monorepo (kintai-bundle-shift-claim), voir docs/architecture.md

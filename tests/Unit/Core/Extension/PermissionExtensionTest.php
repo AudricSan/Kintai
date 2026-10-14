@@ -121,7 +121,7 @@ final class PermissionExtensionTest extends TestCase
         ]);
 
         $this->assertSame(
-            ['employees', 'shifts', 'stores', 'payroll', 'timeoff', 'swaps', 'daily_reports', 'acme_tasks'],
+            ['employees', 'shifts', 'stores', 'payroll', 'timeoff', 'swaps', 'acme_tasks', 'daily_reports'],
             array_keys(PermissionCatalog::forActiveBundles())
         );
     }

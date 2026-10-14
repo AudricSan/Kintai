@@ -6,7 +6,6 @@ namespace kintai\Core\Services;
 
 use kintai\Core\ServiceProvider;
 use kintai\Core\Container;
-use kintai\Core\Cron\AutoValidateJob;
 use kintai\Core\Cron\BackupJob;
 use kintai\Core\Cron\CronRunner;
 use kintai\Core\Cron\LicenseCheckJob;
@@ -17,7 +16,6 @@ use kintai\Core\Repositories\CronTokenRepositoryInterface;
 use kintai\Core\Mail\MailerService;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
-use kintai\Core\Repositories\DailyReportRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
@@ -153,44 +151,8 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(ShiftSwapRequestRepositoryInterface::class),
             $c->make(UserShiftTypeRateRepositoryInterface::class),
             $c->make(UserRepositoryInterface::class),
-            $c->make(DailyReportRepositoryInterface::class),
             $c->make(RoleAssignmentSyncService::class),
             $c->make(\kintai\Core\Extension\Sales::class),
-        ));
-
-        // DailyReportPermissionService/PdfService/MailService/AutoValidateService liés ici,
-        // pas par le bundle "daily-report" : BundleViewDataMiddleware (middleware global,
-        // partagé sur toute page authentifiée) et AutoValidateJob/CronController en
-        // dépendent directement, et doivent continuer de fonctionner même si ce bundle
-        // est désactivé ou désinstallé — même raison que DailyReportRepositoryInterface
-        // ci-dessus (RepositoryServiceProvider). Liaisons explicites (plutôt que de
-        // compter sur l'auto-résolution par réflexion du Container) pour garder le même
-        // comportement singleton qu'avant, quand le bundle les liait lui-même.
-        $this->container->singleton(DailyReportPermissionService::class, fn(Container $c) => new DailyReportPermissionService(
-            $c->make(\kintai\Core\Auth\PermissionService::class),
-        ));
-
-        $this->container->singleton(DailyReportPdfService::class, fn(Container $c) => new DailyReportPdfService(
-            $c->make(ViewRenderer::class),
-            $c->make(TranslationService::class),
-            $c->make(ShiftRepositoryInterface::class),
-            $c->make(ShiftTypeRepositoryInterface::class),
-            $c->make(UserRepositoryInterface::class),
-        ));
-
-        $this->container->singleton(DailyReportMailService::class, fn(Container $c) => new DailyReportMailService(
-            $c->make(DailyReportPermissionService::class),
-            $c->make(MailerService::class),
-            $c->make(TranslationService::class),
-        ));
-
-        $this->container->singleton(DailyReportAutoValidateService::class, fn(Container $c) => new DailyReportAutoValidateService(
-            $c->make(StoreRepositoryInterface::class),
-            $c->make(DailyReportRepositoryInterface::class),
-            $c->make(UserRepositoryInterface::class),
-            $c->make(DailyReportPermissionService::class),
-            $c->make(DailyReportPdfService::class),
-            $c->make(DailyReportMailService::class),
         ));
 
         $this->container->singleton(BackupService::class, fn(Container $c) => new BackupService(
@@ -233,11 +195,10 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(TranslationRepositoryInterface::class),
         ));
 
-        // Tâches du Core, puis celles des bundles actifs (Bundle::cronJobs(), contrat 1.8). auto-validate (rapports
-        // journaliers) reste enregistrée par le Core en repli, et remplacée si daily-report déclare la sienne.
+        // Tâches du Core, puis celles des bundles actifs (Bundle::cronJobs(), contrat 1.8 : auto-validate de
+        // daily-report, photo-retention de store-photos…).
         $this->container->singleton(CronRunner::class, function (Container $c) {
             $runner = new CronRunner($c->make(CronTokenRepositoryInterface::class));
-            $runner->register($c->make(AutoValidateJob::class));
             $runner->register($c->make(BackupJob::class));
             $runner->register($c->make(LogPurgeJob::class));
             $runner->register($c->make(LicenseCheckJob::class));

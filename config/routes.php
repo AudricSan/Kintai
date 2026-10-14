@@ -65,7 +65,6 @@ use kintai\UI\Controller\Api\V1\PushTokenController as ApiPushTokenController;
 // =============================================================================
 
 // --- CRON ---
-$router->get('/cron/auto-validate', [CronController::class, 'autoValidate'], name: 'cron.auto_validate');
 $router->get('/cron/run/{job}', [CronController::class, 'run'], name: 'cron.run');
 
 // --- iCal ---
