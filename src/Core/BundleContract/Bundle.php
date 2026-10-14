@@ -228,6 +228,17 @@ abstract class Bundle
     }
 
     /**
+     * Point d'extension « sections du formulaire de shift » (contrat 1.17) : champs ajoutés au formulaire de shift et
+     * boutons de sa barre d'actions (vues du bundle + colonnes de shifts qu'elles enregistrent).
+     *
+     * @return list<\kintai\Contract\Extension\ShiftFormSection>
+     */
+    public function shiftFormSections(): array
+    {
+        return [];
+    }
+
+    /**
      * Boot du bundle, une fois tous les bundles enregistrés.
      */
     public function boot(): void

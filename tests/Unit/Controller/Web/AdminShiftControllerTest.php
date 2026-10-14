@@ -5,6 +5,12 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Controller\Web;
 
 use kintai\Core\Auth\PermissionService;
+use kintai\Contract\Event\OpenShiftClosed;
+use kintai\Contract\Extension\ShiftFormSection;
+use kintai\Core\BundleContract\Bundle;
+use kintai\Core\BundleManager;
+use kintai\Core\Extension\ExtensionRegistry;
+use kintai\Core\Container;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
@@ -21,6 +27,7 @@ use kintai\Core\Services\NotificationService;
 use kintai\Core\Services\ShiftServiceInterface;
 use kintai\UI\Controller\Web\Scheduling\AdminShiftController;
 use kintai\UI\ViewRenderer;
+use kintai\Tests\Support\FakeBundleManagerFactory;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
@@ -135,8 +142,10 @@ final class AdminShiftControllerTest extends TestCase
         $this->assertSame('09:00', $data['start_time']);
     }
 
+    /** Champs « shift ouvert » : acceptés quand une section du formulaire les déclare (ici le repli de shift-claim actif). */
     public function testQuickShiftWithAdditionalFields(): void
     {
+        Container::getInstance()->instance(BundleManager::class, FakeBundleManagerFactory::withActiveSlugs(['shift-claim']));
         $req = $this->makeJsonRequest([
             'store_id'        => 1,
             'user_id'         => 5,
@@ -164,6 +173,28 @@ final class AdminShiftControllerTest extends TestCase
         $this->assertSame('Test note', $captured['notes']);
         $this->assertSame('Ouvert', $captured['open_shift_note']);
         $this->assertSame(1, $captured['is_open']);
+    }
+
+    /** Sans bundle qui déclare les champs « shift ouvert » (shift-claim absent), ils sont ignorés. */
+    public function testQuickShiftIgnoresOpenShiftFieldsWithoutADeclaringBundle(): void
+    {
+        Container::getInstance()->instance(BundleManager::class, FakeBundleManagerFactory::withActiveSlugs([]));
+        $req = $this->makeJsonRequest([
+            'store_id' => 1, 'user_id' => 5, 'shift_date' => '2026-06-01', 'start_time' => '09:00', 'end_time' => '17:00',
+            'open_shift_note' => 'Ouvert', 'is_open' => true,
+        ]);
+        $req->setAttribute('managed_store_ids', null);
+        $this->timeoffRequests->method('findByUser')->willReturn([]);
+        $captured = null;
+        $this->shifts->method('save')->willReturnCallback(function (array $d) use (&$captured) {
+            $captured = $d;
+            return $d + ['id' => 1];
+        });
+
+        $this->controller->quickShift($req);
+
+        $this->assertNull($captured['open_shift_note']);
+        $this->assertSame(0, $captured['is_open']);
     }
 
     public function testQuickShiftForbiddenStoreAccess(): void
@@ -462,6 +493,85 @@ final class AdminShiftControllerTest extends TestCase
         $response = $this->controller->updateShift($req);
 
         $this->assertSame(302, $response->status());
+    }
+
+    /**
+     * Régression : décocher « Shift ouvert » dans le formulaire d'édition plantait (le Core annulait lui-même les
+     * candidatures avec un dépôt qu'il n'avait plus). Désormais le shift est fermé et le Core annonce OpenShiftClosed
+     * aux bundles qui l'écoutent (shift-claim retire les candidatures en attente).
+     */
+    public function testClosingAnOpenShiftAnnouncesItToBundles(): void
+    {
+        $received = [];
+        $bundle = new class extends Bundle {
+            public ?\Closure $listener = null;
+
+            public function __construct() {}
+
+            public function getName(): string
+            {
+                return 'shift-claim';
+            }
+
+            public function register(): void {}
+
+            public function shiftFormSections(): array
+            {
+                return [new ShiftFormSection('open_shift', 'shift-claim::shift-form-section', ['is_open', 'open_shift_note'])];
+            }
+
+            public function eventListeners(): array
+            {
+                return [OpenShiftClosed::class => $this->listener];
+            }
+        };
+        $bundle->listener = function (OpenShiftClosed $e) use (&$received): void {
+            $received[] = $e;
+        };
+        $manager = (new \ReflectionClass(BundleManager::class))->newInstanceWithoutConstructor();
+        (new \ReflectionProperty($manager, 'bundles'))->setValue($manager, ['shift-claim' => $bundle]);
+        Container::getInstance()->instance(BundleManager::class, $manager);
+        Container::getInstance()->instance(ExtensionRegistry::class, new ExtensionRegistry($manager));
+
+        $this->shifts->method('findById')->with(10)->willReturn([
+            'id' => 10, 'store_id' => 1, 'user_id' => null, 'shift_date' => '2026-08-02',
+            'start_time' => '09:00', 'end_time' => '17:00', 'is_open' => 1, 'open_shift_note' => 'Qui ?',
+        ]);
+        $this->timeoffRequests->method('findByUser')->willReturn([]);
+        $_POST = ['store_id' => '1', 'user_id' => '5', 'shift_date' => '2026-08-02', 'start_time' => '09:00', 'end_time' => '17:00', 'is_open' => '0'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setAttribute('auth_user', ['id' => 1]);
+        $req->setRouteParams(['id' => 10]);
+        $this->shifts->expects($this->once())->method('save')->with($this->callback(
+            fn(array $d) => $d['is_open'] === 0 && $d['user_id'] === 5
+        ))->willReturnCallback(fn(array $d) => $d + ['id' => 10]);
+
+        $response = $this->controller->updateShift($req);
+
+        $this->assertSame(302, $response->status());
+        $this->assertCount(1, $received);
+        $this->assertSame(10, $received[0]->shiftId());
+        $this->assertSame(1, $received[0]->closedBy);
+    }
+
+    /** Sans bundle qui déclare le champ « Shift ouvert », l'édition ne le change pas (et n'annonce rien). */
+    public function testOpenShiftFieldIsKeptWithoutADeclaringBundle(): void
+    {
+        Container::getInstance()->instance(BundleManager::class, FakeBundleManagerFactory::withActiveSlugs([]));
+        $this->shifts->method('findById')->with(10)->willReturn([
+            'id' => 10, 'store_id' => 1, 'user_id' => null, 'shift_date' => '2026-08-02',
+            'start_time' => '09:00', 'end_time' => '17:00', 'is_open' => 1,
+        ]);
+        $_POST = ['store_id' => '1', 'shift_date' => '2026-08-02', 'start_time' => '09:00', 'end_time' => '17:00', 'is_open' => '0'];
+        $req = new Request();
+        $req->setAttribute('managed_store_ids', null);
+        $req->setRouteParams(['id' => 10]);
+        $this->shifts->expects($this->once())->method('save')->with($this->callback(
+            fn(array $d) => $d['is_open'] === 1
+        ))->willReturnCallback(fn(array $d) => $d + ['id' => 10]);
+
+        $this->assertSame(302, $this->controller->updateShift($req)->status());
     }
 
     /** Même auto-calcul du type dominant que storeShift(), lors d'une édition. */
@@ -806,6 +916,11 @@ final class AdminShiftControllerTest extends TestCase
         $_GET = [];
         $_POST = [];
         $_SERVER = [];
+        // Bundles actifs simulés par certains tests : ne pas les laisser au conteneur partagé.
+        $instances = new \ReflectionProperty(Container::class, 'instances');
+        $all = $instances->getValue(Container::getInstance());
+        unset($all[BundleManager::class], $all[ExtensionRegistry::class]);
+        $instances->setValue(Container::getInstance(), $all);
     }
 
     private function makeJsonRequest(array $body): Request
