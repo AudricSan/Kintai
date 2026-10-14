@@ -16,6 +16,7 @@ use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
+use kintai\Core\Extension\Attendances;
 use kintai\Core\Repositories\TimeclockRepositoryInterface;
 use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
@@ -148,7 +149,8 @@ final class HomeController
         });
 
         // Pointages actifs en ce moment
-        $allTimeclocks   = array_values(array_filter($this->timeclocks->findAll(), fn($tc) => $inScope((int) ($tc['store_id'] ?? 0))));
+        // Pointages lus à travers les fournisseurs (Bundle::attendanceProviders()), repli sur la table des pointages.
+        $allTimeclocks   = array_values(array_filter(Attendances::current($this->timeclocks)->all(), fn($tc) => $inScope((int) ($tc['store_id'] ?? 0))));
         $activeClocksNow = array_values(array_filter(
             $allTimeclocks,
             fn($tc) => ($tc['shift_date'] ?? '') === $today && empty($tc['clock_out_time'])
@@ -392,7 +394,7 @@ final class HomeController
             }
 
             $periodTimeclocks = array_values(array_filter(
-                $this->timeclocks->findByStoreBetween($sid, $since, $today),
+                Attendances::current($this->timeclocks)->forStoreBetween($sid, $since, $today),
                 fn($tc) => ($tc['shift_date'] ?? '') >= $since && ($tc['shift_date'] ?? '') <= $today
             ));
             foreach ($periodTimeclocks as $tc) {

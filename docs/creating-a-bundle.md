@@ -489,6 +489,30 @@ absenteeism statistics. Absences of every declared provider are added up; a fail
 Until a bundle declares one, the Core keeps reading the historical leave table. Require
 `"kintai_contract": "^1.10"`.
 
+### Attendance: `attendanceProviders()` (contract 1.11)
+
+```php
+use kintai\Contract\Provider\Attendance;
+use kintai\Contract\Provider\AttendanceProvider;
+
+final class ClockAttendance implements AttendanceProvider
+{
+    public function attendance(?array $userIds, ?array $storeIds, ?string $from = null, ?string $to = null): array
+    {
+        return array_map(fn(array $r) => new Attendance(
+            (int) $r['id'], (int) $r['user_id'], (int) $r['store_id'],
+            $r['shift_date'],                  // Y-m-d, the day worked ($from/$to filter on it, inclusive)
+            $r['clock_in'],                    // Y-m-d H:i:s
+            $r['clock_out'],                   // Y-m-d H:i:s, or null while still clocked in
+        ), $this->clocks->find($userIds, $storeIds, $from, $to));
+    }
+}
+```
+
+The Core uses it on the dashboards (who is clocked in now, clock-ins left open, late arrivals compared with the
+planned shift). Entries of every declared provider are added up; a failing provider is skipped (logged). Until a
+bundle declares one, the Core keeps reading the historical clock-in table. Require `"kintai_contract": "^1.11"`.
+
 ## The RBAC scope contract: `managed_store_ids`
 
 Every Web route your bundle registers under `middleware: [AuthMiddleware::class, PermissionMiddleware::class]` must declare a `permission:` — either a precise key from `PermissionCatalog`, or `'public'` (a route intentionally left ungated, e.g. self-service/aggregate pages; omitting `permission:` entirely behaves the same way). `PermissionMiddleware` resolves this into a request attribute, `managed_store_ids`, that every controller down the line is expected to read rather than re-deriving:

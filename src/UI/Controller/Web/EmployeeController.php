@@ -16,6 +16,7 @@ use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
+use kintai\Core\Extension\Attendances;
 use kintai\Core\Repositories\TimeclockRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
@@ -111,7 +112,8 @@ final class EmployeeController
             $storesMap[(int) $s['id']] = $s['name'] ?? ('#' . $s['id']);
         }
 
-        $activeClock = $this->timeclocks->findActiveByUser($userId);
+        // Pointages lus à travers les fournisseurs (Bundle::attendanceProviders()), repli sur la table des pointages.
+        $activeClock = Attendances::current($this->timeclocks)->activeForUser($userId);
         // Widgets proposés : ceux du Core et ceux des bundles actifs (Bundle::dashboardWidgets(), contrat 1.4). Les
         // widgets historiques d'un bundle qui déclare les siens ne sont plus rendus par le Core ($enabledWidgets).
         $dashWidgets = DashboardWidgets::current();
