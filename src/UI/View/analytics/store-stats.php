@@ -89,7 +89,9 @@ function deltaChip(mixed $val, bool $invertColor = false, string $suffix = '%'):
     </h2>
     <div class="page-header__actions">
         <?= Button::make('⬇ ' . __('export_csv'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . store_segment((int) $store['id']) . '/stats/export?period=' . $period)->render() ?>
+        <?php if (\kintai\Core\Extension\Sales::current()->available()): // Rentabilité : seulement avec des ventes (daily-report…). ?>
         <?= Button::make(__('profitability'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . store_segment((int) $store['id']) . '/profitability')->render() ?>
+        <?php endif; ?>
         <?= Button::make(__('employee_report'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . store_segment((int) $store['id']) . '/employee-report')->render() ?>
         <?= Button::make(__('edit'))->ghost()->sm()->link($BASE_URL . '/admin/stores/' . store_segment((int) $store['id']) . '/edit')->render() ?>
         <?= Button::make(__('back'))->ghost()->sm()->link(back_url(route_url('admin.stores')))->render() ?>

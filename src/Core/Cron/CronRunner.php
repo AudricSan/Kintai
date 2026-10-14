@@ -16,11 +16,6 @@ final class CronRunner
     /** Tâches du Core : un bundle ne peut pas les remplacer. */
     public const CORE_JOBS = ['backup', 'log-purge', 'license-check'];
 
-    /**
-     * Tâches historiques du Core appartenant à un bundle : nom => slug. Le bundle peut la reprendre sous le même nom
-     * en la déclarant (Bundle::cronJobs()) ; le Core n'enregistre alors plus la sienne.
-     */
-    public const LEGACY_BUNDLE_JOBS = ['auto-validate' => 'daily-report'];
 
     /** @var array<string, CronJobInterface> */
     private array $jobs = [];
@@ -53,9 +48,8 @@ final class CronRunner
                     $this->warn('bundle_extension_failed', $slug, $e->getMessage());
                     continue;
                 }
-                $legacyOwner = self::LEGACY_BUNDLE_JOBS[$name] ?? null;
                 if (preg_match('/^[a-z][a-z0-9-]{1,40}$/', $name) !== 1 || in_array($name, self::CORE_JOBS, true)
-                    || (isset($this->jobs[$name]) && $legacyOwner !== $slug)) {
+                    || isset($this->jobs[$name])) {
                     $this->warn('bundle_extension_invalid', $slug, $name);
                     continue;
                 }
@@ -133,7 +127,6 @@ final class CronRunner
         $meta = [];
         foreach ($this->jobs as $name => $job) {
             $label = match ($name) {
-                'auto-validate'  => 'Validation auto des rapports',
                 'backup'         => 'Backup de la base de données',
                 'log-purge'      => 'Purge du journal d\'activité',
 

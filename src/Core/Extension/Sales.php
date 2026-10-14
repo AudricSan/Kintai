@@ -6,40 +6,33 @@ namespace kintai\Core\Extension;
 
 use kintai\Contract\Provider\DailySales;
 use kintai\Core\Container;
-use kintai\Core\Repositories\DailyReportRepositoryInterface;
-use kintai\Core\Repositories\StoreRepositoryInterface;
-use kintai\Core\Services\DailyReportDataNormalizer;
 use kintai\Core\Services\Log;
 
 /**
- * Ventes journalières des magasins, lues à travers des fournisseurs (contrat 1.14) — exposé aux bundles sous le nom
- * kintai\Contract\Services\Sales :
- * - celles des fournisseurs déclarés par les bundles actifs (Bundle::salesProviders()), réunies ;
- * - à défaut, en repli, la table historique des rapports journaliers (DailyReportRepositoryInterface), comme jusqu'ici
- *   — y compris quand le bundle daily-report est désactivé. Ce repli disparaîtra avec l'extraction de daily-report
- *   (étape 4) ; sans fournisseur, il n'y aura alors plus de ventes.
+ * Ventes journalières des magasins, lues auprès des fournisseurs déclarés par les bundles actifs
+ * (Bundle::salesProviders(), contrat 1.14) et réunies — exposé aux bundles sous le nom kintai\Contract\Services\Sales.
+ * Sans fournisseur actif (daily-report absent ou désactivé), il n'y a pas de ventes : la page de rentabilité d'un
+ * magasin n'est alors pas proposée (available()).
  */
 final class Sales
 {
-    public function __construct(
-        private readonly ?ExtensionRegistry $registry = null,
-        private readonly ?DailyReportRepositoryInterface $legacy = null,
-        private readonly ?StoreRepositoryInterface $stores = null,
-    ) {}
+    public function __construct(private readonly ?ExtensionRegistry $registry = null) {}
 
-    /** Instance de la requête courante (registre des extensions et repli historique du conteneur). */
+    /** Instance de la requête courante (registre des extensions du conteneur). */
     public static function current(): self
     {
         try {
             $container = Container::getInstance();
-            return new self(
-                $container->has(ExtensionRegistry::class) ? $container->make(ExtensionRegistry::class) : null,
-                $container->has(DailyReportRepositoryInterface::class) ? $container->make(DailyReportRepositoryInterface::class) : null,
-                $container->has(StoreRepositoryInterface::class) ? $container->make(StoreRepositoryInterface::class) : null,
-            );
+            return new self($container->has(ExtensionRegistry::class) ? $container->make(ExtensionRegistry::class) : null);
         } catch (\Throwable) {
             return new self();
         }
+    }
+
+    /** Au moins un bundle actif fournit-il des ventes ? */
+    public function available(): bool
+    {
+        return ($this->registry?->salesProvidersByBundle() ?? []) !== [];
     }
 
     /**
@@ -50,13 +43,8 @@ final class Sales
      */
     public function dailySales(int $storeId, string $from, string $to, ?array $statuses = null): array
     {
-        $bySlug = $this->registry?->salesProvidersByBundle() ?? [];
-        if ($bySlug === []) {
-            return $this->legacyDailySales($storeId, $from, $to, $statuses);
-        }
-
         $rows = [];
-        foreach ($bySlug as $slug => $providers) {
+        foreach ($this->registry?->salesProvidersByBundle() ?? [] as $slug => $providers) {
             foreach ($providers as $provider) {
                 try {
                     foreach ($provider->dailySales($storeId, $from, $to, $statuses) as $day) {
@@ -71,30 +59,5 @@ final class Sales
         }
         usort($rows, static fn(array $a, array $b): int => strcmp($a['report_date'], $b['report_date']));
         return $rows;
-    }
-
-    /** Repli : rapports journaliers historiques, ramenés à des valeurs du jour selon le mode de saisie du magasin. */
-    private function legacyDailySales(int $storeId, string $from, string $to, ?array $statuses): array
-    {
-        if ($this->legacy === null) {
-            return [];
-        }
-        $reports = array_values(array_filter(
-            $this->legacy->findByStoreAndDateRange($storeId, $from, $to),
-            static fn(array $r): bool => empty($r['deleted_at']) && ($statuses === null || in_array($r['status'] ?? '', $statuses, true))
-        ));
-        usort($reports, static fn(array $a, array $b): int => strcmp((string) $a['report_date'], (string) $b['report_date']));
-
-        $store = $this->stores?->findById($storeId);
-        $reports = DailyReportDataNormalizer::toDailyDeltas($reports, $store !== null ? DailyReportDataNormalizer::cumulativeModeOf($store) : 'per_day');
-
-        return array_map(static fn(array $r): array => (new DailySales(
-            (string) $r['report_date'],
-            (string) ($r['status'] ?? 'draft'),
-            (float) ($r['sales_total'] ?? 0),
-            (float) ($r['labor_cost'] ?? 0),
-            (int) ($r['customer_count'] ?? 0),
-            (float) ($r['waste_total'] ?? 0),
-        ))->toArray(), $reports);
     }
 }

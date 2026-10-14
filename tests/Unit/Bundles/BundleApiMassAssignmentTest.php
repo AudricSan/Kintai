@@ -8,28 +8,23 @@ $fixtures = dirname(__DIR__, 2) . '/Fixtures/bundles';
 require_once $fixtures . '/timeoff-1.0.0/src/Controllers/Api/TimeoffRequestController.php';
 require_once $fixtures . '/shift-swap-1.0.0/src/Controllers/Api/ShiftSwapRequestController.php';
 require_once $fixtures . '/shift-claim-1.0.0/src/Controllers/Api/ShiftClaimController.php';
-require_once $fixtures . '/daily-report-1.0.0/src/Controllers/Api/DailyReportController.php';
 require_once $fixtures . '/timeclock-1.0.0/src/Controllers/Api/TimeclockController.php';
 
-use kintai\Bundles\Installed\DailyReport\Controllers\Api\DailyReportController;
 use kintai\Bundles\Installed\ShiftClaim\Controllers\Api\ShiftClaimController;
 use kintai\Bundles\Installed\ShiftSwap\Controllers\Api\ShiftSwapRequestController;
 use kintai\Bundles\Installed\TimeOff\Controllers\Api\TimeoffRequestController;
 use kintai\Bundles\Installed\Timeclock\Controllers\Api\TimeclockController;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ForbiddenException;
-use kintai\Core\Repositories\DailyReportRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\ShiftClaimRepositoryInterface;
 use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
-use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\TimeclockRepositoryInterface;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Services\AuditLogger;
-use kintai\Core\Services\DailyReportPermissionService;
 use kintai\Core\Services\Log;
 use PHPUnit\Framework\TestCase;
 
@@ -62,7 +57,7 @@ final class BundleApiMassAssignmentTest extends TestCase
         $roles->method('findById')->willReturn(['id' => 20, 'is_system' => 0]);
         $roles->method('getPermissions')->willReturn([
             'timeoff.create', 'timeoff.update', 'swaps.create', 'swaps.update',
-            'open_shifts.approve', 'daily_reports.create',
+            'open_shifts.approve',
         ]);
         $roles->method('getGlobalPermissionKeys')->willReturn([]);
         $this->permissions = new PermissionService($assignments, $roles);
@@ -201,30 +196,6 @@ final class BundleApiMassAssignmentTest extends TestCase
 
         $this->expectException(ForbiddenException::class);
         $controller->store($this->request(['user_id' => self::ME, 'store_id' => self::OTHER, 'shift_id' => 8]));
-    }
-
-    // ----------------------------------------------------------- daily report
-
-    public function testDailyReportCreationForcesAuthorAndIgnoresId(): void
-    {
-        $repo   = $this->createMock(DailyReportRepositoryInterface::class);
-        $stores = $this->createStub(StoreRepositoryInterface::class);
-        $stores->method('findById')->willReturn(['id' => self::MY_STORE, 'name' => 'A']);
-        $repo->expects($this->once())->method('save')->with($this->callback(
-            fn(array $d): bool => !array_key_exists('id', $d)
-                && $d['author_id'] === self::ME
-                && $d['status'] === 'draft'
-                && $d['store_id'] === self::MY_STORE
-                && !array_key_exists('validated_by', $d)
-                && !array_key_exists('is_finalized', $d)
-                && $d['notes'] === 'RAS'
-        ))->willReturn(['id' => 6]);
-        $controller = new DailyReportController($repo, $stores, $this->storeUsers, new DailyReportPermissionService($this->permissions));
-
-        $controller->store($this->request([
-            'id' => 1, 'author_id' => 99, 'store_id' => self::MY_STORE, 'notes' => 'RAS',
-            'status' => 'validated', 'validated_by' => 99, 'is_finalized' => 1,
-        ]));
     }
 
     // --------------------------------------------------------------- timeclock

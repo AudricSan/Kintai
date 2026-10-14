@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace kintai\Core\Services;
 
-use kintai\Core\Repositories\DailyReportRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
@@ -36,9 +35,8 @@ final class StoreStatsService implements StoreStatsServiceInterface
         private readonly ShiftSwapRequestRepositoryInterface $swapRequests,
         private readonly UserShiftTypeRateRepositoryInterface $userRates,
         private readonly UserRepositoryInterface $users,
-        private readonly DailyReportRepositoryInterface $dailyReports,
         private readonly RoleAssignmentSyncService $roleSync,
-        // Ventes journalières (contrat 1.14) ; sans elles (tests), le repli historique sur $dailyReports.
+        // Ventes journalières (contrat 1.14) ; sans elles (tests), celles de la requête courante.
         private readonly ?Sales $sales = null,
     ) {}
 
@@ -540,7 +538,7 @@ final class StoreStatsService implements StoreStatsServiceInterface
     {
         // Ventes du jour (fournisseurs du contrat 1.14) : déjà ramenées à des valeurs quotidiennes, même quand le
         // magasin saisit ses rapports en cumulé.
-        $reports = ($this->sales ?? new Sales(null, $this->dailyReports, $this->stores))->dailySales($storeId, $from, $to);
+        $reports = ($this->sales ?? Sales::current())->dailySales($storeId, $from, $to);
 
         $allShifts     = array_values(array_filter(
             $this->shifts->findByStore($storeId),

@@ -171,7 +171,7 @@ away with a new major version.
 ### Bundle-owned classes still living in the Core
 
 Some repositories, models and services belong to a bundle but still live in the Core (e.g.
-`TimeoffRequestRepositoryInterface`, `DailyReportPdfService`). They will move into their bundle's repository
+`TimeoffRequestRepositoryInterface`). They will move into their bundle's repository
 (step 4 of the plan). Until then, a bundle keeps importing them from `kintai\Core\…` and lists them explicitly
 in its contract-usage test.
 
@@ -326,8 +326,8 @@ Use it for the few values your navigation or layout needs on every page — typi
 `NavItem`'s `badge`. Each function runs on every authenticated page, so keep it to one cheap query. Names are
 lowercase `snake_case`, preferably prefixed with your bundle's name; Core names (`auth_user`, `managed_store_ids`,
 `store_features`, …) and names already declared by another bundle are refused, and an exception drops that variable
-only (logged). Until `messaging` and `daily-report` declare theirs, the Core keeps computing
-`unread_messages_count` and `daily_report_staff_stores` for them. Require `"kintai_contract": "^1.5"`.
+only (logged). `messaging` shares `unread_messages_count` and `daily-report` `daily_report_staff_stores` this way;
+the Core computes none of them itself. Require `"kintai_contract": "^1.5"`.
 
 ### Action links: `actions()` (contract 1.6)
 
@@ -417,8 +417,7 @@ While your bundle is active, an external scheduler (cron-job.org, a server cront
 hosting — or, on a server with SSH access, a local crontab runs `php scripts/cron.php {name}` (no token; extra
 URL parameters become `--key=value`). Core names (`backup`,
 `log-purge`, `license-check`) and names already taken are refused (logged); a class that can't be built is skipped.
-`auto-validate` is the historical daily-report job: the Core keeps running it until `daily-report` declares its own
-under that name. Require `"kintai_contract": "^1.8"`.
+`daily-report` ships `auto-validate` this way. Require `"kintai_contract": "^1.8"`.
 
 ### Profile sections: `profileSections()` (contract 1.12)
 
@@ -596,8 +595,8 @@ The Core reads it for a store's profitability page, and bundles read it through 
 (`dailySales($storeId, $from, $to, $statuses)` returns rows sorted by date: `report_date`, `status`, `sales_total`,
 `labor_cost`, `customer_count`, `waste_total`) — `salary-report` pre-fills its sales total this way. If your data is
 entered as running totals, convert it to the day's values yourself, after the status filter. Days of every declared
-provider are merged; a failing provider is skipped (logged). Until a bundle declares one, the Core keeps reading the
-historical daily reports table. Require `"kintai_contract": "^1.14"`.
+provider are merged; a failing provider is skipped (logged). Without any active provider there are no sales, and the
+Core hides a store's profitability page. `daily-report` is the sales provider. Require `"kintai_contract": "^1.14"`.
 
 ## The RBAC scope contract: `managed_store_ids`
 

@@ -10,13 +10,11 @@ use kintai\Core\BundleContract\Bundle;
 use kintai\Core\BundleManager;
 use kintai\Core\Extension\ExtensionRegistry;
 use kintai\Core\Extension\Sales;
-use kintai\Core\Repositories\DailyReportRepositoryInterface;
-use kintai\Core\Repositories\StoreRepositoryInterface;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Ventes journalières lues à travers des fournisseurs (contrat 1.14) : fournisseurs des bundles actifs, sinon repli
- * sur les rapports journaliers historiques (valeurs du jour, mode cumulé, filtre de statut).
+ * Ventes journalières lues à travers des fournisseurs (contrat 1.14) : fournisseurs des bundles actifs réunis et
+ * triés, fournisseur en échec isolé, aucune vente sans fournisseur.
  */
 final class SalesTest extends TestCase
 {
@@ -70,16 +68,6 @@ final class SalesTest extends TestCase
         };
     }
 
-    private function legacy(array $reports, string $mode = 'per_day'): Sales
-    {
-        $repo = $this->createStub(DailyReportRepositoryInterface::class);
-        $repo->method('findByStoreAndDateRange')->willReturn($reports);
-        $stores = $this->createStub(StoreRepositoryInterface::class);
-        $stores->method('findById')->willReturn(['id' => 4, 'daily_report_settings' => json_encode(['cumulative_mode' => $mode])]);
-
-        return new Sales($this->registry([]), $repo, $stores);
-    }
-
     public function testDeclaredProvidersAreMergedAndSortedByDate(): void
     {
         $calls = [];
@@ -92,7 +80,7 @@ final class SalesTest extends TestCase
                     throw new \RuntimeException('kaput');
                 }
             }],
-        ]), $this->createStub(DailyReportRepositoryInterface::class));
+        ]));
 
         $rows = $sales->dailySales(4, '2026-10-01', '2026-10-31', ['validated']);
 
@@ -104,36 +92,13 @@ final class SalesTest extends TestCase
         $this->assertSame([[4, '2026-10-01', '2026-10-31', ['validated']]], $calls, 'période et statuts transmis');
     }
 
-    /** Sans fournisseur : les rapports journaliers historiques, triés, sans les supprimés. */
-    public function testLegacyFallbackReadsTheHistoricalDailyReports(): void
-    {
-        $rows = $this->legacy([
-            ['report_date' => '2026-10-02', 'status' => 'validated', 'sales_total' => '200', 'labor_cost' => '50', 'customer_count' => '20'],
-            ['report_date' => '2026-10-01', 'status' => 'draft', 'sales_total' => '100', 'labor_cost' => '30', 'customer_count' => '10'],
-            ['report_date' => '2026-10-03', 'status' => 'validated', 'sales_total' => '999', 'deleted_at' => '2026-10-04 00:00:00'],
-        ])->dailySales(4, '2026-10-01', '2026-10-31');
-
-        $this->assertSame(['2026-10-01', '2026-10-02'], array_column($rows, 'report_date'));
-        $this->assertSame([100.0, 200.0], array_column($rows, 'sales_total'));
-        $this->assertSame([10, 20], array_column($rows, 'customer_count'));
-    }
-
-    /** Saisie cumulée : valeurs du jour par différence, calculées après le filtre de statut (comme le rapport de salaire). */
-    public function testLegacyCumulativeInputIsConvertedAfterTheStatusFilter(): void
-    {
-        $sales = $this->legacy([
-            ['report_date' => '2026-10-01', 'status' => 'validated', 'sales_total' => '100'],
-            ['report_date' => '2026-10-02', 'status' => 'draft', 'sales_total' => '250'],
-            ['report_date' => '2026-10-03', 'status' => 'submitted', 'sales_total' => '400'],
-        ], 'cumulative_input');
-
-        $this->assertSame([100.0, 150.0, 150.0], array_column($sales->dailySales(4, '2026-10-01', '2026-10-31'), 'sales_total'));
-        $this->assertSame([100.0, 300.0], array_column($sales->dailySales(4, '2026-10-01', '2026-10-31', ['validated', 'submitted']), 'sales_total'));
-    }
-
-    public function testNothingWithoutProviderNorLegacy(): void
+    /** Sans fournisseur actif (daily-report absent) : aucune vente, et la rentabilité n'est pas proposée. */
+    public function testNoProviderMeansNoSales(): void
     {
         $this->assertSame([], (new Sales())->dailySales(4, '2026-10-01', '2026-10-31'));
+        $this->assertFalse((new Sales())->available());
+        $this->assertFalse((new Sales($this->registry(['acme' => []])))->available());
+        $this->assertTrue((new Sales($this->registry(['daily-report' => [self::provider([])]])))->available());
     }
 
     public function testInvalidDateIsRejected(): void

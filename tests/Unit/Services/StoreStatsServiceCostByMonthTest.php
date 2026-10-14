@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Services;
 
-use kintai\Core\Repositories\DailyReportRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
@@ -58,7 +57,6 @@ final class StoreStatsServiceCostByMonthTest extends TestCase
             $this->createStub(ShiftSwapRequestRepositoryInterface::class),
             $rates,
             $users,
-            $this->createStub(DailyReportRepositoryInterface::class),
             new RoleAssignmentSyncService(
                 $this->createStub(RoleRepositoryInterface::class),
                 $this->createStub(RoleAssignmentRepositoryInterface::class),

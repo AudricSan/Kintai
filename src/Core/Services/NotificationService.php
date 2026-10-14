@@ -9,8 +9,8 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 
 /**
  * La locale de chaque notification est résolue par destinataire : langue de
- * l'utilisateur (`users.language`) sinon 'fr' par défaut — voir DailyReportMailService
- * pour le même pattern côté e-mail.
+ * l'utilisateur (`users.language`) sinon 'fr' par défaut — même principe que l'e-mail
+ * des rapports journaliers (bundle daily-report).
  */
 class NotificationService
 {

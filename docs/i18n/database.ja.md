@@ -16,7 +16,7 @@ Kintaiは唯一のデータアクセス層として **Eloquent ORM**（`illumina
 - **テナンシー：** `User`、`Store`、`StoreUser`
 - **シフト管理：** `Shift`、`ShiftType`、`Availability`、`ShiftClaim`、`ShiftSwapRequest`
 - **勤怠・給与：** `Timeclock`、`TimeoffRequest`、`UserShiftTypeRate`、`StoreDeductionSetting`
-- **日報・人事：** `DailyReport`、`Feedback`
+- **人事：** `Feedback`
 - **コミュニケーション：** `MessageThread`、`ThreadMessage`、`ThreadParticipant`、`Notification`
 - **システム・設定：** `ActivityEntry`、`AppSetting`、`ApiToken`、`CronToken`、`IcalToken`、`PasswordResetToken`、`ImportAlias`、`StoreFeature`、`StoreImportSetting`、`StorePhotoImage`、`StorePhotoSubmission`、`UserDashboardPref`、`UserNavPref`
 
