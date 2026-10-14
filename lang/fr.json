@@ -497,7 +497,6 @@
     "error_notification_not_found": "Notification introuvable.",
     "error_owner_only": "Réservé au propriétaire.",
     "error_owner_only_create_store": "Seul un owner peut créer un store.",
-    "error_owner_only_delete_photos": "Seul le propriétaire peut supprimer un envoi de photos.",
     "error_owner_only_delete_store": "Seul un owner peut supprimer un store.",
     "error_owner_role_immutable": "Le rôle Owner n'est pas modifiable.",
     "error_owner_cannot_remove_self": "Un Owner ne peut pas supprimer, désactiver ni rétrograder son propre compte. Demandez à un autre Owner de le faire.",
@@ -508,7 +507,6 @@
     "error_pdf_generation_failed": "Impossible de générer le PDF.",
     "error_permission_insufficient": "Permission insuffisante : :key",
     "error_permission_required": "Permission requise : :key",
-    "error_photos_feature_disabled": "La fonctionnalité Photos n'est pas activée pour ce magasin.",
     "error_prefix": "Erreur : ",
     "error_rate_not_found": "Taux introuvable.",
     "error_report_locked": "Ce rapport ne peut plus être modifié.",
@@ -567,8 +565,6 @@
     "feature_messages_desc": "Communication interne entre membres du magasin.",
     "feature_open_shifts": "Bourse aux shifts",
     "feature_open_shifts_desc": "Consulter et postuler aux shifts ouverts.",
-    "feature_photos": "Photos de magasin",
-    "feature_photos_desc": "Envoi de photos hebdomadaires de l'état du magasin.",
     "feature_shifts": "Planning",
     "feature_shifts_desc": "Consultation des horaires, shifts du mois et de la semaine.",
     "feature_swaps": "Échanges de shifts",
@@ -977,7 +973,6 @@
     "perm_category_messaging": "Messagerie",
     "perm_category_open_shifts": "Bourse aux shifts",
     "perm_category_payroll": "Paie",
-    "perm_category_photos": "Photos",
     "perm_category_resignation_reports": "Rapports de démission",
     "perm_category_shifts": "Shifts",
     "perm_category_stores": "Magasins",
@@ -1538,6 +1533,5 @@
     "bundle_incompatible_not_loaded": "Ce bundle n'est pas chargé : :reason Installez une version compatible depuis le marché.",
     "bundle_contract_incompatible": "il requiert le contrat de bundle :required, ce Kintai fournit le contrat :provided.",
     "bundle_contract_constraint_invalid": "sa contrainte de contrat « :constraint » est mal formée.",
-    "bundle_core_incompatible": "il nécessite Kintai :min à :max (version installée : :current).",
-    "photos": "Photos"
+    "bundle_core_incompatible": "il nécessite Kintai :min à :max (version installée : :current)."
 }

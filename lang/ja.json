@@ -497,7 +497,6 @@
     "error_notification_not_found": "通知が見つかりません。",
     "error_owner_only": "オーナー専用の機能です。",
     "error_owner_only_create_store": "オーナーのみが店舗を作成できます。",
-    "error_owner_only_delete_photos": "オーナーのみが写真投稿を削除できます。",
     "error_owner_only_delete_store": "オーナーのみが店舗を削除できます。",
     "error_owner_role_immutable": "オーナーロールは変更できません。",
     "error_owner_cannot_remove_self": "オーナーは自分自身のアカウントを削除・無効化・降格できません。別のオーナーに依頼してください。",
@@ -508,7 +507,6 @@
     "error_pdf_generation_failed": "PDFを生成できません。",
     "error_permission_insufficient": "権限が不足しています：:key",
     "error_permission_required": "必要な権限：:key",
-    "error_photos_feature_disabled": "この店舗では写真機能が有効になっていません。",
     "error_prefix": "エラー：",
     "error_rate_not_found": "レートが見つかりません。",
     "error_report_locked": "このレポートはこれ以上変更できません。",
@@ -567,8 +565,6 @@
     "feature_messages_desc": "店舗メンバー間の社内連絡。",
     "feature_open_shifts": "シフト募集",
     "feature_open_shifts_desc": "募集中のシフトの閲覧と応募。",
-    "feature_photos": "店舗写真",
-    "feature_photos_desc": "店舗状態の週次写真提出。",
     "feature_shifts": "シフト管理",
     "feature_shifts_desc": "月次・週次のシフト表を確認できます。",
     "feature_swaps": "シフト交換",
@@ -977,7 +973,6 @@
     "perm_category_messaging": "メッセージ",
     "perm_category_open_shifts": "シフト募集",
     "perm_category_payroll": "給与",
-    "perm_category_photos": "写真",
     "perm_category_resignation_reports": "退職報告書",
     "perm_category_shifts": "シフト",
     "perm_category_stores": "店舗",
@@ -1538,6 +1533,5 @@
     "bundle_incompatible_not_loaded": "このバンドルは読み込まれていません：:reason マーケットから対応バージョンをインストールしてください。",
     "bundle_contract_incompatible": "バンドル契約 :required が必要ですが、この Kintai が提供する契約は :provided です。",
     "bundle_contract_constraint_invalid": "契約の制約「:constraint」の形式が正しくありません。",
-    "bundle_core_incompatible": "Kintai :min〜:max が必要です（インストール済み：:current）。",
-    "photos": "写真"
+    "bundle_core_incompatible": "Kintai :min〜:max が必要です（インストール済み：:current）。"
 }

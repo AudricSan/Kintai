@@ -428,10 +428,6 @@ final class Navigation
                 new NavItem('salary_report', NavItem::REPORTS, 'salary_report', 'admin.reports.salary', 'admin.reports.salary',
                     icon: 'money', activePaths: ['*/reports/salary'], order: 50),
             ],
-            'store-photos' => [
-                new NavItem('photos', NavItem::REPORTS, 'photos', 'admin.photos.index', 'admin.photos.index',
-                    icon: 'camera', activePaths: ['/admin/photos'], storeFeature: 'photos', order: 60),
-            ],
         ];
     }
 }
