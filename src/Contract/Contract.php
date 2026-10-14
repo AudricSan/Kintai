@@ -18,10 +18,11 @@ namespace kintai\Contract;
 final class Contract
 {
     /** Version du contrat fournie par ce Core. */
-    public const VERSION = '1.15.0';
+    public const VERSION = '1.16.0';
 
     /*
      * Historique :
+     * - 1.16.0 : police japonaise des PDF exposée aux bundles, kintai\Contract\Services\PdfCjkFontResolver.
      * - 1.15.0 : envoi d'e-mails exposé aux bundles, kintai\Contract\Services\Mailer.
      * - 1.14.0 : fournisseur de ventes — Bundle::salesProviders(), interface kintai\Contract\Provider\SalesProvider et
      *   objet DailySales ; lecture des ventes par les bundles via kintai\Contract\Services\Sales.
