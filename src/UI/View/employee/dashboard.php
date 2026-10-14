@@ -10,13 +10,11 @@ use kintai\UI\Components\Table;
 /** @var array $pending_timeoff */
 /** @var array $stores_map  id → store name */
 /** @var array|null $employee_month_stats */
-/** @var array|null $active_clock */
 /** @var array $enabled_widgets   widget_key → true (flipped) */
 /** @var array $all_widgets       list of all widget keys */
 
 $stats       = $employee_month_stats ?? null;
 $stores_map  = $stores_map ?? [];
-$activeClock = $active_clock ?? null;
 $widgets     = $enabled_widgets ?? array_flip($all_widgets ?? []);
 // Widgets des bundles (Bundle::dashboardWidgets(), contrat 1.4) : HTML déjà rendu par le contrôleur, affiché en fin
 // de page ; $widgetsAll = choix de l'utilisateur, y compris ces widgets (panneau « Personnaliser »).
@@ -37,7 +35,6 @@ $feat = static fn(?string $f): bool =>
 $can = $user_can ?? fn(string $k): bool => true;
 
 $_empWidgetFeatMap = [
-    'timeclock'       => 'timeclock',
     'pending_timeoff' => 'timeoff',
 ] + $bundle_widget_meta['features'];
 $_empWidgetPermMap = $bundle_widget_meta['permissions'];
@@ -73,7 +70,6 @@ ob_start();
     <div class="dash-widget-list">
         <?php
         $widgetLabels = [
-            'timeclock'      => __('timeclock'),
             'shifts_today'   => __('my_shifts_today'),
             'upcoming'       => __('my_upcoming_shifts'),
             'monthly_stats'  => __('monthly_stats'),
@@ -127,24 +123,6 @@ echo Card::make()
     </div>
     <?php endforeach; ?>
 </div>
-
-<?php if (widget_on('timeclock', $widgets)): ?>
-<?php
-ob_start();
-if ($activeClock !== null):
-    echo Badge::make(__('clocked_in'))->success()->render();
-    echo ' <span class="text-muted">' . __('clocked_in_since') . ' <strong>' . htmlspecialchars(substr($activeClock['clock_in_time'] ?? '', 11, 5)) . '</strong></span>';
-    echo ' ' . Button::make(__('clock_out'))->danger()->sm()->link(route_url('employee.timeclock'))->render();
-else:
-    echo Badge::make(__('not_clocked_in'))->neutral()->render();
-    echo ' ' . Button::make(__('clock_in'))->success()->sm()->link(route_url('employee.timeclock'))->render();
-endif;
-echo Card::make()
-    ->header('<span>' . __('timeclock') . '</span> ' . Button::make(__('view_all'))->ghost()->sm()->link(route_url('employee.timeclock'))->render())
-    ->body(ob_get_clean())
-    ->render();
-?>
-<?php endif; ?>
 
 <?php if (widget_on('monthly_stats', $widgets) && $stats !== null): ?>
 <?php $cur = $stats['currency'] ?? 'JPY'; $curStyle = $stats['currency_symbol_style'] ?? 'kanji'; ?>

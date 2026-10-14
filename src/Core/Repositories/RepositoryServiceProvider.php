@@ -18,8 +18,7 @@ final class RepositoryServiceProvider extends ServiceProvider
         $this->container->singleton(ShiftTypeRepositoryInterface::class, fn() => new DatabaseShiftTypeRepository());
         $this->container->singleton(ShiftRepositoryInterface::class, fn() => new DatabaseShiftRepository());
         $this->container->singleton(AvailabilityRepositoryInterface::class, fn() => new DatabaseAvailabilityRepository());
-        // TimeoffRequestRepositoryInterface reste ici (même raison que Timeclock
-        // ci-dessous) : StoreStatsService, ShiftService, AdminShiftController,
+        // TimeoffRequestRepositoryInterface reste ici : StoreStatsService, ShiftService, AdminShiftController,
         // IcalController et HomeController en dépendent tous pour des calculs qui doivent
         // continuer de fonctionner même si le bundle "timeoff" est désactivé ou
         // désinstallé. Le bundle lui-même (legacy ou distribué, voir kintai-bundle-timeoff)
@@ -27,12 +26,6 @@ final class RepositoryServiceProvider extends ServiceProvider
         $this->container->singleton(TimeoffRequestRepositoryInterface::class, fn() => new DatabaseTimeoffRequestRepository());
         $this->container->singleton(UserShiftTypeRateRepositoryInterface::class, fn() => new DatabaseUserShiftTypeRateRepository());
         $this->container->singleton(IcalTokenRepositoryInterface::class, fn() => new DatabaseIcalTokenRepository());
-        // TimeclockRepositoryInterface reste ici (bundle "timeclock" = UI seulement) :
-        // HomeController, EmployeeController::dashboard() et DashboardAlertService en
-        // dépendent pour leurs widgets "pointage en cours", qui doivent continuer de
-        // fonctionner même si ce bundle est désactivé ou désinstallé. Le bundle lui-même
-        // (legacy ou distribué, voir kintai-bundle-timeclock) n'a plus besoin de la lier.
-        $this->container->singleton(TimeclockRepositoryInterface::class, fn() => new DatabaseTimeclockRepository());
         $this->container->singleton(UserDashboardPrefsRepositoryInterface::class, fn() => new DatabaseUserDashboardPrefsRepository());
         $this->container->singleton(UserNavPrefsRepositoryInterface::class, fn() => new DatabaseUserNavPrefsRepository());
         $this->container->singleton(NotificationRepositoryInterface::class, fn() => new DatabaseNotificationRepository());

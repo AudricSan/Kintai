@@ -11,7 +11,6 @@ use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
-use kintai\Core\Repositories\TimeclockRepositoryInterface;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
@@ -53,10 +52,6 @@ final class HomeControllerWeeklyHoursTrendTest extends TestCase
         $timeoffRepo = $this->createMock(TimeoffRequestRepositoryInterface::class);
         $timeoffRepo->method('findAll')->willReturn([]);
 
-
-        $timeclocksRepo = $this->createMock(TimeclockRepositoryInterface::class);
-        $timeclocksRepo->method('findAll')->willReturn([]);
-
         $dashboardPrefs = $this->createMock(UserDashboardPrefsRepositoryInterface::class);
         // Widget "store_stats_summary" uniquement : ce test porte sur la tendance
         // hebdomadaire de ce widget précis, pas sur financial_overview/hr_absenteeism
@@ -77,7 +72,7 @@ final class HomeControllerWeeklyHoursTrendTest extends TestCase
         $roles->method('getPermissions')->with(5)->willReturn(['payroll.view']);
         $permissions = new PermissionService($roleAssignments, $roles);
 
-        $dashboardAlerts = new DashboardAlertService($shiftsRepo, $usersRepo, $storeUsersRepo, $timeclocksRepo);
+        $dashboardAlerts = new DashboardAlertService($shiftsRepo, $usersRepo, $storeUsersRepo);
 
         return new HomeController(
             new ViewRenderer(sys_get_temp_dir()),
@@ -87,7 +82,6 @@ final class HomeControllerWeeklyHoursTrendTest extends TestCase
             $shiftTypesRepo,
             $timeoffRepo,
             $dashboardPrefs,
-            $timeclocksRepo,
             $storeUsersRepo,
             $storeStats,
             $dashboardAlerts,

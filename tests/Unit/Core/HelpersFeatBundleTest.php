@@ -46,10 +46,11 @@ final class HelpersFeatBundleTest extends TestCase
 
     public function testFeatBundleResolvesStoreFeatureSlugToItsOwningBundle(): void
     {
-        // 'timeclock' (store_features) dépend du bundle 'timeclock', absent ici.
-        $this->assertFalse(feat_bundle('timeclock'));
-        // 'timeoff' est actif.
+        // 'timeoff' (store_features) dépend du bundle 'timeoff', actif ici.
         $this->assertTrue(feat_bundle('timeoff'));
+        // Bundle 'timeoff' absent : sa fonctionnalité ne l'est plus.
+        Container::getInstance()->instance(BundleManager::class, FakeBundleManagerFactory::withActiveSlugs(['daily-report', 'messaging']));
+        $this->assertFalse(feat_bundle('timeoff'));
     }
 
     public function testFeatBundleAllowsSlugsWithNoOwningBundle(): void

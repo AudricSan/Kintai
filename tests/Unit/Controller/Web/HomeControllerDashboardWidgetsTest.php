@@ -11,7 +11,6 @@ use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
-use kintai\Core\Repositories\TimeclockRepositoryInterface;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
@@ -51,8 +50,6 @@ final class HomeControllerDashboardWidgetsTest extends TestCase
         $shifts->method('findAllByDate')->willReturn([]);
         $timeoffRequests = $this->createMock(TimeoffRequestRepositoryInterface::class);
         $timeoffRequests->method('findAll')->willReturn([]);
-        $timeclocks = $this->createMock(TimeclockRepositoryInterface::class);
-        $timeclocks->method('findAll')->willReturn([]);
         $storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
         $storeUsers->method('findByStore')->willReturn([]);
         $shiftTypes = $this->createMock(ShiftTypeRepositoryInterface::class);
@@ -61,7 +58,7 @@ final class HomeControllerDashboardWidgetsTest extends TestCase
             $this->createMock(RoleAssignmentRepositoryInterface::class),
             $this->createMock(RoleRepositoryInterface::class),
         );
-        $dashboardAlerts = new DashboardAlertService($shifts, $users, $storeUsers, $timeclocks);
+        $dashboardAlerts = new DashboardAlertService($shifts, $users, $storeUsers);
 
         $this->controller = new HomeController(
             new ViewRenderer(sys_get_temp_dir()),
@@ -71,7 +68,6 @@ final class HomeControllerDashboardWidgetsTest extends TestCase
             $shiftTypes,
             $timeoffRequests,
             $this->dashboardPrefs,
-            $timeclocks,
             $storeUsers,
             $storeStats,
             $dashboardAlerts,

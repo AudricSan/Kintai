@@ -20,7 +20,6 @@ final class PermissionCatalog
         'stores'               => ['view', 'create', 'update', 'delete'],
         'payroll'              => ['view', 'generate', 'export'],
         'timeoff'              => ['view', 'create', 'update', 'approve', 'delete'],
-        'timeclock'            => ['view', 'update', 'delete'],
     ];
 
     /**
@@ -32,7 +31,6 @@ final class PermissionCatalog
      */
     public const CATEGORY_BUNDLES = [
         'timeoff'             => 'timeoff',
-        'timeclock'           => 'timeclock',
     ];
 
     /**
@@ -46,7 +44,6 @@ final class PermissionCatalog
         'stores.view', 'stores.update',
         'payroll.view', 'payroll.generate', 'payroll.export',
         'timeoff.view', 'timeoff.create', 'timeoff.update', 'timeoff.approve', 'timeoff.delete',
-        'timeclock.view', 'timeclock.update', 'timeclock.delete',
     ];
 
     /** Catégories du Core : toujours présentes, jamais redéfinissables par un bundle. */

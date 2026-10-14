@@ -13,7 +13,6 @@ use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
-use kintai\Core\Repositories\TimeclockRepositoryInterface;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
@@ -67,10 +66,6 @@ final class HomeControllerPendingClaimsTest extends TestCase
             ['id' => 1, 'store_id' => 1, 'status' => 'pending'],
         ]);
 
-
-        $timeclocksRepo = $this->createMock(TimeclockRepositoryInterface::class);
-        $timeclocksRepo->method('findAll')->willReturn([]);
-
         $dashboardPrefs = $this->createMock(UserDashboardPrefsRepositoryInterface::class);
         $dashboardPrefs->method('getEnabledWidgets')->willReturn(['kpi_counters']);
 
@@ -84,7 +79,7 @@ final class HomeControllerPendingClaimsTest extends TestCase
         $roles = $this->createMock(RoleRepositoryInterface::class);
         $permissions = new PermissionService($roleAssignments, $roles);
 
-        $dashboardAlerts = new DashboardAlertService($shiftsRepo, $usersRepo, $storeUsersRepo, $timeclocksRepo);
+        $dashboardAlerts = new DashboardAlertService($shiftsRepo, $usersRepo, $storeUsersRepo);
 
         // Le compteur lit les demandes à travers les fournisseurs (PendingRequests), qui prennent leurs dépôts dans le
         // conteneur.
@@ -101,7 +96,6 @@ final class HomeControllerPendingClaimsTest extends TestCase
             $shiftTypesRepo,
             $timeoffRepo,
             $dashboardPrefs,
-            $timeclocksRepo,
             $storeUsersRepo,
             $storeStats,
             $dashboardAlerts,

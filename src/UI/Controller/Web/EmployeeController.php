@@ -14,8 +14,6 @@ use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
-use kintai\Core\Extension\Attendances;
-use kintai\Core\Repositories\TimeclockRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserNavPrefsRepositoryInterface;
@@ -34,7 +32,6 @@ final class EmployeeController
     use HasBaseUrl;
     use HasStoreFeatureCheck;
     public const EMPLOYEE_WIDGETS = [
-        'timeclock',
         'shifts_today',
         'upcoming',
         'monthly_stats',
@@ -52,7 +49,6 @@ final class EmployeeController
         private readonly UserShiftTypeRateRepositoryInterface $userRates,
         private readonly AuditLogger $auditLogger,
         private readonly IcalTokenRepositoryInterface $icalTokens,
-        private readonly TimeclockRepositoryInterface $timeclocks,
         private readonly AvailabilityRepositoryInterface $availabilities,
         private readonly UserDashboardPrefsRepositoryInterface $dashboardPrefs,
         private readonly NotificationService $notifs,
@@ -96,8 +92,6 @@ final class EmployeeController
             $storesMap[(int) $s['id']] = $s['name'] ?? ('#' . $s['id']);
         }
 
-        // Pointages lus à travers les fournisseurs (Bundle::attendanceProviders()), repli sur la table des pointages.
-        $activeClock = Attendances::current($this->timeclocks)->activeForUser($userId);
         // Widgets proposés : ceux du Core et ceux des bundles actifs (Bundle::dashboardWidgets(), contrat 1.4). Les
         // widgets historiques d'un bundle qui déclare les siens ne sont plus rendus par le Core ($enabledWidgets).
         $dashWidgets = DashboardWidgets::current();
@@ -143,7 +137,6 @@ final class EmployeeController
             'upcoming'         => $upcomingShifts,
             'pending_timeoff'  => $pendingTimeoff,
             'stores_map'       => $storesMap,
-            'active_clock'     => $activeClock,
             'user_can'         => $userCan,
             'enabled_widgets'  => $enabledWidgets,
             'enabled_widgets_all' => $enabledAll,
@@ -494,11 +487,6 @@ final class EmployeeController
             'store_settings'      => $storeSettings,
         ], 'layout.app'));
     }
-
-    // Pointage : voir src/Bundles/Timeclock/Controllers/Web/EmployeeTimeclockController.php
-    // ($this->timeclocks reste utilisé ci-dessus par dashboard() pour le widget
-    // "pointage en cours", qui doit continuer de fonctionner même si ce bundle
-    // est désactivé.)
 
     // Congés : voir src/Bundles/TimeOff/Controllers/Web/EmployeeTimeoffController.php
 

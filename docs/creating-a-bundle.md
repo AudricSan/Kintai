@@ -306,7 +306,8 @@ store, manager side), `stores_map` (id => name) and `today`. Load only what the 
 dashboard view. An exception in `data` or in the view removes that widget only (logged). Render a full card
 (`<div class="card card--mt">…</div>`). Core keys can't be reused, except the keys of the widgets the Core used to
 render for your bundle (`pending_timeoff`, `pending_swaps`, `timeclocks_today`, `timeclock`): reusing them keeps
-users' choices (`notebook` kept `team_notes` and `shift-swap` kept `pending_swaps` this way when they were extracted). As soon as your bundle declares a widget, the Core stops rendering its historical
+users' choices (`notebook` kept `team_notes`, `shift-swap` kept `pending_swaps` and `timeclock` kept `timeclocks_today`
+and `timeclock` this way when they were extracted). As soon as your bundle declares a widget, the Core stops rendering its historical
 widgets for it. Require `"kintai_contract": "^1.4"`.
 
 ### View variables: `viewVariables()` (contract 1.5)
@@ -619,9 +620,9 @@ final class ClockAttendance implements AttendanceProvider
 }
 ```
 
-The Core uses it on the dashboards (who is clocked in now, clock-ins left open, late arrivals compared with the
-planned shift). Entries of every declared provider are added up; a failing provider is skipped (logged). Until a
-bundle declares one, the Core keeps reading the historical clock-in table. Require `"kintai_contract": "^1.11"`.
+The Core uses it on the manager dashboard (clock-ins left open, late arrivals compared with the planned shift).
+Entries of every declared provider are added up; a failing provider is skipped (logged). Without any provider
+(`timeclock` disabled or uninstalled), the Core sees no clock-in. Require `"kintai_contract": "^1.11"`.
 
 ### Sales: `salesProviders()` (contract 1.14)
 

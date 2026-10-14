@@ -2,12 +2,10 @@
 /** @var array  $stats */
 /** @var array  $shifts_today */
 /** @var array  $pending_timeoff */
-/** @var array  $active_clocks_now  pointages actifs en ce moment */
 /** @var array  $users_map          id → display_name */
 /** @var array  $enabled_widgets    key → index (array_flip) */
 /** @var array  $all_widgets        ordered list of widget keys */
 $users_map        ??= [];
-$active_clocks_now ??= [];
 $enabled_widgets        ??= array_flip(\kintai\UI\Controller\Web\HomeController::ADMIN_WIDGETS);
 $all_widgets            ??= \kintai\UI\Controller\Web\HomeController::ADMIN_WIDGETS;
 // Widgets des bundles (Bundle::dashboardWidgets(), contrat 1.4) : HTML déjà rendu par le contrôleur, affiché en fin
@@ -36,7 +34,6 @@ $can = $user_can ?? fn(string $k): bool => true;
 // Widgets désactivés si la feature associée est indisponible
 $_widgetFeatMap = [
     'pending_timeoff'  => 'timeoff',
-    'timeclocks_today' => 'timeclock',
 ] + $bundle_widget_meta['features'];
 // Widgets masqués (panneau de personnalisation + affichage) si la permission requise manque
 $_widgetPermMap = [
@@ -70,7 +67,6 @@ $widgetLabels = [
     'hr_absenteeism'       => __('widget_hr_absenteeism'),
     'shifts_today'         => __('widget_shifts_today'),
     'pending_timeoff'      => __('widget_pending_timeoff'),
-    'timeclocks_today' => __('widget_timeclocks_today'),
 ] + $bundle_widget_meta['labels'];
 
 // Données de graphiques accumulées par les différents widgets, émises une seule fois
@@ -603,54 +599,6 @@ $hasMultipleStores = count($shiftsByStore) > 1;
 </div>
 <?php endif; ?>
 
-<?php if (admin_widget_on('timeclocks_today', $enabled_widgets) && $feat('timeclock') && $can('timeclock.view')): ?>
-<!-- Pointages actifs en ce moment -->
-<div class="card card--mt">
-    <div class="card-header">
-        <span><?= __('widget_timeclocks_today') ?></span>
-        <a href="<?= route_url('admin.timeclocks') ?>" class="card-header-link"><?= __('view_all') ?></a>
-    </div>
-    <?php if (empty($active_clocks_now)): ?>
-        <div class="empty-state"><?= __('no_active_timeclock') ?></div>
-    <?php else: ?>
-        <div class="table-wrap">
-            <table class="data-table" data-mob-stack>
-                <thead>
-                    <tr>
-                        <th><?= __('user') ?></th>
-                        <th><?= __('store') ?></th>
-                        <th><?= __('clock_in') ?></th>
-                        <th><?= __('duration') ?></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($active_clocks_now as $tc): ?>
-                        <?php
-                        $clockInRaw = $tc['clock_in_time'] ?? '';
-                        $clockInFmt = strlen($clockInRaw) >= 16 ? substr($clockInRaw, 11, 5) : $clockInRaw;
-                        $durationMin = 0;
-                        if ($clockInRaw !== '') {
-                            try {
-                                $dtIn = new DateTimeImmutable($clockInRaw);
-                                $durationMin = (int) floor((time() - $dtIn->getTimestamp()) / 60);
-                            } catch (\Exception) {}
-                        }
-                        $dh = intdiv($durationMin, 60);
-                        $dm = $durationMin % 60;
-                        ?>
-                        <tr>
-                            <td data-label="<?= htmlspecialchars(__('user')) ?>"><?= htmlspecialchars($tc['user_name']) ?></td>
-                            <td data-label="<?= htmlspecialchars(__('store')) ?>"><?= htmlspecialchars($tc['store_name']) ?></td>
-                            <td data-label="<?= htmlspecialchars(__('clock_in')) ?>" class="td-mono"><?= htmlspecialchars($clockInFmt) ?></td>
-                            <td data-label="<?= htmlspecialchars(__('duration')) ?>" class="td-nowrap"><?= $dh ?>h<?= str_pad((string)$dm, 2, '0', STR_PAD_LEFT) ?></td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-    <?php endif; ?>
-</div>
-<?php endif; ?>
 
 <?php foreach ($bundle_widgets as $_bundleWidget): ?>
 <?= $_bundleWidget['html'] ?>

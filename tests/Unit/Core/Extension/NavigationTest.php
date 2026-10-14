@@ -59,6 +59,14 @@ final class NavigationTest extends TestCase
             storeFeature: 'messages', badge: 'unread_messages_count', order: 40, mobile: true)];
     }
 
+    /** Entrée déclarée par timeclock (il n'a plus de repli dans le Core). */
+    private static function timeclock(): array
+    {
+        return [new NavItem('timeclocks', NavItem::PLANNING, 'timeclocks', 'admin.timeclocks', 'employee.timeclock',
+            icon: 'clock', employeeLabel: 'timeclock', activePaths: ['/admin/timeclocks', '/employee/timeclock'],
+            storeFeature: 'timeclock', order: 40, mobile: true)];
+    }
+
     private static function keys(array $items): array
     {
         return array_map(fn(NavItem $i): string => $i->key, $items);
@@ -216,7 +224,7 @@ final class NavigationTest extends TestCase
 
     public function testMobileDefaultsPerRole(): void
     {
-        $nav = $this->navigation(['timeoff' => null, 'timeclock' => null]);
+        $nav = $this->navigation(['timeoff' => null, 'timeclock' => self::timeclock()]);
 
         $manager = array_column($nav->mobileTabs([], $this->mobileCtx()), 'key');
         $employee = array_column($nav->mobileTabs([], $this->mobileCtx(['isManager' => false, 'path' => '/employee'])), 'key');
