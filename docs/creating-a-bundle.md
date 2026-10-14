@@ -565,6 +565,35 @@ The Core uses it on the dashboards (who is clocked in now, clock-ins left open, 
 planned shift). Entries of every declared provider are added up; a failing provider is skipped (logged). Until a
 bundle declares one, the Core keeps reading the historical clock-in table. Require `"kintai_contract": "^1.11"`.
 
+### Sales: `salesProviders()` (contract 1.14)
+
+```php
+use kintai\Contract\Provider\DailySales;
+use kintai\Contract\Provider\SalesProvider;
+
+final class ReportSales implements SalesProvider
+{
+    public function dailySales(int $storeId, string $from, string $to, ?array $statuses = null): array
+    {
+        return array_map(fn(array $r) => new DailySales(
+            $r['report_date'],                 // Y-m-d ($from/$to inclusive)
+            $r['status'],                      // filter on $statuses (when given) before anything else
+            (float) $r['sales_total'],         // the day's value, not a running total
+            (float) $r['labor_cost'],
+            (int) $r['customer_count'],
+            (float) $r['waste_total'],
+        ), $this->reports->forStore($storeId, $from, $to, $statuses));
+    }
+}
+```
+
+The Core reads it for a store's profitability page, and bundles read it through `kintai\Contract\Services\Sales`
+(`dailySales($storeId, $from, $to, $statuses)` returns rows sorted by date: `report_date`, `status`, `sales_total`,
+`labor_cost`, `customer_count`, `waste_total`) — `salary-report` pre-fills its sales total this way. If your data is
+entered as running totals, convert it to the day's values yourself, after the status filter. Days of every declared
+provider are merged; a failing provider is skipped (logged). Until a bundle declares one, the Core keeps reading the
+historical daily reports table. Require `"kintai_contract": "^1.14"`.
+
 ## The RBAC scope contract: `managed_store_ids`
 
 Every Web route your bundle registers under `middleware: [AuthMiddleware::class, PermissionMiddleware::class]` must declare a `permission:` — either a precise key from `PermissionCatalog`, or `'public'` (a route intentionally left ungated, e.g. self-service/aggregate pages; omitting `permission:` entirely behaves the same way). `PermissionMiddleware` resolves this into a request attribute, `managed_store_ids`, that every controller down the line is expected to read rather than re-deriving:

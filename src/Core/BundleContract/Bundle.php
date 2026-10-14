@@ -217,6 +217,17 @@ abstract class Bundle
     }
 
     /**
+     * Fournisseurs de ventes journalières (contrat 1.14) : le Core les lit pour la rentabilité des magasins, et les
+     * bundles par kintai\Contract\Services\Sales, sans connaître les tables du bundle.
+     *
+     * @return list<\kintai\Contract\Provider\SalesProvider>
+     */
+    public function salesProviders(): array
+    {
+        return [];
+    }
+
+    /**
      * Boot du bundle, une fois tous les bundles enregistrés.
      */
     public function boot(): void

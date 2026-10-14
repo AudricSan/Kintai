@@ -12,6 +12,7 @@ use kintai\Contract\Extension\StoreFeature;
 use kintai\Contract\Provider\AbsenceProvider;
 use kintai\Contract\Provider\AttendanceProvider;
 use kintai\Contract\Provider\PendingRequestsProvider;
+use kintai\Contract\Provider\SalesProvider;
 use kintai\Core\BundleContract\Bundle;
 use kintai\Core\BundleManager;
 use kintai\Core\Services\Log;
@@ -63,6 +64,9 @@ final class ExtensionRegistry
 
     /** @var array<string, array<class-string, callable>>|null */
     private ?array $eventListeners = null;
+
+    /** @var array<string, list<SalesProvider>>|null */
+    private ?array $salesProviders = null;
 
     /** @var list<string>|null */
     private ?array $permissionDeclarers = null;
@@ -469,6 +473,27 @@ final class ExtensionRegistry
             }
         }
         return $this->eventListeners = $bySlug;
+    }
+
+    /**
+     * Fournisseurs de ventes journalières déclarés par les bundles actifs, par slug de bundle.
+     *
+     * @return array<string, list<SalesProvider>>
+     */
+    public function salesProvidersByBundle(): array
+    {
+        if ($this->salesProviders !== null) {
+            return $this->salesProviders;
+        }
+
+        $bySlug = [];
+        foreach ($this->bundles->getBundles() as $bundle) {
+            $providers = $this->contributionsOf($bundle, 'salesProviders', SalesProvider::class);
+            if ($providers !== []) {
+                $bySlug[$bundle->getName()] = $providers;
+            }
+        }
+        return $this->salesProviders = $bySlug;
     }
 
     /**
