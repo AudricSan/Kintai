@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Controller\Web;
 
 use kintai\Core\Auth\AuthService;
+use kintai\Core\BundleContract\Bundle;
+use kintai\Core\BundleManager;
+use kintai\Core\Container;
+use kintai\Core\Extension\ExtensionRegistry;
 use kintai\Core\Repositories\AvailabilityRepositoryInterface;
 use kintai\Core\Repositories\IcalTokenRepositoryInterface;
 use kintai\Core\Repositories\LanguageRepositoryInterface;
@@ -28,14 +32,49 @@ use PHPUnit\Framework\TestCase;
  * address) et le profil enrichi du bundle TeamDirectory (bio/skills/
  * languages_spoken/hobbies/show_in_directory). Ce test vérifie que toutes ces
  * valeurs sont bien transmises telles quelles au repository.
+ *
+ * Les cases de l'annuaire passent par les sections de profil des bundles (contrat 1.12) : le setUp active
+ * team-directory (repli historique du Core), comme sur une instance où l'annuaire est en service.
  */
 final class AuthControllerProfileFieldsTest extends TestCase
 {
     private AuthController $controller;
     private $users;
+    private ?Container $previousContainer = null;
+
+    /** Bundles actifs de la requête (sections de profil comprises), par slug. */
+    private function activeBundles(string ...$slugs): void
+    {
+        $bundles = [];
+        foreach ($slugs as $slug) {
+            $bundle = new class extends Bundle {
+                public string $slug = '';
+
+                public function __construct() {}
+
+                public function getName(): string
+                {
+                    return $this->slug;
+                }
+
+                public function register(): void {}
+            };
+            $bundle->slug = $slug;
+            $bundles[] = $bundle;
+        }
+        $manager = (new \ReflectionClass(BundleManager::class))->newInstanceWithoutConstructor();
+        (new \ReflectionProperty($manager, 'bundles'))->setValue($manager, $bundles);
+
+        (new \ReflectionProperty(Container::class, 'instance'))->setValue(null, null);
+        Container::getInstance()->instance(BundleManager::class, $manager);
+        Container::getInstance()->instance(ExtensionRegistry::class, new ExtensionRegistry($manager));
+    }
 
     protected function setUp(): void
     {
+        $this->previousContainer = (new \ReflectionProperty(Container::class, 'instance'))->getValue();
+        $this->activeBundles('team-directory');
+
         if (session_status() === PHP_SESSION_NONE) {
             @session_start();
         }
@@ -80,6 +119,25 @@ final class AuthControllerProfileFieldsTest extends TestCase
     {
         unset($_SESSION['auth_user_id']);
         $_POST = [];
+        (new \ReflectionProperty(Container::class, 'instance'))->setValue(null, $this->previousContainer);
+    }
+
+    /** team-directory désactivé : ses cases ne sont ni affichées ni enregistrées, elles gardent leur valeur. */
+    public function testDirectoryFlagsAreLeftUntouchedWhenTeamDirectoryIsDisabled(): void
+    {
+        $this->activeBundles();
+        $_POST = ['language' => 'fr', 'show_in_directory' => '0', 'share_email' => '1'];
+
+        $saved = null;
+        $this->users->method('save')->willReturnCallback(function (array $d) use (&$saved) {
+            $saved = $d;
+            return $d;
+        });
+
+        $this->controller->updateProfile(new Request());
+
+        $this->assertSame(1, $saved['show_in_directory']);
+        $this->assertArrayNotHasKey('share_email', $saved);
     }
 
     public function testPersistsContactAndEnrichedProfileFields(): void

@@ -415,6 +415,32 @@ While your bundle is active, an external scheduler (cron-job.org, a server cront
 `auto-validate` is the historical daily-report job: the Core keeps running it until `daily-report` declares its own
 under that name. Require `"kintai_contract": "^1.8"`.
 
+### Profile sections: `profileSections()` (contract 1.12)
+
+```php
+use kintai\Contract\Extension\ProfileSection;
+
+public function profileSections(): array
+{
+    return [
+        new ProfileSection(
+            key: 'directory',
+            view: 'team-directory::profile-section',   // rendered with $user (the signed-in user's row)
+            flags: ['show_in_directory', 'share_email', 'share_phone', 'share_mobile_phone'],
+            order: 10,
+        ),
+    ];
+}
+```
+
+The Core renders your view inside the "My information" form of the profile, before its "Save" button, while your
+bundle is active. On save, it writes the `flags` you declared (checkboxes, `0`/`1`, a field missing from the request
+keeps its value) into the `users` table — only columns the Core opens to bundles are accepted
+(`ProfileSections::WRITABLE_USER_COLUMNS`), anything else is ignored and logged; keep other data in your own tables
+and routes. Ship a hidden `0` field before each checkbox so unchecking works. A key already taken is ignored; an
+exception while rendering drops that section (logged). Until `team-directory` declares its section, the Core keeps
+showing the historical directory checkboxes while that bundle is active. Require `"kintai_contract": "^1.12"`.
+
 ## Providers: data the Core reads from your bundle (contract 1.9+)
 
 Some Core pages need data your bundle owns. Instead of reading your tables, the Core asks a **provider** your bundle

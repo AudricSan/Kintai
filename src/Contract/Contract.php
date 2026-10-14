@@ -18,10 +18,12 @@ namespace kintai\Contract;
 final class Contract
 {
     /** Version du contrat fournie par ce Core. */
-    public const VERSION = '1.11.0';
+    public const VERSION = '1.12.0';
 
     /*
      * Historique :
+     * - 1.12.0 : point d'extension Bundle::profileSections() et kintai\Contract\Extension\ProfileSection (sections du
+     *   formulaire « Mes informations » du profil).
      * - 1.11.0 : fournisseur de pointages — Bundle::attendanceProviders(), interface
      *   kintai\Contract\Provider\AttendanceProvider et objet Attendance.
      * - 1.10.0 : fournisseur d'absences — Bundle::absenceProviders(), interface

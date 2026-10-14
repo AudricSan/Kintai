@@ -9,6 +9,7 @@ use kintai\Core\Auth\PasswordPolicy;
 use kintai\Core\Auth\CredentialRevoker;
 use kintai\Core\Auth\UserAnonymizer;
 use kintai\Core\Exceptions\NotFoundException;
+use kintai\Core\Extension\ProfileSections;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
@@ -265,6 +266,8 @@ final class AuthController
             'is_owner'             => $isOwner,
             'is_manager_view'      => $isManagerView,
             'bottom_nav_items'     => $bnItems,
+            // Sections des bundles actifs dans « Mes informations » (contrat 1.12), ex. l'annuaire.
+            'profile_sections'     => ProfileSections::current()->render($user, $this->view),
         ], 'layout.app'));
     }
 
@@ -294,15 +297,16 @@ final class AuthController
             // et avaler l'échec masquerait un vrai problème derrière un "?success=1" trompeur
             // — l'utilisateur croirait sa préférence enregistrée alors qu'elle ne l'est pas.
             $dbUser['language']            = $language;
-            // Un champ absent de la requête garde sa valeur (audit du 13/10/2026, M12) : les cases de
-            // l'annuaire ne sont affichées que si le bundle team-directory est actif, et un enregistrement
-            // du profil les remettait à 0 ; une requête partielle vidait téléphone et adresse.
+            // Un champ absent de la requête garde sa valeur (audit du 13/10/2026, M12) : une requête partielle
+            // vidait téléphone et adresse.
             foreach (['phone', 'mobile_phone', 'postal_code', 'address', 'bio', 'skills', 'languages_spoken', 'hobbies'] as $field) {
                 if ($request->hasPost($field)) {
                     $dbUser[$field] = trim((string) $request->post($field, ''));
                 }
             }
-            foreach (['show_in_directory', 'share_email', 'share_phone', 'share_mobile_phone'] as $flag) {
+            // Cases des sections de bundles affichées (contrat 1.12, ex. l'annuaire) : seules celles-ci sont
+            // enregistrées ; les autres, dont celles d'un bundle désactivé, gardent leur valeur.
+            foreach (ProfileSections::current()->flags() as $flag) {
                 $dbUser[$flag] = $request->postFlag($flag, $dbUser[$flag] ?? 0);
             }
             $this->users->save($dbUser);

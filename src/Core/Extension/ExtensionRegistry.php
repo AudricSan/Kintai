@@ -7,6 +7,7 @@ namespace kintai\Core\Extension;
 use kintai\Contract\Extension\Action;
 use kintai\Contract\Extension\DashboardWidget;
 use kintai\Contract\Extension\NavItem;
+use kintai\Contract\Extension\ProfileSection;
 use kintai\Contract\Extension\StoreFeature;
 use kintai\Contract\Provider\AbsenceProvider;
 use kintai\Contract\Provider\AttendanceProvider;
@@ -56,6 +57,9 @@ final class ExtensionRegistry
 
     /** @var array<string, list<AttendanceProvider>>|null */
     private ?array $attendanceProviders = null;
+
+    /** @var array<string, list<ProfileSection>>|null */
+    private ?array $profileSections = null;
 
     /** @var list<string>|null */
     private ?array $permissionDeclarers = null;
@@ -405,6 +409,28 @@ final class ExtensionRegistry
             }
         }
         return $this->attendanceProviders = $bySlug;
+    }
+
+    /**
+     * Sections du profil déclarées par les bundles actifs, par slug de bundle (les doublons de clé sont départagés par
+     * kintai\Core\Extension\ProfileSections).
+     *
+     * @return array<string, list<ProfileSection>>
+     */
+    public function profileSectionsByBundle(): array
+    {
+        if ($this->profileSections !== null) {
+            return $this->profileSections;
+        }
+
+        $bySlug = [];
+        foreach ($this->bundles->getBundles() as $bundle) {
+            $sections = $this->contributionsOf($bundle, 'profileSections', ProfileSection::class);
+            if ($sections !== []) {
+                $bySlug[$bundle->getName()] = $sections;
+            }
+        }
+        return $this->profileSections = $bySlug;
     }
 
     /**

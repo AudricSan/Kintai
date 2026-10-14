@@ -194,6 +194,17 @@ abstract class Bundle
     }
 
     /**
+     * Point d'extension « sections du profil » (contrat 1.12) : sections ajoutées au formulaire « Mes informations »
+     * du profil (vue du bundle + cases de la table users qu'elle enregistre).
+     *
+     * @return list<\kintai\Contract\Extension\ProfileSection>
+     */
+    public function profileSections(): array
+    {
+        return [];
+    }
+
+    /**
      * Boot du bundle, une fois tous les bundles enregistrés.
      */
     public function boot(): void
