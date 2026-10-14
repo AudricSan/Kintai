@@ -102,7 +102,11 @@
                                 setProgress(data.percent, data.label);
                             } else if (eventMatch[1] === 'done') {
                                 setProgress(100, 'OK');
-                                setTimeout(function () { window.location.reload(); }, 1200);
+                                // Retour au catalogue avec le message d'installation et d'activation (quota).
+                                setTimeout(function () {
+                                    window.location.href = window.location.pathname + '?success=' + encodeURIComponent(data.slug || '')
+                                        + '&activation=' + encodeURIComponent(data.activation || '');
+                                }, 1200);
                             } else if (eventMatch[1] === 'error') {
                                 if (submitBtn) submitBtn.disabled = false;
                                 showMessage(data.message || 'Erreur inconnue', true);

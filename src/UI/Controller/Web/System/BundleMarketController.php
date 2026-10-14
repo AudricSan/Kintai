@@ -9,6 +9,9 @@ use kintai\Core\LicenseServiceProvider;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Repositories\BundleRegistryRepositoryInterface;
 use kintai\Core\Repositories\InstalledBundleRepositoryInterface;
+use kintai\Core\Container;
+use kintai\Core\Services\BundleActivationService;
+use kintai\Core\Services\Log;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\SessionFlash;
@@ -40,6 +43,8 @@ final class BundleMarketController
         private readonly AppSettingsRepositoryInterface $appSettings,
         private readonly BundleDiscoveryService $discovery,
         private readonly AppSettingsService $settings,
+        // Activation dans la limite du quota ; résolue dans le conteneur si absente (tests existants).
+        private readonly ?BundleActivationService $activation = null,
     ) {}
 
     /** GET /admin/bundles/registries */
@@ -164,6 +169,7 @@ final class BundleMarketController
             'entries' => $entries,
             'error'   => $request->query('error'),
             'success' => $request->query('success'),
+            'activation' => $request->query('activation'),
             'uninstalled' => $request->query('uninstalled'),
             'bundleUpdateChannel' => $channel,
             'channelSaved' => $request->query('channel_saved'),
@@ -289,7 +295,7 @@ final class BundleMarketController
             'commit_pinned' => $pin['commit'] !== null,
         ]);
 
-        return Response::redirect($this->base() . '/admin/bundles/market?success=' . urlencode($slug));
+        return Response::redirect($this->base() . '/admin/bundles/market?success=' . urlencode($slug) . '&activation=' . $this->activate($slug));
     }
 
     /**
@@ -344,8 +350,19 @@ final class BundleMarketController
             'commit_pinned' => $pin['commit'] !== null,
         ]);
 
-        $emit('done', ['slug' => $slug, 'version' => $version]);
+        $emit('done', ['slug' => $slug, 'version' => $version, 'activation' => $this->activate($slug)]);
         exit(0);
+    }
+
+    /** Active le bundle qui vient d'être installé s'il reste de la place dans le quota (ACTIVATED, ALREADY, QUOTA_FULL). */
+    private function activate(string $slug): string
+    {
+        try {
+            return ($this->activation ?? Container::getInstance()->make(BundleActivationService::class))->activateIfRoom($slug);
+        } catch (\Throwable $e) {
+            Log::warning('bundle_activation_failed', ['slug' => $slug, 'error' => $e->getMessage()]);
+            return BundleActivationService::QUOTA_FULL;
+        }
     }
 
     /**

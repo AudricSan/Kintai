@@ -33,7 +33,12 @@ $bundleChipColor = function (string $seed): string {
 
 <?php // Le slug vient de l'URL : n'afficher le message que pour un slug bien formé, jamais un texte libre. ?>
 <?php if ($success && preg_match('/^[a-z0-9][a-z0-9-]{0,63}$/', (string) $success) === 1): ?>
-    <div class="alert alert--success mb-sm"><?= htmlspecialchars(__('bundle_market_install_success', ['slug' => $success])) ?></div>
+    <div class="alert alert--success mb-sm"><?= htmlspecialchars(__('bundle_market_install_success', ['slug' => $success])) ?>
+        <?php if (($activation ?? null) === 'activated'): ?> <?= htmlspecialchars(__('bundle_market_activated')) ?><?php endif; ?></div>
+    <?php if (($activation ?? null) === 'quota_full'): ?>
+        <div class="alert alert--warning mb-sm"><?= htmlspecialchars(__('bundle_market_installed_inactive_quota')) ?>
+            <a href="<?= route_url('admin.bundles') ?>"><?= htmlspecialchars(__('bundle_quota_overflow_action')) ?></a></div>
+    <?php endif; ?>
 <?php endif; ?>
 <?php if ($uninstalled): ?>
     <div class="alert alert--success mb-sm"><?= htmlspecialchars(__('bundle_market_uninstall_success', ['slug' => $uninstalled])) ?></div>

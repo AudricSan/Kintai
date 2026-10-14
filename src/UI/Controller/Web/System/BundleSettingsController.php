@@ -11,6 +11,7 @@ use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\BundleActivationService;
 use kintai\Core\Services\PlanLimitService;
 use kintai\UI\Controller\Web\HasBaseUrl;
 use kintai\UI\ViewRenderer;
@@ -76,8 +77,9 @@ final class BundleSettingsController
             }
         }
 
+        // Au-dessus du quota, seul l'ajout est refusé : l'Owner peut toujours réduire, un bundle à la fois.
         $maxActiveBundles = $this->planLimits->maxActiveBundles();
-        if ($maxActiveBundles !== null && count($enabled) > $maxActiveBundles) {
+        if (!BundleActivationService::allowsChange($oldEnabled, $enabled, $maxActiveBundles)) {
             return Response::redirect($this->base() . '/admin/bundles?error=bundle_quota_exceeded');
         }
 

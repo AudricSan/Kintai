@@ -1,4 +1,8 @@
 {
+    "bundle_quota_overflow_warning": "有効なバンドルが :active 個ありますが、ライセンスで許可されているのは :max 個です。引き続き動作しますが、上限内に戻るまで他のバンドルは有効にできません（1つずつ無効にできます）。",
+    "bundle_quota_overflow_action": "バンドルを管理",
+    "bundle_market_activated": "有効化されました。",
+    "bundle_market_installed_inactive_quota": "インストールしましたが無効です：ライセンスの有効バンドル数の上限に達しています。有効にするには別のバンドルを無効にしてください。",
     "bundle_contract_missing": "契約バージョン（「kintai_contract」）を宣言していません。バンドル契約より前のバンドルのため、読み込まれません。最新版をインストールしてください。",
     "update_bundles_incompatible_title": "この更新の後に更新が必要なバンドル",
     "update_bundles_incompatible_hint": "このバージョンはバンドル契約 :contract を提供します。以下のバンドルは、バンドルカタログから更新するまで読み込まれません。",

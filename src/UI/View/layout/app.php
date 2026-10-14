@@ -118,6 +118,12 @@
                     <a href="<?= route_url('admin.owner_settings') ?>"><?= htmlspecialchars(__('public_url_missing_action')) ?></a>
                 </div>
             <?php endif; ?>
+            <?php if ($isOwner && !empty($bundle_quota_overflow)): ?>
+                <div class="alert alert--warning mb-sm">
+                    <?= htmlspecialchars(__('bundle_quota_overflow_warning', ['active' => $bundle_quota_overflow['active'], 'max' => $bundle_quota_overflow['max']])) ?>
+                    <a href="<?= route_url('admin.bundles') ?>"><?= htmlspecialchars(__('bundle_quota_overflow_action')) ?></a>
+                </div>
+            <?php endif; ?>
             <?= $content ?>
         </div>
 
