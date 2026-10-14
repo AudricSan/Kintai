@@ -104,7 +104,8 @@ echo Card::make()
 ?>
 
 <!-- ═══ Stat cards ═══ -->
-<?php $_statCount = 2 + ($feat('timeoff') ? 1 : 0) + ($feat('swaps') ? 1 : 0); ?>
+<?php $bundle_stats ??= []; // Cartes des bundles (congés, échanges… — Bundle::dashboardStats(), contrat 1.19). ?>
+<?php $_statCount = 2 + count($bundle_stats); ?>
 <div class="stat-grid" style="--stat-cols:<?= $_statCount ?>"><?php unset($_statCount); ?>
     <div class="stat-card">
         <div class="stat-card__icon stat-card__icon--primary">📅</div>
@@ -120,24 +121,15 @@ echo Card::make()
             <div class="stat-card__label"><?= __('shifts_upcoming') ?></div>
         </div>
     </div>
-    <?php if ($feat('timeoff')): ?>
+    <?php foreach ($bundle_stats as $_stat): ?>
     <div class="stat-card">
-        <div class="stat-card__icon stat-card__icon--warning">🌴</div>
+        <div class="stat-card__icon stat-card__icon--<?= htmlspecialchars($_stat['tone']) ?>"><?= htmlspecialchars($_stat['icon']) ?></div>
         <div class="stat-card__body">
-            <div class="stat-card__value"><?= count($pending_timeoff) ?></div>
-            <div class="stat-card__label"><?= __('pending_timeoff') ?></div>
+            <div class="stat-card__value"><?= htmlspecialchars((string) $_stat['value']) ?></div>
+            <div class="stat-card__label"><?= htmlspecialchars($_stat['label']) ?></div>
         </div>
     </div>
-    <?php endif; ?>
-    <?php if ($feat('swaps')): ?>
-    <div class="stat-card">
-        <div class="stat-card__icon stat-card__icon--danger">🔄</div>
-        <div class="stat-card__body">
-            <div class="stat-card__value"><?= count($pending_swaps) ?></div>
-            <div class="stat-card__label"><?= __('swaps') ?></div>
-        </div>
-    </div>
-    <?php endif; ?>
+    <?php endforeach; ?>
 </div>
 
 <?php if (widget_on('timeclock', $widgets)): ?>

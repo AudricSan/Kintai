@@ -18,10 +18,12 @@ namespace kintai\Contract;
 final class Contract
 {
     /** Version du contrat fournie par ce Core. */
-    public const VERSION = '1.18.0';
+    public const VERSION = '1.19.0';
 
     /*
      * Historique :
+     * - 1.19.0 : point d'extension Bundle::dashboardStats() et kintai\Contract\Extension\DashboardStat (cartes de statistiques du
+     *   tableau de bord employé).
      * - 1.18.0 : fournisseur d'échanges de shifts — Bundle::swapProviders(), interface kintai\Contract\Provider\SwapProvider et
      *   objet Swap.
      * - 1.17.0 : point d'extension Bundle::shiftFormSections() et kintai\Contract\Extension\ShiftFormSection (champs et

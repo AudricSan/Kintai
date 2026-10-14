@@ -473,6 +473,28 @@ never stops the Core action nor the other bundles' listeners. Available events:
 `hiring-report` creates the employee's hiring report this way, and `shift-claim` withdraws the pending claims of a
 closed open shift. Require `"kintai_contract": "^1.13"` (`^1.17` for `OpenShiftClosed`).
 
+### Dashboard stat cards: `dashboardStats()` (contract 1.19)
+
+```php
+use kintai\Contract\Extension\DashboardStat;
+
+public function dashboardStats(): array
+{
+    return [
+        new DashboardStat('pending_swaps', 'swaps',
+            fn(array $context): int => $this->countPendingFor((int) $context['user']['id']),
+            icon: '🔄', tone: 'danger', storeFeature: 'swaps', order: 20),
+    ];
+}
+```
+
+The Core shows your card in the stat row at the top of the employee dashboard, after its own cards (today's and
+upcoming shifts), sorted by `order`. `value` receives the same context as dashboard widgets (`user`, `store_ids`,
+`stores_map`, `today`) and returns what to display; `tone` is one of `DashboardStat::TONES`. With `storeFeature`, the
+card only shows when that feature is on. A key already taken is ignored; an exception drops that card (logged).
+Until `timeoff` and `shift-swap` declare theirs, the Core keeps showing their historical cards. Require
+`"kintai_contract": "^1.19"`.
+
 ### Shift form sections: `shiftFormSections()` (contract 1.17)
 
 ```php

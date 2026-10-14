@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace kintai\UI\Controller\Web;
 
 use kintai\Contract\Extension\DashboardWidget;
+use kintai\Core\Extension\DashboardStats;
 use kintai\Core\Extension\DashboardWidgets;
 use kintai\Core\Repositories\AvailabilityRepositoryInterface;
 use kintai\Core\Repositories\IcalTokenRepositoryInterface;
@@ -138,6 +139,13 @@ final class EmployeeController
                 && ($f === null || $storeFeatures === null || in_array($f, (array) $storeFeatures, true)),
         );
 
+        // Cartes de statistiques des bundles (contrat 1.19) ; repli timeoff / shift-swap avec les valeurs ci-dessus.
+        $bundleStats = DashboardStats::current()->cards(
+            ['user' => $user, 'store_ids' => array_map(fn($m) => (int) $m['store_id'], $this->storeUsers->findByUser($userId)), 'stores_map' => $storesMap, 'today' => $today],
+            static fn(?string $f): bool => feat_bundle($f) && ($f === null || $storeFeatures === null || in_array($f, (array) $storeFeatures, true)),
+            ['timeoff' => count($pendingTimeoff), 'swaps' => count($pendingSwaps)],
+        );
+
         return Response::html($this->view->render('employee.dashboard', [
             'title'            => __('dashboard'),
             'user'             => $user,
@@ -153,6 +161,7 @@ final class EmployeeController
             'enabled_widgets_all' => $enabledAll,
             'all_widgets'      => $widgetKeys,
             'bundle_widgets'   => $bundleWidgets,
+            'bundle_stats'     => $bundleStats,
             'bundle_widget_meta' => $dashWidgets->meta(DashboardWidget::EMPLOYEE, self::EMPLOYEE_WIDGETS),
         ], 'layout.app'));
     }

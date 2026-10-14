@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace kintai\Core\Extension;
 
 use kintai\Contract\Extension\Action;
+use kintai\Contract\Extension\DashboardStat;
 use kintai\Contract\Extension\DashboardWidget;
 use kintai\Contract\Extension\NavItem;
 use kintai\Contract\Extension\ProfileSection;
@@ -75,6 +76,9 @@ final class ExtensionRegistry
 
     /** @var array<string, list<SwapProvider>>|null */
     private ?array $swapProviders = null;
+
+    /** @var array<string, list<DashboardStat>>|null */
+    private ?array $dashboardStats = null;
 
     /** @var list<string>|null */
     private ?array $permissionDeclarers = null;
@@ -545,6 +549,27 @@ final class ExtensionRegistry
             }
         }
         return $this->swapProviders = $bySlug;
+    }
+
+    /**
+     * Cartes de statistiques du tableau de bord employé déclarées par les bundles actifs, par slug de bundle.
+     *
+     * @return array<string, list<DashboardStat>>
+     */
+    public function dashboardStatsByBundle(): array
+    {
+        if ($this->dashboardStats !== null) {
+            return $this->dashboardStats;
+        }
+
+        $bySlug = [];
+        foreach ($this->bundles->getBundles() as $bundle) {
+            $stats = $this->contributionsOf($bundle, 'dashboardStats', DashboardStat::class);
+            if ($stats !== []) {
+                $bySlug[$bundle->getName()] = $stats;
+            }
+        }
+        return $this->dashboardStats = $bySlug;
     }
 
     /**
