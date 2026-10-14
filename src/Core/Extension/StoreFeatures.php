@@ -60,7 +60,6 @@ final class StoreFeatures
             'shift-claim'  => [$f('open_shifts', '📋', 50)],
             'messaging'    => [$f('messages', '💬', 60)],
             'daily-report' => [$f('daily_reports', '📊', 70)],
-            'store-photos' => [$f('photos', '📷', 80)],
         ];
     }
 

@@ -497,7 +497,6 @@
     "error_notification_not_found": "Notification not found.",
     "error_owner_only": "Reserved for the owner.",
     "error_owner_only_create_store": "Only an owner can create a store.",
-    "error_owner_only_delete_photos": "Only the owner can delete a photo submission.",
     "error_owner_only_delete_store": "Only an owner can delete a store.",
     "error_owner_role_immutable": "The Owner role cannot be modified.",
     "error_owner_cannot_remove_self": "An Owner cannot delete, deactivate or demote their own account. Ask another Owner to do it.",
@@ -508,7 +507,6 @@
     "error_pdf_generation_failed": "Unable to generate the PDF.",
     "error_permission_insufficient": "Insufficient permission: :key",
     "error_permission_required": "Permission required: :key",
-    "error_photos_feature_disabled": "The Photos feature is not enabled for this store.",
     "error_prefix": "Error: ",
     "error_rate_not_found": "Rate not found.",
     "error_report_locked": "This report can no longer be modified.",
@@ -567,8 +565,6 @@
     "feature_messages_desc": "Internal communication between store members.",
     "feature_open_shifts": "Open Shifts",
     "feature_open_shifts_desc": "Browse and apply for open shifts.",
-    "feature_photos": "Store Photos",
-    "feature_photos_desc": "Weekly store-condition photo submissions.",
     "feature_shifts": "Planning",
     "feature_shifts_desc": "View schedules, monthly and weekly shifts.",
     "feature_swaps": "Shift Swaps",
@@ -977,7 +973,6 @@
     "perm_category_messaging": "Messaging",
     "perm_category_open_shifts": "Shift Bidding",
     "perm_category_payroll": "Payroll",
-    "perm_category_photos": "Photos",
     "perm_category_resignation_reports": "Resignation Reports",
     "perm_category_shifts": "Shifts",
     "perm_category_stores": "Stores",
@@ -1538,6 +1533,5 @@
     "bundle_incompatible_not_loaded": "This bundle is not loaded: :reason Install a compatible version from the market.",
     "bundle_contract_incompatible": "it requires bundle contract :required, this Kintai provides contract :provided.",
     "bundle_contract_constraint_invalid": "its contract constraint \":constraint\" is malformed.",
-    "bundle_core_incompatible": "it requires Kintai :min to :max (installed version: :current).",
-    "photos": "Photos"
+    "bundle_core_incompatible": "it requires Kintai :min to :max (installed version: :current)."
 }

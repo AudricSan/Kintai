@@ -27,7 +27,6 @@ use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
-use kintai\Core\Repositories\StorePhotoRepositoryInterface;
 use kintai\Core\Repositories\LanguageRepositoryInterface;
 use kintai\Core\Repositories\TranslationRepositoryInterface;
 use kintai\Core\Repositories\DevicePushTokenRepositoryInterface;
@@ -207,7 +206,6 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(BackupService::class),
             $c->make(MigrationRunner::class),
             $c->make(AppSettingsService::class),
-            $c->make(StorePhotoRepositoryInterface::class),
         ));
 
         // Binding explicite requis (même raison que GithubUpdateService juste au-dessus) :

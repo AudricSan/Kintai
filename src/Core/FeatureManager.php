@@ -17,7 +17,6 @@ final class FeatureManager
     public const STORE_FEATURE_BUNDLE_MAP = [
         'messages'      => 'messaging',
         'daily_reports' => 'daily-report',
-        'photos'        => 'store-photos',
         'timeoff'       => 'timeoff',
         'swaps'         => 'shift-swap',
         'open_shifts'   => 'shift-claim',
