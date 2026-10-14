@@ -368,10 +368,6 @@ final class Navigation
     public static function legacyBundleItems(): array
     {
         return [
-            'team-directory' => [
-                new NavItem('team_directory', NavItem::MAIN, 'team_directory', 'team.index', 'team.index',
-                    icon: 'users', activePaths: ['/team'], order: 10),
-            ],
             'timeclock' => [
                 new NavItem('timeclocks', NavItem::PLANNING, 'timeclocks', 'admin.timeclocks', 'employee.timeclock',
                     icon: 'clock', employeeLabel: 'timeclock', activePaths: ['/admin/timeclocks', '/employee/timeclock'],

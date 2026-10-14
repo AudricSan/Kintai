@@ -438,8 +438,8 @@ bundle is active. On save, it writes the `flags` you declared (checkboxes, `0`/`
 keeps its value) into the `users` table — only columns the Core opens to bundles are accepted
 (`ProfileSections::WRITABLE_USER_COLUMNS`), anything else is ignored and logged; keep other data in your own tables
 and routes. Ship a hidden `0` field before each checkbox so unchecking works. A key already taken is ignored; an
-exception while rendering drops that section (logged). Until `team-directory` declares its section, the Core keeps
-showing the historical directory checkboxes while that bundle is active. Require `"kintai_contract": "^1.12"`.
+exception while rendering drops that section (logged). The Core has no section of its own: `team-directory` ships
+the directory checkboxes this way. Require `"kintai_contract": "^1.12"`.
 
 ## Providers: data the Core reads from your bundle (contract 1.9+)
 

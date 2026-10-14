@@ -5,16 +5,14 @@ declare(strict_types=1);
 namespace kintai\Core\Extension;
 
 use kintai\Contract\Extension\ProfileSection;
-use kintai\Core\BundleManager;
 use kintai\Core\Container;
 use kintai\Core\Services\Log;
 use kintai\UI\ViewRenderer;
 
 /**
- * Sections du formulaire « Mes informations » du profil apportées par les bundles :
- * - celles déclarées par les bundles actifs (point d'extension Bundle::profileSections(), contrat 1.12) ;
- * - en repli, celle que le Core affichait jusqu'ici pour team-directory (cases de l'annuaire), tant que ce bundle
- *   actif ne déclare rien. Ce repli disparaîtra à l'étape 4 du plan du contrat.
+ * Sections du formulaire « Mes informations » du profil apportées par les bundles actifs (point d'extension
+ * Bundle::profileSections(), contrat 1.12), par exemple les cases de l'annuaire de team-directory. Le Core n'en
+ * affiche aucune de lui-même.
  */
 final class ProfileSections
 {
@@ -24,56 +22,28 @@ final class ProfileSections
      */
     public const WRITABLE_USER_COLUMNS = ['show_in_directory', 'share_email', 'share_phone', 'share_mobile_phone'];
 
-    public function __construct(
-        private readonly ?ExtensionRegistry $registry = null,
-        private readonly ?BundleManager $bundles = null,
-    ) {}
+    public function __construct(private readonly ?ExtensionRegistry $registry = null) {}
 
-    /** Instance de la requête courante (registre des extensions et bundles actifs), ou aucune section si indisponible. */
+    /** Instance de la requête courante (registre des extensions), ou aucune section si indisponible. */
     public static function current(): self
     {
         try {
             $container = Container::getInstance();
-            return new self(
-                $container->has(ExtensionRegistry::class) ? $container->make(ExtensionRegistry::class) : null,
-                $container->has(BundleManager::class) ? $container->make(BundleManager::class) : null,
-            );
+            return new self($container->has(ExtensionRegistry::class) ? $container->make(ExtensionRegistry::class) : null);
         } catch (\Throwable) {
             return new self();
         }
     }
 
     /**
-     * Sections historiques du Core, par slug de bundle.
-     *
-     * @return array<string, list<ProfileSection>>
-     */
-    public static function legacyBundleSections(): array
-    {
-        return [
-            'team-directory' => [
-                new ProfileSection('directory', 'auth._profile_directory', self::WRITABLE_USER_COLUMNS, 10),
-            ],
-        ];
-    }
-
-    /**
-     * Sections à afficher : bundles actifs déclarants, repli des bundles actifs non déclarants ; triées par ordre.
-     * Une clé déjà prise n'est pas reprise.
+     * Sections à afficher, déclarées par les bundles actifs, triées par ordre. Une clé déjà prise n'est pas reprise.
      *
      * @return list<ProfileSection>
      */
     public function sections(): array
     {
-        $declaredBySlug = $this->registry?->profileSectionsByBundle() ?? [];
-
         $all = [];
-        foreach (self::legacyBundleSections() as $slug => $legacy) {
-            if ($this->bundles?->isActive($slug) && !isset($declaredBySlug[$slug])) {
-                array_push($all, ...$legacy);
-            }
-        }
-        foreach ($declaredBySlug as $declared) {
+        foreach ($this->registry?->profileSectionsByBundle() ?? [] as $declared) {
             array_push($all, ...$declared);
         }
 

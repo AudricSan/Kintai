@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Controller\Web;
 
+use kintai\Contract\Extension\ProfileSection;
 use kintai\Core\Auth\AuthService;
 use kintai\Core\BundleContract\Bundle;
 use kintai\Core\BundleManager;
@@ -33,8 +34,8 @@ use PHPUnit\Framework\TestCase;
  * languages_spoken/hobbies/show_in_directory). Ce test vérifie que toutes ces
  * valeurs sont bien transmises telles quelles au repository.
  *
- * Les cases de l'annuaire passent par les sections de profil des bundles (contrat 1.12) : le setUp active
- * team-directory (repli historique du Core), comme sur une instance où l'annuaire est en service.
+ * Les cases de l'annuaire passent par les sections de profil des bundles (contrat 1.12) : le setUp active un
+ * team-directory qui déclare sa section, comme sur une instance où l'annuaire est en service.
  */
 final class AuthControllerProfileFieldsTest extends TestCase
 {
@@ -58,6 +59,13 @@ final class AuthControllerProfileFieldsTest extends TestCase
                 }
 
                 public function register(): void {}
+
+                public function profileSections(): array
+                {
+                    return $this->slug === 'team-directory'
+                        ? [new ProfileSection('directory', 'team-directory::profile-section', ['show_in_directory', 'share_email', 'share_phone', 'share_mobile_phone'])]
+                        : [];
+                }
             };
             $bundle->slug = $slug;
             $bundles[] = $bundle;

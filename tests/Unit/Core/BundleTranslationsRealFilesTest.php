@@ -46,7 +46,6 @@ final class BundleTranslationsRealFilesTest extends TestCase
             'StorePhoto'        => ['photo_upload', 'store-photos-1.0.0'],
             'Timeclock'         => ['bundle_timeclock', 'timeclock-1.0.0'],
             'TimeOff'           => ['bundle_timeoff', 'timeoff-1.0.0'],
-            'TeamDirectory'     => ['bundle_team_directory', 'team-directory-1.0.0'],
         ];
     }
 
