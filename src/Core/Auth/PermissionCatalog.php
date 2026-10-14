@@ -105,7 +105,15 @@ final class PermissionCatalog
                 $categories[$category] = $actions;
             }
         }
-        return $categories + $declared;
+        $categories += $declared;
+
+        // Ordre stable de la page des rôles : celui du catalogue historique pour les catégories connues (qu'elles
+        // viennent du repli ou d'une déclaration), puis les nouvelles catégories dans l'ordre de leur déclaration.
+        $known = array_flip(array_keys(self::CATEGORIES));
+        $position = array_flip(array_keys($categories));
+        uksort($categories, static fn(string $a, string $b): int =>
+            [isset($known[$a]) ? 0 : 1, $known[$a] ?? $position[$a]] <=> [isset($known[$b]) ? 0 : 1, $known[$b] ?? $position[$b]]);
+        return $categories;
     }
 
     /** @return string[] Toutes les clés de permission ("categorie.action"), aplaties. */
