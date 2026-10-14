@@ -250,6 +250,17 @@ abstract class Bundle
     }
 
     /**
+     * Point d'extension « cartes de statistiques » (contrat 1.19) : cartes du haut du tableau de bord employé (libellé,
+     * icône, valeur calculée pour l'employé connecté).
+     *
+     * @return list<\kintai\Contract\Extension\DashboardStat>
+     */
+    public function dashboardStats(): array
+    {
+        return [];
+    }
+
+    /**
      * Boot du bundle, une fois tous les bundles enregistrés.
      */
     public function boot(): void
