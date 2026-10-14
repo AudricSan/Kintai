@@ -11,7 +11,6 @@ use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
-use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
@@ -52,9 +51,6 @@ final class HomeControllerScopingTest extends TestCase
         $shiftsRepo = $this->createMock(ShiftRepositoryInterface::class);
         $shiftsRepo->method('findAllByDate')->willReturn($shiftsToday);
 
-        $timeoffRepo = $this->createMock(TimeoffRequestRepositoryInterface::class);
-        $timeoffRepo->method('findAll')->willReturn($timeoff);
-
         $dashboardPrefs = $this->createMock(UserDashboardPrefsRepositoryInterface::class);
         // Widgets financial_overview/hr_absenteeism exclus : ces tests portent sur le
         // scoping managed_store_ids, pas sur le calcul RH/financier (storeStats() n'est
@@ -93,7 +89,6 @@ final class HomeControllerScopingTest extends TestCase
             $storesRepo,
             $shiftsRepo,
             $shiftTypesRepo,
-            $timeoffRepo,
             $dashboardPrefs,
             $storeUsersRepo,
             $storeStats,

@@ -11,7 +11,6 @@ use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
-use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
@@ -48,8 +47,6 @@ final class HomeControllerDashboardWidgetsTest extends TestCase
         $stores->method('findAll')->willReturn([]);
         $shifts = $this->createMock(ShiftRepositoryInterface::class);
         $shifts->method('findAllByDate')->willReturn([]);
-        $timeoffRequests = $this->createMock(TimeoffRequestRepositoryInterface::class);
-        $timeoffRequests->method('findAll')->willReturn([]);
         $storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
         $storeUsers->method('findByStore')->willReturn([]);
         $shiftTypes = $this->createMock(ShiftTypeRepositoryInterface::class);
@@ -66,7 +63,6 @@ final class HomeControllerDashboardWidgetsTest extends TestCase
             $stores,
             $shifts,
             $shiftTypes,
-            $timeoffRequests,
             $this->dashboardPrefs,
             $storeUsers,
             $storeStats,

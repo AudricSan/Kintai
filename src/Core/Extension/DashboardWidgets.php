@@ -25,10 +25,8 @@ final class DashboardWidgets
     /** Widgets historiques du Core qui appartiennent à un bundle : public => clé => slug du bundle. */
     public const LEGACY_BUNDLE_WIDGETS = [
         DashboardWidget::MANAGER => [
-            'pending_timeoff'  => 'timeoff',
         ],
         DashboardWidget::EMPLOYEE => [
-            'pending_timeoff' => 'timeoff',
         ],
     ];
 

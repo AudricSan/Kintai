@@ -11,7 +11,6 @@ use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
-use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Services\RoleAssignmentSyncService;
@@ -55,7 +54,6 @@ final class StoreStatsServiceBuildPayslipDataTest extends TestCase
             $shifts,
             $shiftTypes,
             $storeUsers,
-            $this->createStub(TimeoffRequestRepositoryInterface::class),
             $userRates,
             $this->createStub(UserRepositoryInterface::class),
             new RoleAssignmentSyncService(

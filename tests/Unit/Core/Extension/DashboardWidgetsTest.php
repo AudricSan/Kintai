@@ -98,8 +98,8 @@ final class DashboardWidgetsTest extends TestCase
     }
 
     /**
-     * Un bundle qui déclare remplace ses widgets historiques ; il peut reprendre leur clé (préférences conservées),
-     * mais pas celle d'un widget du Core qui ne lui appartient pas, ni celle déjà prise par un autre bundle.
+     * Plus aucun widget historique de bundle : les widgets déclarés s'ajoutent après ceux du Core ; un bundle ne
+     * peut reprendre ni la clé d'un widget du Core, ni celle déjà prise par un autre bundle.
      */
     public function testDeclaringBundleReplacesItsLegacyWidgets(): void
     {
@@ -109,9 +109,9 @@ final class DashboardWidgetsTest extends TestCase
             'notebook' => [self::w('my_notes', DashboardWidget::EMPLOYEE)],
         ]);
 
-        $this->assertSame(['pending_timeoff'], $dash->replacedLegacyKeys(DashboardWidget::MANAGER));
+        $this->assertSame([], $dash->replacedLegacyKeys(DashboardWidget::MANAGER), 'plus aucun widget historique de bundle');
         $this->assertSame(
-            ['kpi_counters', 'shifts_today', 'pending_swaps', 'timeoff_calendar', 'pending_timeoff'],
+            ['kpi_counters', 'shifts_today', 'pending_timeoff', 'pending_swaps', 'timeoff_calendar'],
             $dash->keys(DashboardWidget::MANAGER, self::CORE)
         );
         $this->assertSame(['acme_board', 'my_notes'], array_map(

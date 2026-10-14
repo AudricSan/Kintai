@@ -17,7 +17,6 @@ use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
-use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Services\AuditLogger;
@@ -64,7 +63,6 @@ final class IcalControllerFeedTest extends TestCase
             $this->shifts,
             $this->createMock(ShiftTypeRepositoryInterface::class),
             $this->stores,
-            $this->createMock(TimeoffRequestRepositoryInterface::class),
             $this->users,
             new AuthService(
                 $this->users,

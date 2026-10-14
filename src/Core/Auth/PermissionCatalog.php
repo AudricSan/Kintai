@@ -19,7 +19,6 @@ final class PermissionCatalog
         'shifts'               => ['view', 'create', 'update', 'delete', 'import'],
         'stores'               => ['view', 'create', 'update', 'delete'],
         'payroll'              => ['view', 'generate', 'export'],
-        'timeoff'              => ['view', 'create', 'update', 'approve', 'delete'],
     ];
 
     /**
@@ -30,7 +29,6 @@ final class PermissionCatalog
      * valides en base et réapparaissent si le bundle est réactivé.
      */
     public const CATEGORY_BUNDLES = [
-        'timeoff'             => 'timeoff',
     ];
 
     /**
@@ -43,7 +41,6 @@ final class PermissionCatalog
         'shifts.view', 'shifts.create', 'shifts.update', 'shifts.delete', 'shifts.import',
         'stores.view', 'stores.update',
         'payroll.view', 'payroll.generate', 'payroll.export',
-        'timeoff.view', 'timeoff.create', 'timeoff.update', 'timeoff.approve', 'timeoff.delete',
     ];
 
     /** Catégories du Core : toujours présentes, jamais redéfinissables par un bundle. */

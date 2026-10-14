@@ -11,7 +11,6 @@ use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
-use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
@@ -49,9 +48,6 @@ final class HomeControllerWeeklyHoursTrendTest extends TestCase
         $shiftsRepo = $this->createMock(ShiftRepositoryInterface::class);
         $shiftsRepo->method('findAllByDate')->willReturn([]);
 
-        $timeoffRepo = $this->createMock(TimeoffRequestRepositoryInterface::class);
-        $timeoffRepo->method('findAll')->willReturn([]);
-
         $dashboardPrefs = $this->createMock(UserDashboardPrefsRepositoryInterface::class);
         // Widget "store_stats_summary" uniquement : ce test porte sur la tendance
         // hebdomadaire de ce widget précis, pas sur financial_overview/hr_absenteeism
@@ -80,7 +76,6 @@ final class HomeControllerWeeklyHoursTrendTest extends TestCase
             $storesRepo,
             $shiftsRepo,
             $shiftTypesRepo,
-            $timeoffRepo,
             $dashboardPrefs,
             $storeUsersRepo,
             $storeStats,

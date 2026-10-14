@@ -13,7 +13,6 @@ use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
-use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserNavPrefsRepositoryInterface;
@@ -35,7 +34,6 @@ final class EmployeeController
         'shifts_today',
         'upcoming',
         'monthly_stats',
-        'pending_timeoff',
     ];
 
     public function __construct(
@@ -45,7 +43,6 @@ final class EmployeeController
         private readonly StoreRepositoryInterface $stores,
         private readonly StoreUserRepositoryInterface $storeUsers,
         private readonly UserRepositoryInterface $users,
-        private readonly TimeoffRequestRepositoryInterface $timeoffRequests,
         private readonly UserShiftTypeRateRepositoryInterface $userRates,
         private readonly AuditLogger $auditLogger,
         private readonly IcalTokenRepositoryInterface $icalTokens,
@@ -67,7 +64,6 @@ final class EmployeeController
         $today  = date('Y-m-d');
 
         $myShifts  = $this->shifts->findByUser($userId);
-        $myTimeoff = $this->timeoffRequests->findByUser($userId);
 
         $shiftsToday = array_values(array_filter(
             $myShifts,
@@ -80,11 +76,6 @@ final class EmployeeController
         ));
         usort($upcomingShifts, fn($a, $b) => strcmp($a['shift_date'] ?? '', $b['shift_date'] ?? ''));
         $upcomingShifts = array_slice($upcomingShifts, 0, 5);
-
-        $pendingTimeoff = array_values(array_filter(
-            $myTimeoff,
-            fn($r) => ($r['status'] ?? '') === 'pending'
-        ));
 
 
         $storesMap   = [];
@@ -123,11 +114,10 @@ final class EmployeeController
                 && ($f === null || $storeFeatures === null || in_array($f, (array) $storeFeatures, true)),
         );
 
-        // Cartes de statistiques des bundles (contrat 1.19) ; repli timeoff avec la valeur ci-dessus.
+        // Cartes de statistiques des bundles (contrat 1.19).
         $bundleStats = DashboardStats::current()->cards(
             ['user' => $user, 'store_ids' => array_map(fn($m) => (int) $m['store_id'], $this->storeUsers->findByUser($userId)), 'stores_map' => $storesMap, 'today' => $today],
             static fn(?string $f): bool => feat_bundle($f) && ($f === null || $storeFeatures === null || in_array($f, (array) $storeFeatures, true)),
-            ['timeoff' => count($pendingTimeoff)],
         );
 
         return Response::html($this->view->render('employee.dashboard', [
@@ -135,7 +125,6 @@ final class EmployeeController
             'user'             => $user,
             'shifts_today'     => $shiftsToday,
             'upcoming'         => $upcomingShifts,
-            'pending_timeoff'  => $pendingTimeoff,
             'stores_map'       => $storesMap,
             'user_can'         => $userCan,
             'enabled_widgets'  => $enabledWidgets,
@@ -488,7 +477,6 @@ final class EmployeeController
         ], 'layout.app'));
     }
 
-    // Congés : voir src/Bundles/TimeOff/Controllers/Web/EmployeeTimeoffController.php
 
     // -------------------------------------------------------------------------
     // Helpers

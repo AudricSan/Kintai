@@ -7,7 +7,6 @@ use kintai\UI\Components\Table;
 /** @var array $user */
 /** @var array $shifts_today */
 /** @var array $upcoming */
-/** @var array $pending_timeoff */
 /** @var array $stores_map  id → store name */
 /** @var array|null $employee_month_stats */
 /** @var array $enabled_widgets   widget_key → true (flipped) */
@@ -35,7 +34,6 @@ $feat = static fn(?string $f): bool =>
 $can = $user_can ?? fn(string $k): bool => true;
 
 $_empWidgetFeatMap = [
-    'pending_timeoff' => 'timeoff',
 ] + $bundle_widget_meta['features'];
 $_empWidgetPermMap = $bundle_widget_meta['permissions'];
 $all_widgets = array_values(array_filter(
@@ -73,7 +71,6 @@ ob_start();
             'shifts_today'   => __('my_shifts_today'),
             'upcoming'       => __('my_upcoming_shifts'),
             'monthly_stats'  => __('monthly_stats'),
-            'pending_timeoff'=> __('my_pending_timeoff'),
         ] + $bundle_widget_meta['labels'];
         foreach ($all_widgets as $wk): ?>
         <label class="dash-widget-item">
@@ -258,27 +255,6 @@ else:
 endif;
 echo Card::make()
     ->header('<span>' . __('my_upcoming_shifts') . '</span> ' . Button::make(__('view_all'))->ghost()->sm()->link(route_url('employee.shifts.day'))->render())
-    ->body(ob_get_clean())
-    ->render();
-?>
-<?php endif; ?>
-
-<?php if (widget_on('pending_timeoff', $widgets) && !empty($pending_timeoff)): ?>
-<?php
-ob_start();
-?>
-<div class="table-wrap">
-    <?= Table::make()
-        ->data($pending_timeoff)
-        ->text(__('type'), fn($r) => (string) ($r['type'] ?? '—'))
-        ->text(__('from'), fn($r) => (string) ($r['start_date'] ?? '—'))
-        ->text(__('to'), fn($r) => (string) ($r['end_date'] ?? '—'))
-        ->column(__('status'), fn($r) => Badge::make(__('pending'))->pending()->render())
-        ->render() ?>
-</div>
-<?php
-echo Card::make()
-    ->header('<span>' . __('my_pending_timeoff') . '</span> ' . Button::make(__('view_all'))->ghost()->sm()->link(route_url('employee.timeoff'))->render())
     ->body(ob_get_clean())
     ->render();
 ?>

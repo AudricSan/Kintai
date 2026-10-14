@@ -70,7 +70,7 @@ final class StoreFeaturesTest extends TestCase
         $all = array_fill_keys(array_keys(StoreFeatures::legacyBundleFeatures()), []);
 
         $this->assertSame(
-            ['shifts', 'timeoff'],
+            ['shifts'],
             self::keys($this->features($all))
         );
     }
@@ -102,12 +102,10 @@ final class StoreFeaturesTest extends TestCase
 
     public function testIsAvailable(): void
     {
-        $features = $this->features(['timeoff' => [], 'acme' => [new StoreFeature('acme_board', 'a')]]);
+        $features = $this->features(['acme' => [new StoreFeature('acme_board', 'a')]]);
 
         $this->assertTrue($features->isAvailable('shifts'));
-        $this->assertTrue($features->isAvailable('timeoff'));
         $this->assertTrue($features->isAvailable('acme_board'));
-        $this->assertFalse($this->features(['acme' => []])->isAvailable('timeoff'), 'fonctionnalité historique d\'un bundle inactif');
         $this->assertTrue($features->isAvailable('unknown_thing'), 'clé inconnue : pas une fonctionnalité de bundle');
     }
 

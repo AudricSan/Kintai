@@ -168,12 +168,11 @@ away with a new major version.
 | `kintai\Contract\View\Components\Pagination` | stable | UI component (`Pagination`). |
 | `kintai\Contract\View\Components\Table` | stable | UI component (`Table`). |
 
-### Bundle-owned classes still living in the Core
+### Bundle-owned classes
 
-Some repositories, models and services belong to a bundle but still live in the Core (e.g.
-`TimeoffRequestRepositoryInterface`). They will move into their bundle's repository
-(step 4 of the plan). Until then, a bundle keeps importing them from `kintai\Core\…` and lists them explicitly
-in its contract-usage test.
+A bundle owns its models, repositories, services and tables: none of them live in the Core any more (step 4 of
+the plan is complete for every official bundle). A bundle only imports `kintai\Contract\…`; its contract-usage
+test has no exception left.
 
 ### Checking your bundle
 
@@ -493,7 +492,7 @@ The Core shows your card in the stat row at the top of the employee dashboard, a
 upcoming shifts), sorted by `order`. `value` receives the same context as dashboard widgets (`user`, `store_ids`,
 `stores_map`, `today`) and returns what to display; `tone` is one of `DashboardStat::TONES`. With `storeFeature`, the
 card only shows when that feature is on. A key already taken is ignored; an exception drops that card (logged).
-Until `timeoff` declares its own, the Core keeps showing its historical "Pending time off" card. Require
+The Core has no card of its own for bundles: `timeoff` and `shift-swap` ship theirs this way. Require
 `"kintai_contract": "^1.19"`.
 
 ### Shift form sections: `shiftFormSections()` (contract 1.17)
@@ -570,8 +569,8 @@ public function pendingRequestsProviders(): array
 The Core uses it for the "Requests" page (one section per provider, a table built from your columns), the
 dashboard's "Pending requests" counter and stale-request alerts — only for users holding `permission`. Column
 styles: `TEXT`, `BADGE`, `USER` (user id, shown as a name), `STORE` (store id, shown as a name), `TIME` (`HH:MM`).
-Return requests in display order. An exception drops your section only (logged). Until `timeoff` declares its
-own, the Core keeps its own provider for it. Require `"kintai_contract": "^1.9"`.
+Return requests in display order. An exception drops your section only (logged). The Core has no provider of its
+own. Require `"kintai_contract": "^1.9"`.
 The manager dashboard's "stale requests" alert also reads them: a request pending for more than three days is
 listed with its provider's `label()`.
 
@@ -597,7 +596,7 @@ final class LeaveAbsences implements AbsenceProvider
 Return absences of **every** status: the Core filters dates and statuses itself. It uses them to flag a shift
 planned during an approved absence, to show absences on the schedule, in the employee's iCal feed and in the
 absenteeism statistics. Absences of every declared provider are added up; a failing provider is skipped (logged).
-Until a bundle declares one, the Core keeps reading the historical leave table. Require
+Without any provider (`timeoff` disabled or uninstalled), the Core sees no absence. Require
 `"kintai_contract": "^1.10"`.
 
 ### Attendance: `attendanceProviders()` (contract 1.11)

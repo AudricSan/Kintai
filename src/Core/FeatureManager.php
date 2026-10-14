@@ -15,7 +15,6 @@ final class FeatureManager
      * @deprecated Utiliser kintai\Core\Extension\StoreFeatures.
      */
     public const STORE_FEATURE_BUNDLE_MAP = [
-        'timeoff'       => 'timeoff',
     ];
 
     private array $enabledFeatures = [];

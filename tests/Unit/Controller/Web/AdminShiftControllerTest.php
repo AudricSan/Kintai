@@ -17,7 +17,6 @@ use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
-use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Request;
@@ -27,6 +26,7 @@ use kintai\Core\Services\NotificationService;
 use kintai\Core\Services\ShiftServiceInterface;
 use kintai\UI\Controller\Web\Scheduling\AdminShiftController;
 use kintai\UI\ViewRenderer;
+use kintai\Tests\Support\FakeAbsenceProvider;
 use kintai\Tests\Support\FakeBundleManagerFactory;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -36,7 +36,6 @@ final class AdminShiftControllerTest extends TestCase
     private ShiftRepositoryInterface&MockObject $shifts;
     private ShiftTypeRepositoryInterface&MockObject $shiftTypes;
     private StoreRepositoryInterface&MockObject $stores;
-    private TimeoffRequestRepositoryInterface&MockObject $timeoffRequests;
     private ShiftServiceInterface&MockObject $shiftService;
     private NotificationService&MockObject $notifs;
     private RoleAssignmentRepositoryInterface&MockObject $roleAssignments;
@@ -53,7 +52,6 @@ final class AdminShiftControllerTest extends TestCase
         $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
         $this->shiftTypes = $this->createMock(ShiftTypeRepositoryInterface::class);
         $this->stores = $this->createMock(StoreRepositoryInterface::class);
-        $this->timeoffRequests = $this->createMock(TimeoffRequestRepositoryInterface::class);
         $this->shiftService = $this->createMock(ShiftServiceInterface::class);
         $this->notifs = $this->createMock(NotificationService::class);
         $this->roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
@@ -74,7 +72,6 @@ final class AdminShiftControllerTest extends TestCase
             $auditLogger,
             $this->notifs,
             $this->shiftService,
-            $this->timeoffRequests,
             $permissions,
         );
     }
@@ -131,7 +128,6 @@ final class AdminShiftControllerTest extends TestCase
         ]);
         $req->setAttribute('managed_store_ids', null);
 
-        $this->timeoffRequests->method('findByUser')->willReturn([]);
         $this->shifts->method('save')->willReturnCallback(fn(array $d) => $d + ['id' => 42]);
 
         $response = $this->controller->quickShift($req);
@@ -159,7 +155,6 @@ final class AdminShiftControllerTest extends TestCase
         ]);
         $req->setAttribute('managed_store_ids', null);
 
-        $this->timeoffRequests->method('findByUser')->willReturn([]);
         $captured = null;
         $this->shifts->method('save')->willReturnCallback(function (array $d) use (&$captured) {
             $captured = $d;
@@ -184,7 +179,6 @@ final class AdminShiftControllerTest extends TestCase
             'open_shift_note' => 'Ouvert', 'is_open' => true,
         ]);
         $req->setAttribute('managed_store_ids', null);
-        $this->timeoffRequests->method('findByUser')->willReturn([]);
         $captured = null;
         $this->shifts->method('save')->willReturnCallback(function (array $d) use (&$captured) {
             $captured = $d;
@@ -234,7 +228,6 @@ final class AdminShiftControllerTest extends TestCase
             ['id' => 3, 'name' => 'Matin', 'start_time' => '08:00', 'end_time' => '12:00', 'hourly_rate' => 1000.0],
             ['id' => 4, 'name' => 'Aprem', 'start_time' => '12:00', 'end_time' => '20:00', 'hourly_rate' => 1200.0],
         ]);
-        $this->timeoffRequests->method('findByUser')->willReturn([]);
         $captured = null;
         $this->shifts->method('save')->willReturnCallback(function (array $d) use (&$captured) {
             $captured = $d;
@@ -258,8 +251,8 @@ final class AdminShiftControllerTest extends TestCase
         ]);
         $req->setAttribute('managed_store_ids', null);
 
-        $this->timeoffRequests->method('findByUser')->with(5)->willReturn([
-            ['status' => 'approved', 'start_date' => '2026-08-01', 'end_date' => '2026-08-05'],
+        FakeAbsenceProvider::register([
+            ['user_id' => 5, 'status' => 'approved', 'start_date' => '2026-08-01', 'end_date' => '2026-08-05'],
         ]);
         $this->shifts->expects($this->never())->method('save');
 
@@ -284,8 +277,8 @@ final class AdminShiftControllerTest extends TestCase
         $req = new Request();
         $req->setAttribute('managed_store_ids', null);
 
-        $this->timeoffRequests->method('findByUser')->with(5)->willReturn([
-            ['status' => 'approved', 'start_date' => '2026-08-01', 'end_date' => '2026-08-05'],
+        FakeAbsenceProvider::register([
+            ['user_id' => 5, 'status' => 'approved', 'start_date' => '2026-08-01', 'end_date' => '2026-08-05'],
         ]);
         $this->shifts->expects($this->never())->method('save');
 
@@ -306,7 +299,6 @@ final class AdminShiftControllerTest extends TestCase
         $req = new Request();
         $req->setAttribute('managed_store_ids', null);
 
-        $this->timeoffRequests->method('findByUser')->willReturn([]);
         $this->shifts->expects($this->once())->method('save')->willReturnCallback(fn(array $d) => $d + ['id' => 1]);
 
         $response = $this->controller->storeShift($req);
@@ -336,7 +328,6 @@ final class AdminShiftControllerTest extends TestCase
             ['id' => 3, 'name' => 'Matin', 'start_time' => '08:00', 'end_time' => '12:00', 'hourly_rate' => 1000.0],
             ['id' => 4, 'name' => 'Aprem', 'start_time' => '12:00', 'end_time' => '20:00', 'hourly_rate' => 1200.0],
         ]);
-        $this->timeoffRequests->method('findByUser')->willReturn([]);
         $captured = null;
         $this->shifts->expects($this->once())->method('save')->with($this->callback(
             function (array $d) use (&$captured) {
@@ -369,7 +360,6 @@ final class AdminShiftControllerTest extends TestCase
         $req = new Request();
         $req->setAttribute('managed_store_ids', null);
 
-        $this->timeoffRequests->method('findByUser')->willReturn([]);
         $this->shifts->method('save')->willReturnCallback(fn(array $d) => $d + ['id' => 1]);
         $this->notifs->method('notify')->willThrowException(new \RuntimeException('notif DB down'));
 
@@ -398,7 +388,6 @@ final class AdminShiftControllerTest extends TestCase
             ['id' => 3, 'name' => 'Matin', 'start_time' => '08:00', 'end_time' => '12:00', 'hourly_rate' => 1000.0],
             ['id' => 4, 'name' => 'Aprem', 'start_time' => '12:00', 'end_time' => '20:00', 'hourly_rate' => 1200.0],
         ]);
-        $this->timeoffRequests->method('findByUser')->willReturn([]);
         $captured = null;
         $this->shifts->expects($this->once())->method('save')->with($this->callback(
             function (array $d) use (&$captured) {
@@ -429,7 +418,6 @@ final class AdminShiftControllerTest extends TestCase
         $req = new Request();
         $req->setAttribute('managed_store_ids', null);
 
-        $this->timeoffRequests->method('findByUser')->willReturn([]);
         $this->shifts->expects($this->once())->method('save')->with($this->callback(
             fn(array $d) => $d['hourly_rate_override'] === 1500.5 && $d['net_minutes_override'] === 300
         ))->willReturnCallback(fn(array $d) => $d + ['id' => 1]);
@@ -452,7 +440,6 @@ final class AdminShiftControllerTest extends TestCase
         $req = new Request();
         $req->setAttribute('managed_store_ids', null);
 
-        $this->timeoffRequests->method('findByUser')->willReturn([]);
         $this->shifts->expects($this->once())->method('save')->with($this->callback(
             fn(array $d) => $d['hourly_rate_override'] === null && $d['net_minutes_override'] === null
         ))->willReturnCallback(fn(array $d) => $d + ['id' => 1]);
@@ -537,7 +524,6 @@ final class AdminShiftControllerTest extends TestCase
             'id' => 10, 'store_id' => 1, 'user_id' => null, 'shift_date' => '2026-08-02',
             'start_time' => '09:00', 'end_time' => '17:00', 'is_open' => 1, 'open_shift_note' => 'Qui ?',
         ]);
-        $this->timeoffRequests->method('findByUser')->willReturn([]);
         $_POST = ['store_id' => '1', 'user_id' => '5', 'shift_date' => '2026-08-02', 'start_time' => '09:00', 'end_time' => '17:00', 'is_open' => '0'];
         $req = new Request();
         $req->setAttribute('managed_store_ids', null);
