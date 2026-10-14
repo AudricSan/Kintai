@@ -20,7 +20,6 @@ use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
-use kintai\Core\Repositories\HiringReportRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
@@ -77,7 +76,6 @@ final class AdminUserControllerTest extends TestCase
             $this->shiftTypes,
             $this->storeUsers,
             $this->userRates,
-            $this->createMock(HiringReportRepositoryInterface::class),
             new AuditLogger(),
             new RoleAssignmentSyncService($this->roles, $this->roleAssignments),
             new PermissionService($this->roleAssignments, $this->roles),

@@ -11,7 +11,6 @@ use kintai\Core\Auth\PermissionService;
 use kintai\Core\Container;
 use kintai\Core\Repositories\ApiTokenRepositoryInterface;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
-use kintai\Core\Repositories\HiringReportRepositoryInterface;
 use kintai\Core\Repositories\LogRepositoryInterface;
 use kintai\Core\Repositories\RememberTokenRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
@@ -87,7 +86,6 @@ final class AdminUserControllerCredentialRevocationTest extends TestCase
             $this->createMock(ShiftTypeRepositoryInterface::class),
             $this->createMock(StoreUserRepositoryInterface::class),
             $this->createMock(UserShiftTypeRateRepositoryInterface::class),
-            $this->createMock(HiringReportRepositoryInterface::class),
             new AuditLogger(),
             new RoleAssignmentSyncService($roles, $roleAssignments),
             new PermissionService($roleAssignments, $roles),

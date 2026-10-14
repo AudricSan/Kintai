@@ -19,7 +19,6 @@ use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
-use kintai\Core\Repositories\HiringReportRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
@@ -43,7 +42,6 @@ final class AdminUserController
         private readonly ShiftTypeRepositoryInterface $shiftTypes,
         private readonly StoreUserRepositoryInterface $storeUsers,
         private readonly UserShiftTypeRateRepositoryInterface $userRates,
-        private readonly HiringReportRepositoryInterface $hiringReports,
         private readonly AuditLogger $auditLogger,
         private readonly RoleAssignmentSyncService $roleSync,
         private readonly PermissionService $permissions,
@@ -59,15 +57,6 @@ final class AdminUserController
     private function events(): Events
     {
         return $this->events ?? Events::current();
-    }
-
-    /**
-     * Repli historique : sans bundle hiring-report actif qui écoute EmployeeCreated, le Core crée lui-même le rapport
-     * d'embauche (comportement d'avant le contrat 1.13). Disparaît à l'extraction du bundle (étape 4).
-     */
-    private function hiringReportHandledByBundle(): bool
-    {
-        return $this->events()->isListenedBy('hiring-report', EmployeeCreated::class);
     }
 
     /** Le conteneur l'injecte toujours ; un test qui supprime un compte doit le fournir. */
@@ -513,31 +502,6 @@ final class AdminUserController
             if ($role !== null) {
                 $this->roleSync->syncStoreRoleById((int) $saved['id'], $storeId, (int) $role['id']);
             }
-
-            // Générer automatiquement le rapport d'embauche (repli, voir hiringReportHandledByBundle())
-            if (!$this->hiringReportHandledByBundle()) $this->hiringReports->save([
-                'store_id'           => $storeId,
-                'user_id'            => (int) $saved['id'],
-                'employee_number'    => $empCode,
-                'employee_name'      => $request->post('display_name', ''),
-                'furigana_last_name'  => $request->post('furigana_last_name', '') ?: null,
-                'furigana_first_name' => $request->post('furigana_first_name', '') ?: null,
-                'gender'             => $request->post('gender', '') ?: null,
-                'tax_classification' => $request->post('tax_classification', '') ?: null,
-                'birth_date'         => $request->post('birth_date', '') ?: null,
-                'hire_date'          => date('Y-m-d'),
-                'education'          => $request->post('education', '') ?: null,
-                'postal_code'        => $request->post('postal_code', '') ?: null,
-                'address'            => $request->post('address', '') ?: null,
-                'phone'              => $request->post('phone', '') ?: null,
-                'mobile_phone'       => $request->post('mobile_phone', '') ?: null,
-                'email'              => $request->post('email', '') ?: null,
-                'guarantor_name'     => $request->post('guarantor_name', '') ?: null,
-                'guarantor_phone'    => $request->post('guarantor_phone', '') ?: null,
-                'store_name'         => null,
-                'hired_by'           => $request->post('display_name', ''),
-                'created_by'         => $request->getAttribute('auth_user')['id'] ?? 0,
-            ]);
         }
 
         if (!empty($saved['id'])) {
@@ -661,15 +625,6 @@ final class AdminUserController
             if ($role !== null) {
                 $this->roleSync->syncStoreRoleById((int) $saved['id'], $storeId, (int) $role['id']);
             }
-
-            // Générer automatiquement le rapport d'embauche (repli, voir hiringReportHandledByBundle())
-            if (!$this->hiringReportHandledByBundle()) $this->hiringReports->save([
-                'store_id'        => $storeId,
-                'user_id'         => (int) $saved['id'],
-                'employee_number' => $empCode,
-                'employee_name'   => $displayName,
-                'created_by'      => $request->getAttribute('auth_user')['id'] ?? 0,
-            ]);
         }
 
         $this->events()->dispatch(new EmployeeCreated($saved, $storeId > 0 ? $storeId : null, self::authUserId($request), 'excel_import'));

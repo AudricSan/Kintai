@@ -9,7 +9,6 @@ use kintai\Core\Auth\PermissionService;
 use kintai\Core\Container;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
-use kintai\Core\Repositories\HiringReportRepositoryInterface;
 use kintai\Core\Repositories\LogRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
@@ -81,7 +80,6 @@ final class AdminUserControllerScopeTest extends TestCase
             $this->createStub(ShiftTypeRepositoryInterface::class),
             $this->storeUsers,
             $this->createStub(UserShiftTypeRateRepositoryInterface::class),
-            $this->createStub(HiringReportRepositoryInterface::class),
             new AuditLogger(),
             new RoleAssignmentSyncService($roles, $assignments),
             new PermissionService($assignments, $roles),

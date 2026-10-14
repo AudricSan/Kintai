@@ -13,7 +13,6 @@ use kintai\Core\Container;
 use kintai\Core\Extension\Events;
 use kintai\Core\Extension\ExtensionRegistry;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
-use kintai\Core\Repositories\HiringReportRepositoryInterface;
 use kintai\Core\Repositories\LogRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
@@ -35,9 +34,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Création d'un employé (formulaire et import Excel) : le Core annonce EmployeeCreated aux bundles (contrat 1.13). Tant
- * qu'aucun bundle hiring-report actif ne l'écoute, le Core crée encore lui-même le rapport d'embauche (repli) ; dès
- * qu'il l'écoute, c'est le bundle qui s'en charge et le Core n'écrit plus rien.
+ * Création d'un employé (formulaire et import Excel) : le Core annonce EmployeeCreated aux bundles (contrat 1.13) ; le
+ * rapport d'embauche est l'affaire du bundle hiring-report, qui l'écoute.
  */
 final class AdminUserControllerEmployeeCreatedTest extends TestCase
 {
@@ -82,7 +80,7 @@ final class AdminUserControllerEmployeeCreatedTest extends TestCase
         return new Events(new ExtensionRegistry($manager));
     }
 
-    private function controller(HiringReportRepositoryInterface $hiring, Events $events): AdminUserController
+    private function controller(Events $events): AdminUserController
     {
         $users = $this->createStub(UserRepositoryInterface::class);
         $users->method('findByEmail')->willReturn(null);
@@ -105,7 +103,6 @@ final class AdminUserControllerEmployeeCreatedTest extends TestCase
             $this->createStub(ShiftTypeRepositoryInterface::class),
             $storeUsers,
             $this->createStub(UserShiftTypeRateRepositoryInterface::class),
-            $hiring,
             new AuditLogger(),
             new RoleAssignmentSyncService($roles, $roleAssignments),
             $permissions,
@@ -135,25 +132,18 @@ final class AdminUserControllerEmployeeCreatedTest extends TestCase
     }
 
     #[DataProvider('creationPaths')]
-    public function testWithoutListeningBundleTheCoreStillCreatesTheHiringReport(string $method, string $source): void
+    public function testWithoutListeningBundleNothingElseHappens(string $method, string $source): void
     {
-        $hiring = $this->createMock(HiringReportRepositoryInterface::class);
-        $hiring->expects($this->once())->method('save')->with($this->callback(
-            fn(array $d): bool => $d['store_id'] === 3 && $d['user_id'] === 10
-        ));
+        $response = $this->controller($this->events(false))->{$method}(self::request());
 
-        $this->controller($hiring, $this->events(false))->{$method}(self::request());
-
-        $this->assertSame([], $this->received, "aucun bundle n'écoute ({$source})");
+        $this->assertContains($response->status(), [200, 302], $source);
+        $this->assertSame([], $this->received);
     }
 
     #[DataProvider('creationPaths')]
-    public function testListeningBundleReceivesTheEventAndTheCoreWritesNothing(string $method, string $source): void
+    public function testListeningBundleReceivesTheEvent(string $method, string $source): void
     {
-        $hiring = $this->createMock(HiringReportRepositoryInterface::class);
-        $hiring->expects($this->never())->method('save');
-
-        $this->controller($hiring, $this->events(true))->{$method}(self::request());
+        $this->controller($this->events(true))->{$method}(self::request());
 
         $this->assertCount(1, $this->received);
         $event = $this->received[0];

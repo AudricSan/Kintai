@@ -388,10 +388,6 @@ final class Navigation
                     icon: 'plus', activePaths: ['/admin/open-shifts', '/employee/open-shifts'],
                     storeFeature: 'open_shifts', order: 30, mobile: true),
             ],
-            'hiring-report' => [
-                new NavItem('hiring_report', NavItem::REPORTS, 'hiring_reports', 'admin.reports.hiring', 'admin.reports.hiring',
-                    icon: 'person', activePaths: ['*/reports/hiring'], order: 10),
-            ],
             'daily-report' => [
                 // Avec la permission globale : un lien vers tous les rapports ; sinon, un lien par magasin où
                 // l'utilisateur rédige les rapports ($daily_report_staff_stores).
