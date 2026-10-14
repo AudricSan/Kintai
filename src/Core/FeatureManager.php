@@ -16,7 +16,6 @@ final class FeatureManager
      */
     public const STORE_FEATURE_BUNDLE_MAP = [
         'timeoff'       => 'timeoff',
-        'timeclock'     => 'timeclock',
     ];
 
     private array $enabledFeatures = [];

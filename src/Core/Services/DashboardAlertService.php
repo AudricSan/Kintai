@@ -8,7 +8,6 @@ use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Extension\Attendances;
 use kintai\Core\Extension\PendingRequests;
-use kintai\Core\Repositories\TimeclockRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 
 /**
@@ -27,7 +26,6 @@ final class DashboardAlertService
         private readonly ShiftRepositoryInterface $shifts,
         private readonly UserRepositoryInterface $users,
         private readonly StoreUserRepositoryInterface $storeUsers,
-        private readonly TimeclockRepositoryInterface $timeclocks,
         // Demandes en attente (fournisseurs des bundles) ; sans elles (tests), celles de la requête courante.
         private readonly ?PendingRequests $pendingRequests = null,
     ) {}
@@ -123,8 +121,8 @@ final class DashboardAlertService
         $threshold = date('Y-m-d H:i:s', strtotime('-' . self::STALE_TIMECLOCK_HOURS . ' hours'));
         $result = [];
 
-        // Pointages lus à travers les fournisseurs (Bundle::attendanceProviders()), repli sur la table des pointages.
-        foreach (Attendances::current($this->timeclocks)->all() as $tc) {
+        // Pointages lus à travers les fournisseurs (Bundle::attendanceProviders()) ; aucun sans bundle timeclock.
+        foreach (Attendances::current()->all() as $tc) {
             $sid = (int) ($tc['store_id'] ?? 0);
             if (!in_array($sid, $storeIds, true) || !empty($tc['clock_out_time'])) {
                 continue;

@@ -11,7 +11,6 @@ use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
-use kintai\Core\Repositories\TimeclockRepositoryInterface;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
@@ -42,7 +41,6 @@ final class HomeControllerScopingTest extends TestCase
         array $stores,
         array $shiftsToday,
         array $timeoff,
-        array $timeclocks,
         array $storeMembers,
     ): HomeController {
         $usersRepo = $this->createMock(UserRepositoryInterface::class);
@@ -56,10 +54,6 @@ final class HomeControllerScopingTest extends TestCase
 
         $timeoffRepo = $this->createMock(TimeoffRequestRepositoryInterface::class);
         $timeoffRepo->method('findAll')->willReturn($timeoff);
-
-
-        $timeclocksRepo = $this->createMock(TimeclockRepositoryInterface::class);
-        $timeclocksRepo->method('findAll')->willReturn($timeclocks);
 
         $dashboardPrefs = $this->createMock(UserDashboardPrefsRepositoryInterface::class);
         // Widgets financial_overview/hr_absenteeism exclus : ces tests portent sur le
@@ -91,7 +85,7 @@ final class HomeControllerScopingTest extends TestCase
         $roles->method('getPermissions')->with(5)->willReturn(['payroll.view']);
         $permissions = new PermissionService($roleAssignments, $roles);
 
-        $dashboardAlerts = new DashboardAlertService($shiftsRepo, $usersRepo, $storeUsersRepo, $timeclocksRepo);
+        $dashboardAlerts = new DashboardAlertService($shiftsRepo, $usersRepo, $storeUsersRepo);
 
         return new HomeController(
             new ViewRenderer(sys_get_temp_dir()),
@@ -101,7 +95,6 @@ final class HomeControllerScopingTest extends TestCase
             $shiftTypesRepo,
             $timeoffRepo,
             $dashboardPrefs,
-            $timeclocksRepo,
             $storeUsersRepo,
             $storeStats,
             $dashboardAlerts,
@@ -109,7 +102,7 @@ final class HomeControllerScopingTest extends TestCase
         );
     }
 
-    /** @return array{0: array, 1: array, 2: array, 3: array, 4: array, 5: array} */
+    /** @return array{0: array, 1: array, 2: array, 3: array, 4: array} */
     private function fixtures(): array
     {
         $users  = [['id' => 1, 'email' => 'a@test.com'], ['id' => 2, 'email' => 'b@test.com']];
@@ -119,21 +112,18 @@ final class HomeControllerScopingTest extends TestCase
             ['id' => 11, 'store_id' => 2, 'user_id' => 2, 'start_time' => '09:00', 'end_time' => '17:00'],
         ];
         $timeoff = [['id' => 1, 'store_id' => 1, 'user_id' => 1, 'status' => 'pending']];
-        $timeclocks = [
-            ['id' => 1, 'store_id' => 1, 'user_id' => 1, 'shift_date' => date('Y-m-d'), 'clock_in_time' => date('Y-m-d') . ' 09:00:00', 'clock_out_time' => null],
-        ];
         $storeMembers = [
             1 => [['user_id' => 1]],
             2 => [['user_id' => 2]],
         ];
 
-        return [$users, $stores, $shifts, $timeoff, $timeclocks, $storeMembers];
+        return [$users, $stores, $shifts, $timeoff, $storeMembers];
     }
 
     public function testGlobalAdminSeesAllStores(): void
     {
-        [$users, $stores, $shifts, $timeoff, $timeclocks, $storeMembers] = $this->fixtures();
-        $controller = $this->buildController($users, $stores, $shifts, $timeoff, $timeclocks, $storeMembers);
+        [$users, $stores, $shifts, $timeoff, $storeMembers] = $this->fixtures();
+        $controller = $this->buildController($users, $stores, $shifts, $timeoff, $storeMembers);
 
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 99, 'is_admin' => 1]);
@@ -149,8 +139,8 @@ final class HomeControllerScopingTest extends TestCase
 
     public function testScopedManagerOnlySeesOwnStore(): void
     {
-        [$users, $stores, $shifts, $timeoff, $timeclocks, $storeMembers] = $this->fixtures();
-        $controller = $this->buildController($users, $stores, $shifts, $timeoff, $timeclocks, $storeMembers);
+        [$users, $stores, $shifts, $timeoff, $storeMembers] = $this->fixtures();
+        $controller = $this->buildController($users, $stores, $shifts, $timeoff, $storeMembers);
 
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => 0]);

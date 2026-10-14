@@ -368,11 +368,6 @@ final class Navigation
     public static function legacyBundleItems(): array
     {
         return [
-            'timeclock' => [
-                new NavItem('timeclocks', NavItem::PLANNING, 'timeclocks', 'admin.timeclocks', 'employee.timeclock',
-                    icon: 'clock', employeeLabel: 'timeclock', activePaths: ['/admin/timeclocks', '/employee/timeclock'],
-                    storeFeature: 'timeclock', order: 40, mobile: true),
-            ],
             'timeoff' => [
                 new NavItem('timeoff', NavItem::REQUESTS, 'timeoff', 'admin.timeoff', 'employee.timeoff',
                     icon: 'leaf', employeeLabel: 'my_timeoff', activePaths: ['/admin/timeoff', '/employee/timeoff'],

@@ -54,7 +54,6 @@ final class StoreFeatures
             new StoreFeature($key, 'feature_' . $key, 'feature_' . $key . '_desc', $icon, $order);
 
         return [
-            'timeclock'    => [$f('timeclock', '🕐', 20)],
             'timeoff'      => [$f('timeoff', '🏖', 30)],
         ];
     }

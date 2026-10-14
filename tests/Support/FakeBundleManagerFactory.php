@@ -24,19 +24,27 @@ final class FakeBundleManagerFactory
      * @param array<string, list<\kintai\Contract\Extension\Action>> $actions actions déclarées, par slug (Bundle::actions())
      * @param array<string, list<\kintai\Contract\Provider\PendingRequestsProvider>> $pending fournisseurs de demandes en
      *        attente déclarés, par slug (Bundle::pendingRequestsProviders())
+     * @param array<string, list<\kintai\Contract\Provider\AttendanceProvider>> $attendance fournisseurs de pointages
+     *        déclarés, par slug (Bundle::attendanceProviders())
      */
-    public static function withActiveSlugs(array $activeSlugs, array $actions = [], array $pending = []): BundleManager
+    public static function withActiveSlugs(array $activeSlugs, array $actions = [], array $pending = [], array $attendance = []): BundleManager
     {
         $manager = (new \ReflectionClass(BundleManager::class))->newInstanceWithoutConstructor();
 
         $bundles = [];
         foreach ($activeSlugs as $slug) {
-            $bundles[$slug] = new class ($slug, $actions[$slug] ?? [], $pending[$slug] ?? []) extends Bundle {
+            $bundles[$slug] = new class ($slug, $actions[$slug] ?? [], $pending[$slug] ?? [], $attendance[$slug] ?? []) extends Bundle {
                 public function __construct(
                     private readonly string $slug,
                     private readonly array $declaredActions,
                     private readonly array $declaredPending,
+                    private readonly array $declaredAttendance,
                 ) {
+                }
+
+                public function attendanceProviders(): array
+                {
+                    return $this->declaredAttendance;
                 }
 
                 public function pendingRequestsProviders(): array

@@ -6,13 +6,14 @@ namespace kintai\Tests\Unit\Core\Services;
 
 use kintai\Contract\Provider\PendingRequest;
 use kintai\Contract\Provider\PendingRequestsProvider;
+use kintai\Core\Container;
 use kintai\Core\Extension\ExtensionRegistry;
 use kintai\Core\Extension\PendingRequests;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
-use kintai\Core\Repositories\TimeclockRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Services\DashboardAlertService;
+use kintai\Tests\Support\FakeAttendanceProvider;
 use kintai\Tests\Support\FakeBundleManagerFactory;
 use PHPUnit\Framework\TestCase;
 
@@ -37,6 +38,11 @@ final class DashboardAlertServiceTest extends TestCase
     /** @var array<string, list<PendingRequest>> clé du fournisseur de demandes (timeoff, swaps…) => demandes en attente */
     private array $pendingFixture = [];
     private array $timeclocksFixture = [];
+
+    protected function tearDown(): void
+    {
+        (new \ReflectionProperty(Container::class, 'instance'))->setValue(null, null);
+    }
 
     protected function setUp(): void
     {
@@ -64,17 +70,17 @@ final class DashboardAlertServiceTest extends TestCase
             fn(int $storeId) => $this->storeMembers[$storeId] ?? []
         );
 
-        $timeclocks = $this->createMock(TimeclockRepositoryInterface::class);
-        $timeclocks->method('findAll')->willReturnCallback(fn() => $this->timeclocksFixture);
-
         // Demandes en attente fournies par des bundles actifs (fournisseurs du contrat 1.9).
         $providers = [];
         foreach ($this->pendingFixture as $key => $requests) {
             $providers[$key] = [self::provider($key, $requests)];
         }
-        $manager = FakeBundleManagerFactory::withActiveSlugs(array_keys($providers), [], $providers);
+        // Pointages fournis par timeclock (contrat 1.11), lus par le Core à travers le registre des extensions.
+        $attendance = $this->timeclocksFixture === [] ? [] : ['timeclock' => [new FakeAttendanceProvider($this->timeclocksFixture)]];
+        $manager = FakeBundleManagerFactory::withActiveSlugs(array_unique([...array_keys($providers), ...array_keys($attendance)]), [], $providers, $attendance);
+        Container::getInstance()->instance(ExtensionRegistry::class, new ExtensionRegistry($manager));
 
-        return new DashboardAlertService($shifts, $users, $storeUsers, $timeclocks, new PendingRequests(new ExtensionRegistry($manager), $manager));
+        return new DashboardAlertService($shifts, $users, $storeUsers, new PendingRequests(new ExtensionRegistry($manager), $manager));
     }
 
     /** @param list<PendingRequest> $requests */

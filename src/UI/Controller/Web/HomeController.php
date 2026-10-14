@@ -14,7 +14,6 @@ use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Extension\Attendances;
-use kintai\Core\Repositories\TimeclockRepositoryInterface;
 use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
@@ -35,7 +34,6 @@ final class HomeController
         'hr_absenteeism',
         'shifts_today',
         'pending_timeoff',
-        'timeclocks_today',
     ];
 
     /** Fenêtre glissante (jours) du widget "Aperçu statistiques", alignée sur la période "30 jours" des pages analytics. */
@@ -58,7 +56,6 @@ final class HomeController
         private readonly ShiftTypeRepositoryInterface $shiftTypes,
         private readonly TimeoffRequestRepositoryInterface $timeoffRequests,
         private readonly UserDashboardPrefsRepositoryInterface $dashboardPrefs,
-        private readonly TimeclockRepositoryInterface $timeclocks,
         private readonly StoreUserRepositoryInterface $storeUsers,
         private readonly StoreStatsServiceInterface $storeStats,
         private readonly DashboardAlertService $dashboardAlerts,
@@ -137,18 +134,6 @@ final class HomeController
         });
 
         // Pointages actifs en ce moment
-        // Pointages lus à travers les fournisseurs (Bundle::attendanceProviders()), repli sur la table des pointages.
-        $allTimeclocks   = array_values(array_filter(Attendances::current($this->timeclocks)->all(), fn($tc) => $inScope((int) ($tc['store_id'] ?? 0))));
-        $activeClocksNow = array_values(array_filter(
-            $allTimeclocks,
-            fn($tc) => ($tc['shift_date'] ?? '') === $today && empty($tc['clock_out_time'])
-        ));
-        $activeClocksNow = array_map(function (array $tc) use ($usersMap, $storesMap): array {
-            $tc['user_name']  = $usersMap[(int)  ($tc['user_id']  ?? 0)] ?? ('User #'  . (int) ($tc['user_id']  ?? 0));
-            $tc['store_name'] = $storesMap[(int) ($tc['store_id'] ?? 0)] ?? ('Store #' . (int) ($tc['store_id'] ?? 0));
-            return $tc;
-        }, $activeClocksNow);
-        usort($activeClocksNow, fn($a, $b) => strcmp($a['clock_in_time'] ?? '', $b['clock_in_time'] ?? ''));
 
         // Widgets proposés : ceux du Core et ceux des bundles actifs (Bundle::dashboardWidgets(), contrat 1.4). Les
         // widgets historiques d'un bundle qui déclare les siens ne sont plus rendus par le Core ($enabledWidgets).
@@ -238,7 +223,6 @@ final class HomeController
             'pending_requests_visible' => $pending->hasVisible($canSeeRequests, $requestsFeat),
             'users_map'          => $usersMap,
             'sort'               => $sort,
-            'active_clocks_now'  => $activeClocksNow,
             'store_stats_rows'   => $storeStatsRows,
             'store_stats_period' => self::STATS_WIDGET_PERIOD_DAYS,
             'store_stats_hours_by_week' => $storeStatsHoursByWeek,
@@ -344,7 +328,7 @@ final class HomeController
             }
 
             $periodTimeclocks = array_values(array_filter(
-                Attendances::current($this->timeclocks)->forStoreBetween($sid, $since, $today),
+                Attendances::current()->forStoreBetween($sid, $since, $today),
                 fn($tc) => ($tc['shift_date'] ?? '') >= $since && ($tc['shift_date'] ?? '') <= $today
             ));
             foreach ($periodTimeclocks as $tc) {

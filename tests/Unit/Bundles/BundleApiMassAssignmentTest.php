@@ -6,16 +6,13 @@ namespace kintai\Tests\Unit\Bundles;
 
 $fixtures = dirname(__DIR__, 2) . '/Fixtures/bundles';
 require_once $fixtures . '/timeoff-1.0.0/src/Controllers/Api/TimeoffRequestController.php';
-require_once $fixtures . '/timeclock-1.0.0/src/Controllers/Api/TimeclockController.php';
 
 use kintai\Bundles\Installed\TimeOff\Controllers\Api\TimeoffRequestController;
-use kintai\Bundles\Installed\Timeclock\Controllers\Api\TimeclockController;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
-use kintai\Core\Repositories\TimeclockRepositoryInterface;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Services\AuditLogger;
@@ -129,42 +126,5 @@ final class BundleApiMassAssignmentTest extends TestCase
         $controller = new TimeoffRequestController($repo, new AuditLogger(), $this->permissions, $this->storeUsers);
 
         $controller->update($this->request(['status' => 'approved', 'store_id' => self::OTHER, 'user_id' => 1], ['id' => '7']));
-    }
-
-    // --------------------------------------------------------------- timeclock
-
-    public function testClockInInAStoreTheEmployeeDoesNotBelongToIsForbidden(): void
-    {
-        $repo = $this->createMock(TimeclockRepositoryInterface::class);
-        $repo->method('findActiveByUser')->willReturn(null);
-        $repo->expects($this->never())->method('save');
-        $controller = new TimeclockController($repo, $this->storeUsers, new AuditLogger(), $this->permissions);
-
-        $this->expectException(ForbiddenException::class);
-        $controller->clockIn($this->request(['user_id' => self::ME, 'store_id' => self::OTHER]));
-    }
-
-    public function testTimeclockUpdateCannotMoveTheEntryToAnotherStoreOrUser(): void
-    {
-        $repo = $this->createMock(TimeclockRepositoryInterface::class);
-        $repo->method('findById')->with(3)->willReturn(['id' => 3, 'user_id' => 9, 'store_id' => self::MY_STORE]);
-        $repo->expects($this->once())->method('save')->with($this->callback(
-            fn(array $d): bool => $d['id'] === 3
-                && !array_key_exists('store_id', $d)
-                && !array_key_exists('user_id', $d)
-        ))->willReturn(['id' => 3, 'user_id' => 9, 'store_id' => self::MY_STORE]);
-
-        // Gestionnaire du magasin 5 : timeclock.update y est accordé pour ce test.
-        $assignments = $this->createStub(RoleAssignmentRepositoryInterface::class);
-        $assignments->method('findByUser')->willReturn([
-            ['id' => 1, 'user_id' => self::ME, 'role_id' => 20, 'scope_type' => 'store', 'scope_id' => self::MY_STORE],
-        ]);
-        $roles = $this->createStub(RoleRepositoryInterface::class);
-        $roles->method('findById')->willReturn(['id' => 20, 'is_system' => 0]);
-        $roles->method('getPermissions')->willReturn(['timeclock.update']);
-        $roles->method('getGlobalPermissionKeys')->willReturn([]);
-        $controller = new TimeclockController($repo, $this->storeUsers, new AuditLogger(), new PermissionService($assignments, $roles));
-
-        $controller->update($this->request(['note' => 'x', 'store_id' => self::OTHER, 'user_id' => 1], ['id' => '3']));
     }
 }

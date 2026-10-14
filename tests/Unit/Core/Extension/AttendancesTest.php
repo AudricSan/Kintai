@@ -10,25 +10,14 @@ use kintai\Core\BundleContract\Bundle;
 use kintai\Core\BundleManager;
 use kintai\Core\Extension\Attendances;
 use kintai\Core\Extension\ExtensionRegistry;
-use kintai\Core\Repositories\TimeclockRepositoryInterface;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Fournisseur de pointages (étape 3c du contrat de bundle, contrat 1.11) : repli sur la table des pointages tant
- * qu'aucun bundle ne déclare de fournisseur, sinon pointages des fournisseurs additionnés, isolés, au format historique.
+ * Fournisseur de pointages (étape 3c du contrat de bundle, contrat 1.11) : pointages des fournisseurs déclarés
+ * additionnés, isolés, au format historique ; aucun sans fournisseur.
  */
 final class AttendancesTest extends TestCase
 {
-    private TimeclockRepositoryInterface $legacy;
-
-    protected function setUp(): void
-    {
-        $this->legacy = $this->createMock(TimeclockRepositoryInterface::class);
-        $this->legacy->method('findAll')->willReturn([['id' => 1]]);
-        $this->legacy->method('findByStoreBetween')->willReturn([['id' => 2]]);
-        $this->legacy->method('findActiveByUser')->willReturn(['id' => 3]);
-    }
-
     /** @param array<string, list<AttendanceProvider>> $active */
     private function attendances(array $active): Attendances
     {
@@ -59,7 +48,7 @@ final class AttendancesTest extends TestCase
         $manager = (new \ReflectionClass(BundleManager::class))->newInstanceWithoutConstructor();
         (new \ReflectionProperty($manager, 'bundles'))->setValue($manager, $bundles);
 
-        return new Attendances(new ExtensionRegistry($manager), $this->legacy);
+        return new Attendances(new ExtensionRegistry($manager));
     }
 
     private static function provider(array $attendance, ?\Throwable $fail = null): AttendanceProvider
@@ -80,13 +69,14 @@ final class AttendancesTest extends TestCase
         };
     }
 
-    public function testLegacyTableWhenNoProviderIsDeclared(): void
+    /** Sans fournisseur (timeclock désactivé ou désinstallé) : aucun pointage. */
+    public function testNoAttendanceWithoutProvider(): void
     {
-        $attendances = $this->attendances(['timeclock' => []]);
-
-        $this->assertSame([['id' => 1]], $attendances->all());
-        $this->assertSame([['id' => 2]], $attendances->forStoreBetween(1, '2026-10-01', '2026-10-14'));
-        $this->assertSame(['id' => 3], $attendances->activeForUser(4));
+        foreach ([$this->attendances(['timeclock' => []]), new Attendances()] as $attendances) {
+            $this->assertSame([], $attendances->all());
+            $this->assertSame([], $attendances->forStoreBetween(1, '2026-10-01', '2026-10-14'));
+            $this->assertNull($attendances->activeForUser(4));
+        }
     }
 
     public function testDeclaredProvidersAreMergedIsolatedAndShapedLikeTheLegacyRows(): void
