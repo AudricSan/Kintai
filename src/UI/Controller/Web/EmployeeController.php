@@ -10,7 +10,6 @@ use kintai\Core\Extension\DashboardWidgets;
 use kintai\Core\Repositories\AvailabilityRepositoryInterface;
 use kintai\Core\Repositories\IcalTokenRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
-use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
@@ -40,7 +39,6 @@ final class EmployeeController
         'upcoming',
         'monthly_stats',
         'pending_timeoff',
-        'pending_swaps',
     ];
 
     public function __construct(
@@ -51,7 +49,6 @@ final class EmployeeController
         private readonly StoreUserRepositoryInterface $storeUsers,
         private readonly UserRepositoryInterface $users,
         private readonly TimeoffRequestRepositoryInterface $timeoffRequests,
-        private readonly ShiftSwapRequestRepositoryInterface $swapRequests,
         private readonly UserShiftTypeRateRepositoryInterface $userRates,
         private readonly AuditLogger $auditLogger,
         private readonly IcalTokenRepositoryInterface $icalTokens,
@@ -93,13 +90,6 @@ final class EmployeeController
             fn($r) => ($r['status'] ?? '') === 'pending'
         ));
 
-        $sentSwaps    = $this->swapRequests->findByRequester($userId);
-        $received     = $this->swapRequests->findByTarget($userId);
-        $pendingSwaps = array_values(array_filter(
-            $received,
-            fn($s) => ($s['status'] ?? '') === 'pending' && ($s['accepted_at'] ?? null) === null
-        ));
-
 
         $storesMap   = [];
         foreach ($this->stores->findAllWithDeleted() as $s) {
@@ -139,11 +129,11 @@ final class EmployeeController
                 && ($f === null || $storeFeatures === null || in_array($f, (array) $storeFeatures, true)),
         );
 
-        // Cartes de statistiques des bundles (contrat 1.19) ; repli timeoff / shift-swap avec les valeurs ci-dessus.
+        // Cartes de statistiques des bundles (contrat 1.19) ; repli timeoff avec la valeur ci-dessus.
         $bundleStats = DashboardStats::current()->cards(
             ['user' => $user, 'store_ids' => array_map(fn($m) => (int) $m['store_id'], $this->storeUsers->findByUser($userId)), 'stores_map' => $storesMap, 'today' => $today],
             static fn(?string $f): bool => feat_bundle($f) && ($f === null || $storeFeatures === null || in_array($f, (array) $storeFeatures, true)),
-            ['timeoff' => count($pendingTimeoff), 'swaps' => count($pendingSwaps)],
+            ['timeoff' => count($pendingTimeoff)],
         );
 
         return Response::html($this->view->render('employee.dashboard', [
@@ -152,8 +142,6 @@ final class EmployeeController
             'shifts_today'     => $shiftsToday,
             'upcoming'         => $upcomingShifts,
             'pending_timeoff'  => $pendingTimeoff,
-            'my_swaps'         => $sentSwaps,
-            'pending_swaps'    => $pendingSwaps,
             'stores_map'       => $storesMap,
             'active_clock'     => $activeClock,
             'user_can'         => $userCan,
@@ -513,7 +501,6 @@ final class EmployeeController
     // est désactivé.)
 
     // Congés : voir src/Bundles/TimeOff/Controllers/Web/EmployeeTimeoffController.php
-    // Échanges de shifts : voir src/Bundles/ShiftSwap/Controllers/Web/EmployeeSwapController.php
 
     // -------------------------------------------------------------------------
     // Helpers

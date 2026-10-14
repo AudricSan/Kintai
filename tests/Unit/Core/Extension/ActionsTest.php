@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Liens d'action des bundles dans les pages du Core (étape 2h du contrat de bundle) : déclarations des bundles actifs
- * (Bundle::actions(), contrat 1.6), repli historique (shift-swap), filtres.
+ * (Bundle::actions(), contrat 1.6), filtres.
  */
 final class ActionsTest extends TestCase
 {
@@ -68,7 +68,7 @@ final class ActionsTest extends TestCase
         $manager = (new \ReflectionClass(BundleManager::class))->newInstanceWithoutConstructor();
         (new \ReflectionProperty($manager, 'bundles'))->setValue($manager, $bundles);
 
-        return new Actions(new ExtensionRegistry($manager), $manager);
+        return new Actions(new ExtensionRegistry($manager));
     }
 
     /** Liens « Licencier » tels que les déclare le bundle resignation-report (il n'a plus de repli dans le Core). */
@@ -119,11 +119,10 @@ final class ActionsTest extends TestCase
         $this->assertSame(['salary_report'], self::keys($both->links(Action::EMPLOYEE_ROW, $ctx, fn(string $p): bool => $p === 'payroll.generate')));
     }
 
-    /** Repli historique : seulement shift-swap, et seulement s'il est actif sans rien déclarer. */
-    public function testLegacyActionsFollowActiveBundles(): void
+    /** Plus de repli : un bundle actif qui ne déclare rien n'ajoute aucun lien (le Core n'en connaît aucun). */
+    public function testNoLegacyActions(): void
     {
-        $this->assertSame(['shift-swap'], array_keys(Actions::legacyBundleActions()));
-        $this->assertSame(['request_swap'], array_map(fn(Action $a): string => $a->key, $this->actions(['shift-swap' => []])->inSlot(Action::SHIFTS_EMPLOYEE)));
+        $this->assertSame([], $this->actions(['shift-swap' => []])->inSlot(Action::SHIFTS_EMPLOYEE));
         $this->assertSame([], $this->actions([])->inSlot(Action::SHIFTS_EMPLOYEE));
         $this->assertSame([], $this->actions(['shift-swap' => [new Action('other', Action::EMPLOYEE_ROW, 'o', fn(): string => '/o')]])->inSlot(Action::SHIFTS_EMPLOYEE));
     }

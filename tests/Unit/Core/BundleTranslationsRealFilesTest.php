@@ -36,7 +36,6 @@ final class BundleTranslationsRealFilesTest extends TestCase
     public static function distributedBundleKeyProvider(): array
     {
         return [
-            'ShiftSwap'         => ['bundle_shift_swap', 'shift-swap-1.0.0'],
             'Timeclock'         => ['bundle_timeclock', 'timeclock-1.0.0'],
             'TimeOff'           => ['bundle_timeoff', 'timeoff-1.0.0'],
         ];

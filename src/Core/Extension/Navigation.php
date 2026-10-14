@@ -378,11 +378,6 @@ final class Navigation
                     icon: 'leaf', employeeLabel: 'my_timeoff', activePaths: ['/admin/timeoff', '/employee/timeoff'],
                     storeFeature: 'timeoff', order: 10, mobile: true),
             ],
-            'shift-swap' => [
-                new NavItem('swaps', NavItem::REQUESTS, 'swaps', 'admin.swap_requests', 'employee.swaps',
-                    icon: 'arrows', activePaths: ['/admin/swap-requests', '/employee/swaps'],
-                    storeFeature: 'swaps', order: 20, mobile: true),
-            ],
         ];
     }
 }

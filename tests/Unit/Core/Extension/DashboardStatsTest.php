@@ -62,11 +62,12 @@ final class DashboardStatsTest extends TestCase
     public function testLegacyCardsFollowActiveBundles(): void
     {
         $all = fn(?string $f): bool => true;
-        $cards = $this->stats(['timeoff' => [], 'shift-swap' => []])->cards([], $all, ['timeoff' => 2, 'swaps' => 3]);
+        $cards = $this->stats(['timeoff' => [], 'shift-swap' => []])->cards([], $all, ['timeoff' => 2]);
 
-        $this->assertSame(['pending_timeoff', 'pending_swaps'], self::keys($cards));
-        $this->assertSame([2, 3], array_column($cards, 'value'));
-        $this->assertSame(['warning', 'danger'], array_column($cards, 'tone'));
+        // shift-swap n'a plus de carte historique : sans déclaration, rien.
+        $this->assertSame(['pending_timeoff'], self::keys($cards));
+        $this->assertSame([2], array_column($cards, 'value'));
+        $this->assertSame(['warning'], array_column($cards, 'tone'));
         $this->assertSame([], $this->stats([])->cards([], $all), 'aucun bundle actif : aucune carte');
         $this->assertSame(['pending_timeoff'], self::keys($this->stats(['timeoff' => [], 'shift-swap' => []])->cards([], fn(?string $f): bool => $f !== 'swaps')));
     }

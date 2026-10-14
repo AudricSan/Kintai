@@ -9,7 +9,6 @@ use kintai\Core\Repositories\AvailabilityRepositoryInterface;
 use kintai\Core\Repositories\DevicePushTokenRepositoryInterface;
 use kintai\Core\Repositories\IcalTokenRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
-use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
@@ -51,7 +50,6 @@ final class EmployeeControllerNavSettingsTest extends TestCase
             $this->createMock(StoreUserRepositoryInterface::class),
             $this->createMock(UserRepositoryInterface::class),
             $this->createMock(TimeoffRequestRepositoryInterface::class),
-            $this->createMock(ShiftSwapRequestRepositoryInterface::class),
             $this->createMock(UserShiftTypeRateRepositoryInterface::class),
             new AuditLogger(),
             $this->createMock(IcalTokenRepositoryInterface::class),

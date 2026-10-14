@@ -10,7 +10,6 @@ use kintai\Core\Container;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
-use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
@@ -68,8 +67,6 @@ final class HomeControllerPendingClaimsTest extends TestCase
             ['id' => 1, 'store_id' => 1, 'status' => 'pending'],
         ]);
 
-        $swapsRepo = $this->createMock(ShiftSwapRequestRepositoryInterface::class);
-        $swapsRepo->method('findAll')->willReturn([]);
 
         $timeclocksRepo = $this->createMock(TimeclockRepositoryInterface::class);
         $timeclocksRepo->method('findAll')->willReturn([]);
@@ -93,7 +90,6 @@ final class HomeControllerPendingClaimsTest extends TestCase
         // conteneur.
         $container = Container::getInstance();
         $container->instance(TimeoffRequestRepositoryInterface::class, $timeoffRepo);
-        $container->instance(ShiftSwapRequestRepositoryInterface::class, $swapsRepo);
         $container->instance(ShiftRepositoryInterface::class, $shiftsRepo);
         $container->instance(StoreRepositoryInterface::class, $storesRepo);
 
@@ -104,7 +100,6 @@ final class HomeControllerPendingClaimsTest extends TestCase
             $shiftsRepo,
             $shiftTypesRepo,
             $timeoffRepo,
-            $swapsRepo,
             $dashboardPrefs,
             $timeclocksRepo,
             $storeUsersRepo,

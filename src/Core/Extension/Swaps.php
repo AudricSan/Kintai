@@ -6,27 +6,21 @@ namespace kintai\Core\Extension;
 
 use kintai\Contract\Provider\Swap;
 use kintai\Core\Container;
-use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Services\Log;
 
 /**
  * Demandes d'échange de shifts, lues à travers des fournisseurs (contrat 1.18) :
- * - celles des fournisseurs déclarés par les bundles actifs (Bundle::swapProviders()), réunies ;
- * - à défaut, en repli, la table historique des échanges (ShiftSwapRequestRepositoryInterface), comme jusqu'ici — y
- *   compris quand le bundle shift-swap est désactivé. Ce repli disparaîtra avec l'extraction de shift-swap (étape 4) ;
- *   sans fournisseur, il n'y aura alors plus d'échanges à compter.
+ * celles des fournisseurs déclarés par les bundles actifs (Bundle::swapProviders()), réunies. Sans fournisseur (bundle
+ * shift-swap désactivé ou désinstallé), il n'y a pas d'échanges à compter.
  *
  * Les lignes renvoyées gardent la forme historique (id, store_id, requester_id, target_user_id, created_at, status).
  */
 final class Swaps
 {
-    public function __construct(
-        private readonly ?ExtensionRegistry $registry,
-        private readonly ?ShiftSwapRequestRepositoryInterface $legacy,
-    ) {}
+    public function __construct(private readonly ?ExtensionRegistry $registry = null) {}
 
-    /** Instance de la requête courante, avec le dépôt historique de l'appelant comme repli. */
-    public static function current(?ShiftSwapRequestRepositoryInterface $legacy): self
+    /** Instance de la requête courante (registre des extensions), ou aucun échange si indisponible. */
+    public static function current(): self
     {
         try {
             $container = Container::getInstance();
@@ -34,19 +28,14 @@ final class Swaps
         } catch (\Throwable) {
             $registry = null;
         }
-        return new self($registry, $legacy);
+        return new self($registry);
     }
 
     /** @return list<array<string, mixed>> Toutes les demandes d'échange du magasin. */
     public function forStore(int $storeId): array
     {
-        $bySlug = $this->registry?->swapProvidersByBundle() ?? [];
-        if ($bySlug === []) {
-            return $this->legacy?->findByStore($storeId) ?? [];
-        }
-
         $rows = [];
-        foreach ($bySlug as $slug => $providers) {
+        foreach ($this->registry?->swapProvidersByBundle() ?? [] as $slug => $providers) {
             foreach ($providers as $provider) {
                 try {
                     foreach ($provider->swaps([$storeId]) as $swap) {

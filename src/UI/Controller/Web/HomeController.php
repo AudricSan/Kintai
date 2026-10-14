@@ -9,7 +9,6 @@ use kintai\Core\Auth\PermissionService;
 use kintai\Core\Extension\DashboardWidgets;
 use kintai\Core\Extension\PendingRequests;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
-use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
@@ -36,7 +35,6 @@ final class HomeController
         'hr_absenteeism',
         'shifts_today',
         'pending_timeoff',
-        'pending_swaps',
         'timeclocks_today',
     ];
 
@@ -59,7 +57,6 @@ final class HomeController
         private readonly ShiftRepositoryInterface $shifts,
         private readonly ShiftTypeRepositoryInterface $shiftTypes,
         private readonly TimeoffRequestRepositoryInterface $timeoffRequests,
-        private readonly ShiftSwapRequestRepositoryInterface $swapRequests,
         private readonly UserDashboardPrefsRepositoryInterface $dashboardPrefs,
         private readonly TimeclockRepositoryInterface $timeclocks,
         private readonly StoreUserRepositoryInterface $storeUsers,
@@ -94,10 +91,8 @@ final class HomeController
         $allStores   = array_values(array_filter($this->stores->findAll(), fn($s) => $inScope((int) $s['id'])));
         $shiftsToday = array_values(array_filter($this->shifts->findAllByDate($today), fn($s) => $inScope((int) ($s['store_id'] ?? 0))));
         $allTimeoff  = array_values(array_filter($this->timeoffRequests->findAll(), fn($r) => $inScope((int) ($r['store_id'] ?? 0))));
-        $allSwaps    = array_values(array_filter($this->swapRequests->findAll(), fn($r) => $inScope((int) ($r['store_id'] ?? 0))));
 
         $pendingTimeoff = array_values(array_filter($allTimeoff, fn($r) => ($r['status'] ?? '') === 'pending'));
-        $pendingSwaps   = array_values(array_filter($allSwaps,   fn($r) => ($r['status'] ?? '') === 'pending'));
 
         $storesMap = [];
         foreach ($allStores as $s) {
@@ -240,7 +235,6 @@ final class HomeController
             ],
             'shifts_today'       => $shiftsToday,
             'pending_timeoff'    => $pendingTimeoff,
-            'pending_swaps'      => $pendingSwaps,
             'pending_requests_visible' => $pending->hasVisible($canSeeRequests, $requestsFeat),
             'users_map'          => $usersMap,
             'sort'               => $sort,

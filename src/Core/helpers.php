@@ -537,15 +537,9 @@ if (!function_exists('notification_type_catalog')) {
             'timeoff_approved'       => ['label' => __('notif_timeoff_approved'), 'icon' => '✓'],
             'timeoff_refused'        => ['label' => __('notif_timeoff_refused'), 'icon' => '✗'],
             'timeoff_submitted'      => ['label' => __('notif_timeoff_submitted'), 'icon' => '🏖'],
-            'swap_accepted'          => ['label' => __('notif_swap_accepted'), 'icon' => '⇄'],
-            'swap_refused'           => ['label' => __('notif_swap_refused'), 'icon' => '⇄'],
             'shift_assigned'         => ['label' => __('notif_shift_assigned'), 'icon' => '📅'],
             'shift_updated'          => ['label' => __('notif_shift_updated'), 'icon' => '🔄'],
             'shift_deleted'          => ['label' => __('notif_shift_deleted'), 'icon' => '🗑'],
-            'swap_requested'         => ['label' => __('notif_swap_requested'), 'icon' => '⇄'],
-            'swap_peer_accepted'     => ['label' => __('notif_swap_peer_accepted'), 'icon' => '⇄'],
-            'swap_peer_refused'      => ['label' => __('notif_swap_peer_refused'), 'icon' => '⇄'],
-            'swap_cancelled'         => ['label' => __('notif_swap_cancelled'), 'icon' => '⇄'],
         ] + $bundleTypes;
     }
 

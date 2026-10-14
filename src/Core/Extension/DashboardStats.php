@@ -13,9 +13,8 @@ use kintai\Core\Services\Log;
  * Cartes de statistiques du tableau de bord employé apportées par les bundles (point d'extension
  * Bundle::dashboardStats(), contrat 1.19) :
  * - celles déclarées par les bundles actifs ;
- * - en repli, celles que le Core affichait jusqu'ici pour timeoff (« Congés en attente ») et shift-swap
- *   (« Échanges ») actifs qui ne déclarent encore rien, avec les valeurs calculées par l'appelant. Ce repli
- *   disparaîtra avec l'extraction de ces bundles (étape 4).
+ * - en repli, celle que le Core affichait jusqu'ici pour timeoff (« Congés en attente ») actif qui ne déclare
+ *   encore rien, avec la valeur calculée par l'appelant. Ce repli disparaîtra avec l'extraction de timeoff (étape 4).
  */
 final class DashboardStats
 {
@@ -41,7 +40,7 @@ final class DashboardStats
     /**
      * Cartes historiques du Core, par slug de bundle.
      *
-     * @param array{timeoff?: int, swaps?: int} $legacyValues valeurs calculées par l'appelant (demandes en attente)
+     * @param array{timeoff?: int} $legacyValues valeurs calculées par l'appelant (demandes en attente)
      * @return array<string, list<DashboardStat>>
      */
     public static function legacyBundleStats(array $legacyValues): array
@@ -49,8 +48,6 @@ final class DashboardStats
         return [
             'timeoff' => [new DashboardStat('pending_timeoff', 'pending_timeoff', static fn(): int => (int) ($legacyValues['timeoff'] ?? 0),
                 '🌴', 'warning', 'timeoff', 10)],
-            'shift-swap' => [new DashboardStat('pending_swaps', 'swaps', static fn(): int => (int) ($legacyValues['swaps'] ?? 0),
-                '🔄', 'danger', 'swaps', 20)],
         ];
     }
 
@@ -60,7 +57,7 @@ final class DashboardStats
      *
      * @param array<string, mixed>    $context
      * @param callable(?string): bool $feat         Fonctionnalité par magasin active ?
-     * @param array{timeoff?: int, swaps?: int} $legacyValues
+     * @param array{timeoff?: int} $legacyValues
      * @return list<array{key: string, label: string, value: int|string, icon: string, tone: string}>
      */
     public function cards(array $context, callable $feat, array $legacyValues = []): array

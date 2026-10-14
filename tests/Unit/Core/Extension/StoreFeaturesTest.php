@@ -70,7 +70,7 @@ final class StoreFeaturesTest extends TestCase
         $all = array_fill_keys(array_keys(StoreFeatures::legacyBundleFeatures()), []);
 
         $this->assertSame(
-            ['shifts', 'timeclock', 'timeoff', 'swaps'],
+            ['shifts', 'timeclock', 'timeoff'],
             self::keys($this->features($all))
         );
     }
@@ -83,7 +83,7 @@ final class StoreFeaturesTest extends TestCase
             'shift-swap' => [],
         ]);
 
-        $this->assertSame(['acme_board', 'shifts', 'timeoff_v2', 'swaps'], self::keys($features));
+        $this->assertSame(['acme_board', 'shifts', 'timeoff_v2'], self::keys($features), 'shift-swap sans déclaration : rien');
     }
 
     public function testBrokenOrDuplicateDeclarationsAreIgnored(): void
@@ -107,7 +107,7 @@ final class StoreFeaturesTest extends TestCase
         $this->assertTrue($features->isAvailable('shifts'));
         $this->assertTrue($features->isAvailable('timeoff'));
         $this->assertTrue($features->isAvailable('acme_board'));
-        $this->assertFalse($features->isAvailable('swaps'), 'fonctionnalité historique d\'un bundle inactif');
+        $this->assertFalse($features->isAvailable('timeclock'), 'fonctionnalité historique d\'un bundle inactif');
         $this->assertTrue($features->isAvailable('unknown_thing'), 'clé inconnue : pas une fonctionnalité de bundle');
     }
 

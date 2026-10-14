@@ -26,13 +26,11 @@ final class DashboardWidgets
     public const LEGACY_BUNDLE_WIDGETS = [
         DashboardWidget::MANAGER => [
             'pending_timeoff'  => 'timeoff',
-            'pending_swaps'    => 'shift-swap',
             'timeclocks_today' => 'timeclock',
         ],
         DashboardWidget::EMPLOYEE => [
             'timeclock'       => 'timeclock',
             'pending_timeoff' => 'timeoff',
-            'pending_swaps'   => 'shift-swap',
         ],
     ];
 

@@ -13,7 +13,6 @@ use kintai\Core\Repositories\NotificationRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
-use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
@@ -72,7 +71,6 @@ final class EmployeeControllerShiftsWeekViewTest extends TestCase
             $this->storeUsers,
             $users,
             $this->createMock(TimeoffRequestRepositoryInterface::class),
-            $this->createMock(ShiftSwapRequestRepositoryInterface::class),
             $this->createMock(UserShiftTypeRateRepositoryInterface::class),
             new AuditLogger(),
             $this->createMock(IcalTokenRepositoryInterface::class),

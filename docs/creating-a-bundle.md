@@ -306,7 +306,7 @@ store, manager side), `stores_map` (id => name) and `today`. Load only what the 
 dashboard view. An exception in `data` or in the view removes that widget only (logged). Render a full card
 (`<div class="card card--mt">…</div>`). Core keys can't be reused, except the keys of the widgets the Core used to
 render for your bundle (`pending_timeoff`, `pending_swaps`, `timeclocks_today`, `timeclock`): reusing them keeps
-users' choices (`notebook` kept `team_notes` this way when it was extracted). As soon as your bundle declares a widget, the Core stops rendering its historical
+users' choices (`notebook` kept `team_notes` and `shift-swap` kept `pending_swaps` this way when they were extracted). As soon as your bundle declares a widget, the Core stops rendering its historical
 widgets for it. Require `"kintai_contract": "^1.4"`.
 
 ### View variables: `viewVariables()` (contract 1.5)
@@ -363,8 +363,8 @@ Slots and the context each one passes to `url`:
 
 The Core renders the link in the slot's own style, only for users holding `permission` and, if `storeFeature` is set,
 with that feature on. A key already used in the slot is ignored; an exception in `url` drops that link (logged).
-Until `shift-swap` declares its own, the Core keeps showing their historical
-links — only while those bundles are active. Require `"kintai_contract": "^1.6"`.
+The Core adds no link of its own: `shift-swap` ships "Request a swap" this way. Require
+`"kintai_contract": "^1.6"`.
 
 ### Notifications and activity log labels (contract 1.7)
 
@@ -492,7 +492,7 @@ The Core shows your card in the stat row at the top of the employee dashboard, a
 upcoming shifts), sorted by `order`. `value` receives the same context as dashboard widgets (`user`, `store_ids`,
 `stores_map`, `today`) and returns what to display; `tone` is one of `DashboardStat::TONES`. With `storeFeature`, the
 card only shows when that feature is on. A key already taken is ignored; an exception drops that card (logged).
-Until `timeoff` and `shift-swap` declare theirs, the Core keeps showing their historical cards. Require
+Until `timeoff` declares its own, the Core keeps showing its historical "Pending time off" card. Require
 `"kintai_contract": "^1.19"`.
 
 ### Shift form sections: `shiftFormSections()` (contract 1.17)
@@ -569,8 +569,8 @@ public function pendingRequestsProviders(): array
 The Core uses it for the "Requests" page (one section per provider, a table built from your columns), the
 dashboard's "Pending requests" counter and stale-request alerts — only for users holding `permission`. Column
 styles: `TEXT`, `BADGE`, `USER` (user id, shown as a name), `STORE` (store id, shown as a name), `TIME` (`HH:MM`).
-Return requests in display order. An exception drops your section only (logged). Until `timeoff` and `shift-swap`
-declare theirs, the Core keeps its own providers for them. Require `"kintai_contract": "^1.9"`.
+Return requests in display order. An exception drops your section only (logged). Until `timeoff` declares its
+own, the Core keeps its own provider for it. Require `"kintai_contract": "^1.9"`.
 The manager dashboard's "stale requests" alert also reads them: a request pending for more than three days is
 listed with its provider's `label()`.
 
@@ -673,8 +673,8 @@ final class RequestSwaps implements SwapProvider
 ```
 
 The Core counts an employee's swaps with it ("Swaps" column of a store's employee report, employee stats page).
-Swaps of every declared provider are merged; a failing provider is skipped (logged). Until a bundle declares one, the
-Core keeps reading the historical swap table. Require `"kintai_contract": "^1.18"`.
+Swaps of every declared provider are merged; a failing provider is skipped (logged). Without any provider (`shift-swap`
+disabled or uninstalled), there is no swap to count. Require `"kintai_contract": "^1.18"`.
 
 ## The RBAC scope contract: `managed_store_ids`
 

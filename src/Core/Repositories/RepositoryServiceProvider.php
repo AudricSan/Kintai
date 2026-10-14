@@ -18,20 +18,13 @@ final class RepositoryServiceProvider extends ServiceProvider
         $this->container->singleton(ShiftTypeRepositoryInterface::class, fn() => new DatabaseShiftTypeRepository());
         $this->container->singleton(ShiftRepositoryInterface::class, fn() => new DatabaseShiftRepository());
         $this->container->singleton(AvailabilityRepositoryInterface::class, fn() => new DatabaseAvailabilityRepository());
-        // TimeoffRequestRepositoryInterface reste ici (même raison que Timeclock/ShiftSwap
-        // ci-dessus) : StoreStatsService, ShiftService, AdminShiftController,
+        // TimeoffRequestRepositoryInterface reste ici (même raison que Timeclock
+        // ci-dessous) : StoreStatsService, ShiftService, AdminShiftController,
         // IcalController et HomeController en dépendent tous pour des calculs qui doivent
         // continuer de fonctionner même si le bundle "timeoff" est désactivé ou
         // désinstallé. Le bundle lui-même (legacy ou distribué, voir kintai-bundle-timeoff)
         // n'a plus besoin de la lier.
         $this->container->singleton(TimeoffRequestRepositoryInterface::class, fn() => new DatabaseTimeoffRequestRepository());
-        // ShiftSwapRequestRepositoryInterface reste ici (même raison que Timeclock/
-        // Timeoff ci-dessus) : StoreStatsService, HomeController et le tableau de
-        // bord d'EmployeeController en dépendent pour des calculs qui doivent continuer
-        // de fonctionner même si le bundle "shift-swap" est désactivé ou désinstallé.
-        // Le bundle lui-même (legacy ou distribué, voir kintai-bundle-shift-swap) n'a
-        // plus besoin de la lier.
-        $this->container->singleton(ShiftSwapRequestRepositoryInterface::class, fn() => new DatabaseShiftSwapRequestRepository());
         $this->container->singleton(UserShiftTypeRateRepositoryInterface::class, fn() => new DatabaseUserShiftTypeRateRepository());
         $this->container->singleton(IcalTokenRepositoryInterface::class, fn() => new DatabaseIcalTokenRepository());
         // TimeclockRepositoryInterface reste ici (bundle "timeclock" = UI seulement) :

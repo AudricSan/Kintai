@@ -56,7 +56,6 @@ final class StoreFeatures
         return [
             'timeclock'    => [$f('timeclock', '🕐', 20)],
             'timeoff'      => [$f('timeoff', '🏖', 30)],
-            'shift-swap'   => [$f('swaps', '🔄', 40)],
         ];
     }
 

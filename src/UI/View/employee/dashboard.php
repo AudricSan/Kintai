@@ -8,8 +8,6 @@ use kintai\UI\Components\Table;
 /** @var array $shifts_today */
 /** @var array $upcoming */
 /** @var array $pending_timeoff */
-/** @var array $my_swaps */
-/** @var array $pending_swaps */
 /** @var array $stores_map  id → store name */
 /** @var array|null $employee_month_stats */
 /** @var array|null $active_clock */
@@ -41,7 +39,6 @@ $can = $user_can ?? fn(string $k): bool => true;
 $_empWidgetFeatMap = [
     'timeclock'       => 'timeclock',
     'pending_timeoff' => 'timeoff',
-    'pending_swaps'   => 'swaps',
 ] + $bundle_widget_meta['features'];
 $_empWidgetPermMap = $bundle_widget_meta['permissions'];
 $all_widgets = array_values(array_filter(
@@ -81,7 +78,6 @@ ob_start();
             'upcoming'       => __('my_upcoming_shifts'),
             'monthly_stats'  => __('monthly_stats'),
             'pending_timeoff'=> __('my_pending_timeoff'),
-            'pending_swaps'  => __('pending_swaps'),
         ] + $bundle_widget_meta['labels'];
         foreach ($all_widgets as $wk): ?>
         <label class="dash-widget-item">
@@ -305,26 +301,6 @@ ob_start();
 <?php
 echo Card::make()
     ->header('<span>' . __('my_pending_timeoff') . '</span> ' . Button::make(__('view_all'))->ghost()->sm()->link(route_url('employee.timeoff'))->render())
-    ->body(ob_get_clean())
-    ->render();
-?>
-<?php endif; ?>
-
-<?php if (widget_on('pending_swaps', $widgets) && !empty($pending_swaps)): ?>
-<?php
-ob_start();
-?>
-<div class="table-wrap">
-    <?= Table::make()
-        ->data($pending_swaps)
-        ->text(__('date'), fn($s) => (string) ($s['shift_date'] ?? '—'))
-        ->text(__('from'), fn($s) => (string) ($s['requester_name'] ?? '#' . ($s['requester_id'] ?? '?')))
-        ->column('', fn($s) => Button::make(__('view'))->outline()->sm()->link(route_url('employee.swaps'))->render())
-        ->render() ?>
-</div>
-<?php
-echo Card::make()
-    ->header('<span>' . __('pending_swaps') . '</span> ' . Button::make(__('view_all'))->ghost()->sm()->link(route_url('employee.swaps'))->render())
     ->body(ob_get_clean())
     ->render();
 ?>
