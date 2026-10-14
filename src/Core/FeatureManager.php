@@ -22,7 +22,6 @@ final class FeatureManager
         'swaps'         => 'shift-swap',
         'open_shifts'   => 'shift-claim',
         'timeclock'     => 'timeclock',
-        'notes'         => 'notebook',
     ];
 
     private array $enabledFeatures = [];

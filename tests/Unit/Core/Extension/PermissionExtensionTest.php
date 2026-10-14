@@ -115,13 +115,13 @@ final class PermissionExtensionTest extends TestCase
     {
         $this->registry([
             'acme'     => ['acme_tasks' => ['view']],
-            'notebook' => ['notebook' => ['view', 'create', 'manage']],
+            'daily-report' => ['daily_reports' => ['view']],
             'timeoff'  => [],
             'messaging' => ['messaging' => ['view', 'send', 'delete']],
         ]);
 
         $this->assertSame(
-            ['employees', 'shifts', 'stores', 'payroll', 'timeoff', 'messaging', 'notebook', 'acme_tasks'],
+            ['employees', 'shifts', 'stores', 'payroll', 'timeoff', 'daily_reports', 'messaging', 'acme_tasks'],
             array_keys(PermissionCatalog::forActiveBundles())
         );
     }

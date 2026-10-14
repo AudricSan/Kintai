@@ -9,7 +9,6 @@
 /** @var array  $all_widgets        ordered list of widget keys */
 $users_map        ??= [];
 $active_clocks_now ??= [];
-$notebook_entries  ??= [];
 $enabled_widgets        ??= array_flip(\kintai\UI\Controller\Web\HomeController::ADMIN_WIDGETS);
 $all_widgets            ??= \kintai\UI\Controller\Web\HomeController::ADMIN_WIDGETS;
 // Widgets des bundles (Bundle::dashboardWidgets(), contrat 1.4) : HTML déjà rendu par le contrôleur, affiché en fin
@@ -40,14 +39,12 @@ $_widgetFeatMap = [
     'pending_timeoff'  => 'timeoff',
     'pending_swaps'    => 'swaps',
     'timeclocks_today' => 'timeclock',
-    'team_notes'       => 'notes',
 ] + $bundle_widget_meta['features'];
 // Widgets masqués (panneau de personnalisation + affichage) si la permission requise manque
 $_widgetPermMap = [
     'store_stats_summary' => 'payroll.view',
     'financial_overview'  => 'payroll.view',
     'hr_absenteeism'      => 'payroll.view',
-    'team_notes'          => 'notebook.view',
 ] + $bundle_widget_meta['permissions'];
 // Filtrer all_widgets par features/permissions pour le panneau de personnalisation
 $all_widgets = array_values(array_filter(
@@ -77,7 +74,6 @@ $widgetLabels = [
     'pending_timeoff'      => __('widget_pending_timeoff'),
     'pending_swaps'        => __('widget_pending_swaps'),
     'timeclocks_today' => __('widget_timeclocks_today'),
-    'team_notes'           => __('widget_team_notes'),
 ] + $bundle_widget_meta['labels'];
 
 // Données de graphiques accumulées par les différents widgets, émises une seule fois
@@ -687,38 +683,6 @@ $hasMultipleStores = count($shiftsByStore) > 1;
                 </tbody>
             </table>
         </div>
-    <?php endif; ?>
-</div>
-<?php endif; ?>
-
-<?php if (admin_widget_on('team_notes', $enabled_widgets) && $feat('notes') && $can('notebook.view')): ?>
-<?php if ($notebookCss = bundle_asset('notebook', 'css/notebook.css')): ?>
-<link rel="stylesheet" href="<?= $notebookCss ?>">
-<?php endif; ?>
-<!-- Carnet de notes d'équipe -->
-<div class="card card--mt">
-    <div class="card-header">
-        <span><?= __('widget_team_notes') ?></span>
-        <a href="<?= route_url('notebook.index') ?>" class="card-header-link"><?= __('view_all') ?></a>
-    </div>
-    <?php if (empty($notebook_entries)): ?>
-        <div class="empty-state"><?= __('no_notebook_entries') ?></div>
-    <?php else: ?>
-        <ul class="notebook-widget-list">
-            <?php foreach ($notebook_entries as $entry): ?>
-                <li class="notebook-widget-item<?= !empty($entry['pinned']) ? ' notebook-widget-item--pinned' : '' ?>">
-                    <?php if (!empty($entry['pinned'])): ?>
-                        <span class="notebook-widget-item__pin" title="<?= htmlspecialchars(__('notebook_pinned')) ?>">📌</span>
-                    <?php endif; ?>
-                    <p class="notebook-widget-item__content"><?= nl2br(htmlspecialchars($entry['content'] ?? '')) ?></p>
-                    <div class="notebook-widget-item__meta">
-                        <span><?= htmlspecialchars($entry['author_name'] ?? __('notebook_anonymous_author')) ?></span>
-                        <span>·</span>
-                        <span><?= htmlspecialchars($entry['store_name'] ?? __('notebook_org_wide')) ?></span>
-                    </div>
-                </li>
-            <?php endforeach; ?>
-        </ul>
     <?php endif; ?>
 </div>
 <?php endif; ?>
