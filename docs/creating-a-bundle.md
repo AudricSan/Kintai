@@ -151,6 +151,7 @@ away with a new major version.
 | `kintai\Contract\Services\TranslationService` | stable | Translations. |
 | `kintai\Contract\Services\ImageCompressionService` | stable | Image compression. |
 | `kintai\Contract\Services\Mailer` | stable | Sends an e-mail through the instance's configured transport: `send($to, $subject, $html, $attachmentPaths)` (contract 1.15). |
+| `kintai\Contract\Services\PdfCjkFontResolver` | stable | Japanese font for mPDF documents: `PdfCjkFontResolver::applyTo($mpdfConfig)` (contract 1.16). |
 | `kintai\Contract\Services\Sales` | stable | A store's daily sales, read from the sales providers (contract 1.14, see "Sales" below). |
 | `kintai\Contract\Services\ShiftWageCalculator` | stable | Cost of a shift (single source of the payroll computation). |
 | `kintai\Contract\Services\ShiftServiceInterface` | **provisional** | Shift creation; to be replaced by a targeted write API (step 3). |
