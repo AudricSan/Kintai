@@ -24,11 +24,12 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Page de résumé "Demandes" (admin.requests) : agrège congés, échanges de
- * shifts et candidatures bourse aux shifts en attente. Chaque section n'est
- * présente (non-null) que si son bundle est actif ET que l'utilisateur a la
- * permission "*.view" correspondante — sinon elle reste absente de la page.
+ * shifts et candidatures bourse aux shifts en attente, lus à travers les
+ * fournisseurs (PendingRequests, repli historique ici). Chaque section n'est
+ * présente que si son bundle est actif ET que l'utilisateur a la permission
+ * "*.view" correspondante — sinon elle reste absente de la page.
  * ShiftClaimRepositoryInterface n'étant lié au container que par le bundle
- * ShiftClaim, la section "claims" doit aussi se dégrader proprement (null)
+ * ShiftClaim, la section des candidatures doit aussi disparaître proprement
  * quand ce bundle est désactivé, sans jamais faire planter le contrôleur.
  */
 final class AdminRequestsControllerTest extends TestCase
@@ -37,7 +38,8 @@ final class AdminRequestsControllerTest extends TestCase
     {
         $this->ensureViewFile(
             'requests.index',
-            "<?php echo json_encode(['timeoff' => \$timeoff, 'swaps' => \$swaps, 'claims' => \$claims]);"
+            // Une entrée par section affichée : clé du fournisseur => demandes (identifiant + colonnes).
+            "<?php \$o = []; foreach (\$sections as \$s) { \$o[\$s['key']] = array_map(fn(\$r) => ['id' => \$r->id, 'columns' => \$r->columns], \$s['requests']); } echo json_encode(\$o);"
         );
         $this->ensureViewFile('layout.app', "<?php echo \$content ?? '';");
     }
@@ -103,14 +105,19 @@ final class AdminRequestsControllerTest extends TestCase
         $roles->method('getPermissions')->with(5)->willReturn(['timeoff.view', 'swaps.view']);
         $permissions = new PermissionService($roleAssignments, $roles);
 
+        // Les demandes sont lues à travers les fournisseurs (PendingRequests), qui prennent leurs dépôts dans le
+        // conteneur.
+        $container = Container::getInstance();
+        $container->instance(TimeoffRequestRepositoryInterface::class, $timeoffRepo);
+        $container->instance(ShiftSwapRequestRepositoryInterface::class, $swapsRepo);
+        $container->instance(ShiftRepositoryInterface::class, $shiftsRepo);
+        $container->instance(StoreRepositoryInterface::class, $storesRepo);
+
         return new AdminRequestsController(
             new ViewRenderer(sys_get_temp_dir()),
             $usersRepo,
             $storesRepo,
             $storeUsersRepo,
-            $shiftsRepo,
-            $timeoffRepo,
-            $swapsRepo,
             $permissions,
         );
     }
@@ -134,7 +141,7 @@ final class AdminRequestsControllerTest extends TestCase
 
         $this->assertSame([], $data['timeoff']);
         $this->assertSame([], $data['swaps']);
-        $this->assertNull($data['claims']);
+        $this->assertArrayNotHasKey('open_shifts', $data);
     }
 
     public function testAllSectionsNullWhenBundlesDisabled(): void
@@ -146,9 +153,7 @@ final class AdminRequestsControllerTest extends TestCase
         $response   = $controller->index($this->request(true));
         $data       = json_decode($response->body(), true);
 
-        $this->assertNull($data['timeoff']);
-        $this->assertNull($data['swaps']);
-        $this->assertNull($data['claims']);
+        $this->assertSame([], $data, 'aucune section');
     }
 
     public function testTimeoffFilteredToPendingAndScopedToManagedStore(): void
@@ -167,6 +172,7 @@ final class AdminRequestsControllerTest extends TestCase
 
         $this->assertCount(1, $data['timeoff']);
         $this->assertSame(1, $data['timeoff'][0]['id']);
+        $this->assertArrayNotHasKey('open_shifts', $data, 'pas de permission open_shifts.view');
     }
 
     public function testClaimsPresentAndEnrichedWithShiftInfoWhenBundleEnabled(): void
@@ -183,9 +189,11 @@ final class AdminRequestsControllerTest extends TestCase
         $response   = $controller->index($this->request(true));
         $data       = json_decode($response->body(), true);
 
-        $this->assertCount(1, $data['claims']);
-        $this->assertSame('2026-08-10', $data['claims'][0]['shift_date']);
-        $this->assertSame(1, $data['claims'][0]['user_id']);
+        $this->assertCount(1, $data['open_shifts']);
+        $columns = array_column($data['open_shifts'][0]['columns'], 'value', 'label');
+        $this->assertSame('2026-08-10', $columns['date']);
+        $this->assertSame(1, $columns['applicant']);
+        $this->assertSame('09:00:00', $columns['start']);
     }
 
     private function ensureViewFile(string $view, string $content): void

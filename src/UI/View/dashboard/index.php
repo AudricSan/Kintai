@@ -9,7 +9,6 @@
 /** @var array  $all_widgets        ordered list of widget keys */
 $users_map        ??= [];
 $active_clocks_now ??= [];
-$pending_claims    ??= [];
 $notebook_entries  ??= [];
 $enabled_widgets        ??= array_flip(\kintai\UI\Controller\Web\HomeController::ADMIN_WIDGETS);
 $all_widgets            ??= \kintai\UI\Controller\Web\HomeController::ADMIN_WIDGETS;
@@ -121,7 +120,8 @@ $_dashChartData = [];
 
 <?php if (admin_widget_on('kpi_counters', $enabled_widgets)): ?>
 <!-- KPI Stats -->
-<?php $_statCount = 3 + (($feat('timeoff') || $feat('swaps') || $feat('open_shifts')) ? 1 : 0); ?>
+<?php $_pendingVisible = $pending_requests_visible ?? false; // au moins une sorte de demande visible (PendingRequests) ?>
+<?php $_statCount = 3 + ($_pendingVisible ? 1 : 0); ?>
 <div class="stat-grid" style="--stat-cols:<?= $_statCount ?>"><?php unset($_statCount); ?>
     <?php if ($can('employees.view')): ?>
     <a href="<?= route_url('admin.users') ?>" class="stat-card stat-card--link">
@@ -161,16 +161,11 @@ $_dashChartData = [];
         <?php endif; ?>
     </div>
 
-    <?php if ($feat('timeoff') || $feat('swaps') || $feat('open_shifts')): ?>
+    <?php if ($_pendingVisible): ?>
     <a href="<?= route_url('admin.requests') ?>" class="stat-card stat-card--link">
         <div class="stat-card__icon stat-card__icon--danger">⏳</div>
         <div class="stat-card__body">
-            <?php
-            $_pendingCount = ($feat('timeoff')     ? count($pending_timeoff) : 0)
-                           + ($feat('swaps')       ? count($pending_swaps)   : 0)
-                           + ($feat('open_shifts') ? count($pending_claims)  : 0);
-            ?>
-            <div class="stat-card__value"><?= $_pendingCount ?></div>
+            <div class="stat-card__value"><?= (int) ($stats['pending_requests'] ?? 0) ?></div>
             <div class="stat-card__label"><?= __('pending_requests') ?></div>
         </div>
     </a>

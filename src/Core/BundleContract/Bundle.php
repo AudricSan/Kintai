@@ -161,6 +161,17 @@ abstract class Bundle
     }
 
     /**
+     * Fournisseurs de demandes en attente (contrat 1.9) : le Core les lit pour la page « Demandes », le compteur du
+     * tableau de bord et les alertes, sans connaître les tables du bundle.
+     *
+     * @return list<\kintai\Contract\Provider\PendingRequestsProvider>
+     */
+    public function pendingRequestsProviders(): array
+    {
+        return [];
+    }
+
+    /**
      * Boot du bundle, une fois tous les bundles enregistrés.
      */
     public function boot(): void

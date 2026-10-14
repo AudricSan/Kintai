@@ -8,8 +8,8 @@ use kintai\Contract\Extension\DashboardWidget;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Container;
 use kintai\Core\Extension\DashboardWidgets;
+use kintai\Core\Extension\PendingRequests;
 use kintai\Core\Repositories\NotebookEntryRepositoryInterface;
-use kintai\Core\Repositories\ShiftClaimRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
@@ -72,6 +72,7 @@ final class HomeController
         private readonly StoreStatsServiceInterface $storeStats,
         private readonly DashboardAlertService $dashboardAlerts,
         private readonly PermissionService $permissions,
+        private readonly ?PendingRequests $pendingRequests = null,
     ) {}
 
     public function index(Request $request): Response
@@ -103,26 +104,6 @@ final class HomeController
 
         $pendingTimeoff = array_values(array_filter($allTimeoff, fn($r) => ($r['status'] ?? '') === 'pending'));
         $pendingSwaps   = array_values(array_filter($allSwaps,   fn($r) => ($r['status'] ?? '') === 'pending'));
-
-        // Candidatures bourse aux shifts en attente, comptées dans le KPI "Demandes en
-        // attente" au même titre que congés et échanges (page de résumé admin.requests).
-        // ShiftClaimRepositoryInterface n'est lié au container que si le bundle
-        // "shift-claim" est actif (voir ShiftClaimBundle) : résolution différée et
-        // gardée par feat_bundle(), jamais en dépendance de constructeur ici.
-        $pendingClaims = [];
-        if (feat_bundle('open_shifts')) {
-            $container = Container::getInstance();
-            if ($container->has(ShiftClaimRepositoryInterface::class)) {
-                // Isolé : un bundle défaillant (table absente) ne doit pas faire tomber tout le tableau de bord.
-                $pendingClaims = WidgetGuard::run('open_shifts', function () use ($container, $inScope): array {
-                    $shiftClaims = $container->make(ShiftClaimRepositoryInterface::class);
-                    return array_values(array_filter(
-                        $shiftClaims->findAll(),
-                        fn($c) => ($c['status'] ?? '') === 'pending' && $inScope((int) ($c['store_id'] ?? 0))
-                    ));
-                });
-            }
-        }
 
         $storesMap = [];
         foreach ($allStores as $s) {
@@ -266,6 +247,14 @@ final class HomeController
         }
 
         $userCan = fn(string $perm): bool => $this->permissions->can($user, $perm, null);
+
+        // Compteur « Demandes en attente » : toutes sortes de demandes visibles (congés, échanges, candidatures…), lues
+        // à travers les fournisseurs (kintai\Core\Extension\PendingRequests — Bundle::pendingRequestsProviders(),
+        // contrat 1.9, ou repli historique), comme la page « Demandes ».
+        $pending        = $this->pendingRequests ?? PendingRequests::current();
+        $canSeeRequests = fn(string $perm): bool => !empty($user['is_admin']) || $userCan($perm);
+        $requestsFeat   = $this->storeFeatureCheck();
+
         $bundleWidgets = $dashWidgets->render(
             DashboardWidget::MANAGER,
             self::ADMIN_WIDGETS,
@@ -288,12 +277,12 @@ final class HomeController
                 'users'            => count($allUsers),
                 'stores'           => count($allStores),
                 'shifts_today'     => count($shiftsToday),
-                'pending_requests' => count($pendingTimeoff) + count($pendingSwaps) + count($pendingClaims),
+                'pending_requests' => $pending->count($managedStoreIds, $canSeeRequests, $requestsFeat),
             ],
             'shifts_today'       => $shiftsToday,
             'pending_timeoff'    => $pendingTimeoff,
             'pending_swaps'      => $pendingSwaps,
-            'pending_claims'     => $pendingClaims,
+            'pending_requests_visible' => $pending->hasVisible($canSeeRequests, $requestsFeat),
             'users_map'          => $usersMap,
             'sort'               => $sort,
             'active_clocks_now'  => $activeClocksNow,

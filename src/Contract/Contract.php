@@ -18,10 +18,12 @@ namespace kintai\Contract;
 final class Contract
 {
     /** Version du contrat fournie par ce Core. */
-    public const VERSION = '1.8.0';
+    public const VERSION = '1.9.0';
 
     /*
      * Historique :
+     * - 1.9.0 : fournisseurs (étape 3) — Bundle::pendingRequestsProviders(), interface
+     *   kintai\Contract\Provider\PendingRequestsProvider et objet PendingRequest (demandes en attente).
      * - 1.8.0 : point d'extension Bundle::cronJobs() et interface kintai\Contract\Cron\CronJob (tâches planifiées
      *   lancées par /cron/run/{tâche}).
      * - 1.7.0 : point d'extension Bundle::notificationTypes() ; libellés des notifications (notif_{type}) et du
