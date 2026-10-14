@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Controller\Api\V1;
 
+use kintai\Contract\Event\EmployeeCreated;
+use kintai\Core\BundleContract\Bundle;
+use kintai\Core\BundleManager;
+use kintai\Core\Extension\Events;
+use kintai\Core\Extension\ExtensionRegistry;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Tests\Support\ApiOwnerAuth;
 use kintai\Core\Exceptions\PlanLimitExceededException;
@@ -66,6 +71,58 @@ final class UserControllerTest extends TestCase
         $response = $this->controller->store($this->makeJsonRequest(['email' => 'new@example.com', 'first_name' => 'Nouvel', 'last_name' => 'Employé']));
 
         $this->assertSame(201, $response->status());
+    }
+
+    /** Contrat 1.13 : les bundles qui écoutent EmployeeCreated l'apprennent, sans magasin ni secret. */
+    public function testStoreAnnouncesTheNewEmployeeToBundles(): void
+    {
+        $received = [];
+        $bundle = new class extends Bundle {
+            public ?\Closure $listener = null;
+
+            public function __construct() {}
+
+            public function getName(): string
+            {
+                return 'acme';
+            }
+
+            public function register(): void {}
+
+            public function eventListeners(): array
+            {
+                return [EmployeeCreated::class => $this->listener];
+            }
+        };
+        $bundle->listener = function (EmployeeCreated $event) use (&$received): void {
+            $received[] = $event;
+        };
+        $manager = (new \ReflectionClass(BundleManager::class))->newInstanceWithoutConstructor();
+        (new \ReflectionProperty($manager, 'bundles'))->setValue($manager, ['acme' => $bundle]);
+        $controller = new UserController(
+            $this->users,
+            new AuditLogger(),
+            new PlanLimitService(
+                $this->createMock(StoreRepositoryInterface::class),
+                $this->users,
+                new LicenseClientService($this->createMock(AppSettingsRepositoryInterface::class), ['base_url' => '', 'api_key' => '']),
+            ),
+            ApiOwnerAuth::permissions($this),
+            $this->createMock(StoreUserRepositoryInterface::class),
+            new OwnerGuard(ApiOwnerAuth::permissions($this), $this->users),
+            events: new Events(new ExtensionRegistry($manager)),
+        );
+        $this->users->method('countActive')->willReturn(1);
+        $this->users->method('save')->willReturn(['id' => 12, 'email' => 'new@example.com', 'password_hash' => 'hash']);
+
+        $controller->store($this->makeJsonRequest(['email' => 'new@example.com', 'first_name' => 'Nouvel', 'last_name' => 'Employé']));
+
+        $this->assertCount(1, $received);
+        $this->assertSame(12, $received[0]->userId());
+        $this->assertNull($received[0]->storeId);
+        $this->assertSame(ApiOwnerAuth::OWNER_ID, $received[0]->createdBy);
+        $this->assertSame('api', $received[0]->source);
+        $this->assertArrayNotHasKey('password_hash', $received[0]->user);
     }
 
     public function testAnOwnerCannotDeleteThemselvesThroughTheApi(): void

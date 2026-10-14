@@ -205,6 +205,18 @@ abstract class Bundle
     }
 
     /**
+     * Point d'extension « événements » (contrat 1.13) : auditeurs des événements que le Core annonce (classes de
+     * kintai\Contract\Event, par exemple EmployeeCreated), un par événement. Le Core appelle chaque auditeur avec
+     * l'objet de l'événement ; une exception est journalisée sans interrompre l'action du Core.
+     *
+     * @return array<class-string, callable(object): void>
+     */
+    public function eventListeners(): array
+    {
+        return [];
+    }
+
+    /**
      * Boot du bundle, une fois tous les bundles enregistrés.
      */
     public function boot(): void

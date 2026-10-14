@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\UI\Controller\Api\V1;
 
+use kintai\Contract\Event\EmployeeCreated;
 use kintai\Core\Api\Paginator;
 use kintai\Core\Auth\CredentialRevoker;
 use kintai\Core\Auth\UserAnonymizer;
@@ -13,6 +14,7 @@ use kintai\Core\Auth\PasswordPolicy;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Exceptions\ValidationException;
+use kintai\Core\Extension\Events;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
@@ -34,6 +36,7 @@ final class UserController
         // Optionnel pour les tests qui construisent le contrôleur à la main.
         private readonly ?CredentialRevoker $revoker = null,
         private readonly ?UserAnonymizer $anonymizer = null,
+        private readonly ?Events $events = null,
     ) {}
 
     /** Le conteneur l'injecte toujours ; un test qui supprime un compte doit le fournir. */
@@ -83,6 +86,11 @@ final class UserController
         $data['password_hash'] = $this->hashFromPayload($body) ?? PasswordHasher::hash(PasswordPolicy::DEFAULT_PASSWORD);
 
         $saved = $this->users->save($data);
+        if (!empty($saved['id'])) {
+            // Contrat 1.13 : les bundles qui écoutent l'apprennent (sans magasin : l'API ne l'affecte pas).
+            $authId = (int) ($this->authUser($request)['id'] ?? 0);
+            ($this->events ?? Events::current())->dispatch(new EmployeeCreated($saved, null, $authId > 0 ? $authId : null, 'api'));
+        }
         $this->auditLogger->log($request, 'user.created', 'user', resourceId: (int) ($saved['id'] ?? 0) ?: null, details: $this->withoutSecrets($data));
         return Response::json($this->withoutSecrets($saved), 201);
     }
