@@ -142,10 +142,10 @@ final class AdminShiftControllerTest extends TestCase
         $this->assertSame('09:00', $data['start_time']);
     }
 
-    /** Champs « shift ouvert » : acceptés quand une section du formulaire les déclare (ici le repli de shift-claim actif). */
+    /** Champs « shift ouvert » : acceptés quand une section du formulaire les déclare (shift-claim). */
     public function testQuickShiftWithAdditionalFields(): void
     {
-        Container::getInstance()->instance(BundleManager::class, FakeBundleManagerFactory::withActiveSlugs(['shift-claim']));
+        $this->declareOpenShiftSection();
         $req = $this->makeJsonRequest([
             'store_id'        => 1,
             'user_id'         => 5,
@@ -921,6 +921,30 @@ final class AdminShiftControllerTest extends TestCase
         $all = $instances->getValue(Container::getInstance());
         unset($all[BundleManager::class], $all[ExtensionRegistry::class]);
         $instances->setValue(Container::getInstance(), $all);
+    }
+
+    /** shift-claim actif, qui déclare les champs « shift ouvert » du formulaire (contrat 1.17). */
+    private function declareOpenShiftSection(): void
+    {
+        $bundle = new class extends Bundle {
+            public function __construct() {}
+
+            public function getName(): string
+            {
+                return 'shift-claim';
+            }
+
+            public function register(): void {}
+
+            public function shiftFormSections(): array
+            {
+                return [new ShiftFormSection('open_shift', 'shift-claim::shift-form-section', ['is_open', 'open_shift_note'])];
+            }
+        };
+        $manager = (new \ReflectionClass(BundleManager::class))->newInstanceWithoutConstructor();
+        (new \ReflectionProperty($manager, 'bundles'))->setValue($manager, ['shift-claim' => $bundle]);
+        Container::getInstance()->instance(BundleManager::class, $manager);
+        Container::getInstance()->instance(ExtensionRegistry::class, new ExtensionRegistry($manager));
     }
 
     private function makeJsonRequest(array $body): Request

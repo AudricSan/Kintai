@@ -7,7 +7,6 @@ namespace kintai\Core\Extension\Legacy;
 use kintai\Contract\Provider\PendingRequest;
 use kintai\Contract\Provider\PendingRequestsProvider;
 use kintai\Core\Container;
-use kintai\Core\Repositories\ShiftClaimRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
@@ -15,7 +14,7 @@ use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 
 /**
  * Fournisseurs de demandes en attente que le Core utilise pour les bundles qui ne déclarent pas encore les leurs
- * (Bundle::pendingRequestsProviders(), contrat 1.9) : timeoff, shift-swap, shift-claim. Ils lisent les dépôts encore
+ * (Bundle::pendingRequestsProviders(), contrat 1.9) : timeoff, shift-swap. Ils lisent les dépôts encore
  * liés dans le Core et reproduisent les tableaux affichés jusqu'ici. Disparaîtront à l'étape 5 du plan du contrat.
  */
 final class LegacyPendingRequests
@@ -26,7 +25,6 @@ final class LegacyPendingRequests
         return [
             'timeoff'     => self::timeoff($container),
             'shift-swap'  => self::swaps($container),
-            'shift-claim' => self::claims($container),
         ];
     }
 
@@ -93,52 +91,6 @@ final class LegacyPendingRequests
         };
     }
 
-    private static function claims(Container $container): PendingRequestsProvider
-    {
-        return new class($container) extends LegacyProvider {
-            public function key(): string { return 'open_shifts'; }
-            public function label(): string { return 'pending_claims'; }
-            public function emptyLabel(): string { return 'no_pending_claims'; }
-            public function permission(): string { return 'open_shifts.view'; }
-            public function storeFeature(): ?string { return 'open_shifts'; }
-            public function order(): int { return 30; }
-            public function manageUrl(): string { return route_url('admin.open_shifts'); }
-
-            public function pending(?array $storeIds): array
-            {
-                // ShiftClaimRepositoryInterface n'est lié que par le bundle shift-claim lui-même.
-                if (!$this->container->has(ShiftClaimRepositoryInterface::class)) {
-                    return [];
-                }
-                $claims = $this->container->make(ShiftClaimRepositoryInterface::class);
-                $shifts = $this->container->make(ShiftRepositoryInterface::class);
-                $storeIds ??= array_map(fn($s) => (int) $s['id'], $this->container->make(StoreRepositoryInterface::class)->findAll());
-
-                $found = [];
-                foreach ($storeIds as $storeId) {
-                    foreach ($claims->findPendingByStore((int) $storeId) as $claim) {
-                        $shift = $shifts->findById((int) ($claim['shift_id'] ?? 0));
-                        $found[] = ['claim' => $claim, 'store_id' => (int) $storeId, 'shift' => $shift ?? []];
-                    }
-                }
-                usort($found, fn($a, $b) => strcmp((string) ($a['shift']['shift_date'] ?? ''), (string) ($b['shift']['shift_date'] ?? '')));
-
-                return array_map(static fn(array $f): PendingRequest => new PendingRequest(
-                    (int) $f['claim']['id'],
-                    $f['store_id'],
-                    isset($f['claim']['user_id']) ? (int) $f['claim']['user_id'] : null,
-                    (string) ($f['claim']['created_at'] ?? ''),
-                    [
-                        ['label' => 'applicant', 'value' => (int) ($f['claim']['user_id'] ?? 0), 'style' => PendingRequest::USER],
-                        ['label' => 'store', 'value' => $f['store_id'], 'style' => PendingRequest::STORE],
-                        ['label' => 'date', 'value' => (string) ($f['shift']['shift_date'] ?? '—')],
-                        ['label' => 'start', 'value' => (string) ($f['shift']['start_time'] ?? ''), 'style' => PendingRequest::TIME],
-                        ['label' => 'end', 'value' => (string) ($f['shift']['end_time'] ?? ''), 'style' => PendingRequest::TIME],
-                    ],
-                ), $found);
-            }
-        };
-    }
 
     /** @internal Utilisé par les fournisseurs anonymes ci-dessus. */
     public static function scoped(?array $storeIds, int $storeId): bool

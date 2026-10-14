@@ -195,9 +195,9 @@ final class AdminStoreControllerTest extends TestCase
 
         $this->assertSame(302, $response->status());
         $this->assertNotNull($captured);
-        // messages, daily_reports et photos : fonctionnalités de bundles extraits du Core (déclarées par leur bundle,
-        // absent ici), conservées telles quelles puisqu'elles ne sont pas proposées.
-        $this->assertSame(['messages', 'daily_reports', 'photos'], $captured['_features']);
+        // open_shifts, messages, daily_reports et photos : fonctionnalités de bundles extraits du Core (déclarées par
+        // leur bundle, absent ici), conservées telles quelles puisqu'elles ne sont pas proposées.
+        $this->assertSame(['open_shifts', 'messages', 'daily_reports', 'photos'], $captured['_features']);
     }
 
     public function testUpdateStorePreservesFeatureHiddenByDisabledBundle(): void

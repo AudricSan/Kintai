@@ -383,11 +383,6 @@ final class Navigation
                     icon: 'arrows', activePaths: ['/admin/swap-requests', '/employee/swaps'],
                     storeFeature: 'swaps', order: 20, mobile: true),
             ],
-            'shift-claim' => [
-                new NavItem('open_shifts', NavItem::REQUESTS, 'open_shifts', 'admin.open_shifts', 'employee.open_shifts',
-                    icon: 'plus', activePaths: ['/admin/open-shifts', '/employee/open-shifts'],
-                    storeFeature: 'open_shifts', order: 30, mobile: true),
-            ],
         ];
     }
 }

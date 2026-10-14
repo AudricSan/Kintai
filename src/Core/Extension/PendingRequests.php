@@ -14,7 +14,7 @@ use kintai\Core\Services\WidgetGuard;
 /**
  * Demandes en attente de toutes sortes, lues à travers des fournisseurs (étape 3 du contrat de bundle) :
  * - ceux déclarés par les bundles actifs (Bundle::pendingRequestsProviders(), contrat 1.9) ;
- * - en repli, ceux du Core pour timeoff, shift-swap et shift-claim tant qu'ils ne déclarent rien.
+ * - en repli, ceux du Core pour timeoff et shift-swap tant qu'ils ne déclarent rien.
  *
  * Utilisé par la page « Demandes », le compteur du tableau de bord et les alertes. Chaque fournisseur est isolé : une
  * exception le retire (journalisée) sans casser la page.

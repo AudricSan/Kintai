@@ -9,7 +9,6 @@ use kintai\Core\BundleManager;
 use kintai\Core\Container;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
-use kintai\Core\Repositories\ShiftClaimRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
@@ -22,18 +21,18 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Services\DashboardAlertService;
 use kintai\Core\Services\StoreStatsServiceInterface;
+use kintai\Core\Extension\ExtensionRegistry;
 use kintai\Tests\Support\FakeBundleManagerFactory;
+use kintai\Tests\Support\FakeClaimsProvider;
 use kintai\UI\Controller\Web\HomeController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\TestCase;
 
 /**
  * Le KPI "Demandes en attente" du dashboard admin additionne aussi les
- * candidatures bourse aux shifts en attente. ShiftClaimRepositoryInterface
- * n'est lié au container que par le bundle ShiftClaim (voir
- * ShiftClaimBundle::registerServices()) : HomeController ne doit jamais le
- * demander en dépendance de constructeur, sous peine de planter le dashboard
- * entier dès que ce bundle est désactivé. Ce test couvre les deux cas.
+ * candidatures bourse aux shifts en attente, fournies par le bundle shift-claim
+ * (fournisseur de demandes du contrat 1.9) : présentes quand il est actif,
+ * absentes — sans planter le dashboard — quand il ne l'est pas.
  */
 final class HomeControllerPendingClaimsTest extends TestCase
 {
@@ -46,18 +45,9 @@ final class HomeControllerPendingClaimsTest extends TestCase
     protected function tearDown(): void
     {
         // Réinitialise le singleton Container pour ne pas propager le
-        // BundleManager/ShiftClaimRepositoryInterface injectés vers d'autres tests.
+        // BundleManager/ExtensionRegistry injectés vers d'autres tests.
         $instance = new \ReflectionProperty(Container::class, 'instance');
         $instance->setValue(null, null);
-    }
-
-    private function unbindShiftClaims(): void
-    {
-        $ref = new \ReflectionProperty(Container::class, 'instances');
-        $ref->setAccessible(true);
-        $instances = $ref->getValue(Container::getInstance());
-        unset($instances[ShiftClaimRepositoryInterface::class]);
-        $ref->setValue(Container::getInstance(), $instances);
     }
 
     private function buildController(): HomeController
@@ -137,7 +127,6 @@ final class HomeControllerPendingClaimsTest extends TestCase
     public function testDashboardDoesNotCrashAndExcludesClaimsWhenShiftClaimBundleDisabled(): void
     {
         Container::getInstance()->instance(BundleManager::class, FakeBundleManagerFactory::withActiveSlugs(['timeoff']));
-        $this->unbindShiftClaims();
 
         $controller = $this->buildController();
         $response   = $controller->index($this->request());
@@ -149,20 +138,18 @@ final class HomeControllerPendingClaimsTest extends TestCase
 
     public function testPendingRequestsIncludesPendingClaimsWhenBundleEnabled(): void
     {
-        Container::getInstance()->instance(BundleManager::class, FakeBundleManagerFactory::withActiveSlugs(['timeoff', 'shift-claim']));
-
-        $claimsRepo = $this->createMock(ShiftClaimRepositoryInterface::class);
-        // findPendingByStore() ne renvoie que les candidatures en attente (l'approuvée n'y figure pas).
-        $claimsRepo->method('findPendingByStore')->with(1)->willReturn([
-            ['id' => 1, 'store_id' => 1, 'shift_id' => 10, 'user_id' => 5, 'status' => 'pending'],
-        ]);
-        Container::getInstance()->instance(ShiftClaimRepositoryInterface::class, $claimsRepo);
+        // Candidatures en attente déclarées par shift-claim (fournisseur du contrat 1.9) : une sur le magasin 1.
+        $manager = FakeBundleManagerFactory::withActiveSlugs(['timeoff', 'shift-claim'], [], ['shift-claim' => [
+            new FakeClaimsProvider([FakeClaimsProvider::claim(1, 1, 5, '2026-08-10', '09:00:00', '17:00:00')]),
+        ]]);
+        Container::getInstance()->instance(BundleManager::class, $manager);
+        Container::getInstance()->instance(ExtensionRegistry::class, new ExtensionRegistry($manager));
 
         $controller = $this->buildController();
         $response   = $controller->index($this->request());
         $data       = json_decode($response->body(), true);
 
-        // 1 congé pending + 1 candidature pending (l'approuvée est exclue) = 2.
+        // 1 congé pending + 1 candidature pending = 2.
         $this->assertSame(2, $data['stats']['pending_requests']);
     }
 

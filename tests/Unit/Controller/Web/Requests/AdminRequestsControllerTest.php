@@ -9,7 +9,6 @@ use kintai\Core\BundleManager;
 use kintai\Core\Container;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
-use kintai\Core\Repositories\ShiftClaimRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
@@ -17,7 +16,9 @@ use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
+use kintai\Core\Extension\ExtensionRegistry;
 use kintai\Tests\Support\FakeBundleManagerFactory;
+use kintai\Tests\Support\FakeClaimsProvider;
 use kintai\UI\Controller\Web\Requests\AdminRequestsController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\TestCase;
@@ -27,10 +28,9 @@ use PHPUnit\Framework\TestCase;
  * shifts et candidatures bourse aux shifts en attente, lus à travers les
  * fournisseurs (PendingRequests, repli historique ici). Chaque section n'est
  * présente que si son bundle est actif ET que l'utilisateur a la permission
- * "*.view" correspondante — sinon elle reste absente de la page.
- * ShiftClaimRepositoryInterface n'étant lié au container que par le bundle
- * ShiftClaim, la section des candidatures doit aussi disparaître proprement
- * quand ce bundle est désactivé, sans jamais faire planter le contrôleur.
+ * "*.view" correspondante — sinon elle reste absente de la page. Les
+ * candidatures viennent du fournisseur déclaré par shift-claim : bundle
+ * désactivé, la section disparaît proprement, sans faire planter le contrôleur.
  */
 final class AdminRequestsControllerTest extends TestCase
 {
@@ -55,22 +55,6 @@ final class AdminRequestsControllerTest extends TestCase
     private function enableBundles(array $slugs): void
     {
         Container::getInstance()->instance(BundleManager::class, FakeBundleManagerFactory::withActiveSlugs($slugs));
-    }
-
-    private function bindShiftClaims(ShiftClaimRepositoryInterface $repo): void
-    {
-        Container::getInstance()->instance(ShiftClaimRepositoryInterface::class, $repo);
-    }
-
-    private function unbindShiftClaims(): void
-    {
-        // Simule un bundle "shift-claim" désactivé : le service n'a jamais été
-        // enregistré (voir ShiftClaimBundle::registerServices()).
-        $ref = new \ReflectionProperty(Container::class, 'instances');
-        $ref->setAccessible(true);
-        $instances = $ref->getValue(Container::getInstance());
-        unset($instances[ShiftClaimRepositoryInterface::class]);
-        $ref->setValue(Container::getInstance(), $instances);
     }
 
     private function buildController(bool $isAdmin, array $timeoff = [], array $swaps = []): AdminRequestsController
@@ -133,7 +117,6 @@ final class AdminRequestsControllerTest extends TestCase
     public function testTimeoffAndSwapsPresentButClaimsNullWhenShiftClaimBundleDisabled(): void
     {
         $this->enableBundles(['timeoff', 'shift-swap']);
-        $this->unbindShiftClaims();
 
         $controller = $this->buildController(true);
         $response   = $controller->index($this->request(true));
@@ -147,7 +130,6 @@ final class AdminRequestsControllerTest extends TestCase
     public function testAllSectionsNullWhenBundlesDisabled(): void
     {
         $this->enableBundles([]);
-        $this->unbindShiftClaims();
 
         $controller = $this->buildController(true);
         $response   = $controller->index($this->request(true));
@@ -159,7 +141,6 @@ final class AdminRequestsControllerTest extends TestCase
     public function testTimeoffFilteredToPendingAndScopedToManagedStore(): void
     {
         $this->enableBundles(['timeoff', 'shift-swap']);
-        $this->unbindShiftClaims();
 
         $timeoff = [
             ['id' => 1, 'store_id' => 1, 'status' => 'pending', 'user_id' => 1],
@@ -177,13 +158,12 @@ final class AdminRequestsControllerTest extends TestCase
 
     public function testClaimsPresentAndEnrichedWithShiftInfoWhenBundleEnabled(): void
     {
-        $this->enableBundles(['timeoff', 'shift-swap', 'shift-claim']);
-
-        $claimsRepo = $this->createMock(ShiftClaimRepositoryInterface::class);
-        $claimsRepo->method('findPendingByStore')->willReturn([
-            ['id' => 1, 'shift_id' => 10, 'user_id' => 1, 'status' => 'pending'],
-        ]);
-        $this->bindShiftClaims($claimsRepo);
+        // Candidatures en attente déclarées par shift-claim (fournisseur du contrat 1.9).
+        $manager = FakeBundleManagerFactory::withActiveSlugs(['timeoff', 'shift-swap', 'shift-claim'], [], ['shift-claim' => [
+            new FakeClaimsProvider([FakeClaimsProvider::claim(1, 1, 1, '2026-08-10', '09:00:00', '17:00:00')]),
+        ]]);
+        Container::getInstance()->instance(BundleManager::class, $manager);
+        Container::getInstance()->instance(ExtensionRegistry::class, new ExtensionRegistry($manager));
 
         $controller = $this->buildController(true);
         $response   = $controller->index($this->request(true));
