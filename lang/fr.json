@@ -1,4 +1,8 @@
 {
+    "bundle_quota_overflow_warning": ":active bundles sont actifs alors que votre licence en permet :max. Ils continuent de fonctionner, mais vous ne pourrez en activer d'autres qu'après être revenu sous la limite (vous pouvez les désactiver un par un).",
+    "bundle_quota_overflow_action": "Gérer les bundles",
+    "bundle_market_activated": "Il est activé.",
+    "bundle_market_installed_inactive_quota": "Installé mais inactif : le quota de bundles actifs de votre licence est atteint. Désactivez un autre bundle pour l'activer.",
     "bundle_contract_missing": "il ne déclare pas de version de contrat (« kintai_contract ») : il date d'avant le contrat de bundle et n'est plus chargé. Installez sa dernière version.",
     "update_bundles_incompatible_title": "Bundles à mettre à jour après cette mise à jour",
     "update_bundles_incompatible_hint": "Cette version fournit le contrat de bundle :contract. Les bundles ci-dessous ne seront plus chargés tant que vous ne les aurez pas mis à jour depuis le catalogue de bundles.",

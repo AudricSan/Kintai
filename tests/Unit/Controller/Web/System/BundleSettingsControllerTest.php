@@ -164,6 +164,21 @@ final class BundleSettingsControllerTest extends TestCase
         $this->assertSame(302, $response->status());
     }
 
+    /** Au-dessus du quota (instance antérieure), garder ou réduire reste permis : seul l'ajout est refusé. */
+    public function testSaveAboveTheQuotaKeepsWorkingWithoutAdditions(): void
+    {
+        $all = ['team-directory', 'fake-bundle-2', 'fake-bundle-3', 'fake-bundle-4', 'fake-bundle-5'];
+        $controller = $this->makeController(new FeatureManager($all));
+
+        $_POST = array_fill_keys(array_map(fn(string $s): string => 'bundle_' . $s, $all), '1');
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+
+        $this->appSettings->expects($this->once())->method('set');
+
+        $this->assertStringEndsWith('/admin/bundles?success=1', $controller->save($req)->headers()['Location'] ?? '');
+    }
+
     public function testSaveAllowsExactlyFourBundlesOnFreePlan(): void
     {
         $controller = $this->makeController(new FeatureManager([]));

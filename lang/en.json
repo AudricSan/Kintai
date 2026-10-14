@@ -1,4 +1,8 @@
 {
+    "bundle_quota_overflow_warning": ":active bundles are active while your license allows :max. They keep working, but you can only activate others once you are back under the limit (you can disable them one at a time).",
+    "bundle_quota_overflow_action": "Manage bundles",
+    "bundle_market_activated": "It is enabled.",
+    "bundle_market_installed_inactive_quota": "Installed but not enabled: your license's active bundle quota is reached. Disable another bundle to enable it.",
     "bundle_contract_missing": "it declares no bundle contract version (\"kintai_contract\"): it predates the bundle contract and is no longer loaded. Install its latest version.",
     "update_bundles_incompatible_title": "Bundles to update after this update",
     "update_bundles_incompatible_hint": "This version provides bundle contract :contract. The bundles below will no longer be loaded until you update them from the bundle catalogue.",
