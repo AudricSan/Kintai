@@ -167,25 +167,12 @@ final class AdminStoreController
         $storeId = (int) $store['id'];
         $this->assertStoreAccess($request, $storeId);
 
-        $availableSlugs = $this->storeFeatures->availableKeys();
-        $currentFeatures = $this->stores->getFeatures($storeId);
-        // Aucune ligne en base = jamais configuré → toutes actives par défaut (cf. l'affichage plus bas).
-        $currentlyEnabled = fn(string $slug): bool => $currentFeatures === [] || in_array($slug, $currentFeatures, true);
-
+        // Une décision par case proposée (Core et bundles actifs) ; une fonctionnalité jamais réglée est active. Celle
+        // d'un bundle désactivé n'est pas proposée et garde sa décision (saveFeatureDecisions ne touche qu'à celles-ci).
+        $decisions = $this->stores->getFeatureDecisions($storeId);
         $enabledFeatures = [];
-        foreach ($availableSlugs as $slug) {
-            // Case proposée sur ce formulaire : on suit la valeur soumise.
-            if ($request->postFlag('feature_' . $slug, $currentlyEnabled($slug)) === 1) {
-                $enabledFeatures[] = $slug;
-            }
-        }
-        // Fonctionnalités non proposées (bundle désactivé au niveau instance) : le champ n'a pas pu être soumis, on
-        // conserve l'état actuel au lieu de le traiter comme décoché — sinon éditer un store désactive
-        // silencieusement toute fonctionnalité de bundle indisponible à ce moment-là.
-        foreach ($currentFeatures as $slug) {
-            if (!in_array($slug, $availableSlugs, true) && !in_array($slug, $enabledFeatures, true)) {
-                $enabledFeatures[] = $slug;
-            }
+        foreach ($this->storeFeatures->availableKeys() as $slug) {
+            $enabledFeatures[$slug] = $request->postFlag('feature_' . $slug, ($decisions[$slug] ?? true) ? 1 : 0) === 1;
         }
 
         // Champ absent de la requête : valeur actuelle conservée (audit du 13/10/2026, M12). Avant, une requête

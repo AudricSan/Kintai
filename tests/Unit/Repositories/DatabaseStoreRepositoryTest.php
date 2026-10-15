@@ -41,6 +41,7 @@ final class DatabaseStoreRepositoryTest extends TestCase
             $table->increments('id');
             $table->integer('store_id');
             $table->string('feature_key');
+            $table->boolean('enabled')->default(true);
         });
 
         $schema->create('store_import_settings', function ($table) {
@@ -194,6 +195,25 @@ final class DatabaseStoreRepositoryTest extends TestCase
         
         $this->repo->saveFeatures(1, ['f3']);
         $this->assertEquals(['f3'], $this->repo->getFeatures(1));
+    }
+
+    /** Décisions par case : une fonctionnalité jamais réglée est active, les autres décisions restent intactes. */
+    public function testFeatureDecisionsOnlyTouchTheGivenKeys(): void
+    {
+        $this->assertSame([], $this->repo->getFeatures(2), 'jamais configuré : tout actif');
+
+        // Fonctionnalité d'un bundle désactivé réglée « inactive », puis enregistrement du formulaire sans elle.
+        $this->repo->saveFeatureDecisions(2, ['photos' => false]);
+        $this->repo->saveFeatureDecisions(2, ['shifts' => true]);
+        $this->assertSame(['photos' => false, 'shifts' => true], $this->repo->getFeatureDecisions(2));
+
+        // Seule la décision « active » est enregistrée : tout reste actif.
+        $this->repo->saveFeatureDecisions(3, ['shifts' => true, 'timeoff' => true]);
+        $this->assertSame([], $this->repo->getFeatures(3));
+
+        // « shifts » désactivé : les fonctionnalités proposées jamais réglées restent actives (ici aucune).
+        $this->repo->saveFeatureDecisions(3, ['shifts' => false]);
+        $this->assertSame(['timeoff'], $this->repo->getFeatures(3));
     }
 
     public function testImportSettingsPersistence(): void
