@@ -99,6 +99,9 @@ final class AdminShiftControllerTest extends TestCase
     public function testShiftsPassesCanManageTrue(): void
     {
         $this->writeViewFile('scheduling.shifts', '<?= ($can_manage ?? false) ? "CAN_MANAGE_TRUE" : "CAN_MANAGE_FALSE" ?>');
+        // layout.app vit dans le dossier temporaire partagé : d'autres tests y écrivent un autre contenu (ex. JSON des
+        // statistiques), et selon l'ordre d'exécution la vue n'était plus affichée (échec en CI seulement).
+        $this->writeViewFile('layout.app', "<?php echo \$content ?? '';");
 
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
