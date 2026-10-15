@@ -1,5 +1,9 @@
 <?php
+use kintai\UI\Components\Pagination;
+
 /** @var array[] $notifications */
+/** @var int     $page */
+/** @var int     $totalPages */
 ?>
 
 <div class="page-header">
@@ -31,7 +35,7 @@
                     <span class="notif-item__icon"><?= notification_type_icon($n['type'] ?? '') ?></span>
                     <div class="notif-item__content">
                         <div class="notif-item__title"><?= htmlspecialchars(notification_type_label($n['type'] ?? '')) ?></div>
-                        <div class="notif-item__body"><?= htmlspecialchars($n['body'] ?? '') ?></div>
+                        <div class="notif-item__body"><?= htmlspecialchars(notification_body($n)) ?></div>
                         <div class="notif-item__time"><?= htmlspecialchars(substr($n['created_at'] ?? '', 0, 16)) ?></div>
                     </div>
                 </a>
@@ -44,4 +48,7 @@
             </div>
         <?php endforeach; ?>
     </div>
+    <?php if (($totalPages ?? 1) > 1): ?>
+        <?= Pagination::make((int) $page, (int) $totalPages)->render() ?>
+    <?php endif; ?>
 <?php endif; ?>

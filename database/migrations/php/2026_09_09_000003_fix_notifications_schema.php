@@ -25,11 +25,9 @@ return new class($this->capsule) extends Migration {
     {
         $schema = $this->schema();
 
-        $legacyColumns = array_values(array_filter(
-            ['reference_id', 'body', 'is_read'],
-            fn(string $c) => $schema->hasColumn('notifications', $c)
-        ));
-        if ($legacyColumns === []) {
+        // Seul is_read signe le schéma legacy : le schéma actuel (2026_06_09_000012, refonte d'octobre 2026) a de
+        // nouveau des colonnes body/reference_id, qu'il ne faut surtout pas convertir.
+        if (!$schema->hasColumn('notifications', 'is_read')) {
             return;
         }
 

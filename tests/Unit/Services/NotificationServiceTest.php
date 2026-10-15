@@ -52,7 +52,12 @@ final class NotificationServiceTest extends TestCase
             $table->increments('id');
             $table->integer('user_id');
             $table->string('type');
-            $table->text('data');
+            $table->string('body_key')->nullable();
+            $table->text('params')->nullable();
+            $table->text('body')->nullable();
+            $table->string('link', 500)->nullable();
+            $table->string('reference_type', 40)->nullable();
+            $table->integer('reference_id')->nullable();
             $table->timestamp('read_at')->nullable();
             $table->timestamp('created_at')->useCurrent();
         });
@@ -131,8 +136,8 @@ final class NotificationServiceTest extends TestCase
         $rows = Notification::orderBy('user_id')->get()->toArray();
         $this->assertCount(2, $rows);
 
-        $bodyForUser10 = json_decode((string) $rows[0]['data'], true)['body'] ?? null;
-        $bodyForUser20 = json_decode((string) $rows[1]['data'], true)['body'] ?? null;
+        $bodyForUser10 = $rows[0]['body'];
+        $bodyForUser20 = $rows[1]['body'];
 
         $this->assertSame($this->lang('en')['notif_timeoff_approved_body'], $bodyForUser10);
         $this->assertSame($this->lang('ja')['notif_timeoff_approved_body'], $bodyForUser20);
@@ -162,7 +167,7 @@ final class NotificationServiceTest extends TestCase
         $this->withInstanceLocale('ja', fn() => $this->service->notify(999, 'timeoff_approved', 'notif_timeoff_approved_body', [], 1));
 
         $row = Notification::first()->toArray();
-        $body = json_decode((string) $row['data'], true)['body'] ?? null;
+        $body = $row['body'];
         $this->assertSame($this->lang('ja')['notif_timeoff_approved_body'], $body);
     }
 
@@ -173,7 +178,7 @@ final class NotificationServiceTest extends TestCase
         $this->withInstanceLocale('en', fn() => $this->service->notify(30, 'timeoff_approved', 'notif_timeoff_approved_body', [], 1));
 
         $row = Notification::first()->toArray();
-        $body = json_decode((string) $row['data'], true)['body'] ?? null;
+        $body = $row['body'];
         $this->assertSame($this->lang('en')['notif_timeoff_approved_body'], $body);
     }
 
@@ -186,7 +191,7 @@ final class NotificationServiceTest extends TestCase
         ]);
 
         $row = Notification::first()->toArray();
-        $body = json_decode((string) $row['data'], true)['body'] ?? null;
+        $body = $row['body'];
         $this->assertSame(
             str_replace(
                 [':date', ':start', ':end', ':store'],
@@ -202,7 +207,7 @@ final class NotificationServiceTest extends TestCase
      * l'employé à aller vérifier son planning. Le lien permet de cliquer la
      * notification pour être amené directement dessus (voir NotificationController::open()).
      */
-    public function testNotifyPersistsLinkInDataColumn(): void
+    public function testNotifyPersistsLink(): void
     {
         $this->registerUser(5, 'fr');
         $this->service->notify(
@@ -210,9 +215,24 @@ final class NotificationServiceTest extends TestCase
             '/employee/shifts/day?start=2026-09-20'
         );
 
-        $row = Notification::first()->toArray();
-        $decoded = json_decode((string) $row['data'], true);
-        $this->assertSame('/employee/shifts/day?start=2026-09-20', $decoded['link'] ?? null);
+        $this->assertSame('/employee/shifts/day?start=2026-09-20', Notification::first()->link);
+    }
+
+    /**
+     * Refonte d'octobre 2026 : la clé et les paramètres sont conservés pour retraduire la notification dans la
+     * langue courante du lecteur (notification_body()), body restant l'instantané de repli.
+     */
+    public function testNotifyStoresBodyKeyAndStringParams(): void
+    {
+        $this->registerUser(5, 'fr');
+        $this->service->notify(5, 'shift_assigned', 'notif_shift_assigned_body', [
+            'date' => '2026-09-20', 'count' => 3, 'nested' => ['ignored'],
+        ]);
+
+        $row = Notification::first();
+        $this->assertSame('notif_shift_assigned_body', $row->body_key);
+        $this->assertSame(['date' => '2026-09-20', 'count' => '3', 'nested' => ''], json_decode((string) $row->params, true));
+        $this->assertNotSame('', (string) $row->body);
     }
 
     public function testNotifyWithoutLinkStoresNullLink(): void
@@ -220,9 +240,6 @@ final class NotificationServiceTest extends TestCase
         $this->registerUser(5, 'fr');
         $this->service->notify(5, 'timeoff_approved', 'notif_timeoff_approved_body', [], 1);
 
-        $row = Notification::first()->toArray();
-        $decoded = json_decode((string) $row['data'], true);
-        $this->assertArrayHasKey('link', $decoded);
-        $this->assertNull($decoded['link']);
+        $this->assertNull(Notification::first()->link);
     }
 }

@@ -81,12 +81,6 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
 
     $_dropdownItems = $notifications_dropdown ?? [];
     $_unreadCount   = (int) ($unread_notifications_count ?? 0);
-    $_recentJson    = json_encode(array_map(fn($n) => [
-        'id'    => (int) ($n['id'] ?? 0),
-        'title' => notification_type_label($n['type'] ?? ''),
-        'body'  => $n['body'] ?? '',
-        'link'  => route_url('notifications.open', ['id' => (int) ($n['id'] ?? 0)]),
-    ], $recent_notifications ?? []), JSON_UNESCAPED_UNICODE);
     ?>
 
     <div class="topbar-actions">
@@ -206,51 +200,22 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
             <button id="notif-toggle" class="notif-dropdown__toggle" title="<?= __('notifications') ?>">
                 🔔
                 <?php if ($_unreadCount > 0): ?>
-                    <span class="notif-dropdown__badge"><?= min($_unreadCount, 99) ?></span>
+                    <span class="notif-dropdown__badge"><?= notification_badge_label($_unreadCount) ?></span>
                 <?php endif; ?>
             </button>
-            <div class="notif-dropdown__panel">
-                <div class="notif-dropdown__header">
-                    <span><?= __('notifications') ?></span>
-                    <div class="notif-dropdown__header-actions">
-                        <?php if ($_unreadCount > 0): ?>
-                            <form method="POST" action="<?= route_url('notifications.read_all') ?>" class="notif-mark-read-form">
-                                <?= csrf_field() ?>
-                                <button type="submit" class="btn btn--ghost btn--xs"><?= __('mark_all_read') ?></button>
-                            </form>
-                        <?php endif; ?>
-                        <?php if (!empty($_dropdownItems)): ?>
-                            <form method="POST" action="<?= route_url('notifications.delete_all') ?>" class="notif-mark-read-form" data-confirm="<?= htmlspecialchars(__('delete_all_notifications_confirm'), ENT_QUOTES) ?>">
-                                <?= csrf_field() ?>
-                                <button type="submit" class="btn btn--ghost btn--xs"><?= __('delete_all_notifications') ?></button>
-                            </form>
-                        <?php endif; ?>
-                    </div>
-                </div>
-                <?php if (empty($_dropdownItems)): ?>
-                    <div class="notif-dropdown__empty"><?= __('no_notifications') ?></div>
-                <?php else: ?>
-                    <?php foreach ($_dropdownItems as $_n): ?>
-                        <?php $_nRead = (int) ($_n['is_read'] ?? 0); ?>
-                        <a href="<?= route_url('notifications.open', ['id' => (int) $_n['id']]) ?>"
-                           class="notif-entry<?= $_nRead ? '' : ' notif-entry--unread' ?>">
-                            <span class="notif-entry__icon"><?= notification_type_icon($_n['type'] ?? '') ?></span>
-                            <div class="notif-entry__body">
-                                <div class="notif-entry__title"><?= htmlspecialchars(notification_type_label($_n['type'] ?? '')) ?></div>
-                                <div class="notif-entry__text"><?= htmlspecialchars($_n['body'] ?? '') ?></div>
-                                <div class="notif-entry__time"><?= htmlspecialchars(substr($_n['created_at'] ?? '', 0, 16)) ?></div>
-                            </div>
-                        </a>
-                    <?php endforeach; ?>
-                    <div class="notif-dropdown__footer">
-                        <a href="<?= route_url('notifications.index') ?>"><?= __('notifications') ?> →</a>
-                    </div>
-                <?php endif; ?>
+            <div class="notif-dropdown__panel" id="notif-panel">
+                <?php
+                $notif_items  = $_dropdownItems;
+                $notif_unread = $_unreadCount;
+                include __DIR__ . '/_notif_panel.php';
+                ?>
             </div>
         </div>
         <div id="notif-meta"
-            data-recent="<?= htmlspecialchars($_recentJson) ?>"
             data-poll-url="<?= route_url('notifications.poll') ?>"
+            data-last-id="<?= (int) ($notifications_last_id ?? 0) ?>"
+            data-unread="<?= $_unreadCount ?>"
+            data-user-id="<?= (int) ($auth_user['id'] ?? 0) ?>"
             hidden></div>
 
         <div class="user-dropdown" id="user-dropdown">
