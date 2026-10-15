@@ -71,6 +71,37 @@ final class AdminStoreControllerTest extends TestCase
         );
     }
 
+    /** Audit n°8 : quota de magasins atteint → retour au formulaire (erreur de validation), plus une page 403. */
+    public function testStoreQuotaReachedSendsBackToTheFormInsteadOfA403(): void
+    {
+        $storeService = $this->createStub(StoreServiceInterface::class);
+        $storeService->method('createStore')->willThrowException(new \kintai\Core\Exceptions\PlanLimitExceededException('1 magasin maximum'));
+        $controller = new AdminStoreController(
+            new ViewRenderer(sys_get_temp_dir()),
+            $this->users,
+            $this->stores,
+            $this->storeUsers,
+            new AuditLogger(),
+            $storeService,
+            $this->storeStatsService,
+            new StoreFeatures(null, FakeBundleManagerFactory::withActiveSlugs([])),
+            new RoleAssignmentSyncService($this->roles, $this->roleAssignments),
+            new PermissionService($this->roleAssignments, $this->roles),
+        );
+        $_POST = ['code' => 'NEW', 'name' => 'Nouveau'];
+        $req = new Request();
+        $_POST = [];
+        $req->setAttribute('managed_store_ids', null);
+        $req->setAttribute('auth_user', ['id' => 1]);
+
+        try {
+            $controller->storeStore($req);
+            $this->fail('ValidationException attendue');
+        } catch (\kintai\Core\Exceptions\ValidationException $e) {
+            $this->assertSame(['store' => '1 magasin maximum'], $e->errors);
+        }
+    }
+
     public function testStoresRendersList(): void
     {
         $req = new Request();

@@ -52,10 +52,22 @@ final class AdminShiftTypeController
             };
         });
 
+        // Types partagés avec un magasin que l'utilisateur ne gère pas : ni modifiables ni supprimables par lui (même
+        // règle que assertManagesEveryStore()). La liste ne propose donc plus leurs liens, qui menaient à un 403.
+        $lockedTypeIds = [];
+        if ($managedIds !== null) {
+            foreach ($typeStoreIds as $typeId => $storeIds) {
+                if (array_diff(array_map('intval', $storeIds), $managedIds) !== []) {
+                    $lockedTypeIds[] = (int) $typeId;
+                }
+            }
+        }
+
         return Response::html($this->view->render('scheduling.shift-types', [
             'title'          => 'Types de shifts',
             'shift_types'    => $types,
             'type_store_ids' => $typeStoreIds,
+            'locked_type_ids' => $lockedTypeIds,
             'all_stores'     => $this->availableStores($managedIds),
             'sort'           => $sort,
         ], 'layout.app'));
