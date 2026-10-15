@@ -29,7 +29,6 @@ Kintaiの主要な変更履歴をここに記録しています。
 - **リリース — v0.3.4のタグは作成されたがGitHub Releaseが公開されなかった問題** — `[Unreleased]` がv0.1.1以降のすべての項目（約129,000文字）を蓄積しており、GitHubは125,000文字を超えるRelease本文を拒否します（`HTTP 422: body is too long`）。その時点でワークフローはすでにタグをpush済みでした。`release.yml` は、120,000バイト未満の最後の完全な行でノートを切り詰め、完全な `CHANGELOG.md` へのリンクを付けるようになり、公開済みの内容は日付付きセクションにアーカイブされ、`[Unreleased]` には新しい内容だけが残ります。`docs/releasing.md` を参照してください。
 
 ### 追加
-- git・Composer 不要の 1 行インストール：`scripts/install.sh`（`curl … | bash`）と `scripts/install.ps1`（`irm … | iex`）が、チャンネル（stable/beta/alpha、`/admin/update` と同じ規則）の最新 GitHub Release、または指定バージョンのアーカイブをダウンロードし、`SHA256SUMS` で検証して空のフォルダに展開します。そのまま `/install.php` または `scripts/provision.php` に進めます。README に専用セクションを追加しました。
 
 - - バンドル契約 1.22 — ビューヘルパー `style_class()` と `inline_styles()`：描画時にしか分からない値（ユーザーの色、バーの高さ、割合）を `style="…"` 属性ではなくクラスにし、そのルールをレイアウトが 1 つの `<style nonce>` に出力します（レイアウトなしのページでは `inline_styles()`）。値はフィルタされ、入力データがルールの外に出ることはありません。CSP の `style-src` から `'unsafe-inline'` を外すための第一歩です。`docs/creating-a-bundle.md` の「動的スタイル」を参照。
 - バンドル契約 1.21：`kintai\Contract\Auth\UserAnonymizer` を安定した公開面に追加しました。アカウントを削除するバンドルは、従業員ページや API と同じく匿名化します（個人データの消去、アカウントの無効化、権限とトークンの取り消し、履歴は「削除されたユーザー」として保持）。resignation-report で使用します。

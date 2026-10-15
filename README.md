@@ -79,34 +79,6 @@ Typical flow: shifts created or imported → conflicts checked → employees not
 - PHP 8.3+, Composer 2.x
 - `pdo_sqlite` or `pdo_mysql`, `mbstring`, `gd`, `intl`
 
-### Quick install (no git, no Composer)
-
-A one-line script downloads the latest GitHub Release archive — code plus `vendor/`, so Composer is not needed — checks it against the release's `SHA256SUMS`, and unpacks it into a new folder (`./kintai` by default; it refuses to write into a non-empty one).
-
-Linux / macOS (needs `curl`, `unzip`, and `php` or `jq`):
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/AudricSan/Kintai/main/scripts/install.sh | bash
-# options: channel, exact version, target folder
-curl -fsSL https://raw.githubusercontent.com/AudricSan/Kintai/main/scripts/install.sh | bash -s -- --channel beta --dir /var/www/kintai
-```
-
-Windows (PowerShell 5.1+):
-
-```powershell
-irm https://raw.githubusercontent.com/AudricSan/Kintai/main/scripts/install.ps1 | iex
-# options: channel, exact version, target folder
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/AudricSan/Kintai/main/scripts/install.ps1))) -Channel beta -Dir C:\xampp\htdocs\kintai
-```
-
-| Option | Environment variable | Default | Meaning |
-|---|---|---|---|
-| `--channel` / `-Channel` | `KINTAI_CHANNEL` | `stable` | `stable`, `beta` or `alpha` — same rule as the in-app updater (`/admin/update`) |
-| `--version` / `-Version` | `KINTAI_VERSION` | latest of the channel | an exact release, e.g. `v1.0.0` |
-| `--dir` / `-Dir` | `KINTAI_DIR` | `kintai` | target folder (must be absent or empty) |
-
-Set `GITHUB_TOKEN` if you hit GitHub's anonymous API rate limit. Then point the web server at the folder (see [Web server](#web-server)) and open `/install.php`, or run `scripts/provision.php` (below). The script only installs: an existing instance is updated from `/admin/update`.
-
 ### Local install
 
 ```bash
