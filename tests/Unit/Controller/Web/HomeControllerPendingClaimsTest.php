@@ -50,28 +50,28 @@ final class HomeControllerPendingClaimsTest extends TestCase
 
     private function buildController(): HomeController
     {
-        $usersRepo = $this->createMock(UserRepositoryInterface::class);
+        $usersRepo = $this->createStub(UserRepositoryInterface::class);
         $usersRepo->method('findAll')->willReturn([]);
 
-        $storesRepo = $this->createMock(StoreRepositoryInterface::class);
+        $storesRepo = $this->createStub(StoreRepositoryInterface::class);
         $storesRepo->method('findAll')->willReturn([['id' => 1, 'name' => 'Store 1']]);
 
-        $shiftsRepo = $this->createMock(ShiftRepositoryInterface::class);
+        $shiftsRepo = $this->createStub(ShiftRepositoryInterface::class);
         $shiftsRepo->method('findAllByDate')->willReturn([]);
 
-        $shiftTypesRepo = $this->createMock(ShiftTypeRepositoryInterface::class);
+        $shiftTypesRepo = $this->createStub(ShiftTypeRepositoryInterface::class);
 
-        $dashboardPrefs = $this->createMock(UserDashboardPrefsRepositoryInterface::class);
+        $dashboardPrefs = $this->createStub(UserDashboardPrefsRepositoryInterface::class);
         $dashboardPrefs->method('getEnabledWidgets')->willReturn(['kpi_counters']);
 
-        $storeUsersRepo = $this->createMock(StoreUserRepositoryInterface::class);
+        $storeUsersRepo = $this->createStub(StoreUserRepositoryInterface::class);
         $storeUsersRepo->method('findByStore')->willReturn([]);
 
-        $storeStats = $this->createMock(StoreStatsServiceInterface::class);
+        $storeStats = $this->createStub(StoreStatsServiceInterface::class);
 
-        $roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
+        $roleAssignments = $this->createStub(RoleAssignmentRepositoryInterface::class);
         $roleAssignments->method('findByUser')->willReturn([]);
-        $roles = $this->createMock(RoleRepositoryInterface::class);
+        $roles = $this->createStub(RoleRepositoryInterface::class);
         $permissions = new PermissionService($roleAssignments, $roles);
 
         $dashboardAlerts = new DashboardAlertService($shiftsRepo, $usersRepo, $storeUsersRepo);

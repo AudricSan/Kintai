@@ -30,6 +30,7 @@ use kintai\Core\Services\RoleAssignmentSyncService;
 use kintai\UI\Controller\Web\Staff\AdminUserController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -42,13 +43,13 @@ final class AdminUserControllerCredentialRevocationTest extends TestCase
     private const TARGET_ID = 7;
 
     private AdminUserController $controller;
-    private UserRepositoryInterface&MockObject $users;
+    private UserRepositoryInterface&Stub $users;
     private RememberTokenRepositoryInterface&MockObject $remember;
     private ApiTokenRepositoryInterface&MockObject $api;
 
     protected function setUp(): void
     {
-        $this->users = $this->createMock(UserRepositoryInterface::class);
+        $this->users = $this->createStub(UserRepositoryInterface::class);
         $this->users->method('findById')->willReturn([
             'id'                  => self::TARGET_ID,
             'email'               => 'target@example.test',
@@ -63,16 +64,16 @@ final class AdminUserControllerCredentialRevocationTest extends TestCase
             'password_hash'       => 'not-a-real-hash',
         ]);
 
-        $stores = $this->createMock(StoreRepositoryInterface::class);
-        $roles = $this->createMock(RoleRepositoryInterface::class);
-        $roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
+        $stores = $this->createStub(StoreRepositoryInterface::class);
+        $roles = $this->createStub(RoleRepositoryInterface::class);
+        $roleAssignments = $this->createStub(RoleAssignmentRepositoryInterface::class);
 
         // Demandeur : rôle système global (la garde d'accès à l'employé ciblé doit le laisser passer).
         $roleAssignments->method('findByUser')->willReturn([['id' => 1, 'user_id' => 1, 'role_id' => 10, 'scope_type' => 'global', 'scope_id' => null]]);
         $roles->method('findById')->willReturn(['id' => 10, 'is_system' => 1]);
 
         $container = new Container();
-        $container->instance(LogRepositoryInterface::class, $this->createMock(LogRepositoryInterface::class));
+        $container->instance(LogRepositoryInterface::class, $this->createStub(LogRepositoryInterface::class));
         Log::setContainer($container);
 
         $this->remember = $this->createMock(RememberTokenRepositoryInterface::class);
@@ -82,17 +83,17 @@ final class AdminUserControllerCredentialRevocationTest extends TestCase
             new ViewRenderer(sys_get_temp_dir()),
             $this->users,
             $stores,
-            $this->createMock(ShiftRepositoryInterface::class),
-            $this->createMock(ShiftTypeRepositoryInterface::class),
-            $this->createMock(StoreUserRepositoryInterface::class),
-            $this->createMock(UserShiftTypeRateRepositoryInterface::class),
+            $this->createStub(ShiftRepositoryInterface::class),
+            $this->createStub(ShiftTypeRepositoryInterface::class),
+            $this->createStub(StoreUserRepositoryInterface::class),
+            $this->createStub(UserShiftTypeRateRepositoryInterface::class),
             new AuditLogger(),
             new RoleAssignmentSyncService($roles, $roleAssignments),
             new PermissionService($roleAssignments, $roles),
             new PlanLimitService(
                 $stores,
                 $this->users,
-                new LicenseClientService($this->createMock(AppSettingsRepositoryInterface::class), ['base_url' => '', 'api_key' => '']),
+                new LicenseClientService($this->createStub(AppSettingsRepositoryInterface::class), ['base_url' => '', 'api_key' => '']),
             ),
             new OwnerGuard(new PermissionService($roleAssignments, $roles), $this->users),
             new CredentialRevoker($this->remember, $this->api),

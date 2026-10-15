@@ -90,7 +90,7 @@ Ouvrir ensuite `http://127.0.0.1:8000/install.php` — l'installateur web crée 
 
 L'installateur enregistre aussi l'adresse depuis laquelle vous installez comme **URL publique** de l'instance, utilisée pour les liens des e-mails (réinitialisation du mot de passe). Vérifiez-la dans les réglages Owner (`/admin/owner-settings`) si les utilisateurs accèdent à Kintai par une autre adresse ; la variable d'environnement `APP_URL`, si elle est définie, prime. Sans URL publique, les e-mails de réinitialisation ne partent pas et l'Owner voit un avertissement.
 
-Pour installer sans navigateur (déploiement scripté), `scripts/provision.php` fait la même chose en ligne de commande — SQLite par défaut, sinon `--db-driver=mysql` et les options `--db-*`, avec les variables d'environnement en repli (voir l'en-tête du script). Passez `--app-url`, puisqu'aucune adresse de requête ne permet d'en déduire l'URL publique :
+Pour installer sans navigateur (déploiement scripté), `scripts/provision.php` fait la même chose en ligne de commande — SQLite par défaut, sinon `--db-driver=mysql` et les options `--db-*`, avec les variables d'environnement en repli (voir l'en-tête du script). Passez `--app-url`, puisqu'aucune adresse de requête ne permet d'en déduire l'URL publique. L'instance est en anglais sauf `--locale=fr` ou `--locale=ja` (même choix par défaut que l'installateur web) :
 
 ```bash
 php scripts/provision.php --admin-email=admin@example.com --admin-password='…' --app-url=https://kintai.example.com
@@ -99,6 +99,8 @@ php scripts/provision.php --admin-email=admin@example.com --admin-password='…'
 ### Serveur web
 
 Seul `public/` doit être servi. Faites-y pointer la racine de documents du serveur web (`DocumentRoot` d'Apache, `root` de nginx) — jamais la racine du dépôt, sous peine de rendre `.env`, `storage/app/database.sqlite`, les sauvegardes et le code source téléchargeables. `php -S … -t public` le fait déjà. Sous Apache, si le serveur (ou le dossier `www/` d'un hébergement mutualisé) pointe malgré tout sur la racine du dépôt, un `.htaccess` à la racine réécrit de façon transparente chaque requête vers `public/` — l'URL reste propre, rien en dehors de `public/` n'est accessible, et cela fonctionne aussi depuis un sous-dossier (`/Kintai/`). nginx n'a pas d'équivalent, son `root` doit donc être correct.
+
+Sous Apache, `public/.htaccess` redirige toute requête en HTTP simple vers HTTPS (301), sauf les hôtes de développement local (`localhost`, `127.x`, `[::1]`, `*.test`, `*.localhost`, adresses de réseau privé) et les requêtes déjà marquées HTTPS par un proxy ou un hébergeur qui termine lui-même le TLS (`X-Forwarded-Proto: https`). Servez le site de production en HTTPS avec un certificat valide.
 
 ### Mise à jour
 

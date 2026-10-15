@@ -31,18 +31,22 @@ use kintai\UI\Components\Table;
 
 $storeId = (int) $store['id'];
 
-function profFmt(float $n, int $dec = 0): string {
-    return number_format($n, $dec, ',', ' ');
-}
-function profDate(string $d): string {
-    $dt = \DateTime::createFromFormat('Y-m-d', $d);
-    return $dt ? $dt->format('d/m/Y') : $d;
-}
-function lcBadgeClass(?float $pct): string {
-    if ($pct === null) return '';
-    if ($pct > 35) return 'delta--neg';
-    if ($pct > 25) return 'delta--neutral';
-    return 'delta--pos';
+// Garde : la vue peut être rendue deux fois dans un même processus (tests, aperçu puis PDF) ; une seconde
+// déclaration de ces fonctions globales serait une erreur fatale (« Cannot redeclare »).
+if (!function_exists('profFmt')) {
+    function profFmt(float $n, int $dec = 0): string {
+        return number_format($n, $dec, ',', ' ');
+    }
+    function profDate(string $d): string {
+        $dt = \DateTime::createFromFormat('Y-m-d', $d);
+        return $dt ? $dt->format('d/m/Y') : $d;
+    }
+    function lcBadgeClass(?float $pct): string {
+        if ($pct === null) return '';
+        if ($pct > 35) return 'delta--neg';
+        if ($pct > 25) return 'delta--neutral';
+        return 'delta--pos';
+    }
 }
 ?>
 
@@ -83,7 +87,6 @@ ob_start();
         </div>
     </div>
     <form method="GET" action="" class="form-contents">
-        <?= csrf_field() ?>
         <label class="form-label"><?= __('custom_range') ?></label>
         <div class="form-filter">
             <input type="date" name="from" value="<?= htmlspecialchars($from) ?>" class="form-control form-control-sm" data-submit-on-change>

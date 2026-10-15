@@ -149,6 +149,7 @@ away with a new major version.
 | `kintai\Contract\Exceptions\ConflictException` | stable | 409. |
 | `kintai\Contract\Auth\PermissionService` | stable | Permission and scope checks. |
 | `kintai\Contract\Auth\AuthService` | **provisional** | Session user; to be replaced by CurrentUser (step 2). |
+| `kintai\Contract\Auth\UserAnonymizer` | stable | Deleting an account: `anonymize($userId)` erases personal data, deactivates the account and revokes its rights and tokens, the history stays attached to "Deleted user" (contract 1.21; never call `UserRepositoryInterface::delete()` for that). |
 | `kintai\Contract\Data\UserRepositoryInterface` | stable | Accounts. |
 | `kintai\Contract\Data\StoreRepositoryInterface` | stable | Stores. |
 | `kintai\Contract\Data\StoreUserRepositoryInterface` | stable | Store memberships. |
@@ -423,8 +424,9 @@ public function cronJobs(): array
 ```
 
 While your bundle is active, an external scheduler (cron-job.org, a server crontab…) runs the job by calling
-`/cron/run/{name}` with a cron token the Owner created (`?token=` or `Authorization: Bearer`) — typical on shared
-hosting — or, on a server with SSH access, a local crontab runs `php scripts/cron.php {name}` (no token; extra
+`/cron/run/{name}` with a cron token the Owner created — preferably in the `Authorization: Bearer <token>` header,
+since a `?token=` query string ends up in web server access logs; `?token=` stays accepted for schedulers that can
+only call a URL — typical on shared hosting — or, on a server with SSH access, a local crontab runs `php scripts/cron.php {name}` (no token; extra
 URL parameters become `--key=value`). Core names (`backup`,
 `log-purge`, `license-check`) and names already taken are refused (logged); a class that can't be built is skipped.
 `daily-report` ships `auto-validate` this way. Require `"kintai_contract": "^1.8"`.
@@ -698,7 +700,7 @@ Every Web route your bundle registers under `middleware: [AuthMiddleware::class,
 
 **The one mistake that reintroduces this bug every time**: writing `$request->getAttribute('managed_store_ids') ?? []` instead of branching on `=== null`. It looks harmless because several Core repository methods treat an *empty* filter array as "no filter" — so a list query downstream can keep "working" by coincidence — but the next thing reading the same collapsed value (a store-picker dropdown, an `in_array($storeId, $managedIds)` access check) sees "zero stores", not "every store", and breaks. This exact mistake shipped in `kintai-bundle-daily-report`'s `DailyReportController::indexAll()` (fixed in `fix/global-scope-permission-store-filter`) — always handle `null` as its own branch, mirroring `is_admin`, not as something a `??` fallback can absorb.
 
-Don't re-derive this resolution logic yourself. Reuse Core's `kintai\UI\Controller\Web\HasAdminAccess` trait — `managedIds(Request $request): ?array`, `availableStores(?array $managedIds): array`, `assertStoreAccess(Request $request, int $storeId): void`, `assertAnyStoreAccess(Request $request, array $storeIds): void` — the same trait every official bundle's admin controller uses (see `StorePhotoController` in `kintai-bundle-store-photos` for a real example). It already gets the `null` case right; a hand-rolled equivalent in your own controller is exactly how this class of bug gets reintroduced, one bundle at a time.
+Don't re-derive this resolution logic yourself. Reuse the contract's `kintai\Contract\Http\Concerns\HasAdminAccess` trait — `managedIds(Request $request): ?array`, `availableStores(?array $managedIds): array`, `assertStoreAccess(Request $request, int $storeId): void`, `assertAnyStoreAccess(Request $request, array $storeIds): void` — the same trait every official bundle's admin controller uses (see `StorePhotoController` in `kintai-bundle-store-photos` for a real example). It already gets the `null` case right; a hand-rolled equivalent in your own controller is exactly how this class of bug gets reintroduced, one bundle at a time.
 
 If your bundle needs to serve an **uploaded file** (an image, a PDF, an attachment) behind this same authorization, don't build your own file-serving route for it — link into Kintai's own `/storage/{path*}` (route name `storage.file`), which already applies `managed_store_ids` (`StorageFileController::assertPathStoreAccess()`) plus its own upload-path confinement and MIME allow-list. A parallel file-serving route duplicates authorization logic Core already owns, outside of Core's own test coverage.
 
@@ -729,7 +731,7 @@ declare(strict_types=1);
 
 namespace kintai\Database\Migrations;
 
-use kintai\Core\Database\Migration;
+use kintai\Contract\Database\Migration;
 use Illuminate\Database\Schema\Blueprint;
 
 return new class($this->capsule) extends Migration {
@@ -751,13 +753,13 @@ return new class($this->capsule) extends Migration {
 };
 ```
 
-Name files `YYYY_MM_DD_NNNNNN_description.php` — alphabetical sort is execution order, exactly like Core migrations. Always guard `up()` with `hasTable()`/`hasColumn()` (as above): migrations must be idempotent, since they can be replayed by a manual re-sync (see below).
+Name files `YYYY_MM_DD_NNNNNN_description.php` — alphabetical sort is execution order, exactly like Core migrations. Always guard `up()` with `hasTable()`/`hasColumn()` (as above): migrations must be idempotent, since they can be replayed by a manual re-sync (see below). Always go through `$this->schema()`: it gives your tables the same portable schema as the Core's under SQLite and MySQL (signed primary keys matching the `integer()` columns that reference them). A default value on a `text()` column must use `$this->textDefault('…')` — MySQL refuses a plain literal there.
 
 **When they run**: automatically, right after your bundle's files land on disk during install or update from `/admin/bundles/market` (`BundleInstallerService::activate()`) — before the bundle is marked active, so a failing migration aborts the whole install/update rather than activating a bundle with an incomplete schema. They can also be re-synced manually, for every installed bundle at once, with `php scripts/db-migrate.php` (`--dry-run` previews what's pending, same flag as for Core migrations).
 
 **Tracking**: applied bundle migrations are recorded in a `bundle_migrations` table (`bundle_slug` + `migration` name, unique together) — separate from Core's own `migrations` table, so two different bundles can never collide on a migration file name, and so `BundleMigrationRunner::forgetBundle()` can clear just your bundle's tracking rows on uninstall. Business tables themselves are **not** dropped on uninstall (see Limitations) — only the tracking rows are, so a later reinstall replays your `up()` methods cleanly (their `hasTable()` guards make that a no-op if the tables are still there).
 
-This mechanism is deliberately Core-agnostic: your repository interface and Eloquent model can live in your own bundle's namespace, or in `src/Core/Repositories/*Interface.php` if you'd rather follow the convention every official bundle currently uses (see "The stable contract" above) — the migration itself doesn't care either way.
+Your repository interface, Eloquent model and tables live in your bundle's own namespace, like every official bundle's (see "Bundle-owned classes" above).
 
 ## Assets
 
@@ -808,7 +810,7 @@ Required at the bundle's repository root:
     "version": "1.0.0",
     "description": "Team notebook — notes shown on the manager and employee dashboards, pinning, automatic expiry.",
     "author": { "name": "Your Name", "email": "you@example.com", "url": "https://example.com" },
-    "kintai_contract": "^1.0",
+    "kintai_contract": "^1.19",
     "requires_bundles": {},
     "namespace": "kintai\\Bundles\\Installed\\Notebook",
     "entry_class": "kintai\\Bundles\\Installed\\Notebook\\NotebookBundle",
@@ -831,7 +833,7 @@ Required at the bundle's repository root:
 
 ## Versioned bundle contract
 
-The bundle contract has **its own version**, independent of the Core's: `kintai\Contract\Contract::VERSION` (currently `1.0.0`). It follows semver — a minor version only adds things (a class, an optional method, an extension point), a major version removes or changes a signature and is announced in a dedicated "Bundle contract" section of the CHANGELOG.
+The bundle contract has **its own version**, independent of the Core's: `kintai\Contract\Contract::VERSION` (currently `1.22.0`). It follows semver — a minor version only adds things (a class, an optional method, an extension point), a major version removes or changes a signature and is announced in a dedicated "Bundle contract" section of the CHANGELOG.
 
 Declare the contract version your bundle needs in `bundle.json`:
 
@@ -849,7 +851,7 @@ The Core checks it **twice**:
 
 A bundle without `kintai_contract` is treated as incompatible everywhere, including one dropped by hand into `src/Bundles/{Name}/` (which needs a `bundle.json` next to its class).
 
-`kintai_core.min`/`max` is still honoured for bundles that don't declare `kintai_contract` yet, but it will be dropped once every bundle has migrated: declare `kintai_contract` in new bundles.
+`kintai_core.min`/`max` is informational only (see the manifest table above): `kintai_contract` is the only compatibility check.
 
 ## Publishing a release
 
@@ -881,6 +883,17 @@ Kintai sends `script-src 'self' 'nonce-…'` (`SecurityHeadersMiddleware`): the 
 
 **Version requirement.** The `data-*` actions and `csp_nonce()` exist from **Kintai Core 0.3.0**. Every Core that provides the bundle contract (1.0 shipped with Core 0.3.6) has them, so declaring `kintai_contract` — now mandatory — is enough: an older Core refuses the bundle instead of installing controls that do nothing. Conversely, this is a **breaking change for existing bundles**: a bundle written before 0.3.0 that still uses inline handlers keeps working on a Core older than 0.3.0, but its buttons, selects and confirmations stop working on 0.3.0 and later until it is migrated. `tests/Unit/Security/NoInlineScriptGuardTest.php` in Kintai fails as soon as a Core view reintroduces an inline handler; do the same check on your own views.
 
+### Dynamic styles: no `style="…"`
+
+The same rule applies to styles since contract 1.22: the CSP sends `style-src 'self' 'nonce-…'` (no `'unsafe-inline'`), so a `style="…"` attribute is ignored by the browser and a `<style>` block only applies with the nonce — silently, like scripts. **Breaking for bundles written before 1.22** that still use `style="…"`: their colours, widths and positions are lost until migrated. Static presentation belongs in your bundle's CSS. A value only known at render time (a colour picked by the user, a bar's height, a percentage) goes through `style_class()` (contract 1.22), which returns a class carrying those declarations:
+
+```php
+<div class="bar <?= style_class(['height' => $h . 'px', 'background' => $color]) ?>"></div>
+<span class="avatar-chip <?= style_class(['--chip-bg' => $user['color']]) ?>"></span>
+```
+
+The rules are collected during the request and emitted in a single `<style nonce="…">` by the layout. A page rendered **without** the layout (print view, PDF preview) must emit them itself with `<?= inline_styles() ?>` just before `</body>`, and put the nonce on its own `<style>` blocks: `<style nonce="<?= csp_nonce() ?>">`. Values are filtered (letters, digits, `#`, `%`, `.`, `,`, `-`, spaces and parentheses only): anything else is dropped, so user data cannot escape the rule. Setting `element.style.x` from JavaScript is not affected by the CSP and stays allowed; building HTML with a `style="…"` attribute in JavaScript is not.
+
 ### Migrating an existing bundle
 
 1. Find the offenders: `grep -rnE "[[:space:]]on(click|change|submit|input)[[:space:]]*=|['\"]on(click|change|submit|input)['\"][[:space:]]*=>|javascript:|<script>" Views src`.
@@ -899,6 +912,13 @@ The server sees no error when the browser blocks an inline handler, so nothing e
     set -euo pipefail
     if grep -rnE "[[:space:]]on(click|change|submit|input|load|error|focus|blur|dblclick|keyup|keydown)[[:space:]]*=|['\"]on(click|change|submit|input)['\"][[:space:]]*=>|(href|src|action)[[:space:]]*=[[:space:]]*[\"']javascript:|<script>" Views src; then
       echo "::error::Inline handlers, javascript: URLs and <script> without nonce are blocked by Kintai's CSP"
+      exit 1
+    fi
+- name: No inline styles (Kintai CSP)
+  run: |
+    set -euo pipefail
+    if grep -rnE "[[:space:]]style[[:space:]]*=[[:space:]]*[\"'\\\\]|<style>" Views; then
+      echo "::error::style=\"...\" attributes and <style> without nonce are ignored by Kintai's CSP"
       exit 1
     fi
 ```
@@ -928,7 +948,7 @@ A **registry** is nothing more than a static `registry.json` file served over pl
 - `schema_version` — Kintai currently understands `1` and `2`; an instance that doesn't understand a newer schema rejects the listing cleanly (with a log entry) instead of misinterpreting it.
 - `repository_url` must be a plain `https://github.com/{owner}/{repo}` — the installer derives the GitHub API release-lookup URL from it.
 - `versions` (schema 2) is keyed by update channel — `release` (only non-prerelease releases published from `main`), `beta` (`main` or `beta`, excludes `alpha`), `alpha` (everything) — each a list of installable versions, newest first. This mirrors the channel an Owner picks once for every installed bundle on `/admin/bundles/market` (`AppSettingsService::bundleUpdateChannel()`, independent of the Core's own `/admin/update` channel): whichever list matches that channel is what the catalog UI offers as "latest" and what a plain update installs. **Schema 1** (`versions` as a flat array, no channel key) is still accepted for backward compatibility — Kintai then offers that same flat list on every channel, since there's no way to tell which release came from which branch. The official registry computes schema 2's three lists automatically from each bundle's actual GitHub Releases (`target_commitish`/`prerelease`, same rule as Kintai's own release channels) — see [`AudricSan/KintaiBundle`](https://github.com/AudricSan/KintaiBundle)'s `scripts/sync-versions.js`, which runs hourly and opens a PR whenever a new release changes any bundle's version lists; you don't hand-edit `versions` yourself.
-- `bundle.json` inside your repository remains the actual source of truth for compatibility (`kintai_core.min`/`max`) and everything else read at install time — `versions` here is only ever a hint for the catalog UI about what's installable and on which channel.
+- `bundle.json` inside your repository remains the actual source of truth for compatibility (`kintai_contract`) and everything else read at install time — `versions` here is only ever a hint for the catalog UI about what's installable and on which channel.
 - `commits` (optional, added to schema 2 without a version bump — older Kintai versions ignore it) maps each version to the full 40-character sha of the commit its tag points to, e.g. `"commits": {"1.0.2": "7f99e084…"}`. When present, Kintai checks the downloaded archive against it **before extracting anything** (a GitHub zipball carries its commit in the ZIP comment and in the name of its root folder) and refuses the install on a mismatch, so a tag moved to another commit (compromised repository or account) can't slip a different code base past the registry. The official registry fills it in automatically: the same hourly `sync-versions.js` run pins each new release's commit, never rewrites an existing pin, and fails loudly if a tag has moved — the pin only reaches `main` through the pull request a maintainer reviews. Kintai reads the expected commit from the registry server-side (never from the request), and refuses to install if the registry can't be reached to check it. A registry that doesn't publish `commits` keeps working as before (a warning is logged). This is not a signature: it relies on GitHub generating the archive and on HTTPS, and the registry itself remains the trust anchor. If you maintain your own registry, `sync-versions.js` from `AudricSan/KintaiBundle` can be reused as is.
 
 Two ways to get discovered:
@@ -941,10 +961,10 @@ Two ways to get discovered:
 
 ## Known limitations (as of this writing)
 
-- **One process, one Composer autoloader.** There's no per-bundle `composer.json` or dependency isolation — your bundle runs in the same PHP process and namespace tree as Kintai's own `kintai\` root. Depend only on `BundleContract\Bundle`, `src/Core/Repositories/*Interface.php`, and other Core classes you're comfortable coupling to across Kintai versions.
+- **One process, one Composer autoloader.** There's no per-bundle `composer.json` or dependency isolation — your bundle runs in the same PHP process and namespace tree as Kintai's own `kintai\` root. Depend only on the `kintai\Contract\…` names listed above: they are the only Core classes guaranteed across Kintai versions.
 - **`requires_bundles` isn't enforced yet.** Declaring a dependency on another bundle's slug/version is accepted and stored, but nothing currently blocks installation if it's missing or too old — treat it as documentation for now, not a guarantee.
 - **No uninstall flow for business data.** `/admin/bundles/market` can install, update, and uninstall a bundle's files/manifest entry/migration tracking rows — but the tables your migrations created (and their data) are never dropped or touched on uninstall. Cleaning those up, if desired, is a manual DB operation for now.
-- **Inline scripts and event handlers don't work.** From Kintai Core 0.3.0 the Content-Security-Policy has no `'unsafe-inline'` for scripts: a bundle view with `onclick=`/`onchange=`/`onsubmit=`/`oninput=`, a `javascript:` link or a nonce-less `<script>` is silently blocked by the browser. See [Content Security Policy](#content-security-policy-no-inline-scripts).
+- **Inline scripts and event handlers don't work.** From Kintai Core 0.3.0 the Content-Security-Policy has no `'unsafe-inline'` for scripts: a bundle view with `onclick=`/`onchange=`/`onsubmit=`/`oninput=`, a `javascript:` link or a nonce-less `<script>` is silently blocked by the browser. Since contract 1.22 the same goes for styles: a `style="…"` attribute or a nonce-less `<style>` is ignored (use `style_class()`). See [Content Security Policy](#content-security-policy-no-inline-scripts).
 - **GitHub only.** `repository_url` must point at a GitHub repository — no GitLab, no self-hosted Git server, no non-Git archive source.
 
 ## Reference implementation

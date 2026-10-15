@@ -13,7 +13,7 @@ $removable ??= false;
     <ul class="role-holders-list">
         <?php foreach ($holders as $h): ?>
             <li class="role-holder-chip">
-                <span class="avatar-chip" style="--chip-bg:<?= htmlspecialchars($h['color']) ?>"><?= htmlspecialchars($h['initials']) ?></span>
+                <span class="avatar-chip <?= style_class(['--chip-bg' => $h['color']]) ?>"><?= htmlspecialchars($h['initials']) ?></span>
                 <span class="role-holder-chip__body">
                     <span class="role-holder-chip__name"><?= htmlspecialchars($h['user_name']) ?></span>
                     <span class="role-holder-chip__scope"><?= htmlspecialchars($h['scope_label']) ?></span>

@@ -221,6 +221,22 @@ $exportUrl = route_url('admin.activity.export') . ($exportParams ? '?' . http_bu
         echo EmptyState::make(__('empty_activity_log'))->render();
     else:
         $actionLabelsLocal = $actionLabels;
+        // Libellés des champs modifiés : la traduction du nom de colonne quand elle existe (même nom, ou clé proche pour
+        // les identifiants), sinon le nom brut. Avant : toujours le nom de colonne (start_time, hourly_rate…).
+        $fieldAliases = ['shift_date' => 'date', 'store_id' => 'store', 'user_id' => 'employee', 'shift_type_id' => 'shift_type',
+            'is_active' => 'active', 'pause_minutes' => 'pause', 'role_id' => 'role', 'duration_minutes' => 'duration'];
+        $fieldLabel = static function (string $field) use ($fieldAliases): string {
+            $key = $fieldAliases[$field] ?? $field;
+            $label = __($key);
+            return $label !== $key ? $label : $field;
+        };
+        $fieldLabels = [];
+        foreach ($rows as $_row) {
+            $_ctx = is_array($_row['context'] ?? null) ? $_row['context'] : [];
+            foreach (array_keys(is_array($_ctx['changes'] ?? null) ? $_ctx['changes'] : []) as $_field) {
+                $fieldLabels[(string) $_field] ??= $fieldLabel((string) $_field);
+            }
+        }
         echo Table::make()
             ->data($rows)
             ->rowAttrs(function($row) use ($actionLabelsLocal, $users_map) {
@@ -279,12 +295,12 @@ $exportUrl = route_url('admin.activity.export') . ($exportParams ? '?' . http_bu
                 return Badge::make($row['level'] ?? '')->variant($levelClass)->render()
                     . ($action ? Badge::make($label)->primary()->render() : '—');
             })
-            ->column(__('message'), function($row) use ($actionLabelsLocal) {
+            ->column(__('message'), function($row) use ($actionLabelsLocal, $fieldLabels) {
                 $action = $row['action'] ?? '';
                 $context = $row['context'] ?? [];
                 $summary = $row['message'] ?? '';
                 if ($context && is_array($context) && !empty($context['changes'])) {
-                    $changed = array_keys($context['changes']);
+                    $changed = array_map(fn($f) => $fieldLabels[(string) $f] ?? (string) $f, array_keys($context['changes']));
                     $summary .= ' (' . implode(', ', array_slice($changed, 0, 3)) . (count($changed) > 3 ? ', …' : '') . ')';
                 }
                 return '<span class="td-message">' . htmlspecialchars($summary) . '</span>';
@@ -328,7 +344,13 @@ echo Modal::make('—', '<div id="al-detail-content"></div>')
 ?>
 
 <script type="application/json" id="kintai-activity-log-data"><?= json_encode([
+    'fields' => $fieldLabels ?? [],
     'labels' => [
+        'changesTitle' => __('log_changes_title'),
+        'field'        => __('log_field'),
+        'oldValue'     => __('log_old_value'),
+        'newValue'     => __('log_new_value'),
+        'contextTitle' => __('log_context_title'),
         'level'       => __('level'),
         'channel'     => __('channel'),
         'date'        => __('date'),
@@ -350,7 +372,9 @@ echo Modal::make('—', '<div id="al-detail-content"></div>')
     var rows = document.querySelectorAll('.log-row');
     var content = document.getElementById('al-detail-content');
     var title   = document.getElementById('al-modal-title');
-    var LBL = JSON.parse(document.getElementById('kintai-activity-log-data').textContent).labels;
+    var DATA = JSON.parse(document.getElementById('kintai-activity-log-data').textContent);
+    var LBL = DATA.labels;
+    var FIELDS = DATA.fields || {};
 
     function escapeHtml(str) {
         if (str == null) return '';
@@ -368,14 +392,14 @@ echo Modal::make('—', '<div id="al-detail-content"></div>')
             var oldVal = c.old != null ? escapeHtml(String(c.old)) : '<span class="text-dim">null</span>';
             var newVal = c.new != null ? escapeHtml(String(c.new)) : '<span class="text-dim">null</span>';
             return '<tr>' +
-                '<td class="td-nowrap"><strong>' + escapeHtml(field) + '</strong></td>' +
+                '<td class="td-nowrap"><strong>' + escapeHtml(FIELDS[field] || field) + '</strong></td>' +
                 '<td class="al-diff-old">' + oldVal + '</td>' +
                 '<td class="al-diff-new">' + newVal + '</td>' +
             '</tr>';
         }).join('');
-        return '<h4 class="mb-xs">Modifications</h4>' +
+        return '<h4 class="mb-xs">' + escapeHtml(LBL.changesTitle) + '</h4>' +
             '<div class="table-wrap"><table class="data-table">' +
-            '<thead><tr><th>Champ</th><th>Ancienne valeur</th><th>Nouvelle valeur</th></tr></thead>' +
+            '<thead><tr><th>' + escapeHtml(LBL.field) + '</th><th>' + escapeHtml(LBL.oldValue) + '</th><th>' + escapeHtml(LBL.newValue) + '</th></tr></thead>' +
             '<tbody>' + rows + '</tbody></table></div>';
     }
 
@@ -392,7 +416,7 @@ echo Modal::make('—', '<div id="al-detail-content"></div>')
             return '<div class="mb-xs"><code>' + escapeHtml(k) + '</code>: ' + display + '</div>';
         }).filter(Boolean).join('');
         if (!list) return '';
-        return '<h4 class="mb-xs">Contexte</h4><div class="al-context">' + list + '</div>';
+        return '<h4 class="mb-xs">' + escapeHtml(LBL.contextTitle) + '</h4><div class="al-context">' + list + '</div>';
     }
 
     function showDetail(row) {

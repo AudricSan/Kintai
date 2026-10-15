@@ -6,7 +6,7 @@ Ce document décrit comment publier une nouvelle version de Kintai sur GitHub, d
 
 ## Principe
 
-La mise à jour automatique (`GithubUpdateService::checkLatestRelease()`) interroge `GET /repos/{GITHUB_UPDATE_REPO}/releases` (la liste complète, pas seulement la dernière) et télécharge l'archive source (`zipball_url`) générée automatiquement par GitHub pour le tag de la release sélectionnée. Il n'y a donc **rien à construire ni à uploader manuellement** : une Release GitHub taguée `vX.Y.Z` suffit.
+La mise à jour automatique (`GithubUpdateService::checkLatestRelease()`) interroge `GET /repos/{GITHUB_UPDATE_REPO}/releases` (la liste complète, pas seulement la dernière). Elle applique l'archive que le workflow `Release` joint à la release sélectionnée — `kintai-vX.Y.Z.zip` : le code du tag (`git archive`) plus `vendor/` (`composer install --no-dev`) et un `release-manifest.json` qui nomme le tag et son commit — accompagnée de son fichier `SHA256SUMS`. Avant d'écrire quoi que ce soit, l'instance compare le SHA-256 de l'archive à `SHA256SUMS` et vérifie que le manifeste nomme ce tag et le commit que GitHub indique pour lui (`GET /repos/{repo}/commits/{tag}`) ; le moindre écart, ou une release sans ces deux fichiers, est refusé. **Rien à construire ni à téléverser à la main** — le workflow s'en charge. Ces contrôles détectent une archive modifiée, tronquée ou jointe par erreur ; ils ne protègent pas d'un compte GitHub compromis, qui pourrait publier une archive et une empreinte cohérentes.
 
 Chaque instance suit l'un des trois **canaux de mise à jour**, choisi par l'Owner sur `/admin/update` :
 - **Release** — uniquement les releases publiées depuis `main`, non marquées prerelease sur GitHub.
@@ -60,7 +60,7 @@ Pour faire avancer une version (develop → alpha → beta → release), on merg
 
 - Sur chaque instance, l'owner voit « Mise à jour disponible » sur `/admin/update` (pour le canal qu'elle suit) et peut cliquer « Mettre à jour maintenant ».
 - Avant d'appliquer quoi que ce soit, l'instance crée automatiquement un backup base de données + uploads et un snapshot du code dans `storage/backups/`.
-- Si `composer.lock` a changé, l'instance tente `composer install` automatiquement (best-effort) ; en cas d'échec ou d'indisponibilité, un avertissement invite à le lancer manuellement en SSH.
+- `vendor/` vient de l'archive vérifiée : l'instance ne lance jamais `composer` (elle tentait auparavant `composer install` via `shell_exec`, souvent en échec sur un hébergement mutualisé). Les paquets retirés par une nouvelle version disparaissent de `vendor/` comme tout autre fichier installé par la mise à jour précédente.
 
 ## En cas de problème
 

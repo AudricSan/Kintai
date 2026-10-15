@@ -10,8 +10,9 @@ return [
         \kintai\Core\Middleware\SecurityHeadersMiddleware::class,
         // Limitation de débit de /api/* (toutes routes, bundles compris), avant tout le reste du traitement.
         \kintai\Core\Middleware\ApiRateLimitMiddleware::class,
-        \kintai\Core\Middleware\CsrfMiddleware::class,
+        // Langue avant le contrôle CSRF : son refus (session expirée) s'affiche traduit.
         \kintai\Core\Middleware\I18nMiddleware::class,
+        \kintai\Core\Middleware\CsrfMiddleware::class,
         \kintai\Core\Middleware\AppSettingsMiddleware::class,
         \kintai\Core\Middleware\MaintenanceModeMiddleware::class,
         \kintai\Core\Middleware\PasswordReminderMiddleware::class,

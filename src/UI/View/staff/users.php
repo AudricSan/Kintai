@@ -110,7 +110,7 @@ $exportQuery = $filter_store_id !== 0 ? '?store_id=' . $filter_store_id : '';
         }
         $chipColor = htmlspecialchars($u['color'] ?? '#6c5ce7');
         return '<div class="avatar-chip-cell">'
-            . '<span class="avatar-chip" style="--chip-bg:' . $chipColor . '">' . $initials . '</span>'
+            . '<span class="avatar-chip ' . style_class(['--chip-bg' => $chipColor]) . '">' . $initials . '</span>'
             . '<div><a href="' . htmlspecialchars($BASE_URL . '/admin/users/' . employee_segment($uid) . '/edit') . '"><strong>' . $name . '</strong></a>'
             . ($full !== $name ? '<div class="text-hint">' . $full . '</div>' : '')
             . '</div></div>';

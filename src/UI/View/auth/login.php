@@ -10,6 +10,9 @@ $mode = ($login_mode ?? 'code') === 'email' ? 'email' : 'code';
 <?php if ($error ?? false):
     echo Alert::make(__('invalid_credentials'))->danger()->render();
 endif; ?>
+<?php if ($expired ?? false):
+    echo Alert::make(__('session_expired_login'))->warning()->render();
+endif; ?>
 
 <!-- Onglets -->
 <div class="login-tabs">
@@ -52,7 +55,7 @@ endif; ?>
                 <input type="password" name="password" class="form-control"
                        autocomplete="current-password" placeholder="0000" required
                        <?= $mode !== 'code' ? 'disabled' : '' ?>>
-                <p class="login-hint"><?= __('password_default_hint', ['code' => '0000']) ?></p>
+                <?php // Plus d'indice du mot de passe par défaut sur cette page publique (audit n°8) : les gérants le communiquent. ?>
             </div>
         </div>
 
@@ -91,9 +94,12 @@ endif; ?>
 <?php if (count($login_languages ?? []) > 1): ?>
 <nav class="login-lang" aria-label="<?= htmlspecialchars(__('language')) ?>">
     <?php foreach ($login_languages as $_lang): ?>
-        <a href="<?= route_url('lang.switch', ['locale' => $_lang['code']]) ?>" lang="<?= htmlspecialchars($_lang['code']) ?>"
-           class="login-lang__link<?= ($current_locale ?? '') === $_lang['code'] ? ' login-lang__link--active' : '' ?>"
-           <?= ($current_locale ?? '') === $_lang['code'] ? 'aria-current="true"' : '' ?>><?= htmlspecialchars($_lang['name']) ?></a>
+        <form method="POST" action="<?= route_url('lang.switch', ['locale' => $_lang['code']]) ?>">
+            <?= csrf_field() ?>
+            <button type="submit" lang="<?= htmlspecialchars($_lang['code']) ?>"
+                    class="login-lang__link<?= ($current_locale ?? '') === $_lang['code'] ? ' login-lang__link--active' : '' ?>"
+                    <?= ($current_locale ?? '') === $_lang['code'] ? 'aria-current="true"' : '' ?>><?= htmlspecialchars($_lang['name']) ?></button>
+        </form>
     <?php endforeach; ?>
 </nav>
 <?php endif; ?>

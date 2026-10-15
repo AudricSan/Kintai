@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="<?= htmlspecialchars($locale ?? 'en') ?>" data-mascot="<?= htmlspecialchars(mascot_active(), ENT_QUOTES) ?>" style="<?= htmlspecialchars($app_theme_color_style ?? '', ENT_QUOTES) ?>">
+<html lang="<?= htmlspecialchars($locale ?? 'en') ?>" data-mascot="<?= htmlspecialchars(mascot_active(), ENT_QUOTES) ?>">
 
 <head>
     <meta charset="UTF-8">
@@ -13,6 +13,10 @@
     <link rel="apple-touch-icon" sizes="180x180" href="<?= $BASE_URL ?>/assets/img/apple-touch-icon.png">
     <title><?= htmlspecialchars($title ?? 'Kintai') ?> — Kintai</title>
     <link rel="stylesheet" href="<?= $BASE_URL ?>/assets/css/app.css?v=<?= asset_version() ?>">
+    <?php // Couleurs du thème et styles dynamiques de la page (style_class()) : bloc à nonce, aucun attribut de style en ligne.
+    $_themeCss = \kintai\UI\InlineStyles::rootVariables($app_theme_color_style ?? ''); ?>
+    <?php if ($_themeCss !== ''): ?><style nonce="<?= csp_nonce() ?>"><?= $_themeCss ?></style><?php endif; ?>
+    <?= inline_styles() ?>
     <script nonce="<?= csp_nonce() ?>">(function(){var t=localStorage.getItem('kintai-theme');if(t)document.documentElement.dataset.theme=t;}());</script>
 </head>
 
@@ -112,6 +116,7 @@
             <?php foreach (\kintai\Core\SessionFlash::pull() as $_flash): ?>
                 <div class="alert alert--<?= htmlspecialchars($_flash['type']) ?> mb-sm"><?= htmlspecialchars($_flash['text']) ?></div>
             <?php endforeach; ?>
+            <?php include __DIR__ . '/partials/_old-input.php'; ?>
             <?php if ($isOwner && !empty($app_public_url_missing)): ?>
                 <div class="alert alert--warning mb-sm">
                     <?= htmlspecialchars(__('public_url_missing_warning')) ?>
@@ -141,6 +146,7 @@
     <script src="<?= $BASE_URL ?>/assets/js/modules/csp-actions.js?v=<?= asset_version() ?>"></script>
     <script src="<?= $BASE_URL ?>/assets/js/app.js?v=<?= asset_version() ?>"></script>
     <script src="<?= $BASE_URL ?>/assets/js/modules/notifications.js?v=<?= asset_version() ?>"></script>
+    <script src="<?= $BASE_URL ?>/assets/js/modules/old-input.js?v=<?= asset_version() ?>"></script>
     <?php if (!empty($push_web_config) && !empty($auth_user['id'] ?? null) && ($tab ?? '') === 'push'): ?>
         <div id="push-meta"
              data-project-id="<?= htmlspecialchars($push_web_config['project_id']) ?>"
@@ -169,6 +175,8 @@
     <?php if (!empty($password_reminder_popup)) {
         include __DIR__ . '/partials/_password-reminder-modal.php';
     } ?>
+    <?php // Règles ajoutées par les partiels du layout lui-même, rendus après le <head>. ?>
+    <?= inline_styles() ?>
 </body>
 
 </html>

@@ -42,29 +42,29 @@ final class EmployeeControllerNavSettingsTest extends TestCase
 
         $this->controller = new EmployeeController(
             new ViewRenderer(sys_get_temp_dir()),
-            $this->createMock(ShiftRepositoryInterface::class),
-            $this->createMock(ShiftTypeRepositoryInterface::class),
-            $this->createMock(StoreRepositoryInterface::class),
-            $this->createMock(StoreUserRepositoryInterface::class),
-            $this->createMock(UserRepositoryInterface::class),
-            $this->createMock(UserShiftTypeRateRepositoryInterface::class),
+            $this->createStub(ShiftRepositoryInterface::class),
+            $this->createStub(ShiftTypeRepositoryInterface::class),
+            $this->createStub(StoreRepositoryInterface::class),
+            $this->createStub(StoreUserRepositoryInterface::class),
+            $this->createStub(UserRepositoryInterface::class),
+            $this->createStub(UserShiftTypeRateRepositoryInterface::class),
             new AuditLogger(),
-            $this->createMock(IcalTokenRepositoryInterface::class),
-            $this->createMock(AvailabilityRepositoryInterface::class),
-            $this->createMock(UserDashboardPrefsRepositoryInterface::class),
+            $this->createStub(IcalTokenRepositoryInterface::class),
+            $this->createStub(AvailabilityRepositoryInterface::class),
+            $this->createStub(UserDashboardPrefsRepositoryInterface::class),
             new NotificationService(
-                $this->createMock(NotificationRepositoryInterface::class),
-                new PushNotificationService([], $this->createMock(DevicePushTokenRepositoryInterface::class)),
+                $this->createStub(NotificationRepositoryInterface::class),
+                new PushNotificationService([], $this->createStub(DevicePushTokenRepositoryInterface::class)),
                 new TranslationService(
                     $this->createStub(TranslationRepositoryInterface::class),
                     $this->createStub(LanguageRepositoryInterface::class),
                 ),
-                $this->createMock(UserRepositoryInterface::class),
+                $this->createStub(UserRepositoryInterface::class),
             ),
             $this->navPrefs,
             new PermissionService(
-                $this->createMock(RoleAssignmentRepositoryInterface::class),
-                $this->createMock(RoleRepositoryInterface::class),
+                $this->createStub(RoleAssignmentRepositoryInterface::class),
+                $this->createStub(RoleRepositoryInterface::class),
             ),
         );
     }

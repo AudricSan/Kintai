@@ -50,6 +50,8 @@ final class DatabaseServiceProvider extends ServiceProvider
         $capsule->addConnection($eloquentConfig);
         $capsule->setAsGlobal();
         $capsule->bootEloquent();
+        // created_at dans le fuseau de l'instance plutôt que l'UTC de CURRENT_TIMESTAMP (voir InstanceTimestamps).
+        \Illuminate\Database\Eloquent\Model::setEventDispatcher(new InstanceTimestamps());
         $this->container->instance(Capsule::class, $capsule);
     }
 

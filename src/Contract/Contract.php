@@ -18,10 +18,14 @@ namespace kintai\Contract;
 final class Contract
 {
     /** Version du contrat fournie par ce Core. */
-    public const VERSION = '1.20.0';
+    public const VERSION = '1.22.0';
 
     /*
      * Historique :
+     * - 1.22.0 : helpers de vue style_class() et inline_styles() (styles dynamiques sans attribut style="…", émis dans un
+     *   <style> à nonce) ; préalable au retrait de 'unsafe-inline' de la directive style-src de la CSP.
+     * - 1.21.0 : kintai\Contract\Auth\UserAnonymizer (suppression d'un compte = anonymisation, même résultat que la fiche
+     *   employé ou l'API ; utilisé par resignation-report).
      * - 1.20.0 : libellé des tâches planifiées par convention de traduction (cron_job_{nom}, tirets remplacés par des
      *   soulignés) dans les traductions du bundle ; à défaut, le nom de la tâche.
      * - 1.19.0 : point d'extension Bundle::dashboardStats() et kintai\Contract\Extension\DashboardStat (cartes de statistiques du

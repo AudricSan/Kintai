@@ -48,6 +48,20 @@ final class InstanceLocale
         return $active[0] ?? 'en';
     }
 
+    /**
+     * Langue proposée à l'installation d'une nouvelle instance (installateur web, scripts/provision.php) : l'anglais
+     * s'il est actif, sinon la première langue active. Volontairement indépendante du is_default de
+     * lang/languages.json : celui-ci reste le repli des instances installées avant APP_LOCALE, dont la langue ne doit
+     * pas changer à la mise à jour.
+     */
+    public const NEW_INSTANCE_DEFAULT = 'en';
+
+    public static function defaultForNewInstance(LanguageRepositoryInterface $languages): string
+    {
+        $active = array_column($languages->findAllActive(), 'code');
+        return in_array(self::NEW_INSTANCE_DEFAULT, $active, true) ? self::NEW_INSTANCE_DEFAULT : ($active[0] ?? self::NEW_INSTANCE_DEFAULT);
+    }
+
     /** Langue d'un utilisateur : celle de son profil si elle est active, sinon celle de l'instance. */
     public function forUser(?array $user): string
     {

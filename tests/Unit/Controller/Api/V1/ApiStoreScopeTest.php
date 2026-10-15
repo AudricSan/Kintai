@@ -33,6 +33,7 @@ use kintai\UI\Controller\Api\V1\ShiftController;
 use kintai\UI\Controller\Api\V1\StoreController;
 use kintai\UI\Controller\Api\V1\UserController;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use kintai\Core\Auth\UserAnonymizer;
 use PHPUnit\Framework\TestCase;
 
@@ -51,9 +52,9 @@ final class ApiStoreScopeTest extends TestCase
     private const STORE_B = 6; // autre magasin
 
     private PermissionService $permissions;
-    private ShiftRepositoryInterface&MockObject $shifts;
-    private UserRepositoryInterface&MockObject $users;
-    private StoreUserRepositoryInterface&MockObject $storeUsers;
+    private ShiftRepositoryInterface&Stub $shifts;
+    private UserRepositoryInterface&Stub $users;
+    private StoreUserRepositoryInterface&Stub $storeUsers;
 
     protected function setUp(): void
     {
@@ -80,9 +81,9 @@ final class ApiStoreScopeTest extends TestCase
         $roles->method('getGlobalPermissionKeys')->willReturn([]);
 
         $this->permissions = new PermissionService($assignments, $roles);
-        $this->shifts      = $this->createMock(ShiftRepositoryInterface::class);
-        $this->users       = $this->createMock(UserRepositoryInterface::class);
-        $this->storeUsers  = $this->createMock(StoreUserRepositoryInterface::class);
+        $this->shifts      = $this->createStub(ShiftRepositoryInterface::class);
+        $this->users       = $this->createStub(UserRepositoryInterface::class);
+        $this->storeUsers  = $this->createStub(StoreUserRepositoryInterface::class);
     }
 
     protected function tearDown(): void
@@ -116,7 +117,8 @@ final class ApiStoreScopeTest extends TestCase
 
     public function testManagerCannotUpdateShiftOfAnotherStore(): void
     {
-        $this->shifts->method('findById')->with(9)->willReturn(['id' => 9, 'store_id' => self::STORE_B]);
+        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
+        $this->shifts->expects($this->atLeastOnce())->method('findById')->with(9)->willReturn(['id' => 9, 'store_id' => self::STORE_B]);
         $this->shifts->expects($this->never())->method('save');
         $controller = new ShiftController($this->shifts, new AuditLogger(), $this->permissions);
 
@@ -127,7 +129,8 @@ final class ApiStoreScopeTest extends TestCase
 
     public function testManagerCannotDeleteShiftOfAnotherStore(): void
     {
-        $this->shifts->method('findById')->with(9)->willReturn(['id' => 9, 'store_id' => self::STORE_B]);
+        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
+        $this->shifts->expects($this->atLeastOnce())->method('findById')->with(9)->willReturn(['id' => 9, 'store_id' => self::STORE_B]);
         $this->shifts->expects($this->never())->method('delete');
         $controller = new ShiftController($this->shifts, new AuditLogger(), $this->permissions);
 
@@ -137,7 +140,8 @@ final class ApiStoreScopeTest extends TestCase
 
     public function testManagerCannotMoveOwnShiftToAnotherStore(): void
     {
-        $this->shifts->method('findById')->with(3)->willReturn(['id' => 3, 'store_id' => self::STORE_A]);
+        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
+        $this->shifts->expects($this->atLeastOnce())->method('findById')->with(3)->willReturn(['id' => 3, 'store_id' => self::STORE_A]);
         $this->shifts->expects($this->never())->method('save');
         $controller = new ShiftController($this->shifts, new AuditLogger(), $this->permissions);
 
@@ -147,7 +151,8 @@ final class ApiStoreScopeTest extends TestCase
 
     public function testManagerCanUpdateShiftOfOwnStore(): void
     {
-        $this->shifts->method('findById')->with(3)->willReturn(['id' => 3, 'store_id' => self::STORE_A]);
+        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
+        $this->shifts->expects($this->atLeastOnce())->method('findById')->with(3)->willReturn(['id' => 3, 'store_id' => self::STORE_A]);
         $this->shifts->expects($this->once())->method('save')->willReturn(['id' => 3, 'store_id' => self::STORE_A]);
         $controller = new ShiftController($this->shifts, new AuditLogger(), $this->permissions);
 
@@ -158,6 +163,7 @@ final class ApiStoreScopeTest extends TestCase
 
     public function testShiftCreationIgnoresIdFromBody(): void
     {
+        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
         $this->shifts->expects($this->once())->method('save')
             ->with($this->callback(fn(array $d): bool => !array_key_exists('id', $d) && $d['store_id'] === self::STORE_A))
             ->willReturn(['id' => 50, 'store_id' => self::STORE_A]);
@@ -170,6 +176,7 @@ final class ApiStoreScopeTest extends TestCase
 
     public function testShiftCreationRequiresStoreId(): void
     {
+        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
         $this->shifts->expects($this->never())->method('save');
         $controller = new ShiftController($this->shifts, new AuditLogger(), $this->permissions);
 
@@ -179,6 +186,7 @@ final class ApiStoreScopeTest extends TestCase
 
     public function testShiftCreationForAnotherStoreIsForbidden(): void
     {
+        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
         $this->shifts->expects($this->never())->method('save');
         $controller = new ShiftController($this->shifts, new AuditLogger(), $this->permissions);
 
@@ -188,7 +196,8 @@ final class ApiStoreScopeTest extends TestCase
 
     public function testShiftIndexIsRestrictedToManagedStores(): void
     {
-        $this->shifts->method('findByUser')->with(77)->willReturn([
+        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
+        $this->shifts->expects($this->atLeastOnce())->method('findByUser')->with(77)->willReturn([
             ['id' => 1, 'store_id' => self::STORE_A],
             ['id' => 2, 'store_id' => self::STORE_B],
         ]);
@@ -237,9 +246,11 @@ final class ApiStoreScopeTest extends TestCase
 
     public function testManagerCannotChangeOwnerPassword(): void
     {
-        $this->users->method('findById')->with(self::OWNER)->willReturn(['id' => self::OWNER, 'email' => 'owner@example.com']);
+        $this->users = $this->createMock(UserRepositoryInterface::class);
+        $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
+        $this->users->expects($this->atLeastOnce())->method('findById')->with(self::OWNER)->willReturn(['id' => self::OWNER, 'email' => 'owner@example.com']);
         // L'Owner est (aussi) membre du magasin du gérant : seule la protection Owner doit le bloquer.
-        $this->storeUsers->method('findByUser')->with(self::OWNER)->willReturn([['store_id' => self::STORE_A]]);
+        $this->storeUsers->expects($this->atLeastOnce())->method('findByUser')->with(self::OWNER)->willReturn([['store_id' => self::STORE_A]]);
         $this->users->expects($this->never())->method('save');
 
         $this->expectException(ForbiddenException::class);
@@ -248,8 +259,10 @@ final class ApiStoreScopeTest extends TestCase
 
     public function testManagerCannotUpdateEmployeeOfAnotherStore(): void
     {
-        $this->users->method('findById')->with(30)->willReturn(['id' => 30]);
-        $this->storeUsers->method('findByUser')->with(30)->willReturn([['store_id' => self::STORE_B]]);
+        $this->users = $this->createMock(UserRepositoryInterface::class);
+        $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
+        $this->users->expects($this->atLeastOnce())->method('findById')->with(30)->willReturn(['id' => 30]);
+        $this->storeUsers->expects($this->atLeastOnce())->method('findByUser')->with(30)->willReturn([['store_id' => self::STORE_B]]);
         $this->users->expects($this->never())->method('save');
 
         $this->expectException(ForbiddenException::class);
@@ -258,8 +271,10 @@ final class ApiStoreScopeTest extends TestCase
 
     public function testUpdateHashesPasswordNeverStoresRawHashAndRevokesCredentials(): void
     {
-        $this->users->method('findById')->with(31)->willReturn(['id' => 31, 'is_active' => 1]);
-        $this->storeUsers->method('findByUser')->with(31)->willReturn([['store_id' => self::STORE_A]]);
+        $this->users = $this->createMock(UserRepositoryInterface::class);
+        $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
+        $this->users->expects($this->atLeastOnce())->method('findById')->with(31)->willReturn(['id' => 31, 'is_active' => 1]);
+        $this->storeUsers->expects($this->atLeastOnce())->method('findByUser')->with(31)->willReturn([['store_id' => self::STORE_A]]);
         $this->users->expects($this->once())->method('save')->with($this->callback(function (array $d): bool {
             return $d['id'] === 31
                 && !array_key_exists('password', $d)
@@ -282,8 +297,10 @@ final class ApiStoreScopeTest extends TestCase
 
     public function testRawPasswordHashCannotBeInjectedOnUpdate(): void
     {
-        $this->users->method('findById')->with(31)->willReturn(['id' => 31]);
-        $this->storeUsers->method('findByUser')->with(31)->willReturn([['store_id' => self::STORE_A]]);
+        $this->users = $this->createMock(UserRepositoryInterface::class);
+        $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
+        $this->users->expects($this->atLeastOnce())->method('findById')->with(31)->willReturn(['id' => 31]);
+        $this->storeUsers->expects($this->atLeastOnce())->method('findByUser')->with(31)->willReturn([['store_id' => self::STORE_A]]);
         $this->users->expects($this->once())->method('save')->with($this->callback(
             fn(array $d): bool => !array_key_exists('password_hash', $d)
         ))->willReturn(['id' => 31]);
@@ -293,6 +310,7 @@ final class ApiStoreScopeTest extends TestCase
 
     public function testUserCreationIgnoresIdAndSetsDefaultPassword(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $this->users->method('countActive')->willReturn(1);
         $this->users->expects($this->once())->method('save')->with($this->callback(
             fn(array $d): bool => !array_key_exists('id', $d) && !empty($d['password_hash'])
@@ -306,7 +324,8 @@ final class ApiStoreScopeTest extends TestCase
 
     public function testShowAndIndexNeverExposePasswordHash(): void
     {
-        $this->users->method('findById')->with(31)->willReturn(['id' => 31, 'password_hash' => 'secret']);
+        $this->users = $this->createMock(UserRepositoryInterface::class);
+        $this->users->expects($this->atLeastOnce())->method('findById')->with(31)->willReturn(['id' => 31, 'password_hash' => 'secret']);
         $this->users->method('findAll')->willReturn([['id' => 31, 'password_hash' => 'secret']]);
         $this->storeUsers->method('findByUser')->willReturn([['store_id' => self::STORE_A]]);
 
@@ -319,8 +338,9 @@ final class ApiStoreScopeTest extends TestCase
 
     public function testUserIndexIsRestrictedToManagedStoreMembers(): void
     {
+        $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
         $this->users->method('findAll')->willReturn([['id' => 31], ['id' => 32], ['id' => self::MANAGER]]);
-        $this->storeUsers->method('findByStore')->with(self::STORE_A)->willReturn([['user_id' => 31]]);
+        $this->storeUsers->expects($this->atLeastOnce())->method('findByStore')->with(self::STORE_A)->willReturn([['user_id' => 31]]);
 
         $response = $this->userController()->index($this->request(self::MANAGER));
 
@@ -332,8 +352,10 @@ final class ApiStoreScopeTest extends TestCase
 
     public function testManagerCannotReadIcalTokensOfAnotherStoreEmployee(): void
     {
-        $this->users->method('findById')->with(30)->willReturn(['id' => 30]);
-        $this->storeUsers->method('findByUser')->with(30)->willReturn([['store_id' => self::STORE_B]]);
+        $this->users = $this->createMock(UserRepositoryInterface::class);
+        $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
+        $this->users->expects($this->atLeastOnce())->method('findById')->with(30)->willReturn(['id' => 30]);
+        $this->storeUsers->expects($this->atLeastOnce())->method('findByUser')->with(30)->willReturn([['store_id' => self::STORE_B]]);
         $icalTokens = $this->createMock(IcalTokenRepositoryInterface::class);
         $icalTokens->expects($this->never())->method('findByUser');
         $controller = new IcalTokenController(
@@ -373,7 +395,8 @@ final class ApiStoreScopeTest extends TestCase
 
     public function testShiftUpdateRecomputesTimingFromTheStoredValues(): void
     {
-        $this->shifts->method('findById')->with(3)->willReturn([
+        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
+        $this->shifts->expects($this->atLeastOnce())->method('findById')->with(3)->willReturn([
             'id' => 3, 'store_id' => self::STORE_A, 'shift_date' => '2026-10-20', 'start_time' => '09:00:00', 'end_time' => '17:00:00',
         ]);
         $saved = null;
@@ -405,6 +428,7 @@ final class ApiStoreScopeTest extends TestCase
     #[\PHPUnit\Framework\Attributes\DataProvider('invalidShifts')]
     public function testShiftCreationRefusesInvalidBodies(array $body): void
     {
+        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
         $this->shifts->expects($this->never())->method('save');
         $controller = new ShiftController($this->shifts, new AuditLogger(), $this->permissions);
 
@@ -426,8 +450,10 @@ final class ApiStoreScopeTest extends TestCase
 
     public function testDestroyAnonymizesTheAccountInsteadOfDeletingIt(): void
     {
-        $this->users->method('findById')->with(31)->willReturn(['id' => 31, 'is_active' => 1]);
-        $this->storeUsers->method('findByUser')->with(31)->willReturn([['store_id' => self::STORE_A]]);
+        $this->users = $this->createMock(UserRepositoryInterface::class);
+        $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
+        $this->users->expects($this->atLeastOnce())->method('findById')->with(31)->willReturn(['id' => 31, 'is_active' => 1]);
+        $this->storeUsers->expects($this->atLeastOnce())->method('findByUser')->with(31)->willReturn([['store_id' => self::STORE_A]]);
         $this->users->expects($this->never())->method('delete');
         $this->users->expects($this->once())->method('save')->with($this->callback(
             fn(array $d): bool => $d['id'] === 31 && $d['is_active'] === 0 && $d['email'] === 'deleted-31@kintai.local'
@@ -466,6 +492,7 @@ final class ApiStoreScopeTest extends TestCase
 
     public function testAManagerCannotDeleteTheirOwnAccountThroughTheApi(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $this->users->method('findById')->willReturn(['id' => self::MANAGER, 'is_active' => 1]);
         $this->storeUsers->method('findByUser')->willReturn([['store_id' => self::STORE_A]]);
         $this->users->expects($this->never())->method('save');
@@ -477,6 +504,7 @@ final class ApiStoreScopeTest extends TestCase
 
     public function testAManagerCannotDeactivateThemselvesThroughTheApi(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $this->users->method('findById')->willReturn(['id' => self::MANAGER, 'is_active' => 1, 'email' => 'm@kintai.test']);
         $this->storeUsers->method('findByUser')->willReturn([['store_id' => self::STORE_A]]);
         $this->users->expects($this->never())->method('save');
@@ -488,6 +516,7 @@ final class ApiStoreScopeTest extends TestCase
 
     public function testAManagerCanStillEditTheirOwnProfileFieldsThroughTheApi(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $this->users->method('findById')->willReturn(['id' => self::MANAGER, 'is_active' => 1, 'email' => 'm@kintai.test']);
         $this->storeUsers->method('findByUser')->willReturn([['store_id' => self::STORE_A]]);
         $this->users->expects($this->once())->method('save')->willReturnArgument(0);

@@ -39,27 +39,27 @@ final class HomeControllerWeeklyHoursTrendTest extends TestCase
 
     private function buildController(StoreStatsServiceInterface $storeStats, array $stores): HomeController
     {
-        $usersRepo = $this->createMock(UserRepositoryInterface::class);
+        $usersRepo = $this->createStub(UserRepositoryInterface::class);
         $usersRepo->method('findAll')->willReturn([]);
 
-        $storesRepo = $this->createMock(StoreRepositoryInterface::class);
+        $storesRepo = $this->createStub(StoreRepositoryInterface::class);
         $storesRepo->method('findAll')->willReturn($stores);
 
-        $shiftsRepo = $this->createMock(ShiftRepositoryInterface::class);
+        $shiftsRepo = $this->createStub(ShiftRepositoryInterface::class);
         $shiftsRepo->method('findAllByDate')->willReturn([]);
 
-        $dashboardPrefs = $this->createMock(UserDashboardPrefsRepositoryInterface::class);
+        $dashboardPrefs = $this->createStub(UserDashboardPrefsRepositoryInterface::class);
         // Widget "store_stats_summary" uniquement : ce test porte sur la tendance
         // hebdomadaire de ce widget précis, pas sur financial_overview/hr_absenteeism
         // (storeStats() n'est pas mocké pour couvrir leurs appels ici).
         $dashboardPrefs->method('getEnabledWidgets')->willReturn(['store_stats_summary']);
 
-        $storeUsersRepo = $this->createMock(StoreUserRepositoryInterface::class);
+        $storeUsersRepo = $this->createStub(StoreUserRepositoryInterface::class);
         $storeUsersRepo->method('findByStore')->willReturn([]);
 
-        $shiftTypesRepo = $this->createMock(ShiftTypeRepositoryInterface::class);
+        $shiftTypesRepo = $this->createStub(ShiftTypeRepositoryInterface::class);
 
-        $roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
+        $roleAssignments = $this->createStub(RoleAssignmentRepositoryInterface::class);
         $roleAssignments->method('findByUser')->willReturn([
             ['id' => 1, 'role_id' => 5, 'scope_type' => 'store', 'scope_id' => 1],
         ]);

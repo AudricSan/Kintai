@@ -27,7 +27,6 @@ final class HomeController
 {
     public const ADMIN_WIDGETS = [
         'kpi_counters',
-        'quick_nav',
         'dashboard_alerts',
         'store_stats_summary',
         'financial_overview',

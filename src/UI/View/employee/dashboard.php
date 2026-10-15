@@ -23,8 +23,12 @@ $widgetsAll  = $enabled_widgets_all ?? $widgets;
 // Ordre et largeur des widgets choisis par l'utilisateur (DashboardLayout), widgets déplaçables en mode édition.
 $_dashLayout = $widget_layout ?? ['order' => $all_widgets ?? [], 'widths' => []];
 
-function widget_on(string $key, array $widgets): bool {
-    return isset($widgets[$key]);
+// Garde : la vue peut être rendue deux fois dans un même processus ; une seconde déclaration de ces fonctions
+// globales serait une erreur fatale (« Cannot redeclare »).
+if (!function_exists('widget_on')) {
+    function widget_on(string $key, array $widgets): bool {
+        return isset($widgets[$key]);
+    }
 }
 
 $feat = static fn(?string $f): bool =>
@@ -101,7 +105,7 @@ echo Card::make()
 <!-- ═══ Stat cards ═══ -->
 <?php $bundle_stats ??= []; // Cartes des bundles (congés, échanges… — Bundle::dashboardStats(), contrat 1.19). ?>
 <?php $_statCount = 2 + count($bundle_stats); ?>
-<div class="stat-grid" style="--stat-cols:<?= $_statCount ?>"><?php unset($_statCount); ?>
+<div class="stat-grid <?= style_class(['--stat-cols' => $_statCount]) ?>"><?php unset($_statCount); ?>
     <div class="stat-card">
         <div class="stat-card__icon stat-card__icon--primary">📅</div>
         <div class="stat-card__body">

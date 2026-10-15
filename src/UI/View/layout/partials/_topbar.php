@@ -299,9 +299,11 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
                     </span>
                     <div class="user-dropdown__lang-btns">
                         <?php foreach (($active_languages ?? []) as $_lang): ?>
-                            <a href="<?= $BASE_URL ?>/lang/<?= htmlspecialchars($_lang['code']) ?>"
-                                title="<?= htmlspecialchars($_lang['name']) ?>"
-                                class="user-dropdown__lang-btn<?= ($locale ?? 'en') === $_lang['code'] ? ' user-dropdown__lang-btn--active' : '' ?>"><?= htmlspecialchars(strtoupper($_lang['code'])) ?></a>
+                            <form method="POST" action="<?= route_url('lang.switch', ['locale' => $_lang['code']]) ?>">
+                                <?= csrf_field() ?>
+                                <button type="submit" title="<?= htmlspecialchars($_lang['name']) ?>"
+                                    class="user-dropdown__lang-btn<?= ($locale ?? 'en') === $_lang['code'] ? ' user-dropdown__lang-btn--active' : '' ?>"><?= htmlspecialchars(strtoupper($_lang['code'])) ?></button>
+                            </form>
                         <?php endforeach; ?>
                     </div>
                 </div>

@@ -8,7 +8,9 @@ use kintai\UI\Components\Flash;
 /** @var array  $type_store_ids   id de type => IDs de stores affectés */
 /** @var array  $all_stores       stores visibles (scope du gestionnaire), pour les colonnes de la matrice */
 /** @var string $sort */
+/** @var int[]  $locked_type_ids  types partagés avec un magasin non géré : ni modifiables ni supprimables ici */
 $sort           ??= 'name_asc';
+$locked_type_ids ??= [];
 $type_store_ids ??= [];
 $all_stores     ??= [];
 
@@ -53,7 +55,7 @@ echo Flash::fromQuery('error', [
                 <?php $tid = (int) $t['id']; ?>
                 <tr>
                     <td class="td-center td-nowrap">
-                        <span class="color-swatch" style="background:<?= htmlspecialchars($t['color'] ?? '#ccc') ?>"></span>
+                        <span class="color-swatch <?= style_class(['background' => $t['color'] ?? '#ccc']) ?>"></span>
                         <?= htmlspecialchars($t['name'] ?? '') ?>
                     </td>
                     <?php foreach ($all_stores as $s): ?>
@@ -83,22 +85,26 @@ echo Flash::fromQuery('error', [
     ->data($shift_types)
     ->emptyMessage(__('no_shift_type_found'))
     ->currentSort($sort)
-    ->rowUrl(fn($t) => $BASE_URL . '/admin/shift-types/' . (int) $t['id'] . '/edit')
+    ->rowUrl(fn($t) => in_array((int) $t['id'], $locked_type_ids, true) ? '' : $BASE_URL . '/admin/shift-types/' . (int) $t['id'] . '/edit')
     ->column('#', fn($t) => (string) (int) $t['id'])
     ->sortable(__('code'), 'code', fn($t) => '<code class="code-sm">' . htmlspecialchars($t['code'] ?? '') . '</code>')
     ->sortable(__('name'), 'name', fn($t) => '<strong>' . htmlspecialchars($t['name'] ?? '') . '</strong>')
     ->text(__('start'), fn($t) => $t['start_time'] ?? '')
     ->text(__('end'), fn($t) => $t['end_time'] ?? '')
     ->column(__('color'), fn($t) =>
-        '<span class="color-preview"><span class="color-swatch" style="background:' . htmlspecialchars($t['color'] ?? '#ccc') . '"></span><code class="color-code">' . htmlspecialchars($t['color'] ?? '') . '</code></span>'
+        '<span class="color-preview"><span class="color-swatch ' . style_class(['background' => $t['color'] ?? '#ccc']) . '"></span><code class="color-code">' . htmlspecialchars($t['color'] ?? '') . '</code></span>'
     )
     ->sortable(__('status'), 'status', fn($t) =>
         !empty($t['is_active'])
             ? Badge::make(__('active'))->active()->render()
             : Badge::make(__('inactive'))->inactive()->render()
     )
-    ->column(__('actions'), function($t) use ($BASE_URL) {
+    ->column(__('actions'), function($t) use ($BASE_URL, $locked_type_ids) {
         $id = (int) $t['id'];
+        if (in_array($id, $locked_type_ids, true)) {
+            return '<span class="text-sm-muted" title="' . htmlspecialchars(__('error_shared_shift_type'), ENT_QUOTES) . '">'
+                . __('shift_type_shared_locked') . '</span>';
+        }
         $html = '<div class="btn-group">';
         $html .= '<form method="POST" action="' . htmlspecialchars($BASE_URL . '/admin/shift-types/' . $id . '/delete') . '" class="form-inline">';
         $html .= csrf_field();

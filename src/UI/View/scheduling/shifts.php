@@ -64,7 +64,7 @@ if ($_canManage) {
 
     try {
         $monthDt    = new \DateTime($filter_month . '-01');
-        $monthLabel = $monthDt->format('F Y');
+        $monthLabel = month_label($monthDt->format('Y-m'));
     } catch (\Exception) {
         $monthLabel = $filter_month;
     }
@@ -188,8 +188,8 @@ if ($_canManage) {
                                         $owner = $isMe ? null : ($users_map[(int)($s['user_id'] ?? 0)] ?? null);
                                         $opacity = $isMe ? '20' : '15';
                                         ?>
-                                        <div class="shift-card <?= $isMe ? '' : 'shift-card--other' ?>" style="--shift-color:<?= htmlspecialchars($color) ?>">
-                                            <div class="shift-card__type" style="color:<?= htmlspecialchars($color) ?>">
+                                        <div class="shift-card <?= $isMe ? '' : 'shift-card--other' ?> <?= style_class(['--shift-color' => $color]) ?>">
+                                            <div class="shift-card__type <?= style_class(['color' => $color]) ?>">
                                                 <?= htmlspecialchars($name) ?>
                                                 <?php if (!$isMe): ?>
                                                     <span class="shift-card__detail"> · <?= htmlspecialchars($owner ?? '') ?></span>
@@ -223,7 +223,6 @@ if ($_canManage) {
 
 <div class="card card--filters mb-sm">
     <form method="GET" action="" class="filter-bar">
-        <?= csrf_field() ?>
         <div class="shifts-filters__row">
             <div class="shifts-filters__group">
                 <label class="shifts-filters__label" for="sf-month"><?= __('month') ?></label>
@@ -326,7 +325,7 @@ if ($_canManage) {
                                 <?php
                                 try {
                                     $d = new \DateTime($shiftDate);
-                                    echo htmlspecialchars($d->format('l d F Y'));
+                                    echo htmlspecialchars(date_label($d->format('Y-m-d')));
                                 } catch (\Exception) {
                                     echo htmlspecialchars($shiftDate);
                                 }

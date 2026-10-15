@@ -36,36 +36,41 @@ $empName  = trim(($user['last_name'] ?? '') . ' ' . ($user['first_name'] ?? ''))
 $currencyStyle = store_currency_style($store);
 $roleLabel = $membership['role_name'] ?? '—';
 
-function estatBar(array $data, string $color = 'var(--color-primary)', int $maxH = 80): string {
-    if (!$data || max(array_values($data)) == 0) {
-        return '<em class="sstat-empty">' . htmlspecialchars(__('no_data')) . '</em>';
+// Garde : la vue peut être rendue deux fois dans un même processus ; une seconde déclaration de ces fonctions
+// globales serait une erreur fatale (« Cannot redeclare »).
+if (!function_exists('estatBar')) {
+    function estatBar(array $data, string $color = 'var(--color-primary)', int $maxH = 80): string {
+        if (!$data || max(array_values($data)) == 0) {
+            return '<em class="sstat-empty">' . htmlspecialchars(__('no_data')) . '</em>';
+        }
+        $max = max(array_values($data)) ?: 1;
+        $out = '<div class="sstat-bar-chart">';
+        foreach ($data as $label => $val) {
+            $h = round($val / $max * $maxH);
+            $display = round($val, 1) . __('hours_unit');
+            $out .= '<div class="sstat-bar-col" title="' . htmlspecialchars($label) . ': ' . $display . '">'
+                . '<div class="sstat-bar-value">' . $display . '</div>'
+                . '<div class="sstat-bar ' . style_class(['height' => $h . 'px', 'background' => $color]) . '"></div>'
+                . '<div class="sstat-bar-label">' . htmlspecialchars($label) . '</div>'
+                . '</div>';
+        }
+        return $out . '</div>';
     }
-    $max = max(array_values($data)) ?: 1;
-    $out = '<div class="sstat-bar-chart">';
-    foreach ($data as $label => $val) {
-        $h = round($val / $max * $maxH);
-        $display = round($val, 1) . __('hours_unit');
-        $out .= '<div class="sstat-bar-col" title="' . htmlspecialchars($label) . ': ' . $display . '">'
-            . '<div class="sstat-bar-value">' . $display . '</div>'
-            . '<div class="sstat-bar" style="height:' . $h . 'px;background:' . $color . '"></div>'
-            . '<div class="sstat-bar-label">' . htmlspecialchars($label) . '</div>'
-            . '</div>';
+
+    function estatHours(float $hours): string {
+        $h = intdiv((int) round($hours * 60), 60);
+        $m = (int) round($hours * 60) % 60;
+        return $h . 'h' . str_pad((string) $m, 2, '0', STR_PAD_LEFT);
     }
-    return $out . '</div>';
-}
 
-function estatHours(float $hours): string {
-    $h = intdiv((int) round($hours * 60), 60);
-    $m = (int) round($hours * 60) % 60;
-    return $h . 'h' . str_pad((string) $m, 2, '0', STR_PAD_LEFT);
-}
-
-function estatDate(string $date): string {
-    $dt = \DateTime::createFromFormat('Y-m-d', $date);
-    return $dt ? $dt->format('d/m/Y') : $date;
+    function estatDate(string $date): string {
+        $dt = \DateTime::createFromFormat('Y-m-d', $date);
+        return $dt ? $dt->format('d/m/Y') : $date;
+    }
 }
 
 $reportUrl = $BASE_URL . '/admin/stores/' . store_segment((int) $store['id']) . '/employee-report?period=' . $period;
+
 ?>
 
 <div class="page-header">
@@ -94,7 +99,7 @@ $reportUrl = $BASE_URL . '/admin/stores/' . store_segment((int) $store['id']) . 
 <div class="sstat-section">
   <div class="sstat-section-title"><?= __('employee_name') ?></div>
   <div class="estat-profile">
-    <div class="estat-avatar" style="background:<?= htmlspecialchars($user['color'] ?? '#3B82F6') ?>">
+    <div class="estat-avatar <?= style_class(['background' => $user['color'] ?? '#3B82F6']) ?>">
       <?= strtoupper(substr($empName, 0, 1)) ?>
     </div>
     <div class="estat-profile-info">
@@ -179,7 +184,7 @@ $reportUrl = $BASE_URL . '/admin/stores/' . store_segment((int) $store['id']) . 
     $monthLabels = [];
     foreach (array_keys($monthlyHours) as $ym) {
         $dt = \DateTime::createFromFormat('Y-m', $ym);
-        $monthLabels[$dt ? $dt->format('M Y') : $ym] = round($monthlyHours[$ym], 1);
+        $monthLabels[$dt ? month_label($ym) : $ym] = round($monthlyHours[$ym], 1);
     }
   ?>
   <?= estatBar($monthLabels, 'var(--color-primary)') ?>

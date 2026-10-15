@@ -77,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $mysqlPassword =      $_POST['mysql_password']  ?? '';
     $runSeeds      = isset($_POST['run_seeds']);
     // Absent (installation scriptée, ex. scripts/ci/install-smoke-test.sh) : langue par défaut actuelle.
-    $appLocale     = trim($_POST['app_locale']      ?? \kintai\Core\Services\InstanceLocale::resolve(new \kintai\Core\Repositories\JsonLanguageRepository(BASE_PATH . '/lang')));
+    $appLocale     = trim($_POST['app_locale']      ?? \kintai\Core\Services\InstanceLocale::defaultForNewInstance(new \kintai\Core\Repositories\JsonLanguageRepository(BASE_PATH . '/lang')));
 
     // 2 — Validate
     if ($adminFirstName === '') {
@@ -368,7 +368,7 @@ $defaultUsername = env('DB_USERNAME', 'root');
             <div class="form-row">
                 <label for="app_locale">Language of the application <small class="pw-hint">(for every user who has not chosen their own; can be changed later in the instance settings)</small></label>
                 <select id="app_locale" name="app_locale" required>
-                    <?php $selectedLocale = $_POST['app_locale'] ?? \kintai\Core\Services\InstanceLocale::resolve(new \kintai\Core\Repositories\JsonLanguageRepository(BASE_PATH . '/lang')); ?>
+                    <?php $selectedLocale = $_POST['app_locale'] ?? \kintai\Core\Services\InstanceLocale::defaultForNewInstance(new \kintai\Core\Repositories\JsonLanguageRepository(BASE_PATH . '/lang')); ?>
                     <?php foreach ($installLanguages as $lang): ?>
                         <option value="<?= htmlspecialchars($lang['code'], ENT_QUOTES) ?>" <?= $selectedLocale === $lang['code'] ? 'selected' : '' ?>><?= htmlspecialchars($lang['name'], ENT_QUOTES) ?></option>
                     <?php endforeach ?>

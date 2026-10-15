@@ -17,7 +17,7 @@ final class BundleCatalogServiceTest extends TestCase
 {
     public function testListAvailableBundlesAggregatesEveryActiveRegistry(): void
     {
-        $registries = $this->createMock(BundleRegistryRepositoryInterface::class);
+        $registries = $this->createStub(BundleRegistryRepositoryInterface::class);
         $registries->method('all')->willReturn([
             ['id' => 1, 'name' => 'Registry officiel', 'url' => 'https://example.test/official.json', 'is_official' => true],
             ['id' => 2, 'name' => 'Registry perso',     'url' => 'https://example.test/perso.json',   'is_official' => false],
@@ -54,7 +54,7 @@ final class BundleCatalogServiceTest extends TestCase
 
     public function testListAvailableBundlesSkipsARegistryThatFailsToRespond(): void
     {
-        $registries = $this->createMock(BundleRegistryRepositoryInterface::class);
+        $registries = $this->createStub(BundleRegistryRepositoryInterface::class);
         $registries->method('all')->willReturn([
             ['id' => 1, 'name' => 'Registry indisponible', 'url' => 'https://example.test/down.json', 'is_official' => false],
         ]);
@@ -73,7 +73,7 @@ final class BundleCatalogServiceTest extends TestCase
      */
     private function pinService(array $urls, array $bodies): BundleCatalogService
     {
-        $registries = $this->createMock(BundleRegistryRepositoryInterface::class);
+        $registries = $this->createStub(BundleRegistryRepositoryInterface::class);
         $registries->method('all')->willReturn(array_map(
             static fn(string $url) => ['id' => 1, 'name' => 'R', 'url' => $url, 'is_official' => false],
             $urls,
@@ -151,7 +151,7 @@ final class BundleCatalogServiceTest extends TestCase
     public function testIsOfficialUsesTheExistingOfficialBundlesConfig(): void
     {
         $service = new BundleCatalogService(
-            $this->createMock(BundleRegistryRepositoryInterface::class),
+            $this->createStub(BundleRegistryRepositoryInterface::class),
             new BundleRegistryClient(fn(string $url) => null),
         );
 

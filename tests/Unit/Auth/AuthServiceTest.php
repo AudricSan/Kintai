@@ -6,6 +6,7 @@ namespace kintai\Tests\Unit\Auth;
 
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use kintai\Core\Auth\AuthService;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
@@ -16,13 +17,13 @@ use kintai\Core\Repositories\RememberTokenRepositoryInterface;
 
 final class AuthServiceTest extends TestCase
 {
-    private UserRepositoryInterface&MockObject $users;
-    private StoreUserRepositoryInterface&MockObject $storeUsers;
-    private StoreRepositoryInterface&MockObject $stores;
-    private RoleRepositoryInterface&MockObject $roles;
-    private RoleAssignmentRepositoryInterface&MockObject $roleAssignments;
-    private RememberTokenRepositoryInterface&MockObject $rememberTokens;
-    private AuthService $auth;
+    private UserRepositoryInterface&Stub $users;
+    private StoreUserRepositoryInterface&Stub $storeUsers;
+    private StoreRepositoryInterface&Stub $stores;
+    private RoleRepositoryInterface&Stub $roles;
+    private RoleAssignmentRepositoryInterface&Stub $roleAssignments;
+    private RememberTokenRepositoryInterface&Stub $rememberTokens;
+    private ?AuthService $auth = null;
 
     protected function setUp(): void
     {
@@ -32,25 +33,34 @@ final class AuthServiceTest extends TestCase
         unset($_SESSION['auth_user_id']);
         unset($_COOKIE['kintai_remember']);
 
-        $this->users           = $this->createMock(UserRepositoryInterface::class);
-        $this->storeUsers      = $this->createMock(StoreUserRepositoryInterface::class);
-        $this->stores          = $this->createMock(StoreRepositoryInterface::class);
-        $this->roles           = $this->createMock(RoleRepositoryInterface::class);
-        $this->roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
-        $this->rememberTokens  = $this->createMock(RememberTokenRepositoryInterface::class);
+        $this->users           = $this->createStub(UserRepositoryInterface::class);
+        $this->storeUsers      = $this->createStub(StoreUserRepositoryInterface::class);
+        $this->stores          = $this->createStub(StoreRepositoryInterface::class);
+        $this->roles           = $this->createStub(RoleRepositoryInterface::class);
+        $this->roleAssignments = $this->createStub(RoleAssignmentRepositoryInterface::class);
+        $this->rememberTokens  = $this->createStub(RememberTokenRepositoryInterface::class);
+    }
 
-        $this->auth = new AuthService($this->users, $this->storeUsers, $this->stores, $this->roles, $this->roleAssignments, $this->rememberTokens);
+    /** Objet testé, construit à la première utilisation : un test peut d'abord remplacer un bouchon par un mock. */
+    private function auth(): AuthService
+    {
+        if ($this->auth === null) {
+            $this->auth = new AuthService($this->users, $this->storeUsers, $this->stores, $this->roles, $this->roleAssignments, $this->rememberTokens);
+        }
+
+        return $this->auth;
     }
 
     /** Simule une affectation Owner (portée globale, rôle système) pour cet utilisateur. */
     private function grantOwnerRole(int $userId): void
     {
+        $this->roles = $this->createMock(RoleRepositoryInterface::class);
         $this->roleAssignments->method('findByUser')->willReturnCallback(
             fn(int $uid) => $uid === $userId ? [
                 ['id' => 1, 'user_id' => $userId, 'role_id' => 1, 'scope_type' => 'global', 'scope_id' => null],
             ] : []
         );
-        $this->roles->method('findById')->with(1)->willReturn(['id' => 1, 'slug' => 'owner', 'is_system' => 1]);
+        $this->roles->expects($this->atLeastOnce())->method('findById')->with(1)->willReturn(['id' => 1, 'slug' => 'owner', 'is_system' => 1]);
     }
 
     /**
@@ -61,15 +71,17 @@ final class AuthServiceTest extends TestCase
      */
     private function grantStoreRole(int $userId, int $storeId, int $roleId, array $permissions, bool $isManager): void
     {
+        $this->roles = $this->createMock(RoleRepositoryInterface::class);
         $this->roleAssignments->method('findByUser')->willReturnCallback(
             fn(int $uid) => $uid === $userId ? [
                 ['id' => 2, 'user_id' => $userId, 'role_id' => $roleId, 'scope_type' => 'store', 'scope_id' => $storeId],
             ] : []
         );
-        $this->roles->method('findById')->with($roleId)->willReturn([
+        $this->roles->expects($this->atLeastOnce())->method('findById')->with($roleId)->willReturn([
             'id' => $roleId, 'slug' => 'manager', 'is_system' => 0, 'is_manager' => $isManager ? 1 : 0,
         ]);
-        $this->roles->method('getPermissions')->with($roleId)->willReturn($permissions);
+        // getPermissions n'est pas toujours lu (isManager() ne regarde que is_manager) : pas d'attente, réponse par rôle.
+        $this->roles->method('getPermissions')->willReturnCallback(fn(int $id): array => $id === $roleId ? $permissions : []);
     }
 
     protected function tearDown(): void
@@ -100,10 +112,11 @@ final class AuthServiceTest extends TestCase
 
     public function testAttemptSucceedsWithValidCredentials(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $user = $this->activeUser();
-        $this->users->method('findByEmail')->with('user@test.com')->willReturn($user);
+        $this->users->expects($this->atLeastOnce())->method('findByEmail')->with('user@test.com')->willReturn($user);
 
-        $result = $this->auth->attempt('user@test.com', 'secret123');
+        $result = $this->auth()->attempt('user@test.com', 'secret123');
 
         $this->assertTrue($result);
         $this->assertSame(10, $_SESSION['auth_user_id']);
@@ -112,7 +125,7 @@ final class AuthServiceTest extends TestCase
     public function testAttemptFailsForUnknownEmail(): void
     {
         $this->users->method('findByEmail')->willReturn(null);
-        $this->assertFalse($this->auth->attempt('nobody@test.com', 'pass'));
+        $this->assertFalse($this->auth()->attempt('nobody@test.com', 'pass'));
     }
 
     public function testAttemptFailsForWrongPassword(): void
@@ -120,7 +133,7 @@ final class AuthServiceTest extends TestCase
         $user = $this->activeUser();
         $this->users->method('findByEmail')->willReturn($user);
 
-        $this->assertFalse($this->auth->attempt('user@test.com', 'wrongpassword'));
+        $this->assertFalse($this->auth()->attempt('user@test.com', 'wrongpassword'));
     }
 
     public function testAttemptFailsForInactiveUser(): void
@@ -129,7 +142,7 @@ final class AuthServiceTest extends TestCase
         $user['is_active']  = 0;
         $this->users->method('findByEmail')->willReturn($user);
 
-        $this->assertFalse($this->auth->attempt('user@test.com', 'secret123'));
+        $this->assertFalse($this->auth()->attempt('user@test.com', 'secret123'));
     }
 
     public function testAttemptFailsForSoftDeletedUser(): void
@@ -138,7 +151,7 @@ final class AuthServiceTest extends TestCase
         $user['deleted_at']  = '2025-01-01 00:00:00';
         $this->users->method('findByEmail')->willReturn($user);
 
-        $this->assertFalse($this->auth->attempt('user@test.com', 'secret123'));
+        $this->assertFalse($this->auth()->attempt('user@test.com', 'secret123'));
     }
 
     // -------------------------------------------------------------------------
@@ -147,21 +160,24 @@ final class AuthServiceTest extends TestCase
 
     public function testAttemptByCodeSucceeds(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
+        $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
+        $this->stores = $this->createMock(StoreRepositoryInterface::class);
         $store = ['id' => 5, 'code' => 'STORE01'];
         $user  = array_merge($this->activeUser(), ['employee_code' => 'EMP001']);
 
-        $this->stores->method('findByCode')->with('STORE01')->willReturn($store);
-        $this->users->method('findByEmployeeCode')->with('EMP001')->willReturn($user);
-        $this->storeUsers->method('findMembership')->with(5, 10)->willReturn(['role' => 'staff']);
+        $this->stores->expects($this->atLeastOnce())->method('findByCode')->with('STORE01')->willReturn($store);
+        $this->users->expects($this->atLeastOnce())->method('findByEmployeeCode')->with('EMP001')->willReturn($user);
+        $this->storeUsers->expects($this->atLeastOnce())->method('findMembership')->with(5, 10)->willReturn(['role' => 'staff']);
 
-        $result = $this->auth->attemptByCode('EMP001', 'STORE01', 'secret123');
+        $result = $this->auth()->attemptByCode('EMP001', 'STORE01', 'secret123');
         $this->assertTrue($result);
     }
 
     public function testAttemptByCodeFailsForUnknownStore(): void
     {
         $this->stores->method('findByCode')->willReturn(null);
-        $this->assertFalse($this->auth->attemptByCode('EMP001', 'UNKNOWN', 'pass'));
+        $this->assertFalse($this->auth()->attemptByCode('EMP001', 'UNKNOWN', 'pass'));
     }
 
     public function testAttemptByCodeFailsForUnknownEmployee(): void
@@ -169,7 +185,7 @@ final class AuthServiceTest extends TestCase
         $this->stores->method('findByCode')->willReturn(['id' => 1, 'code' => 'S']);
         $this->users->method('findByEmployeeCode')->willReturn(null);
 
-        $this->assertFalse($this->auth->attemptByCode('NOBODY', 'S', 'pass'));
+        $this->assertFalse($this->auth()->attemptByCode('NOBODY', 'S', 'pass'));
     }
 
     public function testAttemptByCodeFailsWhenNotMember(): void
@@ -180,18 +196,19 @@ final class AuthServiceTest extends TestCase
         $this->users->method('findByEmployeeCode')->willReturn($user);
         $this->storeUsers->method('findMembership')->willReturn(null);
 
-        $this->assertFalse($this->auth->attemptByCode('EMP', 'S', 'secret123'));
+        $this->assertFalse($this->auth()->attemptByCode('EMP', 'S', 'secret123'));
     }
 
     public function testAttemptByCodeNormalizesStoreCode(): void
     {
+        $this->stores = $this->createMock(StoreRepositoryInterface::class);
         // Code en minuscules doit être normalisé en majuscules
         $this->stores->expects($this->once())
             ->method('findByCode')
             ->with('STORE01')
             ->willReturn(null);
 
-        $this->auth->attemptByCode('EMP', 'store01', 'pass');
+        $this->auth()->attemptByCode('EMP', 'store01', 'pass');
     }
 
     // -------------------------------------------------------------------------
@@ -200,7 +217,7 @@ final class AuthServiceTest extends TestCase
 
     public function testCheckReturnsFalseWhenNotLoggedIn(): void
     {
-        $this->assertFalse($this->auth->check());
+        $this->assertFalse($this->auth()->check());
     }
 
     public function testCheckReturnsTrueAfterLogin(): void
@@ -210,9 +227,9 @@ final class AuthServiceTest extends TestCase
         // check() recharge désormais l'utilisateur (compte actif, mot de passe inchangé)
         // au lieu de se contenter de lire l'identifiant en session.
         $this->users->method('findById')->willReturn($user);
-        $this->auth->attempt('user@test.com', 'secret123');
+        $this->auth()->attempt('user@test.com', 'secret123');
 
-        $this->assertTrue($this->auth->check());
+        $this->assertTrue($this->auth()->check());
     }
 
     // -------------------------------------------------------------------------
@@ -221,16 +238,17 @@ final class AuthServiceTest extends TestCase
 
     public function testUserReturnsNullWhenNotLoggedIn(): void
     {
-        $this->assertNull($this->auth->user());
+        $this->assertNull($this->auth()->user());
     }
 
     public function testUserReturnsUserFromDatabase(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $_SESSION['auth_user_id'] = 10;
         $user = $this->activeUser();
-        $this->users->method('findById')->with(10)->willReturn($user);
+        $this->users->expects($this->atLeastOnce())->method('findById')->with(10)->willReturn($user);
 
-        $result = $this->auth->user();
+        $result = $this->auth()->user();
         $this->assertSame(10, $result['id']);
     }
 
@@ -241,7 +259,7 @@ final class AuthServiceTest extends TestCase
     public function testLogoutClearsSession(): void
     {
         $_SESSION['auth_user_id'] = 10;
-        $this->auth->logout();
+        $this->auth()->logout();
         $this->assertArrayNotHasKey('auth_user_id', $_SESSION);
     }
 
@@ -249,10 +267,10 @@ final class AuthServiceTest extends TestCase
     {
         $user = $this->activeUser();
         $this->users->method('findByEmail')->willReturn($user);
-        $this->auth->attempt('user@test.com', 'secret123');
+        $this->auth()->attempt('user@test.com', 'secret123');
 
-        $this->auth->logout();
-        $this->assertFalse($this->auth->check());
+        $this->auth()->logout();
+        $this->assertFalse($this->auth()->check());
     }
 
     // -------------------------------------------------------------------------
@@ -262,7 +280,7 @@ final class AuthServiceTest extends TestCase
     public function testIsAdminReturnsFalseWhenNotLoggedIn(): void
     {
         $this->users->method('findById')->willReturn(null);
-        $this->assertFalse($this->auth->isAdmin());
+        $this->assertFalse($this->auth()->isAdmin());
     }
 
     public function testIsAdminReturnsTrueForOwnerRoleAssignment(): void
@@ -270,7 +288,7 @@ final class AuthServiceTest extends TestCase
         $_SESSION['auth_user_id'] = 10;
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
         $this->grantOwnerRole(10);
-        $this->assertTrue($this->auth->isAdmin());
+        $this->assertTrue($this->auth()->isAdmin());
     }
 
     public function testIsAdminReturnsFalseForRegularUser(): void
@@ -278,7 +296,7 @@ final class AuthServiceTest extends TestCase
         $_SESSION['auth_user_id'] = 10;
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
         $this->roleAssignments->method('findByUser')->willReturn([]);
-        $this->assertFalse($this->auth->isAdmin());
+        $this->assertFalse($this->auth()->isAdmin());
     }
 
     public function testIsAdminIgnoresLegacyIsAdminColumnWithoutRoleAssignment(): void
@@ -289,7 +307,7 @@ final class AuthServiceTest extends TestCase
         $_SESSION['auth_user_id'] = 10;
         $this->users->method('findById')->willReturn($this->activeUser(10, true));
         $this->roleAssignments->method('findByUser')->willReturn([]);
-        $this->assertFalse($this->auth->isAdmin());
+        $this->assertFalse($this->auth()->isAdmin());
     }
 
     // -------------------------------------------------------------------------
@@ -299,7 +317,7 @@ final class AuthServiceTest extends TestCase
     public function testManagedStoreIdsEmptyWhenNotLoggedIn(): void
     {
         $this->users->method('findById')->willReturn(null);
-        $this->assertSame([], $this->auth->managedStoreIds());
+        $this->assertSame([], $this->auth()->managedStoreIds());
     }
 
     public function testManagedStoreIdsEmptyForGlobalAdmin(): void
@@ -308,7 +326,7 @@ final class AuthServiceTest extends TestCase
         $_SESSION['auth_user_id'] = 10;
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
         $this->grantOwnerRole(10);
-        $this->assertSame([], $this->auth->managedStoreIds());
+        $this->assertSame([], $this->auth()->managedStoreIds());
     }
 
     public function testManagedStoreIdsForRoleFlaggedManager(): void
@@ -317,7 +335,7 @@ final class AuthServiceTest extends TestCase
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
         $this->grantStoreRole(10, 1, 2, ['employees.view', 'employees.create'], isManager: true);
 
-        $ids = $this->auth->managedStoreIds();
+        $ids = $this->auth()->managedStoreIds();
         $this->assertSame([1], $ids);
     }
 
@@ -327,7 +345,7 @@ final class AuthServiceTest extends TestCase
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
         $this->grantStoreRole(10, 1, 3, [], isManager: false); // rôle sans permission ni flag manager (ex. Employé)
 
-        $this->assertSame([], $this->auth->managedStoreIds());
+        $this->assertSame([], $this->auth()->managedStoreIds());
     }
 
     /**
@@ -344,7 +362,7 @@ final class AuthServiceTest extends TestCase
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
         $this->grantStoreRole(10, 1, 3, ['photos.view'], isManager: true);
 
-        $this->assertSame([1], $this->auth->managedStoreIds());
+        $this->assertSame([1], $this->auth()->managedStoreIds());
     }
 
     /**
@@ -360,7 +378,7 @@ final class AuthServiceTest extends TestCase
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
         $this->grantStoreRole(10, 1, 3, ['photos.create'], isManager: false);
 
-        $this->assertSame([], $this->auth->managedStoreIds());
+        $this->assertSame([], $this->auth()->managedStoreIds());
     }
 
     // -------------------------------------------------------------------------
@@ -372,7 +390,7 @@ final class AuthServiceTest extends TestCase
         $_SESSION['auth_user_id'] = 10;
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
         $this->grantOwnerRole(10);
-        $this->assertTrue($this->auth->isManager());
+        $this->assertTrue($this->auth()->isManager());
     }
 
     public function testIsManagerTrueForRoleFlaggedManager(): void
@@ -380,7 +398,7 @@ final class AuthServiceTest extends TestCase
         $_SESSION['auth_user_id'] = 10;
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
         $this->grantStoreRole(10, 1, 2, ['employees.view', 'employees.create'], isManager: true);
-        $this->assertTrue($this->auth->isManager());
+        $this->assertTrue($this->auth()->isManager());
     }
 
     public function testIsManagerFalseForRoleWithoutPermissionsNorManagerFlag(): void
@@ -388,7 +406,7 @@ final class AuthServiceTest extends TestCase
         $_SESSION['auth_user_id'] = 10;
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
         $this->grantStoreRole(10, 1, 3, [], isManager: false);
-        $this->assertFalse($this->auth->isManager());
+        $this->assertFalse($this->auth()->isManager());
     }
 
     /** Régression : voir testManagedStoreIdsIncludesStoreForManagerFlaggedRoleGrantingOnlyViewPermissions. */
@@ -397,7 +415,7 @@ final class AuthServiceTest extends TestCase
         $_SESSION['auth_user_id'] = 10;
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
         $this->grantStoreRole(10, 1, 3, ['photos.view'], isManager: true);
-        $this->assertTrue($this->auth->isManager());
+        $this->assertTrue($this->auth()->isManager());
     }
 
     /** Régression : voir testManagedStoreIdsEmptyForRoleGrantingPermissionButNotFlaggedManager. */
@@ -406,7 +424,7 @@ final class AuthServiceTest extends TestCase
         $_SESSION['auth_user_id'] = 10;
         $this->users->method('findById')->willReturn($this->activeUser(10, false));
         $this->grantStoreRole(10, 1, 3, ['photos.create'], isManager: false);
-        $this->assertFalse($this->auth->isManager());
+        $this->assertFalse($this->auth()->isManager());
     }
 
     // -------------------------------------------------------------------------
@@ -415,6 +433,7 @@ final class AuthServiceTest extends TestCase
 
     public function testAttemptWithRememberIssuesToken(): void
     {
+        $this->rememberTokens = $this->createMock(RememberTokenRepositoryInterface::class);
         $user = $this->activeUser();
         $this->users->method('findByEmail')->willReturn($user);
         $this->rememberTokens->expects($this->once())
@@ -423,22 +442,24 @@ final class AuthServiceTest extends TestCase
                 && isset($data['selector'], $data['validator_hash'], $data['expires_at'])))
             ->willReturn([]);
 
-        $result = $this->auth->attempt('user@test.com', 'secret123', remember: true);
+        $result = $this->auth()->attempt('user@test.com', 'secret123', remember: true);
 
         $this->assertTrue($result);
     }
 
     public function testAttemptWithoutRememberDoesNotIssueToken(): void
     {
+        $this->rememberTokens = $this->createMock(RememberTokenRepositoryInterface::class);
         $user = $this->activeUser();
         $this->users->method('findByEmail')->willReturn($user);
         $this->rememberTokens->expects($this->never())->method('create');
 
-        $this->auth->attempt('user@test.com', 'secret123');
+        $this->auth()->attempt('user@test.com', 'secret123');
     }
 
     public function testAttemptByCodeWithRememberIssuesToken(): void
     {
+        $this->rememberTokens = $this->createMock(RememberTokenRepositoryInterface::class);
         $store = ['id' => 5, 'code' => 'STORE01'];
         $user  = array_merge($this->activeUser(), ['employee_code' => 'EMP001']);
         $this->stores->method('findByCode')->willReturn($store);
@@ -446,25 +467,27 @@ final class AuthServiceTest extends TestCase
         $this->storeUsers->method('findMembership')->willReturn(['role' => 'staff']);
         $this->rememberTokens->expects($this->once())->method('create')->willReturn([]);
 
-        $result = $this->auth->attemptByCode('EMP001', 'STORE01', 'secret123', remember: true);
+        $result = $this->auth()->attemptByCode('EMP001', 'STORE01', 'secret123', remember: true);
 
         $this->assertTrue($result);
     }
 
     public function testAttemptViaRememberCookieFailsWithMalformedCookie(): void
     {
+        $this->rememberTokens = $this->createMock(RememberTokenRepositoryInterface::class);
         $this->rememberTokens->expects($this->never())->method('findBySelector');
-        $this->assertFalse($this->auth->attemptViaRememberCookie('not-a-valid-cookie'));
+        $this->assertFalse($this->auth()->attemptViaRememberCookie('not-a-valid-cookie'));
     }
 
     public function testAttemptViaRememberCookieFailsWithUnknownSelector(): void
     {
         $this->rememberTokens->method('findBySelector')->willReturn(null);
-        $this->assertFalse($this->auth->attemptViaRememberCookie('selector123.validator456'));
+        $this->assertFalse($this->auth()->attemptViaRememberCookie('selector123.validator456'));
     }
 
     public function testAttemptViaRememberCookieFailsWithExpiredToken(): void
     {
+        $this->rememberTokens = $this->createMock(RememberTokenRepositoryInterface::class);
         $this->rememberTokens->method('findBySelector')->willReturn([
             'user_id'        => 10,
             'selector'       => 'selector123',
@@ -473,12 +496,13 @@ final class AuthServiceTest extends TestCase
         ]);
         $this->rememberTokens->expects($this->once())->method('deleteBySelector')->with('selector123');
 
-        $this->assertFalse($this->auth->attemptViaRememberCookie('selector123.validator456'));
+        $this->assertFalse($this->auth()->attemptViaRememberCookie('selector123.validator456'));
         $this->assertArrayNotHasKey('auth_user_id', $_SESSION);
     }
 
     public function testAttemptViaRememberCookieFailsWithWrongValidator(): void
     {
+        $this->rememberTokens = $this->createMock(RememberTokenRepositoryInterface::class);
         $this->rememberTokens->method('findBySelector')->willReturn([
             'user_id'        => 10,
             'selector'       => 'selector123',
@@ -487,12 +511,14 @@ final class AuthServiceTest extends TestCase
         ]);
         $this->rememberTokens->expects($this->once())->method('deleteBySelector')->with('selector123');
 
-        $this->assertFalse($this->auth->attemptViaRememberCookie('selector123.wrong-validator'));
+        $this->assertFalse($this->auth()->attemptViaRememberCookie('selector123.wrong-validator'));
         $this->assertArrayNotHasKey('auth_user_id', $_SESSION);
     }
 
     public function testAttemptViaRememberCookieFailsForInactiveUser(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
+        $this->rememberTokens = $this->createMock(RememberTokenRepositoryInterface::class);
         $this->rememberTokens->method('findBySelector')->willReturn([
             'user_id'        => 10,
             'selector'       => 'selector123',
@@ -501,26 +527,28 @@ final class AuthServiceTest extends TestCase
         ]);
         $user              = $this->activeUser();
         $user['is_active'] = 0;
-        $this->users->method('findById')->with(10)->willReturn($user);
+        $this->users->expects($this->atLeastOnce())->method('findById')->with(10)->willReturn($user);
         $this->rememberTokens->expects($this->once())->method('deleteBySelector')->with('selector123');
 
-        $this->assertFalse($this->auth->attemptViaRememberCookie('selector123.validator456'));
+        $this->assertFalse($this->auth()->attemptViaRememberCookie('selector123.validator456'));
     }
 
     public function testAttemptViaRememberCookieSucceedsAndRotatesToken(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
+        $this->rememberTokens = $this->createMock(RememberTokenRepositoryInterface::class);
         $this->rememberTokens->method('findBySelector')->willReturn([
             'user_id'        => 10,
             'selector'       => 'selector123',
             'validator_hash' => hash('sha256', 'validator456'),
             'expires_at'     => date('Y-m-d H:i:s', time() + 3600),
         ]);
-        $this->users->method('findById')->with(10)->willReturn($this->activeUser());
+        $this->users->expects($this->atLeastOnce())->method('findById')->with(10)->willReturn($this->activeUser());
         // Rotation : l'ancien sélecteur est supprimé, un nouveau token est émis.
         $this->rememberTokens->expects($this->once())->method('deleteBySelector')->with('selector123');
         $this->rememberTokens->expects($this->once())->method('create')->willReturn([]);
 
-        $result = $this->auth->attemptViaRememberCookie('selector123.validator456');
+        $result = $this->auth()->attemptViaRememberCookie('selector123.validator456');
 
         $this->assertTrue($result);
         $this->assertSame(10, $_SESSION['auth_user_id']);
@@ -528,17 +556,19 @@ final class AuthServiceTest extends TestCase
 
     public function testLogoutRevokesMatchingRememberToken(): void
     {
+        $this->rememberTokens = $this->createMock(RememberTokenRepositoryInterface::class);
         $_COOKIE['kintai_remember'] = 'selector123.validator456';
         $this->rememberTokens->expects($this->once())->method('deleteBySelector')->with('selector123');
 
-        $this->auth->logout();
+        $this->auth()->logout();
     }
 
     public function testLogoutWithoutRememberCookieDoesNotCallRepository(): void
     {
+        $this->rememberTokens = $this->createMock(RememberTokenRepositoryInterface::class);
         unset($_COOKIE['kintai_remember']);
         $this->rememberTokens->expects($this->never())->method('deleteBySelector');
 
-        $this->auth->logout();
+        $this->auth()->logout();
     }
 }

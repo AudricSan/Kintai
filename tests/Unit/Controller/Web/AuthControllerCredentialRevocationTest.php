@@ -24,6 +24,7 @@ use kintai\Core\Services\AvatarImageOptimizer;
 use kintai\UI\Controller\Web\AuthController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -35,9 +36,11 @@ final class AuthControllerCredentialRevocationTest extends TestCase
 {
     private const USER_ID = 7;
 
-    private UserRepositoryInterface&MockObject $users;
-    private RememberTokenRepositoryInterface&MockObject $remember;
-    private ApiTokenRepositoryInterface&MockObject $api;
+    private UserRepositoryInterface&Stub $users;
+    private StoreUserRepositoryInterface&Stub $storeUsers;
+    private RoleAssignmentRepositoryInterface&Stub $roleAssignments;
+    private RememberTokenRepositoryInterface&Stub $remember;
+    private ApiTokenRepositoryInterface&Stub $api;
     private AuthService $auth;
     private AuthController $controller;
     private string $currentPassword;
@@ -60,7 +63,7 @@ final class AuthControllerCredentialRevocationTest extends TestCase
             'password_hash' => password_hash($this->currentPassword, PASSWORD_BCRYPT, ['cost' => 4]),
         ];
 
-        $this->users = $this->createMock(UserRepositoryInterface::class);
+        $this->users = $this->createStub(UserRepositoryInterface::class);
         $this->users->method('findById')->willReturnCallback(fn() => $this->row);
         // Le dépôt persiste ce que le contrôleur sauvegarde, comme la vraie base.
         $this->users->method('save')->willReturnCallback(function (array $data) {
@@ -68,37 +71,53 @@ final class AuthControllerCredentialRevocationTest extends TestCase
             return $this->row;
         });
 
-        $storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
-        $roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
-        $roleAssignments->method('findByUser')->willReturn([]);
+        $this->storeUsers = $this->createStub(StoreUserRepositoryInterface::class);
+        $this->roleAssignments = $this->createStub(RoleAssignmentRepositoryInterface::class);
+        $this->roleAssignments->method('findByUser')->willReturn([]);
 
-        $this->remember = $this->createMock(RememberTokenRepositoryInterface::class);
-        $this->api      = $this->createMock(ApiTokenRepositoryInterface::class);
+        $this->remember = $this->createStub(RememberTokenRepositoryInterface::class);
+        $this->api      = $this->createStub(ApiTokenRepositoryInterface::class);
 
         $this->auth = new AuthService(
             $this->users,
-            $storeUsers,
-            $this->createMock(StoreRepositoryInterface::class),
-            $this->createMock(RoleRepositoryInterface::class),
-            $roleAssignments,
+            $this->storeUsers,
+            $this->createStub(StoreRepositoryInterface::class),
+            $this->createStub(RoleRepositoryInterface::class),
+            $this->roleAssignments,
             $this->createStub(RememberTokenRepositoryInterface::class),
         );
 
+        $this->buildController();
+    }
+
+    /**
+     * Contrôleur branché sur les dépôts de jetons courants : un test qui vérifie la révocation remplace d'abord les
+     * bouchons par des mocks (useTokenMocks()).
+     */
+    private function buildController(): void
+    {
         $this->controller = new AuthController(
             new ViewRenderer(sys_get_temp_dir()),
             $this->auth,
             new AuditLogger(),
             $this->users,
-            $this->createMock(StoreRepositoryInterface::class),
-            $storeUsers,
-            $this->createMock(IcalTokenRepositoryInterface::class),
-            $this->createMock(UserNavPrefsRepositoryInterface::class),
-            $this->createMock(AvailabilityRepositoryInterface::class),
-            $this->createMock(LanguageRepositoryInterface::class),
+            $this->createStub(StoreRepositoryInterface::class),
+            $this->storeUsers,
+            $this->createStub(IcalTokenRepositoryInterface::class),
+            $this->createStub(UserNavPrefsRepositoryInterface::class),
+            $this->createStub(AvailabilityRepositoryInterface::class),
+            $this->createStub(LanguageRepositoryInterface::class),
             new AvatarImageOptimizer(),
             new CredentialRevoker($this->remember, $this->api),
-            new UserAnonymizer($this->users, $roleAssignments, new CredentialRevoker($this->remember, $this->api), sys_get_temp_dir()),
+            new UserAnonymizer($this->users, $this->roleAssignments, new CredentialRevoker($this->remember, $this->api), sys_get_temp_dir()),
         );
+    }
+
+    private function useTokenMocks(): void
+    {
+        $this->remember = $this->createMock(RememberTokenRepositoryInterface::class);
+        $this->api      = $this->createMock(ApiTokenRepositoryInterface::class);
+        $this->buildController();
     }
 
     protected function tearDown(): void
@@ -115,6 +134,7 @@ final class AuthControllerCredentialRevocationTest extends TestCase
 
     public function testPasswordChangeRevokesRememberCookiesAndApiTokens(): void
     {
+        $this->useTokenMocks();
         $this->remember->expects($this->once())->method('deleteByUserId')->with(self::USER_ID);
         $this->api->expects($this->once())->method('deleteByUserId')->with(self::USER_ID)->willReturn(0);
 
@@ -144,6 +164,7 @@ final class AuthControllerCredentialRevocationTest extends TestCase
 
     public function testWrongCurrentPasswordRevokesNothing(): void
     {
+        $this->useTokenMocks();
         $this->remember->expects($this->never())->method('deleteByUserId');
         $this->api->expects($this->never())->method('deleteByUserId');
 
@@ -152,6 +173,7 @@ final class AuthControllerCredentialRevocationTest extends TestCase
 
     public function testAccountDeletionPurgesRememberCookiesAndApiTokens(): void
     {
+        $this->useTokenMocks();
         $this->remember->expects($this->once())->method('deleteByUserId')->with(self::USER_ID);
         $this->api->expects($this->once())->method('deleteByUserId')->with(self::USER_ID)->willReturn(0);
 

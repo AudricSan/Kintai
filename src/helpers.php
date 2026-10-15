@@ -110,3 +110,22 @@ function csp_nonce(): string
 {
     return \kintai\Core\Security\CspNonce::get();
 }
+
+/**
+ * Classe CSS portant des déclarations dynamiques (couleur, largeur…) à la place d'un attribut style="…" :
+ * `<div class="bar <?= style_class(['width' => $pct . '%']) ?>">`. Voir kintai\UI\InlineStyles.
+ */
+function style_class(array $declarations): string
+{
+    return \kintai\UI\InlineStyles::classFor($declarations);
+}
+
+/**
+ * Bloc <style nonce> des règles enregistrées par style_class() (vide s'il n'y en a pas). Émis par les layouts ;
+ * une page autonome (impression, aperçu PDF) l'appelle elle-même avant </body>.
+ */
+function inline_styles(): string
+{
+    $css = \kintai\UI\InlineStyles::pull();
+    return $css === '' ? '' : '<style nonce="' . csp_nonce() . '">' . $css . '</style>';
+}

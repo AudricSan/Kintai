@@ -16,7 +16,7 @@ return new class($this->capsule) extends Migration {
         $this->schema()->create('user_nav_prefs', function (Blueprint $table) {
             $table->increments('id');
             $table->integer('user_id')->unique();
-            $table->text('hidden_items')->default('[]');
+            $table->text('hidden_items')->default($this->textDefault('[]'));
             $table->text('section_order')->nullable();
             $table->text('bottom_nav_items')->nullable();
             $table->timestamp('updated_at')->nullable();

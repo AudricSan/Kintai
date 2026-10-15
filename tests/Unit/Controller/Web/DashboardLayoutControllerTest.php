@@ -34,7 +34,7 @@ final class DashboardLayoutControllerTest extends TestCase
         // dashboard_alerts, store_stats_summary… ne sont pas affichés : ils gardent leur place.
         $this->prefs->method('getLayout')->with(7, 'admin')->willReturn(null);
         $this->prefs->expects($this->once())->method('saveLayout')->with(7, 'admin', [
-            'order'  => ['shifts_today', 'quick_nav', 'dashboard_alerts', 'store_stats_summary', 'financial_overview', 'hr_absenteeism', 'kpi_counters'],
+            'order'  => ['shifts_today', 'dashboard_alerts', 'store_stats_summary', 'financial_overview', 'hr_absenteeism', 'kpi_counters'],
             'widths' => ['shifts_today' => 'half', 'kpi_counters' => 'full'],
         ]);
 

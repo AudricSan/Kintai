@@ -23,30 +23,40 @@ use kintai\Core\Services\Log;
 use kintai\Core\Services\PlanLimitService;
 use kintai\UI\Controller\Api\V1\UserController;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use kintai\Core\Exceptions\ValidationException;
 use PHPUnit\Framework\TestCase;
 
 final class UserControllerTest extends TestCase
 {
-    private UserRepositoryInterface&MockObject $users;
-    private UserController $controller;
+    private UserRepositoryInterface&Stub $users;
+    private ?UserController $controller = null;
 
     protected function setUp(): void
     {
-        $this->users = $this->createMock(UserRepositoryInterface::class);
-        $stores = $this->createMock(StoreRepositoryInterface::class);
-        $this->controller = new UserController(
-            $this->users,
-            new AuditLogger(),
-            new PlanLimitService(
-                $stores,
+        $this->users = $this->createStub(UserRepositoryInterface::class);
+    }
+
+    /** Objet testé, construit à la première utilisation : un test peut d'abord remplacer un bouchon par un mock. */
+    private function controller(): UserController
+    {
+        if ($this->controller === null) {
+            $stores = $this->createStub(StoreRepositoryInterface::class);
+            $this->controller = new UserController(
                 $this->users,
-                new LicenseClientService($this->createMock(AppSettingsRepositoryInterface::class), ['base_url' => '', 'api_key' => '']),
-            ),
-            ApiOwnerAuth::permissions($this),
-            $this->createMock(StoreUserRepositoryInterface::class),
-            new OwnerGuard(ApiOwnerAuth::permissions($this), $this->users),
-        );
+                new AuditLogger(),
+                new PlanLimitService(
+                    $stores,
+                    $this->users,
+                    new LicenseClientService($this->createStub(AppSettingsRepositoryInterface::class), ['base_url' => '', 'api_key' => '']),
+                ),
+                ApiOwnerAuth::permissions($this),
+                $this->createStub(StoreUserRepositoryInterface::class),
+                new OwnerGuard(ApiOwnerAuth::permissions($this), $this->users),
+            );
+        }
+
+        return $this->controller;
     }
 
     protected function tearDown(): void
@@ -68,7 +78,7 @@ final class UserControllerTest extends TestCase
         $this->users->method('countActive')->willReturn(14);
         $this->users->method('save')->willReturn(['id' => 1, 'email' => 'new@example.com']);
 
-        $response = $this->controller->store($this->makeJsonRequest(['email' => 'new@example.com', 'first_name' => 'Nouvel', 'last_name' => 'Employé']));
+        $response = $this->controller()->store($this->makeJsonRequest(['email' => 'new@example.com', 'first_name' => 'Nouvel', 'last_name' => 'Employé']));
 
         $this->assertSame(201, $response->status());
     }
@@ -103,12 +113,12 @@ final class UserControllerTest extends TestCase
             $this->users,
             new AuditLogger(),
             new PlanLimitService(
-                $this->createMock(StoreRepositoryInterface::class),
+                $this->createStub(StoreRepositoryInterface::class),
                 $this->users,
-                new LicenseClientService($this->createMock(AppSettingsRepositoryInterface::class), ['base_url' => '', 'api_key' => '']),
+                new LicenseClientService($this->createStub(AppSettingsRepositoryInterface::class), ['base_url' => '', 'api_key' => '']),
             ),
             ApiOwnerAuth::permissions($this),
-            $this->createMock(StoreUserRepositoryInterface::class),
+            $this->createStub(StoreUserRepositoryInterface::class),
             new OwnerGuard(ApiOwnerAuth::permissions($this), $this->users),
             events: new Events(new ExtensionRegistry($manager)),
         );
@@ -127,6 +137,7 @@ final class UserControllerTest extends TestCase
 
     public function testAnOwnerCannotDeleteThemselvesThroughTheApi(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $this->users->method('findById')->willReturn(['id' => ApiOwnerAuth::OWNER_ID, 'is_active' => 1, 'deleted_at' => null]);
         $this->users->expects($this->never())->method('delete');
 
@@ -134,11 +145,12 @@ final class UserControllerTest extends TestCase
         $req->setRouteParams(['id' => (string) ApiOwnerAuth::OWNER_ID]);
 
         $this->expectException(\kintai\Core\Exceptions\ForbiddenException::class);
-        $this->controller->destroy($req);
+        $this->controller()->destroy($req);
     }
 
     public function testAnOwnerCannotDeactivateThemselvesThroughTheApi(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $this->users->method('findById')->willReturn(['id' => ApiOwnerAuth::OWNER_ID, 'is_active' => 1, 'deleted_at' => null]);
         $this->users->expects($this->never())->method('save');
 
@@ -146,16 +158,17 @@ final class UserControllerTest extends TestCase
         $req->setRouteParams(['id' => (string) ApiOwnerAuth::OWNER_ID]);
 
         $this->expectException(\kintai\Core\Exceptions\ForbiddenException::class);
-        $this->controller->update($req);
+        $this->controller()->update($req);
     }
 
     public function testStoreThrowsWhenFreePlanEmployeeLimitReached(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $this->users->method('countActive')->willReturn(15);
         $this->users->expects($this->never())->method('save');
 
         $this->expectException(PlanLimitExceededException::class);
-        $this->controller->store($this->makeJsonRequest(['email' => 'new@example.com']));
+        $this->controller()->store($this->makeJsonRequest(['email' => 'new@example.com']));
     }
 
     // -------------------------------------------------------------------------
@@ -165,11 +178,12 @@ final class UserControllerTest extends TestCase
     /** Un corps vide finissait en erreur SQL (500) : c'est maintenant un 422 détaillé, sans écriture. */
     public function testStoreWithAnEmptyBodyIsRefusedWithTheMissingFields(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $this->users->method('countActive')->willReturn(1);
         $this->users->expects($this->never())->method('save');
 
         try {
-            $this->controller->store($this->makeJsonRequest([]));
+            $this->controller()->store($this->makeJsonRequest([]));
             $this->fail('422 attendu');
         } catch (ValidationException $e) {
             $this->assertEqualsCanonicalizing(['email', 'first_name', 'last_name'], array_keys($e->errors));
@@ -178,12 +192,13 @@ final class UserControllerTest extends TestCase
 
     public function testStoreRefusesADuplicateEmail(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $this->users->method('countActive')->willReturn(1);
-        $this->users->method('findByEmail')->with('pris@example.com')->willReturn(['id' => 3]);
+        $this->users->expects($this->atLeastOnce())->method('findByEmail')->with('pris@example.com')->willReturn(['id' => 3]);
         $this->users->expects($this->never())->method('save');
 
         $this->expectException(ValidationException::class);
-        $this->controller->store($this->makeJsonRequest(['email' => 'pris@example.com', 'first_name' => 'A', 'last_name' => 'B']));
+        $this->controller()->store($this->makeJsonRequest(['email' => 'pris@example.com', 'first_name' => 'A', 'last_name' => 'B']));
     }
 
     public function testStoreKeepsOnlyKnownFieldsAndDerivesTheDisplayName(): void
@@ -195,7 +210,7 @@ final class UserControllerTest extends TestCase
             return $d + ['id' => 8];
         });
 
-        $this->controller->store($this->makeJsonRequest([
+        $this->controller()->store($this->makeJsonRequest([
             'email' => 'n@example.com', 'first_name' => 'Aiko', 'last_name' => 'Sato', 'employee_code' => 'e-12',
             'deleted_at' => '2020-01-01', 'last_login_at' => 'x', 'avatar_path' => '../../etc/passwd',
         ]));
@@ -209,6 +224,7 @@ final class UserControllerTest extends TestCase
 
     public function testUpdateWithNothingToChangeIsRefused(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $this->users->method('findById')->willReturn(['id' => 4, 'email' => 'a@example.com']);
         $this->users->expects($this->never())->method('save');
 
@@ -216,21 +232,23 @@ final class UserControllerTest extends TestCase
         $req->setRouteParams(['id' => '4']);
 
         $this->expectException(ValidationException::class);
-        $this->controller->update($req);
+        $this->controller()->update($req);
     }
 
     /** Audit M1 : couleur de compte non hexadécimale refusée en création comme en modification. */
     public function testStoreRejectsAnInvalidColor(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $this->users->method('countActive')->willReturn(1);
         $this->users->expects($this->never())->method('save');
 
         $this->expectException(ValidationException::class);
-        $this->controller->store($this->makeJsonRequest(['email' => 'new@example.com', 'first_name' => 'A', 'last_name' => 'B', 'color' => 'red;position:fixed']));
+        $this->controller()->store($this->makeJsonRequest(['email' => 'new@example.com', 'first_name' => 'A', 'last_name' => 'B', 'color' => 'red;position:fixed']));
     }
 
     public function testUpdateRejectsAnInvalidColor(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $this->users->method('findById')->willReturn(['id' => 4, 'email' => 'a@example.com']);
         $this->users->expects($this->never())->method('save');
 
@@ -238,6 +256,6 @@ final class UserControllerTest extends TestCase
         $req->setRouteParams(['id' => '4']);
 
         $this->expectException(ValidationException::class);
-        $this->controller->update($req);
+        $this->controller()->update($req);
     }
 }

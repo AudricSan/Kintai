@@ -42,7 +42,7 @@ echo Flash::fromQuery('error', [
                 <tr class="tr--clickable" data-href="<?= htmlspecialchars(route_url('admin.roles.edit', ['id' => $rid])) ?>">
                     <td data-label="<?= htmlspecialchars(__('name')) ?>">
                         <?php if (!empty($role['color'])): ?>
-                            <span class="color-swatch" style="background:<?= htmlspecialchars($role['color']) ?>"></span>
+                            <span class="color-swatch <?= style_class(['background' => $role['color']]) ?>"></span>
                         <?php endif; ?>
                         <?= htmlspecialchars($role['name'] ?? '') ?>
                         <?php if (!empty($role['is_system'])): ?>

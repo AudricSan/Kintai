@@ -61,7 +61,6 @@ foreach ($_widgetPermMap as $_wk => $_wp) {
 
 $widgetLabels = [
     'kpi_counters'         => __('widget_kpi_counters'),
-    'quick_nav'            => __('widget_quick_nav'),
     'dashboard_alerts'     => __('widget_dashboard_alerts'),
     'store_stats_summary'  => __('widget_store_stats_summary'),
     'financial_overview'   => __('widget_financial_overview'),
@@ -120,7 +119,7 @@ $_dashChartData = [];
 <!-- KPI Stats -->
 <?php $_pendingVisible = $pending_requests_visible ?? false; // au moins une sorte de demande visible (PendingRequests) ?>
 <?php $_statCount = 3 + ($_pendingVisible ? 1 : 0); ?>
-<div class="stat-grid" style="--stat-cols:<?= $_statCount ?>"><?php unset($_statCount); ?>
+<div class="stat-grid <?= style_class(['--stat-cols' => $_statCount]) ?>"><?php unset($_statCount); ?>
     <?php if ($can('employees.view')): ?>
     <a href="<?= route_url('admin.users') ?>" class="stat-card stat-card--link">
     <?php else: ?>

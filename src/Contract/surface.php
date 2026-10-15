@@ -38,6 +38,7 @@ return [
     'kintai\\Contract\\Exceptions\\ConflictException' => ['target' => 'kintai\\Core\\Exceptions\\ConflictException', 'status' => 'stable', 'role' => '409.'],
     'kintai\\Contract\\Auth\\PermissionService' => ['target' => 'kintai\\Core\\Auth\\PermissionService', 'status' => 'stable', 'role' => 'Vérification des permissions et portées.'],
     'kintai\\Contract\\Auth\\AuthService' => ['target' => 'kintai\\Core\\Auth\\AuthService', 'status' => 'provisoire', 'role' => 'Utilisateur de la session ; remplacé par CurrentUser (étape 2).'],
+    'kintai\\Contract\\Auth\\UserAnonymizer' => ['target' => 'kintai\\Core\\Auth\\UserAnonymizer', 'status' => 'stable', 'role' => 'Suppression d\'un compte : anonymisation (contrat 1.21).'],
     'kintai\\Contract\\Data\\UserRepositoryInterface' => ['target' => 'kintai\\Core\\Repositories\\UserRepositoryInterface', 'status' => 'stable', 'role' => 'Comptes.'],
     'kintai\\Contract\\Data\\StoreRepositoryInterface' => ['target' => 'kintai\\Core\\Repositories\\StoreRepositoryInterface', 'status' => 'stable', 'role' => 'Magasins.'],
     'kintai\\Contract\\Data\\StoreUserRepositoryInterface' => ['target' => 'kintai\\Core\\Repositories\\StoreUserRepositoryInterface', 'status' => 'stable', 'role' => 'Adhésions aux magasins.'],

@@ -24,44 +24,49 @@ use kintai\UI\Components\Table;
  * @var bool   $anyHasRate
  */
 
-function repStatCard(string $label, string $value, string $sub = '', string $color = 'var(--color-primary)'): string {
-    return '<div class="sstat-card">'
-        . '<div class="sstat-card__value" style="color:' . $color . '">' . htmlspecialchars($value) . '</div>'
-        . '<div class="sstat-card__label">' . htmlspecialchars($label) . '</div>'
-        . ($sub !== '' ? '<div class="sstat-card__sub">' . htmlspecialchars($sub) . '</div>' : '')
-        . '</div>';
-}
-
-function repBarChart(array $data, string $color = 'var(--color-primary)', int $maxBarHeight = 80): string {
-    if (!$data) return '<em class="sstat-empty">' . __('no_data') . '</em>';
-    $max = max(array_values($data)) ?: 1;
-    $out = '<div class="sstat-bar-chart">';
-    foreach ($data as $label => $val) {
-        $h = round($val / $max * $maxBarHeight);
-        $display = is_float($val) ? round($val, 1) : $val;
-        $out .= '<div class="sstat-bar-col" title="' . htmlspecialchars($label) . ': ' . $display . '">'
-            . '<div class="sstat-bar-value">' . $display . '</div>'
-            . '<div class="sstat-bar" style="height:' . $h . 'px;background:' . $color . '"></div>'
-            . '<div class="sstat-bar-label">' . htmlspecialchars($label) . '</div>'
+// Garde : la vue peut être rendue deux fois dans un même processus ; une seconde déclaration de ces fonctions
+// globales serait une erreur fatale (« Cannot redeclare »).
+if (!function_exists('repStatCard')) {
+    function repStatCard(string $label, string $value, string $sub = '', string $color = 'var(--color-primary)'): string {
+        return '<div class="sstat-card">'
+            . '<div class="sstat-card__value ' . style_class(['color' => $color]) . '">' . htmlspecialchars($value) . '</div>'
+            . '<div class="sstat-card__label">' . htmlspecialchars($label) . '</div>'
+            . ($sub !== '' ? '<div class="sstat-card__sub">' . htmlspecialchars($sub) . '</div>' : '')
             . '</div>';
     }
-    return $out . '</div>';
-}
 
-function repUserName(array $usersMap, int $uid): string {
-    if (!isset($usersMap[$uid])) return '#' . $uid;
-    $u = $usersMap[$uid];
-    $name = trim(($u['last_name'] ?? '') . ' ' . ($u['first_name'] ?? ''));
-    return $name ?: ($u['display_name'] ?? ($u['email'] ?? '#' . $uid));
-}
+    function repBarChart(array $data, string $color = 'var(--color-primary)', int $maxBarHeight = 80): string {
+        if (!$data) return '<em class="sstat-empty">' . __('no_data') . '</em>';
+        $max = max(array_values($data)) ?: 1;
+        $out = '<div class="sstat-bar-chart">';
+        foreach ($data as $label => $val) {
+            $h = round($val / $max * $maxBarHeight);
+            $display = is_float($val) ? round($val, 1) : $val;
+            $out .= '<div class="sstat-bar-col" title="' . htmlspecialchars($label) . ': ' . $display . '">'
+                . '<div class="sstat-bar-value">' . $display . '</div>'
+                . '<div class="sstat-bar ' . style_class(['height' => $h . 'px', 'background' => $color]) . '"></div>'
+                . '<div class="sstat-bar-label">' . htmlspecialchars($label) . '</div>'
+                . '</div>';
+        }
+        return $out . '</div>';
+    }
 
-function repHoursFormat(float $hours): string {
-    $h = intdiv((int) round($hours * 60), 60);
-    $m = (int) round($hours * 60) % 60;
-    return $h . 'h' . str_pad((string) $m, 2, '0', STR_PAD_LEFT);
+    function repUserName(array $usersMap, int $uid): string {
+        if (!isset($usersMap[$uid])) return '#' . $uid;
+        $u = $usersMap[$uid];
+        $name = trim(($u['last_name'] ?? '') . ' ' . ($u['first_name'] ?? ''));
+        return $name ?: ($u['display_name'] ?? ($u['email'] ?? '#' . $uid));
+    }
+
+    function repHoursFormat(float $hours): string {
+        $h = intdiv((int) round($hours * 60), 60);
+        $m = (int) round($hours * 60) % 60;
+        return $h . 'h' . str_pad((string) $m, 2, '0', STR_PAD_LEFT);
+    }
 }
 
 $currencyStyle = store_currency_style($store);
+
 ?>
 
 <div class="page-header">

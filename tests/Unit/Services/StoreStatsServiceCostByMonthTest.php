@@ -15,6 +15,7 @@ use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Services\RoleAssignmentSyncService;
 use kintai\Core\Services\StoreStatsService;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -23,39 +24,46 @@ use PHPUnit\Framework\TestCase;
  */
 final class StoreStatsServiceCostByMonthTest extends TestCase
 {
-    private ShiftRepositoryInterface&MockObject $shifts;
-    private StoreStatsService $service;
+    private ShiftRepositoryInterface&Stub $shifts;
+    private ?StoreStatsService $service = null;
 
     protected function setUp(): void
     {
-        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
+        $this->shifts = $this->createStub(ShiftRepositoryInterface::class);
+    }
 
-        $storeUsers = $this->createStub(StoreUserRepositoryInterface::class);
-        $storeUsers->method('findByStore')->willReturn([['user_id' => 10], ['user_id' => 11]]);
-        $shiftTypes = $this->createStub(ShiftTypeRepositoryInterface::class);
-        $shiftTypes->method('findByStore')->willReturn([
-            ['id' => 1, 'name' => 'Matin', 'hourly_rate' => 1100],
-            ['id' => 2, 'name' => 'Soir', 'hourly_rate' => 1300],
-        ]);
-        $users = $this->createStub(UserRepositoryInterface::class);
-        $users->method('findAll')->willReturn([]);
-        $rates = $this->createStub(UserShiftTypeRateRepositoryInterface::class);
-        $rates->method('findByUser')->willReturnCallback(
-            fn(int $uid) => $uid === 10 ? [['shift_type_id' => 2, 'hourly_rate' => 1500]] : []
-        );
+    /** Objet testé, construit à la première utilisation : un test peut d'abord remplacer un bouchon par un mock. */
+    private function service(): StoreStatsService
+    {
+        if ($this->service === null) {
+            $storeUsers = $this->createStub(StoreUserRepositoryInterface::class);
+            $shiftTypes = $this->createStub(ShiftTypeRepositoryInterface::class);
+            $users = $this->createStub(UserRepositoryInterface::class);
+            $rates = $this->createStub(UserShiftTypeRateRepositoryInterface::class);
+            $storeUsers->method('findByStore')->willReturn([['user_id' => 10], ['user_id' => 11]]);
+            $shiftTypes->method('findByStore')->willReturn([
+                ['id' => 1, 'name' => 'Matin', 'hourly_rate' => 1100],
+                ['id' => 2, 'name' => 'Soir', 'hourly_rate' => 1300],
+            ]);
+            $users->method('findAll')->willReturn([]);
+            $rates->method('findByUser')->willReturnCallback(
+                fn(int $uid) => $uid === 10 ? [['shift_type_id' => 2, 'hourly_rate' => 1500]] : []
+            );
+            $this->service = new StoreStatsService(
+                $this->createStub(StoreRepositoryInterface::class),
+                $this->shifts,
+                $shiftTypes,
+                $storeUsers,
+                $rates,
+                $users,
+                new RoleAssignmentSyncService(
+                    $this->createStub(RoleRepositoryInterface::class),
+                    $this->createStub(RoleAssignmentRepositoryInterface::class),
+                ),
+            );
+        }
 
-        $this->service = new StoreStatsService(
-            $this->createStub(StoreRepositoryInterface::class),
-            $this->shifts,
-            $shiftTypes,
-            $storeUsers,
-            $rates,
-            $users,
-            new RoleAssignmentSyncService(
-                $this->createStub(RoleRepositoryInterface::class),
-                $this->createStub(RoleAssignmentRepositoryInterface::class),
-            ),
-        );
+        return $this->service;
     }
 
     private function shift(int $id, int $user, int $type, string $date, int $minutes, int $pause = 0, ?string $deleted = null): array
@@ -84,8 +92,8 @@ final class StoreStatsServiceCostByMonthTest extends TestCase
 
         foreach ([7, 30, 90, 180] as $period) {
             $this->assertSame(
-                $this->service->storeStats(1, $period)['costByMonth'],
-                $this->service->costByMonth(1, $period),
+                $this->service()->storeStats(1, $period)['costByMonth'],
+                $this->service()->costByMonth(1, $period),
                 "période $period"
             );
         }
@@ -93,9 +101,10 @@ final class StoreStatsServiceCostByMonthTest extends TestCase
 
     public function testTheResultIsCachedForTheRequest(): void
     {
+        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
         $this->shifts->expects($this->once())->method('findByStoreBetween')->willReturn([]);
 
-        $this->service->costByMonth(1, 180);
-        $this->service->costByMonth(1, 180);
+        $this->service()->costByMonth(1, 180);
+        $this->service()->costByMonth(1, 180);
     }
 }

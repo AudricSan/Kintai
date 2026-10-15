@@ -16,30 +16,34 @@
  */
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-function ptMin(string $t): int
-{
-    $p = explode(':', substr($t, 0, 5));
-    return (int) ($p[0] ?? 0) * 60 + (int) ($p[1] ?? 0);
-}
-function ptFmt(string $t): string { return substr($t, 0, 5); }
-
-// Grouper les shifts en lanes sans chevauchement (identique au comportement web)
-function ptLanes(array $shifts, int $tStart): array
-{
-    $lanes = []; $ends = [];
-    foreach ($shifts as $sh) {
-        $sm = ptMin($sh['start_time'] ?? '00:00');
-        $em = ptMin($sh['end_time']   ?? '00:00');
-        if (!empty($sh['cross_midnight']) || $em <= $sm) $em += 1440;
-        if ($sm < $tStart) { $sm += 1440; $em += 1440; }
-        $sh['_sm'] = $sm; $sh['_em'] = $em;
-        $placed = false;
-        foreach ($ends as $li => $lEnd) {
-            if ($lEnd <= $sm) { $lanes[$li][] = $sh; $ends[$li] = $em; $placed = true; break; }
-        }
-        if (!$placed) { $lanes[] = [$sh]; $ends[] = $em; }
+// Garde : la vue peut être rendue deux fois dans un même processus ; une seconde déclaration de ces fonctions
+// globales serait une erreur fatale (« Cannot redeclare »).
+if (!function_exists('ptMin')) {
+    function ptMin(string $t): int
+    {
+        $p = explode(':', substr($t, 0, 5));
+        return (int) ($p[0] ?? 0) * 60 + (int) ($p[1] ?? 0);
     }
-    return $lanes;
+    function ptFmt(string $t): string { return substr($t, 0, 5); }
+
+    // Grouper les shifts en lanes sans chevauchement (identique au comportement web)
+    function ptLanes(array $shifts, int $tStart): array
+    {
+        $lanes = []; $ends = [];
+        foreach ($shifts as $sh) {
+            $sm = ptMin($sh['start_time'] ?? '00:00');
+            $em = ptMin($sh['end_time']   ?? '00:00');
+            if (!empty($sh['cross_midnight']) || $em <= $sm) $em += 1440;
+            if ($sm < $tStart) { $sm += 1440; $em += 1440; }
+            $sh['_sm'] = $sm; $sh['_em'] = $em;
+            $placed = false;
+            foreach ($ends as $li => $lEnd) {
+                if ($lEnd <= $sm) { $lanes[$li][] = $sh; $ends[$li] = $em; $placed = true; break; }
+            }
+            if (!$placed) { $lanes[] = [$sh]; $ends[] = $em; }
+        }
+        return $lanes;
+    }
 }
 
 $T_START = 6 * 60;
@@ -68,7 +72,7 @@ for ($h = 6; $h < 30; $h++) $ganttHours[] = $h % 24;
     <title><?= __('planning') ?> — <?= __('timeline') ?> — <?= htmlspecialchars($storeName) ?></title>
     <link rel="stylesheet" href="<?= $BASE_URL ?>/assets/css/pdf/pdf-timeline.css">
     <!-- @page @bottom-center dynamique (date PHP) — ne pas externaliser -->
-    <style>
+    <style nonce="<?= csp_nonce() ?>">
         @page {
             @bottom-center {
                 content: "<?= __('print_footer_disclaimer', ['date' => date('d/m/Y H:i')]) ?>";
@@ -208,8 +212,7 @@ for ($h = 6; $h < 30; $h++) $ganttHours[] = $h % 24;
                         $width = max(0.8, min(100 - $left, $width));
                         $color = $sh['_color'];
                         ?>
-                        <div class="pt-bar"
-                             style="left:<?= number_format($left, 4) ?>%;width:<?= number_format($width, 4) ?>%;background:<?= htmlspecialchars($color) ?>;">
+                        <div class="pt-bar <?= style_class(['left' => number_format($left, 4) . '%', 'width' => number_format($width, 4) . '%', 'background' => $color]) ?>">
                             <?php if ($width > 2.5): ?>
                                 <span class="pt-bar-name"><?= htmlspecialchars($sh['_name']) ?></span>
                             <?php endif; ?>
@@ -233,7 +236,7 @@ for ($h = 6; $h < 30; $h++) $ganttHours[] = $h % 24;
     <div class="pt-legend">
         <?php foreach ($all_user_ids as $uid): ?>
             <span class="pt-legend-item">
-                <span class="pt-legend-bar" style="background:<?= htmlspecialchars($userColorMap[$uid] ?? '#6366f1') ?>"></span>
+                <span class="pt-legend-bar <?= style_class(['background' => $userColorMap[$uid] ?? '#6366f1']) ?>"></span>
                 <span><?= htmlspecialchars($users_map[$uid] ?? ('#' . $uid)) ?></span>
             </span>
         <?php endforeach; ?>
@@ -248,6 +251,7 @@ for ($h = 6; $h < 30; $h++) $ganttHours[] = $h % 24;
 </div>
 
 <?php if ($autoprint ?? false): ?><meta name="autoprint" content="1"><?php endif; ?>
+<?= inline_styles() ?>
 <script src="<?= $BASE_URL ?>/assets/js/modules/csp-actions.js"></script>
 <script src="<?= $BASE_URL ?>/assets/js/modules/autoprint.js"></script>
 </body>

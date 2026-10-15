@@ -12,7 +12,7 @@ use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 
 final class EmployeeStatsService
 {
-    /** Clés de traduction (namespace SalaryReport, fusionnées globalement) associées à chaque mois. */
+    /** Clés de traduction du Core (lang/*.json) associées à chaque mois. */
     private const MONTH_KEYS = [
         '01' => 'January', '02' => 'February', '03' => 'March', '04' => 'April',
         '05' => 'May', '06' => 'June', '07' => 'July', '08' => 'August',
@@ -115,7 +115,7 @@ final class EmployeeStatsService
         usort($shiftDetails, fn($a, $b) => strcmp($a['date'] . $a['start'], $b['date'] . $b['start']));
 
         [$y, $mNum] = array_pad(explode('-', $month), 2, '');
-        $monthLabel = __(self::MONTH_KEYS[$mNum] ?? $mNum) . ' ' . $y;
+        $monthLabel = month_label($y . '-' . $mNum);
 
         return [
             'hours_month'   => $monthMinutes / 60,

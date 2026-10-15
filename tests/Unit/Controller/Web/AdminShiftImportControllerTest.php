@@ -18,6 +18,7 @@ use kintai\Core\Services\RoleAssignmentSyncService;
 use kintai\UI\Controller\Web\Scheduling\AdminShiftImportController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -28,29 +29,36 @@ use PHPUnit\Framework\TestCase;
  */
 final class AdminShiftImportControllerTest extends TestCase
 {
-    private StoreUserRepositoryInterface&MockObject $storeUsers;
-    private AdminShiftImportController $controller;
+    private StoreUserRepositoryInterface&Stub $storeUsers;
+    private ?AdminShiftImportController $controller = null;
 
     protected function setUp(): void
     {
-        $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
+        $this->storeUsers = $this->createStub(StoreUserRepositoryInterface::class);
+    }
 
-        $roleSync = new RoleAssignmentSyncService(
-            $this->createStub(RoleRepositoryInterface::class),
-            $this->createStub(RoleAssignmentRepositoryInterface::class),
-        );
+    /** Objet testé, construit à la première utilisation : un test peut d'abord remplacer un bouchon par un mock. */
+    private function controller(): AdminShiftImportController
+    {
+        if ($this->controller === null) {
+            $roleSync = new RoleAssignmentSyncService(
+                $this->createStub(RoleRepositoryInterface::class),
+                $this->createStub(RoleAssignmentRepositoryInterface::class),
+            );
+            $this->controller = new AdminShiftImportController(
+                new ViewRenderer(sys_get_temp_dir()),
+                $this->createStub(UserRepositoryInterface::class),
+                $this->createStub(StoreRepositoryInterface::class),
+                $this->createStub(ShiftRepositoryInterface::class),
+                $this->createStub(ShiftTypeRepositoryInterface::class),
+                $this->storeUsers,
+                new AuditLogger(),
+                $this->createStub(ImportAliasRepositoryInterface::class),
+                $roleSync,
+            );
+        }
 
-        $this->controller = new AdminShiftImportController(
-            new ViewRenderer(sys_get_temp_dir()),
-            $this->createMock(UserRepositoryInterface::class),
-            $this->createMock(StoreRepositoryInterface::class),
-            $this->createMock(ShiftRepositoryInterface::class),
-            $this->createMock(ShiftTypeRepositoryInterface::class),
-            $this->storeUsers,
-            new AuditLogger(),
-            $this->createMock(ImportAliasRepositoryInterface::class),
-            $roleSync,
-        );
+        return $this->controller;
     }
 
     public function testResolveEntryUserIdsIgnoresHomonymFromAnotherStore(): void
@@ -66,9 +74,9 @@ final class AdminShiftImportControllerTest extends TestCase
             ['id' => 10, 'last_name' => 'Dupont', 'first_name' => 'Jean', 'display_name' => 'Dupont'],
         ];
 
-        $method = new \ReflectionMethod($this->controller, 'resolveEntryUserIds');
+        $method = new \ReflectionMethod($this->controller(), 'resolveEntryUserIds');
         $method->setAccessible(true);
-        $resolved = $method->invoke($this->controller, $entries, $storeMembers, []);
+        $resolved = $method->invoke($this->controller(), $entries, $storeMembers, []);
 
         $this->assertSame(10, $resolved[0]['user_id']);
     }
@@ -85,9 +93,9 @@ final class AdminShiftImportControllerTest extends TestCase
             ['id' => 10, 'last_name' => 'Dupont', 'first_name' => 'Jean', 'display_name' => 'Dupont'],
         ];
 
-        $method = new \ReflectionMethod($this->controller, 'resolveEntryUserIds');
+        $method = new \ReflectionMethod($this->controller(), 'resolveEntryUserIds');
         $method->setAccessible(true);
-        $resolved = $method->invoke($this->controller, $entries, $storeMembers, []);
+        $resolved = $method->invoke($this->controller(), $entries, $storeMembers, []);
 
         $this->assertSame(0, $resolved[0]['user_id']);
     }
@@ -98,22 +106,23 @@ final class AdminShiftImportControllerTest extends TestCase
             ['staff_name' => 'M. Dupont (surnom)'],
         ];
 
-        $resolved = (new \ReflectionMethod($this->controller, 'resolveEntryUserIds'))
-            ->invoke($this->controller, $entries, [], ['m. dupont (surnom)' => 10]);
+        $resolved = (new \ReflectionMethod($this->controller(), 'resolveEntryUserIds'))
+            ->invoke($this->controller(), $entries, [], ['m. dupont (surnom)' => 10]);
 
         $this->assertSame(10, $resolved[0]['user_id']);
     }
 
     public function testStoreMemberIdsReturnsUserIdsOfStoreMembership(): void
     {
-        $this->storeUsers->method('findByStore')->with(1)->willReturn([
+        $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
+        $this->storeUsers->expects($this->atLeastOnce())->method('findByStore')->with(1)->willReturn([
             ['id' => 1, 'store_id' => 1, 'user_id' => 10],
             ['id' => 2, 'store_id' => 1, 'user_id' => 11],
         ]);
 
-        $method = new \ReflectionMethod($this->controller, 'storeMemberIds');
+        $method = new \ReflectionMethod($this->controller(), 'storeMemberIds');
         $method->setAccessible(true);
-        $ids = $method->invoke($this->controller, 1);
+        $ids = $method->invoke($this->controller(), 1);
 
         $this->assertSame([10, 11], $ids);
     }

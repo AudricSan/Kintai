@@ -125,7 +125,6 @@ ob_start();
 <div class="filter-bar">
     <?php if (count($available_stores) > 1): ?>
     <form method="GET" action="" class="form-contents">
-        <?= csrf_field() ?>
         <input type="hidden" name="view"  value="<?= htmlspecialchars($period_mode) ?>">
         <input type="hidden" name="start" value="<?= htmlspecialchars($days[0]->format('Y-m-d')) ?>">
         <select name="store_id" class="form-control filter-bar__select" data-submit-on-change>
@@ -341,7 +340,7 @@ ob_start();
                             <div class="sd-lane tl-lane <?= $li > 0 ? 'tl-lane--mt' : '' ?>">
                                 <!-- Grille verticale -->
                                 <?php for ($i = 0; $i <= 24; $i++): ?>
-                                    <div class="tl-grid-line" style="left:<?= number_format($i/24*100, 5) ?>%;opacity:<?= $i % 6 === 0 ? '.5' : '.2' ?>"></div>
+                                    <div class="tl-grid-line <?= style_class(['left' => number_format($i/24*100, 5) . '%', 'opacity' => $i % 6 === 0 ? '.5' : '.2']) ?>"></div>
                                 <?php endfor; ?>
 
                                 <!-- Barres shifts -->
@@ -355,9 +354,9 @@ ob_start();
                                     $color     = $sh['_color'];
                                     $isMe      = $sh['_is_me'];
                                     $bg        = $isMe ? $color : $color . '70';
-                                    $border    = $isMe ? "border:2px solid {$color}" : "border:1px solid {$color}aa";
+                                    $border    = $isMe ? "2px solid {$color}" : "1px solid {$color}aa";
                                     $textColor = wcag_contrast_color($color);
-                                    $shadow    = $textColor === '#ffffff' ? 'text-shadow:0 1px 2px rgba(0,0,0,.35)' : 'text-shadow:none';
+                                    $shadow    = $textColor === '#ffffff' ? '0 1px 2px rgba(0,0,0,.35)' : 'none';
 
                                     $shUid      = $sh['_uid'];
                                     $shPause    = (int) ($sh['pause_minutes'] ?? 0);
@@ -400,7 +399,7 @@ ob_start();
                                          data-rate-detail="<?= $shRateDetail ?>"
                                          data-width-pct="<?= number_format($width, 5) ?>"
                                          <?php if ($_canManage): ?>data-draggable="1"<?php endif; ?>
-                                         class="tl-bar" style="left:<?= number_format($left, 5) ?>%;width:<?= number_format($width, 5) ?>%;background:<?= htmlspecialchars($bg) ?>;<?= $border ?>;color:<?= $textColor ?>;<?= $shadow ?>">
+                                         class="tl-bar <?= style_class(['left' => number_format($left, 5) . '%', 'width' => number_format($width, 5) . '%', 'background' => $bg, 'border' => $border, 'color' => $textColor, 'text-shadow' => $shadow]) ?>">
                                         <?php if ($width > 4): ?>
                                             <span class="tl-bar-label tl-bar-label--main">
                                                 <?= TimelineHelpers::atFmt($sh['_sm']) ?>–<?= TimelineHelpers::atFmt($sh['_em']) ?>
@@ -437,7 +436,7 @@ ob_start();
     <?php foreach ($all_user_ids as $uid): ?>
         <?php $c = $userColorMap[$uid] ?? '#6366f1'; $n = $users_map[$uid] ?? ('#' . $uid); $isMe = $uid === $my_user_id; ?>
         <span class="week-legend-item">
-            <span class="tl-legend-bar" style="background:<?= $isMe ? $c : $c . '70' ?>;border:<?= $isMe ? "2px solid {$c}" : "1px solid {$c}aa" ?>"></span>
+            <span class="tl-legend-bar <?= style_class(['background' => $isMe ? $c : $c . '70', 'border' => $isMe ? "2px solid {$c}" : "1px solid {$c}aa"]) ?>"></span>
             <span class="<?= $isMe ? 'tl-legend-name--me' : 'text-muted tl-legend-name' ?>"><?php if ($_canManage): ?><a href="<?= $BASE_URL ?>/admin/users/<?= employee_segment((int) $uid) ?>/edit"><?= htmlspecialchars($n) ?></a><?php else: ?><?= htmlspecialchars($n) ?><?php endif; ?></span>
         </span>
     <?php endforeach; ?>

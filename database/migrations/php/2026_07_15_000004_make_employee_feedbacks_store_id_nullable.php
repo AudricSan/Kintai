@@ -61,6 +61,14 @@ return new class($this->capsule) extends Migration {
      */
     private function dropStoreIdForeignAndIndex(): void
     {
+        // MySQL refuse de supprimer un index dont une clé étrangère a besoin (erreur 1553) : la clé d'abord.
+        // SQLite garde l'ordre historique (index puis clé), dont dépend la reconstruction de la table.
+        $mysql = $this->capsule->getConnection()->getDriverName() === 'mysql';
+        if ($mysql) {
+            $this->schema()->table('employee_feedbacks', function (Blueprint $table) {
+                $table->dropForeign(['store_id']);
+            });
+        }
         foreach ($this->schema()->getIndexes('employee_feedbacks') as $index) {
             if (in_array('store_id', $index['columns'], true)) {
                 $this->schema()->table('employee_feedbacks', function (Blueprint $table) use ($index) {
@@ -68,8 +76,10 @@ return new class($this->capsule) extends Migration {
                 });
             }
         }
-        $this->schema()->table('employee_feedbacks', function (Blueprint $table) {
-            $table->dropForeign(['store_id']);
-        });
+        if (!$mysql) {
+            $this->schema()->table('employee_feedbacks', function (Blueprint $table) {
+                $table->dropForeign(['store_id']);
+            });
+        }
     }
 };

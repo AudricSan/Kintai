@@ -16,6 +16,7 @@ use kintai\Core\Services\PlanLimitService;
 use kintai\UI\Controller\Web\System\BundleSettingsController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 if (!defined('BASE_PATH')) {
@@ -26,7 +27,7 @@ final class BundleSettingsControllerTest extends TestCase
 {
     private static string $legacyBundlesDir;
 
-    private AppSettingsRepositoryInterface&MockObject $appSettings;
+    private AppSettingsRepositoryInterface&Stub $appSettings;
 
     /**
      * Depuis que TeamDirectory (le dernier bundle du monorepo) a été extrait vers son
@@ -80,7 +81,7 @@ final class BundleSettingsControllerTest extends TestCase
     {
         $this->ensureViewFile('system.bundles');
         $this->ensureViewFile('layout.app');
-        $this->appSettings = $this->createMock(AppSettingsRepositoryInterface::class);
+        $this->appSettings = $this->createStub(AppSettingsRepositoryInterface::class);
     }
 
     protected function tearDown(): void
@@ -98,9 +99,9 @@ final class BundleSettingsControllerTest extends TestCase
             new AuditLogger(),
             new BundleDiscoveryService(self::$legacyBundlesDir),
             $planLimits ?? new PlanLimitService(
-                $this->createMock(StoreRepositoryInterface::class),
-                $this->createMock(UserRepositoryInterface::class),
-                new LicenseClientService($this->createMock(AppSettingsRepositoryInterface::class), ['base_url' => '', 'api_key' => '']),
+                $this->createStub(StoreRepositoryInterface::class),
+                $this->createStub(UserRepositoryInterface::class),
+                new LicenseClientService($this->createStub(AppSettingsRepositoryInterface::class), ['base_url' => '', 'api_key' => '']),
             ),
         );
     }
@@ -119,6 +120,7 @@ final class BundleSettingsControllerTest extends TestCase
 
     public function testSavePersistsSelectedBundlesAsJson(): void
     {
+        $this->appSettings = $this->createMock(AppSettingsRepositoryInterface::class);
         $controller = $this->makeController(new FeatureManager(['team-directory']));
 
         $_POST = ['bundle_team-directory' => '1'];
@@ -143,6 +145,7 @@ final class BundleSettingsControllerTest extends TestCase
 
     public function testSaveBlocksWhenFreePlanBundleQuotaExceeded(): void
     {
+        $this->appSettings = $this->createMock(AppSettingsRepositoryInterface::class);
         // Plan gratuit = 4 bundles actifs max (PlanLimitService) ; 5 sont découverts dans
         // le fixture (team-directory + fake-bundle-{2..5}), donc tout cocher dépasse le quota.
         $controller = $this->makeController(new FeatureManager([]));
@@ -167,6 +170,7 @@ final class BundleSettingsControllerTest extends TestCase
     /** Au-dessus du quota (instance antérieure), garder ou réduire reste permis : seul l'ajout est refusé. */
     public function testSaveAboveTheQuotaKeepsWorkingWithoutAdditions(): void
     {
+        $this->appSettings = $this->createMock(AppSettingsRepositoryInterface::class);
         $all = ['team-directory', 'fake-bundle-2', 'fake-bundle-3', 'fake-bundle-4', 'fake-bundle-5'];
         $controller = $this->makeController(new FeatureManager($all));
 
@@ -181,6 +185,7 @@ final class BundleSettingsControllerTest extends TestCase
 
     public function testSaveAllowsExactlyFourBundlesOnFreePlan(): void
     {
+        $this->appSettings = $this->createMock(AppSettingsRepositoryInterface::class);
         $controller = $this->makeController(new FeatureManager([]));
 
         $_POST = [

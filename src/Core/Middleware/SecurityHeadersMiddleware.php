@@ -28,8 +28,10 @@ final class SecurityHeadersMiddleware implements MiddlewareInterface
         // le clic sur "Envoyer" ne fait rien).
         // Pas de 'unsafe-inline' pour les scripts : ni <script> inline sans nonce, ni attribut onclick=/onchange=/…
         // (les vues passent par des attributs data-* gérés par public/assets/js/modules/csp-actions.js).
-        // style-src garde 'unsafe-inline' : les attributs style="…" dynamiques (couleurs, largeurs) en dépendent.
-        $response->withHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'nonce-{$nonce}'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; form-action 'self' https://github.com; frame-ancestors 'self'; object-src 'none'");
+        // Pas de 'unsafe-inline' pour les styles non plus : un attribut style="…" est ignoré, un <style> doit porter le
+        // nonce. Les valeurs dynamiques passent par style_class() (kintai\UI\InlineStyles), émises dans un <style nonce>.
+        // Modifier element.style en JavaScript (CSSOM) n'est pas concerné.
+        $response->withHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'nonce-{$nonce}'; style-src 'self' 'nonce-{$nonce}'; img-src 'self' data: blob:; font-src 'self'; form-action 'self' https://github.com; frame-ancestors 'self'; object-src 'none'");
 
         if ($request->isSecure()) {
             $response->withHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');

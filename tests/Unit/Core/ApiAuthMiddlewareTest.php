@@ -11,18 +11,19 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 final class ApiAuthMiddlewareTest extends TestCase
 {
-    private ApiTokenRepositoryInterface&MockObject $tokens;
-    private UserRepositoryInterface&MockObject     $users;
+    private ApiTokenRepositoryInterface&Stub $tokens;
+    private UserRepositoryInterface&Stub     $users;
     private ApiAuthMiddleware $middleware;
 
     protected function setUp(): void
     {
-        $this->tokens = $this->createMock(ApiTokenRepositoryInterface::class);
-        $this->users  = $this->createMock(UserRepositoryInterface::class);
+        $this->tokens = $this->createStub(ApiTokenRepositoryInterface::class);
+        $this->users  = $this->createStub(UserRepositoryInterface::class);
 
         $container = Container::getInstance();
         $container->instance(ApiTokenRepositoryInterface::class, $this->tokens);
@@ -250,6 +251,8 @@ final class ApiAuthMiddlewareTest extends TestCase
 
     public function testValidTokenUpdatesLastUsedAt(): void
     {
+        $this->tokens = $this->createMock(ApiTokenRepositoryInterface::class);
+        Container::getInstance()->instance(ApiTokenRepositoryInterface::class, $this->tokens);
         $tokenRecord = ['id' => 5, 'user_id' => 3, 'token' => 'validtoken', 'expires_at' => null];
         $userRecord  = ['id' => 3, 'is_active' => true, 'deleted_at' => null];
 

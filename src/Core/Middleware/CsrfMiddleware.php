@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace kintai\Core\Middleware;
 
 use Closure;
+use kintai\Core\Auth\AuthService;
 use kintai\Core\Exceptions\HttpException;
 use kintai\Core\Request;
 use kintai\Core\Response;
@@ -33,13 +34,29 @@ final class CsrfMiddleware implements MiddlewareInterface
                   ?? $request->header('X-CSRF-Token');
 
             if (!hash_equals($_SESSION[self::SESSION_KEY], (string) $token)) {
-                // Renvoyer vers une page d'erreur complète au lieu de lancer une exception
-                http_response_code(419);
-                echo "<!doctype html><html lang='fr'><head><meta charset='utf-8'><title>Erreur 419 — Action expirée</title><style>body{font-family:Arial,Helvetica,sans-serif;margin:2rem;color:#222}header{border-bottom:1px solid #eee;margin-bottom:1rem}h1{color:#b00}</style></head><body><header><h1>Erreur 419 — Action expirée</h1></header><p>La session a expiré ou le jeton CSRF est invalide. Veuillez recharger la page et réessayer.</p><p><a href='/'>Retour à l'accueil</a></p></body></html>";
-                exit;
+                return $this->rejected($request);
             }
         }
 
         return $next($request);
+    }
+
+    /**
+     * Jeton absent ou différent : presque toujours une session expirée (page restée ouverte plus longtemps que la
+     * durée de session, typiquement la page de connexion). Avant, une page en dur, en français, avec un lien vers « / »
+     * (sous-dossier ignoré) et un exit.
+     * - appel AJAX : JSON 419 ;
+     * - plus personne de connecté dans la session : retour à la connexion avec un message (rien n'est perdu) ;
+     * - sinon : page 419 traduite (errors.419), qui renvoie vers la page d'origine.
+     */
+    private function rejected(Request $request): Response
+    {
+        if ($request->wantsJson()) {
+            return Response::json(['error' => __('error_419_message'), 'code' => 'CSRF_TOKEN_MISMATCH'], 419);
+        }
+        if (AuthService::sessionUserId() === null) {
+            return Response::redirect(base_url() . '/login?error=expired');
+        }
+        throw new HttpException(419, '');
     }
 }

@@ -10,8 +10,8 @@ use kintai\Core\Response;
 use PHPUnit\Framework\TestCase;
 
 /**
- * La CSP n'autorise plus 'unsafe-inline' pour les scripts : seuls les <script nonce="…"> de la requête
- * s'exécutent. Le nonce doit être imprévisible, propre à chaque requête, et identique entre l'en-tête
+ * La CSP n'autorise plus 'unsafe-inline' pour les scripts ni pour les styles : seuls les <script nonce="…"> et
+ * <style nonce="…"> de la requête s'appliquent. Le nonce doit être imprévisible, propre à chaque requête, et identique entre l'en-tête
  * et ce que les vues écrivent (csp_nonce()).
  */
 final class SecurityHeadersMiddlewareTest extends TestCase
@@ -36,7 +36,12 @@ final class SecurityHeadersMiddlewareTest extends TestCase
 
     private function scriptSrc(string $csp): string
     {
-        preg_match('/(?:^|;\s*)script-src ([^;]*)/', $csp, $m);
+        return $this->directive($csp, 'script-src');
+    }
+
+    private function directive(string $csp, string $name): string
+    {
+        preg_match('/(?:^|;\s*)' . preg_quote($name, '/') . ' ([^;]*)/', $csp, $m);
 
         return $m[1] ?? '';
     }
@@ -47,6 +52,17 @@ final class SecurityHeadersMiddlewareTest extends TestCase
 
         $this->assertStringNotContainsString("'unsafe-inline'", $this->scriptSrc($csp));
         $this->assertStringContainsString("'self'", $this->scriptSrc($csp));
+    }
+
+    public function testStylesNoLongerAllowUnsafeInline(): void
+    {
+        [$csp, $nonceInView] = $this->handleRequest();
+        $styleSrc = $this->directive($csp, 'style-src');
+
+        // Un attribut style="…" injecté ne s'applique plus ; les <style nonce> des layouts (style_class()) si.
+        $this->assertStringNotContainsString("'unsafe-inline'", $styleSrc);
+        $this->assertStringContainsString("'self'", $styleSrc);
+        $this->assertStringContainsString("'nonce-{$nonceInView}'", $styleSrc);
     }
 
     public function testTheHeaderCarriesTheSameNonceAsTheViews(): void

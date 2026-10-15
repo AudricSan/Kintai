@@ -28,6 +28,7 @@ use kintai\Core\Services\RoleAssignmentSyncService;
 use kintai\UI\Controller\Web\Staff\AdminUserController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use kintai\Core\Auth\UserAnonymizer;
 use kintai\Core\Auth\CredentialRevoker;
 use kintai\Core\Repositories\RememberTokenRepositoryInterface;
@@ -36,61 +37,76 @@ use PHPUnit\Framework\TestCase;
 
 final class AdminUserControllerTest extends TestCase
 {
-    private AdminUserController $controller;
-    private UserRepositoryInterface&MockObject $users;
-    private StoreRepositoryInterface&MockObject $stores;
-    private StoreUserRepositoryInterface&MockObject $storeUsers;
-    private LogRepositoryInterface&MockObject $logRepo;
-    private RoleRepositoryInterface&MockObject $roles;
-    private RoleAssignmentRepositoryInterface&MockObject $roleAssignments;
-    private ShiftTypeRepositoryInterface&MockObject $shiftTypes;
-    private UserShiftTypeRateRepositoryInterface&MockObject $userRates;
+    private ?AdminUserController $controller = null;
+    private UserRepositoryInterface&Stub $users;
+    private StoreRepositoryInterface&Stub $stores;
+    private StoreUserRepositoryInterface&Stub $storeUsers;
+    private LogRepositoryInterface&Stub $logRepo;
+    private RoleRepositoryInterface&Stub $roles;
+    private RoleAssignmentRepositoryInterface&Stub $roleAssignments;
+    private ShiftTypeRepositoryInterface&Stub $shiftTypes;
+    private UserShiftTypeRateRepositoryInterface&Stub $userRates;
     protected function setUp(): void
     {
         $this->ensureViewFile('staff.users');
         $this->ensureViewFile('staff.users-form');
         $this->ensureViewFile('staff.users-export-pdf');
         $this->ensureViewFile('layout.app');
-        $view = new ViewRenderer(sys_get_temp_dir());
-        $this->users = $this->createMock(UserRepositoryInterface::class);
-        $this->stores = $this->createMock(StoreRepositoryInterface::class);
-        $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
-        $this->roles = $this->createMock(RoleRepositoryInterface::class);
-        $this->roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
-        $this->shiftTypes = $this->createMock(ShiftTypeRepositoryInterface::class);
-        $this->userRates = $this->createMock(UserShiftTypeRateRepositoryInterface::class);
+        
+        $this->users = $this->createStub(UserRepositoryInterface::class);
+        $this->stores = $this->createStub(StoreRepositoryInterface::class);
+        $this->storeUsers = $this->createStub(StoreUserRepositoryInterface::class);
+        $this->roles = $this->createStub(RoleRepositoryInterface::class);
+        $this->roleAssignments = $this->createStub(RoleAssignmentRepositoryInterface::class);
+        $this->shiftTypes = $this->createStub(ShiftTypeRepositoryInterface::class);
+        $this->userRates = $this->createStub(UserShiftTypeRateRepositoryInterface::class);
 
         // AuditLogger::log() délègue à Log::record() -> LogRepositoryInterface::record().
-        $this->logRepo = $this->createMock(LogRepositoryInterface::class);
+        $this->logRepo = $this->createStub(LogRepositoryInterface::class);
+        $this->registerLogRepository();
+    }
+
+    /** Branche $this->logRepo derrière Log::record() ; à rappeler quand un test le remplace par un mock. */
+    private function registerLogRepository(): void
+    {
         $container = new Container();
         $container->instance(LogRepositoryInterface::class, $this->logRepo);
         Log::setContainer($container);
+    }
 
-        $this->controller = new AdminUserController(
-            $view,
-            $this->users,
-            $this->stores,
-            $this->createMock(ShiftRepositoryInterface::class),
-            $this->shiftTypes,
-            $this->storeUsers,
-            $this->userRates,
-            new AuditLogger(),
-            new RoleAssignmentSyncService($this->roles, $this->roleAssignments),
-            new PermissionService($this->roleAssignments, $this->roles),
-            new PlanLimitService(
+    /** Objet testé, construit à la première utilisation : un test peut d'abord remplacer un bouchon par un mock. */
+    private function controller(): AdminUserController
+    {
+        if ($this->controller === null) {
+            $view = new ViewRenderer(sys_get_temp_dir());
+            $this->controller = new AdminUserController(
+                $view,
+                $this->users,
                 $this->stores,
-                $this->users,
-                new LicenseClientService($this->createMock(AppSettingsRepositoryInterface::class), ['base_url' => '', 'api_key' => '']),
-            ),
-            new OwnerGuard(new PermissionService($this->roleAssignments, $this->roles), $this->users),
-            null,
-            new UserAnonymizer(
-                $this->users,
-                $this->roleAssignments,
-                new CredentialRevoker($this->createStub(RememberTokenRepositoryInterface::class), $this->createStub(ApiTokenRepositoryInterface::class)),
-                sys_get_temp_dir(),
-            ),
-        );
+                $this->createStub(ShiftRepositoryInterface::class),
+                $this->shiftTypes,
+                $this->storeUsers,
+                $this->userRates,
+                new AuditLogger(),
+                new RoleAssignmentSyncService($this->roles, $this->roleAssignments),
+                new PermissionService($this->roleAssignments, $this->roles),
+                new PlanLimitService(
+                    $this->stores,
+                    $this->users,
+                    new LicenseClientService($this->createStub(AppSettingsRepositoryInterface::class), ['base_url' => '', 'api_key' => '']),
+                ),
+                new OwnerGuard(new PermissionService($this->roleAssignments, $this->roles), $this->users),
+                null,
+                new UserAnonymizer(
+                    $this->users,
+                    $this->roleAssignments,
+                    new CredentialRevoker($this->createStub(RememberTokenRepositoryInterface::class), $this->createStub(ApiTokenRepositoryInterface::class)),
+                    sys_get_temp_dir(),
+                ),
+            );
+        }
+
+        return $this->controller;
     }
 
     public function testUsersRenders(): void
@@ -98,7 +114,7 @@ final class AdminUserControllerTest extends TestCase
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
 
-        $response = $this->controller->users($req);
+        $response = $this->controller()->users($req);
 
         $this->assertSame(200, $response->status());
     }
@@ -124,7 +140,7 @@ final class AdminUserControllerTest extends TestCase
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
 
-        $response = $this->controller->users($req);
+        $response = $this->controller()->users($req);
 
         $this->assertSame(200, $response->status());
         $_GET = [];
@@ -136,6 +152,8 @@ final class AdminUserControllerTest extends TestCase
 
     public function testExportUsersJsonReturnsExpectedFields(): void
     {
+        $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
+        $this->userRates = $this->createMock(UserShiftTypeRateRepositoryInterface::class);
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
 
@@ -146,11 +164,11 @@ final class AdminUserControllerTest extends TestCase
              'is_admin' => false, 'is_active' => 1, 'deleted_at' => null],
         ]);
         $this->stores->method('findAll')->willReturn([['id' => 1, 'name' => 'Store A']]);
-        $this->storeUsers->method('findByUser')->with(5)->willReturn([['store_id' => 1]]);
-        $this->userRates->method('findByUser')->with(5)->willReturn([['shift_type_id' => 2, 'hourly_rate' => 1200]]);
+        $this->storeUsers->expects($this->atLeastOnce())->method('findByUser')->with(5)->willReturn([['store_id' => 1]]);
+        $this->userRates->expects($this->atLeastOnce())->method('findByUser')->with(5)->willReturn([['shift_type_id' => 2, 'hourly_rate' => 1200]]);
         $this->shiftTypes->method('findAll')->willReturn([['id' => 2, 'name' => 'Salle']]);
 
-        $response = $this->controller->exportUsersJson($req);
+        $response = $this->controller()->exportUsersJson($req);
         $this->assertSame(200, $response->status());
 
         $data = json_decode($response->body(), true)['data'];
@@ -182,7 +200,7 @@ final class AdminUserControllerTest extends TestCase
         $this->userRates->method('findByUser')->willReturn([]);
         $this->shiftTypes->method('findAll')->willReturn([]);
 
-        $response = $this->controller->exportUsersJson($req);
+        $response = $this->controller()->exportUsersJson($req);
         $data = json_decode($response->body(), true)['data'];
 
         $this->assertCount(1, $data);
@@ -201,7 +219,7 @@ final class AdminUserControllerTest extends TestCase
         $this->stores->method('findAll')->willReturn([]);
         $this->shiftTypes->method('findAll')->willReturn([]);
 
-        $response = $this->controller->exportUsersPdf($req);
+        $response = $this->controller()->exportUsersPdf($req);
 
         $this->assertSame(200, $response->status());
         $this->assertStringNotContainsString('%PDF', $response->body());
@@ -219,7 +237,7 @@ final class AdminUserControllerTest extends TestCase
         $this->stores->method('findAll')->willReturn([]);
         $this->shiftTypes->method('findAll')->willReturn([]);
 
-        $response = $this->controller->exportUsersPdfDownload($req);
+        $response = $this->controller()->exportUsersPdfDownload($req);
 
         $this->assertSame(200, $response->status());
         $this->assertStringStartsWith('%PDF', $response->body());
@@ -227,26 +245,30 @@ final class AdminUserControllerTest extends TestCase
 
     public function testEditUserRenders(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
         $req->setRouteParams(['id' => 1]);
 
-        $this->users->method('findById')->with(1)->willReturn(['id' => 1, 'email' => 'test@test.com']);
+        $this->users->expects($this->atLeastOnce())->method('findById')->with(1)->willReturn(['id' => 1, 'email' => 'test@test.com']);
         $this->stores->method('findAll')->willReturn([]);
         $this->storeUsers->method('findByUser')->willReturn([]);
 
-        $response = $this->controller->editUser($req);
+        $response = $this->controller()->editUser($req);
 
         $this->assertSame(200, $response->status());
     }
 
     public function testEditUserLogsProfileConsultation(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
+        $this->logRepo = $this->createMock(LogRepositoryInterface::class);
+        $this->registerLogRepository();
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
         $req->setRouteParams(['id' => 5]);
 
-        $this->users->method('findById')->with(5)->willReturn(['id' => 5, 'email' => 'employee@test.com']);
+        $this->users->expects($this->atLeastOnce())->method('findById')->with(5)->willReturn(['id' => 5, 'email' => 'employee@test.com']);
         $this->stores->method('findAll')->willReturn([]);
         $this->storeUsers->method('findByUser')->willReturn([]);
 
@@ -257,7 +279,7 @@ final class AdminUserControllerTest extends TestCase
             $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(), $this->anything(),
         );
 
-        $response = $this->controller->editUser($req);
+        $response = $this->controller()->editUser($req);
 
         $this->assertSame(200, $response->status());
     }
@@ -283,7 +305,7 @@ final class AdminUserControllerTest extends TestCase
 
         $this->users->method('save')->willReturn(['id' => 7, 'display_name' => 'John Doe']);
 
-        $response = $this->controller->quickCreateUser($req);
+        $response = $this->controller()->quickCreateUser($req);
 
         $this->assertSame(200, $response->status());
         $data = json_decode($response->body(), true);
@@ -293,6 +315,7 @@ final class AdminUserControllerTest extends TestCase
 
     public function testQuickCreateUserFailsWhenFreePlanEmployeeLimitReached(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $this->users->method('countActive')->willReturn(15);
         $req = $this->makePostRequest([
             'display_name' => 'John Doe',
@@ -303,7 +326,7 @@ final class AdminUserControllerTest extends TestCase
         ]);
         $this->users->expects($this->never())->method('save');
 
-        $response = $this->controller->quickCreateUser($req);
+        $response = $this->controller()->quickCreateUser($req);
 
         $this->assertSame(403, $response->status());
         $data = json_decode($response->body(), true);
@@ -318,7 +341,7 @@ final class AdminUserControllerTest extends TestCase
             'display_name' => '',
         ]);
 
-        $response = $this->controller->quickCreateUser($req);
+        $response = $this->controller()->quickCreateUser($req);
 
         $this->assertSame(422, $response->status());
         $data = json_decode($response->body(), true);
@@ -328,6 +351,7 @@ final class AdminUserControllerTest extends TestCase
     /** Le furigana est désormais obligatoire pour tous les chemins de création. */
     public function testQuickCreateUserFailsWhenFuriganaMissing(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $req = $this->makePostRequest([
             'first_name'   => 'John',
             'last_name'    => 'Doe',
@@ -336,7 +360,7 @@ final class AdminUserControllerTest extends TestCase
         ]);
         $this->users->expects($this->never())->method('save');
 
-        $response = $this->controller->quickCreateUser($req);
+        $response = $this->controller()->quickCreateUser($req);
 
         $this->assertSame(422, $response->status());
         $data = json_decode($response->body(), true);
@@ -363,7 +387,7 @@ final class AdminUserControllerTest extends TestCase
             return $d + ['id' => 8];
         });
 
-        $this->controller->quickCreateUser($req);
+        $this->controller()->quickCreateUser($req);
 
         $this->assertNotNull($captured);
         $this->assertSame('Smith Jane', $captured['display_name']);
@@ -389,7 +413,7 @@ final class AdminUserControllerTest extends TestCase
             return $d + ['id' => 8];
         });
 
-        $this->controller->quickCreateUser($req);
+        $this->controller()->quickCreateUser($req);
 
         $this->assertNotNull($captured);
         $this->assertStringEndsWith('@kintai.local', $captured['email']);
@@ -398,6 +422,7 @@ final class AdminUserControllerTest extends TestCase
 
     public function testQuickCreateUserReturns409OnEmployeeCodeConflict(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $req = $this->makePostRequest([
             'display_name'   => 'John',
             'first_name'     => 'John',
@@ -409,9 +434,9 @@ final class AdminUserControllerTest extends TestCase
             'furigana_first_name' => 'ジョン',
         ]);
 
-        $this->users->method('findByEmployeeCode')->with('EMP001')->willReturn(['id' => 99]);
+        $this->users->expects($this->atLeastOnce())->method('findByEmployeeCode')->with('EMP001')->willReturn(['id' => 99]);
 
-        $response = $this->controller->quickCreateUser($req);
+        $response = $this->controller()->quickCreateUser($req);
 
         $this->assertSame(409, $response->status());
         $data = json_decode($response->body(), true);
@@ -427,6 +452,7 @@ final class AdminUserControllerTest extends TestCase
      */
     public function testQuickCreateUserReturns409OnEmailConflict(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $req = $this->makePostRequest([
             'display_name' => 'John',
             'first_name'   => 'John',
@@ -437,10 +463,10 @@ final class AdminUserControllerTest extends TestCase
             'furigana_first_name' => 'ジョン',
         ]);
 
-        $this->users->method('findByEmail')->with('existing@example.com')->willReturn(['id' => 99]);
+        $this->users->expects($this->atLeastOnce())->method('findByEmail')->with('existing@example.com')->willReturn(['id' => 99]);
         $this->users->expects($this->never())->method('save');
 
-        $response = $this->controller->quickCreateUser($req);
+        $response = $this->controller()->quickCreateUser($req);
 
         $this->assertSame(409, $response->status());
         $data = json_decode($response->body(), true);
@@ -467,7 +493,7 @@ final class AdminUserControllerTest extends TestCase
             return $d + ['id' => 9];
         });
 
-        $this->controller->quickCreateUser($req);
+        $this->controller()->quickCreateUser($req);
 
         $this->assertNotNull($captured);
         $this->assertStringStartsWith('$2y$', $captured['password_hash']);
@@ -475,6 +501,7 @@ final class AdminUserControllerTest extends TestCase
 
     public function testQuickCreateUserAssignsStoreMembership(): void
     {
+        $this->roles = $this->createMock(RoleRepositoryInterface::class);
         $req = $this->makePostRequest([
             'display_name'  => 'John',
             'first_name'    => 'John',
@@ -489,8 +516,8 @@ final class AdminUserControllerTest extends TestCase
         $req->setAttribute('managed_store_ids', null);
 
         $this->users->method('save')->willReturn(['id' => 10, 'display_name' => 'John']);
-        $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'name' => 'Manager', 'is_system' => 0]);
-        $this->roles->method('getPermissions')->with(2)->willReturn(['employees.view']);
+        $this->roles->expects($this->atLeastOnce())->method('findById')->with(2)->willReturn(['id' => 2, 'name' => 'Manager', 'is_system' => 0]);
+        $this->roles->expects($this->atLeastOnce())->method('getPermissions')->with(2)->willReturn(['employees.view']);
         $this->roleAssignments->method('findByUser')->willReturn([]);
 
         $capturedStoreUser = null;
@@ -499,7 +526,7 @@ final class AdminUserControllerTest extends TestCase
             return $d;
         });
 
-        $this->controller->quickCreateUser($req);
+        $this->controller()->quickCreateUser($req);
 
         $this->assertNotNull($capturedStoreUser);
         $this->assertSame(3, $capturedStoreUser['store_id']);
@@ -513,6 +540,8 @@ final class AdminUserControllerTest extends TestCase
      */
     public function testQuickCreateUserSyncsRoleAssignmentForStoreMembership(): void
     {
+        $this->roles = $this->createMock(RoleRepositoryInterface::class);
+        $this->roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
         $req = $this->makePostRequest([
             'display_name'  => 'John',
             'first_name'    => 'John',
@@ -527,18 +556,20 @@ final class AdminUserControllerTest extends TestCase
         $req->setAttribute('managed_store_ids', null);
 
         $this->users->method('save')->willReturn(['id' => 10, 'display_name' => 'John']);
-        $this->roles->method('findBySlug')->with('owner')->willReturn(null);
-        $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'name' => 'Manager', 'is_system' => 0]);
-        $this->roles->method('getPermissions')->with(2)->willReturn(['employees.view']);
+        $this->roles->expects($this->atLeastOnce())->method('findBySlug')->with('owner')->willReturn(null);
+        $this->roles->expects($this->atLeastOnce())->method('findById')->with(2)->willReturn(['id' => 2, 'name' => 'Manager', 'is_system' => 0]);
+        $this->roles->expects($this->atLeastOnce())->method('getPermissions')->with(2)->willReturn(['employees.view']);
         $this->roleAssignments->method('findByUser')->willReturn([]);
         $this->roleAssignments->expects($this->once())->method('assign')->with(10, 2, 'store', 3);
 
-        $this->controller->quickCreateUser($req);
+        $this->controller()->quickCreateUser($req);
     }
 
     /** Id de rôle absent/invalide → repli sur le rôle par défaut (premier rôle sans permission). */
     public function testQuickCreateUserFallsBackToDefaultRoleWhenRoleIdMissing(): void
     {
+        $this->roles = $this->createMock(RoleRepositoryInterface::class);
+        $this->roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
         $req = $this->makePostRequest([
             'display_name' => 'John',
             'first_name'   => 'John',
@@ -556,7 +587,7 @@ final class AdminUserControllerTest extends TestCase
             ['id' => 2, 'name' => 'Manager', 'is_system' => 0],
             ['id' => 3, 'name' => 'Employé', 'is_system' => 0],
         ]);
-        $this->roles->method('findById')->with(3)->willReturn(['id' => 3, 'name' => 'Employé', 'is_system' => 0]);
+        $this->roles->expects($this->atLeastOnce())->method('findById')->with(3)->willReturn(['id' => 3, 'name' => 'Employé', 'is_system' => 0]);
         $this->roles->method('getPermissions')->willReturnMap([
             [2, ['employees.view']],
             [3, []],
@@ -570,13 +601,15 @@ final class AdminUserControllerTest extends TestCase
             return $d;
         });
 
-        $this->controller->quickCreateUser($req);
+        $this->controller()->quickCreateUser($req);
 
         $this->assertNotNull($capturedStoreUser);
     }
 
     public function testQuickCreateUserSyncsOwnerRoleWhenIsAdminChecked(): void
     {
+        $this->roles = $this->createMock(RoleRepositoryInterface::class);
+        $this->roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
         $req = $this->makePostRequest([
             'display_name' => 'Jane',
             'first_name'   => 'Jane',
@@ -592,11 +625,11 @@ final class AdminUserControllerTest extends TestCase
         $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
 
         $this->users->method('save')->willReturn(['id' => 11, 'display_name' => 'Jane']);
-        $this->roles->method('findBySlug')->with('owner')->willReturn(['id' => 1]);
+        $this->roles->expects($this->atLeastOnce())->method('findBySlug')->with('owner')->willReturn(['id' => 1]);
         $this->roleAssignments->method('findByUser')->willReturn([]);
         $this->roleAssignments->expects($this->once())->method('assign')->with(11, 1, 'global', null);
 
-        $this->controller->quickCreateUser($req);
+        $this->controller()->quickCreateUser($req);
     }
 
     /**
@@ -607,6 +640,8 @@ final class AdminUserControllerTest extends TestCase
      */
     public function testQuickCreateUserIgnoresIsAdminWhenRequesterIsNotOwner(): void
     {
+        $this->roles = $this->createMock(RoleRepositoryInterface::class);
+        $this->roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
         $req = $this->makePostRequest([
             'display_name' => 'Jane',
             'first_name'   => 'Jane',
@@ -620,10 +655,10 @@ final class AdminUserControllerTest extends TestCase
         $req->setAttribute('auth_user', ['id' => 2, 'is_admin' => false]);
 
         $this->users->method('save')->willReturn(['id' => 12, 'display_name' => 'Jane']);
-        $this->roles->method('findBySlug')->with('owner')->willReturn(['id' => 1]);
+        $this->roles->expects($this->atLeastOnce())->method('findBySlug')->with('owner')->willReturn(['id' => 1]);
         $this->roleAssignments->expects($this->never())->method('assign');
 
-        $this->controller->quickCreateUser($req);
+        $this->controller()->quickCreateUser($req);
     }
 
     // -------------------------------------------------------------------------
@@ -634,6 +669,9 @@ final class AdminUserControllerTest extends TestCase
     /** Rôle Owner sélectionné : compte admin global, pas de rôle par store à synchroniser même avec un store choisi. */
     public function testStoreUserSyncsOwnerRoleAndSkipsStoreRoleWhenOwnerSelected(): void
     {
+        $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
+        $this->roles = $this->createMock(RoleRepositoryInterface::class);
+        $this->roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
         $req = $this->makePostRequest([
             'display_name' => 'Jane',
             'last_name'    => 'Doe',
@@ -649,8 +687,8 @@ final class AdminUserControllerTest extends TestCase
         // (voir testStoreUserIgnoresOwnerRoleSelectionWhenRequesterIsNotOwner).
         $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
 
-        $this->roles->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Owner', 'is_system' => 1]);
-        $this->roles->method('findBySlug')->with('owner')->willReturn(['id' => 1]);
+        $this->roles->expects($this->atLeastOnce())->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Owner', 'is_system' => 1]);
+        $this->roles->expects($this->atLeastOnce())->method('findBySlug')->with('owner')->willReturn(['id' => 1]);
         $this->roleAssignments->method('findByUser')->willReturn([]);
         $this->roleAssignments->expects($this->once())->method('assign')->with(20, 1, 'global', null);
 
@@ -663,7 +701,7 @@ final class AdminUserControllerTest extends TestCase
         // rejette les rôles système) ne doit pas être sollicitée pour ce cas.
         $this->storeUsers->expects($this->once())->method('save')->willReturnCallback(fn(array $d) => $d);
 
-        $this->controller->storeUser($req);
+        $this->controller()->storeUser($req);
 
         $this->assertNotNull($captured);
     }
@@ -675,6 +713,8 @@ final class AdminUserControllerTest extends TestCase
      */
     public function testStoreUserIgnoresOwnerRoleSelectionWhenRequesterIsNotOwner(): void
     {
+        $this->roles = $this->createMock(RoleRepositoryInterface::class);
+        $this->roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
         $req = $this->makePostRequest([
             'display_name' => 'Jane',
             'last_name'    => 'Doe',
@@ -687,17 +727,19 @@ final class AdminUserControllerTest extends TestCase
         $req->setAttribute('managed_store_ids', [3]);
         $req->setAttribute('auth_user', ['id' => 2, 'is_admin' => false]);
 
-        $this->roles->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Owner', 'is_system' => 1]);
-        $this->roles->method('findBySlug')->with('owner')->willReturn(['id' => 1]);
+        $this->roles->expects($this->atLeastOnce())->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Owner', 'is_system' => 1]);
+        $this->roles->expects($this->atLeastOnce())->method('findBySlug')->with('owner')->willReturn(['id' => 1]);
         $this->users->method('save')->willReturn(['id' => 22, 'display_name' => 'Jane']);
         $this->roleAssignments->expects($this->never())->method('assign');
 
-        $this->controller->storeUser($req);
+        $this->controller()->storeUser($req);
     }
 
     /** Rôle par store sélectionné (Manager) : comportement inchangé, juste renommé store_role_id -> role_id. */
     public function testStoreUserSyncsStoreRoleWhenStoreRoleSelected(): void
     {
+        $this->roles = $this->createMock(RoleRepositoryInterface::class);
+        $this->roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
         $req = $this->makePostRequest([
             'display_name' => 'John',
             'last_name'    => 'Doe',
@@ -710,8 +752,8 @@ final class AdminUserControllerTest extends TestCase
         ]);
         $req->setAttribute('managed_store_ids', null);
 
-        $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'name' => 'Manager', 'is_system' => 0]);
-        $this->roles->method('getPermissions')->with(2)->willReturn(['employees.view']);
+        $this->roles->expects($this->atLeastOnce())->method('findById')->with(2)->willReturn(['id' => 2, 'name' => 'Manager', 'is_system' => 0]);
+        $this->roles->expects($this->atLeastOnce())->method('getPermissions')->with(2)->willReturn(['employees.view']);
         $this->roleAssignments->method('findByUser')->willReturn([]);
         $this->roleAssignments->expects($this->once())->method('assign')->with(21, 2, 'store', 3);
 
@@ -723,7 +765,7 @@ final class AdminUserControllerTest extends TestCase
             return $d;
         });
 
-        $this->controller->storeUser($req);
+        $this->controller()->storeUser($req);
 
         $this->assertNotNull($capturedStoreUser);
     }
@@ -748,7 +790,7 @@ final class AdminUserControllerTest extends TestCase
             return $d + ['id' => 22];
         });
 
-        $this->controller->storeUser($req);
+        $this->controller()->storeUser($req);
 
         $this->assertSame('Doe John', $captured['display_name']);
     }
@@ -759,6 +801,7 @@ final class AdminUserControllerTest extends TestCase
 
     public function testStoreUserRedirectsWithErrorWhenFreePlanEmployeeLimitReached(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $this->users->method('countActive')->willReturn(15);
         $req = $this->makePostRequest([
             'display_name' => 'John',
@@ -770,22 +813,23 @@ final class AdminUserControllerTest extends TestCase
         ]);
         $this->users->expects($this->never())->method('save');
 
-        $response = $this->controller->storeUser($req);
+        $response = $this->controller()->storeUser($req);
 
         $this->assertSame(302, $response->status());
     }
 
     public function testStoreUserRedirectsWithErrorOnEmailConflict(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $req = $this->makePostRequest([
             'display_name' => 'John',
             'email'        => 'existing@example.com',
         ]);
 
-        $this->users->method('findByEmail')->with('existing@example.com')->willReturn(['id' => 99]);
+        $this->users->expects($this->atLeastOnce())->method('findByEmail')->with('existing@example.com')->willReturn(['id' => 99]);
         $this->users->expects($this->never())->method('save');
 
-        $response = $this->controller->storeUser($req);
+        $response = $this->controller()->storeUser($req);
 
         $this->assertSame(302, $response->status());
     }
@@ -793,13 +837,14 @@ final class AdminUserControllerTest extends TestCase
     /** Le nom et le prénom sont désormais obligatoires à la création (formulaire principal). */
     public function testStoreUserRedirectsWithErrorWhenNameMissing(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $req = $this->makePostRequest([
             'display_name' => 'John',
             'email'        => 'new@example.com',
         ]);
         $this->users->expects($this->never())->method('save');
 
-        $response = $this->controller->storeUser($req);
+        $response = $this->controller()->storeUser($req);
 
         $this->assertSame(302, $response->status());
     }
@@ -807,6 +852,7 @@ final class AdminUserControllerTest extends TestCase
     /** Le furigana est désormais obligatoire à la création (formulaire principal). */
     public function testStoreUserRedirectsWithErrorWhenFuriganaMissing(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $req = $this->makePostRequest([
             'display_name' => 'John',
             'last_name'    => 'Doe',
@@ -815,22 +861,23 @@ final class AdminUserControllerTest extends TestCase
         ]);
         $this->users->expects($this->never())->method('save');
 
-        $response = $this->controller->storeUser($req);
+        $response = $this->controller()->storeUser($req);
 
         $this->assertSame(302, $response->status());
     }
 
     public function testUpdateUserRedirectsWithErrorWhenEmailTakenByAnotherUser(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $this->grantRequesterGlobalRole($this->roleAssignments, $this->roles);
-        $this->users->method('findById')->with(5)->willReturn(['id' => 5, 'email' => 'me@example.com']);
-        $this->users->method('findByEmail')->with('taken@example.com')->willReturn(['id' => 99]);
+        $this->users->expects($this->atLeastOnce())->method('findById')->with(5)->willReturn(['id' => 5, 'email' => 'me@example.com']);
+        $this->users->expects($this->atLeastOnce())->method('findByEmail')->with('taken@example.com')->willReturn(['id' => 99]);
         $this->users->expects($this->never())->method('save');
 
         $req = $this->makePostRequest(['email' => 'taken@example.com']);
         $req->setRouteParams(['id' => 5]);
 
-        $response = $this->controller->updateUser($req);
+        $response = $this->controller()->updateUser($req);
 
         $this->assertSame(302, $response->status());
     }
@@ -838,14 +885,15 @@ final class AdminUserControllerTest extends TestCase
     /** Le nom et le prénom sont désormais obligatoires à l'édition, sauf s'ils sont déjà en base. */
     public function testUpdateUserRedirectsWithErrorWhenNameMissing(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $this->grantRequesterGlobalRole($this->roleAssignments, $this->roles);
-        $this->users->method('findById')->with(5)->willReturn(['id' => 5, 'email' => 'me@example.com', 'last_name' => null, 'first_name' => null]);
+        $this->users->expects($this->atLeastOnce())->method('findById')->with(5)->willReturn(['id' => 5, 'email' => 'me@example.com', 'last_name' => null, 'first_name' => null]);
         $this->users->expects($this->never())->method('save');
 
         $req = $this->makePostRequest(['email' => 'me@example.com']);
         $req->setRouteParams(['id' => 5]);
 
-        $response = $this->controller->updateUser($req);
+        $response = $this->controller()->updateUser($req);
 
         $this->assertSame(302, $response->status());
     }
@@ -853,22 +901,24 @@ final class AdminUserControllerTest extends TestCase
     /** Le furigana est désormais obligatoire à l'édition, sauf s'il est déjà en base. */
     public function testUpdateUserRedirectsWithErrorWhenFuriganaMissing(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $this->grantRequesterGlobalRole($this->roleAssignments, $this->roles);
-        $this->users->method('findById')->with(5)->willReturn(['id' => 5, 'email' => 'me@example.com', 'last_name' => 'Doe', 'first_name' => 'John', 'furigana_last_name' => null, 'furigana_first_name' => null]);
+        $this->users->expects($this->atLeastOnce())->method('findById')->with(5)->willReturn(['id' => 5, 'email' => 'me@example.com', 'last_name' => 'Doe', 'first_name' => 'John', 'furigana_last_name' => null, 'furigana_first_name' => null]);
         $this->users->expects($this->never())->method('save');
 
         $req = $this->makePostRequest(['email' => 'me@example.com']);
         $req->setRouteParams(['id' => 5]);
 
-        $response = $this->controller->updateUser($req);
+        $response = $this->controller()->updateUser($req);
 
         $this->assertSame(302, $response->status());
     }
 
     public function testUpdateUserAllowsKeepingOwnEmailUnchanged(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $this->grantRequesterGlobalRole($this->roleAssignments, $this->roles);
-        $this->users->method('findById')->with(5)->willReturn(['id' => 5, 'email' => 'me@example.com', 'last_name' => 'Doe', 'first_name' => 'John']);
+        $this->users->expects($this->atLeastOnce())->method('findById')->with(5)->willReturn(['id' => 5, 'email' => 'me@example.com', 'last_name' => 'Doe', 'first_name' => 'John']);
         $this->users->expects($this->never())->method('findByEmail');
         $this->users->expects($this->once())->method('save')->willReturn(['id' => 5]);
 
@@ -879,7 +929,7 @@ final class AdminUserControllerTest extends TestCase
         ]);
         $req->setRouteParams(['id' => 5]);
 
-        $response = $this->controller->updateUser($req);
+        $response = $this->controller()->updateUser($req);
 
         $this->assertSame(302, $response->status());
     }
@@ -891,9 +941,12 @@ final class AdminUserControllerTest extends TestCase
 
     public function testUpdateUserSyncsOwnerRoleWhenRequesterIsOwner(): void
     {
-        $this->users->method('findById')->with(5)->willReturn(['id' => 5, 'email' => 'me@example.com', 'last_name' => 'Doe', 'first_name' => 'John']);
+        $this->users = $this->createMock(UserRepositoryInterface::class);
+        $this->roles = $this->createMock(RoleRepositoryInterface::class);
+        $this->roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
+        $this->users->expects($this->atLeastOnce())->method('findById')->with(5)->willReturn(['id' => 5, 'email' => 'me@example.com', 'last_name' => 'Doe', 'first_name' => 'John']);
         $this->users->method('save')->willReturn(['id' => 5]);
-        $this->roles->method('findBySlug')->with('owner')->willReturn(['id' => 1]);
+        $this->roles->expects($this->atLeastOnce())->method('findBySlug')->with('owner')->willReturn(['id' => 1]);
         $this->roleAssignments->method('findByUser')->willReturn([]);
         $this->roleAssignments->expects($this->once())->method('assign')->with(5, 1, 'global', null);
 
@@ -906,7 +959,7 @@ final class AdminUserControllerTest extends TestCase
         $req->setRouteParams(['id' => 5]);
         $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
 
-        $this->controller->updateUser($req);
+        $this->controller()->updateUser($req);
     }
 
     /**
@@ -917,8 +970,11 @@ final class AdminUserControllerTest extends TestCase
      */
     public function testUpdateUserIgnoresIsAdminWhenRequesterIsNotOwner(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
+        $this->roles = $this->createMock(RoleRepositoryInterface::class);
+        $this->roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
         $this->grantRequesterGlobalRole($this->roleAssignments, $this->roles);
-        $this->users->method('findById')->with(5)->willReturn(['id' => 5, 'email' => 'me@example.com', 'last_name' => 'Doe', 'first_name' => 'John']);
+        $this->users->expects($this->atLeastOnce())->method('findById')->with(5)->willReturn(['id' => 5, 'email' => 'me@example.com', 'last_name' => 'Doe', 'first_name' => 'John']);
         $this->users->method('save')->willReturn(['id' => 5]);
         $this->roles->expects($this->never())->method('findBySlug');
         $this->roleAssignments->expects($this->never())->method('assign');
@@ -933,7 +989,7 @@ final class AdminUserControllerTest extends TestCase
         $req->setRouteParams(['id' => 5]);
         $req->setAttribute('auth_user', ['id' => 2, 'is_admin' => false]);
 
-        $this->controller->updateUser($req);
+        $this->controller()->updateUser($req);
     }
 
     // -------------------------------------------------------------------------
@@ -942,10 +998,11 @@ final class AdminUserControllerTest extends TestCase
 
     public function testCheckEmployeeCodeReturnsTrueWhenAvailable(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $req = $this->makeQueryRequest(['code' => 'EMP999']);
-        $this->users->method('findByEmployeeCode')->with('EMP999')->willReturn(null);
+        $this->users->expects($this->atLeastOnce())->method('findByEmployeeCode')->with('EMP999')->willReturn(null);
 
-        $response = $this->controller->checkEmployeeCode($req);
+        $response = $this->controller()->checkEmployeeCode($req);
 
         $this->assertSame(200, $response->status());
         $data = json_decode($response->body(), true);
@@ -954,10 +1011,11 @@ final class AdminUserControllerTest extends TestCase
 
     public function testCheckEmployeeCodeReturnsFalseWhenTaken(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $req = $this->makeQueryRequest(['code' => 'EMP001']);
-        $this->users->method('findByEmployeeCode')->with('EMP001')->willReturn(['id' => 1]);
+        $this->users->expects($this->atLeastOnce())->method('findByEmployeeCode')->with('EMP001')->willReturn(['id' => 1]);
 
-        $response = $this->controller->checkEmployeeCode($req);
+        $response = $this->controller()->checkEmployeeCode($req);
 
         $this->assertSame(200, $response->status());
         $data = json_decode($response->body(), true);
@@ -966,20 +1024,22 @@ final class AdminUserControllerTest extends TestCase
 
     public function testCheckEmployeeCodeNormalizesToUppercase(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $req = $this->makeQueryRequest(['code' => 'emp001']);
 
         $this->users->expects($this->once())->method('findByEmployeeCode')->with('EMP001')->willReturn(['id' => 1]);
 
-        $this->controller->checkEmployeeCode($req);
+        $this->controller()->checkEmployeeCode($req);
     }
 
     public function testCheckEmployeeCodeAvailableWhenTakenByExcludedUser(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         // Édition : le code déjà pris par l'utilisateur en cours d'édition lui-même n'est pas un conflit.
         $req = $this->makeQueryRequest(['code' => 'EMP001', 'exclude_id' => '1']);
-        $this->users->method('findByEmployeeCode')->with('EMP001')->willReturn(['id' => 1]);
+        $this->users->expects($this->atLeastOnce())->method('findByEmployeeCode')->with('EMP001')->willReturn(['id' => 1]);
 
-        $response = $this->controller->checkEmployeeCode($req);
+        $response = $this->controller()->checkEmployeeCode($req);
 
         $data = json_decode($response->body(), true);
         $this->assertTrue($data['available']);
@@ -987,10 +1047,11 @@ final class AdminUserControllerTest extends TestCase
 
     public function testCheckEmployeeCodeUnavailableWhenTakenByAnotherUser(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $req = $this->makeQueryRequest(['code' => 'EMP001', 'exclude_id' => '2']);
-        $this->users->method('findByEmployeeCode')->with('EMP001')->willReturn(['id' => 1]);
+        $this->users->expects($this->atLeastOnce())->method('findByEmployeeCode')->with('EMP001')->willReturn(['id' => 1]);
 
-        $response = $this->controller->checkEmployeeCode($req);
+        $response = $this->controller()->checkEmployeeCode($req);
 
         $data = json_decode($response->body(), true);
         $this->assertFalse($data['available']);
@@ -1002,10 +1063,11 @@ final class AdminUserControllerTest extends TestCase
 
     public function testCheckEmailReturnsTrueWhenAvailable(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $req = $this->makeQueryRequest(['email' => 'new@test.com']);
-        $this->users->method('findByEmail')->with('new@test.com')->willReturn(null);
+        $this->users->expects($this->atLeastOnce())->method('findByEmail')->with('new@test.com')->willReturn(null);
 
-        $response = $this->controller->checkEmail($req);
+        $response = $this->controller()->checkEmail($req);
 
         $data = json_decode($response->body(), true);
         $this->assertTrue($data['available']);
@@ -1013,10 +1075,11 @@ final class AdminUserControllerTest extends TestCase
 
     public function testCheckEmailReturnsFalseWhenTaken(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $req = $this->makeQueryRequest(['email' => 'taken@test.com']);
-        $this->users->method('findByEmail')->with('taken@test.com')->willReturn(['id' => 1]);
+        $this->users->expects($this->atLeastOnce())->method('findByEmail')->with('taken@test.com')->willReturn(['id' => 1]);
 
-        $response = $this->controller->checkEmail($req);
+        $response = $this->controller()->checkEmail($req);
 
         $data = json_decode($response->body(), true);
         $this->assertFalse($data['available']);
@@ -1024,10 +1087,11 @@ final class AdminUserControllerTest extends TestCase
 
     public function testCheckEmailReturnsTrueForEmptyValue(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $req = $this->makeQueryRequest(['email' => '']);
         $this->users->expects($this->never())->method('findByEmail');
 
-        $response = $this->controller->checkEmail($req);
+        $response = $this->controller()->checkEmail($req);
 
         $data = json_decode($response->body(), true);
         $this->assertTrue($data['available']);
@@ -1035,10 +1099,11 @@ final class AdminUserControllerTest extends TestCase
 
     public function testCheckEmailAvailableWhenTakenByExcludedUser(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $req = $this->makeQueryRequest(['email' => 'own@test.com', 'exclude_id' => '5']);
-        $this->users->method('findByEmail')->with('own@test.com')->willReturn(['id' => 5]);
+        $this->users->expects($this->atLeastOnce())->method('findByEmail')->with('own@test.com')->willReturn(['id' => 5]);
 
-        $response = $this->controller->checkEmail($req);
+        $response = $this->controller()->checkEmail($req);
 
         $data = json_decode($response->body(), true);
         $this->assertTrue($data['available']);
@@ -1046,10 +1111,11 @@ final class AdminUserControllerTest extends TestCase
 
     public function testCheckEmailUnavailableWhenTakenByAnotherUser(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $req = $this->makeQueryRequest(['email' => 'other@test.com', 'exclude_id' => '5']);
-        $this->users->method('findByEmail')->with('other@test.com')->willReturn(['id' => 9]);
+        $this->users->expects($this->atLeastOnce())->method('findByEmail')->with('other@test.com')->willReturn(['id' => 9]);
 
-        $response = $this->controller->checkEmail($req);
+        $response = $this->controller()->checkEmail($req);
 
         $data = json_decode($response->body(), true);
         $this->assertFalse($data['available']);
@@ -1062,9 +1128,10 @@ final class AdminUserControllerTest extends TestCase
 
     public function testSetUserRateForbiddenWhenManagingNoneOfTypeStores(): void
     {
-        $this->users->method('findById')->with(10)->willReturn(['id' => 10]);
-        $this->shiftTypes->method('findById')->with(7)->willReturn(['id' => 7, 'code' => 'MORNING']);
-        $this->shiftTypes->method('getStoreIds')->with(7)->willReturn([2]);
+        $this->userRates = $this->createMock(UserShiftTypeRateRepositoryInterface::class);
+        $this->users->method('findById')->willReturn(['id' => 10]);
+        $this->shiftTypes->method('findById')->willReturn(['id' => 7, 'code' => 'MORNING']);
+        $this->shiftTypes->method('getStoreIds')->willReturn([2]);
 
         $req = $this->makePostRequest(['shift_type_id' => '7', 'hourly_rate' => '1500']);
         $req->setAttribute('managed_store_ids', [1]);
@@ -1073,15 +1140,18 @@ final class AdminUserControllerTest extends TestCase
         $this->userRates->expects($this->never())->method('save');
 
         $this->expectException(\kintai\Core\Exceptions\ForbiddenException::class);
-        $this->controller->setUserRate($req);
+        $this->controller()->setUserRate($req);
     }
 
     public function testSetUserRateAllowedWhenManagingOneOfTypeStores(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
+        $this->shiftTypes = $this->createMock(ShiftTypeRepositoryInterface::class);
+        $this->userRates = $this->createMock(UserShiftTypeRateRepositoryInterface::class);
         $this->grantRequesterGlobalRole($this->roleAssignments, $this->roles);
-        $this->users->method('findById')->with(10)->willReturn(['id' => 10]);
-        $this->shiftTypes->method('findById')->with(7)->willReturn(['id' => 7, 'code' => 'MORNING']);
-        $this->shiftTypes->method('getStoreIds')->with(7)->willReturn([1, 2]);
+        $this->users->expects($this->atLeastOnce())->method('findById')->with(10)->willReturn(['id' => 10]);
+        $this->shiftTypes->expects($this->atLeastOnce())->method('findById')->with(7)->willReturn(['id' => 7, 'code' => 'MORNING']);
+        $this->shiftTypes->expects($this->atLeastOnce())->method('getStoreIds')->with(7)->willReturn([1, 2]);
         $this->userRates->method('findRate')->willReturn(null);
 
         $req = $this->makePostRequest(['shift_type_id' => '7', 'hourly_rate' => '1500']);
@@ -1090,16 +1160,17 @@ final class AdminUserControllerTest extends TestCase
 
         $this->userRates->expects($this->once())->method('save')->willReturnCallback(fn (array $d) => $d + ['id' => 1]);
 
-        $response = $this->controller->setUserRate($req);
+        $response = $this->controller()->setUserRate($req);
 
         $this->assertSame(302, $response->status());
     }
 
     public function testDeleteUserRateForbiddenWhenManagingNoneOfTypeStores(): void
     {
-        $this->userRates->method('findById')->with(3)->willReturn(['id' => 3, 'user_id' => 10, 'shift_type_id' => 7]);
-        $this->shiftTypes->method('findById')->with(7)->willReturn(['id' => 7, 'code' => 'MORNING']);
-        $this->shiftTypes->method('getStoreIds')->with(7)->willReturn([2]);
+        $this->userRates = $this->createMock(UserShiftTypeRateRepositoryInterface::class);
+        $this->userRates->method('findById')->willReturn(['id' => 3, 'user_id' => 10, 'shift_type_id' => 7]);
+        $this->shiftTypes->method('findById')->willReturn(['id' => 7, 'code' => 'MORNING']);
+        $this->shiftTypes->method('getStoreIds')->willReturn([2]);
 
         $req = $this->makePostRequest([]);
         $req->setAttribute('managed_store_ids', [1]);
@@ -1108,7 +1179,7 @@ final class AdminUserControllerTest extends TestCase
         $this->userRates->expects($this->never())->method('delete');
 
         $this->expectException(\kintai\Core\Exceptions\ForbiddenException::class);
-        $this->controller->deleteUserRate($req);
+        $this->controller()->deleteUserRate($req);
     }
 
     // -------------------------------------------------------------------------
@@ -1132,15 +1203,17 @@ final class AdminUserControllerTest extends TestCase
 
     public function testAnOwnerCannotDeleteThemselves(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $this->users->method('findById')->willReturn(['id' => 7, 'is_active' => 1, 'deleted_at' => null]);
         $this->users->expects($this->never())->method('delete');
 
         $this->expectException(\kintai\Core\Exceptions\ForbiddenException::class);
-        $this->controller->deleteUser($this->actingAsOwner(7));
+        $this->controller()->deleteUser($this->actingAsOwner(7));
     }
 
     public function testAnOwnerCanDeleteAnotherOwnerWhileOneRemains(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $this->users->method('findById')->willReturn(['id' => 8, 'is_active' => 1, 'deleted_at' => null]);
         // Anonymisation (audit M8) : la ligne n'est jamais effacée.
         $this->users->expects($this->never())->method('delete');
@@ -1148,18 +1221,19 @@ final class AdminUserControllerTest extends TestCase
             fn(array $d): bool => $d['id'] === 8 && $d['is_active'] === 0 && $d['deleted_at'] !== null
         ))->willReturnArgument(0);
 
-        $response = $this->controller->deleteUser($this->actingAsOwner(8));
+        $response = $this->controller()->deleteUser($this->actingAsOwner(8));
 
         $this->assertSame(302, $response->status());
     }
 
     public function testAnOwnerCannotDeactivateThemselves(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $this->users->method('findById')->willReturn(['id' => 7, 'is_active' => 1, 'deleted_at' => null, 'email' => 'o@x.test']);
         $this->users->expects($this->never())->method('save');
 
         $this->expectException(\kintai\Core\Exceptions\ForbiddenException::class);
-        $this->controller->updateUser($this->actingAsOwner(7, ['is_active' => '0']));
+        $this->controller()->updateUser($this->actingAsOwner(7, ['is_active' => '0']));
     }
 
     protected function tearDown(): void
@@ -1208,6 +1282,7 @@ final class AdminUserControllerTest extends TestCase
     /** Audit M12 : sans is_admin ni is_active dans la requête, un Owner ne retire plus le statut Owner ni n'active/désactive. */
     public function testAnUpdateWithoutTheFlagsKeepsOwnerStatusAndActivity(): void
     {
+        $this->roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
         $this->users->method('findById')->willReturn([
             'id' => 8, 'is_active' => 1, 'deleted_at' => null, 'email' => 'o2@x.test',
             'first_name' => 'O', 'last_name' => 'Deux', 'furigana_last_name' => 'オ', 'furigana_first_name' => 'ツー', 'phone' => '090',
@@ -1219,7 +1294,7 @@ final class AdminUserControllerTest extends TestCase
         });
         $this->roleAssignments->expects($this->never())->method('revoke');
 
-        $this->controller->updateUser($this->actingAsOwner(8, ['first_name' => 'Owen']));
+        $this->controller()->updateUser($this->actingAsOwner(8, ['first_name' => 'Owen']));
 
         $this->assertSame('Owen', $saved['first_name']);
         $this->assertSame(1, $saved['is_active']);

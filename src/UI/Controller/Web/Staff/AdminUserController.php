@@ -223,7 +223,7 @@ final class AdminUserController
             'title'            => 'Personnel',
             'users'            => $users,
             'user_stats'       => $userStats,
-            'month_label'      => date('F Y'),
+            'month_label'      => month_label(date('Y-m')),
             'store_currency'   => $storeCurrency,
             'store_currency_symbol_style' => $storeCurrencyStyle,
             'sort'             => $sort,
@@ -449,12 +449,10 @@ final class AdminUserController
             return Response::redirect($this->base() . '/admin/users/create?error=employee_code_invalid_url');
         }
         if ($password === '') {
-            $fn  = trim($request->post('first_name', ''));
-            $ln  = trim($request->post('last_name', ''));
-            $suf = $empCode ?? (string) rand(1, 9999);
-            $pw  = strtolower($ln . $fn . $suf);
-            $pw  = preg_replace('/[^a-z0-9]/', '', iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $pw));
-            $password = $pw ?: ('User' . $suf);
+            // Mot de passe par défaut « 0000 », comme l'API et la réinitialisation : signalé comme à changer (rappel à
+            // chaque connexion, pas de jeton API). Avant : nom+prénom+code employé, devinable par n'importe quel collègue
+            // et jamais signalé.
+            $password = \kintai\Core\Auth\PasswordPolicy::DEFAULT_PASSWORD;
         }
 
         // Un seul sélecteur "Rôle" (Owner + rôles par store) remplace l'ancien
@@ -584,10 +582,8 @@ final class AdminUserController
         }
 
         if ($password === '') {
-            $suf = $empCode ?? (string) rand(1, 9999);
-            $pw  = strtolower($lastName . $firstName . $suf);
-            $pw  = preg_replace('/[^a-z0-9]/', '', iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $pw));
-            $password = $pw ?: ('User' . $suf);
+            // Même règle que le formulaire : « 0000 », signalé comme à changer.
+            $password = \kintai\Core\Auth\PasswordPolicy::DEFAULT_PASSWORD;
         }
 
         $saved = $this->users->save([

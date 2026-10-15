@@ -95,16 +95,16 @@ final class AuthControllerProfileFieldsTest extends TestCase
             'id' => $userId, 'language' => 'fr', 'show_in_directory' => 1,
         ]);
 
-        $storeUsers      = $this->createMock(StoreUserRepositoryInterface::class);
-        $stores          = $this->createMock(StoreRepositoryInterface::class);
-        $roles           = $this->createMock(RoleRepositoryInterface::class);
-        $roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
+        $storeUsers      = $this->createStub(StoreUserRepositoryInterface::class);
+        $stores          = $this->createStub(StoreRepositoryInterface::class);
+        $roles           = $this->createStub(RoleRepositoryInterface::class);
+        $roleAssignments = $this->createStub(RoleAssignmentRepositoryInterface::class);
         $roleAssignments->method('findByUser')->willReturn([]);
         $rememberTokens = $this->createStub(RememberTokenRepositoryInterface::class);
 
         $auth = new AuthService($this->users, $storeUsers, $stores, $roles, $roleAssignments, $rememberTokens);
 
-        $languages = $this->createMock(LanguageRepositoryInterface::class);
+        $languages = $this->createStub(LanguageRepositoryInterface::class);
         $languages->method('findAllActive')->willReturn([['code' => 'fr']]);
         $languages->method('findDefault')->willReturn(['code' => 'fr']);
 
@@ -115,9 +115,9 @@ final class AuthControllerProfileFieldsTest extends TestCase
             $this->users,
             $stores,
             $storeUsers,
-            $this->createMock(IcalTokenRepositoryInterface::class),
-            $this->createMock(UserNavPrefsRepositoryInterface::class),
-            $this->createMock(AvailabilityRepositoryInterface::class),
+            $this->createStub(IcalTokenRepositoryInterface::class),
+            $this->createStub(UserNavPrefsRepositoryInterface::class),
+            $this->createStub(AvailabilityRepositoryInterface::class),
             $languages,
             new AvatarImageOptimizer(),
         );

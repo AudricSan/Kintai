@@ -92,7 +92,7 @@ Then open `http://127.0.0.1:8000/install.php` — the web installer creates `con
 
 The installer also records the address you install from as the instance's **public URL**, used for the links in emails (password reset). Check it under Owner settings (`/admin/owner-settings`) if users reach Kintai through another address; the `APP_URL` environment variable, when set, takes precedence. Without a public URL, password reset emails are not sent and the Owner sees a warning.
 
-To install without a browser (scripted deployment), `scripts/provision.php` does the same from the command line — SQLite by default, `--db-driver=mysql` plus `--db-*` options otherwise, environment variables as fallback (see the header of the script). Pass `--app-url`, since there is no request address to learn the public URL from:
+To install without a browser (scripted deployment), `scripts/provision.php` does the same from the command line — SQLite by default, `--db-driver=mysql` plus `--db-*` options otherwise, environment variables as fallback (see the header of the script). Pass `--app-url`, since there is no request address to learn the public URL from. The instance language is English unless you pass `--locale=fr` or `--locale=ja` (same default as the web installer):
 
 ```bash
 php scripts/provision.php --admin-email=admin@example.com --admin-password='…' --app-url=https://kintai.example.com
@@ -101,6 +101,8 @@ php scripts/provision.php --admin-email=admin@example.com --admin-password='…'
 ### Web server
 
 Only `public/` is meant to be served. Point the web server's document root (Apache `DocumentRoot`, nginx `root`) at it — never at the repository root, or `.env`, `storage/app/database.sqlite`, backups and the source code become downloadable. `php -S … -t public` already does this. On Apache, if the server (or a shared host's `www/` folder) points at the repository root anyway, a root `.htaccess` transparently rewrites every request to `public/` — the URL stays clean, nothing outside `public/` becomes reachable, and it works from a sub-folder too (`/Kintai/`). `storage/.htaccess` only denies the technical sub-folders that physically exist (`app`, `backups`, `bundles`, `cache`, `logs`, `uploads`): Apache checks it against the original `/storage/…` URL *before* that rewrite, so a blanket deny would answer 403 for photos and avatars served by the access-controlled `/storage/{path}` route. nginx has no equivalent, so its `root` must be right.
+
+On Apache, `public/.htaccess` redirects every plain-HTTP request to HTTPS (301), except local development hosts (`localhost`, `127.x`, `[::1]`, `*.test`, `*.localhost`, private network addresses) and requests already marked HTTPS by a proxy or host that terminates TLS itself (`X-Forwarded-Proto: https`). Serve the production site over HTTPS with a valid certificate.
 
 ### Updating
 

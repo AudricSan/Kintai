@@ -16,67 +16,72 @@ use kintai\UI\Components\Card;
 
 $currencyStyle = store_currency_style($store);
 
-function statCard(string $label, string $value, string $sub = '', string $color = 'var(--color-primary)'): string {
-    return '<div class="sstat-card">'
-        . '<div class="sstat-card__value" style="color:' . $color . '">' . htmlspecialchars($value) . '</div>'
-        . '<div class="sstat-card__label">' . htmlspecialchars($label) . '</div>'
-        . ($sub !== '' ? '<div class="sstat-card__sub">' . htmlspecialchars($sub) . '</div>' : '')
-        . '</div>';
-}
-
-function barChart(array $data, string $color = 'var(--color-primary)', int $maxBarHeight = 80): string {
-    if (!$data) return '<em class="sstat-empty">' . __('no_data') . '</em>';
-    $max = max(array_values($data)) ?: 1;
-    $out = '<div class="sstat-bar-chart">';
-    foreach ($data as $label => $val) {
-        $h = round($val / $max * $maxBarHeight);
-        $display = is_float($val) ? round($val, 1) : $val;
-        $out .= '<div class="sstat-bar-col" title="' . htmlspecialchars($label) . ': ' . $display . '">'
-            . '<div class="sstat-bar-value">' . $display . '</div>'
-            . '<div class="sstat-bar" style="height:' . $h . 'px;background:' . $color . '"></div>'
-            . '<div class="sstat-bar-label">' . htmlspecialchars($label) . '</div>'
+// Garde : la vue peut être rendue deux fois dans un même processus (tests, aperçu puis PDF) ; une seconde
+// déclaration de ces fonctions globales serait une erreur fatale (« Cannot redeclare »).
+if (!function_exists('statCard')) {
+    function statCard(string $label, string $value, string $sub = '', string $color = 'var(--color-primary)'): string {
+        return '<div class="sstat-card">'
+            . '<div class="sstat-card__value ' . style_class(['color' => $color]) . '">' . htmlspecialchars($value) . '</div>'
+            . '<div class="sstat-card__label">' . htmlspecialchars($label) . '</div>'
+            . ($sub !== '' ? '<div class="sstat-card__sub">' . htmlspecialchars($sub) . '</div>' : '')
             . '</div>';
     }
-    return $out . '</div>';
-}
 
-function scoreRing(int $score, string $label, string $color): string {
-    $r = 36; $c = 2 * M_PI * $r;
-    $pct = max(0, min(100, $score));
-    $dash = $c * $pct / 100;
-    return '<div class="sstat-ring-wrap">'
-        . '<svg width="90" height="90" viewBox="0 0 90 90">'
-        . '<circle cx="45" cy="45" r="' . $r . '" fill="none" stroke="var(--color-border)" stroke-width="8"/>'
-        . '<circle cx="45" cy="45" r="' . $r . '" fill="none" stroke="' . $color . '" stroke-width="8"'
-        . ' stroke-dasharray="' . round($dash, 2) . ' ' . round($c, 2) . '"'
-        . ' stroke-dashoffset="' . round($c / 4, 2) . '" stroke-linecap="round"/>'
-        . '<text x="45" y="50" text-anchor="middle" font-size="16" font-weight="700" fill="' . $color . '">' . $pct . '</text>'
-        . '</svg>'
-        . '<div class="sstat-ring-label">' . htmlspecialchars($label) . '</div>'
-        . '</div>';
-}
+    function barChart(array $data, string $color = 'var(--color-primary)', int $maxBarHeight = 80): string {
+        if (!$data) return '<em class="sstat-empty">' . __('no_data') . '</em>';
+        $max = max(array_values($data)) ?: 1;
+        $out = '<div class="sstat-bar-chart">';
+        foreach ($data as $label => $val) {
+            $h = round($val / $max * $maxBarHeight);
+            $display = is_float($val) ? round($val, 1) : $val;
+            $out .= '<div class="sstat-bar-col" title="' . htmlspecialchars($label) . ': ' . $display . '">'
+                . '<div class="sstat-bar-value">' . $display . '</div>'
+                . '<div class="sstat-bar ' . style_class(['height' => $h . 'px', 'background' => $color]) . '"></div>'
+                . '<div class="sstat-bar-label">' . htmlspecialchars($label) . '</div>'
+                . '</div>';
+        }
+        return $out . '</div>';
+    }
 
-function userName(array $usersMap, int $uid): string {
-    if (!isset($usersMap[$uid])) return '#' . $uid;
-    $u = $usersMap[$uid];
-    return trim(($u['last_name'] ?? '') . ' ' . ($u['first_name'] ?? '')) ?: ($u['email'] ?? '#' . $uid);
-}
+    function scoreRing(int $score, string $label, string $color): string {
+        $r = 36; $c = 2 * M_PI * $r;
+        $pct = max(0, min(100, $score));
+        $dash = $c * $pct / 100;
+        return '<div class="sstat-ring-wrap">'
+            . '<svg width="90" height="90" viewBox="0 0 90 90">'
+            . '<circle cx="45" cy="45" r="' . $r . '" fill="none" stroke="var(--color-border)" stroke-width="8"/>'
+            . '<circle cx="45" cy="45" r="' . $r . '" fill="none" stroke="' . $color . '" stroke-width="8"'
+            . ' stroke-dasharray="' . round($dash, 2) . ' ' . round($c, 2) . '"'
+            . ' stroke-dashoffset="' . round($c / 4, 2) . '" stroke-linecap="round"/>'
+            . '<text x="45" y="50" text-anchor="middle" font-size="16" font-weight="700" fill="' . $color . '">' . $pct . '</text>'
+            . '</svg>'
+            . '<div class="sstat-ring-label">' . htmlspecialchars($label) . '</div>'
+            . '</div>';
+    }
 
-function pct(int $part, int $total): string {
-    return $total > 0 ? round($part / $total * 100, 1) . '%' : '—';
+    function userName(array $usersMap, int $uid): string {
+        if (!isset($usersMap[$uid])) return '#' . $uid;
+        $u = $usersMap[$uid];
+        return trim(($u['last_name'] ?? '') . ' ' . ($u['first_name'] ?? '')) ?: ($u['email'] ?? '#' . $uid);
+    }
+
+    function pct(int $part, int $total): string {
+        return $total > 0 ? round($part / $total * 100, 1) . '%' : '—';
+    }
+
+
+    function deltaChip(mixed $val, bool $invertColor = false, string $suffix = '%'): string {
+        if ($val === null) return '';
+        $v    = (float) $val;
+        $sign = $v > 0 ? '+' : '';
+        if ($v > 0)      $cls = $invertColor ? 'delta--neg' : 'delta--pos';
+        elseif ($v < 0)  $cls = $invertColor ? 'delta--pos' : 'delta--neg';
+        else             $cls = 'delta--neutral';
+        return '<span class="delta-chip ' . $cls . '">' . $sign . $val . $suffix . '</span>';
+    }
 }
 
 $dowLabels ??= [__('mon_abbr'), __('tue_abbr'), __('wed_abbr'), __('thu_abbr'), __('fri_abbr'), __('sat_abbr'), __('sun_abbr')];
-
-function deltaChip(mixed $val, bool $invertColor = false, string $suffix = '%'): string {
-    if ($val === null) return '';
-    $v    = (float) $val;
-    $sign = $v > 0 ? '+' : '';
-    if ($v > 0)      $cls = $invertColor ? 'delta--neg' : 'delta--pos';
-    elseif ($v < 0)  $cls = $invertColor ? 'delta--pos' : 'delta--neg';
-    else             $cls = 'delta--neutral';
-    return '<span class="delta-chip ' . $cls . '">' . $sign . $val . $suffix . '</span>';
-}
 ?>
 
 
@@ -227,7 +232,7 @@ function deltaChip(mixed $val, bool $invertColor = false, string $suffix = '%'):
                         <td><?= number_format($h, 1) ?><?= __('hours_unit') ?></td>
                         <td class="col-40">
                             <div class="sstat-progress">
-                                <div class="sstat-progress-bar" style="width:<?= round($h / $maxH * 100) ?>%"></div>
+                                <div class="sstat-progress-bar <?= style_class(['width' => round($h / $maxH * 100) . '%']) ?>"></div>
                             </div>
                         </td>
                     </tr>
