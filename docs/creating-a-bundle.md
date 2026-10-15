@@ -885,7 +885,7 @@ Kintai sends `script-src 'self' 'nonce-…'` (`SecurityHeadersMiddleware`): the 
 
 ### Dynamic styles: no `style="…"`
 
-The same rule is coming for styles: once every official bundle is migrated, the CSP will drop `'unsafe-inline'` from `style-src`, and a `style="…"` attribute will then be ignored by the browser. Static presentation belongs in your bundle's CSS. A value only known at render time (a colour picked by the user, a bar's height, a percentage) goes through `style_class()` (contract 1.22), which returns a class carrying those declarations:
+The same rule applies to styles since contract 1.22: the CSP sends `style-src 'self' 'nonce-…'` (no `'unsafe-inline'`), so a `style="…"` attribute is ignored by the browser and a `<style>` block only applies with the nonce — silently, like scripts. **Breaking for bundles written before 1.22** that still use `style="…"`: their colours, widths and positions are lost until migrated. Static presentation belongs in your bundle's CSS. A value only known at render time (a colour picked by the user, a bar's height, a percentage) goes through `style_class()` (contract 1.22), which returns a class carrying those declarations:
 
 ```php
 <div class="bar <?= style_class(['height' => $h . 'px', 'background' => $color]) ?>"></div>
@@ -912,6 +912,13 @@ The server sees no error when the browser blocks an inline handler, so nothing e
     set -euo pipefail
     if grep -rnE "[[:space:]]on(click|change|submit|input|load|error|focus|blur|dblclick|keyup|keydown)[[:space:]]*=|['\"]on(click|change|submit|input)['\"][[:space:]]*=>|(href|src|action)[[:space:]]*=[[:space:]]*[\"']javascript:|<script>" Views src; then
       echo "::error::Inline handlers, javascript: URLs and <script> without nonce are blocked by Kintai's CSP"
+      exit 1
+    fi
+- name: No inline styles (Kintai CSP)
+  run: |
+    set -euo pipefail
+    if grep -rnE "[[:space:]]style[[:space:]]*=[[:space:]]*[\"'\\\\]|<style>" Views; then
+      echo "::error::style=\"...\" attributes and <style> without nonce are ignored by Kintai's CSP"
       exit 1
     fi
 ```
@@ -957,7 +964,7 @@ Two ways to get discovered:
 - **One process, one Composer autoloader.** There's no per-bundle `composer.json` or dependency isolation — your bundle runs in the same PHP process and namespace tree as Kintai's own `kintai\` root. Depend only on the `kintai\Contract\…` names listed above: they are the only Core classes guaranteed across Kintai versions.
 - **`requires_bundles` isn't enforced yet.** Declaring a dependency on another bundle's slug/version is accepted and stored, but nothing currently blocks installation if it's missing or too old — treat it as documentation for now, not a guarantee.
 - **No uninstall flow for business data.** `/admin/bundles/market` can install, update, and uninstall a bundle's files/manifest entry/migration tracking rows — but the tables your migrations created (and their data) are never dropped or touched on uninstall. Cleaning those up, if desired, is a manual DB operation for now.
-- **Inline scripts and event handlers don't work.** From Kintai Core 0.3.0 the Content-Security-Policy has no `'unsafe-inline'` for scripts: a bundle view with `onclick=`/`onchange=`/`onsubmit=`/`oninput=`, a `javascript:` link or a nonce-less `<script>` is silently blocked by the browser. See [Content Security Policy](#content-security-policy-no-inline-scripts).
+- **Inline scripts and event handlers don't work.** From Kintai Core 0.3.0 the Content-Security-Policy has no `'unsafe-inline'` for scripts: a bundle view with `onclick=`/`onchange=`/`onsubmit=`/`oninput=`, a `javascript:` link or a nonce-less `<script>` is silently blocked by the browser. Since contract 1.22 the same goes for styles: a `style="…"` attribute or a nonce-less `<style>` is ignored (use `style_class()`). See [Content Security Policy](#content-security-policy-no-inline-scripts).
 - **GitHub only.** `repository_url` must point at a GitHub repository — no GitLab, no self-hosted Git server, no non-Git archive source.
 
 ## Reference implementation

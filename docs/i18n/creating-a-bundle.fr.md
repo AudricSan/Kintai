@@ -792,7 +792,7 @@ Kintai envoie `script-src 'self' 'nonce-…'` (`SecurityHeadersMiddleware`) : le
 
 ### Styles dynamiques : pas de `style="…"`
 
-La même règle arrive pour les styles : une fois tous les bundles officiels migrés, la CSP retirera `'unsafe-inline'` de `style-src`, et un attribut `style="…"` sera alors ignoré par le navigateur. La présentation fixe va dans le CSS de votre bundle. Une valeur connue seulement au rendu (couleur choisie par l'utilisateur, hauteur d'une barre, pourcentage) passe par `style_class()` (contrat 1.22), qui renvoie une classe portant ces déclarations :
+La même règle s'applique aux styles depuis le contrat 1.22 : la CSP envoie `style-src 'self' 'nonce-…'` (sans `'unsafe-inline'`), si bien qu'un attribut `style="…"` est ignoré par le navigateur et qu'un bloc `<style>` ne s'applique qu'avec le nonce — sans bruit, comme pour les scripts. **Changement cassant pour les bundles écrits avant 1.22** qui utilisent encore `style="…"` : leurs couleurs, largeurs et positions sont perdues jusqu'à leur migration. La présentation fixe va dans le CSS de votre bundle. Une valeur connue seulement au rendu (couleur choisie par l'utilisateur, hauteur d'une barre, pourcentage) passe par `style_class()` (contrat 1.22), qui renvoie une classe portant ces déclarations :
 
 ```php
 <div class="bar <?= style_class(['height' => $h . 'px', 'background' => $color]) ?>"></div>
@@ -819,6 +819,13 @@ Le serveur ne voit aucune erreur quand le navigateur bloque un gestionnaire en l
     set -euo pipefail
     if grep -rnE "[[:space:]]on(click|change|submit|input|load|error|focus|blur|dblclick|keyup|keydown)[[:space:]]*=|['\"]on(click|change|submit|input)['\"][[:space:]]*=>|(href|src|action)[[:space:]]*=[[:space:]]*[\"']javascript:|<script>" Views src; then
       echo "::error::Inline handlers, javascript: URLs and <script> without nonce are blocked by Kintai's CSP"
+      exit 1
+    fi
+- name: No inline styles (Kintai CSP)
+  run: |
+    set -euo pipefail
+    if grep -rnE "[[:space:]]style[[:space:]]*=[[:space:]]*[\"'\\\\]|<style>" Views; then
+      echo "::error::style=\"...\" attributes and <style> without nonce are ignored by Kintai's CSP"
       exit 1
     fi
 ```
@@ -864,7 +871,7 @@ Deux façons d'être découvert :
 - **Un processus, un autoloader Composer.** Il n'y a ni `composer.json` par bundle ni isolation des dépendances — votre bundle s'exécute dans le même processus PHP et la même arborescence d'espaces de noms que la racine `kintai\` de Kintai. Ne dépendez que des noms `kintai\Contract\…` listés plus haut : ce sont les seules classes du Core garanties d'une version de Kintai à l'autre.
 - **`requires_bundles` n'est pas encore appliqué.** Une dépendance déclarée envers le slug ou la version d'un autre bundle est acceptée et enregistrée, mais rien ne bloque aujourd'hui l'installation si elle manque ou est trop ancienne — considérez-la comme de la documentation pour l'instant, pas comme une garantie.
 - **Pas de désinstallation des données métier.** `/admin/bundles/market` sait installer, mettre à jour et désinstaller les fichiers d'un bundle, son entrée de manifeste et ses lignes de suivi de migrations — mais les tables créées par vos migrations (et leurs données) ne sont jamais supprimées ni touchées à la désinstallation. Les nettoyer, si besoin, est pour l'instant une opération manuelle en base.
-- **Les scripts et gestionnaires d'événements en ligne ne fonctionnent pas.** Depuis Kintai Core 0.3.0, la Content-Security-Policy n'a pas de `'unsafe-inline'` pour les scripts : une vue de bundle avec `onclick=`/`onchange=`/`onsubmit=`/`oninput=`, un lien `javascript:` ou un `<script>` sans nonce est bloqué sans bruit par le navigateur. Voir [Content Security Policy](#content-security-policy--pas-de-scripts-en-ligne).
+- **Les scripts et gestionnaires d'événements en ligne ne fonctionnent pas.** Depuis Kintai Core 0.3.0, la Content-Security-Policy n'a pas de `'unsafe-inline'` pour les scripts : une vue de bundle avec `onclick=`/`onchange=`/`onsubmit=`/`oninput=`, un lien `javascript:` ou un `<script>` sans nonce est bloqué sans bruit par le navigateur. Depuis le contrat 1.22, même chose pour les styles : un attribut `style="…"` ou un `<style>` sans nonce est ignoré (utiliser `style_class()`). Voir [Content Security Policy](#content-security-policy--pas-de-scripts-en-ligne).
 - **GitHub uniquement.** `repository_url` doit pointer vers un dépôt GitHub — ni GitLab, ni serveur Git auto-hébergé, ni archive hors Git.
 
 ## Implémentation de référence

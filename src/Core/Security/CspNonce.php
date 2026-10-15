@@ -9,7 +9,8 @@ namespace kintai\Core\Security;
  *
  * `script-src 'self' 'nonce-…'` remplace `'unsafe-inline'` : seul un `<script nonce="…">` écrit par
  * une vue s'exécute, ce qui neutralise l'impact d'un XSS (un `<script>` ou un `onclick=` injecté n'a pas
- * le nonce). La valeur est tirée une fois par requête, imprévisible, et n'est jamais réutilisée : la
+ * le nonce). Même chose pour `style-src` : seul un `<style nonce="…">` s'applique, un `style="…"` injecté
+ * (fausse fenêtre posée sur la page, contenu masqué) est ignoré. La valeur est tirée une fois par requête, imprévisible, et n'est jamais réutilisée : la
  * réutiliser d'une requête à l'autre permettrait à un attaquant de la lire puis de l'injecter.
  *
  * SecurityHeadersMiddleware appelle renew() à chaque requête ; les vues la lisent via csp_nonce().

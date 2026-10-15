@@ -7,8 +7,8 @@ namespace kintai\UI;
 /**
  * Styles dynamiques sans attribut style="…" (dette de l'audit n°8) : une couleur de shift, une largeur de barre, une
  * hauteur de graphique… sont enregistrées ici comme une règle de classe, et toutes les règles de la page sont émises
- * dans un seul <style nonce="…"> (voir inline_styles()). La Content-Security-Policy peut ainsi refuser les styles en ligne
- * ('unsafe-inline') sans casser l'affichage, y compris à l'impression et dans les aperçus PDF (mPDF comprend les
+ * dans un seul <style nonce="…"> (voir inline_styles()). La Content-Security-Policy refuse les styles en ligne
+ * (pas de 'unsafe-inline' dans style-src) sans casser l'affichage, y compris à l'impression et dans les aperçus PDF (mPDF comprend les
  * classes ; il n'exécute aucun JavaScript).
  *
  * Usage dans une vue : <div class="bar <?= style_class(['height' => $h . 'px', 'background' => $color]) ?>">.
