@@ -19,6 +19,7 @@ use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\Services\UserDisplayName;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\PlanLimitService;
 use kintai\Core\Validation\ApiPayloadRules;
@@ -164,14 +165,16 @@ final class UserController
         return array_map(fn(array $m): int => (int) $m['store_id'], $this->storeUsers->findByUser($userId));
     }
 
-    /** Code employé en majuscules (comme le formulaire web) ; nom affiché déduit du prénom et du nom à défaut. */
+    /** Code employé en majuscules (comme le formulaire web) ; nom affiché « Nom Prénom » à défaut (UserDisplayName). */
     private function normalizeUser(array $data): array
     {
         if (isset($data['employee_code'])) {
             $data['employee_code'] = strtoupper($data['employee_code']);
         }
         if (!isset($data['display_name']) && isset($data['first_name'], $data['last_name'])) {
-            $data['display_name'] = trim($data['first_name'] . ' ' . $data['last_name']);
+            $data['display_name'] = UserDisplayName::resolve(null, $data['first_name'], $data['last_name']);
+        } elseif (isset($data['display_name'])) {
+            $data['display_name'] = UserDisplayName::resolve($data['display_name'], $data['first_name'] ?? null, $data['last_name'] ?? null);
         }
         return $data;
     }

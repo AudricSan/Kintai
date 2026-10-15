@@ -21,6 +21,7 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\Services\UserDisplayName;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\EmployeeStatsService;
 use kintai\Core\Services\PdfCjkFontResolver;
@@ -466,7 +467,8 @@ final class AdminUserController
         $isOwner      = $isRequesterOwner && $selectedRole !== null && !empty($selectedRole['is_system']);
 
         $saved    = $this->users->save([
-            'display_name'       => $request->post('display_name', ''),
+            // Vide : « Nom Prénom » (UserDisplayName).
+            'display_name'       => UserDisplayName::resolve($request->post('display_name', ''), $request->post('first_name', ''), $request->post('last_name', '')),
             'first_name'         => $request->post('first_name', ''),
             'last_name'          => $request->post('last_name', ''),
             'email'              => $request->post('email', ''),
@@ -551,9 +553,7 @@ final class AdminUserController
             return Response::json(['success' => false, 'error' => 'furigana_required'], 422);
         }
 
-        if ($displayName === '') {
-            $displayName = trim($firstName . ' ' . $lastName);
-        }
+        $displayName = UserDisplayName::resolve($displayName, $firstName, $lastName);
 
         if ($email === '') {
             // Générer un email unique @kintai.local
@@ -820,7 +820,8 @@ final class AdminUserController
         // Champ facultatif : vide = null, absent = valeur actuelle.
         $optional = fn(string $field): mixed => $request->hasPost($field) ? ($request->post($field, '') ?: null) : ($user[$field] ?? null);
         $data = array_merge($user, [
-            'display_name'       => $request->post('display_name', $user['display_name'] ?? ''),
+            // Absent : valeur actuelle ; vide : « Nom Prénom » (UserDisplayName).
+            'display_name'       => UserDisplayName::resolve($request->post('display_name', $user['display_name'] ?? ''), $firstName, $lastName),
             'first_name'         => $firstName,
             'last_name'          => $lastName,
             'email'              => $email,
