@@ -424,8 +424,9 @@ public function cronJobs(): array
 ```
 
 While your bundle is active, an external scheduler (cron-job.org, a server crontab…) runs the job by calling
-`/cron/run/{name}` with a cron token the Owner created (`?token=` or `Authorization: Bearer`) — typical on shared
-hosting — or, on a server with SSH access, a local crontab runs `php scripts/cron.php {name}` (no token; extra
+`/cron/run/{name}` with a cron token the Owner created — preferably in the `Authorization: Bearer <token>` header,
+since a `?token=` query string ends up in web server access logs; `?token=` stays accepted for schedulers that can
+only call a URL — typical on shared hosting — or, on a server with SSH access, a local crontab runs `php scripts/cron.php {name}` (no token; extra
 URL parameters become `--key=value`). Core names (`backup`,
 `log-purge`, `license-check`) and names already taken are refused (logged); a class that can't be built is skipped.
 `daily-report` ships `auto-validate` this way. Require `"kintai_contract": "^1.8"`.
