@@ -7,6 +7,7 @@ Toutes les évolutions notables de Kintai sont documentées ici.
 ## [Unreleased]
 
 ### Corrigé
+- La liste « Personnaliser » du tableau de bord gestionnaire ne propose plus le widget « Navigation rapide » : il n'était jamais affiché (la barre de navigation remplit déjà ce rôle).
 - Sécurité — changer de langue (page de connexion et menu utilisateur) passe désormais par un POST protégé par le jeton CSRF : sous forme de lien GET, la langue était enregistrée dans le profil, et une simple image sur un autre site pouvait changer celle d'un utilisateur connecté. `GET /lang/{locale}` répond désormais 405.
 - Les dates de création (`created_at`) sont désormais écrites dans le fuseau de l'instance (`APP_TIMEZONE`) pour tous les modèles, Core et bundles, au lieu de l'UTC de la valeur par défaut de la base sous SQLite : dans une même ligne, `created_at` et une date écrite par PHP pouvaient avoir 9 h d'écart, et la date « envoyé le » d'un congé dépendait de son origine (web ou API). Les lignes existantes ne sont pas réécrites.
 - Sécurité — un employé créé sans mot de passe (formulaire ou import Excel) recevait nom + prénom + code employé (ex. « dupontchloe102 »), devinable par n'importe quel collègue et jamais signalé comme à changer. Il reçoit désormais le mot de passe par défaut « 0000 », comme un compte créé par l'API ou réinitialisé par un gérant : rappel à chaque connexion, aucun jeton API tant qu'il n'est pas changé. La page de connexion n'affiche plus publiquement le mot de passe par défaut.
