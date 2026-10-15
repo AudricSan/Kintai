@@ -833,7 +833,7 @@ Required at the bundle's repository root:
 
 ## Versioned bundle contract
 
-The bundle contract has **its own version**, independent of the Core's: `kintai\Contract\Contract::VERSION` (currently `1.21.0`). It follows semver — a minor version only adds things (a class, an optional method, an extension point), a major version removes or changes a signature and is announced in a dedicated "Bundle contract" section of the CHANGELOG.
+The bundle contract has **its own version**, independent of the Core's: `kintai\Contract\Contract::VERSION` (currently `1.22.0`). It follows semver — a minor version only adds things (a class, an optional method, an extension point), a major version removes or changes a signature and is announced in a dedicated "Bundle contract" section of the CHANGELOG.
 
 Declare the contract version your bundle needs in `bundle.json`:
 
@@ -882,6 +882,17 @@ Kintai sends `script-src 'self' 'nonce-…'` (`SecurityHeadersMiddleware`): the 
 `data-on-*` only calls a **function you defined yourself** on `window` (a function declaration in your script, or `window.f = …`): browser built-ins such as `eval` or `setTimeout` are refused on purpose, so that an injected attribute cannot become a way to run code. `Button`/`Modal` attribute values are already HTML-escaped by the component — pass the raw value, not `htmlspecialchars()` output.
 
 **Version requirement.** The `data-*` actions and `csp_nonce()` exist from **Kintai Core 0.3.0**. Every Core that provides the bundle contract (1.0 shipped with Core 0.3.6) has them, so declaring `kintai_contract` — now mandatory — is enough: an older Core refuses the bundle instead of installing controls that do nothing. Conversely, this is a **breaking change for existing bundles**: a bundle written before 0.3.0 that still uses inline handlers keeps working on a Core older than 0.3.0, but its buttons, selects and confirmations stop working on 0.3.0 and later until it is migrated. `tests/Unit/Security/NoInlineScriptGuardTest.php` in Kintai fails as soon as a Core view reintroduces an inline handler; do the same check on your own views.
+
+### Dynamic styles: no `style="…"`
+
+The same rule is coming for styles: once every official bundle is migrated, the CSP will drop `'unsafe-inline'` from `style-src`, and a `style="…"` attribute will then be ignored by the browser. Static presentation belongs in your bundle's CSS. A value only known at render time (a colour picked by the user, a bar's height, a percentage) goes through `style_class()` (contract 1.22), which returns a class carrying those declarations:
+
+```php
+<div class="bar <?= style_class(['height' => $h . 'px', 'background' => $color]) ?>"></div>
+<span class="avatar-chip <?= style_class(['--chip-bg' => $user['color']]) ?>"></span>
+```
+
+The rules are collected during the request and emitted in a single `<style nonce="…">` by the layout. A page rendered **without** the layout (print view, PDF preview) must emit them itself with `<?= inline_styles() ?>` just before `</body>`, and put the nonce on its own `<style>` blocks: `<style nonce="<?= csp_nonce() ?>">`. Values are filtered (letters, digits, `#`, `%`, `.`, `,`, `-`, spaces and parentheses only): anything else is dropped, so user data cannot escape the rule. Setting `element.style.x` from JavaScript is not affected by the CSP and stays allowed; building HTML with a `style="…"` attribute in JavaScript is not.
 
 ### Migrating an existing bundle
 

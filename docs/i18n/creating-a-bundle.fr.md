@@ -740,7 +740,7 @@ Obligatoire à la racine du dépôt du bundle :
 
 ## Contrat de bundle versionné
 
-Le contrat des bundles a **sa propre version**, indépendante de celle du Core : `kintai\Contract\Contract::VERSION` (actuellement `1.21.0`). Il suit semver — une version mineure ne fait qu'ajouter (une classe, une méthode facultative, un point d'extension), une version majeure retire ou modifie une signature et est annoncée dans une section « Bundle contract » dédiée du CHANGELOG.
+Le contrat des bundles a **sa propre version**, indépendante de celle du Core : `kintai\Contract\Contract::VERSION` (actuellement `1.22.0`). Il suit semver — une version mineure ne fait qu'ajouter (une classe, une méthode facultative, un point d'extension), une version majeure retire ou modifie une signature et est annoncée dans une section « Bundle contract » dédiée du CHANGELOG.
 
 Déclarez dans `bundle.json` la version du contrat dont votre bundle a besoin :
 
@@ -789,6 +789,17 @@ Kintai envoie `script-src 'self' 'nonce-…'` (`SecurityHeadersMiddleware`) : le
 `data-on-*` n'appelle qu'une **fonction que vous avez définie vous-même** sur `window` (une déclaration de fonction dans votre script, ou `window.f = …`) : les fonctions natives du navigateur comme `eval` ou `setTimeout` sont volontairement refusées, pour qu'un attribut injecté ne devienne pas un moyen d'exécuter du code. Les valeurs d'attributs de `Button`/`Modal` sont déjà échappées par le composant — passez la valeur brute, pas le résultat de `htmlspecialchars()`.
 
 **Version requise.** Les actions `data-*` et `csp_nonce()` existent depuis **Kintai Core 0.3.0**. Tout Core qui fournit le contrat des bundles (1.0 est arrivé avec le Core 0.3.6) les a, donc déclarer `kintai_contract` — désormais obligatoire — suffit : un Core plus ancien refuse le bundle au lieu d'installer des contrôles qui ne font rien. À l'inverse, c'est un **changement cassant pour les bundles existants** : un bundle écrit avant 0.3.0 qui utilise encore des gestionnaires en ligne continue de fonctionner sur un Core antérieur à 0.3.0, mais ses boutons, listes et confirmations cessent de fonctionner à partir de 0.3.0 tant qu'il n'est pas migré. `tests/Unit/Security/NoInlineScriptGuardTest.php` dans Kintai échoue dès qu'une vue du Core réintroduit un gestionnaire en ligne ; faites la même vérification sur vos propres vues.
+
+### Styles dynamiques : pas de `style="…"`
+
+La même règle arrive pour les styles : une fois tous les bundles officiels migrés, la CSP retirera `'unsafe-inline'` de `style-src`, et un attribut `style="…"` sera alors ignoré par le navigateur. La présentation fixe va dans le CSS de votre bundle. Une valeur connue seulement au rendu (couleur choisie par l'utilisateur, hauteur d'une barre, pourcentage) passe par `style_class()` (contrat 1.22), qui renvoie une classe portant ces déclarations :
+
+```php
+<div class="bar <?= style_class(['height' => $h . 'px', 'background' => $color]) ?>"></div>
+<span class="avatar-chip <?= style_class(['--chip-bg' => $user['color']]) ?>"></span>
+```
+
+Les règles sont collectées pendant la requête et émises dans un seul `<style nonce="…">` par le layout. Une page rendue **sans** layout (vue d'impression, aperçu PDF) doit les émettre elle-même avec `<?= inline_styles() ?>` juste avant `</body>`, et mettre le nonce sur ses propres blocs `<style>` : `<style nonce="<?= csp_nonce() ?>">`. Les valeurs sont filtrées (lettres, chiffres, `#`, `%`, `.`, `,`, `-`, espaces et parenthèses seulement) : tout le reste est écarté, si bien qu'une donnée saisie ne peut pas sortir de la règle. Modifier `element.style.x` en JavaScript n'est pas concerné par la CSP et reste permis ; construire du HTML avec un attribut `style="…"` en JavaScript ne l'est pas.
 
 ### Migrer un bundle existant
 

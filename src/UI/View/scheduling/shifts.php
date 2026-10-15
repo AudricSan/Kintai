@@ -188,8 +188,8 @@ if ($_canManage) {
                                         $owner = $isMe ? null : ($users_map[(int)($s['user_id'] ?? 0)] ?? null);
                                         $opacity = $isMe ? '20' : '15';
                                         ?>
-                                        <div class="shift-card <?= $isMe ? '' : 'shift-card--other' ?>" style="--shift-color:<?= htmlspecialchars($color) ?>">
-                                            <div class="shift-card__type" style="color:<?= htmlspecialchars($color) ?>">
+                                        <div class="shift-card <?= $isMe ? '' : 'shift-card--other' ?> <?= style_class(['--shift-color' => $color]) ?>">
+                                            <div class="shift-card__type <?= style_class(['color' => $color]) ?>">
                                                 <?= htmlspecialchars($name) ?>
                                                 <?php if (!$isMe): ?>
                                                     <span class="shift-card__detail"> · <?= htmlspecialchars($owner ?? '') ?></span>

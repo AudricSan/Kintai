@@ -44,7 +44,7 @@ $storeChipColor = function (string $seed): string {
         $initials = htmlspecialchars(strtoupper(mb_substr((string) ($s['name'] ?? $code), 0, 2)));
         $color = $storeChipColor((string) ($s['code'] ?? $s['name'] ?? (string) ($s['id'] ?? '')));
         return '<div class="avatar-chip-cell">'
-            . '<span class="avatar-chip" style="--chip-bg:' . $color . '">' . $initials . '</span>'
+            . '<span class="avatar-chip ' . style_class(['--chip-bg' => $color]) . '">' . $initials . '</span>'
             . '<strong>' . $name . '</strong></div>';
     })
     ->sortableText(__('type'), 'type', fn($s) => $s['type'] ?? '')

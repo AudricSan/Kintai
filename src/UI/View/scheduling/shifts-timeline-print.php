@@ -72,7 +72,7 @@ for ($h = 6; $h < 30; $h++) $ganttHours[] = $h % 24;
     <title><?= __('planning') ?> — <?= __('timeline') ?> — <?= htmlspecialchars($storeName) ?></title>
     <link rel="stylesheet" href="<?= $BASE_URL ?>/assets/css/pdf/pdf-timeline.css">
     <!-- @page @bottom-center dynamique (date PHP) — ne pas externaliser -->
-    <style>
+    <style nonce="<?= csp_nonce() ?>">
         @page {
             @bottom-center {
                 content: "<?= __('print_footer_disclaimer', ['date' => date('d/m/Y H:i')]) ?>";
@@ -212,8 +212,7 @@ for ($h = 6; $h < 30; $h++) $ganttHours[] = $h % 24;
                         $width = max(0.8, min(100 - $left, $width));
                         $color = $sh['_color'];
                         ?>
-                        <div class="pt-bar"
-                             style="left:<?= number_format($left, 4) ?>%;width:<?= number_format($width, 4) ?>%;background:<?= htmlspecialchars($color) ?>;">
+                        <div class="pt-bar <?= style_class(['left' => number_format($left, 4) . '%', 'width' => number_format($width, 4) . '%', 'background' => $color]) ?>">
                             <?php if ($width > 2.5): ?>
                                 <span class="pt-bar-name"><?= htmlspecialchars($sh['_name']) ?></span>
                             <?php endif; ?>
@@ -237,7 +236,7 @@ for ($h = 6; $h < 30; $h++) $ganttHours[] = $h % 24;
     <div class="pt-legend">
         <?php foreach ($all_user_ids as $uid): ?>
             <span class="pt-legend-item">
-                <span class="pt-legend-bar" style="background:<?= htmlspecialchars($userColorMap[$uid] ?? '#6366f1') ?>"></span>
+                <span class="pt-legend-bar <?= style_class(['background' => $userColorMap[$uid] ?? '#6366f1']) ?>"></span>
                 <span><?= htmlspecialchars($users_map[$uid] ?? ('#' . $uid)) ?></span>
             </span>
         <?php endforeach; ?>
@@ -252,6 +251,7 @@ for ($h = 6; $h < 30; $h++) $ganttHours[] = $h % 24;
 </div>
 
 <?php if ($autoprint ?? false): ?><meta name="autoprint" content="1"><?php endif; ?>
+<?= inline_styles() ?>
 <script src="<?= $BASE_URL ?>/assets/js/modules/csp-actions.js"></script>
 <script src="<?= $BASE_URL ?>/assets/js/modules/autoprint.js"></script>
 </body>

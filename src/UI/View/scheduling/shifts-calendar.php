@@ -162,9 +162,9 @@ endif;
                             $label = $m['display_name'] ?? $m['email'] ?? ('#' . $uid);
                             $checked = empty($filter_uids) || in_array($uid, $filter_uids, true);
                             ?>
-                            <label class="cal-member-item" style="--c:<?= htmlspecialchars($col) ?>" title="<?= htmlspecialchars($label) ?>">
+                            <label class="cal-member-item <?= style_class(['--c' => $col]) ?>" title="<?= htmlspecialchars($label) ?>">
                                 <input type="checkbox" name="u[]" value="<?= $uid ?>" <?= $checked ? 'checked' : '' ?> data-submit-form="calFilterForm">
-                                <span class="cal-member-dot" style="background:<?= htmlspecialchars($col) ?>"></span>
+                                <span class="cal-member-dot <?= style_class(['background' => $col]) ?>"></span>
                                 <span class="cal-member-name"><?= htmlspecialchars($label) ?></span>
                             </label>
                         <?php endforeach; ?>
@@ -241,7 +241,7 @@ endif;
                                     ];
                                     $tip = htmlspecialchars(implode(' · ', array_filter($tipParts)));
                                     ?>
-                                    <span class="cal-pill" style="--pill-color:<?= $col ?>;--pill-bg:<?= $bg ?>" title="<?= $tip ?>">
+                                    <span class="cal-pill <?= style_class(['--pill-color' => $col, '--pill-bg' => $bg]) ?>" title="<?= $tip ?>">
                                         <?= $label ?>
                                     </span>
                                 <?php endforeach; ?>
@@ -337,8 +337,7 @@ endif;
                                 $store = $stores_map[(int)($s['store_id'] ?? 0)] ?? '';
                                 $tip   = htmlspecialchars($time . ' · ' . $tName . ($store ? ' · ' . $store : ''));
                                 ?>
-                                <span class="ecal-pill"
-                                    style="--pill-color:<?= $col ?>;--pill-bg:<?= $bg ?>"
+                                <span class="ecal-pill <?= style_class(['--pill-color' => $col, '--pill-bg' => $bg]) ?>"
                                     title="<?= $tip ?>">
                                     <?= htmlspecialchars("$time $tName") ?>
                                 </span>

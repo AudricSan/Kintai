@@ -83,7 +83,7 @@ $bundleChipColor = function (string $seed): string {
         <div class="card bundle-market-card">
             <div class="card-body">
                 <div class="bundle-market-card__header">
-                    <span class="avatar-chip avatar-chip--lg" style="--chip-bg:<?= htmlspecialchars($chipColor) ?>"><?= htmlspecialchars($initials) ?></span>
+                    <span class="avatar-chip avatar-chip--lg <?= style_class(['--chip-bg' => $chipColor]) ?>"><?= htmlspecialchars($initials) ?></span>
                     <div class="bundle-market-card__heading">
                         <h3 class="card-title"><?= htmlspecialchars($entry['name']) ?></h3>
                         <div class="bundle-market-card__meta">

@@ -618,6 +618,8 @@
 }
 
 .tl-diag-dim       { opacity: .6; }
+.tl-diag-peak--under { color: #fca5a5; }
+.tl-diag-peak--ok    { color: #86efac; }
 .tl-diag-section   { font-weight: 600; margin-top: var(--space-1); }
 .tl-diag-section--under    { color: var(--color-danger-border); }
 .tl-diag-section--conflict { color: var(--color-warning-border); }
