@@ -11,6 +11,7 @@ use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Services\EmployeeStatsService;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -21,20 +22,20 @@ use PHPUnit\Framework\TestCase;
  */
 final class EmployeeStatsServiceTest extends TestCase
 {
-    private ShiftRepositoryInterface&MockObject $shifts;
-    private ShiftTypeRepositoryInterface&MockObject $shiftTypes;
-    private UserShiftTypeRateRepositoryInterface&MockObject $userRates;
-    private StoreUserRepositoryInterface&MockObject $storeUsers;
-    private StoreRepositoryInterface&MockObject $stores;
+    private ShiftRepositoryInterface&Stub $shifts;
+    private ShiftTypeRepositoryInterface&Stub $shiftTypes;
+    private UserShiftTypeRateRepositoryInterface&Stub $userRates;
+    private StoreUserRepositoryInterface&Stub $storeUsers;
+    private StoreRepositoryInterface&Stub $stores;
     private EmployeeStatsService $service;
 
     protected function setUp(): void
     {
-        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
-        $this->shiftTypes = $this->createMock(ShiftTypeRepositoryInterface::class);
-        $this->userRates = $this->createMock(UserShiftTypeRateRepositoryInterface::class);
-        $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
-        $this->stores = $this->createMock(StoreRepositoryInterface::class);
+        $this->shifts = $this->createStub(ShiftRepositoryInterface::class);
+        $this->shiftTypes = $this->createStub(ShiftTypeRepositoryInterface::class);
+        $this->userRates = $this->createStub(UserShiftTypeRateRepositoryInterface::class);
+        $this->storeUsers = $this->createStub(StoreUserRepositoryInterface::class);
+        $this->stores = $this->createStub(StoreRepositoryInterface::class);
 
         $this->service = new EmployeeStatsService(
             $this->shifts,
@@ -90,7 +91,7 @@ final class EmployeeStatsServiceTest extends TestCase
 
     public function testPersonalRateOverridesShiftTypeRate(): void
     {
-        $this->userRates = $this->createMock(UserShiftTypeRateRepositoryInterface::class);
+        $this->userRates = $this->createStub(UserShiftTypeRateRepositoryInterface::class);
         $this->userRates->method('findByUser')->willReturn([
             ['shift_type_id' => 1, 'hourly_rate' => 1500.0],
         ]);

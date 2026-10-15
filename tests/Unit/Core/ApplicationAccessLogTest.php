@@ -13,6 +13,7 @@ use kintai\Core\Response;
 use kintai\Core\Services\AppSettingsService;
 use kintai\Core\Services\Log;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -22,14 +23,14 @@ use PHPUnit\Framework\TestCase;
  */
 final class ApplicationAccessLogTest extends TestCase
 {
-    private LogRepositoryInterface&MockObject $logs;
-    private AppSettingsRepositoryInterface&MockObject $settingsRepo;
+    private LogRepositoryInterface&Stub $logs;
+    private AppSettingsRepositoryInterface&Stub $settingsRepo;
     private array $storedSettings = [];
 
     protected function setUp(): void
     {
-        $this->logs = $this->createMock(LogRepositoryInterface::class);
-        $this->settingsRepo = $this->createMock(AppSettingsRepositoryInterface::class);
+        $this->logs = $this->createStub(LogRepositoryInterface::class);
+        $this->settingsRepo = $this->createStub(AppSettingsRepositoryInterface::class);
         $this->settingsRepo->method('all')->willReturnCallback(fn() => $this->storedSettings);
     }
 
@@ -69,6 +70,7 @@ final class ApplicationAccessLogTest extends TestCase
 
     public function testLogsSuccessfulRequestAsInfo(): void
     {
+        $this->logs = $this->createMock(LogRepositoryInterface::class);
         $app = $this->makeApplication();
 
         $this->logs->expects($this->once())->method('record')->with(
@@ -82,6 +84,7 @@ final class ApplicationAccessLogTest extends TestCase
 
     public function testLogsServerErrorAsError(): void
     {
+        $this->logs = $this->createMock(LogRepositoryInterface::class);
         $app = $this->makeApplication();
 
         $this->logs->expects($this->once())->method('record')->with(
@@ -95,6 +98,7 @@ final class ApplicationAccessLogTest extends TestCase
 
     public function testLogsClientErrorAsWarning(): void
     {
+        $this->logs = $this->createMock(LogRepositoryInterface::class);
         $app = $this->makeApplication();
 
         $this->logs->expects($this->once())->method('record')->with(
@@ -108,6 +112,7 @@ final class ApplicationAccessLogTest extends TestCase
 
     public function testSkipsNotificationPollRoute(): void
     {
+        $this->logs = $this->createMock(LogRepositoryInterface::class);
         $app = $this->makeApplication();
 
         $this->logs->expects($this->never())->method('record');
@@ -117,6 +122,7 @@ final class ApplicationAccessLogTest extends TestCase
 
     public function testSkipsApiPingRoute(): void
     {
+        $this->logs = $this->createMock(LogRepositoryInterface::class);
         $app = $this->makeApplication();
 
         $this->logs->expects($this->never())->method('record');
@@ -126,6 +132,7 @@ final class ApplicationAccessLogTest extends TestCase
 
     public function testSkipsStreamingRoutes(): void
     {
+        $this->logs = $this->createMock(LogRepositoryInterface::class);
         $app = $this->makeApplication();
 
         $this->logs->expects($this->never())->method('record');
@@ -135,6 +142,7 @@ final class ApplicationAccessLogTest extends TestCase
 
     public function testSkipsWhenAccessLogDisabledViaSettings(): void
     {
+        $this->logs = $this->createMock(LogRepositoryInterface::class);
         $this->storedSettings = ['access_log_enabled' => '0'];
         $app = $this->makeApplication();
 

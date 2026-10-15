@@ -13,6 +13,7 @@ use kintai\Core\Services\LicenseTokenVerifier;
 use kintai\Core\Services\PlanLimitService;
 use kintai\Tests\Support\TestSigningKeypair;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 final class PlanLimitServiceTest extends TestCase
@@ -20,8 +21,8 @@ final class PlanLimitServiceTest extends TestCase
     /** @var array{private: string, public: string} Paire jetable, generee a la volee — voir TestSigningKeypair. */
     private static array $keypair;
 
-    private StoreRepositoryInterface&MockObject $stores;
-    private UserRepositoryInterface&MockObject $users;
+    private StoreRepositoryInterface&Stub $stores;
+    private UserRepositoryInterface&Stub $users;
     private PlanLimitService $service;
 
     public static function setUpBeforeClass(): void
@@ -31,15 +32,15 @@ final class PlanLimitServiceTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->stores  = $this->createMock(StoreRepositoryInterface::class);
-        $this->users   = $this->createMock(UserRepositoryInterface::class);
+        $this->stores  = $this->createStub(StoreRepositoryInterface::class);
+        $this->users   = $this->createStub(UserRepositoryInterface::class);
         $this->service = $this->makeService();
     }
 
     /** Aucune clé de licence enregistrée (mock AppSettingsRepositoryInterface non stubbé -> get() = null) : isPaidPlanActive() reste false, donc le plan gratuit s'applique. */
     private function makeService(): PlanLimitService
     {
-        $appSettings = $this->createMock(AppSettingsRepositoryInterface::class);
+        $appSettings = $this->createStub(AppSettingsRepositoryInterface::class);
         $license = new LicenseClientService($appSettings, ['base_url' => '', 'api_key' => '', 'grace_period_days' => 14]);
 
         return new PlanLimitService($this->stores, $this->users, $license);
@@ -102,7 +103,7 @@ final class PlanLimitServiceTest extends TestCase
     private function makePaidService(): PlanLimitService
     {
         $store = [];
-        $appSettings = $this->createMock(AppSettingsRepositoryInterface::class);
+        $appSettings = $this->createStub(AppSettingsRepositoryInterface::class);
         $appSettings->method('get')->willReturnCallback(function (string $k) use (&$store) {
             return $store[$k] ?? null;
         });
@@ -162,7 +163,7 @@ final class PlanLimitServiceTest extends TestCase
         $token = $encodedPayload . '.' . $encode($signature);
 
         $store = [];
-        $appSettings = $this->createMock(AppSettingsRepositoryInterface::class);
+        $appSettings = $this->createStub(AppSettingsRepositoryInterface::class);
         $appSettings->method('get')->willReturnCallback(function (string $k) use (&$store) {
             return $store[$k] ?? null;
         });

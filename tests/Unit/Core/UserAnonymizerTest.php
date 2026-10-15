@@ -11,6 +11,7 @@ use kintai\Core\Repositories\RememberTokenRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -19,18 +20,18 @@ use PHPUnit\Framework\TestCase;
  */
 final class UserAnonymizerTest extends TestCase
 {
-    private UserRepositoryInterface&MockObject $users;
-    private RoleAssignmentRepositoryInterface&MockObject $assignments;
-    private RememberTokenRepositoryInterface&MockObject $remember;
-    private ApiTokenRepositoryInterface&MockObject $api;
+    private UserRepositoryInterface&Stub $users;
+    private RoleAssignmentRepositoryInterface&Stub $assignments;
+    private RememberTokenRepositoryInterface&Stub $remember;
+    private ApiTokenRepositoryInterface&Stub $api;
     private string $avatarDir;
 
     protected function setUp(): void
     {
-        $this->users       = $this->createMock(UserRepositoryInterface::class);
-        $this->assignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
-        $this->remember    = $this->createMock(RememberTokenRepositoryInterface::class);
-        $this->api         = $this->createMock(ApiTokenRepositoryInterface::class);
+        $this->users       = $this->createStub(UserRepositoryInterface::class);
+        $this->assignments = $this->createStub(RoleAssignmentRepositoryInterface::class);
+        $this->remember    = $this->createStub(RememberTokenRepositoryInterface::class);
+        $this->api         = $this->createStub(ApiTokenRepositoryInterface::class);
         $this->avatarDir   = sys_get_temp_dir() . '/kintai-avatars-' . bin2hex(random_bytes(4));
         mkdir($this->avatarDir);
     }
@@ -50,8 +51,9 @@ final class UserAnonymizerTest extends TestCase
 
     public function testPersonalDataIsErasedAndTheAccountMarkedDeletedButNeverRemoved(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         file_put_contents($this->avatarDir . '/u12.webp', 'x');
-        $this->users->method('findById')->with(12)->willReturn([
+        $this->users->expects($this->atLeastOnce())->method('findById')->with(12)->willReturn([
             'id' => 12, 'email' => 'aiko@example.com', 'avatar_path' => 'u12.webp', 'deleted_at' => null,
         ]);
         $this->users->expects($this->never())->method('delete');
@@ -79,9 +81,12 @@ final class UserAnonymizerTest extends TestCase
 
     public function testRolesAndCredentialsAreRevoked(): void
     {
+        $this->assignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
+        $this->remember = $this->createMock(RememberTokenRepositoryInterface::class);
+        $this->api = $this->createMock(ApiTokenRepositoryInterface::class);
         $this->users->method('findById')->willReturn(['id' => 12]);
         $this->users->method('save')->willReturnArgument(0);
-        $this->assignments->method('findByUser')->with(12)->willReturn([['id' => 3], ['id' => 4]]);
+        $this->assignments->expects($this->atLeastOnce())->method('findByUser')->with(12)->willReturn([['id' => 3], ['id' => 4]]);
 
         $revoked = [];
         $this->assignments->expects($this->exactly(2))->method('revoke')->willReturnCallback(function (int $id) use (&$revoked): int {
@@ -98,6 +103,7 @@ final class UserAnonymizerTest extends TestCase
 
     public function testAnExistingDeletionDateIsKept(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $this->users->method('findById')->willReturn(['id' => 12, 'deleted_at' => '2026-01-01 00:00:00']);
         $this->users->expects($this->once())->method('save')
             ->with($this->callback(fn(array $d): bool => $d['deleted_at'] === '2026-01-01 00:00:00'))
@@ -108,6 +114,8 @@ final class UserAnonymizerTest extends TestCase
 
     public function testAnUnknownAccountIsIgnored(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
+        $this->api = $this->createMock(ApiTokenRepositoryInterface::class);
         $this->users->method('findById')->willReturn(null);
         $this->users->expects($this->never())->method('save');
         $this->api->expects($this->never())->method('deleteByUserId');

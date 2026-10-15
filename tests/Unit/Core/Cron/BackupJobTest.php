@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Core\Cron;
 
 use PHPUnit\Framework\TestCase;
-use PHPUnit\Framework\MockObject\MockObject;
 use kintai\Core\Cron\BackupJob;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Request;
@@ -24,7 +23,7 @@ final class BackupJobTest extends TestCase
 
         // Évite de passer par le vrai DatabaseAppSettingsRepository (Eloquent),
         // qui nécessite une connexion DB non disponible en test unitaire.
-        $repo = $this->createMock(AppSettingsRepositoryInterface::class);
+        $repo = $this->createStub(AppSettingsRepositoryInterface::class);
         $repo->method('all')->willReturn([]);
         $settings = new AppSettingsService($repo);
 

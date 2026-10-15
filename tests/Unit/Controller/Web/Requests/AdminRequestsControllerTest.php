@@ -62,22 +62,22 @@ final class AdminRequestsControllerTest extends TestCase
 
     private function buildController(bool $isAdmin): AdminRequestsController
     {
-        $usersRepo = $this->createMock(UserRepositoryInterface::class);
+        $usersRepo = $this->createStub(UserRepositoryInterface::class);
         $usersRepo->method('findAll')->willReturn([
             ['id' => 1, 'first_name' => 'Alice', 'last_name' => 'A'],
             ['id' => 2, 'first_name' => 'Bob', 'last_name' => 'B'],
         ]);
 
-        $storesRepo = $this->createMock(StoreRepositoryInterface::class);
+        $storesRepo = $this->createStub(StoreRepositoryInterface::class);
         $storesRepo->method('findAll')->willReturn([['id' => 1, 'name' => 'Store 1']]);
 
-        $storeUsersRepo = $this->createMock(StoreUserRepositoryInterface::class);
+        $storeUsersRepo = $this->createStub(StoreUserRepositoryInterface::class);
         $storeUsersRepo->method('findByStore')->willReturn([]);
 
-        $shiftsRepo = $this->createMock(ShiftRepositoryInterface::class);
+        $shiftsRepo = $this->createStub(ShiftRepositoryInterface::class);
         $shiftsRepo->method('findById')->willReturn(['id' => 10, 'shift_date' => '2026-08-10', 'start_time' => '09:00:00', 'end_time' => '17:00:00']);
 
-        $roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
+        $roleAssignments = $this->createStub(RoleAssignmentRepositoryInterface::class);
         $roleAssignments->method('findByUser')->willReturn($isAdmin ? [] : [
             ['id' => 1, 'role_id' => 5, 'scope_type' => 'store', 'scope_id' => 1],
         ]);

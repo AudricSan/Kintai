@@ -55,17 +55,17 @@ final class AuthControllerUpdateProfileTest extends TestCase
         $users->method('findById')->with($userId)->willReturn(['id' => $userId, 'language' => 'fr']);
         $users->method('save')->willThrowException(new \RuntimeException('DB write failed'));
 
-        $storeUsers      = $this->createMock(StoreUserRepositoryInterface::class);
-        $stores          = $this->createMock(StoreRepositoryInterface::class);
-        $roles           = $this->createMock(RoleRepositoryInterface::class);
-        $roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
+        $storeUsers      = $this->createStub(StoreUserRepositoryInterface::class);
+        $stores          = $this->createStub(StoreRepositoryInterface::class);
+        $roles           = $this->createStub(RoleRepositoryInterface::class);
+        $roleAssignments = $this->createStub(RoleAssignmentRepositoryInterface::class);
         $roleAssignments->method('findByUser')->willReturn([]);
 
         $rememberTokens = $this->createStub(RememberTokenRepositoryInterface::class);
 
         $auth = new AuthService($users, $storeUsers, $stores, $roles, $roleAssignments, $rememberTokens);
 
-        $languages = $this->createMock(LanguageRepositoryInterface::class);
+        $languages = $this->createStub(LanguageRepositoryInterface::class);
         $languages->method('findAllActive')->willReturn([['code' => 'fr'], ['code' => 'en']]);
         $languages->method('findDefault')->willReturn(['code' => 'fr']);
 
@@ -76,9 +76,9 @@ final class AuthControllerUpdateProfileTest extends TestCase
             $users,
             $stores,
             $storeUsers,
-            $this->createMock(IcalTokenRepositoryInterface::class),
-            $this->createMock(UserNavPrefsRepositoryInterface::class),
-            $this->createMock(AvailabilityRepositoryInterface::class),
+            $this->createStub(IcalTokenRepositoryInterface::class),
+            $this->createStub(UserNavPrefsRepositoryInterface::class),
+            $this->createStub(AvailabilityRepositoryInterface::class),
             $languages,
             new AvatarImageOptimizer(),
         );
@@ -104,19 +104,19 @@ final class AuthControllerUpdateProfileTest extends TestCase
             return $u;
         });
 
-        $storeUsers      = $this->createMock(StoreUserRepositoryInterface::class);
-        $stores          = $this->createMock(StoreRepositoryInterface::class);
-        $roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
+        $storeUsers      = $this->createStub(StoreUserRepositoryInterface::class);
+        $stores          = $this->createStub(StoreRepositoryInterface::class);
+        $roleAssignments = $this->createStub(RoleAssignmentRepositoryInterface::class);
         $roleAssignments->method('findByUser')->willReturn([]);
-        $auth = new AuthService($users, $storeUsers, $stores, $this->createMock(RoleRepositoryInterface::class), $roleAssignments, $this->createStub(RememberTokenRepositoryInterface::class));
+        $auth = new AuthService($users, $storeUsers, $stores, $this->createStub(RoleRepositoryInterface::class), $roleAssignments, $this->createStub(RememberTokenRepositoryInterface::class));
 
-        $languages = $this->createMock(LanguageRepositoryInterface::class);
+        $languages = $this->createStub(LanguageRepositoryInterface::class);
         $languages->method('findAllActive')->willReturn([['code' => 'fr'], ['code' => 'en']]);
 
         $controller = new AuthController(
             new ViewRenderer(sys_get_temp_dir()), $auth, new AuditLogger(), $users, $stores, $storeUsers,
-            $this->createMock(IcalTokenRepositoryInterface::class), $this->createMock(UserNavPrefsRepositoryInterface::class),
-            $this->createMock(AvailabilityRepositoryInterface::class), $languages, new AvatarImageOptimizer(),
+            $this->createStub(IcalTokenRepositoryInterface::class), $this->createStub(UserNavPrefsRepositoryInterface::class),
+            $this->createStub(AvailabilityRepositoryInterface::class), $languages, new AvatarImageOptimizer(),
         );
 
         foreach (['', 'de', 'en'] as $choice) {

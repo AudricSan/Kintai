@@ -15,6 +15,7 @@ use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Services\RoleAssignmentSyncService;
 use kintai\Core\Services\StoreStatsService;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -24,36 +25,43 @@ use PHPUnit\Framework\TestCase;
  */
 final class StoreStatsServiceStoreStatsCacheTest extends TestCase
 {
-    private ShiftRepositoryInterface&MockObject $shifts;
-    private StoreStatsService $service;
+    private ShiftRepositoryInterface&Stub $shifts;
+    private ?StoreStatsService $service = null;
 
     protected function setUp(): void
     {
-        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
+        $this->shifts = $this->createStub(ShiftRepositoryInterface::class);
+    }
 
-        $storeUsers = $this->createStub(StoreUserRepositoryInterface::class);
-        $storeUsers->method('findByStore')->willReturn([['user_id' => 10]]);
-        $shiftTypes = $this->createStub(ShiftTypeRepositoryInterface::class);
-        $shiftTypes->method('findByStore')->willReturn([]);
-        $users = $this->createStub(UserRepositoryInterface::class);
-        $users->method('findAll')->willReturn([
-            ['id' => 10, 'first_name' => 'Aiko', 'last_name' => 'Sato', 'email' => 'a@kintai.test', 'password_hash' => '$2y$12$secret'],
-        ]);
-        $rates = $this->createStub(UserShiftTypeRateRepositoryInterface::class);
-        $rates->method('findByUser')->willReturn([]);
+    /** Objet testé, construit à la première utilisation : un test peut d'abord remplacer un bouchon par un mock. */
+    private function service(): StoreStatsService
+    {
+        if ($this->service === null) {
+            $storeUsers = $this->createStub(StoreUserRepositoryInterface::class);
+            $shiftTypes = $this->createStub(ShiftTypeRepositoryInterface::class);
+            $users = $this->createStub(UserRepositoryInterface::class);
+            $rates = $this->createStub(UserShiftTypeRateRepositoryInterface::class);
+            $storeUsers->method('findByStore')->willReturn([['user_id' => 10]]);
+            $shiftTypes->method('findByStore')->willReturn([]);
+            $users->method('findAll')->willReturn([
+                ['id' => 10, 'first_name' => 'Aiko', 'last_name' => 'Sato', 'email' => 'a@kintai.test', 'password_hash' => '$2y$12$secret'],
+            ]);
+            $rates->method('findByUser')->willReturn([]);
+            $this->service = new StoreStatsService(
+                $this->createStub(StoreRepositoryInterface::class),
+                $this->shifts,
+                $shiftTypes,
+                $storeUsers,
+                $rates,
+                $users,
+                new RoleAssignmentSyncService(
+                    $this->createStub(RoleRepositoryInterface::class),
+                    $this->createStub(RoleAssignmentRepositoryInterface::class),
+                ),
+            );
+        }
 
-        $this->service = new StoreStatsService(
-            $this->createStub(StoreRepositoryInterface::class),
-            $this->shifts,
-            $shiftTypes,
-            $storeUsers,
-            $rates,
-            $users,
-            new RoleAssignmentSyncService(
-                $this->createStub(RoleRepositoryInterface::class),
-                $this->createStub(RoleAssignmentRepositoryInterface::class),
-            ),
-        );
+        return $this->service;
     }
 
     private function shift(int $id, string $date, int $minutes = 480): array
@@ -68,31 +76,34 @@ final class StoreStatsServiceStoreStatsCacheTest extends TestCase
 
     public function testTheWholeHistoryIsNeverLoaded(): void
     {
+        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
         $this->shifts->expects($this->never())->method('findByStore');
         $this->shifts->expects($this->once())->method('findByStoreBetween')
             ->with(1, date('Y-m-d', strtotime('-60 days')), date('Y-m-d'))
             ->willReturn([]);
 
-        $this->service->storeStats(1, 30);
+        $this->service()->storeStats(1, 30);
     }
 
     public function testTheSameStatsAreComputedOnlyOncePerRequest(): void
     {
+        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
         $this->shifts->expects($this->once())->method('findByStoreBetween')->willReturn([]);
 
-        $first  = $this->service->storeStats(1, 30);
-        $second = $this->service->storeStats(1, 30);
+        $first  = $this->service()->storeStats(1, 30);
+        $second = $this->service()->storeStats(1, 30);
 
         $this->assertSame($first, $second);
     }
 
     public function testDifferentArgumentsAreNotServedFromTheSameCacheEntry(): void
     {
+        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
         $this->shifts->expects($this->exactly(3))->method('findByStoreBetween')->willReturn([]);
 
-        $this->service->storeStats(1, 30);
-        $this->service->storeStats(1, 180);
-        $this->service->storeStats(1, 30, 240, 600);
+        $this->service()->storeStats(1, 30);
+        $this->service()->storeStats(1, 180);
+        $this->service()->storeStats(1, 30, 240, 600);
     }
 
     public function testCurrentAndPreviousPeriodsAreSplitFromTheSingleRead(): void
@@ -106,7 +117,7 @@ final class StoreStatsServiceStoreStatsCacheTest extends TestCase
             $deleted,
         ]);
 
-        $stats = $this->service->storeStats(1, 30);
+        $stats = $this->service()->storeStats(1, 30);
 
         $this->assertSame(2, $stats['n']);
     }
@@ -115,7 +126,7 @@ final class StoreStatsServiceStoreStatsCacheTest extends TestCase
         // usersMap part jusqu'aux vues et aux exports : le hachage du mot de passe n'a rien à y faire.
         $this->shifts->method('findByStoreBetween')->willReturn([]);
 
-        $user = $this->service->storeStats(1, 30)['usersMap'][10];
+        $user = $this->service()->storeStats(1, 30)['usersMap'][10];
 
         $this->assertArrayNotHasKey('password_hash', $user);
         $this->assertSame('Sato', $user['last_name'], 'les autres champs restent disponibles');

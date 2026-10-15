@@ -10,6 +10,7 @@ use kintai\Core\Services\LicenseClientService;
 use kintai\Core\Services\LicenseTokenVerifier;
 use kintai\Tests\Support\TestSigningKeypair;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 final class LicenseClientServiceTest extends TestCase
@@ -18,7 +19,7 @@ final class LicenseClientServiceTest extends TestCase
     private static array $keypair;
 
     private array $store = [];
-    private AppSettingsRepositoryInterface&MockObject $appSettings;
+    private AppSettingsRepositoryInterface&Stub $appSettings;
 
     public static function setUpBeforeClass(): void
     {
@@ -28,7 +29,7 @@ final class LicenseClientServiceTest extends TestCase
     protected function setUp(): void
     {
         $this->store = [];
-        $this->appSettings = $this->createMock(AppSettingsRepositoryInterface::class);
+        $this->appSettings = $this->createStub(AppSettingsRepositoryInterface::class);
         $this->appSettings->method('get')->willReturnCallback(fn(string $k) => $this->store[$k] ?? null);
         $this->appSettings->method('set')->willReturnCallback(function (string $k, string $v): void {
             $this->store[$k] = $v;

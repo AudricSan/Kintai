@@ -21,7 +21,7 @@ final class LicenseCheckJobTest extends TestCase
 
     private function makeJob(array $config = [], ?callable $transport = null): LicenseCheckJob
     {
-        $appSettings = $this->createMock(AppSettingsRepositoryInterface::class);
+        $appSettings = $this->createStub(AppSettingsRepositoryInterface::class);
         $appSettings->method('get')->willReturnCallback(fn(string $k) => $this->store[$k] ?? null);
         $appSettings->method('set')->willReturnCallback(function (string $k, string $v): void {
             $this->store[$k] = $v;

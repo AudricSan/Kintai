@@ -55,17 +55,17 @@ final class DashboardAlertServiceTest extends TestCase
 
     private function service(): DashboardAlertService
     {
-        $shifts = $this->createMock(ShiftRepositoryInterface::class);
+        $shifts = $this->createStub(ShiftRepositoryInterface::class);
         $shifts->method('findAllByDate')->willReturnCallback(
             fn(string $date) => $this->shiftsByDate[$date] ?? []
         );
 
-        $users = $this->createMock(UserRepositoryInterface::class);
+        $users = $this->createStub(UserRepositoryInterface::class);
         $users->method('findById')->willReturnCallback(
             fn(int $id) => $this->usersById[$id] ?? null
         );
 
-        $storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
+        $storeUsers = $this->createStub(StoreUserRepositoryInterface::class);
         $storeUsers->method('findByStore')->willReturnCallback(
             fn(int $storeId) => $this->storeMembers[$storeId] ?? []
         );

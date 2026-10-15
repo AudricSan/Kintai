@@ -53,15 +53,15 @@ final class AuthControllerPasswordConfirmationTest extends TestCase
 
         $this->users = $this->createMock(UserRepositoryInterface::class);
 
-        $storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
-        $roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
+        $storeUsers = $this->createStub(StoreUserRepositoryInterface::class);
+        $roleAssignments = $this->createStub(RoleAssignmentRepositoryInterface::class);
         $roleAssignments->method('findByUser')->willReturn([]);
 
         $auth = new AuthService(
             $this->users,
             $storeUsers,
-            $this->createMock(StoreRepositoryInterface::class),
-            $this->createMock(RoleRepositoryInterface::class),
+            $this->createStub(StoreRepositoryInterface::class),
+            $this->createStub(RoleRepositoryInterface::class),
             $roleAssignments,
             $this->createStub(RememberTokenRepositoryInterface::class),
         );
@@ -71,12 +71,12 @@ final class AuthControllerPasswordConfirmationTest extends TestCase
             $auth,
             new AuditLogger(),
             $this->users,
-            $this->createMock(StoreRepositoryInterface::class),
+            $this->createStub(StoreRepositoryInterface::class),
             $storeUsers,
-            $this->createMock(IcalTokenRepositoryInterface::class),
-            $this->createMock(UserNavPrefsRepositoryInterface::class),
-            $this->createMock(AvailabilityRepositoryInterface::class),
-            $this->createMock(LanguageRepositoryInterface::class),
+            $this->createStub(IcalTokenRepositoryInterface::class),
+            $this->createStub(UserNavPrefsRepositoryInterface::class),
+            $this->createStub(AvailabilityRepositoryInterface::class),
+            $this->createStub(LanguageRepositoryInterface::class),
             new AvatarImageOptimizer(),
         );
     }

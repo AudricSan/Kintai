@@ -40,7 +40,7 @@ final class LicenseControllerTest extends TestCase
 
     private function makeController(array $config = [], ?callable $transport = null): LicenseController
     {
-        $appSettings = $this->createMock(AppSettingsRepositoryInterface::class);
+        $appSettings = $this->createStub(AppSettingsRepositoryInterface::class);
         $appSettings->method('get')->willReturnCallback(fn(string $k) => $this->store[$k] ?? null);
         $appSettings->method('set')->willReturnCallback(function (string $k, string $v): void {
             $this->store[$k] = $v;
@@ -50,8 +50,8 @@ final class LicenseControllerTest extends TestCase
         $license = new LicenseClientService($appSettings, $config, transport: $transport);
 
         $planLimits = new PlanLimitService(
-            $this->createMock(StoreRepositoryInterface::class),
-            $this->createMock(UserRepositoryInterface::class),
+            $this->createStub(StoreRepositoryInterface::class),
+            $this->createStub(UserRepositoryInterface::class),
             $license,
         );
 

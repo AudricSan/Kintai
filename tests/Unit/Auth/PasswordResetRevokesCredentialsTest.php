@@ -12,6 +12,7 @@ use kintai\Core\Repositories\RememberTokenRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Services\PasswordResetService;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -21,30 +22,37 @@ use PHPUnit\Framework\TestCase;
  */
 final class PasswordResetRevokesCredentialsTest extends TestCase
 {
-    private PasswordResetRepositoryInterface&MockObject $resets;
-    private UserRepositoryInterface&MockObject $users;
-    private RememberTokenRepositoryInterface&MockObject $remember;
-    private ApiTokenRepositoryInterface&MockObject $api;
-    private PasswordResetService $service;
+    private PasswordResetRepositoryInterface&Stub $resets;
+    private UserRepositoryInterface&Stub $users;
+    private RememberTokenRepositoryInterface&Stub $remember;
+    private ApiTokenRepositoryInterface&Stub $api;
+    private ?PasswordResetService $service = null;
 
     protected function setUp(): void
     {
-        $this->resets   = $this->createMock(PasswordResetRepositoryInterface::class);
-        $this->users    = $this->createMock(UserRepositoryInterface::class);
-        $this->remember = $this->createMock(RememberTokenRepositoryInterface::class);
-        $this->api      = $this->createMock(ApiTokenRepositoryInterface::class);
+        $this->resets   = $this->createStub(PasswordResetRepositoryInterface::class);
+        $this->users    = $this->createStub(UserRepositoryInterface::class);
+        $this->remember = $this->createStub(RememberTokenRepositoryInterface::class);
+        $this->api      = $this->createStub(ApiTokenRepositoryInterface::class);
+    }
 
-        $mailer = new MailerService([
-            'driver' => 'native',
-            'from'   => ['address' => 'test@kintai.test', 'name' => 'Kintai'],
-        ]);
+    /** Objet testé, construit à la première utilisation : un test peut d'abord remplacer un bouchon par un mock. */
+    private function service(): PasswordResetService
+    {
+        if ($this->service === null) {
+            $mailer = new MailerService([
+                'driver' => 'native',
+                'from'   => ['address' => 'test@kintai.test', 'name' => 'Kintai'],
+            ]);
+            $this->service = new PasswordResetService(
+                $this->resets,
+                $this->users,
+                $mailer,
+                new CredentialRevoker($this->remember, $this->api),
+            );
+        }
 
-        $this->service = new PasswordResetService(
-            $this->resets,
-            $this->users,
-            $mailer,
-            new CredentialRevoker($this->remember, $this->api),
-        );
+        return $this->service;
     }
 
     private static function newPassword(): string
@@ -64,32 +72,37 @@ final class PasswordResetRevokesCredentialsTest extends TestCase
 
     public function testSuccessfulResetRevokesRememberCookiesAndApiTokens(): void
     {
+        $this->remember = $this->createMock(RememberTokenRepositoryInterface::class);
+        $this->api = $this->createMock(ApiTokenRepositoryInterface::class);
         $this->resets->method('findByToken')->willReturn($this->validRecord());
         $this->users->method('findByEmail')->willReturn($this->user());
 
         $this->remember->expects($this->once())->method('deleteByUserId')->with(7);
         $this->api->expects($this->once())->method('deleteByUserId')->with(7)->willReturn(0);
 
-        $this->assertTrue($this->service->reset('abc', self::newPassword()));
+        $this->assertTrue($this->service()->reset('abc', self::newPassword()));
     }
 
     public function testFailedResetRevokesNothing(): void
     {
+        $this->remember = $this->createMock(RememberTokenRepositoryInterface::class);
+        $this->api = $this->createMock(ApiTokenRepositoryInterface::class);
         $this->resets->method('findByToken')->willReturn(null);
 
         $this->remember->expects($this->never())->method('deleteByUserId');
         $this->api->expects($this->never())->method('deleteByUserId');
 
-        $this->assertFalse($this->service->reset('bad', self::newPassword()));
+        $this->assertFalse($this->service()->reset('bad', self::newPassword()));
     }
 
     public function testResetForADeactivatedUserRevokesNothing(): void
     {
+        $this->remember = $this->createMock(RememberTokenRepositoryInterface::class);
         $this->resets->method('findByToken')->willReturn($this->validRecord());
         $this->users->method('findByEmail')->willReturn($this->user(0));
 
         $this->remember->expects($this->never())->method('deleteByUserId');
 
-        $this->assertFalse($this->service->reset('abc', self::newPassword()));
+        $this->assertFalse($this->service()->reset('abc', self::newPassword()));
     }
 }

@@ -17,26 +17,36 @@ use kintai\Core\Request;
 use kintai\Core\Services\AuditLogger;
 use kintai\UI\Controller\Api\V1\AuthController;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 final class AuthControllerTest extends TestCase
 {
-    private UserRepositoryInterface&MockObject     $users;
-    private ApiTokenRepositoryInterface&MockObject $tokens;
+    private UserRepositoryInterface&Stub     $users;
+    private ApiTokenRepositoryInterface&Stub $tokens;
     private AuthService $auth;
-    private AuthController $controller;
+    private ?AuthController $controller = null;
 
     protected function setUp(): void
     {
-        $storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
-        $stores     = $this->createMock(StoreRepositoryInterface::class);
-        $roles           = $this->createMock(RoleRepositoryInterface::class);
-        $roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
-        $this->users  = $this->createMock(UserRepositoryInterface::class);
-        $this->tokens = $this->createMock(ApiTokenRepositoryInterface::class);
+        $storeUsers = $this->createStub(StoreUserRepositoryInterface::class);
+        $stores     = $this->createStub(StoreRepositoryInterface::class);
+        $roles           = $this->createStub(RoleRepositoryInterface::class);
+        $roleAssignments = $this->createStub(RoleAssignmentRepositoryInterface::class);
+        $this->users  = $this->createStub(UserRepositoryInterface::class);
+        $this->tokens = $this->createStub(ApiTokenRepositoryInterface::class);
 
         $this->auth       = new AuthService($this->users, $storeUsers, $stores, $roles, $roleAssignments, $this->createStub(RememberTokenRepositoryInterface::class));
-        $this->controller = new AuthController($this->auth, $this->tokens, $this->users, new AuditLogger());
+    }
+
+    /** Objet testé, construit à la première utilisation : un test peut d'abord remplacer un bouchon par un mock. */
+    private function controller(): AuthController
+    {
+        if ($this->controller === null) {
+            $this->controller = new AuthController($this->auth, $this->tokens, $this->users, new AuditLogger());
+        }
+
+        return $this->controller;
     }
 
     // -------------------------------------------------------------------------
@@ -46,7 +56,7 @@ final class AuthControllerTest extends TestCase
     public function testPingReturnsOk(): void
     {
         $req      = $this->makeRequest('GET', '/api/v1/ping');
-        $response = $this->controller->ping($req);
+        $response = $this->controller()->ping($req);
 
         $this->assertSame(200, $response->status());
         $data = json_decode($response->body(), true);
@@ -61,7 +71,7 @@ final class AuthControllerTest extends TestCase
     public function testLoginMissingCredentialsReturns422(): void
     {
         $req      = $this->makeRequest('POST', '/api/v1/auth/login', json: ['password' => 'x']);
-        $response = $this->controller->login($req);
+        $response = $this->controller()->login($req);
 
         $this->assertSame(422, $response->status());
         $data = json_decode($response->body(), true);
@@ -76,7 +86,7 @@ final class AuthControllerTest extends TestCase
             'email'    => 'nobody@example.com',
             'password' => 'wrong',
         ]);
-        $response = $this->controller->login($req);
+        $response = $this->controller()->login($req);
 
         $this->assertSame(401, $response->status());
         $data = json_decode($response->body(), true);
@@ -88,7 +98,7 @@ final class AuthControllerTest extends TestCase
         $this->users->method('findByEmail')->willReturn(null);
 
         $req = $this->makeRequest('POST', '/api/v1/auth/login', json: ['email' => 'nobody@example.com', 'password' => bin2hex(random_bytes(6))]);
-        $this->controller->login($req);
+        $this->controller()->login($req);
 
         // Lu par LoginThrottleMiddleware : seuls les échecs comptent.
         $this->assertTrue($req->getAttribute('auth_failed'));
@@ -97,7 +107,7 @@ final class AuthControllerTest extends TestCase
     public function testMissingCredentialsDoNotCountAsAFailedLogin(): void
     {
         $req = $this->makeRequest('POST', '/api/v1/auth/login', json: ['password' => bin2hex(random_bytes(6))]);
-        $response = $this->controller->login($req);
+        $response = $this->controller()->login($req);
 
         $this->assertSame(422, $response->status());
         $this->assertNull($req->getAttribute('auth_failed'));
@@ -112,7 +122,7 @@ final class AuthControllerTest extends TestCase
             'store_code'    => 'SHOP1',
             'password'      => 'wrong',
         ]);
-        $response = $this->controller->login($req);
+        $response = $this->controller()->login($req);
 
         $this->assertSame(401, $response->status());
     }
@@ -147,7 +157,7 @@ final class AuthControllerTest extends TestCase
             'email'    => 'alice@example.com',
             'password' => 'secret-passphrase',
         ]);
-        $response = $this->controller->login($req);
+        $response = $this->controller()->login($req);
 
         $this->assertSame(201, $response->status());
         $data = json_decode($response->body(), true);
@@ -170,6 +180,7 @@ final class AuthControllerTest extends TestCase
     #[\PHPUnit\Framework\Attributes\DataProvider('weakPasswords')]
     public function testWeakPasswordGetsNoTokenAndMustBeChangedOnTheWeb(string $password): void
     {
+        $this->tokens = $this->createMock(ApiTokenRepositoryInterface::class);
         $row = [
             'id' => 9, 'email' => 'weak@example.com', 'password_hash' => password_hash($password, PASSWORD_BCRYPT, ['cost' => 4]),
             'is_active' => true, 'deleted_at' => null,
@@ -179,7 +190,7 @@ final class AuthControllerTest extends TestCase
         $this->tokens->expects($this->never())->method('save');
 
         $req      = $this->makeRequest('POST', '/api/v1/auth/login', json: ['email' => 'weak@example.com', 'password' => $password]);
-        $response = $this->controller->login($req);
+        $response = $this->controller()->login($req);
 
         $this->assertSame(403, $response->status());
         $this->assertSame('PASSWORD_CHANGE_REQUIRED', json_decode($response->body(), true)['code']);
@@ -240,7 +251,7 @@ final class AuthControllerTest extends TestCase
         $req = $this->makeRequest('POST', '/api/v1/auth/login', json: [
             'email' => 'x@x.com', 'password' => 'long-enough-pass',
         ]);
-        $this->controller->login($req);
+        $this->controller()->login($req);
 
         $this->assertMatchesRegularExpression('/^[0-9a-f]{64}$/', $capturedToken);
     }
@@ -251,21 +262,23 @@ final class AuthControllerTest extends TestCase
 
     public function testLogoutDeletesToken(): void
     {
+        $this->tokens = $this->createMock(ApiTokenRepositoryInterface::class);
         $this->tokens->expects($this->once())->method('delete')->with(42);
 
         $req = $this->makeRequest('POST', '/api/v1/auth/logout');
         $req->setAttribute('api_token', ['id' => 42]);
 
-        $response = $this->controller->logout($req);
+        $response = $this->controller()->logout($req);
         $this->assertSame(204, $response->status());
     }
 
     public function testLogoutWithoutTokenAttributeIsGraceful(): void
     {
+        $this->tokens = $this->createMock(ApiTokenRepositoryInterface::class);
         $this->tokens->expects($this->never())->method('delete');
 
         $req      = $this->makeRequest('POST', '/api/v1/auth/logout');
-        $response = $this->controller->logout($req);
+        $response = $this->controller()->logout($req);
 
         $this->assertSame(204, $response->status());
     }
@@ -281,7 +294,7 @@ final class AuthControllerTest extends TestCase
         $req = $this->makeRequest('GET', '/api/v1/auth/me');
         $req->setAttribute('auth_user', $user);
 
-        $response = $this->controller->me($req);
+        $response = $this->controller()->me($req);
 
         $this->assertSame(200, $response->status());
         $data = json_decode($response->body(), true);
@@ -303,7 +316,7 @@ final class AuthControllerTest extends TestCase
         $req = $this->makeRequest('GET', '/api/v1/auth/tokens');
         $req->setAttribute('auth_user', ['id' => 3]);
 
-        $response = $this->controller->listTokens($req);
+        $response = $this->controller()->listTokens($req);
 
         $this->assertSame(200, $response->status());
         $data = json_decode($response->body(), true);
@@ -319,6 +332,7 @@ final class AuthControllerTest extends TestCase
 
     public function testRevokeTokenDeletesWhenOwnerMatches(): void
     {
+        $this->tokens = $this->createMock(ApiTokenRepositoryInterface::class);
         $this->tokens->method('findById')->willReturn(['id' => 5, 'user_id' => 3]);
         $this->tokens->expects($this->once())->method('delete')->with(5);
 
@@ -326,7 +340,7 @@ final class AuthControllerTest extends TestCase
         $req->setRouteParams(['id' => '5']);
         $req->setAttribute('auth_user', ['id' => 3]);
 
-        $response = $this->controller->revokeToken($req);
+        $response = $this->controller()->revokeToken($req);
         $this->assertSame(204, $response->status());
     }
 
@@ -339,7 +353,7 @@ final class AuthControllerTest extends TestCase
         $req->setAttribute('auth_user', ['id' => 3]);
 
         $this->expectException(NotFoundException::class);
-        $this->controller->revokeToken($req);
+        $this->controller()->revokeToken($req);
     }
 
     public function testRevokeTokenThrowsWhenTokenNotFound(): void
@@ -351,7 +365,7 @@ final class AuthControllerTest extends TestCase
         $req->setAttribute('auth_user', ['id' => 3]);
 
         $this->expectException(NotFoundException::class);
-        $this->controller->revokeToken($req);
+        $this->controller()->revokeToken($req);
     }
 
     // -------------------------------------------------------------------------
@@ -409,7 +423,7 @@ final class AuthControllerTest extends TestCase
         });
 
         $req = $this->makeRequest('POST', '/api/v1/auth/login', json: ['email' => 'alice@example.com', 'password' => 'secret-passphrase'] + $extra);
-        $response = $this->controller->login($req);
+        $response = $this->controller()->login($req);
 
         return [$response, $saved];
     }
@@ -447,10 +461,11 @@ final class AuthControllerTest extends TestCase
     #[\PHPUnit\Framework\Attributes\DataProvider('invalidExpiresIn')]
     public function testInvalidExpiresInIsRejectedWithoutIssuingAToken(mixed $expiresIn): void
     {
+        $this->tokens = $this->createMock(ApiTokenRepositoryInterface::class);
         $this->tokens->expects($this->never())->method('save');
 
         $req = $this->makeRequest('POST', '/api/v1/auth/login', json: ['email' => 'alice@example.com', 'password' => 'x', 'expires_in' => $expiresIn]);
-        $response = $this->controller->login($req);
+        $response = $this->controller()->login($req);
 
         $this->assertSame(422, $response->status());
         $this->assertNull($req->getAttribute('auth_failed'));

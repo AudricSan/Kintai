@@ -19,6 +19,7 @@ use kintai\Core\Services\UpdateService;
 use kintai\UI\Controller\Web\System\BundleMarketController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 if (!defined('BASE_PATH')) {
@@ -27,9 +28,9 @@ if (!defined('BASE_PATH')) {
 
 final class BundleMarketControllerTest extends TestCase
 {
-    private BundleRegistryRepositoryInterface&MockObject $registries;
-    private InstalledBundleRepositoryInterface&MockObject $installedBundles;
-    private AppSettingsRepositoryInterface&MockObject $appSettings;
+    private BundleRegistryRepositoryInterface&Stub $registries;
+    private InstalledBundleRepositoryInterface&Stub $installedBundles;
+    private AppSettingsRepositoryInterface&Stub $appSettings;
     private ?\Closure $registryFetcher = null;
     private ?\Closure $releaseFetcher = null;
     private ?\Closure $zipDownloader = null;
@@ -41,9 +42,9 @@ final class BundleMarketControllerTest extends TestCase
         $this->ensureViewFile('system.bundle-registries');
         $this->ensureViewFile('system.bundle-market');
         $this->ensureViewFile('layout.app');
-        $this->registries = $this->createMock(BundleRegistryRepositoryInterface::class);
-        $this->installedBundles = $this->createMock(InstalledBundleRepositoryInterface::class);
-        $this->appSettings = $this->createMock(AppSettingsRepositoryInterface::class);
+        $this->registries = $this->createStub(BundleRegistryRepositoryInterface::class);
+        $this->installedBundles = $this->createStub(InstalledBundleRepositoryInterface::class);
+        $this->appSettings = $this->createStub(AppSettingsRepositoryInterface::class);
         $this->appSettings->method('all')->willReturn([]);
 
         $this->bundlesDir = sys_get_temp_dir() . '/kintai-bundle-market-' . uniqid();
@@ -105,6 +106,7 @@ final class BundleMarketControllerTest extends TestCase
 
     public function testStoreRejectsInvalidUrl(): void
     {
+        $this->registries = $this->createMock(BundleRegistryRepositoryInterface::class);
         $_POST = ['name' => 'Mon registry', 'url' => 'not-a-url'];
 
         $this->registries->expects($this->never())->method('create');
@@ -117,6 +119,7 @@ final class BundleMarketControllerTest extends TestCase
 
     public function testStoreRejectsNonHttpsUrl(): void
     {
+        $this->registries = $this->createMock(BundleRegistryRepositoryInterface::class);
         $_POST = ['name' => 'Mon registry', 'url' => 'http://example.test/registry.json'];
 
         $this->registries->expects($this->never())->method('create');
@@ -128,6 +131,7 @@ final class BundleMarketControllerTest extends TestCase
 
     public function testStoreRejectsDuplicateUrl(): void
     {
+        $this->registries = $this->createMock(BundleRegistryRepositoryInterface::class);
         $_POST = ['name' => 'Mon registry', 'url' => 'https://example.test/registry.json'];
         $this->registries->method('existsByUrl')->willReturn(true);
 
@@ -140,6 +144,7 @@ final class BundleMarketControllerTest extends TestCase
 
     public function testStoreCreatesRegistryAndRedirectsToSuccess(): void
     {
+        $this->registries = $this->createMock(BundleRegistryRepositoryInterface::class);
         $_POST = ['name' => 'Mon registry', 'url' => 'https://example.test/registry.json'];
         $this->registries->method('existsByUrl')->willReturn(false);
         $this->registries->expects($this->once())->method('create')
@@ -153,6 +158,7 @@ final class BundleMarketControllerTest extends TestCase
 
     public function testDestroyRefusesToDeleteTheOfficialRegistry(): void
     {
+        $this->registries = $this->createMock(BundleRegistryRepositoryInterface::class);
         $this->registries->method('find')->willReturn(['id' => 1, 'name' => 'Officiel', 'url' => 'https://example.test/official.json', 'is_official' => true]);
         $this->registries->expects($this->never())->method('delete');
 
@@ -166,6 +172,7 @@ final class BundleMarketControllerTest extends TestCase
 
     public function testDestroyDeletesANonOfficialRegistry(): void
     {
+        $this->registries = $this->createMock(BundleRegistryRepositoryInterface::class);
         $this->registries->method('find')->willReturn(['id' => 2, 'name' => 'Perso', 'url' => 'https://example.test/perso.json', 'is_official' => false]);
         $this->registries->expects($this->once())->method('delete')->with(2);
 
@@ -209,7 +216,6 @@ final class BundleMarketControllerTest extends TestCase
      */
     public function testMarketResolvesLatestVersionFromConfiguredChannelWithSchema2Registry(): void
     {
-        $this->appSettings = $this->createMock(AppSettingsRepositoryInterface::class);
         $this->appSettings->method('all')->willReturn(['bundle_update_channel' => 'alpha']);
 
         $this->registries->method('all')->willReturn([
@@ -241,6 +247,8 @@ final class BundleMarketControllerTest extends TestCase
 
     public function testSaveChannelPersistsChannelAndRedirects(): void
     {
+        $this->appSettings = $this->createMock(AppSettingsRepositoryInterface::class);
+        $this->appSettings->method('all')->willReturn([]);
         $_POST = ['channel' => 'beta'];
 
         $this->appSettings->expects($this->once())->method('setMany')->with(['bundle_update_channel' => 'beta']);
@@ -252,6 +260,8 @@ final class BundleMarketControllerTest extends TestCase
 
     public function testSaveChannelRejectsUnknownValueAndFallsBackToRelease(): void
     {
+        $this->appSettings = $this->createMock(AppSettingsRepositoryInterface::class);
+        $this->appSettings->method('all')->willReturn([]);
         $_POST = ['channel' => 'nightly'];
 
         $this->appSettings->expects($this->once())->method('setMany')->with(['bundle_update_channel' => 'release']);
@@ -312,6 +322,7 @@ final class BundleMarketControllerTest extends TestCase
 
     public function testInstallSucceedsForAThirdPartyBundleWithExplicitConfirmation(): void
     {
+        $this->installedBundles = $this->createMock(InstalledBundleRepositoryInterface::class);
         $zipPath = $this->buildFixtureZip();
         $this->releaseFetcher = fn() => 'https://example.test/fake.zip';
         $this->zipDownloader = function (string $url, string $dest) use ($zipPath) { return copy($zipPath, $dest); };
@@ -369,6 +380,7 @@ final class BundleMarketControllerTest extends TestCase
 
     public function testInstallSucceedsWhenTheArchiveMatchesTheCommitPinnedByTheRegistry(): void
     {
+        $this->installedBundles = $this->createMock(InstalledBundleRepositoryInterface::class);
         $this->arrangePinnedInstall(self::PINNED_COMMIT, self::PINNED_COMMIT);
         $this->installedBundles->expects($this->once())->method('upsert');
 
@@ -379,6 +391,7 @@ final class BundleMarketControllerTest extends TestCase
 
     public function testInstallIsRefusedWhenTheTagWasMovedAfterTheRegistryPinnedIt(): void
     {
+        $this->installedBundles = $this->createMock(InstalledBundleRepositoryInterface::class);
         // Le registry épingle PINNED_COMMIT ; GitHub sert l'archive d'un autre commit (tag déplacé).
         $this->arrangePinnedInstall(self::PINNED_COMMIT, self::OTHER_COMMIT);
         $this->installedBundles->expects($this->never())->method('upsert');
@@ -396,6 +409,7 @@ final class BundleMarketControllerTest extends TestCase
 
     public function testInstallIsRefusedWhenTheRegistryCannotBeReadToCheckThePin(): void
     {
+        $this->installedBundles = $this->createMock(InstalledBundleRepositoryInterface::class);
         // Sinon, empêcher la lecture du registry suffirait à désactiver la vérification.
         $this->arrangePinnedInstall(self::PINNED_COMMIT, self::OTHER_COMMIT, registryReachable: false);
         $this->installedBundles->expects($this->never())->method('upsert');
@@ -407,6 +421,7 @@ final class BundleMarketControllerTest extends TestCase
 
     public function testInstallStillWorksWhenTheRegistryDoesNotPinThisVersion(): void
     {
+        $this->installedBundles = $this->createMock(InstalledBundleRepositoryInterface::class);
         $this->arrangePinnedInstall(null, self::OTHER_COMMIT);
         $this->installedBundles->expects($this->once())->method('upsert');
 
@@ -417,6 +432,7 @@ final class BundleMarketControllerTest extends TestCase
 
     public function testTheExpectedCommitComesFromTheRegistryNotFromTheRequest(): void
     {
+        $this->installedBundles = $this->createMock(InstalledBundleRepositoryInterface::class);
         // Un formulaire ne doit pas pouvoir choisir ce qu'on vérifie : un champ « commit » forgé est ignoré.
         $this->arrangePinnedInstall(self::PINNED_COMMIT, self::OTHER_COMMIT);
         $_POST['commit'] = self::OTHER_COMMIT;
@@ -440,6 +456,7 @@ final class BundleMarketControllerTest extends TestCase
 
     public function testUninstallRedirectsWithErrorWhenSlugIsMissing(): void
     {
+        $this->installedBundles = $this->createMock(InstalledBundleRepositoryInterface::class);
         $_POST = ['slug' => ''];
 
         $this->installedBundles->expects($this->never())->method('delete');
@@ -451,6 +468,9 @@ final class BundleMarketControllerTest extends TestCase
 
     public function testUninstallFailsForABundleNotManagedByTheInstaller(): void
     {
+        $this->installedBundles = $this->createMock(InstalledBundleRepositoryInterface::class);
+        $this->appSettings = $this->createMock(AppSettingsRepositoryInterface::class);
+        $this->appSettings->method('all')->willReturn([]);
         $_POST = ['slug' => 'daily-report'];
         $this->installedBundles->method('find')->willReturn(null);
         $this->installedBundles->expects($this->never())->method('delete');
@@ -463,11 +483,14 @@ final class BundleMarketControllerTest extends TestCase
 
     public function testUninstallRemovesTheBundleAndClearsItFromEnabledBundles(): void
     {
+        $this->installedBundles = $this->createMock(InstalledBundleRepositoryInterface::class);
+        $this->appSettings = $this->createMock(AppSettingsRepositoryInterface::class);
+        $this->appSettings->method('all')->willReturn([]);
         mkdir($this->bundlesDir . '/feedback/1.0.0', 0777, true);
         $_POST = ['slug' => 'feedback'];
         $this->installedBundles->method('find')->willReturn(['slug' => 'feedback', 'active_version' => '1.0.0', 'source_registry_url' => null]);
         $this->installedBundles->expects($this->once())->method('delete')->with('feedback');
-        $this->appSettings->method('get')->with('enabled_bundles')->willReturn(json_encode(['feedback', 'messaging']));
+        $this->appSettings->expects($this->atLeastOnce())->method('get')->with('enabled_bundles')->willReturn(json_encode(['feedback', 'messaging']));
         $this->appSettings->expects($this->once())->method('set')
             ->with('enabled_bundles', $this->callback(fn(string $json) => json_decode($json, true) === ['messaging']));
 

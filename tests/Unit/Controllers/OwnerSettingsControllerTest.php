@@ -37,7 +37,7 @@ final class OwnerSettingsControllerTest extends TestCase
         touch($layoutDir . '/app.php');
 
         $container = new Container();
-        $container->instance(LogRepositoryInterface::class, $this->createMock(LogRepositoryInterface::class));
+        $container->instance(LogRepositoryInterface::class, $this->createStub(LogRepositoryInterface::class));
         Log::setContainer($container);
     }
 
@@ -57,7 +57,7 @@ final class OwnerSettingsControllerTest extends TestCase
     {
         $this->stored = $initialStored;
 
-        $repo = $this->createMock(AppSettingsRepositoryInterface::class);
+        $repo = $this->createStub(AppSettingsRepositoryInterface::class);
         $repo->method('all')->willReturnCallback(fn() => $this->stored);
         $repo->method('setMany')->willReturnCallback(function (array $settings): void {
             foreach ($settings as $k => $v) {

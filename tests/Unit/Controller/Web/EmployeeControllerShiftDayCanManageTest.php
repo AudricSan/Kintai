@@ -28,7 +28,7 @@ use kintai\Core\Services\PushNotificationService;
 use kintai\Core\Services\TranslationService;
 use kintai\UI\Controller\Web\EmployeeController;
 use kintai\UI\ViewRenderer;
-use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -39,10 +39,10 @@ use PHPUnit\Framework\TestCase;
  */
 final class EmployeeControllerShiftDayCanManageTest extends TestCase
 {
-    private StoreUserRepositoryInterface&MockObject $storeUsers;
-    private StoreRepositoryInterface&MockObject $stores;
-    private RoleAssignmentRepositoryInterface&MockObject $assignments;
-    private RoleRepositoryInterface&MockObject $roles;
+    private StoreUserRepositoryInterface&Stub $storeUsers;
+    private StoreRepositoryInterface&Stub $stores;
+    private RoleAssignmentRepositoryInterface&Stub $assignments;
+    private RoleRepositoryInterface&Stub $roles;
     private EmployeeController $controller;
 
     protected function setUp(): void
@@ -51,40 +51,40 @@ final class EmployeeControllerShiftDayCanManageTest extends TestCase
         $this->writeViewFile($viewDir, 'scheduling.shifts-timeline', '<?= $can_manage ? "CAN_MANAGE_TRUE" : "CAN_MANAGE_FALSE" ?>');
         $this->writeViewFile($viewDir, 'layout.app', '<?= $content ?>');
 
-        $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
-        $this->stores = $this->createMock(StoreRepositoryInterface::class);
-        $this->assignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
-        $this->roles = $this->createMock(RoleRepositoryInterface::class);
+        $this->storeUsers = $this->createStub(StoreUserRepositoryInterface::class);
+        $this->stores = $this->createStub(StoreRepositoryInterface::class);
+        $this->assignments = $this->createStub(RoleAssignmentRepositoryInterface::class);
+        $this->roles = $this->createStub(RoleRepositoryInterface::class);
 
         $this->controller = new EmployeeController(
             new ViewRenderer($viewDir),
-            $this->createMock(ShiftRepositoryInterface::class),
-            $this->createMock(ShiftTypeRepositoryInterface::class),
+            $this->createStub(ShiftRepositoryInterface::class),
+            $this->createStub(ShiftTypeRepositoryInterface::class),
             $this->stores,
             $this->storeUsers,
-            $this->createMock(UserRepositoryInterface::class),
-            $this->createMock(UserShiftTypeRateRepositoryInterface::class),
+            $this->createStub(UserRepositoryInterface::class),
+            $this->createStub(UserShiftTypeRateRepositoryInterface::class),
             new AuditLogger(),
-            $this->createMock(IcalTokenRepositoryInterface::class),
-            $this->createMock(AvailabilityRepositoryInterface::class),
-            $this->createMock(UserDashboardPrefsRepositoryInterface::class),
+            $this->createStub(IcalTokenRepositoryInterface::class),
+            $this->createStub(AvailabilityRepositoryInterface::class),
+            $this->createStub(UserDashboardPrefsRepositoryInterface::class),
             new NotificationService(
-                $this->createMock(NotificationRepositoryInterface::class),
-                new PushNotificationService([], $this->createMock(DevicePushTokenRepositoryInterface::class)),
+                $this->createStub(NotificationRepositoryInterface::class),
+                new PushNotificationService([], $this->createStub(DevicePushTokenRepositoryInterface::class)),
                 new TranslationService(
                     $this->createStub(TranslationRepositoryInterface::class),
                     $this->createStub(LanguageRepositoryInterface::class),
                 ),
-                $this->createMock(UserRepositoryInterface::class),
+                $this->createStub(UserRepositoryInterface::class),
             ),
-            $this->createMock(UserNavPrefsRepositoryInterface::class),
+            $this->createStub(UserNavPrefsRepositoryInterface::class),
             new PermissionService($this->assignments, $this->roles),
         );
 
-        $this->storeUsers->method('findByUser')->with(9)->willReturn([
+        $this->storeUsers->method('findByUser')->willReturnCallback(fn($a0) => $a0 === 9 ? [
             ['user_id' => 9, 'store_id' => 1, 'role' => 'staff'],
             ['user_id' => 9, 'store_id' => 2, 'role' => 'staff'],
-        ]);
+        ] : []);
         $this->stores->method('findById')->willReturn(['id' => 1, 'name' => 'Store 1', 'currency' => 'JPY']);
     }
 
@@ -95,11 +95,11 @@ final class EmployeeControllerShiftDayCanManageTest extends TestCase
 
     private function grantShiftsUpdateOnStore(int $storeId): void
     {
-        $this->assignments->method('findByUser')->with(9)->willReturn([
+        $this->assignments->method('findByUser')->willReturnCallback(fn($a0) => $a0 === 9 ? [
             ['id' => 1, 'user_id' => 9, 'role_id' => 5, 'scope_type' => 'store', 'scope_id' => $storeId],
-        ]);
-        $this->roles->method('findById')->with(5)->willReturn(['id' => 5, 'is_system' => 0]);
-        $this->roles->method('getPermissions')->with(5)->willReturn(['shifts.update']);
+        ] : []);
+        $this->roles->method('findById')->willReturnCallback(fn($a0) => $a0 === 5 ? ['id' => 5, 'is_system' => 0] : null);
+        $this->roles->method('getPermissions')->willReturnCallback(fn($a0) => $a0 === 5 ? ['shifts.update'] : []);
     }
 
     public function testCanManageTrueWhenRoleGrantsShiftsUpdateOnDisplayedStore(): void
@@ -133,7 +133,7 @@ final class EmployeeControllerShiftDayCanManageTest extends TestCase
 
     public function testCanManageFalseWhenNoRoleGrantsAnything(): void
     {
-        $this->assignments->method('findByUser')->with(9)->willReturn([]);
+        $this->assignments->method('findByUser')->willReturnCallback(fn($a0) => $a0 === 9 ? [] : []);
 
         $_GET = ['store_id' => '1'];
         $req = new Request();
@@ -147,7 +147,7 @@ final class EmployeeControllerShiftDayCanManageTest extends TestCase
 
     public function testCanManageTrueForOwnerRegardlessOfPermissions(): void
     {
-        $this->assignments->method('findByUser')->with(9)->willReturn([]);
+        $this->assignments->method('findByUser')->willReturnCallback(fn($a0) => $a0 === 9 ? [] : []);
 
         $_GET = ['store_id' => '1'];
         $req = new Request();

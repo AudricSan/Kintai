@@ -14,6 +14,7 @@ use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -23,7 +24,7 @@ use PHPUnit\Framework\TestCase;
  */
 final class AuthServiceSessionRevocationTest extends TestCase
 {
-    private UserRepositoryInterface&MockObject $users;
+    private UserRepositoryInterface&Stub $users;
     /** @var array<string, mixed> Ligne « en base » que findById() renvoie, modifiable par chaque test. */
     private array $row;
     private AuthService $auth;
@@ -49,18 +50,18 @@ final class AuthServiceSessionRevocationTest extends TestCase
             'password_hash' => password_hash($this->pwOne, PASSWORD_BCRYPT, ['cost' => 4]),
         ];
 
-        $this->users = $this->createMock(UserRepositoryInterface::class);
+        $this->users = $this->createStub(UserRepositoryInterface::class);
         $this->users->method('findById')->willReturnCallback(fn() => $this->row);
         $this->users->method('findByEmail')->willReturnCallback(fn() => $this->row);
 
-        $roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
+        $roleAssignments = $this->createStub(RoleAssignmentRepositoryInterface::class);
         $roleAssignments->method('findByUser')->willReturn([]);
 
         $this->auth = new AuthService(
             $this->users,
-            $this->createMock(StoreUserRepositoryInterface::class),
-            $this->createMock(StoreRepositoryInterface::class),
-            $this->createMock(RoleRepositoryInterface::class),
+            $this->createStub(StoreUserRepositoryInterface::class),
+            $this->createStub(StoreRepositoryInterface::class),
+            $this->createStub(RoleRepositoryInterface::class),
             $roleAssignments,
             $this->createStub(RememberTokenRepositoryInterface::class),
         );
@@ -105,14 +106,14 @@ final class AuthServiceSessionRevocationTest extends TestCase
     public function testSessionOfAnUnknownUserIsRefused(): void
     {
         $_SESSION['auth_user_id'] = 999;
-        $users = $this->createMock(UserRepositoryInterface::class);
+        $users = $this->createStub(UserRepositoryInterface::class);
         $users->method('findById')->willReturn(null);
         $auth = new AuthService(
             $users,
-            $this->createMock(StoreUserRepositoryInterface::class),
-            $this->createMock(StoreRepositoryInterface::class),
-            $this->createMock(RoleRepositoryInterface::class),
-            $this->createMock(RoleAssignmentRepositoryInterface::class),
+            $this->createStub(StoreUserRepositoryInterface::class),
+            $this->createStub(StoreRepositoryInterface::class),
+            $this->createStub(RoleRepositoryInterface::class),
+            $this->createStub(RoleAssignmentRepositoryInterface::class),
             $this->createStub(RememberTokenRepositoryInterface::class),
         );
 

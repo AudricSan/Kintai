@@ -59,7 +59,7 @@ final class NotificationServiceTest extends TestCase
 
         // FCM désactivé (config vide) : PushNotificationService::sendToUser() est un
         // no-op immédiat, aucun appel réseau n'a lieu dans ce test.
-        $push = new PushNotificationService([], $this->createMock(DevicePushTokenRepositoryInterface::class));
+        $push = new PushNotificationService([], $this->createStub(DevicePushTokenRepositoryInterface::class));
 
         $translations = new TranslationService(
             new JsonTranslationRepository(BASE_PATH . '/lang', BASE_PATH . '/src/Bundles'),
@@ -67,7 +67,7 @@ final class NotificationServiceTest extends TestCase
         );
 
         $this->usersById = [];
-        $this->users = $this->createMock(UserRepositoryInterface::class);
+        $this->users = $this->createStub(UserRepositoryInterface::class);
         $this->users->method('findById')->willReturnCallback(
             fn(int $id) => $this->usersById[$id] ?? null
         );

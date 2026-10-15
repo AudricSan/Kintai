@@ -18,6 +18,7 @@ use kintai\Core\Services\PublicUrlResolver;
 use kintai\UI\Controller\Web\PasswordResetController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -29,8 +30,8 @@ use PHPUnit\Framework\TestCase;
  */
 final class PasswordResetControllerI18nTest extends TestCase
 {
-    private PasswordResetRepositoryInterface&MockObject $resets;
-    private UserRepositoryInterface&MockObject $users;
+    private PasswordResetRepositoryInterface&Stub $resets;
+    private UserRepositoryInterface&Stub $users;
     private PasswordResetController $controller;
 
     protected function setUp(): void
@@ -41,20 +42,20 @@ final class PasswordResetControllerI18nTest extends TestCase
         $this->writeView($viewDir, 'auth/reset-password', '<?= "TITLE=" . $title . "|ERROR=" . ($error ?? "") ?>');
         $this->writeView($viewDir, 'layout/guest', '<?= $content ?>');
 
-        $this->resets = $this->createMock(PasswordResetRepositoryInterface::class);
-        $this->users  = $this->createMock(UserRepositoryInterface::class);
+        $this->resets = $this->createStub(PasswordResetRepositoryInterface::class);
+        $this->users  = $this->createStub(UserRepositoryInterface::class);
 
         $service = new PasswordResetService(
             $this->resets,
             $this->users,
             new MailerService(['driver' => 'native', 'from' => ['address' => 'test@kintai.test', 'name' => 'Kintai']]),
             new CredentialRevoker(
-                $this->createMock(RememberTokenRepositoryInterface::class),
-                $this->createMock(ApiTokenRepositoryInterface::class),
+                $this->createStub(RememberTokenRepositoryInterface::class),
+                $this->createStub(ApiTokenRepositoryInterface::class),
             ),
         );
 
-        $settingsRepo = $this->createMock(AppSettingsRepositoryInterface::class);
+        $settingsRepo = $this->createStub(AppSettingsRepositoryInterface::class);
         $settingsRepo->method('all')->willReturn([]);
         $this->controller = new PasswordResetController(
             new ViewRenderer($viewDir),

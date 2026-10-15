@@ -24,7 +24,7 @@ use PHPUnit\Framework\TestCase;
 
 final class AuthControllerLoginTest extends TestCase
 {
-    private AuthController $controller;
+    private ?AuthController $controller = null;
     private $users;
 
     protected function setUp(): void
@@ -34,30 +34,36 @@ final class AuthControllerLoginTest extends TestCase
         }
         unset($_SESSION['auth_user_id']);
 
-        $this->users = $this->createMock(UserRepositoryInterface::class);
+        $this->users = $this->createStub(UserRepositoryInterface::class);
+    }
 
-        $storeUsers      = $this->createMock(StoreUserRepositoryInterface::class);
-        $stores          = $this->createMock(StoreRepositoryInterface::class);
-        $roles           = $this->createMock(RoleRepositoryInterface::class);
-        $roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
-        $roleAssignments->method('findByUser')->willReturn([]);
-        $rememberTokens = $this->createStub(RememberTokenRepositoryInterface::class);
+    /** Objet testé, construit à la première utilisation : un test peut d'abord remplacer un bouchon par un mock. */
+    private function controller(): AuthController
+    {
+        if ($this->controller === null) {
+            $storeUsers      = $this->createStub(StoreUserRepositoryInterface::class);
+            $stores          = $this->createStub(StoreRepositoryInterface::class);
+            $roles           = $this->createStub(RoleRepositoryInterface::class);
+            $roleAssignments = $this->createStub(RoleAssignmentRepositoryInterface::class);
+            $rememberTokens = $this->createStub(RememberTokenRepositoryInterface::class);
+            $auth = new AuthService($this->users, $storeUsers, $stores, $roles, $roleAssignments, $rememberTokens);
+            $roleAssignments->method('findByUser')->willReturn([]);
+            $this->controller = new AuthController(
+                new ViewRenderer(sys_get_temp_dir()),
+                $auth,
+                new AuditLogger(),
+                $this->users,
+                $stores,
+                $storeUsers,
+                $this->createStub(IcalTokenRepositoryInterface::class),
+                $this->createStub(UserNavPrefsRepositoryInterface::class),
+                $this->createStub(AvailabilityRepositoryInterface::class),
+                $this->createStub(LanguageRepositoryInterface::class),
+                new AvatarImageOptimizer(),
+            );
+        }
 
-        $auth = new AuthService($this->users, $storeUsers, $stores, $roles, $roleAssignments, $rememberTokens);
-
-        $this->controller = new AuthController(
-            new ViewRenderer(sys_get_temp_dir()),
-            $auth,
-            new AuditLogger(),
-            $this->users,
-            $stores,
-            $storeUsers,
-            $this->createMock(IcalTokenRepositoryInterface::class),
-            $this->createMock(UserNavPrefsRepositoryInterface::class),
-            $this->createMock(AvailabilityRepositoryInterface::class),
-            $this->createMock(LanguageRepositoryInterface::class),
-            new AvatarImageOptimizer(),
-        );
+        return $this->controller;
     }
 
     protected function tearDown(): void
@@ -68,6 +74,7 @@ final class AuthControllerLoginTest extends TestCase
 
     public function testSuccessfulLoginUpdatesLastLoginAt(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $user = [
             'id'            => 9,
             'email'         => 'employee@example.test',
@@ -75,8 +82,8 @@ final class AuthControllerLoginTest extends TestCase
             'is_active'     => 1,
             'deleted_at'    => null,
         ];
-        $this->users->method('findByEmail')->with('employee@example.test')->willReturn($user);
-        $this->users->method('findById')->with(9)->willReturn($user);
+        $this->users->expects($this->atLeastOnce())->method('findByEmail')->with('employee@example.test')->willReturn($user);
+        $this->users->expects($this->atLeastOnce())->method('findById')->with(9)->willReturn($user);
 
         $this->users->expects($this->once())
             ->method('save')
@@ -94,7 +101,7 @@ final class AuthControllerLoginTest extends TestCase
         ];
         $request = new Request();
 
-        $response = $this->controller->login($request);
+        $response = $this->controller()->login($request);
 
         $this->assertSame(302, $response->status());
     }
@@ -105,7 +112,7 @@ final class AuthControllerLoginTest extends TestCase
 
         $_POST = ['login_mode' => 'email', 'email' => 'employee@example.test', 'password' => bin2hex(random_bytes(6))];
         $request = new Request();
-        $this->controller->login($request);
+        $this->controller()->login($request);
 
         // Lu par LoginThrottleMiddleware : seuls les échecs comptent.
         $this->assertTrue($request->getAttribute('auth_failed'));
@@ -127,14 +134,15 @@ final class AuthControllerLoginTest extends TestCase
 
         $_POST = ['login_mode' => 'email', 'email' => 'employee@example.test', 'password' => $password];
         $request = new Request();
-        $this->controller->login($request);
+        $this->controller()->login($request);
 
         $this->assertNull($request->getAttribute('auth_failed'));
     }
 
     public function testFailedLoginDoesNotTouchLastLoginAt(): void
     {
-        $this->users->method('findByEmail')->with('employee@example.test')->willReturn(null);
+        $this->users = $this->createMock(UserRepositoryInterface::class);
+        $this->users->expects($this->atLeastOnce())->method('findByEmail')->with('employee@example.test')->willReturn(null);
         $this->users->expects($this->never())->method('save');
 
         $_POST = [
@@ -144,7 +152,7 @@ final class AuthControllerLoginTest extends TestCase
         ];
         $request = new Request();
 
-        $response = $this->controller->login($request);
+        $response = $this->controller()->login($request);
 
         $this->assertSame(302, $response->status());
     }

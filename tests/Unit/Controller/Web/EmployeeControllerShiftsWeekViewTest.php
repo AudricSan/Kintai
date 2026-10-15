@@ -49,11 +49,11 @@ final class EmployeeControllerShiftsWeekViewTest extends TestCase
         $this->writeViewFile($viewDir, 'scheduling.shifts', '<?= ($can_manage ?? false) ? "CAN_MANAGE_TRUE" : "CAN_MANAGE_FALSE" ?>');
         $this->writeViewFile($viewDir, 'layout.app', '<?= $content ?>');
 
-        $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
-        $this->shifts      = $this->createMock(ShiftRepositoryInterface::class);
-        $users             = $this->createMock(UserRepositoryInterface::class);
-        $shiftTypes        = $this->createMock(ShiftTypeRepositoryInterface::class);
-        $stores            = $this->createMock(StoreRepositoryInterface::class);
+        $this->storeUsers = $this->createStub(StoreUserRepositoryInterface::class);
+        $this->shifts      = $this->createStub(ShiftRepositoryInterface::class);
+        $users             = $this->createStub(UserRepositoryInterface::class);
+        $shiftTypes        = $this->createStub(ShiftTypeRepositoryInterface::class);
+        $stores            = $this->createStub(StoreRepositoryInterface::class);
 
         $this->storeUsers->method('findByUser')->willReturn([]);
         $this->shifts->method('findByUser')->willReturn([]);
@@ -68,24 +68,24 @@ final class EmployeeControllerShiftsWeekViewTest extends TestCase
             $stores,
             $this->storeUsers,
             $users,
-            $this->createMock(UserShiftTypeRateRepositoryInterface::class),
+            $this->createStub(UserShiftTypeRateRepositoryInterface::class),
             new AuditLogger(),
-            $this->createMock(IcalTokenRepositoryInterface::class),
-            $this->createMock(AvailabilityRepositoryInterface::class),
-            $this->createMock(UserDashboardPrefsRepositoryInterface::class),
+            $this->createStub(IcalTokenRepositoryInterface::class),
+            $this->createStub(AvailabilityRepositoryInterface::class),
+            $this->createStub(UserDashboardPrefsRepositoryInterface::class),
             new NotificationService(
-                $this->createMock(NotificationRepositoryInterface::class),
-                new PushNotificationService([], $this->createMock(DevicePushTokenRepositoryInterface::class)),
+                $this->createStub(NotificationRepositoryInterface::class),
+                new PushNotificationService([], $this->createStub(DevicePushTokenRepositoryInterface::class)),
                 new TranslationService(
                     $this->createStub(TranslationRepositoryInterface::class),
                     $this->createStub(LanguageRepositoryInterface::class),
                 ),
-                $this->createMock(UserRepositoryInterface::class),
+                $this->createStub(UserRepositoryInterface::class),
             ),
-            $this->createMock(UserNavPrefsRepositoryInterface::class),
+            $this->createStub(UserNavPrefsRepositoryInterface::class),
             new PermissionService(
-                $this->createMock(RoleAssignmentRepositoryInterface::class),
-                $this->createMock(RoleRepositoryInterface::class),
+                $this->createStub(RoleAssignmentRepositoryInterface::class),
+                $this->createStub(RoleRepositoryInterface::class),
             ),
         );
     }

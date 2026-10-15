@@ -27,14 +27,14 @@ final class NotificationTypesTest extends TestCase
         $this->previous = $prop->getValue();
         $prop->setValue(null, null);
 
-        $translations = $this->createMock(TranslationRepositoryInterface::class);
+        $translations = $this->createStub(TranslationRepositoryInterface::class);
         $translations->method('findByLocale')->willReturn([
             'notif_acme_ready'        => 'Acme est prêt',
             'notif_acme_legacy'       => 'Ancienne notification Acme',
             'audit_acme_board_pinned' => 'Tableau épinglé',
             'notif_shift_assigned'    => 'Shift assigné',
         ]);
-        $languages = $this->createMock(LanguageRepositoryInterface::class);
+        $languages = $this->createStub(LanguageRepositoryInterface::class);
         $languages->method('findDefault')->willReturn(['code' => 'en']);
         $service = new TranslationService($translations, $languages);
         $service->setLocale('en');

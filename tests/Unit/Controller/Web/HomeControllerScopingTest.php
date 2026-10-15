@@ -42,16 +42,16 @@ final class HomeControllerScopingTest extends TestCase
         array $timeoff,
         array $storeMembers,
     ): HomeController {
-        $usersRepo = $this->createMock(UserRepositoryInterface::class);
+        $usersRepo = $this->createStub(UserRepositoryInterface::class);
         $usersRepo->method('findAll')->willReturn($users);
 
-        $storesRepo = $this->createMock(StoreRepositoryInterface::class);
+        $storesRepo = $this->createStub(StoreRepositoryInterface::class);
         $storesRepo->method('findAll')->willReturn($stores);
 
-        $shiftsRepo = $this->createMock(ShiftRepositoryInterface::class);
+        $shiftsRepo = $this->createStub(ShiftRepositoryInterface::class);
         $shiftsRepo->method('findAllByDate')->willReturn($shiftsToday);
 
-        $dashboardPrefs = $this->createMock(UserDashboardPrefsRepositoryInterface::class);
+        $dashboardPrefs = $this->createStub(UserDashboardPrefsRepositoryInterface::class);
         // Widgets financial_overview/hr_absenteeism exclus : ces tests portent sur le
         // scoping managed_store_ids, pas sur le calcul RH/financier (storeStats() n'est
         // pas mocké pour ces widgets ici, voir HomeControllerFinancialHrWidgetsTest).
@@ -60,19 +60,19 @@ final class HomeControllerScopingTest extends TestCase
             'shifts_today', 'pending_timeoff', 'timeclocks_today',
         ]);
 
-        $storeUsersRepo = $this->createMock(StoreUserRepositoryInterface::class);
+        $storeUsersRepo = $this->createStub(StoreUserRepositoryInterface::class);
         $storeUsersRepo->method('findByStore')->willReturnCallback(
             fn(int $storeId) => $storeMembers[$storeId] ?? []
         );
 
-        $shiftTypesRepo = $this->createMock(ShiftTypeRepositoryInterface::class);
+        $shiftTypesRepo = $this->createStub(ShiftTypeRepositoryInterface::class);
 
-        $storeStats = $this->createMock(StoreStatsServiceInterface::class);
+        $storeStats = $this->createStub(StoreStatsServiceInterface::class);
         $storeStats->method('multiStoreComparison')->willReturn([]);
 
         // Rôle non-système accordant payroll.view à n'importe quel store, pour que
         // canViewStats soit vrai aussi côté manager (is_admin = 0) dans ces tests.
-        $roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
+        $roleAssignments = $this->createStub(RoleAssignmentRepositoryInterface::class);
         $roleAssignments->method('findByUser')->willReturn([
             ['id' => 1, 'role_id' => 5, 'scope_type' => 'store', 'scope_id' => 1],
         ]);

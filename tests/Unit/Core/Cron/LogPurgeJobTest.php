@@ -6,6 +6,7 @@ namespace kintai\Tests\Unit\Core\Cron;
 
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use kintai\Core\Cron\LogPurgeJob;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Repositories\LogRepositoryInterface;
@@ -15,13 +16,13 @@ use kintai\Core\Services\AuditLogger;
 
 final class LogPurgeJobTest extends TestCase
 {
-    private LogRepositoryInterface&MockObject $logs;
-    private AppSettingsRepositoryInterface&MockObject $settingsRepo;
+    private LogRepositoryInterface&Stub $logs;
+    private AppSettingsRepositoryInterface&Stub $settingsRepo;
 
     protected function setUp(): void
     {
-        $this->logs = $this->createMock(LogRepositoryInterface::class);
-        $this->settingsRepo = $this->createMock(AppSettingsRepositoryInterface::class);
+        $this->logs = $this->createStub(LogRepositoryInterface::class);
+        $this->settingsRepo = $this->createStub(AppSettingsRepositoryInterface::class);
     }
 
     private function makeJob(array $settings = []): LogPurgeJob
@@ -45,6 +46,7 @@ final class LogPurgeJobTest extends TestCase
 
     public function testRunPurgesEntriesOlderThanRetentionByDefault(): void
     {
+        $this->logs = $this->createMock(LogRepositoryInterface::class);
         $job = $this->makeJob();
 
         $this->logs->expects($this->once())
@@ -61,6 +63,7 @@ final class LogPurgeJobTest extends TestCase
 
     public function testRunUsesConfiguredRetentionDays(): void
     {
+        $this->logs = $this->createMock(LogRepositoryInterface::class);
         $job = $this->makeJob(['log_retention_days' => '30']);
 
         $this->logs->expects($this->once())
@@ -77,6 +80,7 @@ final class LogPurgeJobTest extends TestCase
 
     public function testRunSkipsPurgeWhenRetentionIsUnlimited(): void
     {
+        $this->logs = $this->createMock(LogRepositoryInterface::class);
         $job = $this->makeJob(['log_retention_days' => '0']);
 
         $this->logs->expects($this->never())->method('purgeOlderThan');

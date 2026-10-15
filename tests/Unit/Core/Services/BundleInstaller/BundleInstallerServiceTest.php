@@ -13,6 +13,7 @@ use kintai\Core\Services\BundleInstaller\BundlePermissionGranter;
 use kintai\Core\Services\BundleInstaller\BundleInstallerService;
 use kintai\Core\Services\UpdateService;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 if (!defined('BASE_PATH')) {
@@ -23,7 +24,7 @@ final class BundleInstallerServiceTest extends TestCase
 {
     private string $bundlesDir;
     private string $fakeCoreBasePath;
-    private InstalledBundleRepositoryInterface&MockObject $installedBundles;
+    private InstalledBundleRepositoryInterface&Stub $installedBundles;
     private InstalledBundleManifestStore $manifestStore;
 
     protected function setUp(): void
@@ -35,7 +36,7 @@ final class BundleInstallerServiceTest extends TestCase
         mkdir($this->fakeCoreBasePath . '/config', 0777, true);
         file_put_contents($this->fakeCoreBasePath . '/config/app.php', "<?php\nreturn ['version' => '0.5.0'];\n");
 
-        $this->installedBundles = $this->createMock(InstalledBundleRepositoryInterface::class);
+        $this->installedBundles = $this->createStub(InstalledBundleRepositoryInterface::class);
         $this->manifestStore = new InstalledBundleManifestStore($this->bundlesDir . '/installed.json');
     }
 
@@ -123,6 +124,7 @@ final class BundleInstallerServiceTest extends TestCase
 
     public function testInstallRejectsANonGithubRepositoryUrl(): void
     {
+        $this->installedBundles = $this->createMock(InstalledBundleRepositoryInterface::class);
         $service = $this->makeService(null, null);
 
         $result = $service->install('fake-bundle', 'https://gitlab.com/someone/fake-bundle', '1.0.0');
@@ -134,6 +136,7 @@ final class BundleInstallerServiceTest extends TestCase
 
     public function testInstallRejectsWhenReleaseCannotBeResolved(): void
     {
+        $this->installedBundles = $this->createMock(InstalledBundleRepositoryInterface::class);
         $service = $this->makeService(fn() => null, null);
 
         $result = $service->install('fake-bundle', 'https://github.com/AudricSan/kintai-bundle-fake', '1.0.0');
@@ -216,6 +219,7 @@ final class BundleInstallerServiceTest extends TestCase
 
     public function testInstallActivatesAValidBundle(): void
     {
+        $this->installedBundles = $this->createMock(InstalledBundleRepositoryInterface::class);
         $zipPath = $this->buildFixtureZip();
         $service = $this->makeService(
             fn(string $repo, string $version) => 'https://example.test/fake.zip',
@@ -245,6 +249,7 @@ final class BundleInstallerServiceTest extends TestCase
 
     public function testDryRunDoesNotActivateNorPersistAnything(): void
     {
+        $this->installedBundles = $this->createMock(InstalledBundleRepositoryInterface::class);
         $zipPath = $this->buildFixtureZip();
         $service = $this->makeService(
             fn() => 'https://example.test/fake.zip',
@@ -263,6 +268,7 @@ final class BundleInstallerServiceTest extends TestCase
 
     public function testRollbackRepointsToAnAlreadyPresentVersion(): void
     {
+        $this->installedBundles = $this->createMock(InstalledBundleRepositoryInterface::class);
         mkdir($this->bundlesDir . '/fake-bundle/1.0.0', 0777, true);
         $this->installedBundles->method('find')->willReturn(['slug' => 'fake-bundle', 'active_version' => '1.1.0', 'source_registry_url' => null]);
         $this->installedBundles->expects($this->once())->method('upsert')->with('fake-bundle', '1.0.0', null);
@@ -275,6 +281,7 @@ final class BundleInstallerServiceTest extends TestCase
 
     public function testRollbackFailsWhenTheVersionIsNotOnDisk(): void
     {
+        $this->installedBundles = $this->createMock(InstalledBundleRepositoryInterface::class);
         $this->installedBundles->expects($this->never())->method('upsert');
 
         $service = $this->makeService(null, null);
@@ -284,6 +291,7 @@ final class BundleInstallerServiceTest extends TestCase
 
     public function testUninstallRemovesFilesManifestEntryAndDatabaseRow(): void
     {
+        $this->installedBundles = $this->createMock(InstalledBundleRepositoryInterface::class);
         mkdir($this->bundlesDir . '/fake-bundle/1.0.0', 0777, true);
         file_put_contents($this->bundlesDir . '/fake-bundle/1.0.0/bundle.json', '{}');
         $this->manifestStore->setActiveVersion('fake-bundle', '1.0.0');
@@ -300,6 +308,7 @@ final class BundleInstallerServiceTest extends TestCase
 
     public function testUninstallFailsForABundleNotManagedByTheInstaller(): void
     {
+        $this->installedBundles = $this->createMock(InstalledBundleRepositoryInterface::class);
         $this->installedBundles->method('find')->willReturn(null);
         $this->installedBundles->expects($this->never())->method('delete');
 
@@ -348,6 +357,7 @@ PHP);
 
     public function testInstallRollsBackTheBundleDirectoryWhenMigrationsFail(): void
     {
+        $this->installedBundles = $this->createMock(InstalledBundleRepositoryInterface::class);
         $zipPath = $this->buildFixtureZip([], true, <<<'PHP'
 use kintai\Core\Database\Migration;
 

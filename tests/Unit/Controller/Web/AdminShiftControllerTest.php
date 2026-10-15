@@ -29,51 +29,61 @@ use kintai\UI\ViewRenderer;
 use kintai\Tests\Support\FakeAbsenceProvider;
 use kintai\Tests\Support\FakeBundleManagerFactory;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 final class AdminShiftControllerTest extends TestCase
 {
-    private ShiftRepositoryInterface&MockObject $shifts;
-    private ShiftTypeRepositoryInterface&MockObject $shiftTypes;
-    private StoreRepositoryInterface&MockObject $stores;
-    private ShiftServiceInterface&MockObject $shiftService;
-    private NotificationService&MockObject $notifs;
-    private RoleAssignmentRepositoryInterface&MockObject $roleAssignments;
-    private RoleRepositoryInterface&MockObject $roles;
-    private UserRepositoryInterface&MockObject $users;
-    private StoreUserRepositoryInterface&MockObject $storeUsers;
-    private AdminShiftController $controller;
+    private ShiftRepositoryInterface&Stub $shifts;
+    private ShiftTypeRepositoryInterface&Stub $shiftTypes;
+    private StoreRepositoryInterface&Stub $stores;
+    private ShiftServiceInterface&Stub $shiftService;
+    private NotificationService&Stub $notifs;
+    private RoleAssignmentRepositoryInterface&Stub $roleAssignments;
+    private RoleRepositoryInterface&Stub $roles;
+    private UserRepositoryInterface&Stub $users;
+    private StoreUserRepositoryInterface&Stub $storeUsers;
+    private ?AdminShiftController $controller = null;
 
     protected function setUp(): void
     {
         $this->ensureViewFile('scheduling.shifts');
         $this->ensureViewFile('layout.app');
-        $view = new ViewRenderer(sys_get_temp_dir());
-        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
-        $this->shiftTypes = $this->createMock(ShiftTypeRepositoryInterface::class);
-        $this->stores = $this->createMock(StoreRepositoryInterface::class);
-        $this->shiftService = $this->createMock(ShiftServiceInterface::class);
-        $this->notifs = $this->createMock(NotificationService::class);
-        $this->roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
-        $this->roles = $this->createMock(RoleRepositoryInterface::class);
-        $this->users = $this->createMock(UserRepositoryInterface::class);
-        $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
-        $auditLogger = new AuditLogger();
-        $permissions = new PermissionService($this->roleAssignments, $this->roles);
+        
+        $this->shifts = $this->createStub(ShiftRepositoryInterface::class);
+        $this->shiftTypes = $this->createStub(ShiftTypeRepositoryInterface::class);
+        $this->stores = $this->createStub(StoreRepositoryInterface::class);
+        $this->shiftService = $this->createStub(ShiftServiceInterface::class);
+        $this->notifs = $this->createStub(NotificationService::class);
+        $this->roleAssignments = $this->createStub(RoleAssignmentRepositoryInterface::class);
+        $this->roles = $this->createStub(RoleRepositoryInterface::class);
+        $this->users = $this->createStub(UserRepositoryInterface::class);
+        $this->storeUsers = $this->createStub(StoreUserRepositoryInterface::class);
+    }
 
-        $this->controller = new AdminShiftController(
-            $view,
-            $this->users,
-            $this->stores,
-            $this->shifts,
-            $this->shiftTypes,
-            $this->storeUsers,
-            $this->createMock(UserShiftTypeRateRepositoryInterface::class),
-            $auditLogger,
-            $this->notifs,
-            $this->shiftService,
-            $permissions,
-        );
+    /** Objet testé, construit à la première utilisation : un test peut d'abord remplacer un bouchon par un mock. */
+    private function controller(): AdminShiftController
+    {
+        if ($this->controller === null) {
+            $view = new ViewRenderer(sys_get_temp_dir());
+            $auditLogger = new AuditLogger();
+            $permissions = new PermissionService($this->roleAssignments, $this->roles);
+            $this->controller = new AdminShiftController(
+                $view,
+                $this->users,
+                $this->stores,
+                $this->shifts,
+                $this->shiftTypes,
+                $this->storeUsers,
+                $this->createStub(UserShiftTypeRateRepositoryInterface::class),
+                $auditLogger,
+                $this->notifs,
+                $this->shiftService,
+                $permissions,
+            );
+        }
+
+        return $this->controller;
     }
 
     public function testShiftsRendersList(): void
@@ -85,7 +95,7 @@ final class AdminShiftControllerTest extends TestCase
         $this->shiftTypes->method('findAll')->willReturn([]);
         $this->stores->method('findAll')->willReturn([]);
 
-        $response = $this->controller->shifts($req);
+        $response = $this->controller()->shifts($req);
 
         $this->assertSame(200, $response->status());
     }
@@ -110,7 +120,7 @@ final class AdminShiftControllerTest extends TestCase
         $this->shiftTypes->method('findAll')->willReturn([]);
         $this->stores->method('findAll')->willReturn([]);
 
-        $response = $this->controller->shifts($req);
+        $response = $this->controller()->shifts($req);
 
         $this->assertSame(200, $response->status());
         $this->assertStringContainsString('CAN_MANAGE_TRUE', $response->body());
@@ -133,7 +143,7 @@ final class AdminShiftControllerTest extends TestCase
 
         $this->shifts->method('save')->willReturnCallback(fn(array $d) => $d + ['id' => 42]);
 
-        $response = $this->controller->quickShift($req);
+        $response = $this->controller()->quickShift($req);
 
         $this->assertSame(201, $response->status());
         $data = json_decode($response->body(), true);
@@ -164,7 +174,7 @@ final class AdminShiftControllerTest extends TestCase
             return $d + ['id' => 1];
         });
 
-        $this->controller->quickShift($req);
+        $this->controller()->quickShift($req);
 
         $this->assertNotNull($captured);
         $this->assertSame(30, $captured['pause_minutes']);
@@ -188,7 +198,7 @@ final class AdminShiftControllerTest extends TestCase
             return $d + ['id' => 1];
         });
 
-        $this->controller->quickShift($req);
+        $this->controller()->quickShift($req);
 
         $this->assertNull($captured['open_shift_note']);
         $this->assertSame(0, $captured['is_open']);
@@ -204,7 +214,7 @@ final class AdminShiftControllerTest extends TestCase
         ]);
         $req->setAttribute('managed_store_ids', [1, 2]);
 
-        $response = $this->controller->quickShift($req);
+        $response = $this->controller()->quickShift($req);
 
         $this->assertSame(403, $response->status());
         $data = json_decode($response->body(), true);
@@ -218,6 +228,7 @@ final class AdminShiftControllerTest extends TestCase
      */
     public function testQuickShiftAutoComputesDominantShiftType(): void
     {
+        $this->shiftTypes = $this->createMock(ShiftTypeRepositoryInterface::class);
         $req = $this->makeJsonRequest([
             'store_id'   => 1,
             'user_id'    => 5,
@@ -227,7 +238,7 @@ final class AdminShiftControllerTest extends TestCase
         ]);
         $req->setAttribute('managed_store_ids', null);
 
-        $this->shiftTypes->method('findActive')->with(1)->willReturn([
+        $this->shiftTypes->expects($this->atLeastOnce())->method('findActive')->with(1)->willReturn([
             ['id' => 3, 'name' => 'Matin', 'start_time' => '08:00', 'end_time' => '12:00', 'hourly_rate' => 1000.0],
             ['id' => 4, 'name' => 'Aprem', 'start_time' => '12:00', 'end_time' => '20:00', 'hourly_rate' => 1200.0],
         ]);
@@ -237,7 +248,7 @@ final class AdminShiftControllerTest extends TestCase
             return $d + ['id' => 1];
         });
 
-        $this->controller->quickShift($req);
+        $this->controller()->quickShift($req);
 
         // 09:00→12:00 = 180min (Matin) ; 12:00→17:00 = 300min (Aprem) → Aprem dominant
         $this->assertSame(4, $captured['shift_type_id']);
@@ -245,6 +256,7 @@ final class AdminShiftControllerTest extends TestCase
 
     public function testQuickShiftBlockedWhenUserOnApprovedTimeoff(): void
     {
+        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
         $req = $this->makeJsonRequest([
             'store_id'   => 1,
             'user_id'    => 5,
@@ -259,7 +271,7 @@ final class AdminShiftControllerTest extends TestCase
         ]);
         $this->shifts->expects($this->never())->method('save');
 
-        $response = $this->controller->quickShift($req);
+        $response = $this->controller()->quickShift($req);
 
         $this->assertSame(409, $response->status());
     }
@@ -270,6 +282,7 @@ final class AdminShiftControllerTest extends TestCase
 
     public function testStoreShiftBlockedWhenUserOnApprovedTimeoff(): void
     {
+        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
         $_POST = [
             'store_id'   => '1',
             'user_id'    => '5',
@@ -285,13 +298,14 @@ final class AdminShiftControllerTest extends TestCase
         ]);
         $this->shifts->expects($this->never())->method('save');
 
-        $response = $this->controller->storeShift($req);
+        $response = $this->controller()->storeShift($req);
 
         $this->assertSame(302, $response->status());
     }
 
     public function testStoreShiftAllowedWhenNoTimeoffConflict(): void
     {
+        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
         $_POST = [
             'store_id'   => '1',
             'user_id'    => '5',
@@ -304,7 +318,7 @@ final class AdminShiftControllerTest extends TestCase
 
         $this->shifts->expects($this->once())->method('save')->willReturnCallback(fn(array $d) => $d + ['id' => 1]);
 
-        $response = $this->controller->storeShift($req);
+        $response = $this->controller()->storeShift($req);
 
         $this->assertSame(302, $response->status());
     }
@@ -317,6 +331,8 @@ final class AdminShiftControllerTest extends TestCase
      */
     public function testStoreShiftAutoComputesDominantShiftType(): void
     {
+        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
+        $this->shiftTypes = $this->createMock(ShiftTypeRepositoryInterface::class);
         $_POST = [
             'store_id'   => '1',
             'user_id'    => '5',
@@ -327,7 +343,7 @@ final class AdminShiftControllerTest extends TestCase
         $req = new Request();
         $req->setAttribute('managed_store_ids', null);
 
-        $this->shiftTypes->method('findActive')->with(1)->willReturn([
+        $this->shiftTypes->expects($this->atLeastOnce())->method('findActive')->with(1)->willReturn([
             ['id' => 3, 'name' => 'Matin', 'start_time' => '08:00', 'end_time' => '12:00', 'hourly_rate' => 1000.0],
             ['id' => 4, 'name' => 'Aprem', 'start_time' => '12:00', 'end_time' => '20:00', 'hourly_rate' => 1200.0],
         ]);
@@ -339,7 +355,7 @@ final class AdminShiftControllerTest extends TestCase
             }
         ))->willReturnCallback(fn(array $d) => $d + ['id' => 1]);
 
-        $response = $this->controller->storeShift($req);
+        $response = $this->controller()->storeShift($req);
 
         $this->assertSame(302, $response->status());
         // 09:00→12:00 = 180min (Matin) ; 12:00→17:00 = 300min (Aprem) → Aprem dominant
@@ -366,7 +382,7 @@ final class AdminShiftControllerTest extends TestCase
         $this->shifts->method('save')->willReturnCallback(fn(array $d) => $d + ['id' => 1]);
         $this->notifs->method('notify')->willThrowException(new \RuntimeException('notif DB down'));
 
-        $response = $this->controller->storeShift($req);
+        $response = $this->controller()->storeShift($req);
 
         $this->assertSame(302, $response->status());
         $headersRef = new \ReflectionProperty($response, 'headers');
@@ -377,6 +393,8 @@ final class AdminShiftControllerTest extends TestCase
     /** Un type de shift ne peut désormais être appliqué qu'à un store où il est activé (table pivot). */
     public function testStoreShiftRejectsShiftTypeNotEnabledForStore(): void
     {
+        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
+        $this->shiftTypes = $this->createMock(ShiftTypeRepositoryInterface::class);
         $_POST = [
             'store_id'   => '1',
             'user_id'    => '5',
@@ -387,7 +405,7 @@ final class AdminShiftControllerTest extends TestCase
         $req = new Request();
         $req->setAttribute('managed_store_ids', null);
 
-        $this->shiftTypes->method('findActive')->with(1)->willReturn([
+        $this->shiftTypes->expects($this->atLeastOnce())->method('findActive')->with(1)->willReturn([
             ['id' => 3, 'name' => 'Matin', 'start_time' => '08:00', 'end_time' => '12:00', 'hourly_rate' => 1000.0],
             ['id' => 4, 'name' => 'Aprem', 'start_time' => '12:00', 'end_time' => '20:00', 'hourly_rate' => 1200.0],
         ]);
@@ -399,7 +417,7 @@ final class AdminShiftControllerTest extends TestCase
             }
         ))->willReturnCallback(fn(array $d) => $d + ['id' => 1]);
 
-        $response = $this->controller->storeShift($req);
+        $response = $this->controller()->storeShift($req);
 
         $this->assertSame(302, $response->status());
         // 09:00→12:00 = 180min (Matin) ; 12:00→17:00 = 300min (Aprem) → Aprem dominant
@@ -409,6 +427,7 @@ final class AdminShiftControllerTest extends TestCase
     /** Un taux/heures actives manuel saisi doit être persisté (null si vide). */
     public function testStoreShiftPersistsManualOverrides(): void
     {
+        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
         $_POST = [
             'store_id'              => '1',
             'user_id'               => '5',
@@ -425,7 +444,7 @@ final class AdminShiftControllerTest extends TestCase
             fn(array $d) => $d['hourly_rate_override'] === 1500.5 && $d['net_minutes_override'] === 300
         ))->willReturnCallback(fn(array $d) => $d + ['id' => 1]);
 
-        $response = $this->controller->storeShift($req);
+        $response = $this->controller()->storeShift($req);
 
         $this->assertSame(302, $response->status());
     }
@@ -433,6 +452,7 @@ final class AdminShiftControllerTest extends TestCase
     /** Champs laissés vides : pas d'ajustement manuel, calcul automatique. */
     public function testStoreShiftOverridesDefaultToNullWhenEmpty(): void
     {
+        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
         $_POST = [
             'store_id'   => '1',
             'user_id'    => '5',
@@ -447,7 +467,7 @@ final class AdminShiftControllerTest extends TestCase
             fn(array $d) => $d['hourly_rate_override'] === null && $d['net_minutes_override'] === null
         ))->willReturnCallback(fn(array $d) => $d + ['id' => 1]);
 
-        $response = $this->controller->storeShift($req);
+        $response = $this->controller()->storeShift($req);
 
         $this->assertSame(302, $response->status());
     }
@@ -459,11 +479,12 @@ final class AdminShiftControllerTest extends TestCase
     /** Éditer un shift et saisir un ajustement manuel doit le persister. */
     public function testUpdateShiftPersistsManualOverrides(): void
     {
+        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
         $existing = [
             'id' => 10, 'store_id' => 1, 'user_id' => 5, 'shift_date' => '2026-08-02',
             'start_time' => '09:00', 'end_time' => '17:00', 'is_open' => 0,
         ];
-        $this->shifts->method('findById')->with(10)->willReturn($existing);
+        $this->shifts->expects($this->atLeastOnce())->method('findById')->with(10)->willReturn($existing);
 
         $_POST = [
             'store_id'             => '1',
@@ -480,7 +501,7 @@ final class AdminShiftControllerTest extends TestCase
             fn(array $d) => $d['hourly_rate_override'] === 2000.0 && $d['net_minutes_override'] === null
         ))->willReturnCallback(fn(array $d) => $d + ['id' => 10]);
 
-        $response = $this->controller->updateShift($req);
+        $response = $this->controller()->updateShift($req);
 
         $this->assertSame(302, $response->status());
     }
@@ -492,6 +513,7 @@ final class AdminShiftControllerTest extends TestCase
      */
     public function testClosingAnOpenShiftAnnouncesItToBundles(): void
     {
+        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
         $received = [];
         $bundle = new class extends Bundle {
             public ?\Closure $listener = null;
@@ -523,7 +545,7 @@ final class AdminShiftControllerTest extends TestCase
         Container::getInstance()->instance(BundleManager::class, $manager);
         Container::getInstance()->instance(ExtensionRegistry::class, new ExtensionRegistry($manager));
 
-        $this->shifts->method('findById')->with(10)->willReturn([
+        $this->shifts->expects($this->atLeastOnce())->method('findById')->with(10)->willReturn([
             'id' => 10, 'store_id' => 1, 'user_id' => null, 'shift_date' => '2026-08-02',
             'start_time' => '09:00', 'end_time' => '17:00', 'is_open' => 1, 'open_shift_note' => 'Qui ?',
         ]);
@@ -536,7 +558,7 @@ final class AdminShiftControllerTest extends TestCase
             fn(array $d) => $d['is_open'] === 0 && $d['user_id'] === 5
         ))->willReturnCallback(fn(array $d) => $d + ['id' => 10]);
 
-        $response = $this->controller->updateShift($req);
+        $response = $this->controller()->updateShift($req);
 
         $this->assertSame(302, $response->status());
         $this->assertCount(1, $received);
@@ -547,8 +569,9 @@ final class AdminShiftControllerTest extends TestCase
     /** Sans bundle qui déclare le champ « Shift ouvert », l'édition ne le change pas (et n'annonce rien). */
     public function testOpenShiftFieldIsKeptWithoutADeclaringBundle(): void
     {
+        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
         Container::getInstance()->instance(BundleManager::class, FakeBundleManagerFactory::withActiveSlugs([]));
-        $this->shifts->method('findById')->with(10)->willReturn([
+        $this->shifts->expects($this->atLeastOnce())->method('findById')->with(10)->willReturn([
             'id' => 10, 'store_id' => 1, 'user_id' => null, 'shift_date' => '2026-08-02',
             'start_time' => '09:00', 'end_time' => '17:00', 'is_open' => 1,
         ]);
@@ -560,17 +583,19 @@ final class AdminShiftControllerTest extends TestCase
             fn(array $d) => $d['is_open'] === 1
         ))->willReturnCallback(fn(array $d) => $d + ['id' => 10]);
 
-        $this->assertSame(302, $this->controller->updateShift($req)->status());
+        $this->assertSame(302, $this->controller()->updateShift($req)->status());
     }
 
     /** Même auto-calcul du type dominant que storeShift(), lors d'une édition. */
     public function testUpdateShiftAutoComputesDominantShiftType(): void
     {
+        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
+        $this->shiftTypes = $this->createMock(ShiftTypeRepositoryInterface::class);
         $existing = [
             'id' => 10, 'store_id' => 1, 'user_id' => 5, 'shift_date' => '2026-08-02',
             'start_time' => '09:00', 'end_time' => '17:00', 'is_open' => 0,
         ];
-        $this->shifts->method('findById')->with(10)->willReturn($existing);
+        $this->shifts->expects($this->atLeastOnce())->method('findById')->with(10)->willReturn($existing);
 
         $_POST = [
             'store_id'   => '1',
@@ -582,7 +607,7 @@ final class AdminShiftControllerTest extends TestCase
         $req->setAttribute('managed_store_ids', null);
         $req->setRouteParams(['id' => 10]);
 
-        $this->shiftTypes->method('findActive')->with(1)->willReturn([
+        $this->shiftTypes->expects($this->atLeastOnce())->method('findActive')->with(1)->willReturn([
             ['id' => 3, 'name' => 'Matin', 'start_time' => '08:00', 'end_time' => '12:00', 'hourly_rate' => 1000.0],
             ['id' => 4, 'name' => 'Aprem', 'start_time' => '12:00', 'end_time' => '20:00', 'hourly_rate' => 1200.0],
         ]);
@@ -594,7 +619,7 @@ final class AdminShiftControllerTest extends TestCase
             }
         ))->willReturnCallback(fn(array $d) => $d + ['id' => 10]);
 
-        $response = $this->controller->updateShift($req);
+        $response = $this->controller()->updateShift($req);
 
         $this->assertSame(302, $response->status());
         $this->assertSame(4, $captured['shift_type_id']);
@@ -607,11 +632,12 @@ final class AdminShiftControllerTest extends TestCase
      */
     public function testUpdateShiftSucceedsEvenWhenNotifyThrows(): void
     {
+        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
         $existing = [
             'id' => 10, 'store_id' => 1, 'user_id' => 5, 'shift_date' => '2026-08-02',
             'start_time' => '09:00', 'end_time' => '17:00', 'is_open' => 0,
         ];
-        $this->shifts->method('findById')->with(10)->willReturn($existing);
+        $this->shifts->expects($this->atLeastOnce())->method('findById')->with(10)->willReturn($existing);
 
         $_POST = [
             'store_id'   => '1',
@@ -627,7 +653,7 @@ final class AdminShiftControllerTest extends TestCase
         $this->shifts->method('save')->willReturnCallback(fn(array $d) => $d + ['id' => 10]);
         $this->notifs->method('notify')->willThrowException(new \RuntimeException('notif DB down'));
 
-        $response = $this->controller->updateShift($req);
+        $response = $this->controller()->updateShift($req);
 
         $this->assertSame(302, $response->status());
         $headersRef = new \ReflectionProperty($response, 'headers');
@@ -643,11 +669,14 @@ final class AdminShiftControllerTest extends TestCase
      */
     public function testUpdateShiftNotifiesSameEmployeeWhenRescheduled(): void
     {
+        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
+        $this->stores = $this->createMock(StoreRepositoryInterface::class);
+        $this->notifs = $this->createMock(NotificationService::class);
         $existing = [
             'id' => 10, 'store_id' => 1, 'user_id' => 5, 'shift_date' => '2026-08-02',
             'start_time' => '09:00', 'end_time' => '17:00', 'is_open' => 0,
         ];
-        $this->shifts->method('findById')->with(10)->willReturn($existing);
+        $this->shifts->expects($this->atLeastOnce())->method('findById')->with(10)->willReturn($existing);
 
         $_POST = [
             'store_id'   => '1',
@@ -661,7 +690,7 @@ final class AdminShiftControllerTest extends TestCase
         $req->setRouteParams(['id' => 10]);
 
         $this->shifts->method('save')->willReturnCallback(fn(array $d) => $d + ['id' => 10]);
-        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Boutique Test']);
+        $this->stores->expects($this->atLeastOnce())->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Boutique Test']);
         $this->notifs->expects($this->once())->method('notify')->with(
             5,
             'shift_updated',
@@ -671,7 +700,7 @@ final class AdminShiftControllerTest extends TestCase
             '/employee/shifts/day?start=2026-08-03'
         );
 
-        $response = $this->controller->updateShift($req);
+        $response = $this->controller()->updateShift($req);
 
         $this->assertSame(302, $response->status());
     }
@@ -687,13 +716,16 @@ final class AdminShiftControllerTest extends TestCase
      */
     public function testDeleteShiftNotifiesAssignedUser(): void
     {
+        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
+        $this->stores = $this->createMock(StoreRepositoryInterface::class);
+        $this->notifs = $this->createMock(NotificationService::class);
         $existing = [
             'id' => 10, 'store_id' => 1, 'user_id' => 5, 'shift_date' => '2026-08-02',
             'start_time' => '09:00', 'end_time' => '17:00',
         ];
-        $this->shifts->method('findById')->with(10)->willReturn($existing);
+        $this->shifts->expects($this->atLeastOnce())->method('findById')->with(10)->willReturn($existing);
         $this->shifts->expects($this->once())->method('delete')->with(10)->willReturn(1);
-        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Boutique Test']);
+        $this->stores->expects($this->atLeastOnce())->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Boutique Test']);
 
         $this->notifs->expects($this->once())->method('notify')->with(
             5,
@@ -708,18 +740,20 @@ final class AdminShiftControllerTest extends TestCase
         $req->setAttribute('managed_store_ids', null);
         $req->setRouteParams(['id' => 10]);
 
-        $response = $this->controller->deleteShift($req);
+        $response = $this->controller()->deleteShift($req);
 
         $this->assertSame(302, $response->status());
     }
 
     public function testDeleteShiftDoesNotNotifyForOpenShift(): void
     {
+        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
+        $this->notifs = $this->createMock(NotificationService::class);
         $existing = [
             'id' => 11, 'store_id' => 1, 'user_id' => null, 'shift_date' => '2026-08-02', 'is_open' => 1,
         ];
-        $this->shifts->method('findById')->with(11)->willReturn($existing);
-        $this->shifts->method('delete')->with(11)->willReturn(1);
+        $this->shifts->expects($this->atLeastOnce())->method('findById')->with(11)->willReturn($existing);
+        $this->shifts->expects($this->atLeastOnce())->method('delete')->with(11)->willReturn(1);
 
         $this->notifs->expects($this->never())->method('notify');
 
@@ -727,13 +761,14 @@ final class AdminShiftControllerTest extends TestCase
         $req->setAttribute('managed_store_ids', null);
         $req->setRouteParams(['id' => 11]);
 
-        $response = $this->controller->deleteShift($req);
+        $response = $this->controller()->deleteShift($req);
 
         $this->assertSame(302, $response->status());
     }
 
     public function testBulkDeleteShiftsNotifiesEachAssignedUser(): void
     {
+        $this->notifs = $this->createMock(NotificationService::class);
         $shiftA = ['id' => 10, 'store_id' => 1, 'user_id' => 5, 'shift_date' => '2026-08-02'];
         $shiftB = ['id' => 11, 'store_id' => 1, 'user_id' => 6, 'shift_date' => '2026-08-03'];
         $this->shifts->method('findById')->willReturnMap([
@@ -748,18 +783,20 @@ final class AdminShiftControllerTest extends TestCase
         $req = new Request();
         $req->setAttribute('managed_store_ids', null);
 
-        $response = $this->controller->bulkDeleteShifts($req);
+        $response = $this->controller()->bulkDeleteShifts($req);
 
         $this->assertSame(302, $response->status());
     }
 
     public function testUpdateShiftDoesNotNotifyWhenSameEmployeeAndNothingRelevantChanged(): void
     {
+        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
+        $this->notifs = $this->createMock(NotificationService::class);
         $existing = [
             'id' => 10, 'store_id' => 1, 'user_id' => 5, 'shift_date' => '2026-08-02',
             'start_time' => '09:00', 'end_time' => '17:00', 'is_open' => 0,
         ];
-        $this->shifts->method('findById')->with(10)->willReturn($existing);
+        $this->shifts->expects($this->atLeastOnce())->method('findById')->with(10)->willReturn($existing);
 
         $_POST = [
             'store_id'   => '1',
@@ -776,18 +813,20 @@ final class AdminShiftControllerTest extends TestCase
         $this->shifts->method('save')->willReturnCallback(fn(array $d) => $d + ['id' => 10]);
         $this->notifs->expects($this->never())->method('notify');
 
-        $response = $this->controller->updateShift($req);
+        $response = $this->controller()->updateShift($req);
 
         $this->assertSame(302, $response->status());
     }
 
     public function testUpdateShiftRejectsShiftTypeNotEnabledForStore(): void
     {
+        $this->shifts = $this->createMock(ShiftRepositoryInterface::class);
+        $this->shiftTypes = $this->createMock(ShiftTypeRepositoryInterface::class);
         $existing = [
             'id' => 10, 'store_id' => 1, 'user_id' => 5, 'shift_date' => '2026-08-02',
             'start_time' => '09:00', 'end_time' => '17:00', 'is_open' => 0,
         ];
-        $this->shifts->method('findById')->with(10)->willReturn($existing);
+        $this->shifts->expects($this->atLeastOnce())->method('findById')->with(10)->willReturn($existing);
 
         $_POST = [
             'store_id'   => '1',
@@ -799,7 +838,7 @@ final class AdminShiftControllerTest extends TestCase
         $req->setAttribute('managed_store_ids', null);
         $req->setRouteParams(['id' => 10]);
 
-        $this->shiftTypes->method('findActive')->with(1)->willReturn([
+        $this->shiftTypes->expects($this->atLeastOnce())->method('findActive')->with(1)->willReturn([
             ['id' => 3, 'name' => 'Matin', 'start_time' => '08:00', 'end_time' => '12:00', 'hourly_rate' => 1000.0],
             ['id' => 4, 'name' => 'Aprem', 'start_time' => '12:00', 'end_time' => '20:00', 'hourly_rate' => 1200.0],
         ]);
@@ -811,7 +850,7 @@ final class AdminShiftControllerTest extends TestCase
             }
         ))->willReturnCallback(fn(array $d) => $d + ['id' => 10]);
 
-        $response = $this->controller->updateShift($req);
+        $response = $this->controller()->updateShift($req);
 
         $this->assertSame(302, $response->status());
         $this->assertSame(4, $captured['shift_type_id']);
@@ -842,11 +881,13 @@ final class AdminShiftControllerTest extends TestCase
 
     public function testShiftsTimelinePassesCanManageTrueForRoleGrantingShiftsUpdate(): void
     {
-        $this->roleAssignments->method('findByUser')->with(9)->willReturn([
+        $this->roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
+        $this->roles = $this->createMock(RoleRepositoryInterface::class);
+        $this->roleAssignments->expects($this->atLeastOnce())->method('findByUser')->with(9)->willReturn([
             ['id' => 1, 'user_id' => 9, 'role_id' => 2, 'scope_type' => 'store', 'scope_id' => 1],
         ]);
-        $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'slug' => 'manager', 'is_system' => 0]);
-        $this->roles->method('getPermissions')->with(2)->willReturn(['shifts.view', 'shifts.update']);
+        $this->roles->expects($this->atLeastOnce())->method('findById')->with(2)->willReturn(['id' => 2, 'slug' => 'manager', 'is_system' => 0]);
+        $this->roles->expects($this->atLeastOnce())->method('getPermissions')->with(2)->willReturn(['shifts.view', 'shifts.update']);
 
         $canManage = $this->renderTimelineAndCaptureCanManage(['id' => 9, 'is_admin' => false], [1]);
 
@@ -856,11 +897,13 @@ final class AdminShiftControllerTest extends TestCase
     /** Le cas exact du bug rapporté : rôle "employee" avec shifts.view seul. */
     public function testShiftsTimelinePassesCanManageFalseForViewOnlyRole(): void
     {
-        $this->roleAssignments->method('findByUser')->with(14)->willReturn([
+        $this->roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
+        $this->roles = $this->createMock(RoleRepositoryInterface::class);
+        $this->roleAssignments->expects($this->atLeastOnce())->method('findByUser')->with(14)->willReturn([
             ['id' => 1, 'user_id' => 14, 'role_id' => 3, 'scope_type' => 'store', 'scope_id' => 1],
         ]);
-        $this->roles->method('findById')->with(3)->willReturn(['id' => 3, 'slug' => 'employee', 'is_system' => 0]);
-        $this->roles->method('getPermissions')->with(3)->willReturn(['shifts.view']);
+        $this->roles->expects($this->atLeastOnce())->method('findById')->with(3)->willReturn(['id' => 3, 'slug' => 'employee', 'is_system' => 0]);
+        $this->roles->expects($this->atLeastOnce())->method('getPermissions')->with(3)->willReturn(['shifts.view']);
 
         $canManage = $this->renderTimelineAndCaptureCanManage(['id' => 14, 'is_admin' => false], [1]);
 
@@ -869,11 +912,12 @@ final class AdminShiftControllerTest extends TestCase
 
     private function renderTimelineAndCaptureCanManage(array $authUser, ?array $managedStoreIds = null): bool
     {
+        $this->stores = $this->createMock(StoreRepositoryInterface::class);
         $this->writeViewFile('scheduling.shifts-timeline', "<?php echo json_encode(['can_manage' => \$can_manage ?? null]);");
         $this->writeViewFile('layout.app', "<?php echo \$content ?? '';");
 
         $this->stores->method('findAll')->willReturn([['id' => 1, 'name' => 'Store 1']]);
-        $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Store 1']);
+        $this->stores->expects($this->atLeastOnce())->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Store 1']);
         $this->shifts->method('findByStore')->willReturn([]);
         $this->shiftTypes->method('findByStores')->willReturn([]);
         $this->shiftTypes->method('findAll')->willReturn([]);
@@ -884,7 +928,7 @@ final class AdminShiftControllerTest extends TestCase
         $req->setAttribute('auth_user', $authUser);
         $req->setAttribute('managed_store_ids', $managedStoreIds);
 
-        $response = $this->controller->shiftsTimeline($req);
+        $response = $this->controller()->shiftsTimeline($req);
         $data     = json_decode($response->body(), true);
 
         return $data['can_manage'];

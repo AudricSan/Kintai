@@ -60,18 +60,18 @@ final class AuthControllerOwnerCannotDeleteTest extends TestCase
         ]);
         $_POST = ['password' => $password];
 
-        $assignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
+        $assignments = $this->createStub(RoleAssignmentRepositoryInterface::class);
         $assignments->method('findByUser')->willReturn($owner
             ? [['id' => 1, 'user_id' => self::USER_ID, 'role_id' => 10, 'scope_type' => 'global', 'scope_id' => null]]
             : []);
-        $roles = $this->createMock(RoleRepositoryInterface::class);
+        $roles = $this->createStub(RoleRepositoryInterface::class);
         $roles->method('findById')->willReturn(['id' => 10, 'is_system' => 1]);
 
-        $storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
+        $storeUsers = $this->createStub(StoreUserRepositoryInterface::class);
         $auth = new AuthService(
             $this->users,
             $storeUsers,
-            $this->createMock(StoreRepositoryInterface::class),
+            $this->createStub(StoreRepositoryInterface::class),
             $roles,
             $assignments,
             $this->createStub(RememberTokenRepositoryInterface::class),
@@ -82,18 +82,18 @@ final class AuthControllerOwnerCannotDeleteTest extends TestCase
             $auth,
             new AuditLogger(),
             $this->users,
-            $this->createMock(StoreRepositoryInterface::class),
+            $this->createStub(StoreRepositoryInterface::class),
             $storeUsers,
-            $this->createMock(IcalTokenRepositoryInterface::class),
-            $this->createMock(UserNavPrefsRepositoryInterface::class),
-            $this->createMock(AvailabilityRepositoryInterface::class),
-            $this->createMock(LanguageRepositoryInterface::class),
+            $this->createStub(IcalTokenRepositoryInterface::class),
+            $this->createStub(UserNavPrefsRepositoryInterface::class),
+            $this->createStub(AvailabilityRepositoryInterface::class),
+            $this->createStub(LanguageRepositoryInterface::class),
             new AvatarImageOptimizer(),
-            new CredentialRevoker($this->createMock(RememberTokenRepositoryInterface::class), $this->createMock(ApiTokenRepositoryInterface::class)),
+            new CredentialRevoker($this->createStub(RememberTokenRepositoryInterface::class), $this->createStub(ApiTokenRepositoryInterface::class)),
             new UserAnonymizer(
                 $this->users,
                 $assignments,
-                new CredentialRevoker($this->createMock(RememberTokenRepositoryInterface::class), $this->createMock(ApiTokenRepositoryInterface::class)),
+                new CredentialRevoker($this->createStub(RememberTokenRepositoryInterface::class), $this->createStub(ApiTokenRepositoryInterface::class)),
                 sys_get_temp_dir(),
             ),
         );

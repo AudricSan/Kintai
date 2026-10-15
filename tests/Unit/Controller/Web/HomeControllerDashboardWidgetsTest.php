@@ -41,19 +41,19 @@ final class HomeControllerDashboardWidgetsTest extends TestCase
 
         $this->dashboardPrefs = $this->createMock(UserDashboardPrefsRepositoryInterface::class);
 
-        $users = $this->createMock(UserRepositoryInterface::class);
+        $users = $this->createStub(UserRepositoryInterface::class);
         $users->method('findAll')->willReturn([]);
-        $stores = $this->createMock(StoreRepositoryInterface::class);
+        $stores = $this->createStub(StoreRepositoryInterface::class);
         $stores->method('findAll')->willReturn([]);
-        $shifts = $this->createMock(ShiftRepositoryInterface::class);
+        $shifts = $this->createStub(ShiftRepositoryInterface::class);
         $shifts->method('findAllByDate')->willReturn([]);
-        $storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
+        $storeUsers = $this->createStub(StoreUserRepositoryInterface::class);
         $storeUsers->method('findByStore')->willReturn([]);
-        $shiftTypes = $this->createMock(ShiftTypeRepositoryInterface::class);
-        $storeStats = $this->createMock(StoreStatsServiceInterface::class);
+        $shiftTypes = $this->createStub(ShiftTypeRepositoryInterface::class);
+        $storeStats = $this->createStub(StoreStatsServiceInterface::class);
         $permissions = new PermissionService(
-            $this->createMock(RoleAssignmentRepositoryInterface::class),
-            $this->createMock(RoleRepositoryInterface::class),
+            $this->createStub(RoleAssignmentRepositoryInterface::class),
+            $this->createStub(RoleRepositoryInterface::class),
         );
         $dashboardAlerts = new DashboardAlertService($shifts, $users, $storeUsers);
 

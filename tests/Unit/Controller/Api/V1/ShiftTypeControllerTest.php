@@ -14,18 +14,28 @@ use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\Log;
 use kintai\UI\Controller\Api\V1\ShiftTypeController;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use kintai\Core\Exceptions\ValidationException;
 use PHPUnit\Framework\TestCase;
 
 final class ShiftTypeControllerTest extends TestCase
 {
-    private ShiftTypeRepositoryInterface&MockObject $shiftTypes;
-    private ShiftTypeController $controller;
+    private ShiftTypeRepositoryInterface&Stub $shiftTypes;
+    private ?ShiftTypeController $controller = null;
 
     protected function setUp(): void
     {
-        $this->shiftTypes = $this->createMock(ShiftTypeRepositoryInterface::class);
-        $this->controller = new ShiftTypeController($this->shiftTypes, new AuditLogger(), ApiOwnerAuth::permissions($this));
+        $this->shiftTypes = $this->createStub(ShiftTypeRepositoryInterface::class);
+    }
+
+    /** Objet testé, construit à la première utilisation : un test peut d'abord remplacer un bouchon par un mock. */
+    private function controller(): ShiftTypeController
+    {
+        if ($this->controller === null) {
+            $this->controller = new ShiftTypeController($this->shiftTypes, new AuditLogger(), ApiOwnerAuth::permissions($this));
+        }
+
+        return $this->controller;
     }
 
     protected function tearDown(): void
@@ -44,13 +54,14 @@ final class ShiftTypeControllerTest extends TestCase
 
     public function testShowIncludesStoreIds(): void
     {
-        $this->shiftTypes->method('findById')->with(5)->willReturn(['id' => 5, 'code' => 'MORNING']);
-        $this->shiftTypes->method('getStoreIds')->with(5)->willReturn([1, 2]);
+        $this->shiftTypes = $this->createMock(ShiftTypeRepositoryInterface::class);
+        $this->shiftTypes->expects($this->atLeastOnce())->method('findById')->with(5)->willReturn(['id' => 5, 'code' => 'MORNING']);
+        $this->shiftTypes->expects($this->atLeastOnce())->method('getStoreIds')->with(5)->willReturn([1, 2]);
 
         $req = ApiOwnerAuth::owner(new Request());
         $req->setRouteParams(['id' => '5']);
 
-        $response = $this->controller->show($req);
+        $response = $this->controller()->show($req);
 
         $data = json_decode($response->body(), true);
         $this->assertSame([1, 2], $data['store_ids']);
@@ -80,8 +91,9 @@ final class ShiftTypeControllerTest extends TestCase
 
     public function testSharedShiftTypeCannotBeDeletedByTheManagerOfOnlyOneOfItsStores(): void
     {
-        $this->shiftTypes->method('findById')->with(5)->willReturn(['id' => 5, 'code' => 'MORNING']);
-        $this->shiftTypes->method('getStoreIds')->with(5)->willReturn([1, 2]);
+        $this->shiftTypes = $this->createMock(ShiftTypeRepositoryInterface::class);
+        $this->shiftTypes->expects($this->atLeastOnce())->method('findById')->with(5)->willReturn(['id' => 5, 'code' => 'MORNING']);
+        $this->shiftTypes->expects($this->atLeastOnce())->method('getStoreIds')->with(5)->willReturn([1, 2]);
         $this->shiftTypes->expects($this->never())->method('delete');
 
         $req = $this->asManager(new Request());
@@ -93,8 +105,9 @@ final class ShiftTypeControllerTest extends TestCase
 
     public function testSharedShiftTypeCannotBeUpdatedByTheManagerOfOnlyOneOfItsStores(): void
     {
-        $this->shiftTypes->method('findById')->with(5)->willReturn(['id' => 5, 'code' => 'MORNING']);
-        $this->shiftTypes->method('getStoreIds')->with(5)->willReturn([1, 2]);
+        $this->shiftTypes = $this->createMock(ShiftTypeRepositoryInterface::class);
+        $this->shiftTypes->expects($this->atLeastOnce())->method('findById')->with(5)->willReturn(['id' => 5, 'code' => 'MORNING']);
+        $this->shiftTypes->expects($this->atLeastOnce())->method('getStoreIds')->with(5)->willReturn([1, 2]);
         $this->shiftTypes->expects($this->never())->method('save');
 
         $req = $this->asManager(new Request());
@@ -106,8 +119,9 @@ final class ShiftTypeControllerTest extends TestCase
 
     public function testShiftTypeOfASingleStoreCanBeDeletedByItsManager(): void
     {
-        $this->shiftTypes->method('findById')->with(5)->willReturn(['id' => 5, 'code' => 'MORNING']);
-        $this->shiftTypes->method('getStoreIds')->with(5)->willReturn([1]);
+        $this->shiftTypes = $this->createMock(ShiftTypeRepositoryInterface::class);
+        $this->shiftTypes->expects($this->atLeastOnce())->method('findById')->with(5)->willReturn(['id' => 5, 'code' => 'MORNING']);
+        $this->shiftTypes->expects($this->atLeastOnce())->method('getStoreIds')->with(5)->willReturn([1]);
         $this->shiftTypes->expects($this->once())->method('delete')->with(5);
 
         $req = $this->asManager(new Request());
@@ -118,13 +132,14 @@ final class ShiftTypeControllerTest extends TestCase
 
     public function testStoreWithStoreIdsArraySyncsAllStores(): void
     {
+        $this->shiftTypes = $this->createMock(ShiftTypeRepositoryInterface::class);
         $req = $this->makeJsonRequest(['code' => 'MORNING', 'name' => 'Matin', 'start_time' => '08:00', 'end_time' => '16:00', 'store_ids' => [1, 2]]);
 
         $this->shiftTypes->method('save')->willReturn(['id' => 9]);
         $this->shiftTypes->expects($this->once())->method('syncStores')->with(9, [1, 2]);
         $this->shiftTypes->method('getStoreIds')->willReturn([1, 2]);
 
-        $response = $this->controller->store($req);
+        $response = $this->controller()->store($req);
 
         $this->assertSame(201, $response->status());
     }
@@ -132,13 +147,14 @@ final class ShiftTypeControllerTest extends TestCase
     /** store_id scalaire (rétrocompatibilité) : toujours accepté, converti en tableau à 1 élément. */
     public function testStoreWithLegacyScalarStoreId(): void
     {
+        $this->shiftTypes = $this->createMock(ShiftTypeRepositoryInterface::class);
         $req = $this->makeJsonRequest(['code' => 'MORNING', 'name' => 'Matin', 'start_time' => '08:00', 'end_time' => '16:00', 'store_id' => 3]);
 
         $this->shiftTypes->method('save')->willReturn(['id' => 9]);
         $this->shiftTypes->expects($this->once())->method('syncStores')->with(9, [3]);
         $this->shiftTypes->method('getStoreIds')->willReturn([3]);
 
-        $this->controller->store($req);
+        $this->controller()->store($req);
     }
 
     public function testStoreDoesNotPassStoreIdKeyToRepositorySave(): void
@@ -152,7 +168,7 @@ final class ShiftTypeControllerTest extends TestCase
         });
         $this->shiftTypes->method('getStoreIds')->willReturn([3]);
 
-        $this->controller->store($req);
+        $this->controller()->store($req);
 
         $this->assertArrayNotHasKey('store_id', $captured);
         $this->assertArrayNotHasKey('store_ids', $captured);
@@ -161,7 +177,8 @@ final class ShiftTypeControllerTest extends TestCase
     /** Mise à jour partielle : store_ids absent du corps ne touche pas aux affectations existantes. */
     public function testUpdateWithoutStoreIdsLeavesAssignmentsUntouched(): void
     {
-        $this->shiftTypes->method('findById')->with(9)->willReturn(['id' => 9, 'code' => 'MORNING']);
+        $this->shiftTypes = $this->createMock(ShiftTypeRepositoryInterface::class);
+        $this->shiftTypes->expects($this->atLeastOnce())->method('findById')->with(9)->willReturn(['id' => 9, 'code' => 'MORNING']);
         $req = $this->makeJsonRequest(['name' => 'Matin renommé']);
         $req->setRouteParams(['id' => '9']);
 
@@ -169,14 +186,15 @@ final class ShiftTypeControllerTest extends TestCase
         $this->shiftTypes->expects($this->never())->method('syncStores');
         $this->shiftTypes->method('getStoreIds')->willReturn([1]);
 
-        $response = $this->controller->update($req);
+        $response = $this->controller()->update($req);
 
         $this->assertSame(200, $response->status());
     }
 
     public function testUpdateWithStoreIdsReplacesAssignments(): void
     {
-        $this->shiftTypes->method('findById')->with(9)->willReturn(['id' => 9, 'code' => 'MORNING']);
+        $this->shiftTypes = $this->createMock(ShiftTypeRepositoryInterface::class);
+        $this->shiftTypes->expects($this->atLeastOnce())->method('findById')->with(9)->willReturn(['id' => 9, 'code' => 'MORNING']);
         $req = $this->makeJsonRequest(['store_ids' => [4, 5]]);
         $req->setRouteParams(['id' => '9']);
 
@@ -184,20 +202,22 @@ final class ShiftTypeControllerTest extends TestCase
         $this->shiftTypes->expects($this->once())->method('syncStores')->with(9, [4, 5]);
         $this->shiftTypes->method('getStoreIds')->willReturn([4, 5]);
 
-        $this->controller->update($req);
+        $this->controller()->update($req);
     }
 
     /** Audit M1 : une couleur qui n'est pas un hexadécimal est refusée (422) avant toute écriture. */
     public function testStoreRejectsAnInvalidColor(): void
     {
+        $this->shiftTypes = $this->createMock(ShiftTypeRepositoryInterface::class);
         $this->shiftTypes->expects($this->never())->method('save');
 
         $this->expectException(ValidationException::class);
-        $this->controller->store($this->makeJsonRequest(['code' => 'X', 'name' => 'X', 'color' => 'red;position:fixed', 'store_ids' => [1]]));
+        $this->controller()->store($this->makeJsonRequest(['code' => 'X', 'name' => 'X', 'color' => 'red;position:fixed', 'store_ids' => [1]]));
     }
 
     public function testUpdateRejectsAnInvalidColor(): void
     {
+        $this->shiftTypes = $this->createMock(ShiftTypeRepositoryInterface::class);
         $this->shiftTypes->method('findById')->willReturn(['id' => 5, 'code' => 'X']);
         $this->shiftTypes->method('getStoreIds')->willReturn([1]);
         $this->shiftTypes->expects($this->never())->method('save');
@@ -206,7 +226,7 @@ final class ShiftTypeControllerTest extends TestCase
         $req->setRouteParams(['id' => '5']);
 
         $this->expectException(ValidationException::class);
-        $this->controller->update($req);
+        $this->controller()->update($req);
     }
 
     public function testStoreAcceptsAHexColor(): void
@@ -214,7 +234,7 @@ final class ShiftTypeControllerTest extends TestCase
         $this->shiftTypes->method('save')->willReturn(['id' => 9]);
         $this->shiftTypes->method('getStoreIds')->willReturn([1]);
 
-        $response = $this->controller->store($this->makeJsonRequest(['code' => 'X', 'name' => 'X', 'start_time' => '08:00', 'end_time' => '16:00', 'color' => '#a1b2c3', 'store_ids' => [1]]));
+        $response = $this->controller()->store($this->makeJsonRequest(['code' => 'X', 'name' => 'X', 'start_time' => '08:00', 'end_time' => '16:00', 'color' => '#a1b2c3', 'store_ids' => [1]]));
 
         $this->assertSame(201, $response->status());
     }

@@ -39,27 +39,27 @@ final class HomeControllerFinancialHrWidgetsTest extends TestCase
 
     private function buildController(array $enabledWidgets, bool $isAdmin, array $storeStatsByStore): HomeController
     {
-        $usersRepo = $this->createMock(UserRepositoryInterface::class);
+        $usersRepo = $this->createStub(UserRepositoryInterface::class);
         $usersRepo->method('findAll')->willReturn([]);
 
-        $storesRepo = $this->createMock(StoreRepositoryInterface::class);
+        $storesRepo = $this->createStub(StoreRepositoryInterface::class);
         $storesRepo->method('findAll')->willReturn([['id' => 1, 'name' => 'Store 1', 'currency' => 'JPY', 'currency_symbol_style' => 'kanji']]);
         $storesRepo->method('findById')->willReturn(['id' => 1, 'name' => 'Store 1', 'currency' => 'JPY', 'currency_symbol_style' => 'kanji']);
 
-        $shiftsRepo = $this->createMock(ShiftRepositoryInterface::class);
+        $shiftsRepo = $this->createStub(ShiftRepositoryInterface::class);
         $shiftsRepo->method('findAllByDate')->willReturn([]);
         $shiftsRepo->method('findByStore')->willReturn([]);
 
-        $shiftTypesRepo = $this->createMock(ShiftTypeRepositoryInterface::class);
+        $shiftTypesRepo = $this->createStub(ShiftTypeRepositoryInterface::class);
         $shiftTypesRepo->method('findByStore')->willReturn([]);
 
-        $dashboardPrefs = $this->createMock(UserDashboardPrefsRepositoryInterface::class);
+        $dashboardPrefs = $this->createStub(UserDashboardPrefsRepositoryInterface::class);
         $dashboardPrefs->method('getEnabledWidgets')->willReturn($enabledWidgets);
 
-        $storeUsersRepo = $this->createMock(StoreUserRepositoryInterface::class);
+        $storeUsersRepo = $this->createStub(StoreUserRepositoryInterface::class);
         $storeUsersRepo->method('findByStore')->willReturn([]);
 
-        $storeStats = $this->createMock(StoreStatsServiceInterface::class);
+        $storeStats = $this->createStub(StoreStatsServiceInterface::class);
         $storeStats->method('multiStoreComparison')->willReturn([]);
         // La vue financière ne lit plus que le coût par mois (costByMonth()), pas storeStats() complet.
         $storeStats->method('costByMonth')->willReturnCallback(
@@ -71,7 +71,7 @@ final class HomeControllerFinancialHrWidgetsTest extends TestCase
             ]
         );
 
-        $roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
+        $roleAssignments = $this->createStub(RoleAssignmentRepositoryInterface::class);
         $roleAssignments->method('findByUser')->willReturn($isAdmin ? [] : [
             ['id' => 1, 'role_id' => 5, 'scope_type' => 'store', 'scope_id' => 1],
         ]);
