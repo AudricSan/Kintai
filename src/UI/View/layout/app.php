@@ -118,6 +118,12 @@
                     <a href="<?= route_url('admin.owner_settings') ?>"><?= htmlspecialchars(__('public_url_missing_action')) ?></a>
                 </div>
             <?php endif; ?>
+            <?php if ($isOwner && !empty($setup_wizard_pending) && !str_starts_with((string) ($_SERVER['REQUEST_URI'] ?? ''), base_url() . '/admin/setup')): ?>
+                <div class="alert alert--info mb-sm">
+                    <?= htmlspecialchars(__('setup_pending_banner')) ?>
+                    <a href="<?= route_url('admin.setup') ?>"><?= htmlspecialchars(__('setup_pending_action')) ?></a>
+                </div>
+            <?php endif; ?>
             <?php if ($isOwner && !empty($bundle_quota_overflow)): ?>
                 <div class="alert alert--warning mb-sm">
                     <?= htmlspecialchars(__('bundle_quota_overflow_warning', ['active' => $bundle_quota_overflow['active'], 'max' => $bundle_quota_overflow['max']])) ?>

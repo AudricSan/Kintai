@@ -175,6 +175,36 @@ final class AppServiceProvider extends ServiceProvider
         // Même raison (paramètre ?\Closure) : BundleRegistryClient et BundleInstallerService.
         $this->container->singleton(BundleRegistryClient::class, fn() => new BundleRegistryClient());
 
+        // Assistant de configuration : bundles du catalogue pour un canal, installés comme depuis /admin/bundles/market.
+        $this->container->singleton(SetupWizard::class, fn(Container $c) => new SetupWizard(
+            $c->make(\kintai\Core\Repositories\AppSettingsRepositoryInterface::class),
+            static function (string $channel) use ($c): array {
+                $entries = [];
+                foreach ($c->make(BundleRegistry\BundleCatalogService::class)->listAvailableBundles() as $entry) {
+                    $version = $entry->bundle->versionsForChannel($channel)[0] ?? null;
+                    if ($version === null || isset($entries[$entry->bundle->slug])) {
+                        continue;
+                    }
+                    $entries[$entry->bundle->slug] = [
+                        'slug' => $entry->bundle->slug, 'name' => $entry->bundle->name, 'description' => $entry->bundle->description,
+                        'version' => $version, 'repository_url' => $entry->bundle->repositoryUrl, 'registry_url' => $entry->registryUrl,
+                    ];
+                }
+                return array_values($entries);
+            },
+            static function (array $entry) use ($c): ?string {
+                $pin = $c->make(BundleRegistry\BundleCatalogService::class)->resolvePin($entry['registry_url'], $entry['slug'], $entry['version']);
+                if ($pin['error'] !== null) {
+                    return $pin['error'];
+                }
+                $result = $c->make(BundleInstaller\BundleInstallerService::class)
+                    ->install($entry['slug'], $entry['repository_url'], $entry['version'], $entry['registry_url'], null, $pin['commit']);
+                return $result->success ? null : (string) $result->error;
+            },
+            $c->make(BundleActivationService::class),
+            $c->make(PlanLimitService::class),
+        ));
+
         $this->container->singleton(BundleInstallerService::class, fn(Container $c) => new BundleInstallerService(
             $c->make(UpdateService::class),
             $c->make(InstalledBundleRepositoryInterface::class),

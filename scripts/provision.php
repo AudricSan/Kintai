@@ -260,6 +260,16 @@ try {
             . "passe ne partiront pas tant qu'elle n'est pas renseignée dans les réglages Owner.\n";
     }
 
+    // ─── Step 7 bis : Assistant de configuration ───────────────────────────
+
+    // Comme l'installateur web : aucun bundle actif, l'Owner choisit licence et bundles dans /admin/setup (un
+    // bandeau l'y invite à sa première connexion).
+    \kintai\Core\Services\SetupWizard::start(
+        $container->make(AppSettingsRepositoryInterface::class),
+        $container->make(\kintai\Core\Services\AppSettingsService::class)->updateChannel(),
+    );
+    echo "[Kintai] Licence et bundles : à choisir dans /admin/setup à la première connexion de l'Owner.\n";
+
     // ─── Step 8 : Lock installation ─────────────────────────────────────────
 
     file_put_contents(BASE_PATH . '/storage/installed.lock', bin2hex(random_bytes(32)));

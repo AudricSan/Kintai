@@ -34,6 +34,7 @@ use kintai\UI\Controller\Web\System\BundleMarketController;
 use kintai\UI\Controller\Web\System\BundleSettingsController;
 use kintai\UI\Controller\Web\System\LanguageController;
 use kintai\UI\Controller\Web\System\LicenseController;
+use kintai\UI\Controller\Web\System\SetupWizardController;
 use kintai\UI\Controller\Web\System\MailTestController;
 use kintai\UI\Controller\Web\System\OwnerSettingsController;
 use kintai\Core\Middleware\AuthMiddleware;
@@ -327,6 +328,10 @@ $router->group('/admin', function ($r) {
     $r->post('/bundles/market/channel',         [BundleMarketController::class, 'saveChannel'],   middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.market.channel', permission: 'public');
 
     // Licence (déblocage du plan payant, Owner uniquement)
+    // Assistant de configuration ouvert par l'installateur : licence, puis bundles (voir SetupWizard).
+    $r->get('/setup',          [SetupWizardController::class, 'show'],    middleware: [OwnerOnlyMiddleware::class], name: 'admin.setup', permission: 'public');
+    $r->post('/setup/license', [SetupWizardController::class, 'license'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.setup.license', permission: 'public');
+    $r->post('/setup/bundles', [SetupWizardController::class, 'bundles'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.setup.bundles', permission: 'public');
     $r->get('/license',           [LicenseController::class, 'show'],       middleware: [OwnerOnlyMiddleware::class], name: 'admin.license', permission: 'public');
     $r->post('/license/activate', [LicenseController::class, 'activate'],   middleware: [OwnerOnlyMiddleware::class], name: 'admin.license.activate', permission: 'public');
     $r->post('/license/refresh',  [LicenseController::class, 'refresh'],    middleware: [OwnerOnlyMiddleware::class], name: 'admin.license.refresh', permission: 'public');

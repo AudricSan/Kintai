@@ -30,13 +30,21 @@ final class BundleActivationService
         private readonly PlanLimitService $planLimits,
     ) {}
 
-    /** @return list<string> Slugs des bundles présents sur l'instance et activés. */
+    /**
+     * Slugs des bundles présents sur l'instance et activés. Le réglage enregistré fait foi quand il existe : il peut
+     * avoir changé depuis le démarrage de la requête (plusieurs activations à la suite, assistant de configuration),
+     * alors que FeatureManager reflète l'état lu au démarrage.
+     *
+     * @return list<string>
+     */
     public function enabledSlugs(): array
     {
-        return array_values(array_filter(
-            array_keys($this->discovery->discover()),
-            fn(string $slug): bool => $this->features->isEnabled($slug),
-        ));
+        $stored = json_decode((string) $this->appSettings->get(LicenseServiceProvider::SETTINGS_KEY), true);
+        $isEnabled = is_array($stored)
+            ? static fn(string $slug): bool => in_array($slug, $stored, true)
+            : fn(string $slug): bool => $this->features->isEnabled($slug);
+
+        return array_values(array_filter(array_keys($this->discovery->discover()), $isEnabled));
     }
 
     /** Active le bundle s'il reste de la place dans le quota : ACTIVATED, ALREADY ou QUOTA_FULL. */

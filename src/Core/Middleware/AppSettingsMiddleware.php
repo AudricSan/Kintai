@@ -37,6 +37,7 @@ final class AppSettingsMiddleware implements MiddlewareInterface
             // est averti ; il peut réduire un bundle à la fois sur /admin/bundles.
             $maxBundles = $this->container->make(PlanLimitService::class)->maxActiveBundles();
             $activeBundles = count($this->container->make(BundleManager::class)->getBundles());
+            $view->share('setup_wizard_pending', $settings->get(\kintai\Core\Services\SetupWizard::PENDING_KEY) === '1');
             $view->share('bundle_quota_overflow', $maxBundles !== null && $activeBundles > $maxBundles
                 ? ['active' => $activeBundles, 'max' => $maxBundles] : null);
         } catch (\Throwable) {
