@@ -23,8 +23,12 @@ $widgetsAll  = $enabled_widgets_all ?? $widgets;
 // Ordre et largeur des widgets choisis par l'utilisateur (DashboardLayout), widgets déplaçables en mode édition.
 $_dashLayout = $widget_layout ?? ['order' => $all_widgets ?? [], 'widths' => []];
 
-function widget_on(string $key, array $widgets): bool {
-    return isset($widgets[$key]);
+// Garde : la vue peut être rendue deux fois dans un même processus ; une seconde déclaration de ces fonctions
+// globales serait une erreur fatale (« Cannot redeclare »).
+if (!function_exists('widget_on')) {
+    function widget_on(string $key, array $widgets): bool {
+        return isset($widgets[$key]);
+    }
 }
 
 $feat = static fn(?string $f): bool =>

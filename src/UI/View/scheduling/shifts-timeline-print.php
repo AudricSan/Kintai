@@ -16,30 +16,34 @@
  */
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-function ptMin(string $t): int
-{
-    $p = explode(':', substr($t, 0, 5));
-    return (int) ($p[0] ?? 0) * 60 + (int) ($p[1] ?? 0);
-}
-function ptFmt(string $t): string { return substr($t, 0, 5); }
-
-// Grouper les shifts en lanes sans chevauchement (identique au comportement web)
-function ptLanes(array $shifts, int $tStart): array
-{
-    $lanes = []; $ends = [];
-    foreach ($shifts as $sh) {
-        $sm = ptMin($sh['start_time'] ?? '00:00');
-        $em = ptMin($sh['end_time']   ?? '00:00');
-        if (!empty($sh['cross_midnight']) || $em <= $sm) $em += 1440;
-        if ($sm < $tStart) { $sm += 1440; $em += 1440; }
-        $sh['_sm'] = $sm; $sh['_em'] = $em;
-        $placed = false;
-        foreach ($ends as $li => $lEnd) {
-            if ($lEnd <= $sm) { $lanes[$li][] = $sh; $ends[$li] = $em; $placed = true; break; }
-        }
-        if (!$placed) { $lanes[] = [$sh]; $ends[] = $em; }
+// Garde : la vue peut être rendue deux fois dans un même processus ; une seconde déclaration de ces fonctions
+// globales serait une erreur fatale (« Cannot redeclare »).
+if (!function_exists('ptMin')) {
+    function ptMin(string $t): int
+    {
+        $p = explode(':', substr($t, 0, 5));
+        return (int) ($p[0] ?? 0) * 60 + (int) ($p[1] ?? 0);
     }
-    return $lanes;
+    function ptFmt(string $t): string { return substr($t, 0, 5); }
+
+    // Grouper les shifts en lanes sans chevauchement (identique au comportement web)
+    function ptLanes(array $shifts, int $tStart): array
+    {
+        $lanes = []; $ends = [];
+        foreach ($shifts as $sh) {
+            $sm = ptMin($sh['start_time'] ?? '00:00');
+            $em = ptMin($sh['end_time']   ?? '00:00');
+            if (!empty($sh['cross_midnight']) || $em <= $sm) $em += 1440;
+            if ($sm < $tStart) { $sm += 1440; $em += 1440; }
+            $sh['_sm'] = $sm; $sh['_em'] = $em;
+            $placed = false;
+            foreach ($ends as $li => $lEnd) {
+                if ($lEnd <= $sm) { $lanes[$li][] = $sh; $ends[$li] = $em; $placed = true; break; }
+            }
+            if (!$placed) { $lanes[] = [$sh]; $ends[] = $em; }
+        }
+        return $lanes;
+    }
 }
 
 $T_START = 6 * 60;
