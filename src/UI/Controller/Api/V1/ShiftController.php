@@ -42,7 +42,15 @@ final class ShiftController
             $items = [];
         }
 
-        $items = $this->permissions->restrictToScope($this->authUser($request), 'shifts.view', $items);
+        // Shifts visibles par la permission, plus ses propres shifts : un employé sans shifts.view consulte son
+        // planning avec ?user_id=<lui> (route en libre-service, règle self). Avant, la liste lui était refusée.
+        $authUser = $this->authUser($request);
+        $authId   = (int) ($authUser['id'] ?? 0);
+        $scopedIds = array_column($this->permissions->restrictToScope($authUser, 'shifts.view', $items), 'id');
+        $items = array_values(array_filter(
+            $items,
+            fn(array $s): bool => in_array($s['id'] ?? null, $scopedIds, true) || (int) ($s['user_id'] ?? 0) === $authId,
+        ));
 
         return Response::json(Paginator::paginate($items, $page, $limit));
     }
