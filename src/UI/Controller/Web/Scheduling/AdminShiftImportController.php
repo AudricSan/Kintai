@@ -90,7 +90,13 @@ final class AdminShiftImportController
         $ext          = pathinfo($safeName, PATHINFO_EXTENSION);
         $baseName     = $ext !== '' ? substr($safeName, 0, -(strlen($ext) + 1)) : $safeName;
 
-        $backupName = sprintf('Upload_%s-File(%s)%s', date('Y_m_d'), $baseName, $ext !== '' ? '.' . $ext : '');
+        // Heure comprise dans le nom : deux imports du même fichier le même jour s'écrasaient (audit n°8). Suffixe
+        // numéroté si deux envois tombent dans la même seconde.
+        $suffix     = $ext !== '' ? '.' . $ext : '';
+        $backupName = sprintf('Upload_%s-File(%s)%s', date('Y_m_d_His'), $baseName, $suffix);
+        for ($n = 2; file_exists($uploadDir . $backupName); $n++) {
+            $backupName = sprintf('Upload_%s-File(%s)-%d%s', date('Y_m_d_His'), $baseName, $n, $suffix);
+        }
         $backupPath = $uploadDir . $backupName;
 
         $filePath = move_uploaded_file($file['tmp_name'], $backupPath) ? $backupPath : $file['tmp_name'];
