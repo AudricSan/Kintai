@@ -792,7 +792,7 @@ Kintaiは `script-src 'self' 'nonce-…'`（`SecurityHeadersMiddleware`）を送
 
 ### 動的スタイル：`style="…"` 禁止
 
-スタイルにも同じルールが適用されます。すべての公式バンドルの移行が終わると、CSP は `style-src` から `'unsafe-inline'` を外し、`style="…"` 属性はブラウザに無視されます。固定の見た目はバンドルの CSS に書きます。描画時にしか分からない値（ユーザーが選んだ色、バーの高さ、割合）は `style_class()`（契約 1.22）を使います。これらの宣言を持つクラスを返します：
+契約 1.22 以降、スタイルにも同じルールが適用されます。CSP は `style-src 'self' 'nonce-…'`（`'unsafe-inline'` なし）を送るため、`style="…"` 属性はブラウザに無視され、`<style>` ブロックは nonce 付きの場合にだけ適用されます。スクリプトと同じく、エラーは出ません。**1.22 より前に書かれ、まだ `style="…"` を使うバンドルには破壊的変更です**：移行するまで色、幅、位置が失われます。固定の見た目はバンドルの CSS に書きます。描画時にしか分からない値（ユーザーが選んだ色、バーの高さ、割合）は `style_class()`（契約 1.22）を使います。これらの宣言を持つクラスを返します：
 
 ```php
 <div class="bar <?= style_class(['height' => $h . 'px', 'background' => $color]) ?>"></div>
@@ -819,6 +819,13 @@ Kintaiは `script-src 'self' 'nonce-…'`（`SecurityHeadersMiddleware`）を送
     set -euo pipefail
     if grep -rnE "[[:space:]]on(click|change|submit|input|load|error|focus|blur|dblclick|keyup|keydown)[[:space:]]*=|['\"]on(click|change|submit|input)['\"][[:space:]]*=>|(href|src|action)[[:space:]]*=[[:space:]]*[\"']javascript:|<script>" Views src; then
       echo "::error::Inline handlers, javascript: URLs and <script> without nonce are blocked by Kintai's CSP"
+      exit 1
+    fi
+- name: No inline styles (Kintai CSP)
+  run: |
+    set -euo pipefail
+    if grep -rnE "[[:space:]]style[[:space:]]*=[[:space:]]*[\"'\\\\]|<style>" Views; then
+      echo "::error::style=\"...\" attributes and <style> without nonce are ignored by Kintai's CSP"
       exit 1
     fi
 ```
@@ -864,7 +871,7 @@ Kintai本体のリポジトリにある `config/official-bundles.php` が、Kint
 - **1つのプロセス、1つのComposerオートローダー。** バンドルごとの `composer.json` や依存関係の分離はありません——バンドルはKintai本体の `kintai\` ルートと同じPHPプロセス、同じ名前空間ツリーで動きます。上に挙げた `kintai\Contract\…` の名前だけに依存してください：Kintaiのバージョンをまたいで保証されるCoreのクラスはそれだけです。
 - **`requires_bundles` はまだ強制されません。** 他のバンドルのスラッグやバージョンへの依存を宣言すると受け付けて保存されますが、それが欠けていたり古すぎたりしても、現在インストールを止めるものはありません——今のところ保証ではなくドキュメントとして扱ってください。
 - **業務データのアンインストールはありません。** `/admin/bundles/market` はバンドルのファイル、マニフェストの項目、マイグレーションの追跡行のインストール、アップデート、アンインストールができますが、マイグレーションが作成したテーブル（とそのデータ）はアンインストール時に削除も変更もされません。必要ならその掃除は、今のところデータベースでの手作業です。
-- **インラインのスクリプトとイベントハンドラーは動きません。** Kintai Core 0.3.0以降、Content-Security-Policyにはスクリプト用の `'unsafe-inline'` がありません：`onclick=`/`onchange=`/`onsubmit=`/`oninput=`、`javascript:` リンク、nonceのない `<script>` を含むバンドルのビューは、ブラウザによって静かにブロックされます。[Content Security Policy](#content-security-policyインラインスクリプト禁止)を参照してください。
+- **インラインのスクリプトとイベントハンドラーは動きません。** Kintai Core 0.3.0以降、Content-Security-Policyにはスクリプト用の `'unsafe-inline'` がありません：`onclick=`/`onchange=`/`onsubmit=`/`oninput=`、`javascript:` リンク、nonceのない `<script>` を含むバンドルのビューは、ブラウザによって静かにブロックされます。契約 1.22 以降はスタイルも同じで、`style="…"` 属性や nonce のない `<style>` は無視されます（`style_class()` を使ってください）。[Content Security Policy](#content-security-policyインラインスクリプト禁止)を参照してください。
 - **GitHubのみ。** `repository_url` はGitHubリポジトリを指す必要があります——GitLab、自己ホストのGitサーバー、Git以外のアーカイブ元は使えません。
 
 ## 参照実装
