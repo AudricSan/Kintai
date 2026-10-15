@@ -10,6 +10,8 @@ use kintai\Core\Auth\OwnerGuard;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
+use kintai\Core\Exceptions\PlanLimitExceededException;
+use kintai\Core\Exceptions\ValidationException;
 use kintai\Core\Extension\Sales;
 use kintai\Core\Extension\StoreFeatures;
 use kintai\Core\Repositories\StoreRepositoryInterface;
@@ -89,22 +91,28 @@ final class AdminStoreController
         if ($this->managedIds($request) !== null) {
             throw new ForbiddenException(__('error_owner_only_create_store'));
         }
-        $savedStore = $this->storeService->createStore([
-            'code'            => strtoupper(trim($request->post('code', ''))),
-            'name'            => $request->post('name', ''),
-            'slug'            => (string) $request->post('slug', ''),
-            'type'            => ($tmp = $request->post('type', '')) !== '' ? $tmp : 'retail',
-            'timezone'        => ($tmp = $request->post('timezone', '')) !== '' ? $tmp : 'UTC',
-            'locale'          => ($tmp = $request->post('locale', '')) !== '' ? $tmp : 'en',
-            'currency'        => strtoupper(trim(($tmp = $request->post('currency', '')) !== '' ? $tmp : 'EUR')),
-            'currency_symbol_style' => $request->post('currency_symbol_style', 'kanji'),
-            'phone'           => $request->post('phone', '') ?: null,
-            'email'           => $request->post('email', '') ?: null,
-            'address_street'  => $request->post('address_street', '') ?: null,
-            'address_city'    => $request->post('address_city', '') ?: null,
-            'address_postal'  => $request->post('address_postal', '') ?: null,
-            'address_country' => $request->post('address_country', '') ?: null,
-        ]);
+        // Quota de magasins atteint : retour au formulaire avec le message et la saisie (au lieu d'une page 403 qui
+        // perdait tout ce qui avait été tapé).
+        try {
+            $savedStore = $this->storeService->createStore([
+                'code'            => strtoupper(trim($request->post('code', ''))),
+                'name'            => $request->post('name', ''),
+                'slug'            => (string) $request->post('slug', ''),
+                'type'            => ($tmp = $request->post('type', '')) !== '' ? $tmp : 'retail',
+                'timezone'        => ($tmp = $request->post('timezone', '')) !== '' ? $tmp : 'UTC',
+                'locale'          => ($tmp = $request->post('locale', '')) !== '' ? $tmp : 'en',
+                'currency'        => strtoupper(trim(($tmp = $request->post('currency', '')) !== '' ? $tmp : 'EUR')),
+                'currency_symbol_style' => $request->post('currency_symbol_style', 'kanji'),
+                'phone'           => $request->post('phone', '') ?: null,
+                'email'           => $request->post('email', '') ?: null,
+                'address_street'  => $request->post('address_street', '') ?: null,
+                'address_city'    => $request->post('address_city', '') ?: null,
+                'address_postal'  => $request->post('address_postal', '') ?: null,
+                'address_country' => $request->post('address_country', '') ?: null,
+            ]);
+        } catch (PlanLimitExceededException $e) {
+            throw new ValidationException(['store' => $e->getMessage()]);
+        }
 
         $this->auditLogger->log($request, 'store.created', 'store', (int) ($savedStore['id'] ?? 0), [
             'name' => $request->post('name', ''),

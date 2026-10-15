@@ -299,6 +299,30 @@ final class AdminShiftTypeControllerTest extends TestCase
     // Helpers
     // -------------------------------------------------------------------------
 
+    /** Audit n°8 : la liste ne propose plus de modifier ou supprimer un type partagé avec un magasin non géré (403). */
+    public function testSharedShiftTypesAreMarkedLockedForAManagerOfOnlyOneOfTheirStores(): void
+    {
+        $dir  = sys_get_temp_dir() . DIRECTORY_SEPARATOR;
+        $view = $dir . 'scheduling' . DIRECTORY_SEPARATOR . 'shift-types.php';
+        $layout = $dir . 'layout' . DIRECTORY_SEPARATOR . 'app.php';
+        file_put_contents($view, '<?= json_encode($locked_type_ids) ?>');
+        file_put_contents($layout, '<?php echo $content ?? "";');
+        try {
+            $this->shiftTypes->method('findByStores')->willReturn([
+                ['id' => 1, 'name' => 'Partagé'], ['id' => 2, 'name' => 'Le mien'],
+            ]);
+            $this->shiftTypes->method('getStoreIds')->willReturnMap([[1, [1, 2]], [2, [1]]]);
+            $this->stores->method('findAll')->willReturn([]);
+            $req = new Request();
+            $req->setAttribute('managed_store_ids', [1]);
+
+            $this->assertSame('[1]', $this->controller->shiftTypes($req)->body());
+        } finally {
+            file_put_contents($view, '');
+            file_put_contents($layout, '');
+        }
+    }
+
     private function makePostRequest(array $post): Request
     {
         $_POST = $post;

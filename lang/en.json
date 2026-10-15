@@ -1,4 +1,5 @@
 {
+    "shift_type_shared_locked": "Shared (read-only)",
     "error_419_title": "419 — Page Expired",
     "error_419_message": "This page was open for too long: the action was not saved. Reload the page and try again.",
     "error_419_back": "Back to the page",

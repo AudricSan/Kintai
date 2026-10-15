@@ -1,4 +1,5 @@
 {
+    "shift_type_shared_locked": "Partagé (lecture seule)",
     "error_419_title": "419 — Page expirée",
     "error_419_message": "Cette page était ouverte depuis trop longtemps : l'action n'a pas été enregistrée. Rechargez la page et recommencez.",
     "error_419_back": "Revenir à la page",
