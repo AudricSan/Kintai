@@ -2,64 +2,64 @@
 
 🌐 [English](../creating-a-bundle.md) · **Français** · [日本語](creating-a-bundle.ja.md)
 
-Ce document s'adresse à quiconque écrit un bundle Kintai destiné à être **distribué indépendamment** — son propre dépôt Git, son propre historique de versions, installable depuis `/admin/bundles/market` sans jamais toucher au code de Kintai lui-même. Il ne couvre pas l'ancien modèle, toujours pris en charge, consistant à déposer un bundle directement dans `src/Bundles/` du dépôt principal (voir `docs/architecture.md` → "Modular Bundles" pour celui-là) — ce dossier est toujours scanné pour un bundle déposé à la main, mais chaque bundle officiel est distribué selon le modèle décrit ici, et un nouveau bundle, surtout tiers, devrait l'être aussi.
+Ce document s'adresse à quiconque écrit un bundle Kintai destiné à être **distribué indépendamment** — son propre dépôt Git, son propre historique de versions, installable depuis `/admin/bundles/market` sans jamais toucher au code de Kintai lui-même. Il ne couvre pas l'ancien modèle, toujours pris en charge, consistant à déposer un bundle directement dans `src/Bundles/` du dépôt principal (voir `docs/architecture.md` → « Modular Bundles ») — ce dossier est toujours scanné pour un bundle déposé à la main, mais chaque bundle officiel est distribué selon le modèle décrit ici, et un nouveau bundle, surtout tiers, devrait l'être aussi.
 
-`kintai-bundle-notebook` (le carnet de notes d'équipe : son propre modèle, son dépôt, ses migrations, ses vues, ses widgets de tableau de bord et ses déclarations) est un exemple réel, petit et complet — à garder ouvert dans un second onglet pendant la lecture.
+`kintai-bundle-notebook` (le carnet d'équipe : son propre modèle, son dépôt, ses migrations, ses vues, ses widgets de tableau de bord et ses déclarations) est un exemple réel, petit et complet — utile à garder ouvert dans un second onglet pendant la lecture.
 
 ## Pourquoi un dépôt séparé, et pourquoi pas de `git clone`
 
-Kintai n'exécute jamais `git clone`/`git pull` pour récupérer un bundle — l'installateur (`BundleInstallerService`) télécharge le **zipball d'une release GitHub taguée** en simple HTTP (avec un repli curl → wrapper de flux PHP, voir `HttpFetcher`), exactement le même mécanisme que Kintai utilise déjà pour se mettre à jour lui-même (`GithubUpdateService`). C'est délibéré : beaucoup d'hébergements mutualisés (le public visé par Kintai) ne garantissent pas qu'un binaire `git` soit accessible depuis PHP, alors qu'une requête HTTPS sortante fonctionne toujours.
+Kintai ne lance jamais `git clone`/`git pull` pour récupérer un bundle — l'installeur (`BundleInstallerService`) télécharge le **zipball d'une Release GitHub étiquetée** en HTTP simple (avec repli curl → flux PHP, voir `HttpFetcher`), exactement le mécanisme que Kintai utilise déjà pour se mettre à jour (`GithubUpdateService`). C'est voulu : beaucoup d'hébergements mutualisés (ceux que Kintai vise) ne garantissent pas qu'un binaire `git` soit accessible depuis PHP, alors qu'une requête HTTPS sortante fonctionne toujours.
 
-Conséquences qui façonnent tout ce qui suit :
-- Votre bundle a besoin d'**au moins une release GitHub taguée `vX.Y.Z`** — un simple tag ne suffit pas, `zipball_url` n'existe que sur une vraie release.
-- L'unique dossier racine du zipball devient la racine installée du bundle — peu importe comment GitHub le nomme (`{owner}-{repo}-{sha}`), seul son contenu compte.
-- Rien à construire ni à uploader comme artefact de release : GitHub calcule `zipball_url` automatiquement à partir du commit taggé.
+Conséquences qui structurent tout ce qui suit :
+- Votre bundle a besoin d'**au moins une Release GitHub étiquetée `vX.Y.Z`** — une simple étiquette ne suffit pas, `zipball_url` n'existe que sur une vraie Release.
+- L'unique dossier racine du zipball devient la racine du bundle installé — son nom donné par GitHub (`{owner}-{repo}-{sha}`) n'a aucune importance, seul son contenu compte.
+- Rien à construire ni à joindre à la release : GitHub calcule `zipball_url` automatiquement à partir du commit étiqueté.
 
 ## Arborescence requise
 
 ```
 your-bundle/
-  bundle.json                 # manifeste — voir ci-dessous, obligatoire
+  bundle.json                 # manifest — see below, required
   src/
-    YourBundle.php            # classe d'entrée, étend kintai\Core\BundleContract\Bundle
+    YourBundle.php            # entry class, extends kintai\Core\BundleContract\Bundle
     Controllers/Web/...
     Controllers/Api/...
-  database/migrations/        # optionnel — voir « Migrations de base de données » ci-dessous
-  Views/                      # optionnel — chargé via loadViewsFrom()
-  public/{css,js}/...         # optionnel — voir « Assets » ci-dessous, chargé via loadAssetsFrom()
-  lang/{en,fr,ja}.json         # optionnel — clés de traduction propres au bundle
-  routes.php                  # optionnel — chargé via loadRoutesFrom()
+  database/migrations/        # optional — see "Database migrations" below
+  Views/                      # optional — loaded via loadViewsFrom()
+  public/{css,js}/...         # optional — see "Assets" below, loaded via loadAssetsFrom()
+  lang/{en,fr,ja}.json         # optional — bundle-specific translation keys
+  routes.php                  # optional — loaded via loadRoutesFrom()
   README.md
   LICENSE
 ```
 
-Deux pièges fréquents ici :
-- **Seule votre classe d'entrée (et tout ce qui vit sous le même namespace) va sous `src/`.** `routes.php`, `Views/` et `lang/` vivent à la racine du bundle, en frères de `src/` — pas à l'intérieur. Cela reflète le champ `namespace` de `bundle.json`, qui est une racine PSR-4 pour `src/` uniquement.
-- `Bundle::getPath()` renvoie la **racine** du bundle (le dossier contenant `bundle.json`), quel que soit celui des deux dossiers où vit le fichier de votre classe — `loadRoutesFrom($this->getPath() . '/routes.php')` et `loadViewsFrom($this->getPath() . '/Views', 'votre-namespace')` se résolvent correctement tant que vous suivez l'arborescence ci-dessus.
+Deux pièges faciles :
+- **Seules votre classe d'entrée (et ce qui partage son espace de noms) vont sous `src/`.** `routes.php`, `Views/` et `lang/` sont à la racine du bundle, à côté de `src/` — pas dedans. Cela suit le champ `namespace` de `bundle.json`, qui est une racine PSR-4 pour `src/` uniquement.
+- `Bundle::getPath()` renvoie la **racine** du bundle (le dossier qui contient `bundle.json`), quel que soit le dossier où se trouve le fichier de votre classe — `loadRoutesFrom($this->getPath() . '/routes.php')` et `loadViewsFrom($this->getPath() . '/Views', 'your-namespace')` se résolvent correctement tant que vous suivez l'arborescence ci-dessus.
 
 ## Le contrat stable : `kintai\Core\BundleContract\Bundle`
 
-Votre classe d'entrée étend cette classe abstraite — la seule partie de `kintai\Core\*` qui suit son propre versionnage sémantique, annoncé au CHANGELOG quand elle change (ajouter une méthode optionnelle est mineur ; changer ou supprimer une méthode est un changement majeur documenté). Rien d'autre sous `kintai\Core\` ne vient avec cette garantie.
+Votre classe d'entrée étend cette classe abstraite — la seule partie de `kintai\Core\*` qui suit son propre versionnage sémantique, annoncé dans le CHANGELOG quand elle change (ajouter une méthode facultative est mineur ; en modifier ou en retirer une est un changement majeur documenté). Rien d'autre sous `kintai\Core\` n'offre cette garantie.
 
 ```php
 abstract class Bundle
 {
-    abstract public function getName(): string;      // slug — doit correspondre au "slug" de bundle.json
-    abstract public function register(): void;        // câble services, routes, vues
+    abstract public function getName(): string;      // slug — must match bundle.json's "slug"
+    abstract public function register(): void;        // wire services, routes, views
 
-    public function getVersion(): string;              // doit correspondre au "version" de bundle.json
-    public function getLabel(): string;                 // affiché dans /admin/bundles(/market)
+    public function getVersion(): string;              // must match bundle.json's "version"
+    public function getLabel(): string;                 // shown in /admin/bundles(/market)
     public function getDescription(): string;
-    public function boot(): void;                       // s'exécute une fois tous les bundles enregistrés
-    public function getPath(): string;                  // racine du bundle, voir ci-dessus
+    public function boot(): void;                       // runs once every bundle is registered
+    public function getPath(): string;                  // bundle root, see above
 
     protected function loadRoutesFrom(string $path): void;
     protected function loadViewsFrom(string $path, string $namespace): void;
-    protected function loadAssetsFrom(string $relativeDir): void;  // voir « Assets » ci-dessous
+    protected function loadAssetsFrom(string $relativeDir): void;  // see "Assets" below
 }
 ```
 
-Un exemple minimal et réel (la vraie classe d'entrée de `kintai-bundle-notebook`, réduite) :
+Un exemple réel et minimal (la vraie classe d'entrée de `kintai-bundle-notebook`, raccourcie) :
 
 ```php
 <?php
@@ -102,26 +102,518 @@ final class NotebookBundle extends Bundle
 }
 ```
 
-Votre namespace peut être n'importe quoi — par convention, les bundles installés utilisent `kintai\Bundles\Installed\{Nom}\`, délibérément distinct de la convention legacy du monorepo (`kintai\Bundles\{Nom}\`) pour que les deux mécanismes d'autoload (le PSR-4 propre de Composer pour `src/Bundles/`, et un `spl_autoload_register` dédié pour tout ce qui vit sous `storage/bundles/`) ne puissent jamais entrer en collision sur le même nom de classe.
+Votre espace de noms est libre — par convention, les bundles installés utilisent `kintai\Bundles\Installed\{Name}\`, volontairement distinct de la convention de l'ancien monorepo (`kintai\Bundles\{Name}\`) pour que les deux mécanismes de chargement (le PSR-4 de Composer pour `src/Bundles/`, et un `spl_autoload_register` dédié pour tout ce qui est sous `storage/bundles/`) ne puissent jamais se disputer le même nom de classe.
 
-**Un bundle ne dépend jamais des dépôts ni des modèles du Core** : il possède les siens (comme ci-dessus) et n'utilise que les noms `kintai\Contract\…` listés plus bas. Les données dont le Core a besoin passent par un fournisseur déclaré.
+**Un bundle ne dépend jamais des dépôts ni des modèles du Core** : il possède les siens (comme ci-dessus) et n'utilise que les noms `kintai\Contract\…` listés ci-dessous. Les données dont le Core a besoin passent par un fournisseur déclaré.
 
-## Le contrat de portée RBAC : `managed_store_ids`
+## La surface du contrat : `kintai\Contract\…`
 
-Toute route Web enregistrée par votre bundle sous `middleware: [AuthMiddleware::class, PermissionMiddleware::class]` doit déclarer un `permission:` — soit une clé précise de `PermissionCatalog`, soit `'public'` (une route volontairement non gatée finement, ex. self-service/agrégat ; omettre `permission:` a le même effet). `PermissionMiddleware` résout cette règle en un attribut de requête, `managed_store_ids`, que chaque contrôleur en aval doit lire plutôt que de le recalculer lui-même :
+Un bundle ne peut utiliser que les noms ci-dessous (plus ses propres classes). Chacun est un **alias stable** de la classe du Core qui l'implémente aujourd'hui (`src/Contract/surface.php` est la liste de référence), si bien que le Core peut réorganiser son propre code sans casser les bundles. Importez-les exactement comme n'importe quelle classe — indications de type, `instanceof`, `catch` et injection par constructeur fonctionnent tous ; le conteneur résout un alias vers la liaison de la classe qu'il désigne.
 
-- **`null`** — illimité. Soit l'utilisateur est Owner, soit son rôle accorde la clé de permission de votre route avec la case "Toutes les boutiques" cochée (`role_permissions.scope = 'global'`) — ce qui peut arriver même quand l'*affectation* qui relie cet utilisateur à ce rôle reste elle-même limitée à son magasin d'origine. Les deux cas signifient exactement la même chose : aucun filtrage par magasin.
-- **`int[]`** — restreint exactement à ces identifiants de magasin.
+```php
+use kintai\Contract\Bundle;
+use kintai\Contract\Http\Request;
+use kintai\Contract\Http\Response;
+use kintai\Contract\Exceptions\NotFoundException;
+use kintai\Contract\Data\StoreRepositoryInterface;
+```
 
-**L'erreur qui réintroduit ce bug à chaque fois** : écrire `$request->getAttribute('managed_store_ids') ?? []` au lieu de tester explicitement `=== null`. Ça paraît anodin car plusieurs méthodes de repository du Core traitent un tableau de filtre *vide* comme "aucun filtre" — une requête de liste en aval peut donc continuer à "fonctionner" par coïncidence — mais le prochain code qui relit cette même valeur écrasée (un sélecteur de magasin, une vérification d'accès `in_array($storeId, $managedIds)`) voit "zéro magasin", pas "tous les magasins", et casse. Cette erreur exacte s'est retrouvée dans `DailyReportController::indexAll()` de `kintai-bundle-daily-report` (corrigée dans `fix/global-scope-permission-store-filter`) — traitez toujours `null` comme sa propre branche, à l'image de `is_admin`, jamais comme quelque chose qu'un `??` peut absorber.
+Les noms **stables** sont garantis pour toute la version majeure du contrat. Les noms **provisoires** sont exposés pour la transition et seront remplacés par une étape ultérieure du plan du contrat (voir leur description) ; ils ne disparaissent qu'avec une nouvelle version majeure.
 
-Ne recalculez pas cette résolution vous-même. Réutilisez le trait `kintai\UI\Controller\Web\HasAdminAccess` du Core — `managedIds(Request $request): ?array`, `availableStores(?array $managedIds): array`, `assertStoreAccess(Request $request, int $storeId): void`, `assertAnyStoreAccess(Request $request, array $storeIds): void` — le même trait qu'utilise le contrôleur admin de chaque bundle officiel (voir `StorePhotoController` dans `kintai-bundle-store-photos` pour un exemple réel). Il traite déjà correctement le cas `null` ; un équivalent réécrit à la main dans votre propre contrôleur est exactement la façon dont cette catégorie de bug se réintroduit, un bundle à la fois.
+| Nom | Statut | Rôle |
+|---|---|---|
+| `kintai\Contract\Bundle` | stable | Classe de base de tout bundle (point d'entrée). |
+| `kintai\Contract\BundleManifest` | stable | bundle.json analysé. |
+| `kintai\Contract\Container` | stable | Conteneur de dépendances (enregistrez vos propres liaisons). |
+| `kintai\Contract\Cron\CronJob` | stable | Tâche planifiée déclarée par `Bundle::cronJobs()` (contrat 1.8). |
+| `kintai\Contract\Http\Request` | stable | Requête HTTP. |
+| `kintai\Contract\Http\Response` | stable | Réponse HTTP. |
+| `kintai\Contract\Http\Router` | stable | Déclaration des routes (routes.php). |
+| `kintai\Contract\Http\Paginator` | stable | Pagination des listes de l'API. |
+| `kintai\Contract\Http\Middleware\AuthMiddleware` | stable | Session web requise. |
+| `kintai\Contract\Http\Middleware\PermissionMiddleware` | stable | Permission web requise. |
+| `kintai\Contract\Http\Middleware\ApiAuthMiddleware` | stable | Jeton d'API requis. |
+| `kintai\Contract\Http\Middleware\ApiPermissionMiddleware` | stable | Permission d'API requise. |
+| `kintai\Contract\Http\Concerns\HasBaseUrl` | stable | Préfixe d'URL (installation en sous-dossier). |
+| `kintai\Contract\Http\Concerns\HasAdminAccess` | **provisoire** | Périmètre de magasins du gérant ; remplacé par CurrentUser/Gate (étape 2). |
+| `kintai\Contract\Http\Concerns\HasStoreFeatureCheck` | **provisoire** | Vérification d'une fonctionnalité par magasin ; remplacée par le point d'extension storeFeatures (étape 2). |
+| `kintai\Contract\Http\Concerns\HasStaffReportCrud` | **provisoire** | CRUD partagé des rapports RH ; déplacé dans les bundles concernés (étape 4). |
+| `kintai\Contract\Exceptions\NotFoundException` | stable | 404. |
+| `kintai\Contract\Exceptions\ForbiddenException` | stable | 403. |
+| `kintai\Contract\Exceptions\ValidationException` | stable | 422 avec erreurs par champ. |
+| `kintai\Contract\Exceptions\ConflictException` | stable | 409. |
+| `kintai\Contract\Auth\PermissionService` | stable | Vérification des permissions et des périmètres. |
+| `kintai\Contract\Auth\AuthService` | **provisoire** | Utilisateur de la session ; remplacé par CurrentUser (étape 2). |
+| `kintai\Contract\Auth\UserAnonymizer` | stable | Suppression d'un compte : `anonymize($userId)` efface les données personnelles, désactive le compte et retire ses droits et jetons, l'historique reste rattaché à « Utilisateur supprimé » (contrat 1.21 ; n'appelez jamais `UserRepositoryInterface::delete()` pour cela). |
+| `kintai\Contract\Data\UserRepositoryInterface` | stable | Comptes. |
+| `kintai\Contract\Data\StoreRepositoryInterface` | stable | Magasins. |
+| `kintai\Contract\Data\StoreUserRepositoryInterface` | stable | Adhésions aux magasins. |
+| `kintai\Contract\Data\ShiftRepositoryInterface` | stable | Shifts. |
+| `kintai\Contract\Data\ShiftTypeRepositoryInterface` | stable | Types de shift. |
+| `kintai\Contract\Data\UserShiftTypeRateRepositoryInterface` | stable | Taux horaires individuels. |
+| `kintai\Contract\Data\AppSettingsRepositoryInterface` | stable | Paramètres de l'instance. |
+| `kintai\Contract\Database\Migration` | stable | Classe de base des migrations du bundle. |
+| `kintai\Contract\Services\AuditLogger` | stable | Journal d'activité. |
+| `kintai\Contract\Services\NotificationService` | stable | Notifications (et push). |
+| `kintai\Contract\Services\TranslationService` | stable | Traductions. |
+| `kintai\Contract\Services\ImageCompressionService` | stable | Compression d'images. |
+| `kintai\Contract\Services\Mailer` | stable | Envoie un e-mail par le transport configuré de l'instance : `send($to, $subject, $html, $attachmentPaths)` (contrat 1.15). |
+| `kintai\Contract\Services\PdfCjkFontResolver` | stable | Police japonaise des documents mPDF : `PdfCjkFontResolver::applyTo($mpdfConfig)` (contrat 1.16). |
+| `kintai\Contract\Services\Sales` | stable | Ventes quotidiennes d'un magasin, lues auprès des fournisseurs de ventes (contrat 1.14, voir « Ventes » ci-dessous). |
+| `kintai\Contract\Services\ShiftWageCalculator` | stable | Coût d'un shift (source unique du calcul de paie). |
+| `kintai\Contract\Services\ShiftServiceInterface` | **provisoire** | Création de shifts ; remplacée par une API d'écriture ciblée (étape 3). |
+| `kintai\Contract\Services\StoreStatsServiceInterface` | **provisoire** | Statistiques de magasin ; remplacées par des fournisseurs (étape 3). |
+| `kintai\Contract\View\ViewRenderer` | stable | Rend les vues du bundle. |
+| `kintai\Contract\View\Components\Badge` | stable | Composant d'interface (`Badge`). |
+| `kintai\Contract\View\Components\Button` | stable | Composant d'interface (`Button`). |
+| `kintai\Contract\View\Components\Card` | stable | Composant d'interface (`Card`). |
+| `kintai\Contract\View\Components\EmptyState` | stable | Composant d'interface (`EmptyState`). |
+| `kintai\Contract\View\Components\FilterBar` | stable | Composant d'interface (`FilterBar`). |
+| `kintai\Contract\View\Components\Flash` | stable | Composant d'interface (`Flash`). |
+| `kintai\Contract\View\Components\Form` | stable | Composant d'interface (`Form`). |
+| `kintai\Contract\View\Components\Modal` | stable | Composant d'interface (`Modal`). |
+| `kintai\Contract\View\Components\Pagination` | stable | Composant d'interface (`Pagination`). |
+| `kintai\Contract\View\Components\Table` | stable | Composant d'interface (`Table`). |
 
-Si votre bundle doit servir un **fichier uploadé** (une image, un PDF, une pièce jointe) derrière cette même autorisation, ne construisez pas votre propre route de service de fichier — appuyez-vous sur `/storage/{path*}` (nom de route `storage.file`) de Kintai lui-même, qui applique déjà `managed_store_ids` (`StorageFileController::assertPathStoreAccess()`) ainsi que son propre confinement de chemin d'upload et sa liste blanche de types MIME. Une route de service de fichier parallèle duplique une logique d'autorisation que le Core possède déjà, hors de sa propre couverture de tests.
+### Classes propres au bundle
 
-## URLs lisibles : paramètres de route typés
+Un bundle possède ses modèles, ses dépôts, ses services et ses tables : aucun ne vit plus dans le Core (l'étape 4 du plan est terminée pour chaque bundle officiel). Un bundle n'importe que `kintai\Contract\…` ; son test d'utilisation du contrat n'a plus aucune exception.
 
-Les routes web du Core n'affichent plus d'identifiants pour les magasins et les employés (`/admin/stores/所沢東町店/edit`, `/admin/users/057/edit`, voir `docs/architecture.md`, « URLs lisibles »). Votre bundle obtient la même chose en typant ses paramètres de route — rien à enregistrer :
+### Vérifier votre bundle
+
+`tests/Support/ContractUsageScanner.php` de Kintai (chargé par le harnais PHPUnit des bundles) signale chaque référence à `kintai\Core\…`, `kintai\UI\…` ou `kintai\Domain\…` hors du contrat :
+
+```php
+public function testOnlyTheContractIsUsed(): void
+{
+    $root = dirname(__DIR__);
+    $this->assertSame([], ContractUsageScanner::violations(
+        [$root . '/src', $root . '/Views', $root . '/routes.php'],
+        [/* bundle-owned classes still living in the Core */],
+    ));
+}
+```
+
+## Points d'extension (contrat 1.1+)
+
+Le Core ne nomme jamais un bundle : un bundle **déclare** ce qu'il ajoute à l'interface en redéfinissant des méthodes de sa classe d'entrée, et le Core l'affiche. Chaque bundle est interrogé isolément — une exception ou une valeur du mauvais type retire sa contribution et est journalisée, la page continue de fonctionner. Exigez `"kintai_contract": "^1.1"` pour les utiliser.
+
+### Navigation : `navigation()`
+
+```php
+use kintai\Contract\Extension\NavItem;
+
+public function navigation(): array
+{
+    return [
+        new NavItem(
+            key: 'timeoff',                       // unique, also the key of the user's "hide this entry" preference
+            section: NavItem::REQUESTS,           // MAIN, PLANNING, HR, REQUESTS, REPORTS or SYSTEM
+            label: 'timeoff',                     // translation key (manager view)
+            managerRoute: 'admin.timeoff',        // route name, or null if managers have no page
+            employeeRoute: 'employee.timeoff',    // route name, or null if employees have no page
+            icon: 'leaf',
+            employeeLabel: 'my_timeoff',
+            activePaths: ['/admin/timeoff', '/employee/timeoff'],
+            storeFeature: 'timeoff',              // per-store feature switch, if any
+            order: 10,                            // Core entries use multiples of 10
+            mobile: true,                         // may be picked for the mobile bottom bar
+        ),
+    ];
+}
+```
+
+Une entrée ne s'affiche que si le rôle courant a une route, détient la permission déclarée sur cette route et — si `storeFeature` est renseigné — a cette fonctionnalité activée. Les utilisateurs peuvent la masquer dans leurs préférences de navigation.
+
+### Permissions : `permissions()` (contrat 1.2)
+
+```php
+public function permissions(): array
+{
+    return [
+        'timeoff' => ['view', 'create', 'update', 'delete', 'approve'],  // category => actions
+    ];
+}
+```
+
+Chaque paire `catégorie.action` devient une clé de permission que vous pouvez poser sur vos routes (`permission: 'timeoff.approve'`) et que l'Owner accorde depuis la page des rôles tant que votre bundle est actif. Les noms sont en `snake_case` minuscule. Les catégories du Core (`employees`, `shifts`, `stores`, `payroll`) ne peuvent pas être redéfinies, et une catégorie déjà déclarée par un autre bundle est ignorée (journalisé). La page des rôles affiche une catégorie avec la clé de traduction `perm_category_{catégorie}` et une action avec le libellé du Core pour les actions courantes (`view`, `create`, `update`, `delete`, `approve`, …), sinon avec le nom de l'action lui-même comme clé de traduction — fournissez ces clés dans le `lang/` de votre bundle. Désactiver le bundle masque la catégorie de la page des rôles mais conserve les droits en base : le réactiver les restaure. À la première installation du bundle (assistant de configuration ou catalogue), chaque permission déclarée est accordée au rôle Manager, qui l'exerce sur ses propres magasins ; les mises à jour n'accordent plus rien, donc un droit retiré par l'Owner reste retiré. Exigez `"kintai_contract": "^1.2"`.
+
+### Fonctionnalités par magasin : `storeFeatures()` (contrat 1.3)
+
+```php
+use kintai\Contract\Extension\StoreFeature;
+
+public function storeFeatures(): array
+{
+    return [
+        new StoreFeature(
+            key: 'timeoff',                       // stored in store_features, lowercase snake_case
+            label: 'feature_timeoff',             // translation key of the card title
+            description: 'feature_timeoff_desc',  // translation key of the card description
+            icon: '🏖',
+            order: 30,                            // Core features use multiples of 10
+        ),
+    ];
+}
+```
+
+Tant que votre bundle est actif, chaque fonctionnalité est proposée comme interrupteur dans la carte « Fonctionnalités » du formulaire de magasin. Vérifiez-la dans vos pages employé avec `HasStoreFeatureCheck::assertFeature($request, 'timeoff')`, et donnez la même clé comme `storeFeature` à vos `NavItem` pour qu'ils disparaissent des magasins qui l'ont désactivée. Un magasin qui n'a jamais enregistré ses fonctionnalités les a toutes activées ; désactiver votre bundle conserve le choix de chaque magasin, que sa réactivation restaure. Une clé déjà déclarée par le Core ou un autre bundle est ignorée (journalisé). Exigez `"kintai_contract": "^1.3"`.
+
+### Widgets du tableau de bord : `dashboardWidgets()` (contrat 1.4)
+
+```php
+use kintai\Contract\Extension\DashboardWidget;
+
+public function dashboardWidgets(): array
+{
+    return [
+        new DashboardWidget(
+            key: 'team_notes',                    // unique on that dashboard, also the user's preference key
+            audience: DashboardWidget::MANAGER,   // MANAGER ("/") or EMPLOYEE ("/employee")
+            label: 'widget_team_notes',           // translation key shown in the "Customize" panel
+            view: 'notebook::widgets.dashboard',  // your namespaced view (loadViewsFrom())
+            data: fn(array $ctx): array => [      // variables passed to the view
+                'entries' => $this->app->container()->make(NotebookEntryRepositoryInterface::class)
+                    ->findVisibleForStores($ctx['store_ids']),
+            ],
+            permission: 'notebook.view',
+            storeFeature: 'notes',
+            order: 10,
+        ),
+    ];
+}
+```
+
+Vos widgets sont listés dans le panneau « Personnaliser » du tableau de bord (activés par défaut) et rendus après ceux du Core, en pleine largeur, jusqu'à ce que l'utilisateur les déplace ou les redimensionne (l'ordre et les largeurs sont enregistrés par utilisateur ; un widget jamais placé va en dernier), pour les utilisateurs qui détiennent `permission` et dont les magasins ont `storeFeature` activé. `data` reçoit le contexte : `user`, `store_ids` (les magasins gérés, ou ceux de l'employé), `managed_store_ids` (`null` = tous les magasins, côté gérant), `stores_map` (id => nom) et `today`. Ne chargez que ce que le widget affiche — `data` s'exécute à chaque affichage du tableau de bord. Une exception dans `data` ou dans la vue ne retire que ce widget (journalisé). Rendez une carte complète (`<div class="card card--mt">…</div>`). Les clés du Core ne peuvent pas être réutilisées. Un bundle qui reprend un widget autrefois rendu par le Core garde sa clé pour que les utilisateurs conservent leurs choix (`notebook` a gardé `team_notes`, `timeoff` `pending_timeoff`, `shift-swap` `pending_swaps` et `timeclock` `timeclocks_today` et `timeclock` lors de leur extraction). Exigez `"kintai_contract": "^1.4"`.
+
+### Variables de vue : `viewVariables()` (contrat 1.5)
+
+```php
+public function viewVariables(): array
+{
+    return [
+        // name => fn(array $user): mixed, shared with every view of authenticated pages
+        'unread_messages_count' => fn(array $user): int =>
+            $this->app->container()->make(MessageRepositoryInterface::class)->countUnread((int) $user['id']),
+    ];
+}
+```
+
+Utilisez-le pour les quelques valeurs dont votre navigation ou votre mise en page a besoin sur chaque page — typiquement le compteur nommé dans le `badge` d'un `NavItem`. Chaque fonction s'exécute sur chaque page authentifiée : limitez-vous à une requête légère. Les noms sont en `snake_case` minuscule, de préférence préfixés par le nom de votre bundle ; les noms du Core (`auth_user`, `managed_store_ids`, `store_features`, …) et ceux déjà déclarés par un autre bundle sont refusés, et une exception ne retire que cette variable (journalisé). `messaging` partage ainsi `unread_messages_count` et `daily-report` `daily_report_staff_stores` ; le Core n'en calcule aucune lui-même. Exigez `"kintai_contract": "^1.5"`.
+
+### Liens d'action : `actions()` (contrat 1.6)
+
+```php
+use kintai\Contract\Extension\Action;
+
+public function actions(): array
+{
+    return [
+        new Action(
+            key: 'salary_report',
+            slot: Action::EMPLOYEE_ROW,           // where the link goes, see below
+            label: 'salary_report',               // translation key
+            url: fn(array $ctx): ?string =>      // null hides the link for this context
+                route_url('salary_reports.create', ['id' => $ctx['store_id']]) . '?user_id=' . $ctx['user_id'],
+            icon: '💰',
+            style: Action::DEFAULT,               // DEFAULT, PRIMARY or DANGER
+            permission: 'payroll.generate',
+        ),
+    ];
+}
+```
+
+Emplacements et contexte que chacun passe à `url` :
+
+| Emplacement | Où | Contexte |
+|---|---|---|
+| `Action::EMPLOYEE_ROW` | Menu « ⋮ » d'une ligne de la liste du personnel | `user_id`, `store_id` (magasin principal) |
+| `Action::EMPLOYEE_STORE` | Carte « Rapports » du formulaire employé, une fois par magasin | `user_id`, `store_id`, `store_name` |
+| `Action::STORE_REPORT` | En-tête du rapport du personnel d'un magasin | `store_id` |
+| `Action::STORE_REPORT_ROW` | Ligne du rapport du personnel d'un magasin, et en-tête de la page de statistiques de cet employé | `store_id`, `user_id`, `period` |
+| `Action::SHIFTS_EMPLOYEE` | Barre d'outils du planning de l'employé (liste, calendrier, jour) | aucun |
+
+Le Core affiche le lien dans le style de l'emplacement, seulement pour les utilisateurs qui détiennent `permission` et, si `storeFeature` est renseigné, avec cette fonctionnalité activée. Une clé déjà utilisée dans l'emplacement est ignorée ; une exception dans `url` retire ce lien (journalisé). Le Core n'ajoute aucun lien lui-même : `shift-swap` fournit ainsi « Demander un échange ». Exigez `"kintai_contract": "^1.6"`.
+
+### Libellés des notifications et du journal d'activité (contrat 1.7)
+
+```php
+public function notificationTypes(): array
+{
+    return ['timeoff_approved' => '✓', 'timeoff_refused' => '✗'];   // type => icon
+}
+```
+
+Déclarez les types des notifications que crée votre bundle, avec leur icône ; le libellé est la traduction `notif_{type}` des fichiers `lang/` de votre bundle. Les types du Core ne peuvent pas être redéfinis. Les notifications déjà reçues gardent leur libellé traduit quand votre bundle est désactivé, tant que la traduction existe.
+
+Les entrées du journal d'activité que vous écrivez (`AuditLogger`) obtiennent leur libellé de la même façon : fournissez `audit_{action}` dans vos fichiers `lang/`, points et tirets remplacés par des soulignés (`timeoff.approved` → `audit_timeoff_approved`). Exigez `"kintai_contract": "^1.7"` pour `notificationTypes()` ; les conventions de traduction n'exigent rien.
+
+### Tâches planifiées : `cronJobs()` (contrat 1.8)
+
+```php
+use kintai\Contract\Cron\CronJob;
+use kintai\Contract\Http\Request;
+use kintai\Contract\Http\Response;
+
+final class SendRemindersJob implements CronJob
+{
+    public function __construct(private readonly ReminderService $reminders) {}
+
+    public function getName(): string
+    {
+        return 'timeoff-reminders';               // lowercase letters, digits, dashes
+    }
+
+    public function run(Request $request): Response
+    {
+        return Response::json(['ok' => true, 'sent' => $this->reminders->sendDue()]);
+    }
+}
+
+// In your Bundle class:
+public function cronJobs(): array
+{
+    return [SendRemindersJob::class];             // resolved by the container
+}
+```
+
+Tant que votre bundle est actif, un planificateur externe (cron-job.org, une crontab serveur…) lance la tâche en appelant `/cron/run/{nom}` avec un jeton de cron créé par l'Owner — de préférence dans l'en-tête `Authorization: Bearer <jeton>`, car un paramètre `?token=` finit dans les journaux d'accès du serveur web ; `?token=` reste accepté pour les planificateurs qui ne savent appeler qu'une URL — cas courant en hébergement mutualisé — ou, sur un serveur avec accès SSH, une crontab locale lance `php scripts/cron.php {nom}` (sans jeton ; les paramètres d'URL supplémentaires deviennent `--clé=valeur`). Les noms du Core (`backup`, `log-purge`, `license-check`) et ceux déjà pris sont refusés (journalisé) ; une classe impossible à construire est ignorée. `daily-report` fournit ainsi `auto-validate`. Exigez `"kintai_contract": "^1.8"`.
+
+Depuis le contrat 1.20, le libellé d'une tâche (listé par `php scripts/cron.php`) est trouvé par convention dans vos fichiers `lang/` : `cron_job_{nom}`, tirets remplacés par des soulignés (`cron_job_timeoff_reminders`) ; à défaut, le nom est affiché.
+
+### Sections du profil : `profileSections()` (contrat 1.12)
+
+```php
+use kintai\Contract\Extension\ProfileSection;
+
+public function profileSections(): array
+{
+    return [
+        new ProfileSection(
+            key: 'directory',
+            view: 'team-directory::profile-section',   // rendered with $user (the signed-in user's row)
+            flags: ['show_in_directory', 'share_email', 'share_phone', 'share_mobile_phone'],
+            order: 10,
+        ),
+    ];
+}
+```
+
+Le Core rend votre vue dans le formulaire « Mes informations » du profil, avant son bouton « Enregistrer », tant que votre bundle est actif. À l'enregistrement, il écrit les `flags` déclarés (cases à cocher, `0`/`1` ; un champ absent de la requête garde sa valeur) dans la table `users` — seules les colonnes que le Core ouvre aux bundles sont acceptées (`ProfileSections::WRITABLE_USER_COLUMNS`), le reste est ignoré et journalisé ; gardez vos autres données dans vos propres tables et routes. Placez un champ caché `0` avant chaque case pour que décocher fonctionne. Une clé déjà prise est ignorée ; une exception au rendu retire cette section (journalisé). Le Core n'a aucune section à lui : `team-directory` fournit ainsi les cases de l'annuaire. Exigez `"kintai_contract": "^1.12"`.
+
+### Événements du Core : `eventListeners()` (contrat 1.13)
+
+```php
+use kintai\Contract\Event\EmployeeCreated;
+
+public function eventListeners(): array
+{
+    return [
+        EmployeeCreated::class => function (EmployeeCreated $event): void {
+            // $event->user (users row, without secrets), $event->storeId (?int), $event->createdBy (?int),
+            // $event->source ('form', 'excel_import' or 'api')
+        },
+    ];
+}
+```
+
+Le Core annonce ce qui se passe de son côté pour que votre bundle puisse réagir sans que le Core le connaisse. Un écouteur par classe d'événement (`kintai\Contract\Event\…`) ; le reste est ignoré et journalisé. Un écouteur qui lève une exception est journalisé et n'arrête jamais l'action du Core ni les écouteurs des autres bundles. Événements disponibles :
+
+| Événement | Quand | Données |
+|---|---|---|
+| `EmployeeCreated` | juste après la création d'un compte : formulaire « Nouvel employé », création rapide de l'import Excel, `POST /api/v1/users` | `user`, `storeId` (magasin auquel l'employé a été rattaché, `null` sinon — toujours `null` depuis l'API), `createdBy`, `source` |
+| `OpenShiftClosed` (1.17) | un shift publié dans la bourse cesse de l'être (`is_open` 1 → 0) depuis le formulaire de shift ou `PUT /api/v1/shifts/{id}` | `shift` (la ligne enregistrée), `closedBy` |
+
+`hiring-report` crée ainsi le rapport d'embauche de l'employé, et `shift-claim` retire les candidatures en attente d'un shift ouvert fermé. Exigez `"kintai_contract": "^1.13"` (`^1.17` pour `OpenShiftClosed`).
+
+### Cartes de statistiques du tableau de bord : `dashboardStats()` (contrat 1.19)
+
+```php
+use kintai\Contract\Extension\DashboardStat;
+
+public function dashboardStats(): array
+{
+    return [
+        new DashboardStat('pending_swaps', 'swaps',
+            fn(array $context): int => $this->countPendingFor((int) $context['user']['id']),
+            icon: '🔄', tone: 'danger', storeFeature: 'swaps', order: 20),
+    ];
+}
+```
+
+Le Core affiche votre carte dans la rangée de statistiques en haut du tableau de bord employé, après ses propres cartes (shifts du jour et à venir), triées par `order`. `value` reçoit le même contexte que les widgets (`user`, `store_ids`, `stores_map`, `today`) et renvoie ce qu'il faut afficher ; `tone` est l'une des valeurs de `DashboardStat::TONES`. Avec `storeFeature`, la carte n'apparaît que si cette fonctionnalité est activée. Une clé déjà prise est ignorée ; une exception retire cette carte (journalisé). Le Core n'a aucune carte à lui pour les bundles : `timeoff` et `shift-swap` fournissent ainsi les leurs. Exigez `"kintai_contract": "^1.19"`.
+
+### Sections du formulaire de shift : `shiftFormSections()` (contrat 1.17)
+
+```php
+use kintai\Contract\Extension\ShiftFormSection;
+
+public function shiftFormSections(): array
+{
+    return [
+        new ShiftFormSection(
+            key: 'open_shift',
+            view: 'shift-claim::shift-form-section',          // rendered with $shift, $mode ('create'|'edit'), $BASE_URL
+            fields: ['is_open', 'open_shift_note'],
+            actionsView: 'shift-claim::shift-form-actions',   // edit page only, next to "Save"
+            storeFeature: 'open_shifts',
+        ),
+    ];
+}
+```
+
+Le Core rend votre `view` dans le formulaire de shift (page de création, page de modification et fenêtre de la frise) et, sur la page de modification, votre `actionsView` dans la barre d'actions. Les deux sont **à l'intérieur** du formulaire de shift : un bouton qui vise votre propre route utilise `formaction`/`formmethod` (avec `formnovalidate`) — jamais un `<form>` imbriqué, que les navigateurs ignorent. À l'enregistrement, le Core écrit dans le shift les `fields` déclarés, et eux seuls, parmi les colonnes qu'il ouvre aux bundles (`ShiftFormSections::WRITABLE_SHIFT_COLUMNS` : `is_open`, `open_shift_note`) ; un champ que personne ne déclare est ignoré, donc un shift ne peut pas être ouvert sans le bundle. Avec `storeFeature`, la section n'apparaît que si cette fonctionnalité est activée. Une clé déjà prise est ignorée ; une exception au rendu retire cette section (journalisé). Le Core n'a aucune section à lui : `shift-claim` fournit ainsi les champs et boutons du shift ouvert. Exigez `"kintai_contract": "^1.17"`.
+
+## Fournisseurs : les données que le Core lit dans votre bundle (contrat 1.9+)
+
+Certaines pages du Core ont besoin de données que possède votre bundle. Au lieu de lire vos tables, le Core interroge un **fournisseur** que votre bundle implémente. Sans fournisseur actif, le Core affiche simplement moins de choses — jamais une erreur.
+
+### Demandes en attente : `pendingRequestsProviders()` (contrat 1.9)
+
+```php
+use kintai\Contract\Provider\PendingRequest;
+use kintai\Contract\Provider\PendingRequestsProvider;
+
+final class PendingLeaveProvider implements PendingRequestsProvider
+{
+    public function __construct(private readonly LeaveRepository $leaves) {}
+
+    public function key(): string { return 'timeoff'; }
+    public function label(): string { return 'pending_timeoff'; }         // section title (translation key)
+    public function emptyLabel(): string { return 'no_pending_request'; }
+    public function permission(): string { return 'timeoff.view'; }
+    public function storeFeature(): ?string { return 'timeoff'; }
+    public function order(): int { return 10; }
+    public function manageUrl(): string { return route_url('admin.timeoff'); }
+
+    public function pending(?array $storeIds): array                      // null = every store
+    {
+        return array_map(fn(array $r) => new PendingRequest(
+            id: (int) $r['id'], storeId: (int) $r['store_id'], userId: (int) $r['user_id'], createdAt: $r['created_at'],
+            columns: [
+                ['label' => 'user', 'value' => (int) $r['user_id'], 'style' => PendingRequest::USER],
+                ['label' => 'type', 'value' => $r['type'], 'style' => PendingRequest::BADGE],
+                ['label' => 'from', 'value' => $r['start_date']],
+            ],
+        ), $this->leaves->pendingForStores($storeIds));
+    }
+}
+
+// In your Bundle class:
+public function pendingRequestsProviders(): array
+{
+    return [new PendingLeaveProvider($this->app->container()->make(LeaveRepository::class))];
+}
+```
+
+Le Core l'utilise pour la page « Demandes » (une section par fournisseur, un tableau construit à partir de vos colonnes), le compteur « Demandes en attente » du tableau de bord et les alertes de demandes anciennes — uniquement pour les utilisateurs qui détiennent `permission`. Styles de colonne : `TEXT`, `BADGE`, `USER` (identifiant d'utilisateur, affiché comme un nom), `STORE` (identifiant de magasin, affiché comme un nom), `TIME` (`HH:MM`). Renvoyez les demandes dans l'ordre d'affichage. Une exception ne retire que votre section (journalisé). Le Core n'a aucun fournisseur à lui. Exigez `"kintai_contract": "^1.9"`.
+L'alerte « demandes anciennes » du tableau de bord gérant les lit aussi : une demande en attente depuis plus de trois jours est listée avec le `label()` de son fournisseur.
+
+### Absences : `absenceProviders()` (contrat 1.10)
+
+```php
+use kintai\Contract\Provider\Absence;
+use kintai\Contract\Provider\AbsenceProvider;
+
+final class LeaveAbsences implements AbsenceProvider
+{
+    public function absences(?array $userIds, ?array $storeIds): array   // null = no filter
+    {
+        return array_map(fn(array $r) => new Absence(
+            (int) $r['id'], (int) $r['user_id'], (int) $r['store_id'],
+            $r['start_date'], $r['end_date'],                              // Y-m-d, end included
+            $r['type'], $r['status'],                                      // Absence::APPROVED, PENDING, REFUSED…
+        ), $this->leaves->find($userIds, $storeIds));
+    }
+}
+```
+
+Renvoyez les absences de **tous** les statuts : le Core filtre lui-même dates et statuts. Il s'en sert pour signaler un shift planifié pendant une absence approuvée, pour afficher les absences sur le planning, dans le flux iCal de l'employé et dans les statistiques d'absentéisme. Les absences de tous les fournisseurs déclarés s'additionnent ; un fournisseur en échec est ignoré (journalisé). Sans aucun fournisseur (`timeoff` désactivé ou désinstallé), le Core ne voit aucune absence. Exigez `"kintai_contract": "^1.10"`.
+
+### Présence : `attendanceProviders()` (contrat 1.11)
+
+```php
+use kintai\Contract\Provider\Attendance;
+use kintai\Contract\Provider\AttendanceProvider;
+
+final class ClockAttendance implements AttendanceProvider
+{
+    public function attendance(?array $userIds, ?array $storeIds, ?string $from = null, ?string $to = null): array
+    {
+        return array_map(fn(array $r) => new Attendance(
+            (int) $r['id'], (int) $r['user_id'], (int) $r['store_id'],
+            $r['shift_date'],                  // Y-m-d, the day worked ($from/$to filter on it, inclusive)
+            $r['clock_in'],                    // Y-m-d H:i:s
+            $r['clock_out'],                   // Y-m-d H:i:s, or null while still clocked in
+        ), $this->clocks->find($userIds, $storeIds, $from, $to));
+    }
+}
+```
+
+Le Core l'utilise sur le tableau de bord gérant (pointages restés ouverts, retards comparés au shift planifié). Les entrées de tous les fournisseurs déclarés s'additionnent ; un fournisseur en échec est ignoré (journalisé). Sans aucun fournisseur (`timeclock` désactivé ou désinstallé), le Core ne voit aucun pointage. Exigez `"kintai_contract": "^1.11"`.
+
+### Ventes : `salesProviders()` (contrat 1.14)
+
+```php
+use kintai\Contract\Provider\DailySales;
+use kintai\Contract\Provider\SalesProvider;
+
+final class ReportSales implements SalesProvider
+{
+    public function dailySales(int $storeId, string $from, string $to, ?array $statuses = null): array
+    {
+        return array_map(fn(array $r) => new DailySales(
+            $r['report_date'],                 // Y-m-d ($from/$to inclusive)
+            $r['status'],                      // filter on $statuses (when given) before anything else
+            (float) $r['sales_total'],         // the day's value, not a running total
+            (float) $r['labor_cost'],
+            (int) $r['customer_count'],
+            (float) $r['waste_total'],
+        ), $this->reports->forStore($storeId, $from, $to, $statuses));
+    }
+}
+```
+
+Le Core le lit pour la page de rentabilité d'un magasin, et les bundles le lisent via `kintai\Contract\Services\Sales` (`dailySales($storeId, $from, $to, $statuses)` renvoie des lignes triées par date : `report_date`, `status`, `sales_total`, `labor_cost`, `customer_count`, `waste_total`) — `salary-report` pré-remplit ainsi son total des ventes. Si vos données sont saisies en cumul, convertissez-les vous-même en valeurs du jour, après le filtre sur les statuts. Les jours de tous les fournisseurs déclarés sont fusionnés ; un fournisseur en échec est ignoré (journalisé). Sans aucun fournisseur actif, il n'y a pas de ventes et le Core masque la page de rentabilité du magasin. `daily-report` est le fournisseur de ventes. Exigez `"kintai_contract": "^1.14"`.
+
+### Échanges de shifts : `swapProviders()` (contrat 1.18)
+
+```php
+use kintai\Contract\Provider\Swap;
+use kintai\Contract\Provider\SwapProvider;
+
+final class RequestSwaps implements SwapProvider
+{
+    public function swaps(?array $storeIds, ?string $from = null, ?string $to = null): array
+    {
+        return array_map(fn(array $r) => new Swap(
+            (int) $r['id'], (int) $r['store_id'],
+            (int) $r['requester_id'], (int) $r['target_user_id'],
+            $r['created_at'],                  // Y-m-d H:i:s ($from/$to filter on its date, inclusive)
+            $r['status'],                      // every status, the Core filters what it needs
+        ), $this->requests->find($storeIds, $from, $to));
+    }
+}
+```
+
+Le Core compte avec lui les échanges d'un employé (colonne « Échanges » du rapport du personnel d'un magasin, page de statistiques de l'employé). Les échanges de tous les fournisseurs déclarés sont fusionnés ; un fournisseur en échec est ignoré (journalisé). Sans aucun fournisseur (`shift-swap` désactivé ou désinstallé), il n'y a aucun échange à compter. Exigez `"kintai_contract": "^1.18"`.
+
+## Le contrat de périmètre RBAC : `managed_store_ids`
+
+Chaque route web que votre bundle enregistre sous `middleware: [AuthMiddleware::class, PermissionMiddleware::class]` doit déclarer une `permission:` — soit une clé précise de `PermissionCatalog`, soit `'public'` (une route volontairement sans contrôle, par ex. une page en libre-service ou agrégée ; omettre `permission:` revient au même). `PermissionMiddleware` en déduit un attribut de requête, `managed_store_ids`, que chaque contrôleur en aval doit lire plutôt que de le recalculer :
+
+- **`null`** — sans restriction. Soit l'utilisateur est Owner, soit son rôle accorde la permission de votre route avec la portée « tous les magasins » cochée (`role_permissions.scope = 'global'`) — ce qui peut arriver même quand l'*affectation* qui le lie à ce rôle est elle-même limitée à son magasin. Les deux cas veulent dire exactement la même chose : aucun filtrage par magasin.
+- **`int[]`** — limité exactement à ces identifiants de magasin.
+
+**L'erreur qui réintroduit ce bogue à chaque fois** : écrire `$request->getAttribute('managed_store_ids') ?? []` au lieu de tester `=== null`. Cela paraît anodin parce que plusieurs méthodes de dépôt du Core traitent un filtre *vide* comme « pas de filtre » — si bien qu'une requête de liste en aval peut continuer à « marcher » par hasard — mais la lecture suivante de cette même valeur écrasée (une liste déroulante de magasins, un contrôle d'accès `in_array($storeId, $managedIds)`) voit « aucun magasin », pas « tous les magasins », et casse. Cette erreur exacte a été livrée dans `DailyReportController::indexAll()` de `kintai-bundle-daily-report` (corrigée dans `fix/global-scope-permission-store-filter`) — traitez toujours `null` comme une branche à part entière, à l'image de `is_admin`, jamais comme quelque chose qu'un repli `??` peut absorber.
+
+Ne recalculez pas cette logique vous-même. Réutilisez le trait du contrat `kintai\Contract\Http\Concerns\HasAdminAccess` — `managedIds(Request $request): ?array`, `availableStores(?array $managedIds): array`, `assertStoreAccess(Request $request, int $storeId): void`, `assertAnyStoreAccess(Request $request, array $storeIds): void` — le trait qu'utilise le contrôleur d'administration de chaque bundle officiel (voir `StorePhotoController` dans `kintai-bundle-store-photos` pour un exemple réel). Il gère déjà correctement le cas `null` ; un équivalent écrit à la main dans votre contrôleur est exactement la manière dont cette famille de bogues revient, un bundle à la fois.
+
+Si votre bundle doit servir un **fichier téléversé** (une image, un PDF, une pièce jointe) derrière cette même autorisation, ne construisez pas votre propre route de service de fichiers — pointez vers la route `/storage/{path*}` de Kintai (nom de route `storage.file`), qui applique déjà `managed_store_ids` (`StorageFileController::assertPathStoreAccess()`) ainsi que son propre confinement des chemins de téléversement et sa liste blanche de types MIME. Une route parallèle duplique une logique d'autorisation que le Core possède déjà, hors de la couverture de ses propres tests.
+
+## URL lisibles : paramètres de route typés
+
+Les routes web du Core n'affichent plus d'identifiants de base de données pour les magasins et les employés (`/admin/stores/所沢東町店/edit`, `/admin/users/057/edit`, voir `docs/architecture.md`, « Readable URLs »). Votre bundle obtient la même chose en typant ses paramètres de route — rien à enregistrer :
 
 ```php
 // routes.php
@@ -129,15 +621,15 @@ $r->get('/stores/{id:store}/photos',               [StorePhotoController::class,
 $r->get('/stores/{id:store}/reports/{uid:employee}', [ReportController::class, 'show'],    name: 'reports.show',       permission: 'reports.view');
 ```
 
-- **Vos contrôleurs ne changent pas :** `$request->param('id')` renvoie toujours l'identifiant numérique. Le segment est résolu avant `PermissionMiddleware` : les règles `store_param` et `assertStoreAccess()` fonctionnent sans modification.
-- **Générez les liens avec `route_url()`, en passant l'identifiant** (`route_url('store_photos.index', ['id' => $storeId])`) : il produit le segment lisible et encodé. Pour une URL construite à la main, utilisez `store_segment($storeId)` / `employee_segment($userId)` au lieu de l'identifiant brut — jamais le nom de l'employé.
-- **Les anciens liens restent valides :** un identifiant numérique est résolu et un GET est redirigé en `301` vers l'URL lisible (un POST est servi tel quel) : favoris, e-mails et notifications envoyés avant la migration de votre bundle ne cassent pas.
-- **Ne typez que ce qui désigne un magasin ou un employé.** L'identifiant d'un rapport, d'une photo ou d'une adhésion reste un simple `{id}`.
-- **Nécessite un Core qui fournit les paramètres de route typés** (voir son CHANGELOG) : réglez `kintai_core.min` dans `bundle.json` en conséquence, un Core plus ancien lirait `{id:store}` comme un segment littéral.
+- **Vos contrôleurs ne changent pas :** `$request->param('id')` renvoie toujours l'identifiant numérique. Le segment est résolu avant `PermissionMiddleware`, donc les règles `store_param` et `assertStoreAccess()` continuent de fonctionner sans changement.
+- **Générez les liens avec `route_url()` en passant l'identifiant** (`route_url('store_photos.index', ['id' => $storeId])`) : il produit le segment lisible et encodé. Pour une URL construite à la main, utilisez `store_segment($storeId)` / `employee_segment($userId)` au lieu de l'identifiant brut — jamais le nom de l'employé.
+- **Les anciens liens continuent de fonctionner :** un identifiant numérique est résolu et un GET est redirigé en `301` vers l'URL lisible (un POST est servi tel quel), donc les favoris, e-mails et notifications envoyés avant la migration de votre bundle ne sont pas cassés.
+- **Ne typez que ce qui désigne un magasin ou un employé.** Un identifiant de rapport, de photo ou d'adhésion reste un simple `{id}`.
+- **Exige un Core qui fournit les paramètres de route typés** (voir son CHANGELOG) : exigez un `kintai_contract` qu'un tel Core fournit, car un Core plus ancien lirait `{id:store}` comme un segment littéral.
 
 ## Migrations de base de données
 
-Un bundle peut posséder ses propres tables — une PR dédiée sur le dépôt de Kintai n'est **plus** nécessaire pour créer un schéma. Déposez un dossier optionnel `database/migrations/` à la racine de votre bundle (au même niveau que `src/`, même règle que `Views/`/`routes.php`), contenant des fichiers au **format strictement identique** à celui des migrations du Core de Kintai (`database/migrations/php/*.php`) :
+Un bundle peut posséder ses propres tables — une PR dédiée sur le dépôt de Kintai n'est **plus** nécessaire pour créer un schéma. Placez un dossier facultatif `database/migrations/` à la racine de votre bundle (à côté de `src/`, même règle que `Views/`/`routes.php`), contenant des fichiers au **format exact** des migrations du Core (`database/migrations/php/*.php`) :
 
 ```php
 <?php
@@ -146,7 +638,7 @@ declare(strict_types=1);
 
 namespace kintai\Database\Migrations;
 
-use kintai\Core\Database\Migration;
+use kintai\Contract\Database\Migration;
 use Illuminate\Database\Schema\Blueprint;
 
 return new class($this->capsule) extends Migration {
@@ -168,17 +660,17 @@ return new class($this->capsule) extends Migration {
 };
 ```
 
-Nommez les fichiers `YYYY_MM_DD_NNNNNN_description.php` — l'ordre alphabétique est l'ordre d'exécution, exactement comme pour les migrations du Core. Protégez toujours `up()` avec `hasTable()`/`hasColumn()` (comme ci-dessus) : les migrations doivent être idempotentes, car elles peuvent être rejouées par une resynchronisation manuelle (voir plus bas).
+Nommez les fichiers `YYYY_MM_DD_NNNNNN_description.php` — l'ordre alphabétique est l'ordre d'exécution, exactement comme pour le Core. Protégez toujours `up()` avec `hasTable()`/`hasColumn()` (comme ci-dessus) : les migrations doivent être idempotentes, car une resynchronisation manuelle peut les rejouer (voir ci-dessous). Passez toujours par `$this->schema()` : il donne à vos tables le même schéma portable que celles du Core sous SQLite et MySQL (clés primaires signées, assorties aux colonnes `integer()` qui les référencent). Une valeur par défaut sur une colonne `text()` doit utiliser `$this->textDefault('…')` — MySQL y refuse un littéral simple.
 
-**Quand elles s'exécutent** : automatiquement, juste après que les fichiers de votre bundle ont été déposés sur le disque lors d'une installation ou d'une mise à jour depuis `/admin/bundles/market` (`BundleInstallerService::activate()`) — avant que le bundle soit marqué actif, de sorte qu'une migration en échec annule toute l'installation/mise à jour au lieu d'activer un bundle au schéma incomplet. Elles peuvent aussi être resynchronisées manuellement, pour tous les bundles installés d'un coup, avec `php scripts/db-migrate.php` (`--dry-run` prévisualise ce qui est en attente, même option que pour les migrations du Core).
+**Quand elles s'exécutent** : automatiquement, juste après que les fichiers de votre bundle ont été posés sur le disque lors d'une installation ou d'une mise à jour depuis `/admin/bundles/market` (`BundleInstallerService::activate()`) — avant que le bundle ne soit marqué actif, donc une migration en échec annule toute l'installation ou la mise à jour plutôt que d'activer un bundle au schéma incomplet. On peut aussi les resynchroniser à la main, pour tous les bundles installés à la fois, avec `php scripts/db-migrate.php` (`--dry-run` montre ce qui est en attente, même option que pour le Core).
 
-**Suivi** : les migrations de bundle appliquées sont enregistrées dans une table `bundle_migrations` (`bundle_slug` + nom de la migration, uniques ensemble) — distincte de la table `migrations` propre au Core, si bien que deux bundles différents ne peuvent jamais entrer en collision sur un nom de fichier de migration, et que `BundleMigrationRunner::forgetBundle()` peut effacer uniquement les lignes de suivi de votre bundle à la désinstallation. Les tables métier elles-mêmes ne sont **pas** supprimées à la désinstallation (voir Limitations) — seules les lignes de suivi le sont, de sorte qu'une réinstallation ultérieure rejoue proprement vos méthodes `up()` (leurs gardes `hasTable()` en font une opération sans effet si les tables sont toujours là).
+**Suivi** : les migrations de bundle appliquées sont enregistrées dans une table `bundle_migrations` (`bundle_slug` + nom de `migration`, uniques ensemble) — distincte de la table `migrations` du Core, pour que deux bundles ne puissent jamais se disputer un nom de fichier de migration, et pour que `BundleMigrationRunner::forgetBundle()` puisse n'effacer que les lignes de suivi de votre bundle à la désinstallation. Les tables métier elles-mêmes ne sont **pas** supprimées à la désinstallation (voir Limites) — seules les lignes de suivi le sont, pour qu'une réinstallation rejoue proprement vos méthodes `up()` (leurs gardes `hasTable()` les rendent sans effet si les tables sont encore là).
 
-Ce mécanisme est volontairement indépendant du Core : votre interface de repository et votre modèle Eloquent peuvent vivre dans le namespace de votre propre bundle, ou dans `src/Core/Repositories/*Interface.php` si vous préférez suivre la convention que tous les bundles officiels utilisent actuellement (voir « Le contrat stable » ci-dessus) — la migration elle-même n'en a que faire.
+Votre interface de dépôt, votre modèle Eloquent et vos tables vivent dans l'espace de noms de votre bundle, comme ceux de chaque bundle officiel (voir « Classes propres au bundle » ci-dessus).
 
-## Assets
+## Ressources statiques
 
-**Nécessite `kintai_core.min: "0.2.0"` ou supérieur.** Si votre bundle a besoin de son propre CSS ou JS, ne demandez pas qu'il soit ajouté au `public/assets/` de Kintai — c'était la situation de tous les bundles avant que ce mécanisme existe, et cela ruinait tout l'intérêt de distribuer les bundles comme dépôts séparés (un ajustement de CSS impliquait une PR sur le Core). Livrez-le vous-même, depuis votre propre dossier `public/` (au même niveau que `src/`, `Views/`, `routes.php` — même règle que tout le reste de l'arborescence requise ci-dessus) :
+Si votre bundle a besoin de son propre CSS ou JS, ne demandez pas son ajout dans `public/assets/` de Kintai — c'était la situation de chaque bundle avant ce mécanisme, et cela ruinait tout l'intérêt de distribuer les bundles dans des dépôts séparés (une retouche CSS voulait dire une PR sur le Core). Fournissez-le vous-même, depuis votre propre dossier `public/` (à côté de `src/`, `Views/`, `routes.php` — même règle que tout le reste de l'arborescence requise ci-dessus) :
 
 ```
 your-bundle/
@@ -187,7 +679,7 @@ your-bundle/
     js/your-bundle.js
 ```
 
-Déclarez-le dans `register()`, exactement comme `loadViewsFrom()`/`loadRoutesFrom()` :
+Enregistrez-le dans `register()`, exactement comme `loadViewsFrom()`/`loadRoutesFrom()` :
 
 ```php
 public function register(): void
@@ -198,7 +690,7 @@ public function register(): void
 }
 ```
 
-Depuis n'importe laquelle des vues de votre bundle, référencez le fichier via le helper `bundle_asset()` — jamais un chemin codé en dur, car l'emplacement réel sur le disque dépend de la version actuellement installée :
+Depuis n'importe quelle vue de votre bundle, référencez le fichier via l'assistant `bundle_asset()` — jamais un chemin écrit en dur, car l'emplacement réel sur le disque dépend de la version installée :
 
 ```php
 <?php if ($css = bundle_asset('your-slug', 'css/your-bundle.css')): ?>
@@ -206,9 +698,9 @@ Depuis n'importe laquelle des vues de votre bundle, référencez le fichier via 
 <?php endif; ?>
 ```
 
-`bundle_asset()` renvoie `null` (sans jamais lever d'exception) quand votre bundle n'est pas actif — protégez toujours le `<link>`/`<script>` par un `if`, comme ci-dessus, plutôt que de supposer qu'il se résout toujours. L'URL qu'il construit (`GET /bundle-assets/{slug}/{path}?v={version}`) est servie par une route dédiée non authentifiée (`BundleAssetController`) — ce sont des fichiers statiques publics, pas protégés par `AuthMiddleware`/`PermissionMiddleware` comme les pages de votre bundle — confinée à votre dossier `public/` déclaré et limitée à une liste blanche fixe d'extensions (`css`, `js`, `svg`, `png`, `webp`). Tout ce qui sort de cette liste blanche, ou toute tentative de remonter au-dessus de votre dossier `public/`, est rejeté (`403`) ; une requête vers un bundle inactif, ou qui n'a jamais appelé `loadAssetsFrom()`, renvoie un simple `404`.
+`bundle_asset()` renvoie `null` (sans jamais lever d'exception) quand votre bundle n'est pas actif — protégez toujours le `<link>`/`<script>` par un `if`, comme ci-dessus, plutôt que de supposer qu'il se résout toujours. L'URL qu'il construit (`GET /bundle-assets/{slug}/{path}?v={version}`) est servie par une route dédiée, sans authentification (`BundleAssetController`) — ce sont des fichiers statiques publics, non protégés par `AuthMiddleware`/`PermissionMiddleware` comme les pages de votre bundle — confinée au dossier `public/` déclaré et limitée à une liste blanche fixe d'extensions (`css`, `js`, `svg`, `png`, `webp`). Tout ce qui sort de cette liste, ou toute tentative de remonter au-dessus de votre dossier `public/`, est refusé (`403`) ; une requête pour un bundle inactif, ou qui n'a jamais appelé `loadAssetsFrom()`, donne un simple `404`.
 
-Si une vue a besoin du **contenu** du fichier plutôt que d'une URL — le cas courant étant un export PDF qui intègre sa feuille de style via `file_get_contents()` — utilisez plutôt `bundle_asset_path()`, qui se résout vers le chemin absolu du même fichier sur le système de fichiers (là encore `null` si inactif) :
+Si une vue a besoin du **contenu** du fichier plutôt que de son URL — le cas courant étant un export PDF qui intègre sa feuille de style via `file_get_contents()` — utilisez `bundle_asset_path()`, qui renvoie le chemin absolu du même fichier sur le disque (`null` également si le bundle est inactif) :
 
 ```php
 $css = file_get_contents(bundle_asset_path('your-slug', 'css/pdf-your-bundle.css') ?? '');
@@ -224,41 +716,64 @@ Obligatoire à la racine du dépôt du bundle :
     "name": "Carnet de notes",
     "version": "1.0.0",
     "description": "Team notebook — notes shown on the manager and employee dashboards, pinning, automatic expiry.",
-    "author": { "name": "Votre nom", "email": "vous@exemple.com", "url": "https://exemple.com" },
-    "kintai_core": { "min": "0.1.0", "max": "999.999.999" },
+    "author": { "name": "Your Name", "email": "you@example.com", "url": "https://example.com" },
+    "kintai_contract": "^1.19",
     "requires_bundles": {},
     "namespace": "kintai\\Bundles\\Installed\\Notebook",
     "entry_class": "kintai\\Bundles\\Installed\\Notebook\\NotebookBundle",
     "license": "AGPL-3.0-only",
-    "homepage": "https://github.com/vous/votre-bundle"
+    "homepage": "https://github.com/you/your-bundle"
 }
 ```
 
-| Champ | Obligatoire | Notes |
+| Champ | Obligatoire | Remarques |
 |---|---|---|
-| `slug` | Oui | Doit être identique à la valeur renvoyée par `getName()` — vérifié à l'installation, un slug incohérent est rejeté avant toute écriture sur le disque. |
-| `name` | Oui | Lisible par un humain, affiché dans le catalogue. |
-| `version` | Oui | Semver strict (`X.Y.Z`), comparé via `version_compare()`. Doit être identique à la valeur renvoyée par `getVersion()`. |
-| `namespace` | Oui | Racine PSR-4 pour tout ce qui vit sous `src/`. |
-| `entry_class` | Oui | Nom pleinement qualifié de la classe d'entrée ; son fichier doit exister sous `src/` une fois résolu depuis `namespace` (vérifié avant activation). |
-| `description`, `author`, `license`, `homepage` | Non | Informatif uniquement. |
-| `kintai_core.min`/`.max` | Non (défauts `0.0.0`/`999.999.999`) | L'installateur refuse d'activer un bundle hors de ces bornes par rapport à la version Core de l'instance en cours. Un bundle dont les vues utilisent les actions `data-*` ou `csp_nonce()` doit fixer `min` à `0.3.0` — voir [Content Security Policy](#content-security-policy--pas-de-script-inline). |
-| `requires_bundles` | Non (défaut `{}`) | Slug → contrainte de version. **Informatif uniquement pour l'instant** — voir Limitations. |
+| `slug` | Oui | Doit être égal à la valeur renvoyée par `getName()` — vérifié à l'installation, un slug différent est refusé avant toute écriture sur le disque. |
+| `name` | Oui | Lisible, affiché dans le catalogue. |
+| `version` | Oui | Semver strict (`X.Y.Z`), comparé avec `version_compare()`. Doit être égal à la valeur renvoyée par `getVersion()`. |
+| `namespace` | Oui | Racine PSR-4 de tout ce qui est sous `src/`. |
+| `entry_class` | Oui | Nom complet de la classe d'entrée ; son fichier doit exister sous `src/` une fois résolu depuis `namespace` (vérifié avant l'activation). |
+| `description`, `author`, `license`, `homepage` | Non | Informatifs uniquement. |
+| `kintai_contract` | Oui | Contrainte semver sur la version du **contrat des bundles** (voir [Contrat de bundle versionné](#contrat-de-bundle-versionné)), par ex. `^1.19`. C'est la seule vérification de compatibilité : un bundle qui ne la déclare pas est antérieur au contrat versionné, il est refusé à l'installation et jamais chargé au démarrage. |
+| `kintai_core.min`/`.max` | Non — **informatif** | Ignoré par la vérification de compatibilité depuis que le contrat est obligatoire (des bundles publiés avant lui déclaraient une plage ouverte et cassaient quand le Core retirait des classes internes). |
+| `requires_bundles` | Non (`{}` par défaut) | Slug → contrainte de version. **Informatif pour l'instant** — voir Limites. |
+
+## Contrat de bundle versionné
+
+Le contrat des bundles a **sa propre version**, indépendante de celle du Core : `kintai\Contract\Contract::VERSION` (actuellement `1.21.0`). Il suit semver — une version mineure ne fait qu'ajouter (une classe, une méthode facultative, un point d'extension), une version majeure retire ou modifie une signature et est annoncée dans une section « Bundle contract » dédiée du CHANGELOG.
+
+Déclarez dans `bundle.json` la version du contrat dont votre bundle a besoin :
+
+```json
+"kintai_contract": "^1.0"
+```
+
+Contraintes prises en charge (règles de Composer) : `^1.2` (>= 1.2.0, < 2.0.0), `~1.2` / `~1.2.3`, `>=1.0 <2.0` (espace = ET), `^1.0 || ^2.0` (OU), `*`, et une version exacte.
+
+Le Core la vérifie :
+
+- **à l'installation** (catalogue) : un bundle incompatible est refusé avant toute écriture sur le disque ;
+- **au démarrage** : un bundle installé devenu incompatible (par ex. après une mise à jour du Core qui a relevé la version majeure du contrat) **n'est pas chargé**, même activé — l'application continue de fonctionner, l'événement est journalisé (`bundle_incompatible_not_loaded`) et la page des bundles affiche la raison pour que l'Owner installe une version compatible ;
+- **avant une mise à jour du Core** : `/admin/update` lit la version du contrat de la release proposée et liste les bundles installés qu'elle ne chargerait plus.
+
+Un bundle sans `kintai_contract` est considéré comme incompatible partout, y compris un bundle déposé à la main dans `src/Bundles/{Name}/` (qui a besoin d'un `bundle.json` à côté de sa classe).
+
+`kintai_core.min`/`max` est purement informatif (voir le tableau du manifeste ci-dessus) : `kintai_contract` est la seule vérification de compatibilité.
 
 ## Publier une release
 
-1. Incrémenter `version` dans `bundle.json` (et `getVersion()` dans votre classe d'entrée — ils doivent correspondre).
-2. Tagger le commit `vX.Y.Z` et pousser le tag.
-3. Créer une GitHub Release pour ce tag (`gh release create vX.Y.Z --generate-notes`, ou un workflow CI qui fait la même chose au push d'un tag — voir le `.github/workflows/release.yml` de `kintai-bundle-notebook`). Rien à construire : le `zipball_url` auto-généré de la release est exactement ce que `BundleInstallerService` télécharge.
+1. Augmentez `version` dans `bundle.json` (et `getVersion()` dans votre classe d'entrée — les deux doivent concorder).
+2. Étiquetez le commit `vX.Y.Z` et poussez l'étiquette.
+3. Créez une Release GitHub pour cette étiquette (`gh release create vX.Y.Z --generate-notes`, ou un workflow de CI qui fait de même à la poussée d'une étiquette — voir `.github/workflows/release.yml` de `kintai-bundle-notebook`). Rien à construire : le `zipball_url` généré automatiquement par la Release est exactement ce que télécharge `BundleInstallerService`.
 
-## Content Security Policy : pas de script inline
+## Content Security Policy : pas de scripts en ligne
 
-Kintai envoie `script-src 'self' 'nonce-…'` (`SecurityHeadersMiddleware`) : le navigateur n'exécute que les scripts servis par Kintai lui-même, ou un `<script>` inline portant le nonce de la requête en cours. **Les attributs d'événements inline (`onclick=`, `onchange=`, `onsubmit=`, `oninput=`…) et les liens `javascript:` sont bloqués**, en silence : le bouton ne fait simplement rien, sans aucune erreur côté serveur. Une vue de bundle ne doit donc pas en utiliser.
+Kintai envoie `script-src 'self' 'nonce-…'` (`SecurityHeadersMiddleware`) : le navigateur n'exécute que les scripts servis par Kintai lui-même, ou un `<script>` en ligne portant le nonce de la requête courante. **Les attributs d'événement en ligne (`onclick=`, `onchange=`, `onsubmit=`, `oninput=`…) et les liens `javascript:` sont bloqués**, sans bruit — le bouton ne fait simplement rien, sans aucune erreur côté serveur. Une vue de bundle ne doit donc pas en utiliser.
 
-- **`<script>` inline** — seulement en cas de vrai besoin, avec le nonce de la requête : `<script nonce="<?= csp_nonce() ?>">…</script>`. Un bloc de données `<script type="application/json">` n'est pas exécuté et n'a pas besoin de nonce. Préférez un fichier dans `assets/js/` de votre bundle (chargé avec `bundle_asset()`), qui n'exige rien.
-- **Attributs d'événements** — remplacez-les par des attributs déclaratifs `data-*`, gérés par `public/assets/js/modules/csp-actions.js` (chargé par le layout de l'application) :
+- **`<script>` en ligne** — seulement si c'est vraiment nécessaire, avec le nonce de la requête : `<script nonce="<?= csp_nonce() ?>">…</script>`. Un bloc de données `<script type="application/json">` n'est pas exécuté et n'a pas besoin de nonce. Préférez un fichier dans `assets/js/` de votre bundle (chargé avec `bundle_asset()`), qui n'a besoin de rien.
+- **Attributs d'événement** — remplacez-les par des attributs déclaratifs `data-*`, gérés par `public/assets/js/modules/csp-actions.js` (chargé par le layout de l'application) :
 
-| Au lieu de | Écrire |
+| Au lieu de | Écrivez |
 |---|---|
 | `onclick="doThing()"` | `data-on-click="doThing"` |
 | `onclick="doThing('a', 2)"` | `data-on-click="doThing" data-args='["a", 2]'` |
@@ -268,24 +783,24 @@ Kintai envoie `script-src 'self' 'nonce-…'` (`SecurityHeadersMiddleware`) : le
 | `onclick="location.href='/x'"` | `data-goto="/x"` (http/https uniquement) |
 | `onclick="event.stopPropagation()"` | `data-stop-propagation` |
 | `onclick="window.print()"` | `data-on-click="@print"` (aussi `@close`, `@select`, `@removeParent`, `@copy`) |
-| `onsubmit="return confirm('…')"`, `onclick="return confirm('…')"` | `data-confirm="…"` sur le `<form>` ou sur le bouton submit (modale de confirmation globale) |
+| `onsubmit="return confirm('…')"`, `onclick="return confirm('…')"` | `data-confirm="…"` sur le `<form>` ou sur le bouton d'envoi (fenêtre de confirmation globale) |
 | `Button::attrs(['onclick' => 'f()'])` | `Button::attrs(['data-on-click' => 'f'])` |
 
-`data-on-*` n'appelle qu'une **fonction que vous avez définie vous-même** sur `window` (une déclaration de fonction dans votre script, ou `window.f = …`) : les fonctions natives du navigateur comme `eval` ou `setTimeout` sont refusées volontairement, pour qu'un attribut injecté ne devienne pas un moyen d'exécuter du code. Les valeurs d'attributs de `Button`/`Modal` sont déjà échappées par le composant : passez la valeur brute, pas le résultat de `htmlspecialchars()`.
+`data-on-*` n'appelle qu'une **fonction que vous avez définie vous-même** sur `window` (une déclaration de fonction dans votre script, ou `window.f = …`) : les fonctions natives du navigateur comme `eval` ou `setTimeout` sont volontairement refusées, pour qu'un attribut injecté ne devienne pas un moyen d'exécuter du code. Les valeurs d'attributs de `Button`/`Modal` sont déjà échappées par le composant — passez la valeur brute, pas le résultat de `htmlspecialchars()`.
 
-**Version requise.** Les actions `data-*` et `csp_nonce()` existent à partir de **Kintai Core 0.3.0**. Un bundle qui les utilise doit déclarer `"kintai_core": { "min": "0.3.0", … }` dans son `bundle.json`, pour que l'installateur le refuse sur un Core plus ancien au lieu d'installer des contrôles qui ne font rien. À l'inverse, c'est une **rupture pour les bundles existants** : un bundle écrit avant la 0.3.0 qui utilise encore des handlers inline continue de fonctionner sur un Core antérieur à la 0.3.0, mais ses boutons, sélecteurs et confirmations cessent de fonctionner à partir de la 0.3.0 tant qu'il n'est pas migré. `tests/Unit/Security/NoInlineScriptGuardTest.php` dans Kintai échoue dès qu'une vue du Core réintroduit un handler inline ; faites la même vérification sur vos propres vues.
+**Version requise.** Les actions `data-*` et `csp_nonce()` existent depuis **Kintai Core 0.3.0**. Tout Core qui fournit le contrat des bundles (1.0 est arrivé avec le Core 0.3.6) les a, donc déclarer `kintai_contract` — désormais obligatoire — suffit : un Core plus ancien refuse le bundle au lieu d'installer des contrôles qui ne font rien. À l'inverse, c'est un **changement cassant pour les bundles existants** : un bundle écrit avant 0.3.0 qui utilise encore des gestionnaires en ligne continue de fonctionner sur un Core antérieur à 0.3.0, mais ses boutons, listes et confirmations cessent de fonctionner à partir de 0.3.0 tant qu'il n'est pas migré. `tests/Unit/Security/NoInlineScriptGuardTest.php` dans Kintai échoue dès qu'une vue du Core réintroduit un gestionnaire en ligne ; faites la même vérification sur vos propres vues.
 
 ### Migrer un bundle existant
 
-1. Repérez les occurrences : `grep -rnE "[[:space:]]on(click|change|submit|input)[[:space:]]*=|['\"]on(click|change|submit|input)['\"][[:space:]]*=>|javascript:|<script>" Views src`.
-2. Remplacez chacune par l'attribut `data-*` correspondant du tableau ci-dessus. Un `confirm()` devient `data-confirm` ; un handler qui appelait `event.stopPropagation()` exige `data-stop-propagation`, sinon un ancêtre délégué se déclenche aussi.
+1. Trouvez les coupables : `grep -rnE "[[:space:]]on(click|change|submit|input)[[:space:]]*=|['\"]on(click|change|submit|input)['\"][[:space:]]*=>|javascript:|<script>" Views src`.
+2. Remplacez chacun par l'attribut `data-*` correspondant du tableau ci-dessus. Un `confirm()` devient `data-confirm` ; un gestionnaire qui appelait `event.stopPropagation()` a besoin de `data-stop-propagation`, sinon un ancêtre délégué se déclenche aussi.
 3. Vérifiez que chaque fonction appelée via `data-on-*` est définie **sur `window`** : une déclaration de fonction dans un script classique, ou `window.f = …`. Un `const f = …` ou `let f = …` de premier niveau n'est pas une propriété de `window` et est refusé.
-4. Mettez le nonce sur les blocs `<script>` inline que vous gardez : `<script nonce="<?= csp_nonce() ?>">`.
-5. Relevez `kintai_core.min` à `0.3.0` et ajoutez la vérification CI ci-dessous.
+4. Posez le nonce sur les blocs `<script>` en ligne que vous gardez : `<script nonce="<?= csp_nonce() ?>">`.
+5. Déclarez `kintai_contract` et ajoutez la vérification de CI ci-dessous.
 
 ### Vérifier en CI
 
-Le serveur ne voit aucune erreur quand le navigateur bloque un handler inline : rien d'autre n'attrapera une régression. Les bundles officiels exécutent cette étape dans `.github/workflows/tests.yml` :
+Le serveur ne voit aucune erreur quand le navigateur bloque un gestionnaire en ligne, donc rien d'autre ne détectera une régression. Les bundles officiels exécutent cette étape dans `.github/workflows/tests.yml` :
 
 ```yaml
 - name: No inline event handlers or nonce-less scripts (Kintai CSP)
@@ -297,18 +812,18 @@ Le serveur ne voit aucune erreur quand le navigateur bloque un handler inline : 
     fi
 ```
 
-Un **registry** n'est rien de plus qu'un fichier statique `registry.json` servi en simple HTTPS (l'URL `raw.githubusercontent.com` d'un dépôt GitHub fonctionne bien, et c'est comme ça que le registry officiel est servi) — Kintai ne le clone jamais non plus, il se contente d'un GET (`BundleRegistryClient`).
+Un **registre** n'est rien de plus qu'un fichier statique `registry.json` servi en HTTPS simple (l'URL `raw.githubusercontent.com` d'un dépôt GitHub convient très bien, c'est ainsi qu'est servi le registre officiel) — Kintai ne le clone pas non plus, il le récupère simplement par un GET (`BundleRegistryClient`).
 
 ```json
 {
     "schema_version": 2,
-    "name": "Mon registry",
+    "name": "My registry",
     "bundles": [
         {
-            "slug": "votre-bundle",
-            "name": "Votre Bundle",
+            "slug": "your-bundle",
+            "name": "Your Bundle",
             "description": "...",
-            "repository_url": "https://github.com/vous/votre-bundle",
+            "repository_url": "https://github.com/you/your-bundle",
             "versions": {
                 "release": ["1.0.0"],
                 "beta": ["1.1.0", "1.0.0"],
@@ -319,28 +834,28 @@ Un **registry** n'est rien de plus qu'un fichier statique `registry.json` servi 
 }
 ```
 
-- `schema_version` — Kintai comprend actuellement `1` et `2` ; une instance qui ne comprend pas un schéma plus récent rejette proprement le listing (avec une entrée de log) plutôt que de le mal interpréter.
-- `repository_url` doit être un simple `https://github.com/{owner}/{repo}` — l'installateur en dérive l'URL de l'API GitHub pour retrouver la release.
-- `versions` (schema 2) est indexé par canal de mise à jour — `release` (uniquement les releases non-prerelease publiées depuis `main`), `beta` (`main` ou `beta`, exclut `alpha`), `alpha` (tout) — chacun une liste de versions installables, la plus récente en premier. Ça reflète le canal choisi une seule fois pour tous les bundles installés sur `/admin/bundles/market` (`AppSettingsService::bundleUpdateChannel()`, indépendant du canal de mise à jour du Core lui-même sur `/admin/update`) : la liste correspondant à ce canal est ce que l'UI du catalogue propose comme "dernière version" et ce qu'une simple mise à jour installe. **Le schema 1** (`versions` en liste plate, sans clé de canal) reste accepté pour compatibilité — Kintai propose alors cette même liste plate sur les trois canaux, faute de moyen de savoir de quelle branche vient chaque release. Le registry officiel calcule ces trois listes du schema 2 automatiquement à partir des vraies Releases GitHub de chaque bundle (`target_commitish`/`prerelease`, même règle que les canaux de release de Kintai lui-même) — voir `scripts/sync-versions.js` de [`AudricSan/KintaiBundle`](https://github.com/AudricSan/KintaiBundle), qui tourne toutes les heures et ouvre une PR dès qu'une nouvelle release change les listes de versions d'un bundle ; vous n'éditez jamais `versions` à la main.
-- Le `bundle.json` de votre dépôt reste la source de vérité réelle pour la compatibilité (`kintai_core.min`/`max`) et tout le reste, lue au moment de l'installation — `versions` ici n'est jamais qu'une indication pour l'UI du catalogue sur ce qui est installable et sur quel canal.
-- `commits` (facultatif, ajouté au schema 2 sans changer de version — les anciennes versions de Kintai l'ignorent) associe à chaque version le sha complet (40 caractères) du commit vers lequel pointe son tag, p. ex. `"commits": {"1.0.2": "7f99e084…"}`. S'il est présent, Kintai compare l'archive téléchargée à ce commit **avant toute extraction** (un zipball GitHub porte son commit dans le commentaire du ZIP et dans le nom de son dossier racine) et refuse l'installation en cas de différence : un tag déplacé vers un autre commit (dépôt ou compte compromis) ne peut donc pas faire passer un autre code à l'insu du registry. Le registry officiel le renseigne automatiquement : le même passage horaire de `sync-versions.js` épingle le commit de chaque nouvelle release, ne réécrit jamais une empreinte existante et échoue bruyamment si un tag a bougé — l'empreinte n'atteint `main` que via la pull request relue par un mainteneur. Kintai lit le commit attendu dans le registry côté serveur (jamais depuis la requête) et refuse d'installer si le registry est injoignable pour le vérifier. Un registry qui ne publie pas `commits` continue de fonctionner comme avant (un avertissement est journalisé). Ce n'est pas une signature : cela repose sur la génération de l'archive par GitHub et sur HTTPS, et le registry reste le point de confiance. Si vous tenez votre propre registry, le `sync-versions.js` de `AudricSan/KintaiBundle` est réutilisable tel quel.
+- `schema_version` — Kintai comprend actuellement `1` et `2` ; une instance qui ne comprend pas un schéma plus récent rejette proprement la liste (avec une entrée de journal) au lieu de la mal interpréter.
+- `repository_url` doit être un simple `https://github.com/{owner}/{repo}` — l'installeur en déduit l'URL de recherche de release de l'API GitHub.
+- `versions` (schéma 2) est indexé par canal de mise à jour — `release` (seulement les releases non préliminaires publiées depuis `main`), `beta` (`main` ou `beta`, sans `alpha`), `alpha` (tout) — chacun une liste de versions installables, de la plus récente à la plus ancienne. Cela reflète le canal que l'Owner choisit une fois pour tous les bundles installés sur `/admin/bundles/market` (`AppSettingsService::bundleUpdateChannel()`, indépendant du canal `/admin/update` du Core) : la liste qui correspond à ce canal est ce que le catalogue propose comme « dernière version » et ce qu'installe une simple mise à jour. Le **schéma 1** (`versions` comme tableau plat, sans clé de canal) reste accepté pour la compatibilité — Kintai propose alors cette même liste sur tous les canaux, faute de pouvoir savoir de quelle branche vient chaque release. Le registre officiel calcule automatiquement les trois listes du schéma 2 à partir des vraies Releases GitHub de chaque bundle (`target_commitish`/`prerelease`, même règle que les canaux de release de Kintai) — voir `scripts/sync-versions.js` de [`AudricSan/KintaiBundle`](https://github.com/AudricSan/KintaiBundle), qui s'exécute toutes les heures et ouvre une PR dès qu'une nouvelle release change les listes de versions d'un bundle ; vous n'éditez pas `versions` à la main.
+- Le `bundle.json` de votre dépôt reste la véritable source de vérité pour la compatibilité (`kintai_contract`) et tout ce qui est lu à l'installation — `versions` ici n'est qu'une indication pour le catalogue sur ce qui est installable et sur quel canal.
+- `commits` (facultatif, ajouté au schéma 2 sans changement de version — les anciennes versions de Kintai l'ignorent) associe chaque version au sha complet de 40 caractères du commit pointé par son étiquette, par ex. `"commits": {"1.0.2": "7f99e084…"}`. Quand il est présent, Kintai vérifie l'archive téléchargée par rapport à lui **avant toute extraction** (un zipball GitHub porte son commit dans le commentaire ZIP et dans le nom de son dossier racine) et refuse l'installation en cas d'écart, si bien qu'une étiquette déplacée vers un autre commit (dépôt ou compte compromis) ne peut pas faire passer un autre code derrière le registre. Le registre officiel le remplit automatiquement : la même exécution horaire de `sync-versions.js` épingle le commit de chaque nouvelle release, ne réécrit jamais une épingle existante et échoue bruyamment si une étiquette a bougé — l'épingle n'atteint `main` que par la pull request qu'un mainteneur relit. Kintai lit le commit attendu dans le registre côté serveur (jamais dans la requête) et refuse d'installer si le registre est injoignable pour le vérifier. Un registre qui ne publie pas `commits` continue de fonctionner comme avant (un avertissement est journalisé). Ce n'est pas une signature : cela repose sur la génération de l'archive par GitHub et sur HTTPS, et le registre lui-même reste l'ancre de confiance. Si vous maintenez votre propre registre, `sync-versions.js` d'`AudricSan/KintaiBundle` peut être réutilisé tel quel.
 
 Deux façons d'être découvert :
-- **Votre propre registry** — écrivez et hébergez vous-même un `registry.json` (n'importe où accessible en HTTPS), puis n'importe qui peut ajouter son URL depuis `/admin/bundles/registries`. Aucune approbation nécessaire de quiconque.
-- **Le registry officiel Kintai** ([`AudricSan/KintaiBundle`](https://github.com/AudricSan/KintaiBundle)) — ouvrez une pull request ajoutant une entrée à son `registry.json`. Être listé là-bas ne rend **pas** votre bundle "officiel" — voir ci-dessous.
+- **Votre propre registre** — écrivez et hébergez vous-même un `registry.json` (n'importe où, accessible en HTTPS), puis n'importe qui peut ajouter son URL depuis `/admin/bundles/registries`. Aucune approbation de quiconque n'est nécessaire.
+- **Le registre officiel de Kintai** ([`AudricSan/KintaiBundle`](https://github.com/AudricSan/KintaiBundle)) — ouvrez une pull request qui ajoute une entrée à son `registry.json`. Y figurer ne rend **pas** votre bundle « officiel » — voir ci-dessous.
 
-## Officiel vs. tiers
+## Officiel ou tiers
 
-`config/official-bundles.php`, dans le dépôt Kintai lui-même, est la **seule** source de vérité sur quels slugs sont maintenus par le projet Kintai. Un bundle ne peut pas s'auto-déclarer officiel, quel que soit le registry qui le liste. Tout le reste est signalé "tiers" dans l'UI du catalogue, et installer ou mettre à jour un tel bundle exige une case `confirm_third_party` explicite, imposée côté serveur (pas seulement masquée en JavaScript) — attendez-vous à ce que vos utilisateurs voient un avertissement, et concevez votre bundle en supposant qu'ils le liront avant de continuer.
+`config/official-bundles.php`, dans le dépôt de Kintai lui-même, est la **seule** source de vérité sur les slugs maintenus par le projet Kintai — un bundle ne peut pas se déclarer officiel lui-même, quel que soit le registre qui le liste. Tout le reste est marqué « tiers » dans le catalogue, et l'installer ou le mettre à jour exige de cocher explicitement `confirm_third_party`, vérifié côté serveur (pas seulement masqué en JavaScript) — attendez-vous à ce que vos utilisateurs voient un avertissement, et concevez votre bundle en supposant qu'ils le liront avant de continuer.
 
-## Limitations connues (à la date de rédaction)
+## Limites connues (à la date de rédaction)
 
-- **Un seul processus, un seul autoloader Composer.** Il n'y a pas de `composer.json` par bundle ni d'isolation des dépendances — votre bundle tourne dans le même processus PHP et le même arbre de namespaces que le `kintai\` de Kintai lui-même. Ne dépendez que de `BundleContract\Bundle`, des interfaces de `src/Core/Repositories/*Interface.php`, et d'autres classes Core avec lesquelles vous êtes à l'aise de vous coupler entre versions de Kintai.
-- **`requires_bundles` n'est pas encore appliqué.** Déclarer une dépendance sur le slug/la version d'un autre bundle est accepté et stocké, mais rien ne bloque actuellement l'installation si elle manque ou est trop ancienne — considérez-le comme de la documentation pour l'instant, pas une garantie.
-- **Pas de flux de désinstallation pour les données métier.** `/admin/bundles/market` peut installer, mettre à jour et désinstaller les fichiers d'un bundle, son entrée de manifeste et ses lignes de suivi de migrations — mais les tables créées par vos migrations (et leurs données) ne sont jamais supprimées ni touchées à la désinstallation. Les nettoyer, si on le souhaite, reste pour l'instant une opération manuelle sur la base de données.
-- **Les scripts et handlers d'événements inline ne fonctionnent pas.** À partir de Kintai Core 0.3.0, la Content-Security-Policy n'a plus `'unsafe-inline'` pour les scripts : une vue de bundle avec `onclick=`/`onchange=`/`onsubmit=`/`oninput=`, un lien `javascript:` ou un `<script>` sans nonce est bloquée en silence par le navigateur. Voir [Content Security Policy](#content-security-policy--pas-de-script-inline).
-- **GitHub uniquement.** `repository_url` doit pointer vers un dépôt GitHub — ni GitLab, ni serveur Git auto-hébergé, ni source d'archive non-Git.
+- **Un processus, un autoloader Composer.** Il n'y a ni `composer.json` par bundle ni isolation des dépendances — votre bundle s'exécute dans le même processus PHP et la même arborescence d'espaces de noms que la racine `kintai\` de Kintai. Ne dépendez que des noms `kintai\Contract\…` listés plus haut : ce sont les seules classes du Core garanties d'une version de Kintai à l'autre.
+- **`requires_bundles` n'est pas encore appliqué.** Une dépendance déclarée envers le slug ou la version d'un autre bundle est acceptée et enregistrée, mais rien ne bloque aujourd'hui l'installation si elle manque ou est trop ancienne — considérez-la comme de la documentation pour l'instant, pas comme une garantie.
+- **Pas de désinstallation des données métier.** `/admin/bundles/market` sait installer, mettre à jour et désinstaller les fichiers d'un bundle, son entrée de manifeste et ses lignes de suivi de migrations — mais les tables créées par vos migrations (et leurs données) ne sont jamais supprimées ni touchées à la désinstallation. Les nettoyer, si besoin, est pour l'instant une opération manuelle en base.
+- **Les scripts et gestionnaires d'événements en ligne ne fonctionnent pas.** Depuis Kintai Core 0.3.0, la Content-Security-Policy n'a pas de `'unsafe-inline'` pour les scripts : une vue de bundle avec `onclick=`/`onchange=`/`onsubmit=`/`oninput=`, un lien `javascript:` ou un `<script>` sans nonce est bloqué sans bruit par le navigateur. Voir [Content Security Policy](#content-security-policy--pas-de-scripts-en-ligne).
+- **GitHub uniquement.** `repository_url` doit pointer vers un dépôt GitHub — ni GitLab, ni serveur Git auto-hébergé, ni archive hors Git.
 
 ## Implémentation de référence
 
-[`kintai-bundle-notebook`](https://github.com/AudricSan/kintai-bundle-notebook) est un exemple petit et complet de tout ce qui précède : son propre modèle, son dépôt et ses migrations, des permissions, une fonctionnalité par magasin, des widgets de tableau de bord et un type de notification déclarés, des tests exécutés contre le vrai Core. L'ancien pilote, `kintai-bundle-feedback`, a été retiré (le Core ne le charge plus).
+[`kintai-bundle-notebook`](https://github.com/AudricSan/kintai-bundle-notebook) est un exemple petit et complet de tout ce qui précède : son propre modèle, son dépôt et ses migrations, des permissions déclarées, une fonctionnalité de magasin, des widgets de tableau de bord et un type de notification, des tests qui tournent contre le vrai Core. L'ancien pilote, `kintai-bundle-feedback`, a été retiré (le Core ne le charge plus).
