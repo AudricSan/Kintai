@@ -6,13 +6,17 @@ namespace kintai\Tests\Unit\Core\Cron;
 
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\MockObject\MockObject;
+use kintai\Core\Container;
 use kintai\Core\Cron\CronJobInterface;
 use kintai\Core\Cron\CronRunner;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\CronTokenRepositoryInterface;
+use kintai\Core\Repositories\LanguageRepositoryInterface;
+use kintai\Core\Repositories\TranslationRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\Services\TranslationService;
 
 final class CronRunnerTest extends TestCase
 {
@@ -56,6 +60,27 @@ final class CronRunnerTest extends TestCase
         $this->assertCount(1, $meta);
         $this->assertSame('test-job', $meta[0]['name']);
         $this->assertNotEmpty($meta[0]['label']);
+    }
+
+    public function testJobLabelComesFromTheTranslationConventionOrFallsBackToTheName(): void
+    {
+        $prop = new \ReflectionProperty(Container::class, 'instance');
+        $previous = $prop->getValue();
+        $prop->setValue(null, null);
+        try {
+            $translations = $this->createStub(TranslationRepositoryInterface::class);
+            $translations->method('findByLocale')->willReturn(['cron_job_auto_validate' => 'Validation automatique']);
+            $languages = $this->createStub(LanguageRepositoryInterface::class);
+            $languages->method('findDefault')->willReturn(['code' => 'fr']);
+            $service = new TranslationService($translations, $languages);
+            $service->setLocale('fr');
+            Container::getInstance()->instance(TranslationService::class, $service);
+
+            $this->assertSame('Validation automatique', CronRunner::label('auto-validate'));
+            $this->assertSame('photo-retention', CronRunner::label('photo-retention'));
+        } finally {
+            $prop->setValue(null, $previous);
+        }
     }
 
     // -------------------------------------------------------------------------

@@ -1,4 +1,7 @@
 {
+    "cron_job_backup": "Sauvegarde de la base de données",
+    "cron_job_log_purge": "Purge du journal d'activité",
+    "cron_job_license_check": "Vérification de la licence",
     "dashboard_widget_drag": "Glisser pour déplacer",
     "dashboard_widget_up": "Monter",
     "dashboard_widget_down": "Descendre",

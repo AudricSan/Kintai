@@ -429,6 +429,9 @@ URL parameters become `--key=value`). Core names (`backup`,
 `log-purge`, `license-check`) and names already taken are refused (logged); a class that can't be built is skipped.
 `daily-report` ships `auto-validate` this way. Require `"kintai_contract": "^1.8"`.
 
+Since contract 1.20, a job's label (listed by `php scripts/cron.php`) is found by convention in your `lang/` files:
+`cron_job_{name}` with dashes turned into underscores (`cron_job_timeoff_reminders`); without it, the name is shown.
+
 ### Profile sections: `profileSections()` (contract 1.12)
 
 ```php

@@ -126,15 +126,19 @@ final class CronRunner
     {
         $meta = [];
         foreach ($this->jobs as $name => $job) {
-            $label = match ($name) {
-                'backup'         => 'Backup de la base de données',
-                'log-purge'      => 'Purge du journal d\'activité',
-
-                default          => $name,
-            };
-            $meta[] = ['name' => $name, 'label' => $label];
+            $meta[] = ['name' => $name, 'label' => self::label($name)];
         }
         return $meta;
+    }
+
+    /**
+     * Libellé d'une tâche, par convention de traduction (contrat 1.20) : clé cron_job_{nom}, tirets remplacés par
+     * des soulignés (ex. cron_job_auto_validate), fournie par le Core ou par le bundle dans ses fichiers lang/ ;
+     * à défaut, le nom de la tâche.
+     */
+    public static function label(string $name): string
+    {
+        return translation_or($name, 'cron_job_' . str_replace('-', '_', $name));
     }
 
     private function extractToken(Request $request): ?string

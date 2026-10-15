@@ -18,10 +18,12 @@ namespace kintai\Contract;
 final class Contract
 {
     /** Version du contrat fournie par ce Core. */
-    public const VERSION = '1.19.0';
+    public const VERSION = '1.20.0';
 
     /*
      * Historique :
+     * - 1.20.0 : libellé des tâches planifiées par convention de traduction (cron_job_{nom}, tirets remplacés par des
+     *   soulignés) dans les traductions du bundle ; à défaut, le nom de la tâche.
      * - 1.19.0 : point d'extension Bundle::dashboardStats() et kintai\Contract\Extension\DashboardStat (cartes de statistiques du
      *   tableau de bord employé).
      * - 1.18.0 : fournisseur d'échanges de shifts — Bundle::swapProviders(), interface kintai\Contract\Provider\SwapProvider et
