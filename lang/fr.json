@@ -1,4 +1,8 @@
 {
+    "error_419_title": "419 — Page expirée",
+    "error_419_message": "Cette page était ouverte depuis trop longtemps : l'action n'a pas été enregistrée. Rechargez la page et recommencez.",
+    "error_419_back": "Revenir à la page",
+    "session_expired_login": "Votre session a expiré pendant que la page était ouverte. Connectez-vous à nouveau.",
     "error_shifts_not_in_conflict": "Ces deux shifts ne sont pas en conflit : rien n'a été supprimé.",
     "display_name_hint": "Facultatif : laissé vide, il devient « Nom Prénom ».",
     "language_follow_instance": "Langue de l'instance (:language)",

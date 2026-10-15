@@ -1,4 +1,8 @@
 {
+    "error_419_title": "419 — ページの有効期限切れ",
+    "error_419_message": "このページは長時間開かれていたため、操作は保存されませんでした。ページを再読み込みして、もう一度お試しください。",
+    "error_419_back": "ページに戻る",
+    "session_expired_login": "ページを開いている間にセッションの有効期限が切れました。もう一度ログインしてください。",
     "error_shifts_not_in_conflict": "この2つのシフトは重複していません。削除は行われませんでした。",
     "display_name_hint": "任意：空欄の場合は「姓 名」になります。",
     "language_follow_instance": "インスタンスの言語（:language）",

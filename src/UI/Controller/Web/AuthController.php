@@ -76,7 +76,9 @@ final class AuthController
 
         return Response::html($this->view->render('auth.login', [
             'title'      => __('login_page'),
-            'error'      => !empty($_GET['error']),
+            'error'      => !empty($_GET['error']) && $_GET['error'] !== 'expired',
+            // Formulaire validé après expiration de la session (jeton CSRF refusé, voir CsrfMiddleware).
+            'expired'    => ($_GET['error'] ?? '') === 'expired',
             'login_mode' => $_GET['mode'] ?? 'code',
             // Sélecteur de langue de la page de connexion (pour la session ; voir switchLanguage()).
             'login_languages' => $this->languages->findAllActive(),
