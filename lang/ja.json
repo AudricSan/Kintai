@@ -851,7 +851,7 @@
     "parse_error": "Excelファイルを読み込めません。",
     "password": "パスワード",
     "password_auto_generated": "自動生成",
-    "password_auto_hint": "空白の場合、パスワードを自動生成（姓+名+従業員コード）",
+    "password_auto_hint": "空欄の場合は既定のパスワード「0000」が設定され、ログインのたびに変更を促されます。",
     "password_changed_success": "パスワードを変更しました。",
     "password_default_hint": "デフォルトパスワード：:code",
     "password_edit_hint": "（変更しない場合は空白）",

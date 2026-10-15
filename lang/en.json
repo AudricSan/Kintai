@@ -851,7 +851,7 @@
     "parse_error": "Unable to read the Excel file.",
     "password": "Password",
     "password_auto_generated": "Auto-generated",
-    "password_auto_hint": "Leave blank to auto-generate password (name+firstname+employee code)",
+    "password_auto_hint": "Leave empty to assign the default password \"0000\": the employee will be asked to change it at every sign-in.",
     "password_changed_success": "Password changed successfully.",
     "password_default_hint": "Default password: :code",
     "password_edit_hint": "(leave blank to keep unchanged)",

@@ -39,6 +39,9 @@ use PHPUnit\Framework\TestCase;
  */
 final class AdminUserControllerEmployeeCreatedTest extends TestCase
 {
+    /** @var list<array<string, mixed>> comptes enregistrés */
+    private array $savedUsers = [];
+
     /** @var list<EmployeeCreated> */
     private array $received = [];
 
@@ -85,7 +88,10 @@ final class AdminUserControllerEmployeeCreatedTest extends TestCase
         $users = $this->createStub(UserRepositoryInterface::class);
         $users->method('findByEmail')->willReturn(null);
         $users->method('findByEmployeeCode')->willReturn(null);
-        $users->method('save')->willReturnCallback(fn(array $d): array => ['id' => 10, 'password_hash' => 'hash'] + $d);
+        $users->method('save')->willReturnCallback(function (array $d): array {
+            $this->savedUsers[] = $d;
+            return ['id' => 10, 'password_hash' => 'hash'] + $d;
+        });
         $stores = $this->createStub(StoreRepositoryInterface::class);
         $storeUsers = $this->createStub(StoreUserRepositoryInterface::class);
         $storeUsers->method('save')->willReturnArgument(0);
@@ -153,5 +159,18 @@ final class AdminUserControllerEmployeeCreatedTest extends TestCase
         $this->assertSame($source, $event->source);
         $this->assertSame('サトウ', $event->user['furigana_last_name']);
         $this->assertArrayNotHasKey('password_hash', $event->user);
+    }
+
+    /**
+     * Audit n°8 : un employé créé sans mot de passe reçoit « 0000 » (signalé comme à changer), plus nom+prénom+code
+     * employé, devinable par un collègue.
+     */
+    #[DataProvider('creationPaths')]
+    public function testAnEmployeeCreatedWithoutPasswordGetsTheDefaultOne(string $method, string $source): void
+    {
+        $this->controller($this->events(false))->{$method}(self::request());
+
+        $this->assertNotEmpty($this->savedUsers, $source);
+        $this->assertTrue(password_verify('0000', (string) $this->savedUsers[0]['password_hash']), $source);
     }
 }
