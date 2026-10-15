@@ -62,7 +62,7 @@ final class Timeline implements ComponentInterface
     {
         $dateStr = $day->format('Y-m-d');
         $isToday = $dateStr === $this->today;
-        $dayName = $day->format('l');
+        $dayName = __(strtolower($day->format('l')));
 
         $dayShifts = [];
         foreach ($this->shiftsByDateUser as $uid => $userShiftsByDate) {

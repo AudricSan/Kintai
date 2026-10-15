@@ -223,7 +223,7 @@ final class AdminUserController
             'title'            => 'Personnel',
             'users'            => $users,
             'user_stats'       => $userStats,
-            'month_label'      => date('F Y'),
+            'month_label'      => month_label(date('Y-m')),
             'store_currency'   => $storeCurrency,
             'store_currency_symbol_style' => $storeCurrencyStyle,
             'sort'             => $sort,

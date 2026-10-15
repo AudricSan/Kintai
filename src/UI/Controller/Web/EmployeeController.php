@@ -163,7 +163,7 @@ final class EmployeeController
         $monthEnd   = date('Y-m-t', strtotime($monthStart));
         $prevMonth  = date('Y-m', strtotime($monthStart . ' -1 month'));
         $nextMonth  = date('Y-m', strtotime($monthStart . ' +1 month'));
-        $monthLabel = (new \DateTimeImmutable($monthStart))->format('F Y');
+        $monthLabel = month_label($monthStart);
 
         // Collègues du même store
         $memberships = $this->storeUsers->findByUser($userId);
