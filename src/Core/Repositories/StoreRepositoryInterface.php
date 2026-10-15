@@ -50,9 +50,36 @@ interface StoreRepositoryInterface
      */
     public function delete(int $id): int;
 
+    /**
+     * Fonctionnalités actives du magasin : [] = toutes (aucune n'est désactivée), sinon la liste des clés actives.
+     * Une fonctionnalité sur laquelle le magasin n'a jamais été réglé (bundle installé ou réactivé depuis) est active.
+     *
+     * @return list<string>
+     */
     public function getFeatures(int $storeId): array;
 
+    /**
+     * Remplace toutes les décisions du magasin : les clés données sont actives, les autres fonctionnalités proposées
+     * (Core et bundles actifs) désactivées. Préférer saveFeatureDecisions(), qui ne touche qu'aux clés données.
+     *
+     * @param list<string> $features
+     */
     public function saveFeatures(int $storeId, array $features): void;
+
+    /**
+     * Décision du magasin pour chaque fonctionnalité réglée (clé => active ?).
+     *
+     * @return array<string, bool>
+     */
+    public function getFeatureDecisions(int $storeId): array;
+
+    /**
+     * Enregistre ces décisions (clé => active ?) sans toucher aux autres : la fonctionnalité d'un bundle désactivé,
+     * absente du formulaire, garde sa décision.
+     *
+     * @param array<string, bool> $decisions
+     */
+    public function saveFeatureDecisions(int $storeId, array $decisions): void;
 
     public function getImportSettings(int $storeId): array;
 

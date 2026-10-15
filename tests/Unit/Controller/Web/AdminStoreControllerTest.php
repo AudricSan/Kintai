@@ -159,13 +159,9 @@ final class AdminStoreControllerTest extends TestCase
         $req->setRouteParams(['id' => '1']);
 
         $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Test Store']);
-        // Store déjà configuré (toutes les fonctionnalités pré-existantes explicitement listées, sauf
-        // 'notes' qui n'existait pas encore) : isole ce test de "aucune ligne = tout actif par défaut",
-        // qui rendrait la simple présence de la nouvelle clé 'notes' dans STORE_FEATURE_BUNDLE_MAP
-        // suffisante pour l'auto-activer ici (voir testUpdateStorePreservesFeatureHiddenByDisabledBundle
-        // pour ce comportement "masqué + jamais configuré").
-        $this->stores->method('getFeatures')->with(1)->willReturn([
-            'shifts', 'timeclock', 'timeoff', 'swaps', 'open_shifts', 'messages', 'daily_reports', 'photos',
+        // Magasin déjà configuré : décisions enregistrées pour plusieurs fonctionnalités.
+        $this->stores->method('getFeatureDecisions')->with(1)->willReturn([
+            'shifts' => true, 'timeclock' => true, 'photos' => true, 'messages' => false,
         ]);
 
         $captured = null;
@@ -195,9 +191,9 @@ final class AdminStoreControllerTest extends TestCase
 
         $this->assertSame(302, $response->status());
         $this->assertNotNull($captured);
-        // timeclock, timeoff, swaps, open_shifts, messages, daily_reports et photos : fonctionnalités de bundles extraits
-        // du Core (déclarées par leur bundle, absent ici), conservées telles quelles puisqu'elles ne sont pas proposées.
-        $this->assertSame(['timeclock', 'timeoff', 'swaps', 'open_shifts', 'messages', 'daily_reports', 'photos'], $captured['_features']);
+        // Seule la fonctionnalité proposée (Core) reçoit une décision ; celles des bundles absents ne sont pas
+        // envoyées et gardent leur décision enregistrée (saveFeatureDecisions ne touche qu'aux clés données).
+        $this->assertSame(['shifts' => false], $captured['_features']);
     }
 
     public function testUpdateStorePreservesFeatureHiddenByDisabledBundle(): void
@@ -212,7 +208,7 @@ final class AdminStoreControllerTest extends TestCase
         $req->setRouteParams(['id' => '1']);
 
         $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Test Store']);
-        $this->stores->method('getFeatures')->with(1)->willReturn(['shifts', 'timeclock', 'messages', 'photos']);
+        $this->stores->method('getFeatureDecisions')->with(1)->willReturn([]);
 
         $captured = null;
         $storeService = $this->createMock(StoreServiceInterface::class);
@@ -238,8 +234,9 @@ final class AdminStoreControllerTest extends TestCase
 
         $this->assertSame(302, $response->status());
         $this->assertNotNull($captured);
-        sort($captured['_features']);
-        $this->assertSame(['messages', 'photos', 'shifts', 'timeclock'], $captured['_features']);
+        // Magasin jamais configuré : seule la case proposée est décidée ; messages et photos n'ont aucune décision et
+        // restent donc actifs à la réactivation de leur bundle (régression du point 11 de la revue du 15/10/2026).
+        $this->assertSame(['shifts' => true], $captured['_features']);
     }
 
     public function testEmployeeStatsLogsConsultation(): void
@@ -388,7 +385,7 @@ final class AdminStoreControllerTest extends TestCase
             'id' => 1, 'name' => 'Tokyo', 'code' => 'TKY', 'is_active' => 1, 'phone' => '03-0000-0000',
             'week_start_day' => 7, 'min_shift_minutes' => 60,
         ]);
-        $this->stores->method('getFeatures')->willReturn(['shifts', 'photos']);
+        $this->stores->method('getFeatureDecisions')->willReturn(['shifts' => false, 'photos' => true]);
         $this->stores->method('getImportSettings')->willReturn(['col_start' => 2, 'base_hour' => 8]);
         $this->stores->method('getDeductionSettings')->willReturn(['enabled' => 1, 'pension_rate' => 9.15]);
 
@@ -423,7 +420,7 @@ final class AdminStoreControllerTest extends TestCase
         $this->assertSame([2, 8], [$captured['_excel_settings']['col_start'], $captured['_excel_settings']['base_hour']]);
         $this->assertTrue($captured['_deduction_settings']['enabled']);
         $this->assertSame(9.15, $captured['_deduction_settings']['pension_rate']);
-        $this->assertSame(['shifts', 'photos'], $captured['_features']);
+        $this->assertSame(['shifts' => false], $captured['_features']);
     }
 
     /** Audit M13 : un gérant ne se retire pas lui-même de son magasin (il perdrait ses droits). */
@@ -463,7 +460,7 @@ final class AdminStoreControllerTest extends TestCase
         $req->setRouteParams(['id' => '1']);
 
         $this->stores->method('findById')->with(1)->willReturn(['id' => 1, 'name' => 'Test Store']);
-        $this->stores->method('getFeatures')->with(1)->willReturn(['shifts', 'gone_bundle_feature']);
+        $this->stores->method('getFeatureDecisions')->with(1)->willReturn(['shifts' => true, 'gone_bundle_feature' => true]);
 
         $captured = null;
         $storeService = $this->createMock(StoreServiceInterface::class);
@@ -504,6 +501,6 @@ final class AdminStoreControllerTest extends TestCase
         );
 
         $this->assertSame(302, $controller->updateStore($req)->status());
-        $this->assertSame(['shifts', 'acme_board', 'gone_bundle_feature'], $captured['_features']);
+        $this->assertSame(['shifts' => true, 'acme_board' => true], $captured['_features']);
     }
 }

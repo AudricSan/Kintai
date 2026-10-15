@@ -53,10 +53,10 @@ final class StoreServiceTest extends TestCase
         $existingStore = ['id' => 1, 'code' => 'A', 'name' => 'Store A'];
         $this->stores->method('findById')->with(1)->willReturn($existingStore);
 
-        $enabled = ['shifts', 'timeclock', 'timeoff', 'swaps', 'open_shifts', 'messages', 'daily_reports'];
-        $data = ['_features' => $enabled];
+        $decisions = ['shifts' => true, 'timeclock' => false, 'timeoff' => true];
+        $data = ['_features' => $decisions];
 
-        $this->stores->expects($this->once())->method('saveFeatures')->with(1, $enabled);
+        $this->stores->expects($this->once())->method('saveFeatureDecisions')->with(1, $decisions);
         $this->stores->expects($this->once())->method('save')->with(
             $this->callback(fn (array $storeData) => !array_key_exists('features', $storeData)),
         )->willReturn(['id' => 1]);
@@ -69,7 +69,7 @@ final class StoreServiceTest extends TestCase
         $existingStore = ['id' => 1, 'code' => 'A', 'name' => 'Store A'];
         $this->stores->method('findById')->with(1)->willReturn($existingStore);
 
-        $this->stores->expects($this->never())->method('saveFeatures');
+        $this->stores->expects($this->never())->method('saveFeatureDecisions');
         $this->stores->expects($this->once())->method('save')->willReturn($existingStore);
 
         $this->service->updateStore(1, ['name' => 'Store A renamed']);

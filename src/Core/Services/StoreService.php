@@ -197,7 +197,8 @@ final class StoreService implements StoreServiceInterface
             $this->stores->saveDeductionSettings($storeId, $data['_deduction_settings']);
         }
         if (isset($data['_features'])) {
-            $this->stores->saveFeatures($storeId, $data['_features']);
+            // Décisions des seules fonctionnalités proposées par le formulaire (clé => active ?).
+            $this->stores->saveFeatureDecisions($storeId, $data['_features']);
         }
 
         $saved = $this->stores->save($storeData);

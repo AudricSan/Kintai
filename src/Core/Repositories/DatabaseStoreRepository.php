@@ -91,16 +91,45 @@ final class DatabaseStoreRepository implements StoreRepositoryInterface
 
     public function getFeatures(int $storeId): array
     {
-        return StoreFeature::where('store_id', $storeId)
-            ->pluck('feature_key')
-            ->toArray();
+        $decisions = $this->getFeatureDecisions($storeId);
+        $disabled  = array_keys(array_filter($decisions, static fn(bool $on): bool => !$on));
+        if ($disabled === []) {
+            return [];
+        }
+        // Actives : celles réglées « active », plus les fonctionnalités proposées jamais réglées.
+        $enabled = array_keys(array_filter($decisions));
+        $available = \kintai\Core\Extension\StoreFeatures::current()->availableKeys();
+        return array_values(array_unique(array_merge($enabled, array_diff($available, $disabled))));
     }
 
     public function saveFeatures(int $storeId, array $features): void
     {
         StoreFeature::where('store_id', $storeId)->delete();
+        $decisions = array_fill_keys(\kintai\Core\Extension\StoreFeatures::current()->availableKeys(), false);
         foreach ($features as $key) {
-            StoreFeature::create(['store_id' => $storeId, 'feature_key' => $key]);
+            $decisions[(string) $key] = true;
+        }
+        $this->saveFeatureDecisions($storeId, $decisions);
+    }
+
+    public function getFeatureDecisions(int $storeId): array
+    {
+        $decisions = [];
+        foreach (StoreFeature::where('store_id', $storeId)->get(['feature_key', 'enabled']) as $row) {
+            $decisions[(string) $row->feature_key] = (bool) $row->enabled;
+        }
+        return $decisions;
+    }
+
+    public function saveFeatureDecisions(int $storeId, array $decisions): void
+    {
+        foreach ($decisions as $key => $enabled) {
+            $existing = StoreFeature::where('store_id', $storeId)->where('feature_key', (string) $key);
+            if ($existing->exists()) {
+                $existing->update(['enabled' => (bool) $enabled]);
+            } else {
+                StoreFeature::create(['store_id' => $storeId, 'feature_key' => (string) $key, 'enabled' => (bool) $enabled]);
+            }
         }
     }
 
