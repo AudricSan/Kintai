@@ -260,7 +260,6 @@ else: ?>
 <div class="card card--mb">
     <div class="card-body">
         <form method="GET" action="<?= route_url('profile') ?>" class="form-inline-flex">
-            <?= csrf_field() ?>
             <input type="hidden" name="tab" value="availability">
             <label class="form-label" for="store_sel"><?= __('store') ?></label>
             <select id="store_sel" name="store_id" class="form-control" data-submit-on-change>

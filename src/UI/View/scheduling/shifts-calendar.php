@@ -123,7 +123,6 @@ endif;
 
 <div class="card card--filters card--filters--dropdown mb-sm">
     <form method="GET" action="<?= route_url('admin.shifts.calendar') ?>" class="filter-bar" id="calFilterForm">
-        <?= csrf_field() ?>
         <input type="hidden" name="month" value="<?= htmlspecialchars($month_start ? substr($month_start, 0, 7) : date('Y-m')) ?>">
         <div class="shifts-filters__row">
             <?php if (!empty($stores_map) && count($stores_map) > 1): ?>
