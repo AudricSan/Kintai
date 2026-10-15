@@ -112,6 +112,7 @@
             <?php foreach (\kintai\Core\SessionFlash::pull() as $_flash): ?>
                 <div class="alert alert--<?= htmlspecialchars($_flash['type']) ?> mb-sm"><?= htmlspecialchars($_flash['text']) ?></div>
             <?php endforeach; ?>
+            <?php include __DIR__ . '/partials/_old-input.php'; ?>
             <?php if ($isOwner && !empty($app_public_url_missing)): ?>
                 <div class="alert alert--warning mb-sm">
                     <?= htmlspecialchars(__('public_url_missing_warning')) ?>
@@ -141,6 +142,7 @@
     <script src="<?= $BASE_URL ?>/assets/js/modules/csp-actions.js?v=<?= asset_version() ?>"></script>
     <script src="<?= $BASE_URL ?>/assets/js/app.js?v=<?= asset_version() ?>"></script>
     <script src="<?= $BASE_URL ?>/assets/js/modules/notifications.js?v=<?= asset_version() ?>"></script>
+    <script src="<?= $BASE_URL ?>/assets/js/modules/old-input.js?v=<?= asset_version() ?>"></script>
     <?php if (!empty($push_web_config) && !empty($auth_user['id'] ?? null) && ($tab ?? '') === 'push'): ?>
         <div id="push-meta"
              data-project-id="<?= htmlspecialchars($push_web_config['project_id']) ?>"

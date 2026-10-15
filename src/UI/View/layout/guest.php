@@ -27,11 +27,16 @@
                 <div class="guest-notice"><?= htmlspecialchars($app_login_notice, ENT_QUOTES) ?></div>
             <?php endif; ?>
             <div class="guest-card">
+                <?php foreach (\kintai\Core\SessionFlash::pull() as $_flash): ?>
+                    <div class="alert alert--<?= htmlspecialchars($_flash['type']) ?> mb-sm"><?= htmlspecialchars($_flash['text']) ?></div>
+                <?php endforeach; ?>
+                <?php include __DIR__ . '/partials/_old-input.php'; ?>
                 <?= $content ?>
             </div>
         </div>
     </div>
 
     <?php include __DIR__ . '/partials/_footer.php'; ?>
+    <script src="<?= $BASE_URL ?>/assets/js/modules/old-input.js?v=<?= asset_version() ?>"></script>
 </body>
 </html>

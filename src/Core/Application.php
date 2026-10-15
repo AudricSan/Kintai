@@ -303,9 +303,12 @@ final class Application
         $wantsJson = $request->wantsJson() || $request->getAttribute('wantsJson', false);
 
         if ($e instanceof ValidationException) {
-            return $wantsJson
-                ? Response::json(['error' => $e->getMessage(), 'errors' => $e->errors], 422)
-                : $this->renderError(422, $e->getMessage(), $request);
+            if ($wantsJson) {
+                return Response::json(['error' => $e->getMessage(), 'errors' => $e->errors], 422);
+            }
+            // Formulaire web : retour au formulaire avec les messages précis et la saisie conservée.
+            return ValidationFeedback::redirectBack($e, $request)
+                ?? $this->renderError(422, implode(' ', ValidationFeedback::messages($e)), $request);
         }
 
         if ($e instanceof MethodNotAllowedException) {
