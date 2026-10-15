@@ -416,7 +416,7 @@ $router->group('/api/v1', function ($r) {
     $r->delete('/shift-types/{id}', [ApiShiftTypeController::class, 'destroy'], name: 'api.v1.shift_types.destroy', permission: 'shifts.update');
 
     // Shifts
-    $r->get('/shifts',         [ApiShiftController::class, 'index'],   name: 'api.v1.shifts.index', permission: 'shifts.view');
+    $r->get('/shifts',         [ApiShiftController::class, 'index'],   name: 'api.v1.shifts.index', permission: ['perm' => 'shifts.view', 'self' => 'user_id']);
     $r->post('/shifts',        [ApiShiftController::class, 'store'],   name: 'api.v1.shifts.store', permission: 'shifts.create');
     $r->get('/shifts/{id}',    [ApiShiftController::class, 'show'],    name: 'api.v1.shifts.show', permission: 'shifts.view');
     $r->put('/shifts/{id}',    [ApiShiftController::class, 'update'],  name: 'api.v1.shifts.update', permission: 'shifts.update');
