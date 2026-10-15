@@ -56,7 +56,7 @@ final class HomeControllerScopingTest extends TestCase
         // scoping managed_store_ids, pas sur le calcul RH/financier (storeStats() n'est
         // pas mocké pour ces widgets ici, voir HomeControllerFinancialHrWidgetsTest).
         $dashboardPrefs->method('getEnabledWidgets')->willReturn([
-            'kpi_counters', 'quick_nav', 'store_stats_summary',
+            'kpi_counters', 'store_stats_summary',
             'shifts_today', 'pending_timeoff', 'timeclocks_today',
         ]);
 

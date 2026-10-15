@@ -61,7 +61,6 @@ foreach ($_widgetPermMap as $_wk => $_wp) {
 
 $widgetLabels = [
     'kpi_counters'         => __('widget_kpi_counters'),
-    'quick_nav'            => __('widget_quick_nav'),
     'dashboard_alerts'     => __('widget_dashboard_alerts'),
     'store_stats_summary'  => __('widget_store_stats_summary'),
     'financial_overview'   => __('widget_financial_overview'),
