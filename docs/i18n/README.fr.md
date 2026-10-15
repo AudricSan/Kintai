@@ -90,7 +90,7 @@ Ouvrir ensuite `http://127.0.0.1:8000/install.php` — l'installateur web crée 
 
 L'installateur enregistre aussi l'adresse depuis laquelle vous installez comme **URL publique** de l'instance, utilisée pour les liens des e-mails (réinitialisation du mot de passe). Vérifiez-la dans les réglages Owner (`/admin/owner-settings`) si les utilisateurs accèdent à Kintai par une autre adresse ; la variable d'environnement `APP_URL`, si elle est définie, prime. Sans URL publique, les e-mails de réinitialisation ne partent pas et l'Owner voit un avertissement.
 
-Pour installer sans navigateur (déploiement scripté), `scripts/provision.php` fait la même chose en ligne de commande — SQLite par défaut, sinon `--db-driver=mysql` et les options `--db-*`, avec les variables d'environnement en repli (voir l'en-tête du script). Passez `--app-url`, puisqu'aucune adresse de requête ne permet d'en déduire l'URL publique :
+Pour installer sans navigateur (déploiement scripté), `scripts/provision.php` fait la même chose en ligne de commande — SQLite par défaut, sinon `--db-driver=mysql` et les options `--db-*`, avec les variables d'environnement en repli (voir l'en-tête du script). Passez `--app-url`, puisqu'aucune adresse de requête ne permet d'en déduire l'URL publique. L'instance est en anglais sauf `--locale=fr` ou `--locale=ja` (même choix par défaut que l'installateur web) :
 
 ```bash
 php scripts/provision.php --admin-email=admin@example.com --admin-password='…' --app-url=https://kintai.example.com

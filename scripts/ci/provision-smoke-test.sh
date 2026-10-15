@@ -49,6 +49,7 @@ PASSWORD="$(php -r 'echo bin2hex(random_bytes(12));' 2>/dev/null | tail -n 1)"
 provision --admin-email=not-an-email --admin-password="$PASSWORD" && fail "e-mail invalide accepté"
 provision --admin-email="$EMAIL" --admin-password=short && fail "mot de passe trop court accepté"
 provision --admin-email="$EMAIL" --admin-password="$PASSWORD" --app-url=/Kintai && fail "--app-url relative acceptée"
+provision --admin-email="$EMAIL" --admin-password="$PASSWORD" --locale=xx && fail "--locale inconnue acceptée"
 [ -e config/database.local.php ] && fail "une entrée refusée a quand même écrit la configuration"
 
 # ─── Installation ────────────────────────────────────────────────────────
@@ -58,6 +59,8 @@ grep -q "Undefined array key\|Warning:" "$WORK/out.txt" && grep -v "Module .* is
   && fail "avertissements PHP pendant l'installation"
 
 [ -f storage/installed.lock ] || fail "storage/installed.lock absent"
+# Sans --locale, une instance neuve est en anglais (APP_LOCALE), quel que soit le is_default de lang/languages.json.
+grep -q "^APP_LOCALE=en$" .env || fail "APP_LOCALE=en attendu dans .env sans --locale"
 tables=$(sql "SELECT COUNT(*) FROM sqlite_master WHERE type='table'")
 [ "$tables" -ge 40 ] || fail "seulement $tables tables créées"
 [ "$(sql "SELECT COUNT(*) FROM users WHERE email='$EMAIL'")" = "1" ] || fail "compte admin absent"
