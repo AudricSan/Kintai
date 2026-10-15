@@ -1,4 +1,7 @@
 {
+    "cron_job_backup": "データベースのバックアップ",
+    "cron_job_log_purge": "アクティビティログの削除",
+    "cron_job_license_check": "ライセンスの確認",
     "dashboard_widget_drag": "ドラッグして移動",
     "dashboard_widget_up": "上へ移動",
     "dashboard_widget_down": "下へ移動",

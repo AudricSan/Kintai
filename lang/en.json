@@ -1,4 +1,7 @@
 {
+    "cron_job_backup": "Database backup",
+    "cron_job_log_purge": "Activity log purge",
+    "cron_job_license_check": "License check",
     "dashboard_widget_drag": "Drag to move",
     "dashboard_widget_up": "Move up",
     "dashboard_widget_down": "Move down",
