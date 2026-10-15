@@ -50,6 +50,12 @@ abstract class Migration
 
     protected function schema()
     {
-        return $this->capsule->getConnection()->getSchemaBuilder();
+        $schema = $this->capsule->getConnection()->getSchemaBuilder();
+        // Clés primaires signées, comme les colonnes qui les référencent (voir PortableBlueprint) : sinon MySQL refuse
+        // les clés étrangères.
+        $schema->blueprintResolver(
+            static fn($connection, string $table, ?\Closure $callback = null) => new PortableBlueprint($connection, $table, $callback)
+        );
+        return $schema;
     }
 }
