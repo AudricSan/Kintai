@@ -309,7 +309,8 @@ public function dashboardWidgets(): array
 ```
 
 Your widgets are listed in the dashboard's "Customize" panel (on by default) and rendered after the Core's own
-widgets, for users holding `permission` whose stores have `storeFeature` on. `data` receives the context: `user`,
+widgets, full width, until the user moves or resizes them (each user's order and widths are saved; a widget the user
+never placed goes last), for users holding `permission` whose stores have `storeFeature` on. `data` receives the context: `user`,
 `store_ids` (the stores the manager handles, or the employee's own stores), `managed_store_ids` (`null` = every
 store, manager side), `stores_map` (id => name) and `today`. Load only what the widget shows — `data` runs on every
 dashboard view. An exception in `data` or in the view removes that widget only (logged). Render a full card

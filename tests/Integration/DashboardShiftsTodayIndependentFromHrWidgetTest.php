@@ -32,6 +32,7 @@ final class DashboardShiftsTodayIndependentFromHrWidgetTest extends TestCase
 
         $router = new Router();
         $router->get('/admin/dashboard/widgets', [\stdClass::class, 'x'], name: 'admin.dashboard.widgets');
+        $router->post('/admin/dashboard/layout', [\stdClass::class, 'x'], name: 'admin.dashboard.layout');
         $router->get('/admin/shifts', [\stdClass::class, 'x'], name: 'admin.shifts');
         Container::getInstance()->instance(Router::class, $router);
     }

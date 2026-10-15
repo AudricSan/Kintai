@@ -6,6 +6,7 @@ namespace kintai\UI\Controller\Web;
 
 use kintai\Contract\Extension\DashboardWidget;
 use kintai\Core\Auth\PermissionService;
+use kintai\Core\Extension\DashboardLayout;
 use kintai\Core\Extension\DashboardWidgets;
 use kintai\Core\Extension\PendingRequests;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
@@ -32,6 +33,12 @@ final class HomeController
         'financial_overview',
         'hr_absenteeism',
         'shifts_today',
+    ];
+
+    /** Largeurs par défaut des widgets du gérant : Finances et RH côte à côte, les autres en pleine largeur. */
+    public const ADMIN_WIDGET_WIDTHS = [
+        'financial_overview' => DashboardLayout::HALF,
+        'hr_absenteeism'     => DashboardLayout::HALF,
     ];
 
     /** Fenêtre glissante (jours) du widget "Aperçu statistiques", alignée sur la période "30 jours" des pages analytics. */
@@ -227,6 +234,7 @@ final class HomeController
             'enabled_widgets'     => $enabledWidgets,
             'enabled_widgets_all' => $enabledAll,
             'all_widgets'         => $widgetKeys,
+            'widget_layout'       => DashboardLayout::resolve($widgetKeys, $this->dashboardPrefs->getLayout((int) $user['id'], 'admin'), self::ADMIN_WIDGET_WIDTHS),
             'bundle_widgets'      => $bundleWidgets,
             'bundle_widget_meta'  => $dashWidgets->meta(DashboardWidget::MANAGER, self::ADMIN_WIDGETS),
         ], 'layout.app'));

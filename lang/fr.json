@@ -1,4 +1,12 @@
 {
+    "dashboard_widget_drag": "Glisser pour déplacer",
+    "dashboard_widget_up": "Monter",
+    "dashboard_widget_down": "Descendre",
+    "dashboard_widget_make_half": "Demi-largeur",
+    "dashboard_widget_make_full": "Pleine largeur",
+    "dashboard_layout_save_failed": "La disposition n'a pas pu être enregistrée.",
+    "dashboard_layout_hint": "Déplacez les widgets avec la poignée ⠿ ou les flèches, et choisissez leur largeur. Chaque changement est enregistré aussitôt.",
+    "dashboard_layout_reset": "Réinitialiser l'ordre",
     "setup_title": "Configuration de Kintai",
     "setup_step_of": "Étape :n sur :total",
     "setup_license_title": "Licence",
