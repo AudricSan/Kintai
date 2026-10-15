@@ -340,7 +340,7 @@ final class BundleInstallerService
             try {
                 // Classes du bundle chargeables dès cette requête (l'autoloader du démarrage ne le connaît pas encore).
                 (new InstalledBundleAutoloader($this->manifestStore, $this->bundlesDir()))->register();
-                $granted = $this->permissionGranter->grantToManager(BundlePermissionGranter::declaredPermissions($entryClass));
+                $granted = $this->permissionGranter->grantDeclaredBy($entryClass);
                 Log::info('bundle_manager_permissions_granted', ['slug' => $slug, 'keys' => $granted]);
             } catch (\Throwable $e) {
                 // Le bundle est installé ; seuls les droits restent à accorder à la main dans Rôles.

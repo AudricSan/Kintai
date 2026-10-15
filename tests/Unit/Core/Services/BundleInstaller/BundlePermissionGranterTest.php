@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Core\Services\BundleInstaller;
 
+use kintai\Core\Auth\PermissionCatalog;
 use kintai\Core\BundleContract\Bundle;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Services\BundleInstaller\BundlePermissionGranter;
@@ -11,11 +12,13 @@ use PHPUnit\Framework\TestCase;
 
 final class BundlePermissionGranterTest extends TestCase
 {
-    public function testDeclaredPermissionsKeepsOnlyWellFormedNames(): void
+    public function testDeclaredPermissionsFollowTheRolesPageRules(): void
     {
+        // Catégorie avec une action mal formée écartée en entier (comme la page Rôles) ; catégories du Core et
+        // catégorie déjà prise par un autre bundle jamais accordées par ce bundle.
         $this->assertSame(
             ['photos' => ['view', 'upload']],
-            BundlePermissionGranter::declaredPermissions(GranterFixtureBundle::class),
+            BundlePermissionGranter::declaredPermissions(GranterFixtureBundle::class, [...PermissionCatalog::CORE_CATEGORIES, 'timeoff']),
         );
     }
 
@@ -53,7 +56,7 @@ final class BundlePermissionGranterTest extends TestCase
     }
 }
 
-/** Bundle factice : une catégorie valide (avec une action mal formée) et une catégorie au nom invalide. */
+/** Bundle factice : une seule catégorie recevable (« photos »), les autres illustrent chaque règle d'exclusion. */
 final class GranterFixtureBundle extends Bundle
 {
     public function getName(): string
@@ -67,6 +70,13 @@ final class GranterFixtureBundle extends Bundle
 
     public function permissions(): array
     {
-        return ['photos' => ['view', 'upload', 'Bad Action', 'view'], 'Bad-Category' => ['view'], 'empty' => []];
+        return [
+            'photos'       => ['view', 'upload', 'view'],
+            'reports'      => ['view', 'Bad Action'],
+            'Bad-Category' => ['view'],
+            'empty'        => [],
+            'stores'       => ['delete'],
+            'timeoff'      => ['approve'],
+        ];
     }
 }

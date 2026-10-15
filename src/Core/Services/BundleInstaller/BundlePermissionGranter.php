@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace kintai\Core\Services\BundleInstaller;
 
+use kintai\Core\Auth\PermissionCatalog;
+use kintai\Core\Extension\ExtensionRegistry;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 
 /**
@@ -14,27 +16,33 @@ use kintai\Core\Repositories\RoleRepositoryInterface;
  */
 final class BundlePermissionGranter
 {
-    private const NAME = '/^[a-z][a-z0-9_]{1,40}$/';
-
     public function __construct(private readonly RoleRepositoryInterface $roles) {}
 
     /**
-     * Catégories déclarées par la classe d'entrée d'un bundle (instanciée sans constructeur, comme à la découverte),
-     * filtrées comme le registre des extensions le fait : noms mal formés ignorés.
+     * Accorde au rôle Manager les catégories déclarées par la classe d'entrée du bundle.
      *
+     * @return list<string> Clés nouvellement accordées
+     */
+    public function grantDeclaredBy(string $entryClass): array
+    {
+        return $this->grantToManager(self::declaredPermissions($entryClass, array_keys(PermissionCatalog::forActiveBundles())));
+    }
+
+    /**
+     * Catégories déclarées par la classe d'entrée d'un bundle (instanciée sans constructeur, comme à la découverte),
+     * retenues selon les règles de la page Rôles (ExtensionRegistry::permissions()) : une catégorie mal formée est
+     * écartée en entier, et une catégorie déjà prise (Core ou autre bundle actif) n'est jamais accordée par ce bundle.
+     *
+     * @param list<string> $taken Catégories existantes : Core et bundles actifs
      * @return array<string, list<string>>
      */
-    public static function declaredPermissions(string $entryClass): array
+    public static function declaredPermissions(string $entryClass, array $taken): array
     {
         $declared = (new \ReflectionClass($entryClass))->newInstanceWithoutConstructor()->permissions();
         $categories = [];
         foreach (is_array($declared) ? $declared : [] as $category => $actions) {
-            if (!is_string($category) || preg_match(self::NAME, $category) !== 1 || !is_array($actions)) {
-                continue;
-            }
-            $valid = array_values(array_filter($actions, static fn($a): bool => is_string($a) && preg_match(self::NAME, $a) === 1));
-            if ($valid !== []) {
-                $categories[$category] = array_values(array_unique($valid));
+            if (ExtensionRegistry::isValidPermissionCategory($category, $actions) && !in_array($category, $taken, true)) {
+                $categories[$category] = array_values(array_unique($actions));
             }
         }
         return $categories;

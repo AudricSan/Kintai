@@ -137,9 +137,7 @@ final class ExtensionRegistry
                 continue;
             }
             foreach ($declared as $category => $actions) {
-                $valid = is_string($category) && preg_match('/^[a-z][a-z0-9_]{1,40}$/', $category) === 1 && is_array($actions)
-                    && $actions !== [] && array_filter($actions, static fn($a): bool => !is_string($a) || preg_match('/^[a-z][a-z0-9_]{1,40}$/', $a) !== 1) === [];
-                if (!$valid || in_array($category, $reserved, true) || isset($categories[$category])) {
+                if (!self::isValidPermissionCategory($category, $actions) || in_array($category, $reserved, true) || isset($categories[$category])) {
                     Log::warning('bundle_extension_invalid', ['bundle' => $bundle->getName(), 'point' => 'permissions', 'category' => is_string($category) ? $category : null]);
                     continue;
                 }
@@ -148,6 +146,18 @@ final class ExtensionRegistry
         }
 
         return $this->permissions = $categories;
+    }
+
+    /**
+     * Une catégorie déclarée par Bundle::permissions() est-elle bien formée ? Nom et actions en snake_case minuscule,
+     * au moins une action ; une seule action mal formée écarte toute la catégorie. Règle partagée avec
+     * BundlePermissionGranter, pour n'accorder au rôle Manager que ce que la page Rôles propose.
+     */
+    public static function isValidPermissionCategory(mixed $category, mixed $actions): bool
+    {
+        $name = static fn(mixed $v): bool => is_string($v) && preg_match('/^[a-z][a-z0-9_]{1,40}$/', $v) === 1;
+        return $name($category) && is_array($actions) && $actions !== []
+            && array_filter($actions, static fn(mixed $a): bool => !$name($a)) === [];
     }
 
     /**
