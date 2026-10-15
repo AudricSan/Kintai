@@ -1,4 +1,5 @@
 {
+    "error_shifts_not_in_conflict": "Ces deux shifts ne sont pas en conflit : rien n'a été supprimé.",
     "display_name_hint": "Facultatif : laissé vide, il devient « Nom Prénom ».",
     "language_follow_instance": "Langue de l'instance (:language)",
     "instance_locale": "Langue de l'instance",

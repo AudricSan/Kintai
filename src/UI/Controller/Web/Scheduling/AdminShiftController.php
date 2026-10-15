@@ -1182,8 +1182,16 @@ final class AdminShiftController
             if ($shiftKeep)   $this->assertStoreAccess($request, (int) $shiftKeep['store_id']);
             if ($shiftDelete) $this->assertStoreAccess($request, (int) $shiftDelete['store_id']);
 
-            $this->shifts->delete($idDelete);
-            $this->auditLogger->logUpdate($request, 'shift.conflict_resolved', 'shift', $idKeep, $shiftDelete, $shiftKeep, ['kept_id' => $idKeep, 'deleted_id' => $idDelete], $shiftKeep ? (int) $shiftKeep['store_id'] : null);
+            // L'un des deux a déjà disparu (double clic, page restée ouverte) : il n'y a plus de conflit à résoudre.
+            if ($shiftKeep !== null && $shiftDelete !== null) {
+                // Seule la suppression d'un shift réellement en conflit avec celui qu'on garde est permise : sinon la
+                // route (shifts.update) servait à supprimer n'importe quel shift de ses magasins.
+                if ($idKeep === $idDelete || !self::shiftsOverlap($shiftKeep, $shiftDelete)) {
+                    throw new ForbiddenException(__('error_shifts_not_in_conflict'));
+                }
+                $this->shifts->delete($idDelete);
+                $this->auditLogger->logUpdate($request, 'shift.conflict_resolved', 'shift', $idKeep, $shiftDelete, $shiftKeep, ['kept_id' => $idKeep, 'deleted_id' => $idDelete], (int) $shiftKeep['store_id']);
+            }
 
             $qs = http_build_query(array_filter([
                 'month'    => $month ?: null,
@@ -1272,6 +1280,29 @@ final class AdminShiftController
             'count'    => $deleted,
         ], fn($v) => $v !== null && $v !== 0 && $v !== ''));
         return Response::redirect($this->base() . '/admin/shifts/conflicts?' . $qs);
+    }
+
+    /**
+     * Même règle que la page des conflits : deux shifts d'un même employé dont les plages horaires se chevauchent
+     * (un shift qui passe minuit se termine le lendemain).
+     */
+    private static function shiftsOverlap(array $a, array $b): bool
+    {
+        $userA = (int) ($a['user_id'] ?? 0);
+        if ($userA <= 0 || $userA !== (int) ($b['user_id'] ?? 0)) {
+            return false;
+        }
+        $range = static function (array $s): array {
+            $date  = (string) ($s['shift_date'] ?? '');
+            $start = strtotime($date . ' ' . ($s['start_time'] ?? '00:00'));
+            $end   = !empty($s['cross_midnight'])
+                ? strtotime(date('Y-m-d', strtotime($date . ' +1 day')) . ' ' . ($s['end_time'] ?? '00:00'))
+                : strtotime($date . ' ' . ($s['end_time'] ?? '00:00'));
+            return [$start, $end];
+        };
+        [$startA, $endA] = $range($a);
+        [$startB, $endB] = $range($b);
+        return $startA < $endB && $startB < $endA;
     }
 
     /**

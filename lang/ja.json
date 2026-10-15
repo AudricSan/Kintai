@@ -1,4 +1,5 @@
 {
+    "error_shifts_not_in_conflict": "この2つのシフトは重複していません。削除は行われませんでした。",
     "display_name_hint": "任意：空欄の場合は「姓 名」になります。",
     "language_follow_instance": "インスタンスの言語（:language）",
     "instance_locale": "インスタンスの言語",
