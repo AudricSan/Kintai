@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 namespace kintai\UI\Controller\Api\V1;
 
+use kintai\Contract\Event\OpenShiftClosed;
 use kintai\Core\Api\Paginator;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\NotFoundException;
+use kintai\Core\Extension\Events;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Validation\ApiPayloadRules;
+use kintai\Core\Validation\PayloadValidator;
 
 final class ShiftController
 {
@@ -52,9 +56,13 @@ final class ShiftController
     /** POST /api/v1/shifts — `store_id` obligatoire (la permission est vérifiée sur ce magasin). */
     public function store(Request $request): Response
     {
-        $data = $request->json() ?? [];
-        unset($data['id']);
-        $this->permissions->requireOnStore($this->authUser($request), 'shifts.create', $data['store_id'] ?? null);
+        $data = PayloadValidator::validate($request->json() ?? [], ApiPayloadRules::shift());
+        $this->permissions->requireOnStore($this->authUser($request), 'shifts.create', $data['store_id']);
+        // Champs calculés dérivés de la date et des heures, jamais pris du client (ils manquaient : erreur SQL).
+        $data += ApiPayloadRules::shiftTiming($data['shift_date'], $data['start_time'], $data['end_time']);
+        if (!empty($data['is_open'])) {
+            $data['user_id'] = null;
+        }
 
         $saved = $this->shifts->save($data);
         $this->auditLogger->log($request, 'shift.created', 'shift', resourceId: (int) ($saved['id'] ?? 0) ?: null, details: $data, storeId: (int) $data['store_id']);
@@ -67,13 +75,26 @@ final class ShiftController
         $old = $this->requireShift($request, 'shifts.update');
         $id  = (int) $old['id'];
 
-        $data = $request->json() ?? [];
+        $data = PayloadValidator::validateUpdate($request->json() ?? [], ApiPayloadRules::shift());
+        // Date ou heures modifiées : les champs calculés suivent.
+        if (array_intersect_key($data, array_flip(['shift_date', 'start_time', 'end_time'])) !== []) {
+            $data += ApiPayloadRules::shiftTiming(
+                $data['shift_date'] ?? (string) $old['shift_date'],
+                $data['start_time'] ?? substr((string) $old['start_time'], 0, 5),
+                $data['end_time'] ?? substr((string) $old['end_time'], 0, 5),
+            );
+        }
         // Déplacer un shift vers un autre magasin exige aussi le droit sur la destination.
         if (isset($data['store_id']) && (int) $data['store_id'] !== (int) $old['store_id']) {
             $this->permissions->requireOnStore($this->authUser($request), 'shifts.update', $data['store_id']);
         }
 
         $saved = $this->shifts->save(array_merge($data, ['id' => $id]));
+        // Shift retiré de la bourse (contrat 1.17) : les bundles qui l'écoutent (shift-claim) l'apprennent.
+        if (!empty($old['is_open']) && array_key_exists('is_open', $data) && empty($data['is_open'])) {
+            $authId = (int) ($this->authUser($request)['id'] ?? 0);
+            Events::current()->dispatch(new OpenShiftClosed($saved, $authId > 0 ? $authId : null));
+        }
         $this->auditLogger->logUpdate($request, 'shift.updated', 'shift', resourceId: $id, oldData: $old, newData: $saved, extraContext: $data, storeId: (int) ($saved['store_id'] ?? 0) ?: null);
         return Response::json($saved);
     }

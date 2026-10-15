@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\UI\Controller\Web\System;
 
+use kintai\Core\Auth\OwnerGuard;
 use kintai\Core\Auth\PermissionCatalog;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
@@ -13,6 +14,7 @@ use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
+use kintai\Core\Validation\ColorRule;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\RoleAssignmentSyncService;
@@ -59,6 +61,7 @@ final class AdminRoleController
         private readonly AuditLogger $auditLogger,
         private readonly StoreUserRepositoryInterface $storeUsers,
         private readonly RoleAssignmentSyncService $roleSync,
+        private readonly OwnerGuard $ownerGuard,
     ) {}
 
     /** GET /admin/roles */
@@ -106,6 +109,8 @@ final class AdminRoleController
         if ($name === '' || $slug === '') {
             return Response::redirect($this->base() . '/admin/roles/create?error=invalid_name');
         }
+
+        ColorRule::assert($request->post('color', ''), 'color', true);
 
         $saved = $this->roles->save([
             'name'        => $name,
@@ -161,12 +166,15 @@ final class AdminRoleController
             return Response::redirect($this->base() . '/admin/roles/' . $role['id'] . '/edit?error=invalid_name');
         }
 
+        ColorRule::assert($request->post('color', ''), 'color', true);
+
+        // Champ absent de la requête : valeur actuelle conservée (audit du 13/10/2026, M12).
         $newRole = $this->roles->save([
             'id'          => $role['id'],
             'name'        => $name,
-            'color'       => $request->post('color', '') ?: null,
-            'description' => trim($request->post('description', '')) ?: null,
-            'is_manager'  => $request->post('is_manager') ? 1 : 0,
+            'color'       => $request->hasPost('color') ? ($request->post('color', '') ?: null) : ($role['color'] ?? null),
+            'description' => $request->hasPost('description') ? (trim((string) $request->post('description', '')) ?: null) : ($role['description'] ?? null),
+            'is_manager'  => $request->postFlag('is_manager', $role['is_manager'] ?? 0),
         ]);
 
         $oldPermissions = $this->roles->getPermissions((int) $role['id']);
@@ -281,6 +289,7 @@ final class AdminRoleController
 
         $userId = (int) $assignment['user_id'];
         if ($isOwnerRole) {
+            $this->ownerGuard->assertCanRemoveOwner((int) ($request->getAttribute('auth_user')['id'] ?? 0), $userId);
             $this->roleSync->syncOwnerRole($userId, false);
         } else {
             $this->roleSync->revokeStoreRole($userId, (int) $assignment['scope_id']);
@@ -400,22 +409,17 @@ final class AdminRoleController
     }
 
     /**
-     * Catégories du catalogue dont le bundle porteur est activé (les
-     * catégories Core, sans bundle associé, sont toujours visibles).
+     * Catégories proposées : Core, bundles actifs déclarants (Bundle::permissions()) et repli historique des bundles
+     * actifs non déclarants — voir PermissionCatalog::forActiveBundles().
      */
     private function visiblePermissionCategories(): array
     {
-        return array_filter(
-            PermissionCatalog::CATEGORIES,
-            fn(string $category): bool => $this->isCategoryVisible($category),
-            ARRAY_FILTER_USE_KEY
-        );
+        return PermissionCatalog::forActiveBundles();
     }
 
     private function isCategoryVisible(string $category): bool
     {
-        $bundle = PermissionCatalog::CATEGORY_BUNDLES[$category] ?? null;
-        return $bundle === null || bundle_enabled($bundle);
+        return array_key_exists($category, $this->visiblePermissionCategories());
     }
 
     private function roleHolders(int $roleId): array

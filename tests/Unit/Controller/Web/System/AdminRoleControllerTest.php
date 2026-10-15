@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Controller\Web\System;
 
+use kintai\Core\Auth\OwnerGuard;
+use kintai\Core\Auth\PermissionService;
 use kintai\Core\BundleManager;
 use kintai\Core\Container;
 use kintai\Core\Exceptions\ForbiddenException;
@@ -52,6 +54,7 @@ final class AdminRoleControllerTest extends TestCase
             new AuditLogger(),
             $this->storeUsers,
             new RoleAssignmentSyncService($this->roles, $this->assignments),
+            new OwnerGuard(new PermissionService($this->assignments, $this->roles), $this->users),
         );
     }
 
@@ -109,7 +112,7 @@ final class AdminRoleControllerTest extends TestCase
             'description'             => 'Lecture seule',
             'color'                   => '#ff0000',
             'perm_employees_view'     => '1',
-            'perm_hiring_reports_view' => '1',
+            'perm_payroll_view'       => '1',
         ];
         $req = $this->ownerRequest();
 
@@ -134,7 +137,7 @@ final class AdminRoleControllerTest extends TestCase
         $this->assertSame('auditor', $captured['slug']);
         $this->assertSame(0, $captured['is_system']);
         sort($capturedPermissions);
-        $this->assertSame(['employees.view', 'hiring_reports.view'], $capturedPermissions);
+        $this->assertSame(['employees.view', 'payroll.view'], $capturedPermissions);
         $this->assertSame(0, $captured['is_manager']);
     }
 
@@ -360,7 +363,10 @@ final class AdminRoleControllerTest extends TestCase
 
     public function testUpdateRoleAcceptsBundleCategoryWhenBundleEnabled(): void
     {
-        Container::getInstance()->instance(BundleManager::class, FakeBundleManagerFactory::withActiveSlugs(['timeoff']));
+        // timeoff déclare sa catégorie de permissions (contrat 1.2).
+        $manager = FakeBundleManagerFactory::withActiveSlugs(['timeoff'], permissions: ['timeoff' => ['timeoff' => ['view', 'create', 'update', 'approve', 'delete']]]);
+        Container::getInstance()->instance(BundleManager::class, $manager);
+        Container::getInstance()->instance(\kintai\Core\Extension\ExtensionRegistry::class, new \kintai\Core\Extension\ExtensionRegistry($manager));
 
         $this->roles->method('findById')->willReturn(['id' => 2, 'name' => 'Manager', 'is_system' => 0]);
         $this->roles->method('getPermissions')->willReturn([]);
@@ -562,6 +568,23 @@ final class AdminRoleControllerTest extends TestCase
 
         $this->assertSame(302, $response->status());
         $this->assertStringContainsString('success=holder_removed', $this->redirectLocation($response));
+    }
+
+    public function testRemoveHolderRefusesToRemoveTheOwnerRoleFromTheActor(): void
+    {
+        $this->roles->method('findById')->willReturn(['id' => 1, 'name' => 'Owner', 'slug' => 'owner', 'is_system' => 1]);
+        $this->assignments->method('findById')->willReturn(['id' => 5, 'role_id' => 1, 'user_id' => 1, 'scope_type' => 'global', 'scope_id' => null]);
+        $this->assignments->method('findByScope')->willReturn([
+            ['id' => 5, 'role_id' => 1, 'user_id' => 1, 'scope_type' => 'global', 'scope_id' => null],
+            ['id' => 6, 'role_id' => 1, 'user_id' => 2, 'scope_type' => 'global', 'scope_id' => null],
+        ]);
+        $this->assignments->expects($this->never())->method('revoke');
+
+        $req = $this->ownerRequest();
+        $req->setRouteParams(['id' => 1, 'assignmentId' => 5]);
+
+        $this->expectException(ForbiddenException::class);
+        $this->controller->removeHolder($req);
     }
 
     public function testRemoveHolderThrowsNotFoundWhenAssignmentMissing(): void

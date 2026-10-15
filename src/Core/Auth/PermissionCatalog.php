@@ -19,38 +19,6 @@ final class PermissionCatalog
         'shifts'               => ['view', 'create', 'update', 'delete', 'import'],
         'stores'               => ['view', 'create', 'update', 'delete'],
         'payroll'              => ['view', 'generate', 'export'],
-        'hiring_reports'       => ['view', 'create', 'update', 'delete'],
-        'resignation_reports'  => ['view', 'create', 'update', 'delete'],
-        'photos'               => ['view', 'create', 'update', 'delete'],
-        'timeoff'              => ['view', 'create', 'update', 'approve', 'delete'],
-        'swaps'                => ['view', 'create', 'update', 'approve', 'delete'],
-        'timeclock'            => ['view', 'update', 'delete'],
-        'open_shifts'          => ['view', 'publish', 'approve'],
-        'feedbacks'            => ['view', 'update', 'delete'],
-        'daily_reports'        => ['view', 'create', 'update', 'submit', 'approve', 'delete'],
-        'messaging'            => ['view', 'send', 'delete'],
-        'notebook'             => ['view', 'create', 'manage'],
-    ];
-
-    /**
-     * Catégories de permissions portées par un bundle optionnel (catégorie →
-     * slug du bundle). Une catégorie absente d'ici est du Core, toujours
-     * proposée. L'UI des rôles masque les catégories dont le bundle est
-     * désactivé (leurs routes n'existent alors pas) ; les clés restent
-     * valides en base et réapparaissent si le bundle est réactivé.
-     */
-    public const CATEGORY_BUNDLES = [
-        'hiring_reports'      => 'hiring-report',
-        'resignation_reports' => 'resignation-report',
-        'photos'              => 'store-photos',
-        'timeoff'             => 'timeoff',
-        'swaps'               => 'shift-swap',
-        'timeclock'           => 'timeclock',
-        'open_shifts'         => 'shift-claim',
-        'feedbacks'           => 'feedback',
-        'daily_reports'       => 'daily-report',
-        'messaging'           => 'messaging',
-        'notebook'            => 'notebook',
     ];
 
     /**
@@ -63,19 +31,31 @@ final class PermissionCatalog
         'shifts.view', 'shifts.create', 'shifts.update', 'shifts.delete', 'shifts.import',
         'stores.view', 'stores.update',
         'payroll.view', 'payroll.generate', 'payroll.export',
-        'hiring_reports.view', 'hiring_reports.create', 'hiring_reports.update', 'hiring_reports.delete',
-        'resignation_reports.view', 'resignation_reports.create', 'resignation_reports.update', 'resignation_reports.delete',
-        'photos.view', 'photos.create', 'photos.update', 'photos.delete',
-        'timeoff.view', 'timeoff.create', 'timeoff.update', 'timeoff.approve', 'timeoff.delete',
-        'swaps.view', 'swaps.create', 'swaps.update', 'swaps.approve', 'swaps.delete',
-        'timeclock.view', 'timeclock.update', 'timeclock.delete',
-        'open_shifts.view', 'open_shifts.publish', 'open_shifts.approve',
-        'feedbacks.view', 'feedbacks.update', 'feedbacks.delete',
-        'daily_reports.view', 'daily_reports.create', 'daily_reports.update',
-        'daily_reports.submit', 'daily_reports.approve', 'daily_reports.delete',
-        'messaging.view', 'messaging.send', 'messaging.delete',
-        'notebook.view', 'notebook.create', 'notebook.manage',
     ];
+
+    /** Catégories du Core : toujours présentes, jamais redéfinissables par un bundle. */
+    public const CORE_CATEGORIES = ['employees', 'shifts', 'stores', 'payroll'];
+
+    /**
+     * Catégories proposées dans la page des rôles : celles du Core, puis celles déclarées par les bundles actifs
+     * (Bundle::permissions(), contrat 1.2) dans l'ordre de leur déclaration. Une catégorie de bundle inactif n'est pas
+     * proposée ; ses clés restent en base et réapparaissent si le bundle est réactivé.
+     *
+     * @return array<string, list<string>>
+     */
+    public static function forActiveBundles(): array
+    {
+        $registry = null;
+        try {
+            $container = \kintai\Core\Container::getInstance();
+            if ($container->has(\kintai\Core\Extension\ExtensionRegistry::class)) {
+                $registry = $container->make(\kintai\Core\Extension\ExtensionRegistry::class);
+            }
+        } catch (\Throwable) {
+        }
+
+        return self::CATEGORIES + ($registry?->permissions(self::CORE_CATEGORIES) ?? []);
+    }
 
     /** @return string[] Toutes les clés de permission ("categorie.action"), aplaties. */
     public static function all(): array

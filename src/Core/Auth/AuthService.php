@@ -172,6 +172,16 @@ final class AuthService
     }
 
     /**
+     * Identifiant du compte de la session, sans aucune vérification (compte actif, mot de passe inchangé) : réservé
+     * aux usages qui ne donnent aucun droit, comme le choix de la langue d'affichage (I18nMiddleware).
+     */
+    public static function sessionUserId(): ?int
+    {
+        $id = $_SESSION[self::SESSION_KEY] ?? null;
+        return is_numeric($id) ? (int) $id : null;
+    }
+
+    /**
      * Retourne l'utilisateur connecté (rechargé depuis la DB), ou null.
      * 'is_admin' reflète le calcul RBAC effectif (rôle système en portée
      * globale), pas la colonne brute users.is_admin.

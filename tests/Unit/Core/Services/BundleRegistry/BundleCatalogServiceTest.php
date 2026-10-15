@@ -155,7 +155,7 @@ final class BundleCatalogServiceTest extends TestCase
             new BundleRegistryClient(fn(string $url) => null),
         );
 
-        $this->assertTrue($service->isOfficial('feedback'));
+        $this->assertTrue($service->isOfficial('timeoff'));
         $this->assertFalse($service->isOfficial('some-random-third-party-bundle'));
     }
 }

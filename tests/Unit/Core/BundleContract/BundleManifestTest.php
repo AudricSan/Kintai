@@ -110,4 +110,40 @@ final class BundleManifestTest extends TestCase
 
         $this->assertNull($manifest->classFilePath('/bundles/feedback/1.0.0', 'kintai\\Core\\Application'));
     }
+
+    // -------------------------------------------------------------------------
+    // Contrat de bundle versionné (kintai_contract)
+    // -------------------------------------------------------------------------
+
+    private function manifestWith(array $extra): \kintai\Core\BundleContract\BundleManifest
+    {
+        return \kintai\Core\BundleContract\BundleManifest::fromArray($extra + [
+            'slug' => 'demo', 'name' => 'Demo', 'version' => '1.0.0',
+            'namespace' => 'kintai\\Bundles\\Installed\\Demo', 'entry_class' => 'kintai\\Bundles\\Installed\\Demo\\DemoBundle',
+        ]);
+    }
+
+    public function testTheContractConstraintIsParsedAndTakesPrecedenceOverTheCoreRange(): void
+    {
+        // Le contrat est satisfait : l'intervalle Core (qui exclurait 0.5.0) n'est plus consulté.
+        $manifest = $this->manifestWith(['kintai_contract' => ' ^1.0 ', 'kintai_core' => ['min' => '9.0.0', 'max' => '9.9.9']]);
+
+        $this->assertSame('^1.0', $manifest->contractConstraint);
+        $this->assertNull($manifest->incompatibilityReason('0.5.0', '1.4.0'));
+        $this->assertNotNull($manifest->incompatibilityReason('0.5.0', '2.0.0'));
+    }
+
+    public function testAMalformedContractConstraintMakesTheBundleIncompatible(): void
+    {
+        $this->assertNotNull($this->manifestWith(['kintai_contract' => 'latest'])->incompatibilityReason('1.0.0', '1.0.0'));
+    }
+
+    /** Sans contrat déclaré, le bundle est incompatible : sa plage kintai_core, même ouverte, ne compte plus. */
+    public function testWithoutAContractTheBundleIsIncompatible(): void
+    {
+        $manifest = $this->manifestWith(['kintai_core' => ['min' => '0.1.0', 'max' => '999.999.999']]);
+
+        $this->assertNull($manifest->contractConstraint);
+        $this->assertSame('bundle_contract_missing', $manifest->incompatibilityReason('0.5.0'));
+    }
 }

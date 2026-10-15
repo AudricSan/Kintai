@@ -31,7 +31,8 @@ return new class($this->capsule) extends Migration {
             $table->timestamp('updated_at')->nullable();
             $table->timestamp('deleted_at')->nullable();
             $table->string('employee_code')->nullable()->unique();
-            $table->string('language')->default('fr');
+            // Vide : le compte suit la langue de l'instance (APP_LOCALE, voir InstanceLocale).
+            $table->string('language')->default('');
 
             $table->index(['is_active', 'deleted_at']);
             $table->index('deleted_at');

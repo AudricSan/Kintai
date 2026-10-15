@@ -27,6 +27,9 @@ final class DatabaseServiceProvider extends ServiceProvider
                 'driver'   => 'sqlite',
                 'database' => $connectionConfig['path'] ?? BASE_PATH . '/storage/app/database.sqlite',
                 'prefix'   => '',
+                // Règles onDelete appliquées comme sous MySQL (audit du 13/10/2026, M8) : sans cela, supprimer
+                // une ligne laissait ses dépendances orphelines sous SQLite et les supprimait sous MySQL.
+                'foreign_key_constraints' => true,
             ],
             'mysql' => [
                 'driver'    => 'mysql',

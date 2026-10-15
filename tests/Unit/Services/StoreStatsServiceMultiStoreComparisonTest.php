@@ -5,15 +5,12 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Services;
 
 use PHPUnit\Framework\TestCase;
-use kintai\Core\Repositories\DailyReportRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
-use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
-use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Services\RoleAssignmentSyncService;
@@ -48,11 +45,8 @@ final class StoreStatsServiceMultiStoreComparisonTest extends TestCase
             $this->shifts,
             $shiftTypes,
             $this->storeUsers,
-            $this->createStub(TimeoffRequestRepositoryInterface::class),
-            $this->createStub(ShiftSwapRequestRepositoryInterface::class),
             $userRates,
             $this->createStub(UserRepositoryInterface::class),
-            $this->createStub(DailyReportRepositoryInterface::class),
             new RoleAssignmentSyncService(
                 $this->createStub(RoleRepositoryInterface::class),
                 $this->createStub(RoleAssignmentRepositoryInterface::class),

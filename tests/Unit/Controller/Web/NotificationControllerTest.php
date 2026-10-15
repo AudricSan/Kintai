@@ -102,6 +102,20 @@ final class NotificationControllerTest extends TestCase
         $this->assertSame(302, $response->status());
     }
 
+    public function testRedirectsKeepTheSubfolderPrefixWhenInstalledInASubfolder(): void
+    {
+        $previous = $_SERVER['SCRIPT_NAME'] ?? null;
+        $_SERVER['SCRIPT_NAME'] = '/Kintai/index.php';
+        try {
+            $response = $this->controller->deleteAll($this->makeRequest());
+        } finally {
+            $previous === null ? $_SERVER['SCRIPT_NAME'] = '/index.php' : $_SERVER['SCRIPT_NAME'] = $previous;
+        }
+
+        $location = (string) ((fn() => $this->headers['Location'] ?? '')->call($response));
+        $this->assertSame('/Kintai/notifications', $location);
+    }
+
     public function testDeleteAllReturnsJsonForAjaxRequests(): void
     {
         $this->notifications->expects($this->once())->method('deleteAllForUser')->with(5);
@@ -138,11 +152,19 @@ final class NotificationControllerTest extends TestCase
 
     public function testPushUnsubscribeDeletesToken(): void
     {
-        $this->pushTokens->expects($this->once())->method('deleteByToken')->with('fcm-token-abc');
+        $this->pushTokens->expects($this->once())->method('deleteByToken')->with('fcm-token-abc', $this->callback(fn($uid) => is_int($uid) && $uid > 0));
 
         $response = $this->controller->pushUnsubscribe($this->makeJsonRequest(['token' => 'fcm-token-abc']));
 
         $this->assertSame(200, $response->status());
+    }
+
+    /** Audit n°7 : la désinscription ne doit retirer que l'appareil de l'utilisateur connecté (id 5 ici). */
+    public function testPushUnsubscribeIsScopedToTheLoggedInUser(): void
+    {
+        $this->pushTokens->expects($this->once())->method('deleteByToken')->with('fcm-token-abc', 5);
+
+        $this->controller->pushUnsubscribe($this->makeJsonRequest(['token' => 'fcm-token-abc']));
     }
 
     public function testPushUnsubscribeIsNoopWithoutToken(): void
@@ -173,6 +195,35 @@ final class NotificationControllerTest extends TestCase
      * menait nulle part. open() doit marquer lu puis rediriger vers le lien stocké
      * (voir NotificationService::notify()).
      */
+    /** Audit n°7 : la destination postée n'était pas filtrée (redirection ouverte). */
+    #[\PHPUnit\Framework\Attributes\DataProvider('markReadRedirects')]
+    public function testMarkReadOnlyRedirectsToInternalPaths(string $posted, string $expectedSuffix): void
+    {
+        $_SERVER = ['REQUEST_METHOD' => 'POST', 'REQUEST_URI' => '/notifications/3/read', 'SCRIPT_NAME' => '/index.php'];
+        $_POST   = ['redirect' => $posted];
+        $req = new \kintai\Core\Request();
+        $req->setRouteParams(['id' => '3']);
+
+        $response = $this->controller->markRead($req);
+
+        $location = (string) ((fn() => $this->headers['Location'] ?? '')->call($response));
+        $this->assertSame(302, $response->status());
+        $this->assertStringEndsWith($expectedSuffix, $location);
+        $this->assertStringNotContainsString('evil.example', $location);
+    }
+
+    /** @return array<string, array{string, string}> */
+    public static function markReadRedirects(): array
+    {
+        return [
+            'chemin interne'            => ['/employee/shifts', '/employee/shifts'],
+            'site externe'              => ['https://evil.example/', '/notifications'],
+            'origine relative au schéma' => ['//evil.example/', '/notifications'],
+            'antislash'                 => ['/\evil.example/', '/notifications'],
+            'vide'                      => ['', '/notifications'],
+        ];
+    }
+
     public function testOpenMarksReadAndRedirectsToStoredLink(): void
     {
         $this->notifications->method('findById')->with(10)->willReturn([

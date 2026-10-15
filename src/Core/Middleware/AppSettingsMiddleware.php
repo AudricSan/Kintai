@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace kintai\Core\Middleware;
 
 use Closure;
+use kintai\Core\BundleManager;
 use kintai\Core\Container;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AppSettingsService;
+use kintai\Core\Services\PlanLimitService;
 use kintai\Core\Services\PublicUrlResolver;
 use kintai\Core\Services\UpdateService;
 use kintai\UI\ViewRenderer;
@@ -31,6 +33,13 @@ final class AppSettingsMiddleware implements MiddlewareInterface
             $view->share('app_version', $this->container->make(UpdateService::class)->getCurrentVersion());
             // Sans URL publique, les e-mails de réinitialisation du mot de passe ne partent pas : l'Owner en est averti.
             $view->share('app_public_url_missing', $this->container->make(PublicUrlResolver::class)->resolve() === null);
+            // Plus de bundles actifs que le quota de la licence (installation antérieure, licence expirée) : l'Owner en
+            // est averti ; il peut réduire un bundle à la fois sur /admin/bundles.
+            $maxBundles = $this->container->make(PlanLimitService::class)->maxActiveBundles();
+            $activeBundles = count($this->container->make(BundleManager::class)->getBundles());
+            $view->share('setup_wizard_pending', $settings->get(\kintai\Core\Services\SetupWizard::PENDING_KEY) === '1');
+            $view->share('bundle_quota_overflow', $maxBundles !== null && $activeBundles > $maxBundles
+                ? ['active' => $activeBundles, 'max' => $maxBundles] : null);
         } catch (\Throwable) {
             // Table absente (avant migration) ou DB non disponible — on ignore.
         }

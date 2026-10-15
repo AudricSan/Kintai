@@ -14,6 +14,8 @@ use kintai\Core\Request;
 use kintai\Core\Services\AuditLogger;
 use kintai\UI\Controller\Api\V1\UserShiftRateController;
 use PHPUnit\Framework\MockObject\MockObject;
+use kintai\Core\Exceptions\ValidationException;
+use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use PHPUnit\Framework\TestCase;
 
 final class UserShiftRateControllerTest extends TestCase
@@ -143,5 +145,47 @@ final class UserShiftRateControllerTest extends TestCase
         }
         $req->setRouteParams($routeParams);
         return $req;
+    }
+
+    // -------------------------------------------------------------------------
+    // Validation du corps (audit du 13/10/2026, M9)
+    // -------------------------------------------------------------------------
+
+    public function testStoreWithAnEmptyBodyIsRefused(): void
+    {
+        $this->rates->expects($this->never())->method('save');
+
+        $this->expectException(ValidationException::class);
+        $this->controller->store($this->requestFor(['user_id' => '20']));
+    }
+
+    /** @return array<string, array{array<string, mixed>}> */
+    public static function invalidRates(): array
+    {
+        return [
+            'taux negatif'       => [['shift_type_id' => 3, 'hourly_rate' => -5]],
+            'taux en texte'      => [['shift_type_id' => 3, 'hourly_rate' => 'beaucoup']],
+            'type non numerique' => [['shift_type_id' => 'abc', 'hourly_rate' => 10]],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidRates')]
+    public function testStoreRefusesInvalidValues(array $body): void
+    {
+        $this->rates->expects($this->never())->method('save');
+
+        $this->expectException(ValidationException::class);
+        $this->controller->store($this->requestFor(['user_id' => '20'], $body));
+    }
+
+    public function testStoreRefusesAnUnknownShiftType(): void
+    {
+        $shiftTypes = $this->createMock(ShiftTypeRepositoryInterface::class);
+        $shiftTypes->method('findById')->with(404)->willReturn(null);
+        $controller = new UserShiftRateController($this->rates, $this->guard(), new AuditLogger(), $shiftTypes);
+        $this->rates->expects($this->never())->method('save');
+
+        $this->expectException(ValidationException::class);
+        $controller->store($this->requestFor(['user_id' => '20'], ['shift_type_id' => 404, 'hourly_rate' => 12]));
     }
 }

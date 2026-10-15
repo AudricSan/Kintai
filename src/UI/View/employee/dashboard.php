@@ -7,19 +7,21 @@ use kintai\UI\Components\Table;
 /** @var array $user */
 /** @var array $shifts_today */
 /** @var array $upcoming */
-/** @var array $pending_timeoff */
-/** @var array $my_swaps */
-/** @var array $pending_swaps */
 /** @var array $stores_map  id → store name */
 /** @var array|null $employee_month_stats */
-/** @var array|null $active_clock */
 /** @var array $enabled_widgets   widget_key → true (flipped) */
 /** @var array $all_widgets       list of all widget keys */
 
 $stats       = $employee_month_stats ?? null;
 $stores_map  = $stores_map ?? [];
-$activeClock = $active_clock ?? null;
 $widgets     = $enabled_widgets ?? array_flip($all_widgets ?? []);
+// Widgets des bundles (Bundle::dashboardWidgets(), contrat 1.4) : HTML déjà rendu par le contrôleur, affiché en fin
+// de page ; $widgetsAll = choix de l'utilisateur, y compris ces widgets (panneau « Personnaliser »).
+$bundle_widgets     ??= [];
+$bundle_widget_meta ??= ['labels' => [], 'permissions' => [], 'features' => []];
+$widgetsAll  = $enabled_widgets_all ?? $widgets;
+// Ordre et largeur des widgets choisis par l'utilisateur (DashboardLayout), widgets déplaçables en mode édition.
+$_dashLayout = $widget_layout ?? ['order' => $all_widgets ?? [], 'widths' => []];
 
 function widget_on(string $key, array $widgets): bool {
     return isset($widgets[$key]);
@@ -34,30 +36,23 @@ $feat = static fn(?string $f): bool =>
 $can = $user_can ?? fn(string $k): bool => true;
 
 $_empWidgetFeatMap = [
-    'timeclock'       => 'timeclock',
-    'pending_timeoff' => 'timeoff',
-    'pending_swaps'   => 'swaps',
-    'team_notes'      => 'notes',
-];
-$_empWidgetPermMap = [
-    'team_notes' => 'notebook.view',
-];
+] + $bundle_widget_meta['features'];
+$_empWidgetPermMap = $bundle_widget_meta['permissions'];
 $all_widgets = array_values(array_filter(
     $all_widgets ?? [],
     fn(string $wk) => $feat($_empWidgetFeatMap[$wk] ?? null) && (!isset($_empWidgetPermMap[$wk]) || $can($_empWidgetPermMap[$wk]))
 ));
 foreach ($_empWidgetFeatMap as $_wk => $_wf) {
     if (!$feat($_wf)) {
-        unset($widgets[$_wk]);
+        unset($widgets[$_wk], $widgetsAll[$_wk]);
     }
 }
 foreach ($_empWidgetPermMap as $_wk => $_wp) {
     if (!$can($_wp)) {
-        unset($widgets[$_wk]);
+        unset($widgets[$_wk], $widgetsAll[$_wk]);
     }
 }
 
-$notebook_entries ??= [];
 ?>
 
 <div class="page-header">
@@ -70,23 +65,23 @@ $notebook_entries ??= [];
 <?php
 ob_start();
 ?>
+<div class="dash-layout-tools">
+    <p class="text-sm text-muted"><?= __('dashboard_layout_hint') ?></p>
+    <button type="button" class="btn btn--ghost btn--sm" data-dash-reset><?= __('dashboard_layout_reset') ?></button>
+</div>
 <form method="POST" action="<?= route_url('employee.dashboard.widgets') ?>">
     <?= csrf_field() ?>
     <div class="dash-widget-list">
         <?php
         $widgetLabels = [
-            'timeclock'      => __('timeclock'),
             'shifts_today'   => __('my_shifts_today'),
             'upcoming'       => __('my_upcoming_shifts'),
             'monthly_stats'  => __('monthly_stats'),
-            'pending_timeoff'=> __('my_pending_timeoff'),
-            'pending_swaps'  => __('pending_swaps'),
-            'team_notes'     => __('my_team_notes'),
-        ];
+        ] + $bundle_widget_meta['labels'];
         foreach ($all_widgets as $wk): ?>
         <label class="dash-widget-item">
             <input type="checkbox" name="widgets[<?= htmlspecialchars($wk) ?>]" value="1"
-                   <?= widget_on($wk, $widgets) ? 'checked' : '' ?>>
+                   <?= widget_on($wk, $widgetsAll) ? 'checked' : '' ?>>
             <span><?= htmlspecialchars($widgetLabels[$wk] ?? $wk) ?></span>
         </label>
         <?php endforeach; ?>
@@ -104,7 +99,8 @@ echo Card::make()
 ?>
 
 <!-- ═══ Stat cards ═══ -->
-<?php $_statCount = 2 + ($feat('timeoff') ? 1 : 0) + ($feat('swaps') ? 1 : 0); ?>
+<?php $bundle_stats ??= []; // Cartes des bundles (congés, échanges… — Bundle::dashboardStats(), contrat 1.19). ?>
+<?php $_statCount = 2 + count($bundle_stats); ?>
 <div class="stat-grid" style="--stat-cols:<?= $_statCount ?>"><?php unset($_statCount); ?>
     <div class="stat-card">
         <div class="stat-card__icon stat-card__icon--primary">📅</div>
@@ -120,44 +116,19 @@ echo Card::make()
             <div class="stat-card__label"><?= __('shifts_upcoming') ?></div>
         </div>
     </div>
-    <?php if ($feat('timeoff')): ?>
+    <?php foreach ($bundle_stats as $_stat): ?>
     <div class="stat-card">
-        <div class="stat-card__icon stat-card__icon--warning">🌴</div>
+        <div class="stat-card__icon stat-card__icon--<?= htmlspecialchars($_stat['tone']) ?>"><?= htmlspecialchars($_stat['icon']) ?></div>
         <div class="stat-card__body">
-            <div class="stat-card__value"><?= count($pending_timeoff) ?></div>
-            <div class="stat-card__label"><?= __('pending_timeoff') ?></div>
+            <div class="stat-card__value"><?= htmlspecialchars((string) $_stat['value']) ?></div>
+            <div class="stat-card__label"><?= htmlspecialchars($_stat['label']) ?></div>
         </div>
     </div>
-    <?php endif; ?>
-    <?php if ($feat('swaps')): ?>
-    <div class="stat-card">
-        <div class="stat-card__icon stat-card__icon--danger">🔄</div>
-        <div class="stat-card__body">
-            <div class="stat-card__value"><?= count($pending_swaps) ?></div>
-            <div class="stat-card__label"><?= __('swaps') ?></div>
-        </div>
-    </div>
-    <?php endif; ?>
+    <?php endforeach; ?>
 </div>
 
-<?php if (widget_on('timeclock', $widgets)): ?>
-<?php
-ob_start();
-if ($activeClock !== null):
-    echo Badge::make(__('clocked_in'))->success()->render();
-    echo ' <span class="text-muted">' . __('clocked_in_since') . ' <strong>' . htmlspecialchars(substr($activeClock['clock_in_time'] ?? '', 11, 5)) . '</strong></span>';
-    echo ' ' . Button::make(__('clock_out'))->danger()->sm()->link(route_url('employee.timeclock'))->render();
-else:
-    echo Badge::make(__('not_clocked_in'))->neutral()->render();
-    echo ' ' . Button::make(__('clock_in'))->success()->sm()->link(route_url('employee.timeclock'))->render();
-endif;
-echo Card::make()
-    ->header('<span>' . __('timeclock') . '</span> ' . Button::make(__('view_all'))->ghost()->sm()->link(route_url('employee.timeclock'))->render())
-    ->body(ob_get_clean())
-    ->render();
-?>
-<?php endif; ?>
-
+<?php $_dashBlocks = []; ?>
+<?php ob_start(); ?>
 <?php if (widget_on('monthly_stats', $widgets) && $stats !== null): ?>
 <?php $cur = $stats['currency'] ?? 'JPY'; $curStyle = $stats['currency_symbol_style'] ?? 'kanji'; ?>
 <?php
@@ -245,7 +216,9 @@ echo Card::make()
     ->render();
 ?>
 <?php endif; ?>
+<?php $_dashBlocks['monthly_stats'] = ob_get_clean(); ?>
 
+<?php ob_start(); ?>
 <?php if (widget_on('shifts_today', $widgets)): ?>
 <?php
 ob_start();
@@ -271,7 +244,9 @@ echo Card::make()
     ->render();
 ?>
 <?php endif; ?>
+<?php $_dashBlocks['shifts_today'] = ob_get_clean(); ?>
 
+<?php ob_start(); ?>
 <?php if (widget_on('upcoming', $widgets)): ?>
 <?php
 ob_start();
@@ -296,79 +271,16 @@ echo Card::make()
     ->render();
 ?>
 <?php endif; ?>
+<?php $_dashBlocks['upcoming'] = ob_get_clean(); ?>
 
-<?php if (widget_on('pending_timeoff', $widgets) && !empty($pending_timeoff)): ?>
 <?php
-ob_start();
+foreach ($bundle_widgets as $_bundleWidget) {
+    $_dashBlocks[$_bundleWidget['key']] = $_bundleWidget['html'];
+}
+$_dashLabels  = $widgetLabels;
+$_dashSaveUrl = route_url('employee.dashboard.layout');
+include __DIR__ . '/../_partials/_dashboard-grid.php';
+unset($_bundleWidget, $_dashBlocks, $_dashLabels, $_dashSaveUrl);
 ?>
-<div class="table-wrap">
-    <?= Table::make()
-        ->data($pending_timeoff)
-        ->text(__('type'), fn($r) => (string) ($r['type'] ?? '—'))
-        ->text(__('from'), fn($r) => (string) ($r['start_date'] ?? '—'))
-        ->text(__('to'), fn($r) => (string) ($r['end_date'] ?? '—'))
-        ->column(__('status'), fn($r) => Badge::make(__('pending'))->pending()->render())
-        ->render() ?>
-</div>
-<?php
-echo Card::make()
-    ->header('<span>' . __('my_pending_timeoff') . '</span> ' . Button::make(__('view_all'))->ghost()->sm()->link(route_url('employee.timeoff'))->render())
-    ->body(ob_get_clean())
-    ->render();
-?>
-<?php endif; ?>
-
-<?php if (widget_on('pending_swaps', $widgets) && !empty($pending_swaps)): ?>
-<?php
-ob_start();
-?>
-<div class="table-wrap">
-    <?= Table::make()
-        ->data($pending_swaps)
-        ->text(__('date'), fn($s) => (string) ($s['shift_date'] ?? '—'))
-        ->text(__('from'), fn($s) => (string) ($s['requester_name'] ?? '#' . ($s['requester_id'] ?? '?')))
-        ->column('', fn($s) => Button::make(__('view'))->outline()->sm()->link(route_url('employee.swaps'))->render())
-        ->render() ?>
-</div>
-<?php
-echo Card::make()
-    ->header('<span>' . __('pending_swaps') . '</span> ' . Button::make(__('view_all'))->ghost()->sm()->link(route_url('employee.swaps'))->render())
-    ->body(ob_get_clean())
-    ->render();
-?>
-<?php endif; ?>
-
-<?php if (widget_on('team_notes', $widgets)): ?>
-<?php if ($notebookCss = bundle_asset('notebook', 'css/notebook.css')): ?>
-<link rel="stylesheet" href="<?= $notebookCss ?>">
-<?php endif; ?>
-<?php
-ob_start();
-if (empty($notebook_entries)):
-    echo '<div class="empty-state">' . __('no_notebook_entries') . '</div>';
-else:
-    foreach ($notebook_entries as $entry):
-        $pinned = !empty($entry['pinned']);
-        ?>
-        <div class="notebook-widget-item<?= $pinned ? ' notebook-widget-item--pinned' : '' ?>">
-            <?php if ($pinned): ?>
-                <span class="notebook-widget-item__pin" title="<?= htmlspecialchars(__('notebook_pinned')) ?>">📌</span>
-            <?php endif; ?>
-            <p class="notebook-widget-item__content"><?= nl2br(htmlspecialchars($entry['content'] ?? '')) ?></p>
-            <div class="notebook-widget-item__meta">
-                <span><?= htmlspecialchars($entry['author_name'] ?? __('notebook_anonymous_author')) ?></span>
-                <span>·</span>
-                <span><?= htmlspecialchars($entry['store_name'] ?? __('notebook_org_wide')) ?></span>
-            </div>
-        </div>
-        <?php
-    endforeach;
-endif;
-echo Card::make()
-    ->header('<span>' . __('my_team_notes') . '</span> ' . Button::make(__('view_all'))->ghost()->sm()->link(route_url('notebook.index'))->render())
-    ->body(ob_get_clean())
-    ->render();
-?>
-<?php endif; ?>
 
 <script src="<?= $BASE_URL ?>/assets/js/modules/dashboard.js"></script>

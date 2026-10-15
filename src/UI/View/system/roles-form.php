@@ -82,6 +82,7 @@ echo Flash::fromQuery('error', [
                 </div>
                 <div class="form-group">
                     <label class="form-toggle form-toggle--labeled">
+                        <input type="hidden" name="is_manager" value="0">
                         <input type="checkbox" name="is_manager" value="1" class="form-toggle__input" <?= !empty($role['is_manager']) ? 'checked' : '' ?>>
                         <span class="form-toggle__track"></span>
                         <span><?= __('role_is_manager') ?></span>

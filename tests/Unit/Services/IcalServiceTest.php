@@ -72,12 +72,33 @@ final class IcalServiceTest extends TestCase
         ];
     }
 
-    public function testBuildProducesFrenchSummaryByDefault(): void
+    /** Langue de l'instance (APP_LOCALE) le temps d'un test. */
+    private function withInstanceLocale(string $code, callable $fn): void
     {
-        $user    = ['id' => 1, 'first_name' => 'Jean', 'last_name' => 'Dupont'];
-        $content = $this->service->build([], [$this->timeoff()], $this->store(), $user);
+        $previous = $_ENV['APP_LOCALE'] ?? null;
+        $_ENV['APP_LOCALE'] = $code;
+        try {
+            $fn();
+        } finally {
+            if ($previous === null) {
+                unset($_ENV['APP_LOCALE']);
+            } else {
+                $_ENV['APP_LOCALE'] = $previous;
+            }
+        }
+    }
 
-        $this->assertStringContainsString('SUMMARY:Congé — Boutique Centrale', $content);
+    public function testBuildUsesTheInstanceLanguageWhenTheUserHasNone(): void
+    {
+        $user = ['id' => 1, 'first_name' => 'Jean', 'last_name' => 'Dupont', 'language' => ''];
+        $this->withInstanceLocale('fr', function () use ($user): void {
+            $content = $this->service->build([], [$this->timeoff()], $this->store(), $user);
+            $this->assertStringContainsString('SUMMARY:Congé — Boutique Centrale', $content);
+        });
+        $this->withInstanceLocale('en', function () use ($user): void {
+            $content = $this->service->build([], [$this->timeoff()], $this->store(), $user);
+            $this->assertStringContainsString('SUMMARY:Leave — Boutique Centrale', $content);
+        });
     }
 
     public function testBuildProducesEnglishSummaryWhenUserLanguageIsEnglish(): void

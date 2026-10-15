@@ -36,7 +36,7 @@ Kintai is the bridge between a spreadsheet and an enterprise ERP: scheduling, cl
 
 **Leave & availability** — Weekly availability declarations and leave requests, with manager approval workflow.
 
-**Employee self-service** — Personalized dashboard, iCal feed, floating feedback widget, self clock-in/out.
+**Employee self-service** — Personalized dashboard, iCal feed, self clock-in/out.
 
 **HR paperwork** — Auto-generated hiring reports on employee creation, resignation/offboarding reports, and salary reports with period autofill and PDF export.
 
@@ -64,7 +64,7 @@ Full breakdown in [docs/architecture.md](docs/architecture.md) and [docs/databas
 | :--- | :--- |
 | Owner | All stores, audit log, global configuration, bundle & role management |
 | Store manager/admin | Planning, staff, leave, swaps, reports and stats for their store(s) |
-| Staff | Own schedule, clock-in/out, leave, swaps, open shifts, messages, feedback |
+| Staff | Own schedule, clock-in/out, leave, swaps, open shifts, messages |
 
 Fine-grained permissions on top of these roles are configurable per instance — see the RBAC note above.
 
@@ -88,7 +88,7 @@ composer install
 php -S 127.0.0.1:8000 -t public
 ```
 
-Then open `http://127.0.0.1:8000/install.php` — the web installer creates `config/database.local.php`, runs migrations, and creates the admin account.
+Then open `http://127.0.0.1:8000/install.php` — the web installer creates `config/database.local.php`, runs migrations, creates the admin account, saves the instance language you pick (`APP_LOCALE` in `.env`, changeable later in the instance settings), signs you in and opens the setup assistant (`/admin/setup`): enter a license key or continue on the free plan, then choose the bundles (features) to install — as many as your license allows (4 on the free plan). They are downloaded from the bundle catalogue; any that cannot be installed are listed so you can retry from the catalogue.
 
 The installer also records the address you install from as the instance's **public URL**, used for the links in emails (password reset). Check it under Owner settings (`/admin/owner-settings`) if users reach Kintai through another address; the `APP_URL` environment variable, when set, takes precedence. Without a public URL, password reset emails are not sent and the Owner sees a warning.
 

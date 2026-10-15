@@ -15,9 +15,7 @@ use kintai\UI\Components\Flash;
  * @var array  $nav_hidden
  * @var array  $nav_section_order
  * @var array  $nav_default_sections
- * @var array  $nav_allowed_keys
  * @var bool   $is_owner
- * @var array  $bottom_nav_pool
  * @var array  $bottom_nav_items
  */
 
@@ -46,6 +44,7 @@ $errMsg = match ($_GET['error'] ?? '') {
     'password_mismatch'      => __('password_mismatch'),
     'password_too_short'     => __('password_too_short'),
     'current_password_wrong' => __('current_password_wrong'),
+    'owner_cannot_delete'    => __('error_owner_cannot_remove_self'),
     'avatar_invalid'         => __('avatar_invalid'),
     default                  => '',
 };
@@ -139,10 +138,11 @@ ob_start();
     </div>
 
     <div class="form-group">
-        <label class="form-label form-label--required"><?= __('language') ?></label>
+        <label class="form-label"><?= __('language') ?></label>
         <select name="language" class="form-control">
+            <option value="" <?= ($user['language'] ?? '') === '' ? 'selected' : '' ?>><?= htmlspecialchars(__('language_follow_instance', ['language' => (string) ($instance_language_name ?? '')])) ?></option>
             <?php foreach (($active_languages ?? []) as $_lang): ?>
-            <option value="<?= htmlspecialchars($_lang['code']) ?>" <?= ($user['language'] ?? 'fr') === $_lang['code'] ? 'selected' : '' ?>><?= htmlspecialchars($_lang['name']) ?></option>
+            <option value="<?= htmlspecialchars($_lang['code']) ?>" <?= ($user['language'] ?? '') === $_lang['code'] ? 'selected' : '' ?>><?= htmlspecialchars($_lang['name']) ?></option>
             <?php endforeach; ?>
         </select>
     </div>
@@ -176,41 +176,9 @@ ob_start();
                placeholder="<?= htmlspecialchars(__('hobbies_placeholder')) ?>">
     </div>
 
-    <?php if (bundle_enabled('team-directory')): ?>
-    <div class="form-group">
-        <label class="form-toggle form-toggle--labeled">
-            <input type="checkbox" name="show_in_directory" value="1" class="form-toggle__input"
-                   <?= (($user['show_in_directory'] ?? 1) != 0) ? 'checked' : '' ?>>
-            <span class="form-toggle__track"></span>
-            <span><?= __('show_in_directory') ?></span>
-        </label>
-        <p class="form-hint"><?= __('show_in_directory_hint') ?></p>
-    </div>
-    <div class="form-group">
-        <p class="form-label"><?= __('share_contact_info') ?></p>
-        <p class="form-hint"><?= __('share_contact_info_hint') ?></p>
-        <div class="share-toggle-list">
-            <label class="form-toggle form-toggle--labeled">
-                <input type="checkbox" name="share_email" value="1" class="form-toggle__input"
-                       <?= (($user['share_email'] ?? 0) != 0) ? 'checked' : '' ?>>
-                <span class="form-toggle__track"></span>
-                <span><?= __('email') ?></span>
-            </label>
-            <label class="form-toggle form-toggle--labeled">
-                <input type="checkbox" name="share_phone" value="1" class="form-toggle__input"
-                       <?= (($user['share_phone'] ?? 0) != 0) ? 'checked' : '' ?>>
-                <span class="form-toggle__track"></span>
-                <span><?= __('phone') ?></span>
-            </label>
-            <label class="form-toggle form-toggle--labeled">
-                <input type="checkbox" name="share_mobile_phone" value="1" class="form-toggle__input"
-                       <?= (($user['share_mobile_phone'] ?? 0) != 0) ? 'checked' : '' ?>>
-                <span class="form-toggle__track"></span>
-                <span><?= __('mobile_phone') ?></span>
-            </label>
-        </div>
-    </div>
-    <?php endif; ?>
+    <?php foreach ($profile_sections ?? [] as $_sectionHtml): ?>
+    <?= $_sectionHtml ?>
+    <?php endforeach; ?>
 
     <div class="form-actions">
         <?= Button::make(__('save'))->primary()->submit()->render() ?>
@@ -377,77 +345,25 @@ else: ?>
 // défensive avec le même principe appliqué à shifts-timeline.php/shifts-calendar.php.
 $_isManagerView = $is_manager_view ?? false;
 
-if ($_isManagerView) {
-    $_navFeatMap = [
-        'shifts'          => 'shifts',
-        'calendar'        => 'shifts',
-        'shift_types'     => 'shifts',
-        'timeclocks'      => 'timeclock',
-        'users'           => null,
-        'stores'          => null,
-        'timeoff'         => 'timeoff',
-        'swaps'           => 'swaps',
-        'open_shifts'     => 'open_shifts',
-        'messages'        => 'messages',
-        'employee_report' => null,
-        'daily_reports'   => 'daily_reports',
-        'audit_log'       => null,
-    ];
-    $_navAllSections = [
-        'planning'   => ['shifts', 'calendar', 'shift_types', 'timeclocks'],
-        'hr'         => ['users', 'stores'],
-        'requests'   => ['timeoff', 'swaps', 'open_shifts', 'messages'],
-        'statistics' => ['employee_report', 'daily_reports'],
-        'system'     => ['audit_log'],
-    ];
-    $_navSaveAction = route_url('admin.nav_settings');
-} else {
-    $_navFeatMap = [
-        'my_planning'   => 'shifts',
-        'timeclock'     => 'timeclock',
-        'my_timeoff'    => 'timeoff',
-        'swaps'         => 'swaps',
-        'open_shifts'   => 'open_shifts',
-        'messages'      => 'messages',
-        'daily_reports' => 'daily_reports',
-        'my_profile'    => null,
-    ];
-    $_navAllSections = [
-        'planning'   => ['my_planning', 'timeclock'],
-        'requests'   => ['my_timeoff', 'swaps', 'open_shifts', 'messages'],
-        'statistics' => ['daily_reports'],
-        'account'    => ['my_profile'],
-    ];
-    $_navSaveAction = route_url('employee.nav_settings');
-}
+$_navSaveAction = route_url($_isManagerView ? 'admin.nav_settings' : 'employee.nav_settings');
 
 $_navHasFeat = fn(?string $f): bool =>
     $f === null || ($is_owner ?? false) || $store_features === null || in_array($f, (array) $store_features, true);
 
+// Entrées masquables : la navigation réelle du rôle (Core + bundles actifs, voir kintai\Core\Extension\Navigation),
+// avec les mêmes clés que la barre du haut — l'ancienne liste employé (my_planning, my_timeoff…) n'y
+// correspondait pas, si bien que masquer une entrée depuis le profil n'avait aucun effet.
+$_navigation = \kintai\Core\Extension\Navigation::current();
+$_navByKey = $_navigation->hideableKeys($_isManagerView, $route_visible ?? fn(string $r): bool => true, $_navHasFeat, get_defined_vars());
 $_navSections = [];
-foreach ($_navAllSections as $_sk => $_keys) {
-    $filtered = array_values(array_filter(
-        array_intersect($_keys, $nav_allowed_keys),
-        fn(string $k) => $_navHasFeat($_navFeatMap[$k] ?? null)
-    ));
-    if (!empty($filtered)) {
-        $_navSections[$_sk] = $filtered;
+foreach ($nav_section_order ?? array_keys($_navByKey) as $_sk) {
+    if (!empty($_navByKey[$_sk])) {
+        $_navSections[$_sk] = $_navByKey[$_sk];
     }
 }
 
-$_bnFeatMap = $_isManagerView ? [
-    'shifts'        => 'shifts',
-    'team'          => null,
-    'requests'      => 'timeoff',
-    'messages'      => 'messages',
-    'swaps'         => 'swaps',
-    'timeclocks'    => 'timeclock',
-    'daily_reports' => 'daily_reports',
-] : $_navFeatMap;
-$_filteredBnPool = array_values(array_filter(
-    $bottom_nav_pool ?? [],
-    fn(string $k) => $_navHasFeat($_bnFeatMap[$k] ?? null)
-));
+// Barre mobile : entrées « mobile » de la navigation réelle, permises et actives pour ce magasin.
+$_filteredBnPool = $_navigation->mobileChoices($_isManagerView, $route_visible ?? fn(string $r): bool => true, $_navHasFeat);
 ?>
 
 <form method="POST" action="<?= $_navSaveAction ?>">
@@ -507,7 +423,7 @@ $_filteredBnPool = array_values(array_filter(
                                <?= !in_array($_k, $nav_hidden, true) ? 'checked' : '' ?>>
                         <span class="form-toggle__track"></span>
                     </label>
-                    <span class="nav-pref-label"><?= __($_k) ?></span>
+                    <span class="nav-pref-label"><?= __($_navigation->labelOf($_k, $_isManagerView)) ?></span>
                 </div>
             <?php endforeach; ?>
         </div>
@@ -543,7 +459,7 @@ $_filteredBnPool = array_values(array_filter(
                        <?= in_array($_bnKey, $bottom_nav_items ?? [], true) ? 'checked' : '' ?>>
                 <span class="form-toggle__track"></span>
             </label>
-            <span class="nav-pref-label"><?= __($_bnKey) ?></span>
+            <span class="nav-pref-label"><?= __($_navigation->labelOf($_bnKey, $_isManagerView)) ?></span>
         </div>
     <?php endforeach; ?>
     <?php

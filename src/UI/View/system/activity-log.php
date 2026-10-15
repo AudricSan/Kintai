@@ -99,39 +99,13 @@ $actionLabels = [
     'shift.deleted'                      => __('audit_shift_deleted'),
     'shift.bulk_deleted'                 => __('audit_shift_bulk_deleted'),
     'shift.moved'                        => __('audit_shift_moved'),
-    'shift.published'                    => __('audit_shift_published'),
-    'shift.unpublished'                  => __('audit_shift_unpublished'),
     'shift.conflict_resolved'            => __('audit_shift_conflict_resolved'),
     'shift.bulk_conflict_resolved'       => __('audit_shift_bulk_conflict_resolved'),
     'shifts.imported'                    => __('audit_shifts_imported'),
     'shift_type.created'                 => __('audit_shift_type_created'),
     'shift_type.updated'                 => __('audit_shift_type_updated'),
     'shift_type.deleted'                 => __('audit_shift_type_deleted'),
-    'timeoff.created'                    => __('audit_timeoff_created'),
-    'timeoff.cancelled'                  => __('audit_timeoff_cancelled'),
-    'timeoff.approved'                   => __('audit_timeoff_approved'),
-    'timeoff.refused'                    => __('audit_timeoff_refused'),
-    'swap.created'                       => __('audit_swap_created'),
-    'swap.peer_accepted'                 => __('audit_swap_peer_accepted'),
-    'swap.peer_refused'                  => __('audit_swap_peer_refused'),
-    'swap.cancelled'                     => __('audit_swap_cancelled'),
-    'swap.approved'                      => __('audit_swap_approved'),
-    'swap.refused'                       => __('audit_swap_refused'),
-    'timeclock.clock_in'                 => __('audit_timeclock_clock_in'),
-    'timeclock.clock_out'                => __('audit_timeclock_clock_out'),
-    'timeclock.edited'                   => __('audit_timeclock_edited'),
-    'timeclock.deleted'                  => __('audit_timeclock_deleted'),
-    'daily_report.created'               => __('audit_daily_report_created'),
-    'daily_report.updated'               => __('audit_daily_report_updated'),
-    'daily_report.submitted'             => __('audit_daily_report_submitted'),
-    'daily_report.validated'             => __('audit_daily_report_validated'),
-    'daily_report.mail_sent'             => __('audit_daily_report_mail_sent'),
-    'daily_report.deleted'               => __('audit_daily_report_deleted'),
-    'daily_report.settings_updated'      => __('audit_daily_report_settings_updated'),
-    'feedback.submitted'                 => __('audit_feedback_submitted'),
-    'feedback.deleted'                   => __('audit_feedback_deleted'),
     'system.migration_applied'           => __('audit_system_migration_applied'),
-    'cron.auto_validated'                => __('audit_cron_auto_validated'),
     'backup.created'                     => __('audit_backup_created'),
     'backup.restored'                    => __('audit_backup_restored'),
     'backup.deleted'                     => __('audit_backup_deleted'),
@@ -149,25 +123,10 @@ $actionLabels = [
     'nav_settings.updated'               => __('audit_nav_settings_updated'),
     'dashboard_prefs.updated'            => __('audit_dashboard_prefs_updated'),
     'availability.updated'               => __('audit_availability_updated'),
-    'shift_claim.created'                => __('audit_shift_claim_created'),
-    'shift_claim.withdrawn'              => __('audit_shift_claim_withdrawn'),
-    'shift_claim.approved'               => __('audit_shift_claim_approved'),
-    'shift_claim.rejected'               => __('audit_shift_claim_rejected'),
-    'message.sent'                       => __('audit_message_sent'),
-    'message.replied'                    => __('audit_message_replied'),
-    'message.thread_deleted'             => __('audit_message_thread_deleted'),
-    'message.deleted'                    => __('audit_message_deleted'),
     'export.store_stats'                 => __('audit_export_store_stats'),
     'export.payslip_pdf'                 => __('audit_export_payslip_pdf'),
-    'export.daily_report_pdf'            => __('audit_export_daily_report_pdf'),
     'export.ical'                        => __('audit_export_ical'),
     'ical_token.regenerated'             => __('audit_ical_token_regenerated'),
-    'shift_swap_request.created'          => __('audit_shift_swap_request_created'),
-    'shift_swap_request.updated'          => __('audit_shift_swap_request_updated'),
-    'shift_swap_request.deleted'          => __('audit_shift_swap_request_deleted'),
-    'timeoff_request.created'             => __('audit_timeoff_request_created'),
-    'timeoff_request.updated'             => __('audit_timeoff_request_updated'),
-    'timeoff_request.deleted'             => __('audit_timeoff_request_deleted'),
     'store_user.created'                  => __('audit_store_user_created'),
     'store_user.deleted'                  => __('audit_store_user_deleted'),
 ];
@@ -219,7 +178,7 @@ $exportUrl = route_url('admin.activity.export') . ($exportParams ? '?' . http_bu
                 <select id="al-action" name="action" class="form-control form-control-sm" data-submit-on-change>
                     <option value=""><?= __('all') ?></option>
                     <?php foreach ($actions as $a):
-                        $alLabel = $actionLabels[$a] ?? $a; ?>
+                        $alLabel = audit_action_label($a, $actionLabels); ?>
                         <option value="<?= htmlspecialchars($a) ?>" <?= $actionFilter === $a ? 'selected' : '' ?>><?= htmlspecialchars($alLabel) ?></option>
                     <?php endforeach; ?>
                 </select>
@@ -274,7 +233,7 @@ $exportUrl = route_url('admin.activity.export') . ($exportParams ? '?' . http_bu
                     default    => 'primary',
                 };
                 $action = $row['action'] ?? '';
-                $label  = $action ? ($actionLabelsLocal[$action] ?? $action) : '—';
+                $label  = $action ? audit_action_label($action, $actionLabelsLocal) : '—';
                 $uid    = (int) ($row['user_id'] ?? 0);
                 $uname  = $uid > 0 ? ($users_map[$uid] ?? '#' . $uid) : '—';
                 $context = $row['context'] ?? [];
@@ -316,7 +275,7 @@ $exportUrl = route_url('admin.activity.export') . ($exportParams ? '?' . http_bu
                     default    => 'primary',
                 };
                 $action = $row['action'] ?? '';
-                $label  = $action ? ($actionLabelsLocal[$action] ?? $action) : '—';
+                $label  = $action ? audit_action_label($action, $actionLabelsLocal) : '—';
                 return Badge::make($row['level'] ?? '')->variant($levelClass)->render()
                     . ($action ? Badge::make($label)->primary()->render() : '—');
             })

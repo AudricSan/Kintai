@@ -52,6 +52,9 @@ echo Flash::fromQuery('success', ['default' => __('save_success')])->render();
 if (($error ?? null) === 'public_url_invalid') {
     echo Alert::make(__('public_url_invalid'))->danger()->render();
 }
+if (($error ?? null) === 'instance_locale_not_saved') {
+    echo Alert::make(__('instance_locale_not_saved'))->danger()->render();
+}
 ?>
 <div class="page-header">
     <h2 class="page-header__title"><?= __('owner_settings') ?></h2>
@@ -81,6 +84,18 @@ if (($error ?? null) === 'public_url_invalid') {
             value="<?= htmlspecialchars($settings['app_support_email'] ?? '', ENT_QUOTES) ?>">
         <p class="form-hint"><?= __('support_email_hint') ?></p>
     </div>
+
+    <?php if (!empty($instance_languages)): ?>
+    <div class="form-group">
+        <label class="form-label" for="app_locale"><?= __('instance_locale') ?></label>
+        <select id="app_locale" name="app_locale" class="form-control">
+            <?php foreach ($instance_languages as $_lang): ?>
+            <option value="<?= htmlspecialchars($_lang['code'], ENT_QUOTES) ?>" <?= ($instance_locale ?? '') === $_lang['code'] ? 'selected' : '' ?>><?= htmlspecialchars($_lang['name']) ?></option>
+            <?php endforeach; ?>
+        </select>
+        <p class="form-hint"><?= __('instance_locale_hint') ?></p>
+    </div>
+    <?php endif; ?>
 
     <div class="form-group">
         <label class="form-label" for="app_public_url"><?= __('public_url') ?></label>
@@ -199,6 +214,7 @@ if (($error ?? null) === 'public_url_invalid') {
     <div class="form-group">
         <label class="form-label"><?= __('maintenance_mode_enabled') ?></label>
         <label class="form-toggle">
+            <input type="hidden" name="maintenance_mode_enabled" value="0">
             <input type="checkbox" name="maintenance_mode_enabled" value="1" class="form-toggle__input"
                 <?= ($settings['maintenance_mode_enabled'] ?? '0') === '1' ? 'checked' : '' ?>>
             <span class="form-toggle__track"></span>
@@ -225,6 +241,7 @@ if (($error ?? null) === 'public_url_invalid') {
     <div class="form-group">
         <label class="form-label"><?= __('access_log_enabled') ?></label>
         <label class="form-toggle">
+            <input type="hidden" name="access_log_enabled" value="0">
             <input type="checkbox" name="access_log_enabled" value="1" class="form-toggle__input"
                 <?= ($settings['access_log_enabled'] ?? '1') === '1' ? 'checked' : '' ?>>
             <span class="form-toggle__track"></span>
@@ -241,6 +258,21 @@ if (($error ?? null) === 'public_url_invalid') {
 
     <?php
     echo Card::make()->header(__('activity_log'))->body(ob_get_clean())->render();
+    ?>
+
+    <?php
+    ob_start();
+    ?>
+
+    <div class="form-group">
+        <label class="form-label" for="api_rate_limit_per_minute"><?= __('api_rate_limit_per_minute') ?></label>
+        <input type="number" id="api_rate_limit_per_minute" name="api_rate_limit_per_minute" class="form-control w-100" min="0" max="100000"
+            value="<?= (int) ($settings['api_rate_limit_per_minute'] ?? 300) ?>">
+        <p class="form-hint"><?= __('api_rate_limit_per_minute_hint') ?></p>
+    </div>
+
+    <?php
+    echo Card::make()->header(__('api_settings'))->body(ob_get_clean())->render();
     ?>
 
     <div class="form-actions">

@@ -5,15 +5,12 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Services;
 
 use PHPUnit\Framework\TestCase;
-use kintai\Core\Repositories\DailyReportRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
-use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
-use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Services\RoleAssignmentSyncService;
@@ -43,9 +40,6 @@ final class StoreStatsServiceStoreStatsTest extends TestCase
         $users = $this->createStub(UserRepositoryInterface::class);
         $users->method('findAll')->willReturn([]);
 
-        $timeoffRequests = $this->createStub(TimeoffRequestRepositoryInterface::class);
-        $timeoffRequests->method('findByStore')->willReturn([]);
-
         $userRates = $this->createStub(UserShiftTypeRateRepositoryInterface::class);
         $userRates->method('findByUser')->willReturn([]);
 
@@ -54,11 +48,8 @@ final class StoreStatsServiceStoreStatsTest extends TestCase
             $this->shifts,
             $shiftTypes,
             $storeUsers,
-            $timeoffRequests,
-            $this->createStub(ShiftSwapRequestRepositoryInterface::class),
             $userRates,
             $users,
-            $this->createStub(DailyReportRepositoryInterface::class),
             new RoleAssignmentSyncService(
                 $this->createStub(RoleRepositoryInterface::class),
                 $this->createStub(RoleAssignmentRepositoryInterface::class),

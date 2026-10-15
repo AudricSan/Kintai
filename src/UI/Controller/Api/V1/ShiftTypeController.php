@@ -6,11 +6,15 @@ namespace kintai\UI\Controller\Api\V1;
 
 use kintai\Core\Api\Paginator;
 use kintai\Core\Auth\PermissionService;
+use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
+use kintai\Core\Exceptions\ValidationException;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Validation\ApiPayloadRules;
+use kintai\Core\Validation\PayloadValidator;
 
 final class ShiftTypeController
 {
@@ -63,9 +67,10 @@ final class ShiftTypeController
      */
     public function store(Request $request): Response
     {
-        $data     = $request->json() ?? [];
-        $storeIds = $this->extractStoreIds($data);
-        unset($data['id'], $data['store_id'], $data['store_ids']);
+        $body     = $request->json() ?? [];
+        $storeIds = $this->extractStoreIds($body);
+        $data     = PayloadValidator::validate($body, ApiPayloadRules::shiftType());
+        $data['code'] = strtoupper($data['code']);
 
         $this->assertWritableStores($request, $storeIds);
 
@@ -87,9 +92,16 @@ final class ShiftTypeController
     {
         $old      = $this->requireType($request, 'shifts.update');
         $id       = (int) $old['id'];
-        $data     = $request->json() ?? [];
-        $storeIds = $this->extractStoreIds($data);
-        unset($data['store_id'], $data['store_ids']);
+        $this->assertManagesEveryStore($request, $id);
+        $body     = $request->json() ?? [];
+        $storeIds = $this->extractStoreIds($body);
+        $data     = PayloadValidator::validate($body, ApiPayloadRules::shiftType(), true);
+        if ($data === [] && $storeIds === []) {
+            throw new ValidationException(['body' => __('val_no_updatable_field')], __('val_no_updatable_field'));
+        }
+        if (isset($data['code'])) {
+            $data['code'] = strtoupper($data['code']);
+        }
 
         if ($storeIds !== []) {
             $this->assertWritableStores($request, $storeIds);
@@ -109,10 +121,24 @@ final class ShiftTypeController
     {
         $old = $this->requireType($request, 'shifts.update');
         $id  = (int) $old['id'];
+        $this->assertManagesEveryStore($request, $id);
 
         $this->shiftTypes->delete($id);
         $this->auditLogger->log($request, 'shift_type.deleted', 'shift_type', resourceId: $id);
         return Response::empty();
+    }
+
+    /**
+     * Modifier ou supprimer un type partagé touche tous ses magasins : l'appelant doit détenir `shifts.update`
+     * sur chacun d'eux (ou sans restriction de magasin).
+     */
+    private function assertManagesEveryStore(Request $request, int $typeId): void
+    {
+        foreach ($this->shiftTypes->getStoreIds($typeId) as $storeId) {
+            if (!$this->permissions->can($this->authUser($request), 'shifts.update', (int) $storeId)) {
+                throw new ForbiddenException(__('error_shared_shift_type'));
+            }
+        }
     }
 
     private function authUser(Request $request): array

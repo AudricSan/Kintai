@@ -6,33 +6,41 @@ namespace kintai\Tests\Unit\Core\Services;
 
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
-use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
+use kintai\Core\BundleManager;
+use kintai\Core\Container;
+use kintai\Core\Extension\ExtensionRegistry;
 use kintai\Core\Services\ShiftService;
-use PHPUnit\Framework\MockObject\MockObject;
+use kintai\Tests\Support\FakeAbsenceProvider;
 use PHPUnit\Framework\TestCase;
 
 final class ShiftServiceTest extends TestCase
 {
-    private TimeoffRequestRepositoryInterface&MockObject $timeoffRequests;
     private ShiftService $service;
+
+    protected function tearDown(): void
+    {
+        // Congés déclarés par les tests (FakeAbsenceProvider) : ne pas les laisser au conteneur partagé.
+        $instances = new \ReflectionProperty(Container::class, 'instances');
+        $all = $instances->getValue(Container::getInstance());
+        unset($all[BundleManager::class], $all[ExtensionRegistry::class]);
+        $instances->setValue(Container::getInstance(), $all);
+    }
 
     protected function setUp(): void
     {
-        $this->timeoffRequests = $this->createMock(TimeoffRequestRepositoryInterface::class);
 
         $this->service = new ShiftService(
             $this->createMock(ShiftRepositoryInterface::class),
             $this->createMock(ShiftTypeRepositoryInterface::class),
             $this->createMock(UserRepositoryInterface::class),
-            $this->timeoffRequests,
         );
     }
 
     public function testGetTimeoffForCalendarExpandsApprovedRequestOverEachDay(): void
     {
-        $this->timeoffRequests->method('findByUser')->with(5)->willReturn([
-            ['status' => 'approved', 'start_date' => '2026-08-01', 'end_date' => '2026-08-03', 'type' => 'vacation'],
+        FakeAbsenceProvider::register([
+            ['user_id' => 5, 'status' => 'approved', 'start_date' => '2026-08-01', 'end_date' => '2026-08-03', 'type' => 'vacation'],
         ]);
 
         $result = $this->service->getTimeoffForCalendar([5], '2026-08-01', '2026-08-31');
@@ -47,8 +55,8 @@ final class ShiftServiceTest extends TestCase
 
     public function testGetTimeoffForCalendarIgnoresNonApprovedRequests(): void
     {
-        $this->timeoffRequests->method('findByUser')->with(5)->willReturn([
-            ['status' => 'pending', 'start_date' => '2026-08-01', 'end_date' => '2026-08-03', 'type' => 'vacation'],
+        FakeAbsenceProvider::register([
+            ['user_id' => 5, 'status' => 'pending', 'start_date' => '2026-08-01', 'end_date' => '2026-08-03', 'type' => 'vacation'],
         ]);
 
         $result = $this->service->getTimeoffForCalendar([5], '2026-08-01', '2026-08-31');
@@ -58,8 +66,8 @@ final class ShiftServiceTest extends TestCase
 
     public function testGetTimeoffForCalendarClipsRangeToRequestedWindow(): void
     {
-        $this->timeoffRequests->method('findByUser')->with(5)->willReturn([
-            ['status' => 'approved', 'start_date' => '2026-07-28', 'end_date' => '2026-08-02', 'type' => 'sick'],
+        FakeAbsenceProvider::register([
+            ['user_id' => 5, 'status' => 'approved', 'start_date' => '2026-07-28', 'end_date' => '2026-08-02', 'type' => 'sick'],
         ]);
 
         $result = $this->service->getTimeoffForCalendar([5], '2026-08-01', '2026-08-31');

@@ -4,7 +4,12 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Controller\Web;
 
+use kintai\Contract\Extension\ProfileSection;
 use kintai\Core\Auth\AuthService;
+use kintai\Core\BundleContract\Bundle;
+use kintai\Core\BundleManager;
+use kintai\Core\Container;
+use kintai\Core\Extension\ExtensionRegistry;
 use kintai\Core\Repositories\AvailabilityRepositoryInterface;
 use kintai\Core\Repositories\IcalTokenRepositoryInterface;
 use kintai\Core\Repositories\LanguageRepositoryInterface;
@@ -28,14 +33,56 @@ use PHPUnit\Framework\TestCase;
  * address) et le profil enrichi du bundle TeamDirectory (bio/skills/
  * languages_spoken/hobbies/show_in_directory). Ce test vérifie que toutes ces
  * valeurs sont bien transmises telles quelles au repository.
+ *
+ * Les cases de l'annuaire passent par les sections de profil des bundles (contrat 1.12) : le setUp active un
+ * team-directory qui déclare sa section, comme sur une instance où l'annuaire est en service.
  */
 final class AuthControllerProfileFieldsTest extends TestCase
 {
     private AuthController $controller;
     private $users;
+    private ?Container $previousContainer = null;
+
+    /** Bundles actifs de la requête (sections de profil comprises), par slug. */
+    private function activeBundles(string ...$slugs): void
+    {
+        $bundles = [];
+        foreach ($slugs as $slug) {
+            $bundle = new class extends Bundle {
+                public string $slug = '';
+
+                public function __construct() {}
+
+                public function getName(): string
+                {
+                    return $this->slug;
+                }
+
+                public function register(): void {}
+
+                public function profileSections(): array
+                {
+                    return $this->slug === 'team-directory'
+                        ? [new ProfileSection('directory', 'team-directory::profile-section', ['show_in_directory', 'share_email', 'share_phone', 'share_mobile_phone'])]
+                        : [];
+                }
+            };
+            $bundle->slug = $slug;
+            $bundles[] = $bundle;
+        }
+        $manager = (new \ReflectionClass(BundleManager::class))->newInstanceWithoutConstructor();
+        (new \ReflectionProperty($manager, 'bundles'))->setValue($manager, $bundles);
+
+        (new \ReflectionProperty(Container::class, 'instance'))->setValue(null, null);
+        Container::getInstance()->instance(BundleManager::class, $manager);
+        Container::getInstance()->instance(ExtensionRegistry::class, new ExtensionRegistry($manager));
+    }
 
     protected function setUp(): void
     {
+        $this->previousContainer = (new \ReflectionProperty(Container::class, 'instance'))->getValue();
+        $this->activeBundles('team-directory');
+
         if (session_status() === PHP_SESSION_NONE) {
             @session_start();
         }
@@ -80,6 +127,25 @@ final class AuthControllerProfileFieldsTest extends TestCase
     {
         unset($_SESSION['auth_user_id']);
         $_POST = [];
+        (new \ReflectionProperty(Container::class, 'instance'))->setValue(null, $this->previousContainer);
+    }
+
+    /** team-directory désactivé : ses cases ne sont ni affichées ni enregistrées, elles gardent leur valeur. */
+    public function testDirectoryFlagsAreLeftUntouchedWhenTeamDirectoryIsDisabled(): void
+    {
+        $this->activeBundles();
+        $_POST = ['language' => 'fr', 'show_in_directory' => '0', 'share_email' => '1'];
+
+        $saved = null;
+        $this->users->method('save')->willReturnCallback(function (array $d) use (&$saved) {
+            $saved = $d;
+            return $d;
+        });
+
+        $this->controller->updateProfile(new Request());
+
+        $this->assertSame(1, $saved['show_in_directory']);
+        $this->assertArrayNotHasKey('share_email', $saved);
     }
 
     public function testPersistsContactAndEnrichedProfileFields(): void
@@ -125,7 +191,8 @@ final class AuthControllerProfileFieldsTest extends TestCase
 
     public function testShowInDirectoryDefaultsToDisabledWhenCheckboxUnchecked(): void
     {
-        $_POST = ['language' => 'fr'];
+        // Case décochée : le champ caché envoie « 0 ».
+        $_POST = ['language' => 'fr', 'show_in_directory' => '0'];
 
         $saved = null;
         $this->users->method('save')->willReturnCallback(function (array $d) use (&$saved) {
@@ -153,5 +220,28 @@ final class AuthControllerProfileFieldsTest extends TestCase
         $this->assertSame(0, $saved['share_email']);
         $this->assertSame(0, $saved['share_phone']);
         $this->assertSame(0, $saved['share_mobile_phone']);
+    }
+
+    /**
+     * Audit M12 : les cases de l'annuaire ne sont affichées que si le bundle team-directory est actif ; un
+     * enregistrement du profil sans elles les remettait à 0. Une requête partielle vidait aussi les coordonnées.
+     */
+    public function testFieldsAbsentFromTheRequestKeepTheirValue(): void
+    {
+        // Compte du setUp : show_in_directory = 1, aucune coordonnée.
+        $_POST = ['bio' => 'Bonjour'];
+
+        $saved = null;
+        $this->users->method('save')->willReturnCallback(function (array $d) use (&$saved) {
+            $saved = $d;
+            return $d;
+        });
+
+        $this->controller->updateProfile(new Request());
+
+        $this->assertSame('Bonjour', $saved['bio']);
+        $this->assertSame(1, $saved['show_in_directory'], 'case absente : valeur conservée');
+        $this->assertArrayNotHasKey('phone', $saved, 'champ absent : non réécrit (pas vidé)');
+        $this->assertSame(0, $saved['share_email']);
     }
 }

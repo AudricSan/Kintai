@@ -6,7 +6,6 @@ namespace kintai\Core\Services;
 
 use kintai\Core\ServiceProvider;
 use kintai\Core\Container;
-use kintai\Core\Cron\AutoValidateJob;
 use kintai\Core\Cron\BackupJob;
 use kintai\Core\Cron\CronRunner;
 use kintai\Core\Cron\LicenseCheckJob;
@@ -17,17 +16,13 @@ use kintai\Core\Repositories\CronTokenRepositoryInterface;
 use kintai\Core\Mail\MailerService;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
-use kintai\Core\Repositories\DailyReportRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\NotificationRepositoryInterface;
 use kintai\Core\Repositories\PasswordResetRepositoryInterface;
-use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
-use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
-use kintai\Core\Repositories\StorePhotoRepositoryInterface;
 use kintai\Core\Repositories\LanguageRepositoryInterface;
 use kintai\Core\Repositories\TranslationRepositoryInterface;
 use kintai\Core\Repositories\DevicePushTokenRepositoryInterface;
@@ -103,7 +98,6 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(ShiftRepositoryInterface::class),
             $c->make(ShiftTypeRepositoryInterface::class),
             $c->make(UserRepositoryInterface::class),
-            $c->make(TimeoffRequestRepositoryInterface::class),
         ));
 
         $this->container->singleton(LicenseTokenVerifier::class, function (Container $c) {
@@ -128,6 +122,13 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(LicenseClientService::class),
         ));
 
+        // Points d'extension des bundles (navigation…) : une instance par requête, qui garde ses résultats en cache.
+        $this->container->singleton(\kintai\Core\Extension\ExtensionRegistry::class, fn(Container $c) => new \kintai\Core\Extension\ExtensionRegistry(
+            $c->make(\kintai\Core\BundleManager::class),
+        ));
+        // Ventes journalières (contrat 1.14), aussi exposées aux bundles (kintai\Contract\Services\Sales).
+        $this->container->bind(\kintai\Core\Extension\Sales::class, fn() => \kintai\Core\Extension\Sales::current());
+
         $this->container->singleton(StoreServiceInterface::class, fn(Container $c) => new StoreService(
             $c->make(StoreRepositoryInterface::class),
             $c->make(StoreUserRepositoryInterface::class),
@@ -135,6 +136,7 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(LanguageRepositoryInterface::class),
             $c->make(PlanLimitService::class),
             $c->make(\kintai\Core\Routing\RouteSlugService::class),
+            $c->make(\kintai\Core\Repositories\RoleAssignmentRepositoryInterface::class),
         ));
 
         $this->container->singleton(StoreStatsServiceInterface::class, fn(Container $c) => new StoreStatsService(
@@ -142,47 +144,10 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(ShiftRepositoryInterface::class),
             $c->make(ShiftTypeRepositoryInterface::class),
             $c->make(StoreUserRepositoryInterface::class),
-            $c->make(TimeoffRequestRepositoryInterface::class),
-            $c->make(ShiftSwapRequestRepositoryInterface::class),
             $c->make(UserShiftTypeRateRepositoryInterface::class),
             $c->make(UserRepositoryInterface::class),
-            $c->make(DailyReportRepositoryInterface::class),
             $c->make(RoleAssignmentSyncService::class),
-        ));
-
-        // DailyReportPermissionService/PdfService/MailService/AutoValidateService liés ici,
-        // pas par le bundle "daily-report" : DailyReportNavMiddleware (middleware global,
-        // partagé sur toute page authentifiée) et AutoValidateJob/CronController en
-        // dépendent directement, et doivent continuer de fonctionner même si ce bundle
-        // est désactivé ou désinstallé — même raison que DailyReportRepositoryInterface
-        // ci-dessus (RepositoryServiceProvider). Liaisons explicites (plutôt que de
-        // compter sur l'auto-résolution par réflexion du Container) pour garder le même
-        // comportement singleton qu'avant, quand le bundle les liait lui-même.
-        $this->container->singleton(DailyReportPermissionService::class, fn(Container $c) => new DailyReportPermissionService(
-            $c->make(\kintai\Core\Auth\PermissionService::class),
-        ));
-
-        $this->container->singleton(DailyReportPdfService::class, fn(Container $c) => new DailyReportPdfService(
-            $c->make(ViewRenderer::class),
-            $c->make(TranslationService::class),
-            $c->make(ShiftRepositoryInterface::class),
-            $c->make(ShiftTypeRepositoryInterface::class),
-            $c->make(UserRepositoryInterface::class),
-        ));
-
-        $this->container->singleton(DailyReportMailService::class, fn(Container $c) => new DailyReportMailService(
-            $c->make(DailyReportPermissionService::class),
-            $c->make(MailerService::class),
-            $c->make(TranslationService::class),
-        ));
-
-        $this->container->singleton(DailyReportAutoValidateService::class, fn(Container $c) => new DailyReportAutoValidateService(
-            $c->make(StoreRepositoryInterface::class),
-            $c->make(DailyReportRepositoryInterface::class),
-            $c->make(UserRepositoryInterface::class),
-            $c->make(DailyReportPermissionService::class),
-            $c->make(DailyReportPdfService::class),
-            $c->make(DailyReportMailService::class),
+            $c->make(\kintai\Core\Extension\Sales::class),
         ));
 
         $this->container->singleton(BackupService::class, fn(Container $c) => new BackupService(
@@ -201,7 +166,6 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(BackupService::class),
             $c->make(MigrationRunner::class),
             $c->make(AppSettingsService::class),
-            $c->make(StorePhotoRepositoryInterface::class),
         ));
 
         // Binding explicite requis (même raison que GithubUpdateService juste au-dessus) :
@@ -211,10 +175,41 @@ final class AppServiceProvider extends ServiceProvider
         // Même raison (paramètre ?\Closure) : BundleRegistryClient et BundleInstallerService.
         $this->container->singleton(BundleRegistryClient::class, fn() => new BundleRegistryClient());
 
+        // Assistant de configuration : bundles du catalogue pour un canal, installés comme depuis /admin/bundles/market.
+        $this->container->singleton(SetupWizard::class, fn(Container $c) => new SetupWizard(
+            $c->make(\kintai\Core\Repositories\AppSettingsRepositoryInterface::class),
+            static function (string $channel) use ($c): array {
+                $entries = [];
+                foreach ($c->make(BundleRegistry\BundleCatalogService::class)->listAvailableBundles() as $entry) {
+                    $version = $entry->bundle->versionsForChannel($channel)[0] ?? null;
+                    if ($version === null || isset($entries[$entry->bundle->slug])) {
+                        continue;
+                    }
+                    $entries[$entry->bundle->slug] = [
+                        'slug' => $entry->bundle->slug, 'name' => $entry->bundle->name, 'description' => $entry->bundle->description,
+                        'version' => $version, 'repository_url' => $entry->bundle->repositoryUrl, 'registry_url' => $entry->registryUrl,
+                    ];
+                }
+                return array_values($entries);
+            },
+            static function (array $entry) use ($c): ?string {
+                $pin = $c->make(BundleRegistry\BundleCatalogService::class)->resolvePin($entry['registry_url'], $entry['slug'], $entry['version']);
+                if ($pin['error'] !== null) {
+                    return $pin['error'];
+                }
+                $result = $c->make(BundleInstaller\BundleInstallerService::class)
+                    ->install($entry['slug'], $entry['repository_url'], $entry['version'], $entry['registry_url'], null, $pin['commit']);
+                return $result->success ? null : (string) $result->error;
+            },
+            $c->make(BundleActivationService::class),
+            $c->make(PlanLimitService::class),
+        ));
+
         $this->container->singleton(BundleInstallerService::class, fn(Container $c) => new BundleInstallerService(
             $c->make(UpdateService::class),
             $c->make(InstalledBundleRepositoryInterface::class),
             migrationRunner: $c->make(BundleMigrationRunner::class),
+            permissionGranter: $c->make(BundleInstaller\BundlePermissionGranter::class),
         ));
 
         // Binding explicite requis : le constructeur a un paramètre ?\Closure
@@ -226,12 +221,19 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(TranslationRepositoryInterface::class),
         ));
 
+        // Tâches du Core, puis celles des bundles actifs (Bundle::cronJobs(), contrat 1.8 : auto-validate de
+        // daily-report, photo-retention de store-photos…).
         $this->container->singleton(CronRunner::class, function (Container $c) {
             $runner = new CronRunner($c->make(CronTokenRepositoryInterface::class));
-            $runner->register($c->make(AutoValidateJob::class));
             $runner->register($c->make(BackupJob::class));
             $runner->register($c->make(LogPurgeJob::class));
             $runner->register($c->make(LicenseCheckJob::class));
+            if ($c->has(\kintai\Core\Extension\ExtensionRegistry::class)) {
+                $runner->registerBundleJobs(
+                    $c->make(\kintai\Core\Extension\ExtensionRegistry::class)->cronJobsByBundle(),
+                    fn(string $class): object => $c->make($class),
+                );
+            }
             return $runner;
         });
     }

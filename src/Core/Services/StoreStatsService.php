@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace kintai\Core\Services;
 
-use kintai\Core\Repositories\DailyReportRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
-use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
-use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
+use kintai\Core\Extension\Absences;
+use kintai\Core\Extension\Sales;
+use kintai\Core\Extension\Swaps;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 
@@ -30,12 +30,11 @@ final class StoreStatsService implements StoreStatsServiceInterface
         private readonly ShiftRepositoryInterface $shifts,
         private readonly ShiftTypeRepositoryInterface $shiftTypes,
         private readonly StoreUserRepositoryInterface $storeUsers,
-        private readonly TimeoffRequestRepositoryInterface $timeoffRequests,
-        private readonly ShiftSwapRequestRepositoryInterface $swapRequests,
         private readonly UserShiftTypeRateRepositoryInterface $userRates,
         private readonly UserRepositoryInterface $users,
-        private readonly DailyReportRepositoryInterface $dailyReports,
         private readonly RoleAssignmentSyncService $roleSync,
+        // Ventes journalières (contrat 1.14) ; sans elles (tests), celles de la requête courante.
+        private readonly ?Sales $sales = null,
     ) {}
 
     public function storeStats(int $storeId, int $period, int $minShiftMin = 0, int $maxShiftMin = 0): array
@@ -120,7 +119,7 @@ final class StoreStatsService implements StoreStatsServiceInterface
         }
 
         $allTimeoffs = array_filter(
-            $this->timeoffRequests->findByStore($storeId),
+            Absences::current()->forStore($storeId),
             fn($t) => ($t['start_date'] ?? '') >= $since
         );
 
@@ -534,20 +533,9 @@ final class StoreStatsService implements StoreStatsServiceInterface
 
     public function storeProfitability(int $storeId, string $from, string $to): array
     {
-        $reports = array_values(array_filter(
-            $this->dailyReports->findByStoreAndDateRange($storeId, $from, $to),
-            fn($r) => empty($r['deleted_at'])
-        ));
-        usort($reports, fn($a, $b) => strcmp($a['report_date'], $b['report_date']));
-
-        // Rapports en mode "cumulatif (saisie)" : sales_total/labor_cost/... contiennent
-        // déjà le cumul depuis le début de la période plutôt qu'une valeur du jour —
-        // les ramener à des deltas journaliers avant tout calcul agrégé (voir
-        // DailyReportDataNormalizer), sans quoi sommer sur la plage compterait
-        // chaque jour plusieurs fois.
-        $store = $this->stores->findById($storeId);
-        $cumulativeMode = $store !== null ? DailyReportDataNormalizer::cumulativeModeOf($store) : 'per_day';
-        $reports = DailyReportDataNormalizer::toDailyDeltas($reports, $cumulativeMode);
+        // Ventes du jour (fournisseurs du contrat 1.14) : déjà ramenées à des valeurs quotidiennes, même quand le
+        // magasin saisit ses rapports en cumulé.
+        $reports = ($this->sales ?? Sales::current())->dailySales($storeId, $from, $to);
 
         $allShifts     = array_values(array_filter(
             $this->shifts->findByStore($storeId),
@@ -713,7 +701,7 @@ final class StoreStatsService implements StoreStatsServiceInterface
         }
 
         $absDays = 0;
-        foreach ($this->timeoffRequests->findByStore($storeId) as $t) {
+        foreach (Absences::current()->forStore($storeId) as $t) {
             if ((int) ($t['user_id'] ?? 0) !== $userId) continue;
             if (($t['status'] ?? '') !== 'approved') continue;
             if (($t['start_date'] ?? '') < $since) continue;
@@ -721,7 +709,7 @@ final class StoreStatsService implements StoreStatsServiceInterface
         }
 
         $swapCount = 0;
-        foreach ($this->swapRequests->findByStore($storeId) as $sw) {
+        foreach (Swaps::current()->forStore($storeId) as $sw) {
             if (((int) ($sw['requester_id'] ?? 0) === $userId || (int) ($sw['target_user_id'] ?? 0) === $userId)
                 && ($sw['created_at'] ?? '') >= $since
             ) {
@@ -812,12 +800,12 @@ final class StoreStatsService implements StoreStatsServiceInterface
         }
 
         $allTimeoffs = array_filter(
-            $this->timeoffRequests->findByStore($storeId),
+            Absences::current()->forStore($storeId),
             fn($t) => ($t['start_date'] ?? '') >= $since && ($t['status'] ?? '') === 'approved'
         );
 
         $allSwaps = array_filter(
-            $this->swapRequests->findByStore($storeId),
+            Swaps::current()->forStore($storeId),
             fn($sw) => ($sw['created_at'] ?? '') >= $since
         );
 

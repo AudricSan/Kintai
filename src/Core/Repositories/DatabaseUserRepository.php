@@ -66,6 +66,15 @@ final class DatabaseUserRepository implements UserRepositoryInterface
      */
     public function save(array $userData): array
     {
+        // Langue vide = le compte suit la langue de l'instance (InstanceLocale). Toujours '' plutôt que null : la
+        // colonne est NOT NULL sur les instances existantes. Un nouveau compte suit l'instance, quel que soit le
+        // défaut historique de la colonne ('fr').
+        if (array_key_exists('language', $userData) && $userData['language'] === null) {
+            $userData['language'] = '';
+        }
+        if (empty($userData['id'])) {
+            $userData += ['language' => ''];
+        }
         if (!empty($userData['id'])) {
             $user = EloquentUser::findOrFail($userData['id']);
             $oldCode = $user->employee_code;

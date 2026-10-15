@@ -9,6 +9,7 @@ use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Request;
+use kintai\Core\Validation\ColorRule;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
 use kintai\UI\Controller\Web\HasAdminAccess;
@@ -73,6 +74,7 @@ final class AdminShiftTypeController
 
     public function storeShiftType(Request $request): Response
     {
+        ColorRule::assert($request->post('color', '#6366f1'));
         $storeIds = $this->postedStoreIds($request);
         if ($storeIds === []) {
             return Response::redirect($this->base() . '/admin/shift-types/create?error=store_required');
@@ -85,7 +87,7 @@ final class AdminShiftTypeController
             'start_time'  => $request->post('start_time', '08:00'),
             'end_time'    => $request->post('end_time', '16:00'),
             'color'       => $request->post('color', '#6366f1'),
-            'hourly_rate' => $request->post('hourly_rate') !== '' ? (float) $request->post('hourly_rate') : null,
+            'hourly_rate' => (float) $request->post('hourly_rate', 0),
             'is_active'   => 1,
         ]);
         $this->shiftTypes->syncStores((int) $savedType['id'], $storeIds);
@@ -103,6 +105,7 @@ final class AdminShiftTypeController
         }
         $storeIds = $this->shiftTypes->getStoreIds((int) $type['id']);
         $this->assertAnyStoreAccess($request, $storeIds);
+        $this->assertManagesEveryStore($request, $storeIds);
 
         return Response::html($this->view->render('scheduling.shift-types-form', [
             'title'              => 'Modifier ' . htmlspecialchars($type['name'] ?? ''),
@@ -121,6 +124,7 @@ final class AdminShiftTypeController
         }
         $existingStoreIds = $this->shiftTypes->getStoreIds((int) $type['id']);
         $this->assertAnyStoreAccess($request, $existingStoreIds);
+        $this->assertManagesEveryStore($request, $existingStoreIds);
 
         $submittedStoreIds = $this->postedStoreIds($request);
         if ($submittedStoreIds === []) {
@@ -138,14 +142,17 @@ final class AdminShiftTypeController
             $submittedStoreIds = array_values(array_unique(array_merge($submittedStoreIds, $outOfScopeStoreIds)));
         }
 
+        ColorRule::assert($request->post('color', $type['color'] ?? '#6366f1'));
+
         $newData = array_merge($type, [
             'code'        => strtoupper(trim($request->post('code', $type['code'] ?? ''))),
             'name'        => $request->post('name', $type['name'] ?? ''),
             'start_time'  => $request->post('start_time', $type['start_time'] ?? '08:00'),
             'end_time'    => $request->post('end_time', $type['end_time'] ?? '16:00'),
             'color'       => $request->post('color', $type['color'] ?? '#6366f1'),
-            'hourly_rate' => $request->post('hourly_rate') !== '' ? (float) $request->post('hourly_rate') : null,
-            'is_active'   => $request->post('is_active') === '1' ? 1 : 0,
+            // Champ absent : valeur actuelle (audit M12) ; vide : 0 (la colonne n'accepte pas null).
+            'hourly_rate' => $request->hasPost('hourly_rate') ? (float) $request->post('hourly_rate', 0) : (float) ($type['hourly_rate'] ?? 0),
+            'is_active'   => $request->postFlag('is_active', $type['is_active'] ?? 1),
         ]);
 
         $this->shiftTypes->save($newData);
@@ -156,6 +163,24 @@ final class AdminShiftTypeController
         return Response::redirect($this->base() . '/admin/shift-types?success=updated');
     }
 
+    /**
+     * Un type de shift est partagé entre les magasins où il est activé : le modifier ou le supprimer change les
+     * shifts et la paie de tous. Il faut donc gérer chacun de ces magasins (ou n'avoir aucune restriction de
+     * magasin). Un gérant peut en revanche l'activer ou le désactiver pour son propre magasin (toggleShiftTypeStore).
+     *
+     * @param int[] $typeStoreIds
+     */
+    private function assertManagesEveryStore(Request $request, array $typeStoreIds): void
+    {
+        $managedIds = $this->managedIds($request);
+        if ($managedIds === null) {
+            return;
+        }
+        if (array_diff(array_map('intval', $typeStoreIds), $managedIds) !== []) {
+            throw new ForbiddenException(__('error_shared_shift_type'));
+        }
+    }
+
     public function deleteShiftType(Request $request): Response
     {
         $id   = (int) $request->param('id');
@@ -163,6 +188,7 @@ final class AdminShiftTypeController
         $storeIds = $type !== null ? $this->shiftTypes->getStoreIds($id) : [];
         if ($type !== null) {
             $this->assertAnyStoreAccess($request, $storeIds);
+            $this->assertManagesEveryStore($request, $storeIds);
         }
         $this->shiftTypes->delete($id);
         $this->auditLogger->log($request, 'shift_type.deleted', 'shift_type', $id, ['code' => $type['code'] ?? '', 'name' => $type['name'] ?? ''], $storeIds[0] ?? null);

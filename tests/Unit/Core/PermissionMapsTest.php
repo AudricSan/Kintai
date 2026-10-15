@@ -181,35 +181,18 @@ final class PermissionMapsTest extends TestCase
         }
     }
 
-    public function testCategoryBundleMapOnlyReferencesCatalogCategories(): void
-    {
-        foreach (array_keys(PermissionCatalog::CATEGORY_BUNDLES) as $category) {
-            $this->assertArrayHasKey(
-                $category,
-                PermissionCatalog::CATEGORIES,
-                "CATEGORY_BUNDLES référence une catégorie inconnue : '$category'."
-            );
-        }
-    }
-
     public function testBundleRoutesAreActuallyPartOfTheInspectedRoutes(): void
     {
-        // Garde-fou contre le retour de l'angle mort : si le chargement des routes de bundles casse
-        // (dossier déplacé, glob vide), tous les tests ci-dessus passeraient sans rien vérifier.
-        $all = $this->allRoutes();
-        $this->assertGreaterThan(
-            $this->coreRouteCount() + 50,
-            count($all),
+        // Garde-fou contre le retour de l'angle mort : si le chargement des routes de bundles casse (dossier déplacé,
+        // glob vide), les tests ci-dessus passeraient sans les vérifier. Tous les bundles ont quitté le Core et
+        // vérifient leurs propres routes dans leur dépôt ; une copie de bundle remise sous tests/Fixtures/bundles/
+        // devrait apporter au moins trois routes.
+        $fixtures = glob(dirname(__DIR__, 3) . '/tests/Fixtures/bundles/*/routes.php') ?: [];
+        $this->assertGreaterThanOrEqual(
+            $this->coreRouteCount() + 3 * count($fixtures),
+            count($this->allRoutes()),
             'Les routes des bundles ne sont plus chargées : les invariants RBAC ne les vérifieraient plus.'
         );
-
-        $names = array_filter(array_map(static fn(Route $r) => $r->name, $all));
-        foreach (['admin.timeoff', 'admin.swap_requests', 'admin.feedbacks'] as $expected) {
-            $this->assertNotEmpty(
-                array_filter($names, static fn($n) => str_starts_with((string) $n, $expected)),
-                "Aucune route '$expected*' : les routes de bundle ne sont pas chargées."
-            );
-        }
     }
 
     public function testEveryAdminAndApiRouteIsGatedByRbac(): void

@@ -4,17 +4,16 @@ declare(strict_types=1);
 
 namespace kintai\UI\Controller\Web;
 
-use kintai\Core\Container;
+use kintai\Contract\Extension\DashboardWidget;
+use kintai\Core\Extension\DashboardStats;
+use kintai\Core\Extension\DashboardLayout;
+use kintai\Core\Extension\DashboardWidgets;
 use kintai\Core\Repositories\AvailabilityRepositoryInterface;
 use kintai\Core\Repositories\IcalTokenRepositoryInterface;
-use kintai\Core\Repositories\NotebookEntryRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
-use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
-use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
-use kintai\Core\Repositories\TimeclockRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserNavPrefsRepositoryInterface;
@@ -33,17 +32,10 @@ final class EmployeeController
     use HasBaseUrl;
     use HasStoreFeatureCheck;
     public const EMPLOYEE_WIDGETS = [
-        'timeclock',
         'shifts_today',
         'upcoming',
         'monthly_stats',
-        'pending_timeoff',
-        'pending_swaps',
-        'team_notes',
     ];
-
-    /** Nombre maximum de notes affichées dans le widget dashboard (épinglées + récentes confondues). */
-    private const NOTEBOOK_WIDGET_LIMIT = 5;
 
     public function __construct(
         private readonly ViewRenderer $view,
@@ -52,12 +44,9 @@ final class EmployeeController
         private readonly StoreRepositoryInterface $stores,
         private readonly StoreUserRepositoryInterface $storeUsers,
         private readonly UserRepositoryInterface $users,
-        private readonly TimeoffRequestRepositoryInterface $timeoffRequests,
-        private readonly ShiftSwapRequestRepositoryInterface $swapRequests,
         private readonly UserShiftTypeRateRepositoryInterface $userRates,
         private readonly AuditLogger $auditLogger,
         private readonly IcalTokenRepositoryInterface $icalTokens,
-        private readonly TimeclockRepositoryInterface $timeclocks,
         private readonly AvailabilityRepositoryInterface $availabilities,
         private readonly UserDashboardPrefsRepositoryInterface $dashboardPrefs,
         private readonly NotificationService $notifs,
@@ -76,7 +65,6 @@ final class EmployeeController
         $today  = date('Y-m-d');
 
         $myShifts  = $this->shifts->findByUser($userId);
-        $myTimeoff = $this->timeoffRequests->findByUser($userId);
 
         $shiftsToday = array_values(array_filter(
             $myShifts,
@@ -90,80 +78,63 @@ final class EmployeeController
         usort($upcomingShifts, fn($a, $b) => strcmp($a['shift_date'] ?? '', $b['shift_date'] ?? ''));
         $upcomingShifts = array_slice($upcomingShifts, 0, 5);
 
-        $pendingTimeoff = array_values(array_filter(
-            $myTimeoff,
-            fn($r) => ($r['status'] ?? '') === 'pending'
-        ));
-
-        $sentSwaps    = $this->swapRequests->findByRequester($userId);
-        $received     = $this->swapRequests->findByTarget($userId);
-        $pendingSwaps = array_values(array_filter(
-            $received,
-            fn($s) => ($s['status'] ?? '') === 'pending' && ($s['accepted_at'] ?? null) === null
-        ));
-
 
         $storesMap   = [];
-        foreach ($this->stores->findAll() as $s) {
+        foreach ($this->stores->findAllWithDeleted() as $s) {
             $storesMap[(int) $s['id']] = $s['name'] ?? ('#' . $s['id']);
         }
 
-        $activeClock = $this->timeclocks->findActiveByUser($userId);
+        // Widgets proposés : ceux du Core et ceux des bundles actifs (Bundle::dashboardWidgets(), contrat 1.4). Les
+        // widgets historiques d'un bundle qui déclare les siens ne sont plus rendus par le Core ($enabledWidgets).
+        $dashWidgets = DashboardWidgets::current();
+        $widgetKeys  = $dashWidgets->keys(DashboardWidget::EMPLOYEE, self::EMPLOYEE_WIDGETS);
         $saved       = $this->dashboardPrefs->getEnabledWidgets($userId, 'employee');
-        $enabledWidgets = array_flip(array_values(
+        $enabledAll  = array_flip(array_values(
             $saved !== null
-                ? array_intersect($saved, self::EMPLOYEE_WIDGETS)
-                : self::EMPLOYEE_WIDGETS
+                ? array_intersect($saved, $widgetKeys)
+                : $widgetKeys
         ));
+        $enabledWidgets = $enabledAll;
 
-        // Notes d'équipe épinglées/récentes (organisation entière + mes stores) — même garde
-        // que le widget "Bourse aux shifts" du dashboard admin : NotebookEntryRepositoryInterface
-        // n'est lié au container que si le bundle "notebook" est actif, résolution différée.
-        $notebookEntries = [];
-        if (
-            feat_bundle('notes')
-            && array_key_exists('team_notes', $enabledWidgets)
-            && $this->permissions->can($user, 'notebook.view', null)
-        ) {
-            $container = Container::getInstance();
-            if ($container->has(NotebookEntryRepositoryInterface::class)) {
-                $notebook   = $container->make(NotebookEntryRepositoryInterface::class);
-                $myStoreIds = array_map(fn($m) => (int) $m['store_id'], $this->storeUsers->findByUser($userId));
-                $now        = date('Y-m-d H:i:s');
-                $notebookEntries = array_values(array_filter(
-                    $notebook->findVisibleForStores($myStoreIds),
-                    fn($n) => empty($n['expires_at']) || $n['expires_at'] > $now
-                ));
-                usort($notebookEntries, function ($a, $b) {
-                    $pinCmp = (int) ($b['pinned'] ?? 0) <=> (int) ($a['pinned'] ?? 0);
-                    return $pinCmp !== 0 ? $pinCmp : strcmp($b['created_at'] ?? '', $a['created_at'] ?? '');
-                });
-                $notebookEntries = array_slice($notebookEntries, 0, self::NOTEBOOK_WIDGET_LIMIT);
-                $notebookEntries = array_map(function (array $n) use ($storesMap): array {
-                    $author = $n['author_id'] !== null ? $this->users->findById((int) $n['author_id']) : null;
-                    $n['author_name'] = $author !== null
-                        ? trim(($author['last_name'] ?? '') . ' ' . ($author['first_name'] ?? '')) ?: ($author['email'] ?? '#' . $n['author_id'])
-                        : null;
-                    $n['store_name'] = $n['store_id'] !== null ? ($storesMap[(int) $n['store_id']] ?? null) : null;
-                    return $n;
-                }, $notebookEntries);
-            }
-        }
+        $userCan = fn(string $perm): bool => $this->permissions->can($user, $perm, null);
+        $storeFeatures = $this->view->get('store_features');
+        $bundleWidgets = $dashWidgets->render(
+            DashboardWidget::EMPLOYEE,
+            self::EMPLOYEE_WIDGETS,
+            array_keys($enabledAll),
+            [
+                'user'              => $user,
+                'store_ids'         => array_map(fn($m) => (int) $m['store_id'], $this->storeUsers->findByUser($userId)),
+                'managed_store_ids' => null,
+                'stores_map'        => $storesMap,
+                'today'             => $today,
+            ],
+            $this->view,
+            $userCan,
+            static fn(?string $f): bool => feat_bundle($f)
+                && ($f === null || $storeFeatures === null || in_array($f, (array) $storeFeatures, true)),
+        );
+
+        // Cartes de statistiques des bundles (contrat 1.19).
+        $bundleStats = DashboardStats::current()->cards(
+            ['user' => $user, 'store_ids' => array_map(fn($m) => (int) $m['store_id'], $this->storeUsers->findByUser($userId)), 'stores_map' => $storesMap, 'today' => $today],
+            static fn(?string $f): bool => feat_bundle($f) && ($f === null || $storeFeatures === null || in_array($f, (array) $storeFeatures, true)),
+        );
 
         return Response::html($this->view->render('employee.dashboard', [
             'title'            => __('dashboard'),
             'user'             => $user,
             'shifts_today'     => $shiftsToday,
             'upcoming'         => $upcomingShifts,
-            'pending_timeoff'  => $pendingTimeoff,
-            'my_swaps'         => $sentSwaps,
-            'pending_swaps'    => $pendingSwaps,
             'stores_map'       => $storesMap,
-            'active_clock'     => $activeClock,
-            'notebook_entries' => $notebookEntries,
-            'user_can'         => fn(string $perm) => $this->permissions->can($user, $perm, null),
+            'user_can'         => $userCan,
             'enabled_widgets'  => $enabledWidgets,
-            'all_widgets'      => self::EMPLOYEE_WIDGETS,
+            'enabled_widgets_all' => $enabledAll,
+            'all_widgets'      => $widgetKeys,
+            'widget_layout'    => DashboardLayout::resolve($widgetKeys, $this->dashboardPrefs->getLayout($userId, 'employee')),
+            'bundle_widgets'   => $bundleWidgets,
+            'bundle_stats'     => $bundleStats,
+            'bundle_widget_meta' => $dashWidgets->meta(DashboardWidget::EMPLOYEE, self::EMPLOYEE_WIDGETS),
         ], 'layout.app'));
     }
 
@@ -233,7 +204,7 @@ final class EmployeeController
             $typesMap[(int) $t['id']] = $t;
         }
         $storesMap = [];
-        foreach ($this->stores->findAll() as $s) {
+        foreach ($this->stores->findAllWithDeleted() as $s) {
             $storesMap[(int) $s['id']] = $s['name'] ?? '';
         }
 
@@ -334,7 +305,7 @@ final class EmployeeController
             $typesMap[(int) $t['id']] = $t;
         }
         $storesMap = [];
-        foreach ($this->stores->findAll() as $s) {
+        foreach ($this->stores->findAllWithDeleted() as $s) {
             $storesMap[(int) $s['id']] = $s['name'] ?? '#' . $s['id'];
         }
 
@@ -508,13 +479,6 @@ final class EmployeeController
         ], 'layout.app'));
     }
 
-    // Pointage : voir src/Bundles/Timeclock/Controllers/Web/EmployeeTimeclockController.php
-    // ($this->timeclocks reste utilisé ci-dessus par dashboard() pour le widget
-    // "pointage en cours", qui doit continuer de fonctionner même si ce bundle
-    // est désactivé.)
-
-    // Congés : voir src/Bundles/TimeOff/Controllers/Web/EmployeeTimeoffController.php
-    // Échanges de shifts : voir src/Bundles/ShiftSwap/Controllers/Web/EmployeeSwapController.php
 
     // -------------------------------------------------------------------------
     // Helpers
@@ -592,8 +556,13 @@ final class EmployeeController
         $userId  = (int) ($user['id'] ?? 0);
         $body    = $request->allPost();
         $checked = $body['widgets'] ?? [];
-        $widgets = array_values(array_intersect(self::EMPLOYEE_WIDGETS, array_keys($checked)));
         $oldWidgets = $this->dashboardPrefs->getEnabledWidgets($userId, 'employee');
+        // Widgets d'un bundle désactivé en ce moment : non proposés, mais conservés pour sa réactivation.
+        $widgets = DashboardWidgets::mergePreferences(
+            DashboardWidgets::current()->keys(DashboardWidget::EMPLOYEE, self::EMPLOYEE_WIDGETS),
+            array_map('strval', array_keys((array) $checked)),
+            $oldWidgets,
+        );
         $this->dashboardPrefs->saveWidgets($userId, $widgets, 'employee');
         $this->auditLogger->logUpdate($request, 'dashboard_prefs.updated', 'user_dashboard_prefs', $userId, $oldWidgets, $widgets, []);
         return Response::redirect($this->base() . '/employee?success=prefs');
@@ -608,8 +577,6 @@ final class EmployeeController
     private const NAV_EMPLOYEE_SECTIONS = ['planning', 'requests', 'statistics', 'account'];
 
     // Items disponibles pour la barre de navigation inférieure mobile (hors "home" toujours présent)
-    private const BOTTOM_NAV_POOL     = ['my_planning', 'timeclock', 'my_timeoff', 'messages', 'swaps', 'open_shifts', 'my_profile'];
-    private const BOTTOM_NAV_DEFAULT  = ['my_planning', 'timeclock', 'my_timeoff'];
 
     /**
      * L'employé gère son menu depuis l'onglet "nav" de son profil (une seule UI,
@@ -650,7 +617,7 @@ final class EmployeeController
         }
 
         $rawBottom   = array_values((array) $request->post('bottom_nav', []));
-        $bottomItems = array_values(array_intersect($rawBottom, self::BOTTOM_NAV_POOL));
+        $bottomItems = array_values(array_intersect($rawBottom, \kintai\Core\Extension\Navigation::current()->mobileKeys(false)));
         $count       = count($bottomItems);
         if ($count >= 2 && $count <= 4) {
             $this->navPrefs->saveBottomNavItems($userId, $bottomItems);

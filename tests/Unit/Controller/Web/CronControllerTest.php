@@ -13,8 +13,6 @@ use kintai\Core\Response;
 use kintai\UI\Controller\Web\CronController;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
-use ReflectionClass;
-use ReflectionProperty;
 
 /**
  * Régression : le job cron `backup` (CronRunner + BackupJob + cron_tokens) était
@@ -44,13 +42,7 @@ final class CronControllerTest extends TestCase
         };
         $runner->register($stubJob);
 
-        // CronController est un final class avec des dépendances lourdes
-        // (DailyReportAutoValidateService) non nécessaires pour tester run() ;
-        // on l'instancie sans constructeur et on injecte juste le CronRunner.
-        $this->controller = (new ReflectionClass(CronController::class))->newInstanceWithoutConstructor();
-        $prop = new ReflectionProperty(CronController::class, 'cronRunner');
-        $prop->setAccessible(true);
-        $prop->setValue($this->controller, $runner);
+        $this->controller = new CronController($runner);
     }
 
     public function testRunDispatchesToTheRegisteredJobWithAValidToken(): void
@@ -93,42 +85,8 @@ final class CronControllerTest extends TestCase
         $this->controller->run($req);
     }
 
-    public function testAutoValidateRejectsWhenNoSecretIsConfigured(): void
-    {
-        unset($_ENV['CRON_SECRET']);
-        $_GET = ['token' => ''];
-
-        $this->expectException(ForbiddenException::class);
-        $this->controller->autoValidate(new Request());
-    }
-
-    public function testAutoValidateRejectsAWrongSecret(): void
-    {
-        $_ENV['CRON_SECRET'] = 'le-vrai-secret';
-        $_GET = ['token' => 'le-vrai-secreT'];
-
-        $this->expectException(ForbiddenException::class);
-        $this->controller->autoValidate(new Request());
-    }
-
-    public function testAutoValidateAcceptsTheRightSecret(): void
-    {
-        $_ENV['CRON_SECRET'] = 'le-vrai-secret';
-        $_GET = ['token' => 'le-vrai-secret'];
-
-        // Le service de validation n'est pas injecté ici (voir setUp) : l'appel
-        // échoue après le contrôle du secret, ce qui suffit à prouver qu'il est passé.
-        try {
-            $this->controller->autoValidate(new Request());
-        } catch (\Throwable $e) {
-            $this->assertNotInstanceOf(ForbiddenException::class, $e);
-        }
-        $this->addToAssertionCount(1);
-    }
-
     protected function tearDown(): void
     {
         $_GET = [];
-        unset($_ENV['CRON_SECRET']);
     }
 }

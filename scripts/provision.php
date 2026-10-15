@@ -35,6 +35,7 @@ use Illuminate\Database\Capsule\Manager as Capsule;
 use kintai\Core\Application;
 use kintai\Core\Auth\PasswordHasher;
 use kintai\Core\Auth\PasswordPolicy;
+use kintai\Core\Database\DemoDataSeeder;
 use kintai\Core\Database\MigrationRunner;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
@@ -139,18 +140,6 @@ function pdo_options(): array
     ];
 }
 
-function run_seeds(PDO $pdo, string $dir): void
-{
-    $files = glob($dir . '/*.sql') ?: [];
-    sort($files);
-    foreach ($files as $file) {
-        $sql = trim((string) file_get_contents($file));
-        if ($sql !== '') {
-            $pdo->exec($sql);
-        }
-    }
-}
-
 // Application coupe l'affichage des erreurs hors mode debug : sans ce filet, une erreur arrêtait le script sans
 // aucun message (code de sortie 255 et rien d'autre).
 try {
@@ -221,10 +210,10 @@ try {
     // ─── Step 5 : Seeders ────────────────────────────────────────────────────
 
     if ($runSeeds) {
-        $pdo = $app->container()->make(Capsule::class)->getConnection()->getPdo();
-        run_seeds($pdo, BASE_PATH . '/database/seeds/' . $dbDriver);
-        unset($pdo);
-        echo "[Kintai] Seeders exécutés.\n";
+        // Données de démonstration du Core, écrites par les modèles (indépendantes du pilote et du schéma).
+        $seeded = (new DemoDataSeeder())->run();
+        echo "[Kintai] Données de démonstration : {$seeded['stores']} magasins, {$seeded['users']} comptes "
+            . "(mot de passe " . DemoDataSeeder::PASSWORD . "), {$seeded['shifts']} shifts.\n";
     }
 
     // ─── Step 6 : Create admin user (rôle Owner) ─────────────────────────────
@@ -270,6 +259,16 @@ try {
         echo "[Kintai] Attention : aucune URL publique (--app-url ou APP_URL). Les e-mails de réinitialisation du mot de "
             . "passe ne partiront pas tant qu'elle n'est pas renseignée dans les réglages Owner.\n";
     }
+
+    // ─── Step 7 bis : Assistant de configuration ───────────────────────────
+
+    // Comme l'installateur web : aucun bundle actif, l'Owner choisit licence et bundles dans /admin/setup (un
+    // bandeau l'y invite à sa première connexion).
+    \kintai\Core\Services\SetupWizard::start(
+        $container->make(AppSettingsRepositoryInterface::class),
+        $container->make(\kintai\Core\Services\AppSettingsService::class)->updateChannel(),
+    );
+    echo "[Kintai] Licence et bundles : à choisir dans /admin/setup à la première connexion de l'Owner.\n";
 
     // ─── Step 8 : Lock installation ─────────────────────────────────────────
 

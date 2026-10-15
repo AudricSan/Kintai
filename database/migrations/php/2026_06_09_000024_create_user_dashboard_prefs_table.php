@@ -18,6 +18,8 @@ return new class($this->capsule) extends Migration {
             $table->integer('user_id');
             $table->string('dashboard_type')->default('employee');
             $table->text('widgets')->default('[]');
+            // Ordre et largeur des widgets (DashboardLayout), null = disposition par défaut.
+            $table->text('layout')->nullable();
             $table->timestamp('updated_at')->nullable();
 
             $table->unique(['user_id', 'dashboard_type']);

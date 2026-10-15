@@ -9,8 +9,8 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 
 /**
  * La locale de chaque notification est résolue par destinataire : langue de
- * l'utilisateur (`users.language`) sinon 'fr' par défaut — voir DailyReportMailService
- * pour le même pattern côté e-mail.
+ * l'utilisateur (`users.language`) sinon 'fr' par défaut — même principe que l'e-mail
+ * des rapports journaliers (bundle daily-report).
  */
 class NotificationService
 {
@@ -77,16 +77,7 @@ class NotificationService
 
     private function resolveLocale(int $userId): string
     {
-        $user = $this->users->findById($userId);
-        $raw  = $user['language'] ?? 'fr';
-        if ($raw === null || $raw === '') {
-            $raw = 'fr';
-        }
-        $lang = strtolower(substr((string) $raw, 0, 2));
-        return match ($lang) {
-            'ja'    => 'ja',
-            'en'    => 'en',
-            default => 'fr',
-        };
+        // Langue du profil du destinataire, sinon celle de l'instance.
+        return user_locale($this->users->findById($userId));
     }
 }

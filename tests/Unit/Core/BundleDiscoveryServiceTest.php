@@ -118,6 +118,24 @@ final class BundleDiscoveryServiceTest extends TestCase
         $this->assertSame('1.1.8', $discovered['fake-baseline-bundle']['version']);
     }
 
+    /** Un bundle supprimé du projet (feedback) encore installé sur une instance ne doit plus être chargé. */
+    public function testRetiredBundleStillInstalledIsNotDiscovered(): void
+    {
+        $installedDir = sys_get_temp_dir() . '/kintai-installed-' . uniqid();
+        $this->writeFakeInstalledBundle($installedDir, 'feedback', '1.1.0');
+
+        $store = new InstalledBundleManifestStore($installedDir . '/installed.json');
+        $store->setActiveVersion('feedback', '1.1.0');
+
+        $service = new BundleDiscoveryService(
+            sys_get_temp_dir() . '/kintai-does-not-exist-' . uniqid(),
+            $store,
+            $installedDir,
+        );
+
+        $this->assertArrayNotHasKey('feedback', $service->discover());
+    }
+
     public function testLegacySlugWinsOverAnInstalledBundleWithTheSameSlug(): void
     {
         $legacyDir = sys_get_temp_dir() . '/kintai-bundle-discovery-' . uniqid();
@@ -139,14 +157,14 @@ final class BundleDiscoveryServiceTest extends TestCase
         $this->assertNotSame('9.9.9', $discovered['fake-collision-bundle']['version']);
     }
 
-    private function writeFakeInstalledBundle(string $installedDir, string $slug, string $version, ?string $manifestVersion = null): void
+    private function writeFakeInstalledBundle(string $installedDir, string $slug, string $version, ?string $manifestVersion = null, array $extraManifest = []): void
     {
         $className = 'FakeInstalledBundle_' . str_replace('-', '_', $slug) . '_' . str_replace('.', '_', $version);
         $namespace = 'kintai\\Bundles\\Installed\\' . $className;
         $bundleRoot = $installedDir . '/' . $slug . '/' . $version;
         mkdir($bundleRoot . '/src', 0777, true);
 
-        file_put_contents($bundleRoot . '/bundle.json', json_encode([
+        file_put_contents($bundleRoot . '/bundle.json', json_encode($extraManifest + [
             'slug'        => $slug,
             'name'        => 'Fake Installed Bundle',
             'version'     => $manifestVersion ?? $version,
@@ -169,11 +187,18 @@ final class BundleDiscoveryServiceTest extends TestCase
         require $bundleRoot . '/src/' . $className . 'Bundle.php';
     }
 
-    private function writeFakeLegacyBundle(string $legacyDir, string $dirName, string $slug): void
+    /** @param array<string, mixed>|null $manifest bundle.json à côté de la classe (null : aucun) */
+    private function writeFakeLegacyBundle(string $legacyDir, string $dirName, string $slug, ?array $manifest = null): void
     {
         $namespace = 'kintai\\Bundles\\' . $dirName;
         $bundleRoot = $legacyDir . '/' . $dirName;
         mkdir($bundleRoot, 0777, true);
+        if ($manifest !== null) {
+            file_put_contents($bundleRoot . '/bundle.json', json_encode($manifest + [
+                'slug' => $slug, 'name' => 'Fake Legacy Bundle', 'version' => '1.0.0', 'namespace' => $namespace,
+                'entry_class' => $namespace . '\\' . $dirName . 'Bundle',
+            ]));
+        }
 
         file_put_contents($bundleRoot . '/' . $dirName . 'Bundle.php', <<<PHP
         <?php
@@ -188,5 +213,76 @@ final class BundleDiscoveryServiceTest extends TestCase
         PHP);
 
         require $bundleRoot . '/' . $dirName . 'Bundle.php';
+    }
+
+    // -------------------------------------------------------------------------
+    // Contrat de bundle versionné (kintai_contract)
+    // -------------------------------------------------------------------------
+
+    private function discoverOne(string $slug, string $version, array $manifest, string $coreVersion = '1.0.0'): array
+    {
+        $installedDir = sys_get_temp_dir() . '/kintai-installed-' . uniqid();
+        $this->writeFakeInstalledBundle($installedDir, $slug, $version, null, $manifest);
+        $store = new InstalledBundleManifestStore($installedDir . '/installed.json');
+        $store->setActiveVersion($slug, $version);
+
+        $service = new BundleDiscoveryService(sys_get_temp_dir() . '/kintai-does-not-exist-' . uniqid(), $store, $installedDir, $coreVersion);
+        return $service->discover()[$slug];
+    }
+
+    public function testABundleRequiringTheProvidedContractIsCompatible(): void
+    {
+        $meta = $this->discoverOne('contract-ok', '1.0.0', ['kintai_contract' => '^1.0']);
+
+        $this->assertNull($meta['incompatible']);
+    }
+
+    /** Un bundle devenu incompatible reste listé (l'Owner voit pourquoi) mais porte la raison : il ne sera pas chargé. */
+    public function testABundleRequiringAFutureContractIsFlaggedIncompatible(): void
+    {
+        $meta = $this->discoverOne('contract-future', '1.0.0', ['kintai_contract' => '^99.0']);
+
+        $this->assertNotNull($meta['incompatible']);
+    }
+
+    /** Sans kintai_contract (bundles publiés avant le contrat versionné) : listé mais jamais chargé, même avec une plage kintai_core ouverte. */
+    public function testWithoutAContractTheBundleIsNotLoaded(): void
+    {
+        $this->assertSame('bundle_contract_missing', $this->discoverOne('legacy-ok', '1.0.0', ['kintai_core' => ['min' => '0.1.0', 'max' => '999.999.999']], '0.5.0')['incompatible']);
+    }
+
+    /** Bundle déposé dans src/Bundles/ : même règle qu'un bundle installé, son bundle.json doit déclarer le contrat. */
+    public function testALegacyDropInBundleNeedsAContract(): void
+    {
+        $dir = sys_get_temp_dir() . '/kintai-legacy-contract-' . uniqid();
+        $this->writeFakeLegacyBundle($dir, 'FakeNoManifestBundle', 'fake-no-manifest');
+        $this->writeFakeLegacyBundle($dir, 'FakeContractBundle', 'fake-contract', ['kintai_contract' => '^1.0']);
+        $empty = sys_get_temp_dir() . '/kintai-installed-' . uniqid();
+        mkdir($empty, 0777, true);
+
+        $found = (new BundleDiscoveryService($dir, new InstalledBundleManifestStore($empty . '/installed.json'), $empty, '1.0.0'))->discover();
+
+        $this->assertSame('bundle_contract_missing', $found['fake-no-manifest']['incompatible']);
+        $this->assertNull($found['fake-contract']['incompatible']);
+    }
+
+    /** Avertissement de /admin/update : bundles installés qu'un Core fournissant ce contrat ne chargerait pas. */
+    public function testInstalledIncompatibleWithATargetContract(): void
+    {
+        $installedDir = sys_get_temp_dir() . '/kintai-installed-' . uniqid();
+        $this->writeFakeInstalledBundle($installedDir, 'still-ok', '1.0.0', null, ['kintai_contract' => '^1.5']);
+        $this->writeFakeInstalledBundle($installedDir, 'needs-v2', '1.0.0', null, ['kintai_contract' => '^2.0']);
+        $this->writeFakeInstalledBundle($installedDir, 'no-contract', '1.0.0');
+        $store = new InstalledBundleManifestStore($installedDir . '/installed.json');
+        foreach (['still-ok', 'needs-v2', 'no-contract'] as $slug) {
+            $store->setActiveVersion($slug, '1.0.0');
+        }
+        $service = new BundleDiscoveryService(sys_get_temp_dir() . '/kintai-does-not-exist-' . uniqid(), $store, $installedDir, '1.0.0');
+
+        $incompatible = $service->installedIncompatibleWith('1.6.0');
+
+        $this->assertSame(['needs-v2', 'no-contract'], array_column($incompatible, 'slug'));
+        $this->assertSame('bundle_contract_missing', $incompatible[1]['reason']);
+        $this->assertSame(['still-ok', 'no-contract'], array_column($service->installedIncompatibleWith('2.1.0'), 'slug'));
     }
 }

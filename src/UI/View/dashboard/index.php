@@ -1,22 +1,27 @@
 <?php
 /** @var array  $stats */
 /** @var array  $shifts_today */
-/** @var array  $pending_timeoff */
-/** @var array  $pending_swaps */
-/** @var array  $active_clocks_now  pointages actifs en ce moment */
 /** @var array  $users_map          id → display_name */
 /** @var array  $enabled_widgets    key → index (array_flip) */
 /** @var array  $all_widgets        ordered list of widget keys */
 $users_map        ??= [];
-$active_clocks_now ??= [];
-$pending_claims    ??= [];
-$notebook_entries  ??= [];
 $enabled_widgets        ??= array_flip(\kintai\UI\Controller\Web\HomeController::ADMIN_WIDGETS);
 $all_widgets            ??= \kintai\UI\Controller\Web\HomeController::ADMIN_WIDGETS;
+// Widgets des bundles (Bundle::dashboardWidgets(), contrat 1.4) : HTML déjà rendu par le contrôleur, affiché en fin
+// de page ; $enabled_widgets_all = choix de l'utilisateur, y compris ces widgets (panneau « Personnaliser »).
+$bundle_widgets         ??= [];
+$bundle_widget_meta     ??= ['labels' => [], 'permissions' => [], 'features' => []];
+$enabled_widgets_all    ??= $enabled_widgets;
+// Ordre et largeur des widgets choisis par l'utilisateur (DashboardLayout), widgets déplaçables en mode édition.
+$widget_layout          ??= ['order' => $all_widgets, 'widths' => []];
+$_dashLayout            = $widget_layout;
 
-function admin_widget_on(string $key, array $enabled): bool
-{
-    return array_key_exists($key, $enabled);
+// Garde : la vue peut être rendue plusieurs fois dans un même processus (tests).
+if (!function_exists('admin_widget_on')) {
+    function admin_widget_on(string $key, array $enabled): bool
+    {
+        return array_key_exists($key, $enabled);
+    }
 }
 
 // Feature-gating : null = toutes features actives (owner/is_admin), array = liste des features autorisées
@@ -30,18 +35,13 @@ $can = $user_can ?? fn(string $k): bool => true;
 
 // Widgets désactivés si la feature associée est indisponible
 $_widgetFeatMap = [
-    'pending_timeoff'  => 'timeoff',
-    'pending_swaps'    => 'swaps',
-    'timeclocks_today' => 'timeclock',
-    'team_notes'       => 'notes',
-];
+] + $bundle_widget_meta['features'];
 // Widgets masqués (panneau de personnalisation + affichage) si la permission requise manque
 $_widgetPermMap = [
     'store_stats_summary' => 'payroll.view',
     'financial_overview'  => 'payroll.view',
     'hr_absenteeism'      => 'payroll.view',
-    'team_notes'          => 'notebook.view',
-];
+] + $bundle_widget_meta['permissions'];
 // Filtrer all_widgets par features/permissions pour le panneau de personnalisation
 $all_widgets = array_values(array_filter(
     $all_widgets,
@@ -50,12 +50,12 @@ $all_widgets = array_values(array_filter(
 // Retirer des enabled_widgets les widgets dont la feature/permission est indisponible
 foreach ($_widgetFeatMap as $_wk => $_wf) {
     if (!$feat($_wf)) {
-        unset($enabled_widgets[$_wk]);
+        unset($enabled_widgets[$_wk], $enabled_widgets_all[$_wk]);
     }
 }
 foreach ($_widgetPermMap as $_wk => $_wp) {
     if (!$can($_wp)) {
-        unset($enabled_widgets[$_wk]);
+        unset($enabled_widgets[$_wk], $enabled_widgets_all[$_wk]);
     }
 }
 
@@ -67,11 +67,7 @@ $widgetLabels = [
     'financial_overview'   => __('widget_financial_overview'),
     'hr_absenteeism'       => __('widget_hr_absenteeism'),
     'shifts_today'         => __('widget_shifts_today'),
-    'pending_timeoff'      => __('widget_pending_timeoff'),
-    'pending_swaps'        => __('widget_pending_swaps'),
-    'timeclocks_today' => __('widget_timeclocks_today'),
-    'team_notes'           => __('widget_team_notes'),
-];
+] + $bundle_widget_meta['labels'];
 
 // Données de graphiques accumulées par les différents widgets, émises une seule fois
 // (un seul <script id="kintai-stats-data">) pour éviter une collision d'ID si
@@ -94,13 +90,17 @@ $_dashChartData = [];
         <button type="button" class="btn btn--ghost btn--sm" data-on-click="adminDashCustomize"><?= __('close') ?></button>
     </div>
     <div class="card-body">
+        <div class="dash-layout-tools">
+            <p class="text-sm text-muted"><?= __('dashboard_layout_hint') ?></p>
+            <button type="button" class="btn btn--ghost btn--sm" data-dash-reset><?= __('dashboard_layout_reset') ?></button>
+        </div>
         <form method="POST" action="<?= route_url('admin.dashboard.widgets') ?>">
             <?= csrf_field() ?>
             <div class="dash-widget-list">
                 <?php foreach ($all_widgets as $wk): ?>
                 <label class="dash-widget-item">
                     <input type="checkbox" name="widgets[<?= htmlspecialchars($wk) ?>]" value="1"
-                           <?= admin_widget_on($wk, $enabled_widgets) ? 'checked' : '' ?>>
+                           <?= admin_widget_on($wk, $enabled_widgets_all) ? 'checked' : '' ?>>
                     <span><?= htmlspecialchars($widgetLabels[$wk] ?? $wk) ?></span>
                 </label>
                 <?php endforeach; ?>
@@ -114,9 +114,12 @@ $_dashChartData = [];
 
 <script src="<?= $BASE_URL ?>/assets/js/modules/admin-dashboard.js"></script>
 
+<?php $_dashBlocks = []; ?>
+<?php ob_start(); ?>
 <?php if (admin_widget_on('kpi_counters', $enabled_widgets)): ?>
 <!-- KPI Stats -->
-<?php $_statCount = 3 + (($feat('timeoff') || $feat('swaps') || $feat('open_shifts')) ? 1 : 0); ?>
+<?php $_pendingVisible = $pending_requests_visible ?? false; // au moins une sorte de demande visible (PendingRequests) ?>
+<?php $_statCount = 3 + ($_pendingVisible ? 1 : 0); ?>
 <div class="stat-grid" style="--stat-cols:<?= $_statCount ?>"><?php unset($_statCount); ?>
     <?php if ($can('employees.view')): ?>
     <a href="<?= route_url('admin.users') ?>" class="stat-card stat-card--link">
@@ -156,22 +159,18 @@ $_dashChartData = [];
         <?php endif; ?>
     </div>
 
-    <?php if ($feat('timeoff') || $feat('swaps') || $feat('open_shifts')): ?>
+    <?php if ($_pendingVisible): ?>
     <a href="<?= route_url('admin.requests') ?>" class="stat-card stat-card--link">
         <div class="stat-card__icon stat-card__icon--danger">⏳</div>
         <div class="stat-card__body">
-            <?php
-            $_pendingCount = ($feat('timeoff')     ? count($pending_timeoff) : 0)
-                           + ($feat('swaps')       ? count($pending_swaps)   : 0)
-                           + ($feat('open_shifts') ? count($pending_claims)  : 0);
-            ?>
-            <div class="stat-card__value"><?= $_pendingCount ?></div>
+            <div class="stat-card__value"><?= (int) ($stats['pending_requests'] ?? 0) ?></div>
             <div class="stat-card__label"><?= __('pending_requests') ?></div>
         </div>
     </a>
     <?php endif; ?>
 </div>
 <?php endif; ?>
+<?php $_dashBlocks['kpi_counters'] = ob_get_clean(); ?>
 
 <?php
 $dashboard_alerts ??= null;
@@ -180,12 +179,67 @@ $_alertTotal = $dashboard_alerts !== null
         + count($dashboard_alerts['stale_requests']) + count($dashboard_alerts['stale_timeclocks'])
     : 0;
 ?>
+<?php ob_start(); ?>
+<?php if (admin_widget_on('dashboard_alerts', $enabled_widgets) && $dashboard_alerts !== null): ?>
+<?php
+// Alertes actionnables (DashboardAlertService) : 4 groupes, 5 éléments affichés par groupe au plus.
+$_alertLimit = 5;
+$_alertTime  = static fn(string $t): string => substr($t, 0, 5);
+$_alertGroups = [
+    'unfilled_shifts' => [__('dashboard_alerts_unfilled_shifts'), static function (array $a) use ($can, $_alertTime): string {
+        $text = htmlspecialchars($a['shift_date'] . ' ' . $_alertTime($a['start_time']) . '–' . $_alertTime($a['end_time']) . ' · ' . $a['store_name']);
+        return $can('shifts.view') ? '<a href="' . route_url('admin.shifts.edit', ['id' => $a['id']]) . '">' . $text . '</a>' : $text;
+    }],
+    'users_without_shift' => [__('dashboard_alerts_users_without_shift'), static function (array $a) use ($can): string {
+        $text = htmlspecialchars($a['name'] . ' · ' . $a['store_name']);
+        return $can('employees.view') ? '<a href="' . route_url('admin.users.edit', ['id' => $a['id']]) . '">' . $text . '</a>' : $text;
+    }],
+    'stale_requests' => [__('dashboard_alerts_stale_requests'), static function (array $a): string {
+        // Libellé du fournisseur de la demande (contrat 1.9).
+        $type = __($a['label'] ?? $a['type']);
+        return '<a href="' . route_url('admin.requests') . '">' . htmlspecialchars($type . ' #' . $a['id'] . ' · ' . ($a['store_name'] ?? '') . ' · ' . substr($a['created_at'], 0, 10)) . '</a>';
+    }],
+    'stale_timeclocks' => [__('dashboard_alerts_stale_timeclocks'), static function (array $a): string {
+        return htmlspecialchars($a['user_name'] . ' · ' . $a['store_name'] . ' · ' . substr($a['clock_in_time'], 0, 16));
+    }],
+];
+?>
+<!-- Alertes -->
+<div class="card card--mt">
+    <div class="card-header">
+        <span><?= __('widget_dashboard_alerts') ?> <span class="page-count">(<?= $_alertTotal ?>)</span></span>
+    </div>
+    <?php if ($_alertTotal === 0): ?>
+        <div class="empty-state"><?= __('dashboard_alerts_none') ?></div>
+    <?php else: ?>
+        <div class="card-body dash-alerts">
+            <?php foreach ($_alertGroups as $_ak => [$_alabel, $_aformat]): ?>
+                <?php $_aitems = $dashboard_alerts[$_ak]; if ($_aitems === []) continue; ?>
+                <div class="dash-alerts__group">
+                    <div class="sstat-sublabel--strong"><?= htmlspecialchars($_alabel) ?> <span class="page-count">(<?= count($_aitems) ?>)</span></div>
+                    <ul class="dash-alerts__list">
+                        <?php foreach (array_slice($_aitems, 0, $_alertLimit) as $_aitem): ?>
+                            <li class="dash-alerts__item"><?= $_aformat($_aitem) ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                    <?php if (count($_aitems) > $_alertLimit): ?>
+                        <div class="dash-alerts__more"><?= __('dashboard_alerts_more', ['count' => count($_aitems) - $_alertLimit]) ?></div>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
+</div>
+<?php unset($_alertLimit, $_alertTime, $_alertGroups, $_ak, $_alabel, $_aformat, $_aitems, $_aitem); ?>
+<?php endif; ?>
+<?php $_dashBlocks['dashboard_alerts'] = ob_get_clean(); ?>
 
 <?php
 $store_stats_rows          ??= [];
 $store_stats_period        ??= 30;
 $store_stats_hours_by_week ??= [];
 ?>
+<?php ob_start(); ?>
 <?php if (admin_widget_on('store_stats_summary', $enabled_widgets) && $can('payroll.view') && $store_stats_rows !== []): ?>
 <!-- Aperçu statistiques -->
 <div class="card card--mt">
@@ -259,105 +313,96 @@ $store_stats_hours_by_week ??= [];
     <?php endif; ?>
 </div>
 <?php endif; ?>
+<?php $_dashBlocks['store_stats_summary'] = ob_get_clean(); ?>
 
 <?php
 $financial_overview ??= null;
 $hr_stats           ??= null;
 ?>
-<?php if (
-    (admin_widget_on('financial_overview', $enabled_widgets) && $can('payroll.view') && $financial_overview !== null)
-    || (admin_widget_on('hr_absenteeism', $enabled_widgets) && $can('payroll.view') && $hr_stats !== null)
-): ?>
-<div class="dash-two-col card--mt">
-
-    <?php if (admin_widget_on('financial_overview', $enabled_widgets) && $can('payroll.view') && $financial_overview !== null): ?>
-    <div class="card">
-        <div class="card-header">
-            <span><?= __('widget_financial_overview') ?></span>
-        </div>
-        <div class="stat-grid stat-grid--in-card stat-grid--cols-2">
-            <div class="stat-card">
-                <div class="stat-card__icon stat-card__icon--primary">💰</div>
-                <div class="stat-card__body">
-                    <div class="stat-card__value"><?= format_currency((float) $financial_overview['current_month'], (string) $financial_overview['currency'], (string) $financial_overview['currency_style']) ?></div>
-                    <div class="stat-card__label">
-                        <?= __('current_month') ?>
-                        <?php if ($financial_overview['delta_pct'] !== null): ?>
-                            <span class="<?= $financial_overview['delta_pct'] > 0 ? 'text-danger' : 'text-success' ?>">
-                                (<?= $financial_overview['delta_pct'] > 0 ? '+' : '' ?><?= $financial_overview['delta_pct'] ?>% <?= __('vs_prev_period') ?>)
-                            </span>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-card__icon">📆</div>
-                <div class="stat-card__body">
-                    <div class="stat-card__value"><?= format_currency((float) $financial_overview['previous_month'], (string) $financial_overview['currency'], (string) $financial_overview['currency_style']) ?></div>
-                    <div class="stat-card__label"><?= __('prev_month') ?></div>
-                </div>
-            </div>
-        </div>
-        <?php if (count($financial_overview['trend_by_month']) > 1): ?>
-        <div class="card-body">
-            <div class="sstat-sublabel--strong"><?= __('monthly_trend') ?></div>
-            <div class="sstat-canvas-wrap">
-                <canvas id="chart-monthly-trend"></canvas>
-            </div>
-        </div>
-        <?php
-        $_dashChartData['hasCost']     = true;
-        $_dashChartData['costByMonth'] = array_map('floatval', $financial_overview['trend_by_month']);
-        ?>
-        <?php endif; ?>
+<?php ob_start(); ?>
+<?php if (admin_widget_on('financial_overview', $enabled_widgets) && $can('payroll.view') && $financial_overview !== null): ?>
+<div class="card">
+    <div class="card-header">
+        <span><?= __('widget_financial_overview') ?></span>
     </div>
-    <?php endif; ?>
-
-    <?php if (admin_widget_on('hr_absenteeism', $enabled_widgets) && $can('payroll.view') && $hr_stats !== null): ?>
-    <div class="card">
-        <div class="card-header">
-            <span><?= __('widget_hr_absenteeism') ?></span>
+    <div class="stat-grid stat-grid--in-card stat-grid--cols-2">
+        <div class="stat-card">
+            <div class="stat-card__icon stat-card__icon--primary">💰</div>
+            <div class="stat-card__body">
+                <div class="stat-card__value"><?= format_currency((float) $financial_overview['current_month'], (string) $financial_overview['currency'], (string) $financial_overview['currency_style']) ?></div>
+                <div class="stat-card__label">
+                    <?= __('current_month') ?>
+                    <?php if ($financial_overview['delta_pct'] !== null): ?>
+                        <span class="<?= $financial_overview['delta_pct'] > 0 ? 'text-danger' : 'text-success' ?>">
+                            (<?= $financial_overview['delta_pct'] > 0 ? '+' : '' ?><?= $financial_overview['delta_pct'] ?>% <?= __('vs_prev_period') ?>)
+                        </span>
+                    <?php endif; ?>
+                </div>
+            </div>
         </div>
-        <div class="stat-grid stat-grid--in-card stat-grid--cols-2">
-            <div class="stat-card">
-                <div class="stat-card__icon stat-card__icon--warning">📉</div>
-                <div class="stat-card__body">
-                    <div class="stat-card__value"><?= number_format((float) $hr_stats['abs_rate'], 1) ?>%</div>
-                    <div class="stat-card__label"><?= __('absence_rate') ?></div>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-card__icon stat-card__icon--primary">🌴</div>
-                <div class="stat-card__body">
-                    <div class="stat-card__value"><?= $hr_stats['timeoff_taken'] ?></div>
-                    <div class="stat-card__label"><?= __('timeoff_taken') ?></div>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-card__icon stat-card__icon--danger">⏰</div>
-                <div class="stat-card__body">
-                    <div class="stat-card__value"><?= $hr_stats['late_count'] ?></div>
-                    <div class="stat-card__label"><?= __('late_clock_ins') ?></div>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-card__icon">⏱️</div>
-                <div class="stat-card__body">
-                    <div class="stat-card__value"><?= $hr_stats['overtime_weeks'] ?></div>
-                    <div class="stat-card__label"><?= __('overtime_weeks') ?></div>
-                </div>
+        <div class="stat-card">
+            <div class="stat-card__icon">📆</div>
+            <div class="stat-card__body">
+                <div class="stat-card__value"><?= format_currency((float) $financial_overview['previous_month'], (string) $financial_overview['currency'], (string) $financial_overview['currency_style']) ?></div>
+                <div class="stat-card__label"><?= __('prev_month') ?></div>
             </div>
         </div>
     </div>
+    <?php if (count($financial_overview['trend_by_month']) > 1): ?>
+    <div class="card-body">
+        <div class="sstat-sublabel--strong"><?= __('monthly_trend') ?></div>
+        <div class="sstat-canvas-wrap">
+            <canvas id="chart-monthly-trend"></canvas>
+        </div>
+    </div>
+    <?php
+    $_dashChartData['hasCost']     = true;
+    $_dashChartData['costByMonth'] = array_map('floatval', $financial_overview['trend_by_month']);
+    ?>
     <?php endif; ?>
-
 </div>
 <?php endif; ?>
+<?php $_dashBlocks['financial_overview'] = ob_get_clean(); ?>
 
-<?php if ($_dashChartData !== []): ?>
-<script type="application/json" id="kintai-stats-data"><?= json_encode($_dashChartData, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?></script>
-<script src="<?= $BASE_URL ?>/assets/js/modules/stats-charts.js"></script>
+<?php ob_start(); ?>
+<?php if (admin_widget_on('hr_absenteeism', $enabled_widgets) && $can('payroll.view') && $hr_stats !== null): ?>
+<div class="card">
+    <div class="card-header">
+        <span><?= __('widget_hr_absenteeism') ?></span>
+    </div>
+    <div class="stat-grid stat-grid--in-card stat-grid--cols-2">
+        <div class="stat-card">
+            <div class="stat-card__icon stat-card__icon--warning">📉</div>
+            <div class="stat-card__body">
+                <div class="stat-card__value"><?= number_format((float) $hr_stats['abs_rate'], 1) ?>%</div>
+                <div class="stat-card__label"><?= __('absence_rate') ?></div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card__icon stat-card__icon--primary">🌴</div>
+            <div class="stat-card__body">
+                <div class="stat-card__value"><?= $hr_stats['timeoff_taken'] ?></div>
+                <div class="stat-card__label"><?= __('timeoff_taken') ?></div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card__icon stat-card__icon--danger">⏰</div>
+            <div class="stat-card__body">
+                <div class="stat-card__value"><?= $hr_stats['late_count'] ?></div>
+                <div class="stat-card__label"><?= __('late_clock_ins') ?></div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card__icon">⏱️</div>
+            <div class="stat-card__body">
+                <div class="stat-card__value"><?= $hr_stats['overtime_weeks'] ?></div>
+                <div class="stat-card__label"><?= __('overtime_weeks') ?></div>
+            </div>
+        </div>
+    </div>
+</div>
 <?php endif; ?>
+<?php $_dashBlocks['hr_absenteeism'] = ob_get_clean(); ?>
 
 <?php
 $sort       ??= 'start_asc';
@@ -374,6 +419,7 @@ $_href = function (string $field) use ($sort, $_qs): string {
 };
 ?>
 
+<?php ob_start(); ?>
 <?php if (admin_widget_on('shifts_today', $enabled_widgets) && $can('shifts.view')): ?>
 <!-- Shifts du jour -->
 <?php
@@ -516,155 +562,20 @@ $hasMultipleStores = count($shiftsByStore) > 1;
     <?php endif; ?>
 </div>
 <?php endif; ?>
+<?php $_dashBlocks['shifts_today'] = ob_get_clean(); ?>
 
-<?php if (
-    (admin_widget_on('pending_timeoff', $enabled_widgets) && $can('timeoff.view'))
-    || (admin_widget_on('pending_swaps', $enabled_widgets) && $can('swaps.view'))
-): ?>
-<!-- Demandes en attente -->
-<div class="dash-two-col card--mt">
 
-    <?php if (admin_widget_on('pending_timeoff', $enabled_widgets) && $feat('timeoff') && $can('timeoff.view')): ?>
-    <div class="card">
-        <div class="card-header">
-            <span><?= __('pending_timeoff') ?></span>
-            <a href="<?= route_url('admin.timeoff') ?>" class="card-header-link"><?= __('view_all') ?></a>
-        </div>
-        <?php if (empty($pending_timeoff)): ?>
-            <div class="empty-state"><?= __('no_pending_request') ?></div>
-        <?php else: ?>
-            <div class="table-wrap">
-                <table class="data-table" data-mob-stack>
-                    <thead>
-                        <tr><th>#</th><th><?= __('user') ?></th><th><?= __('type') ?></th><th><?= __('from') ?></th><th><?= __('to') ?></th></tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($pending_timeoff as $req): ?>
-                            <tr>
-                                <td data-label="#"><?= (int) $req['id'] ?></td>
-                                <td data-label="<?= htmlspecialchars(__('user')) ?>"><a href="<?= $BASE_URL ?>/admin/users/<?= employee_segment((int)($req['user_id'] ?? 0)) ?>/edit"><?= htmlspecialchars($users_map[(int)($req['user_id'] ?? 0)] ?? ('User #' . (int)($req['user_id'] ?? 0))) ?></a></td>
-                                <td data-label="<?= htmlspecialchars(__('type')) ?>"><span class="badge badge--pending"><?= htmlspecialchars((string) ($req['type'] ?? '—')) ?></span></td>
-                                <td data-label="<?= htmlspecialchars(__('from')) ?>"><?= htmlspecialchars((string) ($req['start_date'] ?? '—')) ?></td>
-                                <td data-label="<?= htmlspecialchars(__('to')) ?>"><?= htmlspecialchars((string) ($req['end_date'] ?? '—')) ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-        <?php endif; ?>
-    </div>
-    <?php endif; ?>
+<?php
+foreach ($bundle_widgets as $_bundleWidget) {
+    $_dashBlocks[$_bundleWidget['key']] = $_bundleWidget['html'];
+}
+$_dashLabels  = $widgetLabels;
+$_dashSaveUrl = route_url('admin.dashboard.layout');
+include __DIR__ . '/../_partials/_dashboard-grid.php';
+unset($_bundleWidget, $_dashBlocks, $_dashLabels, $_dashSaveUrl);
+?>
 
-    <?php if (admin_widget_on('pending_swaps', $enabled_widgets) && $feat('swaps') && $can('swaps.view')): ?>
-    <div class="card">
-        <div class="card-header">
-            <span><?= __('pending_swaps') ?></span>
-            <a href="<?= route_url('admin.swap_requests') ?>" class="card-header-link"><?= __('view_all') ?></a>
-        </div>
-        <?php if (empty($pending_swaps)): ?>
-            <div class="empty-state"><?= __('no_pending_swap') ?></div>
-        <?php else: ?>
-            <div class="table-wrap">
-                <table class="data-table" data-mob-stack>
-                    <thead>
-                        <tr><th>#</th><th><?= __('requester') ?></th><th><?= __('target') ?></th><th><?= __('shifts') ?></th></tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($pending_swaps as $swap): ?>
-                            <tr>
-                                <td data-label="#"><?= (int) $swap['id'] ?></td>
-                                <td data-label="<?= htmlspecialchars(__('requester')) ?>"><a href="<?= $BASE_URL ?>/admin/users/<?= employee_segment((int)($swap['requester_id'] ?? 0)) ?>/edit"><?= htmlspecialchars($users_map[(int)($swap['requester_id'] ?? 0)] ?? ('User #' . (int)($swap['requester_id'] ?? 0))) ?></a></td>
-                                <td data-label="<?= htmlspecialchars(__('target')) ?>"><a href="<?= $BASE_URL ?>/admin/users/<?= employee_segment((int)($swap['target_user_id'] ?? 0)) ?>/edit"><?= htmlspecialchars($users_map[(int)($swap['target_user_id'] ?? 0)] ?? ('User #' . (int)($swap['target_user_id'] ?? 0))) ?></a></td>
-                                <td data-label="<?= htmlspecialchars(__('shifts')) ?>">#<?= (int) ($swap['requester_shift_id'] ?? 0) ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-        <?php endif; ?>
-    </div>
-    <?php endif; ?>
-
-</div>
-<?php endif; ?>
-
-<?php if (admin_widget_on('timeclocks_today', $enabled_widgets) && $feat('timeclock') && $can('timeclock.view')): ?>
-<!-- Pointages actifs en ce moment -->
-<div class="card card--mt">
-    <div class="card-header">
-        <span><?= __('widget_timeclocks_today') ?></span>
-        <a href="<?= route_url('admin.timeclocks') ?>" class="card-header-link"><?= __('view_all') ?></a>
-    </div>
-    <?php if (empty($active_clocks_now)): ?>
-        <div class="empty-state"><?= __('no_active_timeclock') ?></div>
-    <?php else: ?>
-        <div class="table-wrap">
-            <table class="data-table" data-mob-stack>
-                <thead>
-                    <tr>
-                        <th><?= __('user') ?></th>
-                        <th><?= __('store') ?></th>
-                        <th><?= __('clock_in') ?></th>
-                        <th><?= __('duration') ?></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($active_clocks_now as $tc): ?>
-                        <?php
-                        $clockInRaw = $tc['clock_in_time'] ?? '';
-                        $clockInFmt = strlen($clockInRaw) >= 16 ? substr($clockInRaw, 11, 5) : $clockInRaw;
-                        $durationMin = 0;
-                        if ($clockInRaw !== '') {
-                            try {
-                                $dtIn = new DateTimeImmutable($clockInRaw);
-                                $durationMin = (int) floor((time() - $dtIn->getTimestamp()) / 60);
-                            } catch (\Exception) {}
-                        }
-                        $dh = intdiv($durationMin, 60);
-                        $dm = $durationMin % 60;
-                        ?>
-                        <tr>
-                            <td data-label="<?= htmlspecialchars(__('user')) ?>"><?= htmlspecialchars($tc['user_name']) ?></td>
-                            <td data-label="<?= htmlspecialchars(__('store')) ?>"><?= htmlspecialchars($tc['store_name']) ?></td>
-                            <td data-label="<?= htmlspecialchars(__('clock_in')) ?>" class="td-mono"><?= htmlspecialchars($clockInFmt) ?></td>
-                            <td data-label="<?= htmlspecialchars(__('duration')) ?>" class="td-nowrap"><?= $dh ?>h<?= str_pad((string)$dm, 2, '0', STR_PAD_LEFT) ?></td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-    <?php endif; ?>
-</div>
-<?php endif; ?>
-
-<?php if (admin_widget_on('team_notes', $enabled_widgets) && $feat('notes') && $can('notebook.view')): ?>
-<?php if ($notebookCss = bundle_asset('notebook', 'css/notebook.css')): ?>
-<link rel="stylesheet" href="<?= $notebookCss ?>">
-<?php endif; ?>
-<!-- Carnet de notes d'équipe -->
-<div class="card card--mt">
-    <div class="card-header">
-        <span><?= __('widget_team_notes') ?></span>
-        <a href="<?= route_url('notebook.index') ?>" class="card-header-link"><?= __('view_all') ?></a>
-    </div>
-    <?php if (empty($notebook_entries)): ?>
-        <div class="empty-state"><?= __('no_notebook_entries') ?></div>
-    <?php else: ?>
-        <ul class="notebook-widget-list">
-            <?php foreach ($notebook_entries as $entry): ?>
-                <li class="notebook-widget-item<?= !empty($entry['pinned']) ? ' notebook-widget-item--pinned' : '' ?>">
-                    <?php if (!empty($entry['pinned'])): ?>
-                        <span class="notebook-widget-item__pin" title="<?= htmlspecialchars(__('notebook_pinned')) ?>">📌</span>
-                    <?php endif; ?>
-                    <p class="notebook-widget-item__content"><?= nl2br(htmlspecialchars($entry['content'] ?? '')) ?></p>
-                    <div class="notebook-widget-item__meta">
-                        <span><?= htmlspecialchars($entry['author_name'] ?? __('notebook_anonymous_author')) ?></span>
-                        <span>·</span>
-                        <span><?= htmlspecialchars($entry['store_name'] ?? __('notebook_org_wide')) ?></span>
-                    </div>
-                </li>
-            <?php endforeach; ?>
-        </ul>
-    <?php endif; ?>
-</div>
+<?php if ($_dashChartData !== []): ?>
+<script type="application/json" id="kintai-stats-data"><?= json_encode($_dashChartData, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?></script>
+<script src="<?= $BASE_URL ?>/assets/js/modules/stats-charts.js"></script>
 <?php endif; ?>

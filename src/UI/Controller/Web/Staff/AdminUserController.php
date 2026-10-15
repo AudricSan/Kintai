@@ -4,25 +4,30 @@ declare(strict_types=1);
 
 namespace kintai\UI\Controller\Web\Staff;
 
+use kintai\Contract\Event\EmployeeCreated;
 use kintai\Core\Auth\CredentialRevoker;
+use kintai\Core\Auth\UserAnonymizer;
+use kintai\Core\Auth\OwnerGuard;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ForbiddenException;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Exceptions\PlanLimitExceededException;
+use kintai\Core\Extension\Events;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
-use kintai\Core\Repositories\HiringReportRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\Services\UserDisplayName;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\EmployeeStatsService;
 use kintai\Core\Services\PdfCjkFontResolver;
 use kintai\Core\Services\PlanLimitService;
 use kintai\Core\Services\RoleAssignmentSyncService;
+use kintai\Core\Validation\ColorRule;
 use kintai\UI\ViewRenderer;
 use kintai\UI\Controller\Web\HasAdminAccess;
 use kintai\Core\Routing\EmployeeRouteBinder;
@@ -38,14 +43,28 @@ final class AdminUserController
         private readonly ShiftTypeRepositoryInterface $shiftTypes,
         private readonly StoreUserRepositoryInterface $storeUsers,
         private readonly UserShiftTypeRateRepositoryInterface $userRates,
-        private readonly HiringReportRepositoryInterface $hiringReports,
         private readonly AuditLogger $auditLogger,
         private readonly RoleAssignmentSyncService $roleSync,
         private readonly PermissionService $permissions,
         private readonly PlanLimitService $planLimits,
+        private readonly OwnerGuard $ownerGuard,
         // Optionnel pour les tests qui construisent le contrôleur à la main.
         private readonly ?CredentialRevoker $revoker = null,
+        private readonly ?UserAnonymizer $anonymizer = null,
+        private readonly ?Events $events = null,
     ) {}
+
+    /** Annonce des événements aux bundles (contrat 1.13) : celle de la requête courante, sauf si un test en fournit une. */
+    private function events(): Events
+    {
+        return $this->events ?? Events::current();
+    }
+
+    /** Le conteneur l'injecte toujours ; un test qui supprime un compte doit le fournir. */
+    private function anonymizer(): UserAnonymizer
+    {
+        return $this->anonymizer ?? throw new \LogicException('UserAnonymizer requis pour supprimer un compte.');
+    }
 
     /**
      * Garde d'accès à l'employé ciblé par une route /admin/users/{id}/... : la permission doit être
@@ -96,6 +115,8 @@ final class AdminUserController
         } else {
             $users = $this->users->findAll();
         }
+        // Comptes supprimés (anonymisés) : conservés pour l'historique, plus listés.
+        $users = array_values(array_filter($users, fn(array $u): bool => empty($u['deleted_at'])));
         $users = $this->enrichIsAdmin($users);
 
         // Statistiques du mois en cours — même source que le dashboard employé et le
@@ -302,6 +323,8 @@ final class AdminUserController
         } else {
             $users = $this->users->findAll();
         }
+        // Comptes supprimés (anonymisés) : conservés pour l'historique, plus listés.
+        $users = array_values(array_filter($users, fn(array $u): bool => empty($u['deleted_at'])));
         $users = $this->enrichIsAdmin($users);
 
         $availableStores = $this->availableStores($managedIds);
@@ -400,6 +423,7 @@ final class AdminUserController
 
     public function storeUser(Request $request): Response
     {
+        ColorRule::assert($request->post('color', '#3B82F6'));
         try {
             $this->planLimits->assertCanCreateEmployee();
         } catch (PlanLimitExceededException) {
@@ -443,7 +467,8 @@ final class AdminUserController
         $isOwner      = $isRequesterOwner && $selectedRole !== null && !empty($selectedRole['is_system']);
 
         $saved    = $this->users->save([
-            'display_name'       => $request->post('display_name', ''),
+            // Vide : « Nom Prénom » (UserDisplayName).
+            'display_name'       => UserDisplayName::resolve($request->post('display_name', ''), $request->post('first_name', ''), $request->post('last_name', '')),
             'first_name'         => $request->post('first_name', ''),
             'last_name'          => $request->post('last_name', ''),
             'email'              => $request->post('email', ''),
@@ -479,31 +504,10 @@ final class AdminUserController
             if ($role !== null) {
                 $this->roleSync->syncStoreRoleById((int) $saved['id'], $storeId, (int) $role['id']);
             }
+        }
 
-            // Générer automatiquement le rapport d'embauche
-            $this->hiringReports->save([
-                'store_id'           => $storeId,
-                'user_id'            => (int) $saved['id'],
-                'employee_number'    => $empCode,
-                'employee_name'      => $request->post('display_name', ''),
-                'furigana_last_name'  => $request->post('furigana_last_name', '') ?: null,
-                'furigana_first_name' => $request->post('furigana_first_name', '') ?: null,
-                'gender'             => $request->post('gender', '') ?: null,
-                'tax_classification' => $request->post('tax_classification', '') ?: null,
-                'birth_date'         => $request->post('birth_date', '') ?: null,
-                'hire_date'          => date('Y-m-d'),
-                'education'          => $request->post('education', '') ?: null,
-                'postal_code'        => $request->post('postal_code', '') ?: null,
-                'address'            => $request->post('address', '') ?: null,
-                'phone'              => $request->post('phone', '') ?: null,
-                'mobile_phone'       => $request->post('mobile_phone', '') ?: null,
-                'email'              => $request->post('email', '') ?: null,
-                'guarantor_name'     => $request->post('guarantor_name', '') ?: null,
-                'guarantor_phone'    => $request->post('guarantor_phone', '') ?: null,
-                'store_name'         => null,
-                'hired_by'           => $request->post('display_name', ''),
-                'created_by'         => $request->getAttribute('auth_user')['id'] ?? 0,
-            ]);
+        if (!empty($saved['id'])) {
+            $this->events()->dispatch(new EmployeeCreated($saved, $storeId > 0 ? $storeId : null, self::authUserId($request), 'form'));
         }
 
         $this->auditLogger->log($request, 'user.created', 'user', (int) ($saved['id'] ?? 0), [
@@ -532,6 +536,7 @@ final class AdminUserController
         $empCode     = strtoupper(trim($request->post('employee_code', ''))) ?: null;
         $password    = $request->post('password', '');
         $color       = $request->post('color', '#3B82F6');
+        ColorRule::assert($color);
         // Seul un requérant déjà Owner peut créer un autre compte Owner (voir
         // storeUser()/updateUser() pour la même garde).
         $isAdmin     = !empty($request->getAttribute('auth_user')['is_admin']) && $request->post('is_admin') === '1';
@@ -548,9 +553,7 @@ final class AdminUserController
             return Response::json(['success' => false, 'error' => 'furigana_required'], 422);
         }
 
-        if ($displayName === '') {
-            $displayName = trim($firstName . ' ' . $lastName);
-        }
+        $displayName = UserDisplayName::resolve($displayName, $firstName, $lastName);
 
         if ($email === '') {
             // Générer un email unique @kintai.local
@@ -622,16 +625,9 @@ final class AdminUserController
             if ($role !== null) {
                 $this->roleSync->syncStoreRoleById((int) $saved['id'], $storeId, (int) $role['id']);
             }
-
-            // Générer automatiquement le rapport d'embauche
-            $this->hiringReports->save([
-                'store_id'        => $storeId,
-                'user_id'         => (int) $saved['id'],
-                'employee_number' => $empCode,
-                'employee_name'   => $displayName,
-                'created_by'      => $request->getAttribute('auth_user')['id'] ?? 0,
-            ]);
         }
+
+        $this->events()->dispatch(new EmployeeCreated($saved, $storeId > 0 ? $storeId : null, self::authUserId($request), 'excel_import'));
 
         $this->auditLogger->log($request, 'user.created', 'user', (int) $saved['id'], [
             'email'  => $email,
@@ -704,7 +700,7 @@ final class AdminUserController
 
         // Map store_id → store name pour l'affichage
         $storesMap = [];
-        foreach ($this->stores->findAll() as $s) {
+        foreach ($this->stores->findAllWithDeleted() as $s) {
             $storesMap[(int) $s['id']] = $s['name'] ?? '#' . $s['id'];
         }
 
@@ -781,6 +777,21 @@ final class AdminUserController
             throw new NotFoundException(__('error_user_not_found'));
         }
         $this->assertCanActOnUser($request, (int) $user['id'], 'employees.update');
+        ColorRule::assert($request->post('color', $user['color'] ?? '#3B82F6'));
+
+        // Un Owner ne se désactive pas lui-même, et le dernier Owner actif ne peut être ni désactivé ni dégradé.
+        // Champ absent de la requête : état actuel conservé (audit du 13/10/2026, M12). Avant, une requête sans
+        // is_active désactivait le compte, et sans is_admin (envoyée par un Owner) lui retirait le statut Owner.
+        $newIsActive  = $request->postFlag('is_active', $user['is_active'] ?? 1);
+        $newIsOwner   = $request->postFlag('is_admin', $this->ownerGuard->isOwner((int) $user['id'])) === 1;
+        $deactivating = !empty($user['is_active']) && $newIsActive === 0;
+        $demoting     = !empty($request->getAttribute('auth_user')['is_admin']) && !$newIsOwner;
+        if ($deactivating) {
+            $this->ownerGuard->assertNotSelfUnlessOwner((int) ($request->getAttribute('auth_user')['id'] ?? 0), (int) $user['id']);
+        }
+        if ($deactivating || $demoting) {
+            $this->ownerGuard->assertCanRemoveOwner((int) ($request->getAttribute('auth_user')['id'] ?? 0), (int) $user['id']);
+        }
 
         $email = trim($request->post('email', $user['email'] ?? ''));
         if ($email !== ($user['email'] ?? '')) {
@@ -802,30 +813,33 @@ final class AdminUserController
             return $this->updateUserError($request, $user, 'furigana_required');
         }
 
-        $empCode = strtoupper(trim($request->post('employee_code', ''))) ?: null;
+        $empCode = strtoupper(trim((string) $request->post('employee_code', $user['employee_code'] ?? ''))) ?: null;
         if ($empCode !== null && !EmployeeRouteBinder::isValidCode($empCode)) {
             return $this->updateUserError($request, $user, 'employee_code_invalid_url');
         }
+        // Champ facultatif : vide = null, absent = valeur actuelle.
+        $optional = fn(string $field): mixed => $request->hasPost($field) ? ($request->post($field, '') ?: null) : ($user[$field] ?? null);
         $data = array_merge($user, [
-            'display_name'       => $request->post('display_name', $user['display_name'] ?? ''),
+            // Absent : valeur actuelle ; vide : « Nom Prénom » (UserDisplayName).
+            'display_name'       => UserDisplayName::resolve($request->post('display_name', $user['display_name'] ?? ''), $firstName, $lastName),
             'first_name'         => $firstName,
             'last_name'          => $lastName,
             'email'              => $email,
-            'phone'              => $request->post('phone', '') ?: null,
-            'mobile_phone'       => $request->post('mobile_phone', '') ?: null,
+            'phone'              => $optional('phone'),
+            'mobile_phone'       => $optional('mobile_phone'),
             'furigana_last_name'  => $furiganaLastName,
             'furigana_first_name' => $furiganaFirstName,
-            'gender'             => $request->post('gender', '') ?: null,
-            'tax_classification' => $request->post('tax_classification', '') ?: null,
-            'birth_date'         => $request->post('birth_date', '') ?: null,
-            'education'          => $request->post('education', '') ?: null,
-            'postal_code'        => $request->post('postal_code', '') ?: null,
-            'address'            => $request->post('address', '') ?: null,
-            'guarantor_name'     => $request->post('guarantor_name', '') ?: null,
-            'guarantor_phone'    => $request->post('guarantor_phone', '') ?: null,
+            'gender'             => $optional('gender'),
+            'tax_classification' => $optional('tax_classification'),
+            'birth_date'         => $optional('birth_date'),
+            'education'          => $optional('education'),
+            'postal_code'        => $optional('postal_code'),
+            'address'            => $optional('address'),
+            'guarantor_name'     => $optional('guarantor_name'),
+            'guarantor_phone'    => $optional('guarantor_phone'),
             'color'              => $request->post('color', $user['color'] ?? '#3B82F6'),
             'employee_code'      => $empCode,
-            'is_active'          => $request->post('is_active') === '1' ? 1 : 0,
+            'is_active'          => $newIsActive,
         ]);
 
         // Mettre à jour le mot de passe uniquement si fourni
@@ -846,7 +860,7 @@ final class AdminUserController
         // Un non-Owner ne touche donc jamais au statut Owner de la cible, ni
         // dans un sens ni dans l'autre.
         if (!empty($request->getAttribute('auth_user')['is_admin'])) {
-            $this->roleSync->syncOwnerRole((int) $user['id'], $request->post('is_admin') === '1');
+            $this->roleSync->syncOwnerRole((int) $user['id'], $newIsOwner);
         }
         $this->auditLogger->logUpdate($request, 'user.updated', 'user', (int) $user['id'], $user, $data, [], null, null);
 
@@ -872,8 +886,11 @@ final class AdminUserController
     {
         $id = (int) $request->param('id');
         $this->assertCanActOnUser($request, $id, 'employees.delete');
-        $this->users->delete($id);
-        $this->revoker?->revokeAllFor($id);
+        $this->ownerGuard->assertNotSelfUnlessOwner((int) ($request->getAttribute('auth_user')['id'] ?? 0), $id);
+        $this->ownerGuard->assertCanRemoveOwner((int) ($request->getAttribute('auth_user')['id'] ?? 0), $id);
+        // Anonymisation plutôt qu'effacement : l'historique (shifts, pointages, paie) reste intact, quel que
+        // soit le pilote de base de données (voir UserAnonymizer).
+        $this->anonymizer()->anonymize($id);
         $this->auditLogger->log($request, 'user.deleted', 'user', $id, []);
         return Response::redirect($this->base() . '/admin/users?success=deleted');
     }
@@ -978,4 +995,10 @@ final class AdminUserController
         return Response::redirect($this->base() . '/admin/users/' . employee_segment($userId) . '/edit?success=rate_deleted');
     }
 
+    /** Identifiant de l'utilisateur connecté, null si inconnu. */
+    private static function authUserId(Request $request): ?int
+    {
+        $id = (int) ($request->getAttribute('auth_user')['id'] ?? 0);
+        return $id > 0 ? $id : null;
+    }
 }

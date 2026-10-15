@@ -44,9 +44,10 @@ $section = function (string $titleKey, string $body, string $span = '') use ($as
 <div class="<?= $as_cards ? 'form-section-grid' : 'form-stack' ?>">
     <?php ob_start(); ?>
         <div class="form-group">
-            <label class="form-label form-label--required"><?= __('display_name') ?></label>
-            <input type="text" name="display_name" class="form-control"
-                   value="<?= htmlspecialchars($user['display_name'] ?? '') ?>" required>
+            <label class="form-label"><?= __('display_name') ?></label>
+            <input type="text" name="display_name" class="form-control" maxlength="200"
+                   value="<?= htmlspecialchars($user['display_name'] ?? '') ?>">
+            <p class="form-hint"><?= __('display_name_hint') ?></p>
         </div>
 
         <div class="form-row">
@@ -235,6 +236,7 @@ $section = function (string $titleKey, string $body, string $span = '') use ($as
             <?php if (!$hasUnifiedRoleSelect): ?>
             <div class="form-group employee-info-grid__owner">
                 <label class="form-toggle form-toggle--labeled">
+                    <input type="hidden" name="is_admin" value="0"<?= $formAttr ?>>
                     <input type="checkbox" name="is_admin" value="1" class="form-toggle__input"<?= $formAttr ?> <?= !empty($user['is_admin']) ? 'checked' : '' ?>>
                     <span class="form-toggle__track"></span>
                     <span><?= htmlspecialchars($owner_role_name) ?></span>

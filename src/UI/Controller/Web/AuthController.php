@@ -7,9 +7,12 @@ namespace kintai\UI\Controller\Web;
 use kintai\Core\Auth\AuthService;
 use kintai\Core\Auth\PasswordPolicy;
 use kintai\Core\Auth\CredentialRevoker;
+use kintai\Core\Auth\UserAnonymizer;
 use kintai\Core\Exceptions\NotFoundException;
+use kintai\Core\Extension\ProfileSections;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\Services\LocaleCookie;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\AvatarImageOptimizer;
 use kintai\Core\Repositories\AvailabilityRepositoryInterface;
@@ -27,29 +30,9 @@ final class AuthController
     use HasBaseUrl;
     private const NAV_OWNER_SECTIONS   = ['planning', 'hr', 'requests', 'statistics', 'system'];
     private const NAV_MANAGER_SECTIONS = ['planning', 'hr', 'requests', 'statistics'];
-    private const NAV_OWNER_KEYS = [
-        'shifts', 'calendar', 'shift_types', 'timeclocks',
-        'users', 'stores',
-        'timeoff', 'swaps', 'open_shifts', 'messages',
-        'daily_reports', 'audit_log',
-    ];
-    private const NAV_MANAGER_KEYS = [
-        'shifts', 'calendar', 'shift_types', 'timeclocks',
-        'timeoff', 'swaps', 'open_shifts', 'messages',
-        'employee_report', 'daily_reports',
-    ];
-    private const BOTTOM_NAV_POOL    = ['shifts', 'team', 'requests', 'messages', 'swaps', 'timeclocks', 'daily_reports'];
-    private const BOTTOM_NAV_DEFAULT = ['shifts', 'team', 'requests'];
 
-    // Vocabulaire de nav pour un employé simple (ni admin, ni manager d'un store)
-    private const NAV_EMPLOYEE_KEYS = [
-        'my_planning', 'timeclock',
-        'my_timeoff', 'swaps', 'open_shifts', 'messages',
-        'my_profile',
-    ];
+    // Entrées masquables : calculées par la vue depuis kintai\Core\Extension\Navigation (mêmes clés que la barre du haut).
     private const NAV_EMPLOYEE_SECTIONS       = ['planning', 'requests', 'statistics', 'account'];
-    private const BOTTOM_NAV_POOL_EMPLOYEE    = ['my_planning', 'timeclock', 'my_timeoff', 'messages', 'swaps', 'open_shifts', 'my_profile'];
-    private const BOTTOM_NAV_DEFAULT_EMPLOYEE = ['my_planning', 'timeclock', 'my_timeoff'];
 
     public function __construct(
         private readonly ViewRenderer $view,
@@ -66,7 +49,14 @@ final class AuthController
         // Optionnel pour ne pas casser les tests qui construisent le contrôleur à la main ;
         // le conteneur l'injecte toujours en production.
         private readonly ?CredentialRevoker $revoker = null,
+        private readonly ?UserAnonymizer $anonymizer = null,
     ) {}
+
+    /** Le conteneur l'injecte toujours ; un test qui supprime un compte doit le fournir. */
+    private function anonymizer(): UserAnonymizer
+    {
+        return $this->anonymizer ?? throw new \LogicException('UserAnonymizer requis pour supprimer un compte.');
+    }
 
     /** @var array<string, string> extension → type MIME (avatars) */
     private const AVATAR_MIME_TYPES = [
@@ -85,9 +75,12 @@ final class AuthController
         }
 
         return Response::html($this->view->render('auth.login', [
-            'title'      => 'Connexion',
+            'title'      => __('login_page'),
             'error'      => !empty($_GET['error']),
             'login_mode' => $_GET['mode'] ?? 'code',
+            // Sélecteur de langue de la page de connexion (pour la session ; voir switchLanguage()).
+            'login_languages' => $this->languages->findAllActive(),
+            'current_locale'  => \kintai\Core\Container::getInstance()->make(\kintai\Core\Services\TranslationService::class)->getLocale(),
         ], 'layout.guest'));
     }
 
@@ -118,8 +111,10 @@ final class AuthController
                 $this->users->save(['id' => $userId, 'last_login_at' => date('Y-m-d H:i:s')]);
             }
 
-            // Laisser la préférence BD de l'utilisateur prendre effet (I18nMiddleware)
+            // Laisser la préférence BD de l'utilisateur prendre effet (I18nMiddleware), et la retenir pour la page
+            // de connexion de ce navigateur après déconnexion.
             unset($_SESSION['locale']);
+            LocaleCookie::remember(is_array($authUser) ? (string) ($authUser['language'] ?? '') : null);
 
             if ($this->auth->isAdmin()) {
                 $destination = $this->base() . '/admin/shifts/timeline';
@@ -152,7 +147,10 @@ final class AuthController
         return Response::redirect(back_url($this->base() . '/'));
     }
 
-    /** Change la langue de l'utilisateur (session + BD si connecté). */
+    /**
+     * Sélecteur de langue. Connecté : enregistrée dans le profil (et retenue pour la page de connexion). Non
+     * connecté (page de connexion) : pour la session seulement.
+     */
     public function switchLanguage(Request $request): Response
     {
         $locale = $request->param('locale');
@@ -161,20 +159,16 @@ final class AuthController
             return Response::redirect(back_url($this->base() . '/'));
         }
 
-        $_SESSION['locale'] = $locale;
-
-        // Persister en BD si l'utilisateur est connecté
         $user = $this->auth->user();
         if ($user) {
-            try {
-                $dbUser = $this->users->findById((int) $user['id']);
-                if ($dbUser) {
-                    $dbUser['language']    = $locale;
-                    $this->users->save($dbUser);
-                }
-            } catch (\Throwable) {
-                // Colonne language absente (migration non exécutée) — session suffit
+            $dbUser = $this->users->findById((int) $user['id']);
+            if ($dbUser) {
+                $dbUser['language'] = $locale;
+                $this->users->save($dbUser);
+                LocaleCookie::remember($locale);
             }
+        } else {
+            $_SESSION['locale'] = $locale;
         }
 
         // Retour à la page d'origine seulement si elle appartient au site (back_url() vérifie l'origine du Referer) :
@@ -246,20 +240,10 @@ final class AuthController
         $isOwner       = !empty($user['is_admin']);
         if ($isManagerView) {
             $defaultSecs = $isOwner ? self::NAV_OWNER_SECTIONS : self::NAV_MANAGER_SECTIONS;
-            $allowedKeys = $isOwner ? self::NAV_OWNER_KEYS : self::NAV_MANAGER_KEYS;
-            $bnPool      = self::BOTTOM_NAV_POOL;
-            $bnDefault   = self::BOTTOM_NAV_DEFAULT;
+            $bnDefault   = \kintai\Core\Extension\Navigation::MOBILE_DEFAULT_MANAGER;
         } else {
             $defaultSecs = self::NAV_EMPLOYEE_SECTIONS;
-            $allowedKeys = self::NAV_EMPLOYEE_KEYS;
-            $bnPool      = self::BOTTOM_NAV_POOL_EMPLOYEE;
-            $bnDefault   = self::BOTTOM_NAV_DEFAULT_EMPLOYEE;
-            // L'onglet "Rapports journaliers" n'est proposé dans le menu personnalisable
-            // que si l'employé a effectivement le droit d'en créer pour au moins un store
-            // (calculé globalement par DailyReportNavMiddleware).
-            if (!empty($this->view->get('daily_report_staff_stores'))) {
-                $allowedKeys[] = 'daily_reports';
-            }
+            $bnDefault   = \kintai\Core\Extension\Navigation::MOBILE_DEFAULT_EMPLOYEE;
         }
 
         $navHidden   = $this->navPrefs->getHidden($userId);
@@ -269,7 +253,7 @@ final class AuthController
             $defaultSecs
         )));
 
-        $bnSaved   = $this->navPrefs->getBottomNavItems($userId);
+        $bnSaved   = \kintai\Core\Extension\Navigation::migrateLegacyMobileKeys($this->navPrefs->getBottomNavItems($userId));
         $bnItems   = !empty($bnSaved) ? $bnSaved : $bnDefault;
 
         return Response::html($this->view->render('auth.profile', [
@@ -284,11 +268,11 @@ final class AuthController
             'nav_hidden'           => $navHidden,
             'nav_section_order'    => $navSecOrder,
             'nav_default_sections' => $defaultSecs,
-            'nav_allowed_keys'     => $allowedKeys,
             'is_owner'             => $isOwner,
             'is_manager_view'      => $isManagerView,
-            'bottom_nav_pool'      => $bnPool,
             'bottom_nav_items'     => $bnItems,
+            // Sections des bundles actifs dans « Mes informations » (contrat 1.12), ex. l'annuaire.
+            'profile_sections'     => ProfileSections::current()->render($user, $this->view),
         ], 'layout.app'));
     }
 
@@ -302,10 +286,11 @@ final class AuthController
 
         $userId      = (int) $user['id'];
         $activeCodes = array_column($this->languages->findAllActive(), 'code');
-        $default     = $this->languages->findDefault();
-        $language    = $request->post('language', $default['code'] ?? 'fr');
+        // Champ absent : la langue actuelle est conservée (voir le commentaire plus bas). Vide : le compte suit la
+        // langue de l'instance ; une langue inconnue ou désactivée revient aussi à la langue de l'instance.
+        $language    = (string) $request->post('language', (string) ($user['language'] ?? ''));
         if (!in_array($language, $activeCodes, true)) {
-            $language = $default['code'] ?? 'fr';
+            $language = '';
         }
 
         // Récupérer l'utilisateur complet depuis la DB pour être sûr de ne rien perdre
@@ -317,21 +302,21 @@ final class AuthController
             // et avaler l'échec masquerait un vrai problème derrière un "?success=1" trompeur
             // — l'utilisateur croirait sa préférence enregistrée alors qu'elle ne l'est pas.
             $dbUser['language']            = $language;
-            $dbUser['phone']               = trim((string) $request->post('phone', ''));
-            $dbUser['mobile_phone']        = trim((string) $request->post('mobile_phone', ''));
-            $dbUser['postal_code']         = trim((string) $request->post('postal_code', ''));
-            $dbUser['address']             = trim((string) $request->post('address', ''));
-            $dbUser['bio']                 = trim((string) $request->post('bio', ''));
-            $dbUser['skills']              = trim((string) $request->post('skills', ''));
-            $dbUser['languages_spoken']    = trim((string) $request->post('languages_spoken', ''));
-            $dbUser['hobbies']             = trim((string) $request->post('hobbies', ''));
-            $dbUser['show_in_directory']   = $request->post('show_in_directory') === '1' ? 1 : 0;
-            $dbUser['share_email']         = $request->post('share_email') === '1' ? 1 : 0;
-            $dbUser['share_phone']         = $request->post('share_phone') === '1' ? 1 : 0;
-            $dbUser['share_mobile_phone']  = $request->post('share_mobile_phone') === '1' ? 1 : 0;
+            // Un champ absent de la requête garde sa valeur (audit du 13/10/2026, M12) : une requête partielle
+            // vidait téléphone et adresse.
+            foreach (['phone', 'mobile_phone', 'postal_code', 'address', 'bio', 'skills', 'languages_spoken', 'hobbies'] as $field) {
+                if ($request->hasPost($field)) {
+                    $dbUser[$field] = trim((string) $request->post($field, ''));
+                }
+            }
+            // Cases des sections de bundles affichées (contrat 1.12, ex. l'annuaire) : seules celles-ci sont
+            // enregistrées ; les autres, dont celles d'un bundle désactivé, gardent leur valeur.
+            foreach (ProfileSections::current()->flags() as $flag) {
+                $dbUser[$flag] = $request->postFlag($flag, $dbUser[$flag] ?? 0);
+            }
             $this->users->save($dbUser);
 
-            $_SESSION['locale'] = $language;
+            LocaleCookie::remember($language);
             $this->auditLogger->logUpdate($request, 'user.update_profile', 'user', $userId, $oldUser, $dbUser, [], null, $userId);
         }
 
@@ -540,51 +525,24 @@ final class AuthController
         $userId   = (int) $user['id'];
         $password = (string) $request->post('password', '');
 
+        // Un Owner ne supprime pas son propre compte : la suppression anonymise et désactive le compte, ce qui
+        // pourrait laisser l'instance sans administrateur. Il doit d'abord céder le rôle à un autre Owner.
+        if ($this->auth->isAdmin()) {
+            return Response::redirect($this->base() . '/profile?tab=data&error=owner_cannot_delete');
+        }
+
         // Toujours vérifier : un hash vide fait échouer password_verify(), donc refuse l'action.
         $storedHash = (string) ($user['password_hash'] ?? '');
         if (!password_verify($password, $storedHash)) {
             return Response::redirect($this->base() . '/profile?tab=data&error=current_password_wrong');
         }
 
-        // La photo de profil est un fichier sur disque, pas juste une colonne :
-        // sans ce nettoyage elle survivrait à l'anonymisation du compte.
-        $existing = $this->users->findById($userId);
-        if (!empty($existing['avatar_path'])) {
-            @unlink(BASE_PATH . '/storage/uploads/avatars/' . basename((string) $existing['avatar_path']));
-        }
-
-        // Anonymize instead of hard delete: keep related records for data integrity
-        $this->users->save([
-            'id'                 => $userId,
-            'first_name'         => '[Supprimé]',
-            'last_name'          => '',
-            'display_name'       => 'Utilisateur supprimé',
-            'email'              => 'deleted-' . $userId . '@kintai.local',
-            'employee_code'      => null,
-            'password_hash'      => '',
-            'phone'              => null,
-            'language'           => null,
-            'is_active'          => 0,
-            'mobile_phone'       => null,
-            'postal_code'        => null,
-            'address'            => null,
-            'avatar_path'        => null,
-            'bio'                => null,
-            'skills'             => null,
-            'languages_spoken'   => null,
-            'hobbies'            => null,
-            'show_in_directory'  => 0,
-            'share_email'        => 0,
-            'share_phone'        => 0,
-            'share_mobile_phone' => 0,
-            'updated_at'         => date('Y-m-d H:i:s'),
-        ]);
+        // Anonymisation (données personnelles, avatar, rôles, jetons) : même traitement que la suppression
+        // par un admin, l'historique reste rattaché au compte.
+        $this->anonymizer()->anonymize($userId);
 
         $this->auditLogger->log($request, 'user.self_deleted', 'user', $userId, [], null, $userId);
 
-        // Le compte est désormais inactif (les sessions et cookies sont de toute façon refusés) :
-        // on purge quand même ses cookies « rester connecté » et jetons d'API.
-        $this->revoker?->revokeAllFor($userId);
         $this->auth->logout();
         return Response::redirect($this->base() . '/login?deleted=1');
     }

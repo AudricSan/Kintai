@@ -4,17 +4,16 @@ declare(strict_types=1);
 
 namespace kintai\UI\Controller\Web;
 
+use kintai\Contract\Extension\DashboardWidget;
 use kintai\Core\Auth\PermissionService;
-use kintai\Core\Container;
-use kintai\Core\Repositories\NotebookEntryRepositoryInterface;
-use kintai\Core\Repositories\ShiftClaimRepositoryInterface;
+use kintai\Core\Extension\DashboardLayout;
+use kintai\Core\Extension\DashboardWidgets;
+use kintai\Core\Extension\PendingRequests;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
-use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
-use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
-use kintai\Core\Repositories\TimeclockRepositoryInterface;
+use kintai\Core\Extension\Attendances;
 use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
@@ -34,14 +33,13 @@ final class HomeController
         'financial_overview',
         'hr_absenteeism',
         'shifts_today',
-        'pending_timeoff',
-        'pending_swaps',
-        'timeclocks_today',
-        'team_notes',
     ];
 
-    /** Nombre maximum de notes affichées dans le widget dashboard (épinglées + récentes confondues). */
-    private const NOTEBOOK_WIDGET_LIMIT = 5;
+    /** Largeurs par défaut des widgets du gérant : Finances et RH côte à côte, les autres en pleine largeur. */
+    public const ADMIN_WIDGET_WIDTHS = [
+        'financial_overview' => DashboardLayout::HALF,
+        'hr_absenteeism'     => DashboardLayout::HALF,
+    ];
 
     /** Fenêtre glissante (jours) du widget "Aperçu statistiques", alignée sur la période "30 jours" des pages analytics. */
     private const STATS_WIDGET_PERIOD_DAYS = 30;
@@ -61,14 +59,12 @@ final class HomeController
         private readonly StoreRepositoryInterface $stores,
         private readonly ShiftRepositoryInterface $shifts,
         private readonly ShiftTypeRepositoryInterface $shiftTypes,
-        private readonly TimeoffRequestRepositoryInterface $timeoffRequests,
-        private readonly ShiftSwapRequestRepositoryInterface $swapRequests,
         private readonly UserDashboardPrefsRepositoryInterface $dashboardPrefs,
-        private readonly TimeclockRepositoryInterface $timeclocks,
         private readonly StoreUserRepositoryInterface $storeUsers,
         private readonly StoreStatsServiceInterface $storeStats,
         private readonly DashboardAlertService $dashboardAlerts,
         private readonly PermissionService $permissions,
+        private readonly ?PendingRequests $pendingRequests = null,
     ) {}
 
     public function index(Request $request): Response
@@ -95,28 +91,6 @@ final class HomeController
 
         $allStores   = array_values(array_filter($this->stores->findAll(), fn($s) => $inScope((int) $s['id'])));
         $shiftsToday = array_values(array_filter($this->shifts->findAllByDate($today), fn($s) => $inScope((int) ($s['store_id'] ?? 0))));
-        $allTimeoff  = array_values(array_filter($this->timeoffRequests->findAll(), fn($r) => $inScope((int) ($r['store_id'] ?? 0))));
-        $allSwaps    = array_values(array_filter($this->swapRequests->findAll(), fn($r) => $inScope((int) ($r['store_id'] ?? 0))));
-
-        $pendingTimeoff = array_values(array_filter($allTimeoff, fn($r) => ($r['status'] ?? '') === 'pending'));
-        $pendingSwaps   = array_values(array_filter($allSwaps,   fn($r) => ($r['status'] ?? '') === 'pending'));
-
-        // Candidatures bourse aux shifts en attente, comptées dans le KPI "Demandes en
-        // attente" au même titre que congés et échanges (page de résumé admin.requests).
-        // ShiftClaimRepositoryInterface n'est lié au container que si le bundle
-        // "shift-claim" est actif (voir ShiftClaimBundle) : résolution différée et
-        // gardée par feat_bundle(), jamais en dépendance de constructeur ici.
-        $pendingClaims = [];
-        if (feat_bundle('open_shifts')) {
-            $container = Container::getInstance();
-            if ($container->has(ShiftClaimRepositoryInterface::class)) {
-                $shiftClaims   = $container->make(ShiftClaimRepositoryInterface::class);
-                $pendingClaims = array_values(array_filter(
-                    $shiftClaims->findAll(),
-                    fn($c) => ($c['status'] ?? '') === 'pending' && $inScope((int) ($c['store_id'] ?? 0))
-                ));
-            }
-        }
 
         $storesMap = [];
         foreach ($allStores as $s) {
@@ -161,58 +135,18 @@ final class HomeController
         });
 
         // Pointages actifs en ce moment
-        $allTimeclocks   = array_values(array_filter($this->timeclocks->findAll(), fn($tc) => $inScope((int) ($tc['store_id'] ?? 0))));
-        $activeClocksNow = array_values(array_filter(
-            $allTimeclocks,
-            fn($tc) => ($tc['shift_date'] ?? '') === $today && empty($tc['clock_out_time'])
-        ));
-        $activeClocksNow = array_map(function (array $tc) use ($usersMap, $storesMap): array {
-            $tc['user_name']  = $usersMap[(int)  ($tc['user_id']  ?? 0)] ?? ('User #'  . (int) ($tc['user_id']  ?? 0));
-            $tc['store_name'] = $storesMap[(int) ($tc['store_id'] ?? 0)] ?? ('Store #' . (int) ($tc['store_id'] ?? 0));
-            return $tc;
-        }, $activeClocksNow);
-        usort($activeClocksNow, fn($a, $b) => strcmp($a['clock_in_time'] ?? '', $b['clock_in_time'] ?? ''));
 
+        // Widgets proposés : ceux du Core et ceux des bundles actifs (Bundle::dashboardWidgets(), contrat 1.4). Les
+        // widgets historiques d'un bundle qui déclare les siens ne sont plus rendus par le Core ($enabledWidgets).
+        $dashWidgets = DashboardWidgets::current();
+        $widgetKeys  = $dashWidgets->keys(DashboardWidget::MANAGER, self::ADMIN_WIDGETS);
         $saved = $this->dashboardPrefs->getEnabledWidgets((int) $user['id'], 'admin');
-        $enabledWidgets = array_flip(array_values(
+        $enabledAll = array_flip(array_values(
             $saved !== null
-                ? array_intersect($saved, self::ADMIN_WIDGETS)
-                : self::ADMIN_WIDGETS
+                ? array_intersect($saved, $widgetKeys)
+                : $widgetKeys
         ));
-
-        // Notes d'équipe épinglées/récentes (organisation entière + stores en scope) — même
-        // garde que pendingClaims plus haut : NotebookEntryRepositoryInterface n'est lié au
-        // container que si le bundle "notebook" est actif (voir NotebookBundle), résolution
-        // différée et jamais en dépendance de constructeur ici.
-        $notebookEntries = [];
-        if (
-            feat_bundle('notes')
-            && array_key_exists('team_notes', $enabledWidgets)
-            && $this->permissions->can($user, 'notebook.view', null)
-        ) {
-            $container = Container::getInstance();
-            if ($container->has(NotebookEntryRepositoryInterface::class)) {
-                $notebook = $container->make(NotebookEntryRepositoryInterface::class);
-                $now = date('Y-m-d H:i:s');
-                $notebookEntries = array_values(array_filter(
-                    $notebook->findVisibleForStores($managedStoreIds ?? array_column($allStores, 'id')),
-                    fn($n) => empty($n['expires_at']) || $n['expires_at'] > $now
-                ));
-                usort($notebookEntries, function ($a, $b) {
-                    $pinCmp = (int) ($b['pinned'] ?? 0) <=> (int) ($a['pinned'] ?? 0);
-                    return $pinCmp !== 0 ? $pinCmp : strcmp($b['created_at'] ?? '', $a['created_at'] ?? '');
-                });
-                $notebookEntries = array_slice($notebookEntries, 0, self::NOTEBOOK_WIDGET_LIMIT);
-                $notebookEntries = array_map(function (array $n) use ($storesMap): array {
-                    $author = $n['author_id'] !== null ? $this->users->findById((int) $n['author_id']) : null;
-                    $n['author_name'] = $author !== null
-                        ? trim(($author['last_name'] ?? '') . ' ' . ($author['first_name'] ?? '')) ?: ($author['email'] ?? '#' . $n['author_id'])
-                        : null;
-                    $n['store_name'] = $n['store_id'] !== null ? ($storesMap[(int) $n['store_id']] ?? null) : null;
-                    return $n;
-                }, $notebookEntries);
-            }
-        }
+        $enabledWidgets = $enabledAll;
 
         // Aperçu statistiques (heures, coût, scores) : même permission que les pages analytics
         // complètes (admin.stores.stats), calculé uniquement si le widget est actif pour éviter
@@ -252,33 +186,66 @@ final class HomeController
             $hrStats    = $this->buildHrStats($hrStoreIds);
         }
 
+        $userCan = fn(string $perm): bool => $this->permissions->can($user, $perm, null);
+
+        // Compteur « Demandes en attente » : toutes sortes de demandes visibles (congés, échanges, candidatures…), lues
+        // à travers les fournisseurs (kintai\Core\Extension\PendingRequests — Bundle::pendingRequestsProviders(),
+        // contrat 1.9, ou repli historique), comme la page « Demandes ».
+        $pending        = $this->pendingRequests ?? PendingRequests::current();
+        $canSeeRequests = fn(string $perm): bool => !empty($user['is_admin']) || $userCan($perm);
+        $requestsFeat   = $this->storeFeatureCheck();
+
+        $bundleWidgets = $dashWidgets->render(
+            DashboardWidget::MANAGER,
+            self::ADMIN_WIDGETS,
+            array_keys($enabledAll),
+            [
+                'user'              => $user,
+                'store_ids'         => array_map('intval', $managedStoreIds ?? array_column($allStores, 'id')),
+                'managed_store_ids' => $managedStoreIds,
+                'stores_map'        => $storesMap,
+                'today'             => $today,
+            ],
+            $this->view,
+            $userCan,
+            $this->storeFeatureCheck(),
+        );
+
         return Response::html($this->view->render('dashboard.index', [
             'title'              => 'Dashboard',
             'stats'              => [
                 'users'            => count($allUsers),
                 'stores'           => count($allStores),
                 'shifts_today'     => count($shiftsToday),
-                'pending_requests' => count($pendingTimeoff) + count($pendingSwaps) + count($pendingClaims),
+                'pending_requests' => $pending->count($managedStoreIds, $canSeeRequests, $requestsFeat),
             ],
             'shifts_today'       => $shiftsToday,
-            'pending_timeoff'    => $pendingTimeoff,
-            'pending_swaps'      => $pendingSwaps,
-            'pending_claims'     => $pendingClaims,
+            'pending_requests_visible' => $pending->hasVisible($canSeeRequests, $requestsFeat),
             'users_map'          => $usersMap,
             'sort'               => $sort,
-            'active_clocks_now'  => $activeClocksNow,
             'store_stats_rows'   => $storeStatsRows,
             'store_stats_period' => self::STATS_WIDGET_PERIOD_DAYS,
             'store_stats_hours_by_week' => $storeStatsHoursByWeek,
             'dashboard_alerts'   => $dashboardAlerts,
             'financial_overview' => $financialOverview,
             'hr_stats'           => $hrStats,
-            'notebook_entries'   => $notebookEntries,
-            'user_can'           => fn(string $perm) => $this->permissions->can($user, $perm, null),
+            'user_can'           => $userCan,
 
-            'enabled_widgets'    => $enabledWidgets,
-            'all_widgets'        => self::ADMIN_WIDGETS,
+            'enabled_widgets'     => $enabledWidgets,
+            'enabled_widgets_all' => $enabledAll,
+            'all_widgets'         => $widgetKeys,
+            'widget_layout'       => DashboardLayout::resolve($widgetKeys, $this->dashboardPrefs->getLayout((int) $user['id'], 'admin'), self::ADMIN_WIDGET_WIDTHS),
+            'bundle_widgets'      => $bundleWidgets,
+            'bundle_widget_meta'  => $dashWidgets->meta(DashboardWidget::MANAGER, self::ADMIN_WIDGETS),
         ], 'layout.app'));
+    }
+
+    /** Fonctionnalité active pour les magasins de l'utilisateur (même règle que $feat dans les vues). */
+    private function storeFeatureCheck(): \Closure
+    {
+        $storeFeatures = $this->view->get('store_features');
+        return static fn(?string $f): bool => feat_bundle($f)
+            && ($f === null || $storeFeatures === null || in_array($f, (array) $storeFeatures, true));
     }
 
     /**
@@ -362,7 +329,7 @@ final class HomeController
             }
 
             $periodTimeclocks = array_values(array_filter(
-                $this->timeclocks->findByStoreBetween($sid, $since, $today),
+                Attendances::current()->forStoreBetween($sid, $since, $today),
                 fn($tc) => ($tc['shift_date'] ?? '') >= $since && ($tc['shift_date'] ?? '') <= $today
             ));
             foreach ($periodTimeclocks as $tc) {
@@ -413,7 +380,12 @@ final class HomeController
         $userId = (int) $user['id'];
 
         $checked = (array) ($request->allPost()['widgets'] ?? []);
-        $widgets = array_values(array_intersect(self::ADMIN_WIDGETS, array_keys($checked)));
+        // Widgets d'un bundle désactivé en ce moment : non proposés, mais conservés pour sa réactivation.
+        $widgets = DashboardWidgets::mergePreferences(
+            DashboardWidgets::current()->keys(DashboardWidget::MANAGER, self::ADMIN_WIDGETS),
+            array_map('strval', array_keys($checked)),
+            $this->dashboardPrefs->getEnabledWidgets($userId, 'admin'),
+        );
 
         $this->dashboardPrefs->saveWidgets($userId, $widgets, 'admin');
 

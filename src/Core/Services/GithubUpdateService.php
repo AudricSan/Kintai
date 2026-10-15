@@ -5,21 +5,24 @@ declare(strict_types=1);
 namespace kintai\Core\Services;
 
 use kintai\Core\Database\MigrationRunner;
-use kintai\Core\Repositories\StorePhotoRepositoryInterface;
 
 /**
- * Met à jour l'application depuis une Release GitHub taguée : télécharge
- * l'archive de la release, synchronise les fichiers (en supprimant ceux
- * qui ont disparu depuis la dernière mise à jour appliquée par ce
- * mécanisme), lance les migrations en attente et tente `composer install`
- * si composer.lock a changé.
+ * Met à jour l'application depuis une Release GitHub taguée : télécharge l'archive construite par la release
+ * (code + vendor/), en vérifie l'intégrité, synchronise les fichiers (en supprimant ceux qui ont disparu depuis la
+ * dernière mise à jour appliquée par ce mécanisme) et lance les migrations en attente.
+ *
+ * Intégrité (audit du 13/10/2026, M10) : l'archive kintai-{tag}.zip n'est appliquée que si son empreinte SHA-256
+ * correspond au fichier SHA256SUMS publié avec la release, et si son release-manifest.json désigne bien ce tag et
+ * le commit vers lequel pointe le tag sur GitHub. Avant, le zipball source était extrait sans aucun contrôle, puis
+ * `composer install` était lancé via shell_exec ; vendor/ est désormais fourni par l'archive (release.yml).
+ * Limite : ces contrôles détectent une archive altérée, tronquée ou rattachée au mauvais tag ; ils ne protègent pas
+ * d'un compte GitHub compromis, qui pourrait publier archive et empreinte cohérentes.
  */
 final class GithubUpdateService
 {
     /** Préfixes jamais écrasés ni supprimés, relatifs à BASE_PATH (style unix). */
     private const EXCLUDED_PREFIXES = [
         'storage/',
-        'vendor/',
         '.git/',
         'config/database.local.php',
         '.env',
@@ -32,6 +35,11 @@ final class GithubUpdateService
      * d'une seule page — voir fetchReleaseListData().
      */
     private const MAX_RELEASE_PAGES = 5;
+
+    /** Fichier des empreintes publié avec chaque release (format sha256sum : « <hex>  <nom> »). */
+    public const CHECKSUMS_ASSET = 'SHA256SUMS';
+    /** Fichier placé à la racine de l'archive par release.yml : {"tag": "vX.Y.Z", "commit": "<sha>"}. */
+    public const RELEASE_MANIFEST = 'release-manifest.json';
     private const RELEASES_PER_PAGE = 100;
 
     private string $basePath;
@@ -47,16 +55,20 @@ final class GithubUpdateService
     /**
      * @param \Closure|null $releaseFetcher fn(string $repo, string $token, int $page): ?array — une page de releases GitHub, ou null pour signaler un échec (surchargeable pour les tests)
      * @param \Closure|null $zipDownloader  fn(string $url, string $dest, string $token): bool — surchargeable pour les tests
+     * @param \Closure|null $commitResolver fn(string $repo, string $token, string $tag): ?string — commit du tag (surchargeable pour les tests)
+     * @param \Closure|null $fileFetcher    fn(string $repo, string $token, string $tag, string $path): ?string — contenu d'un fichier
+     *                                     du dépôt à ce tag (surchargeable pour les tests)
      */
     public function __construct(
         private readonly UpdateService $updateService,
         private readonly BackupService $backup,
         private readonly MigrationRunner $migrator,
         private readonly AppSettingsService $settings,
-        private readonly StorePhotoRepositoryInterface $photoRepo,
         ?string $basePath = null,
         private readonly ?\Closure $releaseFetcher = null,
         private readonly ?\Closure $zipDownloader = null,
+        private readonly ?\Closure $commitResolver = null,
+        private readonly ?\Closure $fileFetcher = null,
     ) {
         $this->basePath = $basePath ?? BASE_PATH;
         $this->manifestFile = storage_path('app/update-files-manifest.json');
@@ -108,6 +120,8 @@ final class GithubUpdateService
             'published_at'    => $release['published_at'] ?? null,
             'zipball_url'     => $release['zipball_url'],
             'tag_name'        => $release['tag_name'],
+            // Fichiers joints à la release : nom => URL de téléchargement (API, valable aussi pour un dépôt privé).
+            'assets'          => self::assetUrls($release['assets'] ?? []),
         ];
     }
 
@@ -239,7 +253,7 @@ final class GithubUpdateService
     /**
      * Applique la dernière mise à jour disponible : backup de sécurité,
      * téléchargement + synchronisation des fichiers, migrations, bump de
-     * version, puis tentative composer en tout dernier (best-effort).
+     * version (vendor/ est fourni par l'archive vérifiée, plus de composer).
      *
      * @param (callable(int, string): void)|null $onProgress reçoit (pourcentage 0-100, libellé de l'étape en cours)
      */
@@ -262,10 +276,28 @@ final class GithubUpdateService
             $progress(10, __('backup_update_step_backup'));
             $this->createSafetyBackups($tag);
 
+            // Archive construite par release.yml (code + vendor/) et son empreinte : une release sans elles
+            // (antérieure à ce mécanisme, ou publication incomplète) n'est pas appliquée.
+            $archiveName = self::archiveName($tag);
+            $archiveUrl  = $release['assets'][$archiveName] ?? null;
+            $sumsUrl     = $release['assets'][self::CHECKSUMS_ASSET] ?? null;
+            if ($archiveUrl === null || $sumsUrl === null) {
+                return ['ok' => false, 'error' => 'release_archive_missing'];
+            }
+
             $progress(25, __('backup_update_step_download'));
             $downloadPath = $this->updatesDir . '/download_' . $safeTag . '.zip';
-            if (!$this->downloadZip($release['zipball_url'], $downloadPath)) {
+            $sumsPath     = $this->updatesDir . '/download_' . $safeTag . '.sha256';
+            if (!$this->downloadZip($archiveUrl, $downloadPath) || !$this->downloadZip($sumsUrl, $sumsPath)) {
                 return ['ok' => false, 'error' => 'download_failed'];
+            }
+
+            $progress(40, __('backup_update_step_verify'));
+            $checksumOk = self::checksumMatches($downloadPath, (string) @file_get_contents($sumsPath), $archiveName);
+            @unlink($sumsPath);
+            if (!$checksumOk) {
+                Log::warning('update_checksum_mismatch', ['tag' => $tag]);
+                return ['ok' => false, 'error' => 'checksum_failed'];
             }
 
             $progress(45, __('backup_update_step_extract'));
@@ -275,36 +307,20 @@ final class GithubUpdateService
                 return ['ok' => false, 'error' => 'extract_failed'];
             }
 
-            $lockBefore = $this->composerLockHash();
+            // L'archive doit avoir été construite pour ce tag, à partir du commit vers lequel il pointe.
+            $tagCommit = $this->resolveTagCommit($tag);
+            if (!self::manifestMatches($sourceRoot, $tag, $tagCommit)) {
+                Log::warning('update_commit_mismatch', ['tag' => $tag, 'tag_commit' => $tagCommit]);
+                return ['ok' => false, 'error' => 'commit_mismatch'];
+            }
+
             $sync = $this->syncFiles($sourceRoot, function (int $done, int $total) use ($progress): void {
                 $pct = $total > 0 ? (int) round(55 + 20 * ($done / $total)) : 55;
                 $progress($pct, __('backup_update_step_sync', ['done' => $done, 'total' => $total]));
             });
-            $lockChanged = $lockBefore !== $this->composerLockHash();
 
             $progress(80, __('backup_update_step_migrate'));
             $migrationsApplied = $this->migrator->run();
-
-            // Rattrapage ponctuel : avant l'introduction du regroupement journalier
-            // (StorePhotoController::store()), plusieurs envois de photos pouvaient
-            // s'accumuler séparément pour un même magasin le même jour. Best-effort :
-            // une erreur ici ne doit jamais faire échouer la mise à jour elle-même.
-            $photoReportsMerged = 0;
-            try {
-                $consolidation = new StorePhotoConsolidationService($this->photoRepo, $this->basePath . '/storage/uploads/img/');
-                $photoReportsMerged = $consolidation->consolidate()['merged_submissions'];
-            } catch (\Throwable $e) {
-                error_log('[Kintai][Update] Regroupement des rapports photo échoué : ' . $e->getMessage());
-            }
-
-            $composerStatus = 'skipped';
-            $composerOutput = null;
-            if ($lockChanged) {
-                $progress(90, __('backup_update_step_composer'));
-                $composer = $this->maybeRunComposer();
-                $composerStatus = $composer['ran'] ? 'ok' : 'warning';
-                $composerOutput = $composer['output'];
-            }
 
             $this->updateService->setCurrentVersion($release['latest_version']);
 
@@ -316,9 +332,8 @@ final class GithubUpdateService
                 'files_copied'       => $sync['copied'],
                 'files_deleted'      => $sync['deleted'],
                 'migrations_applied' => $migrationsApplied,
-                'photo_reports_merged' => $photoReportsMerged,
-                'composer'           => $composerStatus,
-                'composer_output'    => $composerOutput,
+                // vendor/ est fourni par l'archive : plus de composer pendant la mise à jour.
+                'composer'           => 'bundled',
             ];
         } finally {
             if ($downloadPath !== null && file_exists($downloadPath)) {
@@ -366,6 +381,11 @@ final class GithubUpdateService
             }
 
             $relative = str_replace('\\', '/', $iterator->getSubPathname());
+            // Données et configuration locales (storage/, .env, config/database.local.php) : jamais écrasées,
+            // même si une archive en contenait.
+            if ($this->isExcluded($relative)) {
+                continue;
+            }
             $newManifest[] = $relative;
 
             $target = $this->basePath . '/' . $relative;
@@ -441,39 +461,93 @@ final class GithubUpdateService
         file_put_contents($this->manifestFile, json_encode(array_values($manifest), JSON_PRETTY_PRINT));
     }
 
-    private function composerLockHash(): ?string
+    /** Nom de l'archive construite par release.yml pour un tag. */
+    public static function archiveName(string $tag): string
     {
-        $path = $this->basePath . '/composer.lock';
-        return file_exists($path) ? md5_file($path) : null;
+        return 'kintai-' . $tag . '.zip';
     }
 
     /**
-     * Tentative best-effort de `composer install`. Appelée en toute fin de
-     * processus : un éventuel plantage du sous-processus (voir bug AH02965 —
-     * proc_open instable sous Apache/Windows) ne doit jamais remettre en
-     * cause les étapes déjà commises (fichiers, migrations, version).
-     *
-     * @return array{ran:bool, output:?string}
+     * @param list<array<string, mixed>> $assets Fichiers joints d'une release GitHub
+     * @return array<string, string> nom => URL (API de l'asset si disponible, sinon URL de téléchargement)
      */
-    private function maybeRunComposer(): array
+    private static function assetUrls(array $assets): array
     {
-        try {
-            if (!function_exists('shell_exec')) {
-                return ['ran' => false, 'output' => null];
+        $urls = [];
+        foreach ($assets as $asset) {
+            $name = (string) ($asset['name'] ?? '');
+            $url  = (string) ($asset['url'] ?? ($asset['browser_download_url'] ?? ''));
+            if ($name !== '' && $url !== '') {
+                $urls[$name] = $url;
             }
-            $disabled = array_map('trim', explode(',', (string) ini_get('disable_functions')));
-            if (in_array('shell_exec', $disabled, true)) {
-                return ['ran' => false, 'output' => null];
-            }
-
-            $cmd = 'cd ' . escapeshellarg($this->basePath)
-                . ' && composer install --no-dev --optimize-autoloader --no-interaction 2>&1';
-            $output = shell_exec($cmd);
-
-            return ['ran' => $output !== null, 'output' => $output];
-        } catch (\Throwable $e) {
-            return ['ran' => false, 'output' => $e->getMessage()];
         }
+        return $urls;
+    }
+
+    /** L'empreinte SHA-256 de $file correspond-elle à la ligne de $name dans le contenu de SHA256SUMS ? */
+    public static function checksumMatches(string $file, string $checksums, string $name): bool
+    {
+        if (!is_file($file)) {
+            return false;
+        }
+        foreach (preg_split('/\R/', $checksums) ?: [] as $line) {
+            if (preg_match('/^([0-9a-fA-F]{64})\s+\*?(.+)$/', trim($line), $m) === 1 && trim($m[2]) === $name) {
+                return hash_equals(strtolower($m[1]), (string) hash_file('sha256', $file));
+            }
+        }
+        return false;
+    }
+
+    /** Le release-manifest.json de l'archive désigne-t-il ce tag et ce commit ? */
+    public static function manifestMatches(string $sourceRoot, string $tag, ?string $tagCommit): bool
+    {
+        if ($tagCommit === null || $tagCommit === '') {
+            return false;
+        }
+        $manifest = json_decode((string) @file_get_contents($sourceRoot . '/' . self::RELEASE_MANIFEST), true);
+        return is_array($manifest)
+            && ($manifest['tag'] ?? null) === $tag
+            && is_string($manifest['commit'] ?? null)
+            && hash_equals(strtolower($tagCommit), strtolower($manifest['commit']));
+    }
+
+    /**
+     * Version du contrat de bundle (kintai\Contract\Contract::VERSION) fournie par la release de ce tag, lue dans
+     * son code sur GitHub, ou null si elle est illisible (réseau, release antérieure au contrat versionné).
+     */
+    public function contractVersionAt(string $tag): ?string
+    {
+        $path = 'src/Contract/Contract.php';
+        if ($this->fileFetcher !== null) {
+            $source = ($this->fileFetcher)($this->repo, $this->token, $tag, $path);
+        } else {
+            $headers = ['User-Agent: Kintai-UpdateCheck/1.0'];
+            if ($this->token !== '') {
+                $headers[] = 'Authorization: Bearer ' . $this->token;
+            }
+            $source = $this->httpGet('https://raw.githubusercontent.com/' . $this->repo . '/' . rawurlencode($tag) . '/' . $path, $headers, 10);
+        }
+        return is_string($source) && preg_match("/const VERSION = '(\\d+\\.\\d+\\.\\d+)'/", $source, $m) === 1 ? $m[1] : null;
+    }
+
+    /** Commit vers lequel pointe le tag sur GitHub (GET /repos/{repo}/commits/{tag}), ou null. */
+    private function resolveTagCommit(string $tag): ?string
+    {
+        if ($this->commitResolver !== null) {
+            return ($this->commitResolver)($this->repo, $this->token, $tag);
+        }
+
+        $headers = [
+            'User-Agent: Kintai-UpdateCheck/1.0',
+            'Accept: application/vnd.github+json',
+        ];
+        if ($this->token !== '') {
+            $headers[] = 'Authorization: Bearer ' . $this->token;
+        }
+        $response = $this->httpGet('https://api.github.com/repos/' . $this->repo . '/commits/' . rawurlencode($tag), $headers, 10);
+        $data = $response !== null ? json_decode($response, true) : null;
+        $sha = is_array($data) ? ($data['sha'] ?? null) : null;
+        return is_string($sha) && preg_match('/^[0-9a-f]{40}$/', $sha) === 1 ? $sha : null;
     }
 
     private function extractZip(string $zipPath, string $extractDir): ?string
@@ -688,7 +762,8 @@ final class GithubUpdateService
             return ($this->zipDownloader)($url, $destination, $this->token);
         }
 
-        $headers = ['User-Agent: Kintai-UpdateCheck/1.0'];
+        // Asset de release par l'API : sans cet en-tête, GitHub renvoie ses métadonnées JSON au lieu du fichier.
+        $headers = ['User-Agent: Kintai-UpdateCheck/1.0', 'Accept: application/octet-stream'];
         if ($this->token !== '') {
             $headers[] = 'Authorization: Bearer ' . $this->token;
         }

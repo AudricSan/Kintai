@@ -122,19 +122,6 @@ $feat = $feat ?? fn(string $f): bool =>
                   placeholder="<?= __('notes_placeholder') ?>"><?= htmlspecialchars($shift['notes'] ?? '') ?></textarea>
     </div>
 
-    <!-- ── Shift ouvert (bourse aux shifts) ──────────────────── -->
-    <?php if ($feat('open_shifts')): ?>
-    <div class="form-group">
-        <label class="form-label"><?= __('open_shift_note_label') ?></label>
-        <textarea name="open_shift_note" class="form-control" rows="2"
-                  placeholder="<?= __('open_shift_note_placeholder') ?>"><?= htmlspecialchars($shift['open_shift_note'] ?? '') ?></textarea>
-    </div>
-    <div class="form-group">
-        <label class="form-label"><?= __('open_shifts') ?></label>
-        <label class="toggle-label">
-            <input type="checkbox" name="is_open" value="1" <?= (int)($shift['is_open'] ?? 0) ? 'checked' : '' ?>>
-            <?= __('publish_to_bourse') ?>
-        </label>
-    </div>
-    <?php endif; ?>
+    <!-- ── Sections des bundles (bourse aux shifts… — Bundle::shiftFormSections(), contrat 1.17) ── -->
+    <?= \kintai\Core\Extension\ShiftFormSections::current()->renderFields((array) ($shift ?? []), (string) ($mode ?? 'create'), $feat) ?>
 </div>

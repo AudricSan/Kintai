@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Controller\Api\V1;
 
 use kintai\Core\Auth\CredentialRevoker;
+use kintai\Core\Auth\OwnerGuard;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Auth\UserTargetGuard;
 use kintai\Core\Exceptions\ForbiddenException;
@@ -32,6 +33,7 @@ use kintai\UI\Controller\Api\V1\ShiftController;
 use kintai\UI\Controller\Api\V1\StoreController;
 use kintai\UI\Controller\Api\V1\UserController;
 use PHPUnit\Framework\MockObject\MockObject;
+use kintai\Core\Auth\UserAnonymizer;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -107,7 +109,7 @@ final class ApiStoreScopeTest extends TestCase
             $this->users,
             new LicenseClientService($this->createStub(AppSettingsRepositoryInterface::class), ['base_url' => '', 'api_key' => '']),
         );
-        return new UserController($this->users, new AuditLogger(), $planLimits, $this->permissions, $this->storeUsers, $revoker);
+        return new UserController($this->users, new AuditLogger(), $planLimits, $this->permissions, $this->storeUsers, new OwnerGuard($this->permissions, $this->users), $revoker);
     }
 
     // ---------------------------------------------------------------- shifts
@@ -149,7 +151,7 @@ final class ApiStoreScopeTest extends TestCase
         $this->shifts->expects($this->once())->method('save')->willReturn(['id' => 3, 'store_id' => self::STORE_A]);
         $controller = new ShiftController($this->shifts, new AuditLogger(), $this->permissions);
 
-        $response = $controller->update($this->request(self::MANAGER, ['id' => '3'], ['note' => 'x']));
+        $response = $controller->update($this->request(self::MANAGER, ['id' => '3'], ['notes' => 'x']));
 
         $this->assertSame(200, $response->status());
     }
@@ -161,7 +163,7 @@ final class ApiStoreScopeTest extends TestCase
             ->willReturn(['id' => 50, 'store_id' => self::STORE_A]);
         $controller = new ShiftController($this->shifts, new AuditLogger(), $this->permissions);
 
-        $response = $controller->store($this->request(self::MANAGER, [], ['id' => 9, 'store_id' => self::STORE_A]));
+        $response = $controller->store($this->request(self::MANAGER, [], ['id' => 9, 'store_id' => self::STORE_A, 'shift_date' => '2026-10-20', 'start_time' => '09:00', 'end_time' => '17:00']));
 
         $this->assertSame(201, $response->status());
     }
@@ -181,7 +183,7 @@ final class ApiStoreScopeTest extends TestCase
         $controller = new ShiftController($this->shifts, new AuditLogger(), $this->permissions);
 
         $this->expectException(ForbiddenException::class);
-        $controller->store($this->request(self::MANAGER, [], ['store_id' => self::STORE_B]));
+        $controller->store($this->request(self::MANAGER, [], ['store_id' => self::STORE_B, 'shift_date' => '2026-10-20', 'start_time' => '09:00', 'end_time' => '17:00']));
     }
 
     public function testShiftIndexIsRestrictedToManagedStores(): void
@@ -215,7 +217,7 @@ final class ApiStoreScopeTest extends TestCase
         $controller = new AvailabilityController($availabilities, new AuditLogger(), $this->permissions);
 
         $this->expectException(ForbiddenException::class);
-        $controller->store($this->request(self::MANAGER, [], ['id' => 4, 'store_id' => self::STORE_B]));
+        $controller->store($this->request(self::MANAGER, [], ['id' => 4, 'store_id' => self::STORE_B, 'user_id' => 30, 'day_of_week' => 1, 'start_time' => '09:00', 'end_time' => '17:00']));
     }
 
     // ----------------------------------------------------------------- stores
@@ -286,7 +288,7 @@ final class ApiStoreScopeTest extends TestCase
             fn(array $d): bool => !array_key_exists('password_hash', $d)
         ))->willReturn(['id' => 31]);
 
-        $this->userController()->update($this->request(self::MANAGER, ['id' => '31'], ['password_hash' => 'forgé']));
+        $this->userController()->update($this->request(self::MANAGER, ['id' => '31'], ['password_hash' => 'forgé', 'last_name' => 'Nouveau']));
     }
 
     public function testUserCreationIgnoresIdAndSetsDefaultPassword(): void
@@ -296,7 +298,7 @@ final class ApiStoreScopeTest extends TestCase
             fn(array $d): bool => !array_key_exists('id', $d) && !empty($d['password_hash'])
         ))->willReturn(['id' => 60, 'password_hash' => 'secret']);
 
-        $response = $this->userController()->store($this->request(self::OWNER, [], ['id' => 1, 'email' => 'a@example.com']));
+        $response = $this->userController()->store($this->request(self::OWNER, [], ['id' => 1, 'email' => 'a@example.com', 'first_name' => 'A', 'last_name' => 'B']));
 
         $this->assertSame(201, $response->status());
         $this->assertArrayNotHasKey('password_hash', json_decode($response->body(), true));
@@ -342,5 +344,156 @@ final class ApiStoreScopeTest extends TestCase
 
         $this->expectException(ForbiddenException::class);
         $controller->index($this->request(self::MANAGER, ['user_id' => '30']));
+    }
+
+    // ------------------------------------------------- validation (audit M9)
+
+    /** Les champs calculés d'un shift viennent du serveur : ils manquaient dans un POST client (erreur SQL). */
+    public function testShiftCreationDerivesTimingAndIgnoresClientValues(): void
+    {
+        $saved = null;
+        $this->shifts->method('save')->willReturnCallback(function (array $d) use (&$saved): array {
+            $saved = $d;
+            return $d + ['id' => 51];
+        });
+        $controller = new ShiftController($this->shifts, new AuditLogger(), $this->permissions);
+
+        $controller->store($this->request(self::MANAGER, [], [
+            'store_id' => self::STORE_A, 'shift_date' => '2026-10-31', 'start_time' => '22:00', 'end_time' => '04:00',
+            'duration_minutes' => 99999, 'starts_at' => 'forgé', 'ical_sequence' => 50, 'created_by' => self::OWNER,
+        ]));
+
+        $this->assertSame(360, $saved['duration_minutes']);
+        $this->assertSame(1, $saved['cross_midnight']);
+        $this->assertSame('2026-10-31 22:00:00', $saved['starts_at']);
+        $this->assertSame('2026-11-01 04:00:00', $saved['ends_at']);
+        $this->assertArrayNotHasKey('ical_sequence', $saved);
+        $this->assertArrayNotHasKey('created_by', $saved);
+    }
+
+    public function testShiftUpdateRecomputesTimingFromTheStoredValues(): void
+    {
+        $this->shifts->method('findById')->with(3)->willReturn([
+            'id' => 3, 'store_id' => self::STORE_A, 'shift_date' => '2026-10-20', 'start_time' => '09:00:00', 'end_time' => '17:00:00',
+        ]);
+        $saved = null;
+        $this->shifts->method('save')->willReturnCallback(function (array $d) use (&$saved): array {
+            $saved = $d;
+            return $d;
+        });
+        $controller = new ShiftController($this->shifts, new AuditLogger(), $this->permissions);
+
+        $controller->update($this->request(self::MANAGER, ['id' => '3'], ['end_time' => '18:30']));
+
+        $this->assertSame(570, $saved['duration_minutes']);
+        $this->assertSame('2026-10-20 18:30:00', $saved['ends_at']);
+    }
+
+    /** @return array<string, array{array<string, mixed>}> */
+    public static function invalidShifts(): array
+    {
+        $base = ['store_id' => self::STORE_A, 'shift_date' => '2026-10-20', 'start_time' => '09:00', 'end_time' => '17:00'];
+        return [
+            'corps vide'      => [[]],
+            'date impossible' => [['shift_date' => '2026-13-01'] + $base],
+            'heure invalide'  => [['start_time' => '9h'] + $base],
+            'pause negative'  => [['pause_minutes' => -10] + $base],
+            'magasin texte'   => [['store_id' => 'A'] + $base],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidShifts')]
+    public function testShiftCreationRefusesInvalidBodies(array $body): void
+    {
+        $this->shifts->expects($this->never())->method('save');
+        $controller = new ShiftController($this->shifts, new AuditLogger(), $this->permissions);
+
+        $this->expectException(ValidationException::class);
+        $controller->store($this->request(self::MANAGER, [], $body));
+    }
+
+    public function testAvailabilityRefusesAnInvalidDayOfWeek(): void
+    {
+        $availabilities = $this->createMock(AvailabilityRepositoryInterface::class);
+        $availabilities->expects($this->never())->method('save');
+        $controller = new AvailabilityController($availabilities, new AuditLogger(), $this->permissions);
+
+        $this->expectException(ValidationException::class);
+        $controller->store($this->request(self::MANAGER, [], ['store_id' => self::STORE_A, 'user_id' => 30, 'day_of_week' => 7, 'start_time' => '09:00', 'end_time' => '17:00']));
+    }
+
+    // ------------------------------------------- suppression = anonymisation (audit M8)
+
+    public function testDestroyAnonymizesTheAccountInsteadOfDeletingIt(): void
+    {
+        $this->users->method('findById')->with(31)->willReturn(['id' => 31, 'is_active' => 1]);
+        $this->storeUsers->method('findByUser')->with(31)->willReturn([['store_id' => self::STORE_A]]);
+        $this->users->expects($this->never())->method('delete');
+        $this->users->expects($this->once())->method('save')->with($this->callback(
+            fn(array $d): bool => $d['id'] === 31 && $d['is_active'] === 0 && $d['email'] === 'deleted-31@kintai.local'
+        ))->willReturnArgument(0);
+
+        $planLimits = new PlanLimitService(
+            $this->createStub(StoreRepositoryInterface::class),
+            $this->users,
+            new LicenseClientService($this->createStub(AppSettingsRepositoryInterface::class), ['base_url' => '', 'api_key' => '']),
+        );
+        $revoker = new CredentialRevoker($this->createStub(RememberTokenRepositoryInterface::class), $this->createStub(ApiTokenRepositoryInterface::class));
+        $controller = new UserController(
+            $this->users, new AuditLogger(), $planLimits, $this->permissions, $this->storeUsers,
+            new OwnerGuard($this->permissions, $this->users), $revoker,
+            new UserAnonymizer($this->users, $this->createStub(RoleAssignmentRepositoryInterface::class), $revoker, sys_get_temp_dir()),
+        );
+
+        $response = $controller->destroy($this->request(self::MANAGER, ['id' => '31']));
+
+        $this->assertSame(204, $response->status());
+    }
+
+    public function testDeletedAccountsAreNoLongerListed(): void
+    {
+        $this->users->method('findAll')->willReturn([
+            ['id' => 31, 'deleted_at' => null],
+            ['id' => 32, 'deleted_at' => '2026-10-16 09:00:00'],
+        ]);
+
+        $response = $this->userController()->index($this->request(self::OWNER));
+
+        $this->assertSame([31], array_column(json_decode($response->body(), true)['data'], 'id'));
+    }
+
+    // ------------------------------------------- actions sur soi-même (audit M13)
+
+    public function testAManagerCannotDeleteTheirOwnAccountThroughTheApi(): void
+    {
+        $this->users->method('findById')->willReturn(['id' => self::MANAGER, 'is_active' => 1]);
+        $this->storeUsers->method('findByUser')->willReturn([['store_id' => self::STORE_A]]);
+        $this->users->expects($this->never())->method('save');
+
+        $this->expectException(ForbiddenException::class);
+        $this->expectExceptionMessage('error_cannot_act_on_self');
+        $this->userController()->destroy($this->request(self::MANAGER, ['id' => (string) self::MANAGER]));
+    }
+
+    public function testAManagerCannotDeactivateThemselvesThroughTheApi(): void
+    {
+        $this->users->method('findById')->willReturn(['id' => self::MANAGER, 'is_active' => 1, 'email' => 'm@kintai.test']);
+        $this->storeUsers->method('findByUser')->willReturn([['store_id' => self::STORE_A]]);
+        $this->users->expects($this->never())->method('save');
+
+        $this->expectException(ForbiddenException::class);
+        $this->expectExceptionMessage('error_cannot_act_on_self');
+        $this->userController()->update($this->request(self::MANAGER, ['id' => (string) self::MANAGER], ['is_active' => false]));
+    }
+
+    public function testAManagerCanStillEditTheirOwnProfileFieldsThroughTheApi(): void
+    {
+        $this->users->method('findById')->willReturn(['id' => self::MANAGER, 'is_active' => 1, 'email' => 'm@kintai.test']);
+        $this->storeUsers->method('findByUser')->willReturn([['store_id' => self::STORE_A]]);
+        $this->users->expects($this->once())->method('save')->willReturnArgument(0);
+
+        $response = $this->userController()->update($this->request(self::MANAGER, ['id' => (string) self::MANAGER], ['phone' => '090-0000-0000']));
+
+        $this->assertSame(200, $response->status());
     }
 }

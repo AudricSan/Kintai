@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace kintai\Core\Services;
 
 use kintai\Core\Repositories\ShiftRepositoryInterface;
-use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
-use kintai\Core\Repositories\TimeclockRepositoryInterface;
-use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
+use kintai\Core\Extension\Attendances;
+use kintai\Core\Extension\PendingRequests;
 use kintai\Core\Repositories\UserRepositoryInterface;
 
 /**
@@ -27,9 +26,8 @@ final class DashboardAlertService
         private readonly ShiftRepositoryInterface $shifts,
         private readonly UserRepositoryInterface $users,
         private readonly StoreUserRepositoryInterface $storeUsers,
-        private readonly TimeoffRequestRepositoryInterface $timeoffRequests,
-        private readonly ShiftSwapRequestRepositoryInterface $swapRequests,
-        private readonly TimeclockRepositoryInterface $timeclocks,
+        // Demandes en attente (fournisseurs des bundles) ; sans elles (tests), celles de la requête courante.
+        private readonly ?PendingRequests $pendingRequests = null,
     ) {}
 
     /**
@@ -43,7 +41,7 @@ final class DashboardAlertService
         return [
             'unfilled_shifts'     => $this->unfilledUpcomingShifts($storeIds, $storesMap),
             'users_without_shift' => $this->usersWithoutShiftThisWeek($storeIds, $storesMap),
-            'stale_requests'      => $this->staleRequests($storeIds),
+            'stale_requests'      => $this->staleRequests($storeIds, $storesMap),
             'stale_timeclocks'    => $this->staleTimeclocks($storeIds, $storesMap),
         ];
     }
@@ -106,45 +104,16 @@ final class DashboardAlertService
         return array_values($result);
     }
 
-    private function staleRequests(array $storeIds): array
+    /**
+     * Demandes en attente depuis plus de STALE_REQUEST_DAYS jours, lues auprès des fournisseurs de demandes des bundles
+     * actifs (congés, échanges, candidatures à la bourse…, contrat 1.9), les plus anciennes en premier.
+     */
+    private function staleRequests(array $storeIds, array $storesMap = []): array
     {
         $threshold = date('Y-m-d H:i:s', strtotime('-' . self::STALE_REQUEST_DAYS . ' days'));
-        $result = [];
 
-        foreach ($this->timeoffRequests->findAll() as $r) {
-            $sid = (int) ($r['store_id'] ?? 0);
-            if (!in_array($sid, $storeIds, true) || ($r['status'] ?? '') !== 'pending') {
-                continue;
-            }
-            if (($r['created_at'] ?? '') > $threshold) {
-                continue;
-            }
-            $result[] = [
-                'type'       => 'timeoff',
-                'id'         => (int) $r['id'],
-                'store_id'   => $sid,
-                'created_at' => (string) ($r['created_at'] ?? ''),
-            ];
-        }
-
-        foreach ($this->swapRequests->findAll() as $r) {
-            $sid = (int) ($r['store_id'] ?? 0);
-            if (!in_array($sid, $storeIds, true) || ($r['status'] ?? '') !== 'pending') {
-                continue;
-            }
-            if (($r['created_at'] ?? '') > $threshold) {
-                continue;
-            }
-            $result[] = [
-                'type'       => 'swap',
-                'id'         => (int) $r['id'],
-                'store_id'   => $sid,
-                'created_at' => (string) ($r['created_at'] ?? ''),
-            ];
-        }
-
-        usort($result, fn($a, $b) => strcmp($a['created_at'], $b['created_at']));
-        return $result;
+        return array_map(static fn(array $r): array => $r + ['store_name' => $storesMap[$r['store_id']] ?? ('#' . $r['store_id'])],
+            ($this->pendingRequests ?? PendingRequests::current())->olderThan($storeIds, $threshold));
     }
 
     private function staleTimeclocks(array $storeIds, array $storesMap): array
@@ -152,7 +121,8 @@ final class DashboardAlertService
         $threshold = date('Y-m-d H:i:s', strtotime('-' . self::STALE_TIMECLOCK_HOURS . ' hours'));
         $result = [];
 
-        foreach ($this->timeclocks->findAll() as $tc) {
+        // Pointages lus à travers les fournisseurs (Bundle::attendanceProviders()) ; aucun sans bundle timeclock.
+        foreach (Attendances::current()->all() as $tc) {
             $sid = (int) ($tc['store_id'] ?? 0);
             if (!in_array($sid, $storeIds, true) || !empty($tc['clock_out_time'])) {
                 continue;

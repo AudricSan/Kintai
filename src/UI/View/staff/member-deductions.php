@@ -42,7 +42,8 @@ echo Flash::fromQuery('success', ['default' => __('operation_success')])->render
 <?php
 ob_start();
 echo '<p class="form-hint">' . __('deduction_overrides_hint') . '</p>';
-echo Form::make('POST', $BASE_URL . '/admin/stores/' . store_segment((int) $store['id']) . '/members/' . (int) $membership['id'] . '/deductions')->start();
+// Contenu du formulaire mis en tampon : le composant Form enveloppe un HTML déjà construit (méthode, action, jeton CSRF).
+ob_start();
 foreach ($fields as $key => $cfg):
     $val         = isset($ov[$key]) && $ov[$key] !== null ? (string) $ov[$key] : '';
     $storeVal    = (float) ($ds[$cfg['rate_key']] ?? 0);
@@ -76,7 +77,13 @@ foreach ($fields as $key => $cfg):
     <a href="<?= htmlspecialchars(back_url($BASE_URL . '/admin/stores/' . store_segment((int) $store['id']) . '/edit')) ?>" class="btn btn--ghost"><?= __('cancel') ?></a>
 </div>
 <?php
-echo Form::make()->end();
+$formContent = ob_get_clean();
+echo Form::make()
+    ->method('POST')
+    ->action($BASE_URL . '/admin/stores/' . store_segment((int) $store['id']) . '/members/' . (int) $membership['id'] . '/deductions')
+    ->csrf()
+    ->content($formContent)
+    ->render();
 $body = ob_get_clean();
 echo Card::make()->narrow()->body($body)->render();
 ?>

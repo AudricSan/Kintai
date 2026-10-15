@@ -38,3 +38,24 @@
 .login-hint--end { text-align: end; margin-top: var(--space-1); }
 .login-hint--center { text-align: center; margin-top: var(--space-3); }
 
+/* Sélecteur de langue de la page de connexion. */
+.login-lang {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-2) var(--space-4);
+    margin-top: var(--space-5);
+    font-size: var(--text-sm);
+}
+
+.login-lang__link {
+    color: var(--color-text-muted);
+    text-decoration: none;
+}
+
+.login-lang__link:hover { color: var(--color-primary); }
+
+.login-lang__link--active {
+    color: var(--color-text);
+    font-weight: 600;
+}

@@ -33,6 +33,7 @@ final class DatabaseStoreRepositoryTest extends TestCase
             $table->string('name');
             $table->string('code')->unique();
             $table->integer('is_active')->default(1);
+            $table->timestamp('updated_at')->nullable();
             $table->timestamp('deleted_at')->nullable();
         });
 
@@ -40,6 +41,7 @@ final class DatabaseStoreRepositoryTest extends TestCase
             $table->increments('id');
             $table->integer('store_id');
             $table->string('feature_key');
+            $table->boolean('enabled')->default(true);
         });
 
         $schema->create('store_import_settings', function ($table) {
@@ -152,12 +154,29 @@ final class DatabaseStoreRepositoryTest extends TestCase
     // delete()
     // -------------------------------------------------------------------------
 
-    public function testDeleteDeletesStore(): void
+    /** Audit M8 : suppression douce, la ligne reste (l'historique qui la référence aussi). */
+    public function testDeleteSoftDeletesTheStoreAndFreesItsCode(): void
     {
         $store = EloquentStore::create(['name' => 'T', 'code' => 'T']);
         $count = $this->repo->delete($store->id);
         $this->assertEquals(1, $count);
-        $this->assertNull(EloquentStore::find($store->id));
+
+        $row = EloquentStore::find($store->id);
+        $this->assertNotNull($row);
+        $this->assertNotNull($row->deleted_at);
+        $this->assertSame(0, (int) $row->is_active);
+        $this->assertSame('DEL-' . $store->id . '-T', $row->code);
+
+        // Absent des listes et de la recherche par code, présent pour l'historique ; le code est réutilisable.
+        $this->assertSame([], $this->repo->findAll());
+        $this->assertNull($this->repo->findByCode('T'));
+        $this->assertCount(1, $this->repo->findAllWithDeleted());
+        $this->assertNotNull($this->repo->findById($store->id));
+        EloquentStore::create(['name' => 'T2', 'code' => 'T']);
+        $this->assertCount(1, $this->repo->findAll());
+
+        // Une seconde suppression ne fait rien.
+        $this->assertSame(0, $this->repo->delete($store->id));
     }
 
     public function testDeleteReturnsZeroWhenNotFound(): void
@@ -176,6 +195,25 @@ final class DatabaseStoreRepositoryTest extends TestCase
         
         $this->repo->saveFeatures(1, ['f3']);
         $this->assertEquals(['f3'], $this->repo->getFeatures(1));
+    }
+
+    /** Décisions par case : une fonctionnalité jamais réglée est active, les autres décisions restent intactes. */
+    public function testFeatureDecisionsOnlyTouchTheGivenKeys(): void
+    {
+        $this->assertSame([], $this->repo->getFeatures(2), 'jamais configuré : tout actif');
+
+        // Fonctionnalité d'un bundle désactivé réglée « inactive », puis enregistrement du formulaire sans elle.
+        $this->repo->saveFeatureDecisions(2, ['photos' => false]);
+        $this->repo->saveFeatureDecisions(2, ['shifts' => true]);
+        $this->assertSame(['photos' => false, 'shifts' => true], $this->repo->getFeatureDecisions(2));
+
+        // Seule la décision « active » est enregistrée : tout reste actif.
+        $this->repo->saveFeatureDecisions(3, ['shifts' => true, 'timeoff' => true]);
+        $this->assertSame([], $this->repo->getFeatures(3));
+
+        // « shifts » désactivé : les fonctionnalités proposées jamais réglées restent actives (ici aucune).
+        $this->repo->saveFeatureDecisions(3, ['shifts' => false]);
+        $this->assertSame(['timeoff'], $this->repo->getFeatures(3));
     }
 
     public function testImportSettingsPersistence(): void

@@ -71,3 +71,118 @@
 
 .dash-detail-table { font-size: var(--text-xs-2); }
 
+/* ── Widget « Alertes » ─────────────────────────── */
+.dash-alerts {
+    display: grid;
+    gap: var(--space-4);
+}
+
+.dash-alerts__list {
+    list-style: none;
+    margin: var(--space-2) 0 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-1);
+}
+
+.dash-alerts__item {
+    font-size: var(--text-sm);
+}
+
+.dash-alerts__more {
+    margin-top: var(--space-1);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+}
+
+/* ── Grille des widgets (ordre et largeur choisis par l'utilisateur) ── */
+/* Grille fixe à deux colonnes, cellules étirées (align-items: stretch) : deux widgets en demi-largeur côte à côte
+   ont la même hauteur. Une colonne sous 768px. */
+.dash-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: stretch;
+    gap: var(--space-6);
+    margin-top: var(--space-6);
+}
+
+.dash-grid__item {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.dash-grid__item--full { grid-column: 1 / -1; }
+
+/* L'espacement entre widgets est celui de la grille : marges propres aux cartes neutralisées. */
+.dash-grid__item > .card,
+.dash-grid__item > .stat-grid,
+.dash-grid__item > div {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.dash-grid__item > .card { flex: 1; }
+
+/* Barre d'outils : visible seulement en mode édition (« Personnaliser »). */
+.dash-grid__tools { display: none; }
+
+.dash-grid--editing .dash-grid__tools {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-1) var(--space-2);
+    margin-bottom: var(--space-2);
+    border: 1px dashed var(--color-primary-light);
+    border-radius: var(--radius);
+    background: var(--color-surface-alt);
+}
+
+.dash-grid--editing .dash-grid__item {
+    outline: 1px dashed var(--color-primary-light);
+    outline-offset: var(--space-1);
+    border-radius: var(--radius);
+}
+
+.dash-grid__handle {
+    cursor: grab;
+    border: 0;
+    background: none;
+    color: var(--color-text-muted);
+    font-size: var(--text-base);
+    line-height: 1;
+    padding: var(--space-1);
+    touch-action: none;
+}
+
+.dash-grid__handle:active { cursor: grabbing; }
+
+.dash-grid__name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--text-sm);
+    font-weight: 600;
+}
+
+.dash-grid__item--dragging { opacity: .5; }
+
+.dash-grid--save-error .dash-grid__tools { border-color: var(--color-danger); }
+
+.dash-layout-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2) var(--space-4);
+    margin-bottom: var(--space-4);
+}
+
+.dash-layout-tools p { margin: 0; }
+
+@media (max-width: 768px) {
+    .dash-grid { grid-template-columns: minmax(0, 1fr); }
+    .dash-grid__item--half { grid-column: 1 / -1; }
+}

@@ -5,103 +5,107 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Services;
 
 use PHPUnit\Framework\TestCase;
-use kintai\Core\Repositories\DailyReportRepositoryInterface;
+use kintai\Contract\Provider\DailySales;
+use kintai\Contract\Provider\SalesProvider;
+use kintai\Core\BundleContract\Bundle;
+use kintai\Core\BundleManager;
+use kintai\Core\Extension\ExtensionRegistry;
+use kintai\Core\Extension\Sales;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
-use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
-use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Services\RoleAssignmentSyncService;
 use kintai\Core\Services\StoreStatsService;
 
 /**
- * Couvre spécifiquement storeProfitability() vis-à-vis du mode de saisie
- * cumulatif du rapport journalier (item 4 : les valeurs cumulées ne doivent
- * pas être sommées telles quelles sur la plage).
+ * storeProfitability() : ventes, coût saisi et clients du jour lus auprès des fournisseurs de ventes (contrat 1.14,
+ * daily-report), qui renvoient déjà des valeurs du jour (la conversion des saisies cumulées est testée côté
+ * fournisseur) ; sans fournisseur, aucune ligne.
  */
 final class StoreStatsServiceProfitabilityTest extends TestCase
 {
-    private DailyReportRepositoryInterface $dailyReports;
-    private StoreRepositoryInterface $stores;
-    private StoreStatsService $service;
-
-    protected function setUp(): void
+    private function service(?Sales $sales): StoreStatsService
     {
-        $this->stores = $this->createStub(StoreRepositoryInterface::class);
-        $this->dailyReports = $this->createStub(DailyReportRepositoryInterface::class);
-
         $shifts     = $this->createStub(ShiftRepositoryInterface::class);
         $shifts->method('findByStore')->willReturn([]);
         $shiftTypes = $this->createStub(ShiftTypeRepositoryInterface::class);
         $shiftTypes->method('findByStore')->willReturn([]);
         $storeUsers = $this->createStub(StoreUserRepositoryInterface::class);
         $storeUsers->method('findByStore')->willReturn([]);
-        $userRates  = $this->createStub(UserShiftTypeRateRepositoryInterface::class);
 
-        $this->service = new StoreStatsService(
-            $this->stores,
+        return new StoreStatsService(
+            $this->createStub(StoreRepositoryInterface::class),
             $shifts,
             $shiftTypes,
             $storeUsers,
-            $this->createStub(TimeoffRequestRepositoryInterface::class),
-            $this->createStub(ShiftSwapRequestRepositoryInterface::class),
-            $userRates,
+            $this->createStub(UserShiftTypeRateRepositoryInterface::class),
             $this->createStub(UserRepositoryInterface::class),
-            $this->dailyReports,
             new RoleAssignmentSyncService(
                 $this->createStub(RoleRepositoryInterface::class),
                 $this->createStub(RoleAssignmentRepositoryInterface::class),
             ),
+            $sales,
         );
     }
 
-    private function reports(): array
+    /** Ventes fournies par un bundle actif (comme daily-report), en valeurs du jour. */
+    private function salesOf(array $days): Sales
     {
-        return [
-            ['report_date' => '2026-07-01', 'sales_total' => 1000, 'customer_count' => 10, 'labor_cost' => 200, 'waste_total' => 5, 'status' => 'validated'],
-            ['report_date' => '2026-07-02', 'sales_total' => 2100, 'customer_count' => 22, 'labor_cost' => 410, 'waste_total' => 11, 'status' => 'validated'],
-            ['report_date' => '2026-07-03', 'sales_total' => 3300, 'customer_count' => 33, 'labor_cost' => 610, 'waste_total' => 15, 'status' => 'validated'],
-        ];
+        $provider = new class($days) implements SalesProvider {
+            public function __construct(private readonly array $days) {}
+
+            public function dailySales(int $storeId, string $from, string $to, ?array $statuses = null): array
+            {
+                return $this->days;
+            }
+        };
+        $bundle = new class($provider) extends Bundle {
+            public function __construct(private readonly SalesProvider $provider) {}
+
+            public function getName(): string
+            {
+                return 'daily-report';
+            }
+
+            public function register(): void {}
+
+            public function salesProviders(): array
+            {
+                return [$this->provider];
+            }
+        };
+        $manager = (new \ReflectionClass(BundleManager::class))->newInstanceWithoutConstructor();
+        (new \ReflectionProperty($manager, 'bundles'))->setValue($manager, ['daily-report' => $bundle]);
+
+        return new Sales(new ExtensionRegistry($manager));
     }
 
-    public function testPerDayModeSumsRawValues(): void
+    public function testRowsAndTotalsComeFromTheDayValuesOfTheProviders(): void
     {
-        $this->stores->method('findById')->willReturn(['id' => 1, 'daily_report_settings' => null]);
-        $this->dailyReports->method('findByStoreAndDateRange')->willReturn($this->reports());
+        $result = $this->service($this->salesOf([
+            new DailySales('2026-07-01', 'validated', 1000.0, 200.0, 10, 5.0),
+            new DailySales('2026-07-02', 'validated', 1100.0, 210.0, 12, 6.0),
+            new DailySales('2026-07-03', 'submitted', 1200.0, 200.0, 11, 4.0),
+        ]))->storeProfitability(1, '2026-07-01', '2026-07-03');
 
-        $result = $this->service->storeProfitability(1, '2026-07-01', '2026-07-03');
-
-        // Mode par défaut (per_day) : somme brute des 3 jours = 1000 + 2100 + 3300
-        $this->assertSame(6400.0, $result['totalSales']);
-    }
-
-    public function testCumulativeInputModeUsesDailyDeltasInsteadOfRawSum(): void
-    {
-        $store = ['id' => 1, 'daily_report_settings' => json_encode(['cumulative_mode' => 'cumulative_input'])];
-        $this->stores->method('findById')->willReturn($store);
-        $this->dailyReports->method('findByStoreAndDateRange')->willReturn($this->reports());
-
-        $result = $this->service->storeProfitability(1, '2026-07-01', '2026-07-03');
-
-        // Valeurs cumulées 1000/2100/3300 → deltas 1000/1100/1200 → somme réelle = 3300 (= dernière valeur cumulée)
         $this->assertSame(3300.0, $result['totalSales']);
+        $this->assertSame(610.0, $result['totalLaborMnl']);
+        $this->assertSame(33, $result['totalCustomers']);
+        $this->assertSame([1000.0, 1100.0, 1200.0], array_column($result['rows'], 'sales'));
+        $this->assertSame(['validated', 'validated', 'submitted'], array_column($result['rows'], 'status'));
+        $this->assertSame(['2026-07' => 3300.0], $result['salesByMonth']);
     }
 
-    public function testCumulativeInputModePerDayRowsReflectDeltas(): void
+    public function testNoProviderMeansNoRows(): void
     {
-        $store = ['id' => 1, 'daily_report_settings' => json_encode(['cumulative_mode' => 'cumulative_input'])];
-        $this->stores->method('findById')->willReturn($store);
-        $this->dailyReports->method('findByStoreAndDateRange')->willReturn($this->reports());
+        $result = $this->service(new Sales())->storeProfitability(1, '2026-07-01', '2026-07-03');
 
-        $result = $this->service->storeProfitability(1, '2026-07-01', '2026-07-03');
-
-        $this->assertSame(1000.0, $result['rows'][0]['sales']);
-        $this->assertSame(1100.0, $result['rows'][1]['sales']);
-        $this->assertSame(1200.0, $result['rows'][2]['sales']);
+        $this->assertSame([], $result['rows']);
+        $this->assertSame(0.0, $result['totalSales']);
     }
 }

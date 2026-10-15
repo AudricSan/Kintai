@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Controller\Web;
 
+use kintai\Core\Auth\OwnerGuard;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Container;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
@@ -12,14 +13,11 @@ use kintai\Core\Repositories\LogRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
-use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
-use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
-use kintai\Core\Repositories\HiringReportRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
@@ -30,6 +28,10 @@ use kintai\Core\Services\RoleAssignmentSyncService;
 use kintai\UI\Controller\Web\Staff\AdminUserController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
+use kintai\Core\Auth\UserAnonymizer;
+use kintai\Core\Auth\CredentialRevoker;
+use kintai\Core\Repositories\RememberTokenRepositoryInterface;
+use kintai\Core\Repositories\ApiTokenRepositoryInterface;
 use PHPUnit\Framework\TestCase;
 
 final class AdminUserControllerTest extends TestCase
@@ -72,7 +74,6 @@ final class AdminUserControllerTest extends TestCase
             $this->shiftTypes,
             $this->storeUsers,
             $this->userRates,
-            $this->createMock(HiringReportRepositoryInterface::class),
             new AuditLogger(),
             new RoleAssignmentSyncService($this->roles, $this->roleAssignments),
             new PermissionService($this->roleAssignments, $this->roles),
@@ -80,6 +81,14 @@ final class AdminUserControllerTest extends TestCase
                 $this->stores,
                 $this->users,
                 new LicenseClientService($this->createMock(AppSettingsRepositoryInterface::class), ['base_url' => '', 'api_key' => '']),
+            ),
+            new OwnerGuard(new PermissionService($this->roleAssignments, $this->roles), $this->users),
+            null,
+            new UserAnonymizer(
+                $this->users,
+                $this->roleAssignments,
+                new CredentialRevoker($this->createStub(RememberTokenRepositoryInterface::class), $this->createStub(ApiTokenRepositoryInterface::class)),
+                sys_get_temp_dir(),
             ),
         );
     }
@@ -357,7 +366,7 @@ final class AdminUserControllerTest extends TestCase
         $this->controller->quickCreateUser($req);
 
         $this->assertNotNull($captured);
-        $this->assertSame('Jane Smith', $captured['display_name']);
+        $this->assertSame('Smith Jane', $captured['display_name']);
     }
 
     public function testQuickCreateUserGeneratesEmailWhenMissing(): void
@@ -719,6 +728,31 @@ final class AdminUserControllerTest extends TestCase
         $this->assertNotNull($capturedStoreUser);
     }
 
+    /** Nom affiché laissé vide (ou espaces) dans le formulaire : « Nom Prénom », jamais une chaîne vide. */
+    public function testStoreUserFillsAnEmptyDisplayName(): void
+    {
+        $req = $this->makePostRequest([
+            'display_name' => '   ',
+            'last_name'    => 'Doe',
+            'first_name'   => 'John',
+            'email'        => 'john.doe@example.com',
+            'furigana_last_name'  => 'ドウ',
+            'furigana_first_name' => 'ジョン',
+        ]);
+        $req->setAttribute('managed_store_ids', null);
+        $this->roleAssignments->method('findByUser')->willReturn([]);
+
+        $captured = null;
+        $this->users->method('save')->willReturnCallback(function (array $d) use (&$captured) {
+            $captured ??= $d;
+            return $d + ['id' => 22];
+        });
+
+        $this->controller->storeUser($req);
+
+        $this->assertSame('Doe John', $captured['display_name']);
+    }
+
     // -------------------------------------------------------------------------
     // storeUser / updateUser — conflit d'email
     // -------------------------------------------------------------------------
@@ -1077,6 +1111,57 @@ final class AdminUserControllerTest extends TestCase
         $this->controller->deleteUserRate($req);
     }
 
+    // -------------------------------------------------------------------------
+    // Protection des Owners
+    // -------------------------------------------------------------------------
+
+    /** L'acteur (id 7) est Owner : la garde d'accès le laisse passer, c'est la garde Owner qui doit refuser. */
+    private function actingAsOwner(int $targetId, array $post = []): Request
+    {
+        $this->roleAssignments->method('findByScope')->willReturn([
+            ['id' => 1, 'user_id' => 7, 'role_id' => 10, 'scope_type' => 'global', 'scope_id' => null],
+            ['id' => 2, 'user_id' => $targetId, 'role_id' => 10, 'scope_type' => 'global', 'scope_id' => null],
+        ]);
+        $this->roles->method('findById')->willReturn(['id' => 10, 'is_system' => 1]);
+
+        $req = $this->makePostRequest($post);
+        $req->setAttribute('auth_user', ['id' => 7, 'is_admin' => true]);
+        $req->setRouteParams(['id' => (string) $targetId]);
+        return $req;
+    }
+
+    public function testAnOwnerCannotDeleteThemselves(): void
+    {
+        $this->users->method('findById')->willReturn(['id' => 7, 'is_active' => 1, 'deleted_at' => null]);
+        $this->users->expects($this->never())->method('delete');
+
+        $this->expectException(\kintai\Core\Exceptions\ForbiddenException::class);
+        $this->controller->deleteUser($this->actingAsOwner(7));
+    }
+
+    public function testAnOwnerCanDeleteAnotherOwnerWhileOneRemains(): void
+    {
+        $this->users->method('findById')->willReturn(['id' => 8, 'is_active' => 1, 'deleted_at' => null]);
+        // Anonymisation (audit M8) : la ligne n'est jamais effacée.
+        $this->users->expects($this->never())->method('delete');
+        $this->users->expects($this->once())->method('save')->with($this->callback(
+            fn(array $d): bool => $d['id'] === 8 && $d['is_active'] === 0 && $d['deleted_at'] !== null
+        ))->willReturnArgument(0);
+
+        $response = $this->controller->deleteUser($this->actingAsOwner(8));
+
+        $this->assertSame(302, $response->status());
+    }
+
+    public function testAnOwnerCannotDeactivateThemselves(): void
+    {
+        $this->users->method('findById')->willReturn(['id' => 7, 'is_active' => 1, 'deleted_at' => null, 'email' => 'o@x.test']);
+        $this->users->expects($this->never())->method('save');
+
+        $this->expectException(\kintai\Core\Exceptions\ForbiddenException::class);
+        $this->controller->updateUser($this->actingAsOwner(7, ['is_active' => '0']));
+    }
+
     protected function tearDown(): void
     {
         $_GET = [];
@@ -1118,5 +1203,26 @@ final class AdminUserControllerTest extends TestCase
             mkdir($dir, 0777, true);
         }
         touch($file);
+    }
+
+    /** Audit M12 : sans is_admin ni is_active dans la requête, un Owner ne retire plus le statut Owner ni n'active/désactive. */
+    public function testAnUpdateWithoutTheFlagsKeepsOwnerStatusAndActivity(): void
+    {
+        $this->users->method('findById')->willReturn([
+            'id' => 8, 'is_active' => 1, 'deleted_at' => null, 'email' => 'o2@x.test',
+            'first_name' => 'O', 'last_name' => 'Deux', 'furigana_last_name' => 'オ', 'furigana_first_name' => 'ツー', 'phone' => '090',
+        ]);
+        $saved = null;
+        $this->users->method('save')->willReturnCallback(function (array $d) use (&$saved): array {
+            $saved = $d;
+            return $d;
+        });
+        $this->roleAssignments->expects($this->never())->method('revoke');
+
+        $this->controller->updateUser($this->actingAsOwner(8, ['first_name' => 'Owen']));
+
+        $this->assertSame('Owen', $saved['first_name']);
+        $this->assertSame(1, $saved['is_active']);
+        $this->assertSame('090', $saved['phone']);
     }
 }

@@ -7,6 +7,7 @@ namespace kintai\Core\Services;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Exceptions\ValidationException;
 use kintai\Core\Repositories\LanguageRepositoryInterface;
+use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
@@ -22,6 +23,8 @@ final class StoreService implements StoreServiceInterface
         private readonly LanguageRepositoryInterface $languages,
         private readonly PlanLimitService $planLimits,
         private readonly ?RouteSlugService $routeSlugs = null,
+        // Facultatif pour les tests qui construisent le service à la main.
+        private readonly ?RoleAssignmentRepositoryInterface $roleAssignments = null,
     ) {}
 
     public function getStoresForAdmin(?array $managedIds, string $sort = 'name_asc'): array
@@ -194,7 +197,8 @@ final class StoreService implements StoreServiceInterface
             $this->stores->saveDeductionSettings($storeId, $data['_deduction_settings']);
         }
         if (isset($data['_features'])) {
-            $this->stores->saveFeatures($storeId, $data['_features']);
+            // Décisions des seules fonctionnalités proposées par le formulaire (clé => active ?).
+            $this->stores->saveFeatureDecisions($storeId, $data['_features']);
         }
 
         $saved = $this->stores->save($storeData);
@@ -206,10 +210,17 @@ final class StoreService implements StoreServiceInterface
     public function deleteStore(int $storeId): void
     {
         $store = $this->stores->findById($storeId);
-        if ($store === null) {
+        if ($store === null || !empty($store['deleted_at'])) {
             throw new NotFoundException(__('error_store_not_found'));
         }
         $this->stores->delete($storeId);
+
+        // Un rôle limité à ce magasin ne donnerait plus de droits que sur un magasin invisible : retiré.
+        if ($this->roleAssignments !== null) {
+            foreach ($this->roleAssignments->findByScope('store', $storeId) as $assignment) {
+                $this->roleAssignments->revoke((int) $assignment['id']);
+            }
+        }
     }
 
     public function addMember(int $storeId, int $userId): ?array

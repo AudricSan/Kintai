@@ -8,12 +8,9 @@ use kintai\Core\Auth\PermissionService;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
-use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
-use kintai\Core\Repositories\TimeclockRepositoryInterface;
-use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
@@ -56,16 +53,6 @@ final class HomeControllerFinancialHrWidgetsTest extends TestCase
         $shiftTypesRepo = $this->createMock(ShiftTypeRepositoryInterface::class);
         $shiftTypesRepo->method('findByStore')->willReturn([]);
 
-        $timeoffRepo = $this->createMock(TimeoffRequestRepositoryInterface::class);
-        $timeoffRepo->method('findAll')->willReturn([]);
-
-        $swapsRepo = $this->createMock(ShiftSwapRequestRepositoryInterface::class);
-        $swapsRepo->method('findAll')->willReturn([]);
-
-        $timeclocksRepo = $this->createMock(TimeclockRepositoryInterface::class);
-        $timeclocksRepo->method('findAll')->willReturn([]);
-        $timeclocksRepo->method('findByStore')->willReturn([]);
-
         $dashboardPrefs = $this->createMock(UserDashboardPrefsRepositoryInterface::class);
         $dashboardPrefs->method('getEnabledWidgets')->willReturn($enabledWidgets);
 
@@ -95,9 +82,7 @@ final class HomeControllerFinancialHrWidgetsTest extends TestCase
         $roles->method('getPermissions')->with(5)->willReturn(['shifts.view']);
         $permissions = new PermissionService($roleAssignments, $roles);
 
-        $dashboardAlerts = new DashboardAlertService(
-            $shiftsRepo, $usersRepo, $storeUsersRepo, $timeoffRepo, $swapsRepo, $timeclocksRepo,
-        );
+        $dashboardAlerts = new DashboardAlertService($shiftsRepo, $usersRepo, $storeUsersRepo);
 
         return new HomeController(
             new ViewRenderer(sys_get_temp_dir()),
@@ -105,10 +90,7 @@ final class HomeControllerFinancialHrWidgetsTest extends TestCase
             $storesRepo,
             $shiftsRepo,
             $shiftTypesRepo,
-            $timeoffRepo,
-            $swapsRepo,
             $dashboardPrefs,
-            $timeclocksRepo,
             $storeUsersRepo,
             $storeStats,
             $dashboardAlerts,

@@ -23,7 +23,10 @@ final class Request
 
     public function __construct()
     {
-        $this->server = $_SERVER;
+        $this->server = self::withAuthorizationHeader(
+            $_SERVER,
+            function_exists('getallheaders') ? (getallheaders() ?: []) : [],
+        );
         $this->query = $_GET;
         $this->post = $_POST;
         $this->cookies = $_COOKIE;
@@ -54,6 +57,40 @@ final class Request
         $this->uri = '/' . trim(rawurldecode($uri), '/');
     }
 
+    /**
+     * Apache ne place pas l'en-tête Authorization dans $_SERVER (ni sous mod_php, ni en CGI/FastCGI sans
+     * réglage) : l'API à jeton répondait MISSING_TOKEN à toute requête, jeton valide compris. On le reprend,
+     * dans l'ordre, de REDIRECT_HTTP_AUTHORIZATION (variable posée par public/.htaccess puis renommée par la
+     * réécriture interne du .htaccess racine) ou des en-têtes bruts (getallheaders()). Une valeur déjà
+     * présente (php -S, Nginx, CGIPassAuth) n'est jamais remplacée.
+     *
+     * @param array<string, mixed>  $server
+     * @param array<string, string> $rawHeaders
+     * @return array<string, mixed>
+     */
+    public static function withAuthorizationHeader(array $server, array $rawHeaders): array
+    {
+        if (($server['HTTP_AUTHORIZATION'] ?? '') !== '') {
+            return $server;
+        }
+
+        $value = (string) ($server['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
+        if ($value === '') {
+            foreach ($rawHeaders as $name => $headerValue) {
+                if (strcasecmp((string) $name, 'Authorization') === 0) {
+                    $value = (string) $headerValue;
+                    break;
+                }
+            }
+        }
+
+        if ($value !== '') {
+            $server['HTTP_AUTHORIZATION'] = $value;
+        }
+
+        return $server;
+    }
+
     public function method(): string
     {
         return $this->method;
@@ -77,6 +114,26 @@ final class Request
     public function post(string $key, mixed $default = null): mixed
     {
         return $this->post[$key] ?? $default;
+    }
+
+    /** Le champ est-il présent dans le corps POST (même vide) ? */
+    public function hasPost(string $key): bool
+    {
+        return array_key_exists($key, $this->post);
+    }
+
+    /**
+     * Case à cocher d'un formulaire de modification : 1 si cochée ('1', 'on', 'true'), 0 si envoyée
+     * décochée (les vues placent un champ caché « 0 » devant chaque case), valeur actuelle si le champ est
+     * absent de la requête. Avant l'audit du 13/10/2026 (M12), un champ absent valait « décoché » :
+     * une requête partielle désactivait un magasin ou masquait un profil sans le vouloir.
+     */
+    public function postFlag(string $key, mixed $current): int
+    {
+        if (!$this->hasPost($key)) {
+            return empty($current) ? 0 : 1;
+        }
+        return in_array($this->post[$key], ['1', 'on', 'true', 1, true], true) ? 1 : 0;
     }
 
     public function allPost(): array

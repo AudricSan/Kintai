@@ -16,7 +16,7 @@ final class IcalService
      * Le contenu est produit dans la langue de l'employé propriétaire du flux : ordre de
      * résolution override implicite absent ici → langue de l'utilisateur ($user['language'])
      * → locale du store ($store['locale']) → 'fr' par défaut (même pattern que
-     * DailyReportMailService::resolveLocale()).
+     * l'e-mail des rapports journaliers du bundle daily-report).
      *
      * @param array $shifts   Shifts de l'employé dans ce store (déjà filtrés par store_id)
      * @param array $timeoffs Congés approuvés de l'employé dans ce store (déjà filtrés)
@@ -75,13 +75,11 @@ final class IcalService
 
     private function resolveLocale(array $user, array $store): string
     {
-        $raw  = $user['language'] ?? $store['locale'] ?? 'fr';
-        $lang = strtolower(substr((string) $raw, 0, 2));
-        return match ($lang) {
-            'ja'    => 'ja',
-            'en'    => 'en',
-            default => 'fr',
-        };
+        // Langue du profil de l'employé, sinon celle du magasin, sinon celle de l'instance.
+        if ((string) ($user['language'] ?? '') === '' && (string) ($store['locale'] ?? '') !== '') {
+            return strtolower(substr((string) $store['locale'], 0, 2));
+        }
+        return user_locale($user);
     }
 
     private function buildShiftEvent(

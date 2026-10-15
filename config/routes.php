@@ -8,6 +8,7 @@ use kintai\UI\Controller\Web\PasswordResetController;
 use kintai\UI\Controller\Web\NotificationController;
 use kintai\UI\Controller\Web\CronController;
 use kintai\UI\Controller\Web\EmployeeController;
+use kintai\UI\Controller\Web\DashboardLayoutController;
 use kintai\UI\Controller\Web\HomeController;
 use kintai\UI\Controller\Web\IcalController;
 use kintai\UI\Controller\Web\DocsController;
@@ -34,6 +35,7 @@ use kintai\UI\Controller\Web\System\BundleMarketController;
 use kintai\UI\Controller\Web\System\BundleSettingsController;
 use kintai\UI\Controller\Web\System\LanguageController;
 use kintai\UI\Controller\Web\System\LicenseController;
+use kintai\UI\Controller\Web\System\SetupWizardController;
 use kintai\UI\Controller\Web\System\MailTestController;
 use kintai\UI\Controller\Web\System\OwnerSettingsController;
 use kintai\Core\Middleware\AuthMiddleware;
@@ -65,7 +67,6 @@ use kintai\UI\Controller\Api\V1\PushTokenController as ApiPushTokenController;
 // =============================================================================
 
 // --- CRON ---
-$router->get('/cron/auto-validate', [CronController::class, 'autoValidate'], name: 'cron.auto_validate');
 $router->get('/cron/run/{job}', [CronController::class, 'run'], name: 'cron.run');
 
 // --- iCal ---
@@ -140,6 +141,7 @@ $router->group('/employee', function ($r) {
     // Dashboard
     $r->get('',             [EmployeeController::class, 'dashboard'],    name: 'employee.dashboard');
     $r->post('/dashboard/widgets', [EmployeeController::class, 'saveDashboardWidgets'], name: 'employee.dashboard.widgets');
+    $r->post('/dashboard/layout',  [DashboardLayoutController::class, 'saveEmployee'],  name: 'employee.dashboard.layout');
 
     // Shifts
     $r->get('/shifts',          [EmployeeController::class, 'shifts'],         name: 'employee.shifts');
@@ -159,7 +161,6 @@ $router->group('/employee', function ($r) {
     $r->get('/nav-settings',  [EmployeeController::class, 'navSettings'],     name: 'employee.nav_settings');
     $r->post('/nav-settings', [EmployeeController::class, 'saveNavSettings'], name: 'employee.nav_settings.save');
 
-    // Feedback : bundle pilote distribué hors monorepo, routes chargées depuis storage/bundles/feedback/ une fois installé (voir docs/architecture.md)
 
     // Échanges de shifts : bundle distribué hors monorepo, routes chargées depuis storage/bundles/shift-swap/ une fois installé (voir docs/architecture.md)
 
@@ -176,6 +177,7 @@ $router->get('/lang/{locale}', [AuthController::class, 'switchLanguage'], name: 
 // --- Accueil / Dashboard ---
 $router->get('/', [HomeController::class, 'index'], middleware: [AuthMiddleware::class, PermissionMiddleware::class], name: 'home', permission: 'public');
 $router->post('/admin/dashboard/widgets', [HomeController::class, 'saveDashboardWidgets'], middleware: [AuthMiddleware::class, PermissionMiddleware::class], name: 'admin.dashboard.widgets', permission: 'public');
+$router->post('/admin/dashboard/layout', [DashboardLayoutController::class, 'saveManager'], middleware: [AuthMiddleware::class, PermissionMiddleware::class], name: 'admin.dashboard.layout', permission: 'public');
 
 // =============================================================================
 // Routes administration (web)
@@ -278,7 +280,6 @@ $router->group('/admin', function ($r) {
     $r->get('/activity', [ActivityController::class, 'index'], name: 'admin.activity', permission: 'stores.view');
     $r->get('/activity/export', [ActivityController::class, 'export'], name: 'admin.activity.export', permission: 'stores.view');
 
-    // Feedbacks : bundle pilote distribué hors monorepo, routes chargées depuis storage/bundles/feedback/ une fois installé (voir docs/architecture.md)
 
     // Diagnostic mail
     $r->get('/mail-test',  [MailTestController::class, 'show'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.mail_test', permission: 'public');
@@ -309,7 +310,6 @@ $router->group('/admin', function ($r) {
     // Langues & traductions (Owner uniquement)
     $r->get('/languages',                       [LanguageController::class, 'index'],        middleware: [OwnerOnlyMiddleware::class], name: 'admin.languages', permission: 'public');
     $r->post('/languages',                      [LanguageController::class, 'store'],        middleware: [OwnerOnlyMiddleware::class], name: 'admin.languages.store', permission: 'public');
-    $r->post('/languages/{code}/default',       [LanguageController::class, 'setDefault'],   middleware: [OwnerOnlyMiddleware::class], name: 'admin.languages.set_default', permission: 'public');
     $r->post('/languages/{code}/toggle-active', [LanguageController::class, 'toggleActive'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.languages.toggle_active', permission: 'public');
     $r->post('/languages/{code}/delete',        [LanguageController::class, 'destroy'],      middleware: [OwnerOnlyMiddleware::class], name: 'admin.languages.delete', permission: 'public');
     $r->get('/languages/{code}/edit',           [LanguageController::class, 'edit'],         middleware: [OwnerOnlyMiddleware::class], name: 'admin.languages.edit', permission: 'public');
@@ -330,6 +330,10 @@ $router->group('/admin', function ($r) {
     $r->post('/bundles/market/channel',         [BundleMarketController::class, 'saveChannel'],   middleware: [OwnerOnlyMiddleware::class], name: 'admin.bundles.market.channel', permission: 'public');
 
     // Licence (déblocage du plan payant, Owner uniquement)
+    // Assistant de configuration ouvert par l'installateur : licence, puis bundles (voir SetupWizard).
+    $r->get('/setup',          [SetupWizardController::class, 'show'],    middleware: [OwnerOnlyMiddleware::class], name: 'admin.setup', permission: 'public');
+    $r->post('/setup/license', [SetupWizardController::class, 'license'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.setup.license', permission: 'public');
+    $r->post('/setup/bundles', [SetupWizardController::class, 'bundles'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.setup.bundles', permission: 'public');
     $r->get('/license',           [LicenseController::class, 'show'],       middleware: [OwnerOnlyMiddleware::class], name: 'admin.license', permission: 'public');
     $r->post('/license/activate', [LicenseController::class, 'activate'],   middleware: [OwnerOnlyMiddleware::class], name: 'admin.license.activate', permission: 'public');
     $r->post('/license/refresh',  [LicenseController::class, 'refresh'],    middleware: [OwnerOnlyMiddleware::class], name: 'admin.license.refresh', permission: 'public');
@@ -440,7 +444,6 @@ $router->group('/api/v1', function ($r) {
     $r->post('/notifications/{id}/read',   [ApiNotificationController::class, 'markRead'],    name: 'api.v1.notifications.read', permission: 'public');
     $r->delete('/notifications/{id}',      [ApiNotificationController::class, 'destroy'],     name: 'api.v1.notifications.destroy', permission: 'public');
 
-    // Feedbacks : bundle pilote distribué hors monorepo, routes chargées depuis storage/bundles/feedback/ une fois installé (voir docs/architecture.md)
 
     // Journal d'activité
     $r->get('/activity', [ApiActivityController::class, 'index'], name: 'api.v1.activity.index', permission: 'stores.view');

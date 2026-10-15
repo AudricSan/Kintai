@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+// Noms du contrat de bundle (kintai\Contract\…), déclarés avant tout chargement de bundle : voir src/Contract/aliases.php.
+require_once __DIR__ . '/../Contract/aliases.php';
+
 if (!function_exists('csrf_token')) {
     function csrf_token(): string
     {
@@ -200,11 +203,8 @@ if (!function_exists('feat_bundle')) {
      */
     function feat_bundle(?string $slug): bool
     {
-        if ($slug === null) {
-            return true;
-        }
-        $bundle = \kintai\Core\FeatureManager::STORE_FEATURE_BUNDLE_MAP[$slug] ?? null;
-        return $bundle === null || bundle_enabled($bundle);
+        // Fonctionnalités du Core, des bundles actifs (déclarées ou historiques) : voir Extension\StoreFeatures.
+        return $slug === null || \kintai\Core\Extension\StoreFeatures::current()->isAvailable($slug);
     }
 }
 
@@ -352,6 +352,42 @@ if (!function_exists('mascot_active')) {
     }
 }
 
+if (!function_exists('kintai_load_env_file')) {
+    /**
+     * Chargeur .env, partagé par le front controller (public/index.php) et les scripts en ligne de commande
+     * (scripts/cron.php) — nécessaire sur OVH (FastCGI), où le SetEnv du .htaccess n'atteint pas PHP.
+     * Priorité : .env.local (dev) → .env.ovh (production OVH) → .env (générique) ; un seul fichier chargé. Les
+     * variables déjà présentes dans l'environnement système ne sont jamais écrasées.
+     */
+    function kintai_load_env_file(string $basePath): void
+    {
+        foreach (['.env.local', '.env.ovh', '.env'] as $name) {
+            $file = $basePath . '/' . $name;
+            if (!file_exists($file)) {
+                continue;
+            }
+            foreach (file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+                $line = trim($line);
+                if ($line === '' || $line[0] === '#' || !str_contains($line, '=')) {
+                    continue;
+                }
+                [$k, $v] = explode('=', $line, 2);
+                $k = trim($k);
+                $v = trim($v);
+                if (strlen($v) >= 2 && $v[0] === $v[-1] && ($v[0] === '"' || $v[0] === "'")) {
+                    $v = substr($v, 1, -1);
+                }
+                if ($k !== '' && !isset($_ENV[$k])) {
+                    putenv("$k=$v");
+                    $_ENV[$k]    = $v;
+                    $_SERVER[$k] = $v;
+                }
+            }
+            break; // un seul fichier chargé
+        }
+    }
+}
+
 if (!function_exists('kintai_normalize_script_name')) {
     /**
      * Ramène SCRIPT_NAME à l'URL réellement vue par le visiteur quand le .htaccess racine a réécrit la
@@ -477,42 +513,110 @@ if (!function_exists('notification_type_catalog')) {
      * maintenaient chacune leur propre copie de ce tableau, et un type ajouté d'un
      * côté sans l'autre s'affichait avec sa clé technique brute au lieu d'un libellé
      * traduit (ex. notebook_entry_created, initialement oublié dans l'un des deux).
+     *
+     * Types du Core et types historiques des bundles officiels (toujours connus : les notifications déjà reçues
+     * restent affichées même si leur bundle est désactivé), plus ceux déclarés par les bundles actifs
+     * (Bundle::notificationTypes(), contrat 1.7, libellé « notif_{type} »).
      */
     function notification_type_catalog(): array
     {
+        $declared = [];
+        try {
+            $container = \kintai\Core\Container::getInstance();
+            if ($container->has(\kintai\Core\Extension\ExtensionRegistry::class)) {
+                $declared = $container->make(\kintai\Core\Extension\ExtensionRegistry::class)->notificationTypes();
+            }
+        } catch (\Throwable) {
+        }
+        $bundleTypes = [];
+        foreach ($declared as $type => $icon) {
+            $bundleTypes[$type] = ['label' => __('notif_' . $type), 'icon' => $icon !== '' ? $icon : '•'];
+        }
+
         return [
-            'message_received'       => ['label' => __('notif_message_received'), 'icon' => '✉'],
-            'timeoff_approved'       => ['label' => __('notif_timeoff_approved'), 'icon' => '✓'],
-            'timeoff_refused'        => ['label' => __('notif_timeoff_refused'), 'icon' => '✗'],
-            'timeoff_submitted'      => ['label' => __('notif_timeoff_submitted'), 'icon' => '🏖'],
-            'swap_accepted'          => ['label' => __('notif_swap_accepted'), 'icon' => '⇄'],
-            'swap_refused'           => ['label' => __('notif_swap_refused'), 'icon' => '⇄'],
             'shift_assigned'         => ['label' => __('notif_shift_assigned'), 'icon' => '📅'],
             'shift_updated'          => ['label' => __('notif_shift_updated'), 'icon' => '🔄'],
             'shift_deleted'          => ['label' => __('notif_shift_deleted'), 'icon' => '🗑'],
-            'open_shift_published'   => ['label' => __('notif_open_shift_published'), 'icon' => '📢'],
-            'shift_claim_submitted'  => ['label' => __('notif_shift_claim_submitted'), 'icon' => '🙋'],
-            'shift_claim_approved'   => ['label' => __('notif_shift_claim_approved'), 'icon' => '✓'],
-            'shift_claim_rejected'   => ['label' => __('notif_shift_claim_rejected'), 'icon' => '✗'],
-            'shift_claim_withdrawn'  => ['label' => __('notif_shift_claim_withdrawn'), 'icon' => '⊘'],
-            'daily_report_submitted' => ['label' => __('notif_daily_report_submitted'), 'icon' => '📝'],
-            'daily_report_validated' => ['label' => __('notif_daily_report_validated'), 'icon' => '✓'],
-            'feedback_submitted'     => ['label' => __('notif_feedback_submitted'), 'icon' => '💬'],
-            'swap_requested'         => ['label' => __('notif_swap_requested'), 'icon' => '⇄'],
-            'swap_peer_accepted'     => ['label' => __('notif_swap_peer_accepted'), 'icon' => '⇄'],
-            'swap_peer_refused'      => ['label' => __('notif_swap_peer_refused'), 'icon' => '⇄'],
-            'swap_cancelled'         => ['label' => __('notif_swap_cancelled'), 'icon' => '⇄'],
-            'notebook_entry_created' => ['label' => __('notif_notebook_entry_created'), 'icon' => '📓'],
-        ];
+        ] + $bundleTypes;
     }
 
+    /** Libellé d'un type : catalogue, sinon traduction « notif_{type} » si elle existe (bundle inactif), sinon le type. */
     function notification_type_label(string $type): string
     {
-        return notification_type_catalog()[$type]['label'] ?? $type;
+        return notification_type_catalog()[$type]['label'] ?? translation_or($type, 'notif_' . $type);
     }
 
     function notification_type_icon(string $type): string
     {
         return notification_type_catalog()[$type]['icon'] ?? '•';
+    }
+}
+
+if (!function_exists('translation_or')) {
+    /**
+     * Traduction de $key si elle existe (Core ou bundles, voir JsonTranslationRepository), sinon $fallback. Sert aux
+     * libellés trouvés par convention de nommage (notif_{type}, audit_{action}) : un bundle les fournit dans ses
+     * fichiers lang/ sans que le Core ait à les connaître.
+     */
+    function translation_or(string $fallback, string $key): string
+    {
+        $translated = __($key);
+        return $translated !== $key ? $translated : $fallback;
+    }
+}
+
+if (!function_exists('instance_locale')) {
+    /**
+     * Langue de l'instance (APP_LOCALE, voir InstanceLocale), ou l'anglais si l'application n'est pas démarrée.
+     */
+    function instance_locale(): string
+    {
+        try {
+            return \kintai\Core\Container::getInstance()->make(\kintai\Core\Services\InstanceLocale::class)->code();
+        } catch (\Throwable) {
+            $configured = (string) env(\kintai\Core\Services\InstanceLocale::ENV_KEY, '');
+            return $configured !== '' ? $configured : 'en';
+        }
+    }
+}
+
+if (!function_exists('user_locale')) {
+    /**
+     * Langue d'un utilisateur pour ce qui lui est écrit hors de sa session (notifications, e-mails, iCal) : celle
+     * de son profil si elle est active, sinon celle de l'instance.
+     */
+    function user_locale(?array $user): string
+    {
+        try {
+            return \kintai\Core\Container::getInstance()->make(\kintai\Core\Services\InstanceLocale::class)->forUser($user);
+        } catch (\Throwable) {
+            $language = (string) ($user['language'] ?? '');
+            return $language !== '' ? $language : instance_locale();
+        }
+    }
+}
+
+if (!function_exists('audit_action_label')) {
+    /**
+     * Libellé d'une action du journal d'activité : liste connue de la vue, sinon traduction « audit_{action} » (points
+     * remplacés par des tirets bas, ex. timeoff.approved → audit_timeoff_approved), sinon l'action brute.
+     *
+     * @param array<string, string> $known
+     */
+    function audit_action_label(string $action, array $known = []): string
+    {
+        return $known[$action] ?? translation_or($action, 'audit_' . str_replace(['.', '-'], '_', $action));
+    }
+}
+
+if (!function_exists('safe_color')) {
+    /**
+     * Couleur utilisable dans un attribut style="" ou data-* : la valeur si c'est un hexadécimal
+     * valide, sinon le repli. Ceinture et bretelles en plus de la validation à la saisie
+     * (ColorRule) pour les données déjà en base ou écrites par un bundle.
+     */
+    function safe_color(mixed $value, string $fallback = '#6366f1'): string
+    {
+        return \kintai\Core\Validation\ColorRule::safe($value, $fallback);
     }
 }

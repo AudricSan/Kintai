@@ -1,5 +1,4 @@
 <?php
-use kintai\UI\Components\Badge;
 use kintai\UI\Components\Button;
 use kintai\UI\Components\Card;
 use kintai\UI\Components\Flash;
@@ -44,26 +43,13 @@ ob_start();
     <?php include __DIR__ . '/../_partials/_form-shift.php'; ?>
     <div class="form-actions">
         <?= Button::make($mode === 'edit' ? __('save') : __('new_shift'))->primary()->submit()->render() ?>
-        <?php if ($mode === 'edit' && (!isset($store_features) || $store_features === null || in_array('open_shifts', (array) $store_features, true))): ?>
-            <?php if (!(int)($shift['is_open'] ?? 0)): ?>
-                <form method="POST" action="<?= $BASE_URL ?>/admin/shifts/<?= (int)$shift['id'] ?>/publish" class="form-inline">
-                    <?= csrf_field() ?>
-                    <?= Button::make(__('publish_to_bourse'))->warning()->submit()->render() ?>
-                </form>
-            <?php else: ?>
-                <form method="POST" action="<?= $BASE_URL ?>/admin/shifts/<?= (int)$shift['id'] ?>/unpublish" class="form-inline">
-                    <?= csrf_field() ?>
-                    <?= Button::make(__('close_bourse'))->ghost()->submit()->render() ?>
-                </form>
-                <?= Badge::make(__('open_bourse'))->success()->render() ?>
-            <?php endif; ?>
+        <?php if ($mode === 'edit'): // Boutons des bundles (bourse aux shifts… — contrat 1.17), dans ce formulaire (formaction). ?>
+            <?= \kintai\Core\Extension\ShiftFormSections::current()->renderActions($shift, $feat) ?>
         <?php endif; ?>
         <a href="<?= back_url(route_url('admin.shifts')) ?>" class="btn btn--ghost"><?= __('cancel') ?></a>
         <?php if ($mode === 'edit'): ?>
-            <form method="POST" action="<?= $BASE_URL ?>/admin/shifts/<?= (int)$shift['id'] ?>/delete" class="form-inline ml-auto">
-                <?= csrf_field() ?>
-                <?= Button::make(__('delete'))->danger()->attrs(['data-confirm' => __('confirm')])->submit()->render() ?>
-            </form>
+            <?php // Dans le formulaire du shift : formaction (un <form> imbriqué était ignoré, le bouton enregistrait le shift). ?>
+            <span class="ml-auto"><?= Button::make(__('delete'))->danger()->submit()->attrs(['data-confirm' => __('confirm'), 'formaction' => $BASE_URL . '/admin/shifts/' . (int) $shift['id'] . '/delete', 'formmethod' => 'post', 'formnovalidate' => 'formnovalidate'])->render() ?></span>
         <?php endif; ?>
     </div>
 </form>

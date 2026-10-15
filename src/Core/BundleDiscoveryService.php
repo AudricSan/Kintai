@@ -17,7 +17,8 @@ use kintai\Core\Services\Log;
  *
  * Un bundle tiers déposé manuellement dans src/Bundles/ (namespace
  * `kintai\Bundles\{Nom}\{Nom}Bundle`, PSR-4) est détecté au même titre qu'un
- * bundle du dépôt d'origine. Voir config/official-bundles.php pour la
+ * bundle du dépôt d'origine ; comme un bundle installé, il n'est chargé que si
+ * son bundle.json déclare un contrat (« kintai_contract ») que ce Core fournit. Voir config/official-bundles.php pour la
  * distinction officiel / tiers, faite ailleurs (pas ici) : ce service se
  * contente de lister ce qui existe.
  *
@@ -32,6 +33,12 @@ use kintai\Core\Services\Log;
  */
 final class BundleDiscoveryService
 {
+    /**
+     * Bundles supprimés du projet : une instance qui les avait installés ne doit plus les charger (leur code
+     * dépendrait de classes du Core qui n'existent plus).
+     */
+    public const RETIRED_SLUGS = ['feedback'];
+
     private readonly string $bundlesDir;
     private readonly InstalledBundleManifestStore $installedStore;
     private readonly string $installedBundlesDir;
@@ -40,6 +47,8 @@ final class BundleDiscoveryService
         ?string $bundlesDir = null,
         ?InstalledBundleManifestStore $installedStore = null,
         ?string $installedBundlesDir = null,
+        // Version du Core courante (config/app.php) ; injectable pour les tests.
+        private readonly ?string $coreVersion = null,
     ) {
         $this->bundlesDir = $bundlesDir ?? BASE_PATH . '/src/Bundles';
         $this->installedStore = $installedStore ?? new InstalledBundleManifestStore();
@@ -101,11 +110,14 @@ final class BundleDiscoveryService
             try {
                 /** @var ContractBundle $instance */
                 $instance = (new \ReflectionClass($class))->newInstanceWithoutConstructor();
+                $manifest = $this->readManifest($this->bundlesDir . '/' . $dirName . '/bundle.json');
                 $discovered[$instance->getName()] = [
                     'class'       => $class,
                     'label'       => $instance->getLabel(),
                     'description' => $instance->getDescription(),
                     'version'     => $instance->getVersion(),
+                    // Même règle qu'un bundle installé : sans contrat déclaré et fourni, listé mais jamais chargé.
+                    'incompatible' => $manifest === null ? __('bundle_contract_missing') : $manifest->incompatibilityReason($this->coreVersion()),
                 ];
             } catch (\Throwable) {
                 // Un bundle tiers mal formé ne doit jamais faire planter le boot ou l'admin.
@@ -124,6 +136,9 @@ final class BundleDiscoveryService
         $discovered = [];
 
         foreach ($this->installedStore->all() as $slug => $info) {
+            if (in_array($slug, self::RETIRED_SLUGS, true)) {
+                continue;
+            }
             $version = $info['active_version'] ?? null;
             if (!is_string($version) || $version === '') {
                 continue;
@@ -135,8 +150,7 @@ final class BundleDiscoveryService
                 continue;
             }
 
-            $data = json_decode((string) file_get_contents($manifestPath), true);
-            $manifest = BundleManifest::fromArray($data);
+            $manifest = $this->readManifest($manifestPath);
             if ($manifest === null || $manifest->slug !== $slug) {
                 continue;
             }
@@ -156,6 +170,9 @@ final class BundleDiscoveryService
                     // ne porte que la ligne de base "X.Y.0", Z est calculé par le
                     // workflow de release du bundle.
                     'version'     => $version,
+                    // Bundle devenu incompatible (mise à jour du Core, contrat relevé) : listé pour que l'Owner le
+                    // voie, jamais chargé (voir BundleServiceProvider). null = compatible.
+                    'incompatible' => $manifest->incompatibilityReason($this->coreVersion()),
                 ];
             } catch (\Throwable) {
                 continue;
@@ -163,5 +180,44 @@ final class BundleDiscoveryService
         }
 
         return $discovered;
+    }
+
+    /**
+     * Bundles installés (version active) qui ne tourneraient pas sur un Core fournissant ce contrat : avertissement
+     * de /admin/update avant d'appliquer une mise à jour du Core.
+     *
+     * @return list<array{slug: string, name: string, version: string, reason: string}>
+     */
+    public function installedIncompatibleWith(string $contractVersion): array
+    {
+        $incompatible = [];
+        foreach ($this->installedStore->all() as $slug => $info) {
+            $version = $info['active_version'] ?? null;
+            if (in_array($slug, self::RETIRED_SLUGS, true) || !is_string($version) || $version === '') {
+                continue;
+            }
+            $manifest = $this->readManifest($this->installedBundlesDir . '/' . $slug . '/' . $version . '/bundle.json');
+            $reason = $manifest === null
+                ? __('bundle_contract_missing')
+                : $manifest->incompatibilityReason($this->coreVersion(), $contractVersion);
+            if ($reason !== null) {
+                $incompatible[] = ['slug' => $slug, 'name' => $manifest->name ?? $slug, 'version' => $version, 'reason' => $reason];
+            }
+        }
+        return $incompatible;
+    }
+
+    private function readManifest(string $path): ?BundleManifest
+    {
+        return is_file($path) ? BundleManifest::fromArray(json_decode((string) file_get_contents($path), true)) : null;
+    }
+
+    private function coreVersion(): string
+    {
+        if ($this->coreVersion !== null) {
+            return $this->coreVersion;
+        }
+        $config = defined('BASE_PATH') && is_file(BASE_PATH . '/config/app.php') ? require BASE_PATH . '/config/app.php' : [];
+        return is_array($config) && is_string($config['version'] ?? null) ? $config['version'] : '0.0.0';
     }
 }

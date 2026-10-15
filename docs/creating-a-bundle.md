@@ -2,9 +2,9 @@
 
 🌐 **English** · [Français](i18n/creating-a-bundle.fr.md) · [日本語](i18n/creating-a-bundle.ja.md)
 
-This document is for anyone writing a Kintai bundle meant to be **distributed independently** — its own Git repository, its own version history, installable from `/admin/bundles/market` without ever touching Kintai's own codebase. It doesn't cover the older, still-supported pattern of dropping a bundle directly into `src/Bundles/` inside the main repo (see `docs/architecture.md` → "Modular Bundles" for that) — that path still works for the 11 bundles that ship with Kintai today, but a new bundle, especially a third-party one, should use the model described here.
+This document is for anyone writing a Kintai bundle meant to be **distributed independently** — its own Git repository, its own version history, installable from `/admin/bundles/market` without ever touching Kintai's own codebase. It doesn't cover the older, still-supported pattern of dropping a bundle directly into `src/Bundles/` inside the main repo (see `docs/architecture.md` → "Modular Bundles" for that) — that path is still scanned for a bundle dropped in by hand, but every official bundle is distributed the way described here and a new bundle, especially a third-party one, should be too.
 
-`kintai-bundle-feedback` (the "Feedback" bundle, extracted from Kintai's own monorepo as the pilot for this whole mechanism) is a complete, real-world example — worth keeping open in a second tab while reading this.
+`kintai-bundle-notebook` (the team notebook: its own model, repository, migrations, views, dashboard widgets and declarations) is a small, complete, real-world example — worth keeping open in a second tab while reading this.
 
 ## Why a separate repository, and why no `git clone`
 
@@ -59,41 +59,635 @@ abstract class Bundle
 }
 ```
 
-A minimal, real example (`kintai-bundle-feedback`'s actual entry class, trimmed):
+A minimal, real example (`kintai-bundle-notebook`'s actual entry class, trimmed):
 
 ```php
 <?php
 
 declare(strict_types=1);
 
-namespace kintai\Bundles\Installed\Feedback;
+namespace kintai\Bundles\Installed\Notebook;
 
-use kintai\Core\BundleContract\Bundle;
-use kintai\Core\Repositories\FeedbackRepositoryInterface;
-use kintai\Core\Repositories\DatabaseFeedbackRepository;
+use kintai\Bundles\Installed\Notebook\Repositories\DatabaseNotebookEntryRepository;
+use kintai\Bundles\Installed\Notebook\Repositories\NotebookEntryRepositoryInterface;
+use kintai\Contract\Bundle;
+use kintai\Contract\Extension\StoreFeature;
 
-final class FeedbackBundle extends Bundle
+final class NotebookBundle extends Bundle
 {
-    public function getName(): string { return 'feedback'; }
-    public function getVersion(): string { return '1.0.0'; }
-    public function getLabel(): string { return __('bundle_feedback'); }
-    public function getDescription(): string { return __('bundle_feedback_desc'); }
+    public function getName(): string { return 'notebook'; }
+    public function getVersion(): string { return '1.2.0'; }
+    public function getLabel(): string { return __('bundle_notebook'); }
+    public function getDescription(): string { return __('bundle_notebook_desc'); }
 
     public function register(): void
     {
+        // The bundle owns its repository (and its table, created by its own migrations).
         $this->app->container()->singleton(
-            FeedbackRepositoryInterface::class,
-            fn() => new DatabaseFeedbackRepository()
+            NotebookEntryRepositoryInterface::class,
+            fn() => new DatabaseNotebookEntryRepository()
         );
-        $this->loadViewsFrom($this->getPath() . '/Views', 'feedback');
+        $this->loadViewsFrom($this->getPath() . '/Views', 'notebook');
         $this->loadRoutesFrom($this->getPath() . '/routes.php');
+        $this->loadAssetsFrom('public');
+    }
+
+    // What it brings to the Core is declared (see "Extension points" below).
+    public function permissions(): array { return ['notebook' => ['view', 'create', 'manage']]; }
+
+    public function storeFeatures(): array
+    {
+        return [new StoreFeature('notes', 'feature_notes', 'feature_notes_desc', '📝', 90)];
     }
 }
 ```
 
 Your namespace can be anything — by convention, installed bundles use `kintai\Bundles\Installed\{Name}\`, deliberately distinct from the legacy monorepo convention (`kintai\Bundles\{Name}\`) so the two autoloading mechanisms (Composer's own PSR-4 for `src/Bundles/`, and a dedicated `spl_autoload_register` for anything under `storage/bundles/`) can never collide on the same class name.
 
-**A repository and interface pair from `src/Core/Repositories/*Interface.php` is also part of the stable surface** you're allowed to depend on (e.g. `FeedbackRepositoryInterface` above) — those are already a stable contract by construction, unrelated to `BundleContract`.
+**A bundle never depends on the Core's repositories or models**: it owns its own (as above) and only uses the `kintai\Contract\…` names listed below. Data the Core needs from it goes through a declared provider.
+
+## The contract surface: `kintai\Contract\…`
+
+A bundle may only use the names below (plus its own classes). Each one is a **stable alias** of the Core class that
+implements it today (`src/Contract/surface.php` is the reference list), so the Core can reorganise its own code
+without breaking bundles. Import them exactly like any class — type hints, `instanceof`, `catch` and constructor
+injection all work, the container resolves an alias to the binding of the class behind it.
+
+```php
+use kintai\Contract\Bundle;
+use kintai\Contract\Http\Request;
+use kintai\Contract\Http\Response;
+use kintai\Contract\Exceptions\NotFoundException;
+use kintai\Contract\Data\StoreRepositoryInterface;
+```
+
+**Stable** names are guaranteed for the whole major version of the contract. **Provisional** names are exposed for
+the transition and will be replaced by a later step of the contract plan (see their description); they only go
+away with a new major version.
+
+| Name | Status | Role |
+|---|---|---|
+| `kintai\Contract\Bundle` | stable | Base class of every bundle (entry point). |
+| `kintai\Contract\BundleManifest` | stable | Parsed bundle.json. |
+| `kintai\Contract\Container` | stable | Dependency container (register your own bindings). |
+| `kintai\Contract\Cron\CronJob` | stable | Scheduled job declared by `Bundle::cronJobs()` (contract 1.8). |
+| `kintai\Contract\Http\Request` | stable | HTTP request. |
+| `kintai\Contract\Http\Response` | stable | HTTP response. |
+| `kintai\Contract\Http\Router` | stable | Route declaration (routes.php). |
+| `kintai\Contract\Http\Paginator` | stable | API list pagination. |
+| `kintai\Contract\Http\Middleware\AuthMiddleware` | stable | Web session required. |
+| `kintai\Contract\Http\Middleware\PermissionMiddleware` | stable | Web permission required. |
+| `kintai\Contract\Http\Middleware\ApiAuthMiddleware` | stable | API token required. |
+| `kintai\Contract\Http\Middleware\ApiPermissionMiddleware` | stable | API permission required. |
+| `kintai\Contract\Http\Concerns\HasBaseUrl` | stable | URL prefix (subfolder installs). |
+| `kintai\Contract\Http\Concerns\HasAdminAccess` | **provisional** | Manager's store scope; to be replaced by CurrentUser/Gate (step 2). |
+| `kintai\Contract\Http\Concerns\HasStoreFeatureCheck` | **provisional** | Per-store feature check; to be replaced by the storeFeatures extension point (step 2). |
+| `kintai\Contract\Http\Concerns\HasStaffReportCrud` | **provisional** | Shared HR-report CRUD; moves into the bundles concerned (step 4). |
+| `kintai\Contract\Exceptions\NotFoundException` | stable | 404. |
+| `kintai\Contract\Exceptions\ForbiddenException` | stable | 403. |
+| `kintai\Contract\Exceptions\ValidationException` | stable | 422 with per-field errors. |
+| `kintai\Contract\Exceptions\ConflictException` | stable | 409. |
+| `kintai\Contract\Auth\PermissionService` | stable | Permission and scope checks. |
+| `kintai\Contract\Auth\AuthService` | **provisional** | Session user; to be replaced by CurrentUser (step 2). |
+| `kintai\Contract\Data\UserRepositoryInterface` | stable | Accounts. |
+| `kintai\Contract\Data\StoreRepositoryInterface` | stable | Stores. |
+| `kintai\Contract\Data\StoreUserRepositoryInterface` | stable | Store memberships. |
+| `kintai\Contract\Data\ShiftRepositoryInterface` | stable | Shifts. |
+| `kintai\Contract\Data\ShiftTypeRepositoryInterface` | stable | Shift types. |
+| `kintai\Contract\Data\UserShiftTypeRateRepositoryInterface` | stable | Per-user hourly rates. |
+| `kintai\Contract\Data\AppSettingsRepositoryInterface` | stable | Instance settings. |
+| `kintai\Contract\Database\Migration` | stable | Base class of the bundle's migrations. |
+| `kintai\Contract\Services\AuditLogger` | stable | Activity log. |
+| `kintai\Contract\Services\NotificationService` | stable | Notifications (and push). |
+| `kintai\Contract\Services\TranslationService` | stable | Translations. |
+| `kintai\Contract\Services\ImageCompressionService` | stable | Image compression. |
+| `kintai\Contract\Services\Mailer` | stable | Sends an e-mail through the instance's configured transport: `send($to, $subject, $html, $attachmentPaths)` (contract 1.15). |
+| `kintai\Contract\Services\PdfCjkFontResolver` | stable | Japanese font for mPDF documents: `PdfCjkFontResolver::applyTo($mpdfConfig)` (contract 1.16). |
+| `kintai\Contract\Services\Sales` | stable | A store's daily sales, read from the sales providers (contract 1.14, see "Sales" below). |
+| `kintai\Contract\Services\ShiftWageCalculator` | stable | Cost of a shift (single source of the payroll computation). |
+| `kintai\Contract\Services\ShiftServiceInterface` | **provisional** | Shift creation; to be replaced by a targeted write API (step 3). |
+| `kintai\Contract\Services\StoreStatsServiceInterface` | **provisional** | Store statistics; to be replaced by providers (step 3). |
+| `kintai\Contract\View\ViewRenderer` | stable | Renders the bundle's views. |
+| `kintai\Contract\View\Components\Badge` | stable | UI component (`Badge`). |
+| `kintai\Contract\View\Components\Button` | stable | UI component (`Button`). |
+| `kintai\Contract\View\Components\Card` | stable | UI component (`Card`). |
+| `kintai\Contract\View\Components\EmptyState` | stable | UI component (`EmptyState`). |
+| `kintai\Contract\View\Components\FilterBar` | stable | UI component (`FilterBar`). |
+| `kintai\Contract\View\Components\Flash` | stable | UI component (`Flash`). |
+| `kintai\Contract\View\Components\Form` | stable | UI component (`Form`). |
+| `kintai\Contract\View\Components\Modal` | stable | UI component (`Modal`). |
+| `kintai\Contract\View\Components\Pagination` | stable | UI component (`Pagination`). |
+| `kintai\Contract\View\Components\Table` | stable | UI component (`Table`). |
+
+### Bundle-owned classes
+
+A bundle owns its models, repositories, services and tables: none of them live in the Core any more (step 4 of
+the plan is complete for every official bundle). A bundle only imports `kintai\Contract\…`; its contract-usage
+test has no exception left.
+
+### Checking your bundle
+
+Kintai's `tests/Support/ContractUsageScanner.php` (loaded by the bundles' PHPUnit harness) reports every
+`kintai\Core\…`, `kintai\UI\…` or `kintai\Domain\…` reference outside the contract:
+
+```php
+public function testOnlyTheContractIsUsed(): void
+{
+    $root = dirname(__DIR__);
+    $this->assertSame([], ContractUsageScanner::violations(
+        [$root . '/src', $root . '/Views', $root . '/routes.php'],
+        [/* bundle-owned classes still living in the Core */],
+    ));
+}
+```
+
+## Extension points (contract 1.1+)
+
+The Core never names a bundle: a bundle **declares** what it adds to the interface by overriding methods of its
+entry class, and the Core renders it. Each bundle is queried in isolation — an exception or a value of the wrong
+type drops its contribution and is logged, the page keeps working. Require `"kintai_contract": "^1.1"` to use them.
+
+### Navigation: `navigation()`
+
+```php
+use kintai\Contract\Extension\NavItem;
+
+public function navigation(): array
+{
+    return [
+        new NavItem(
+            key: 'timeoff',                       // unique, also the key of the user's "hide this entry" preference
+            section: NavItem::REQUESTS,           // MAIN, PLANNING, HR, REQUESTS, REPORTS or SYSTEM
+            label: 'timeoff',                     // translation key (manager view)
+            managerRoute: 'admin.timeoff',        // route name, or null if managers have no page
+            employeeRoute: 'employee.timeoff',    // route name, or null if employees have no page
+            icon: 'leaf',
+            employeeLabel: 'my_timeoff',
+            activePaths: ['/admin/timeoff', '/employee/timeoff'],
+            storeFeature: 'timeoff',              // per-store feature switch, if any
+            order: 10,                            // Core entries use multiples of 10
+            mobile: true,                         // may be picked for the mobile bottom bar
+        ),
+    ];
+}
+```
+
+An entry is shown only when the current role has a route, holds the permission declared on that route, and — if
+`storeFeature` is set — has that feature enabled. Users can hide it from their navigation preferences.
+
+### Permissions: `permissions()` (contract 1.2)
+
+```php
+public function permissions(): array
+{
+    return [
+        'timeoff' => ['view', 'create', 'update', 'delete', 'approve'],  // category => actions
+    ];
+}
+```
+
+Each `category.action` pair becomes a permission key you can put on your routes (`permission: 'timeoff.approve'`)
+and that Owners grant from the Roles page while your bundle is active. Names are lowercase `snake_case`. The Core
+categories (`employees`, `shifts`, `stores`, `payroll`) can't be redefined, and a category already declared by
+another bundle is ignored (logged). The Roles page labels a category with the translation key
+`perm_category_{category}` and an action with the Core's label for the common actions (`view`, `create`, `update`,
+`delete`, `approve`, …), otherwise with the action name itself as a translation key — ship those keys in your
+bundle's `lang/`. Disabling the bundle hides the category from the Roles page but keeps the grants in the
+database, so re-enabling it restores them. On the bundle's first install (setup assistant or catalogue), every
+declared permission is granted to the Manager role, which uses it on its own stores; updates grant nothing again, so a
+right the Owner withdrew stays withdrawn. Require `"kintai_contract": "^1.2"`.
+
+### Per-store features: `storeFeatures()` (contract 1.3)
+
+```php
+use kintai\Contract\Extension\StoreFeature;
+
+public function storeFeatures(): array
+{
+    return [
+        new StoreFeature(
+            key: 'timeoff',                       // stored in store_features, lowercase snake_case
+            label: 'feature_timeoff',             // translation key of the card title
+            description: 'feature_timeoff_desc',  // translation key of the card description
+            icon: '🏖',
+            order: 30,                            // Core features use multiples of 10
+        ),
+    ];
+}
+```
+
+While your bundle is active, each feature is offered as a switch in the "Features" card of the store form. Check
+it on your employee pages with `HasStoreFeatureCheck::assertFeature($request, 'timeoff')`, and give the same key
+as `storeFeature` to your `NavItem`s so they disappear for stores that turned it off. A store that has never saved
+its features has every feature on; disabling your bundle keeps each store's choice, so re-enabling it restores
+them. A key already declared by the Core or another bundle is ignored (logged). Require
+`"kintai_contract": "^1.3"`.
+
+### Dashboard widgets: `dashboardWidgets()` (contract 1.4)
+
+```php
+use kintai\Contract\Extension\DashboardWidget;
+
+public function dashboardWidgets(): array
+{
+    return [
+        new DashboardWidget(
+            key: 'team_notes',                    // unique on that dashboard, also the user's preference key
+            audience: DashboardWidget::MANAGER,   // MANAGER ("/") or EMPLOYEE ("/employee")
+            label: 'widget_team_notes',           // translation key shown in the "Customize" panel
+            view: 'notebook::widgets.dashboard',  // your namespaced view (loadViewsFrom())
+            data: fn(array $ctx): array => [      // variables passed to the view
+                'entries' => $this->app->container()->make(NotebookEntryRepositoryInterface::class)
+                    ->findVisibleForStores($ctx['store_ids']),
+            ],
+            permission: 'notebook.view',
+            storeFeature: 'notes',
+            order: 10,
+        ),
+    ];
+}
+```
+
+Your widgets are listed in the dashboard's "Customize" panel (on by default) and rendered after the Core's own
+widgets, full width, until the user moves or resizes them (each user's order and widths are saved; a widget the user
+never placed goes last), for users holding `permission` whose stores have `storeFeature` on. `data` receives the context: `user`,
+`store_ids` (the stores the manager handles, or the employee's own stores), `managed_store_ids` (`null` = every
+store, manager side), `stores_map` (id => name) and `today`. Load only what the widget shows — `data` runs on every
+dashboard view. An exception in `data` or in the view removes that widget only (logged). Render a full card
+(`<div class="card card--mt">…</div>`). Core keys can't be reused. A bundle that takes over a widget the Core used
+to render keeps its key so users keep their choices (`notebook` kept `team_notes`, `timeoff` kept `pending_timeoff`,
+`shift-swap` kept `pending_swaps` and `timeclock` kept `timeclocks_today` and `timeclock` when they were extracted).
+Require `"kintai_contract": "^1.4"`.
+
+### View variables: `viewVariables()` (contract 1.5)
+
+```php
+public function viewVariables(): array
+{
+    return [
+        // name => fn(array $user): mixed, shared with every view of authenticated pages
+        'unread_messages_count' => fn(array $user): int =>
+            $this->app->container()->make(MessageRepositoryInterface::class)->countUnread((int) $user['id']),
+    ];
+}
+```
+
+Use it for the few values your navigation or layout needs on every page — typically the counter named in a
+`NavItem`'s `badge`. Each function runs on every authenticated page, so keep it to one cheap query. Names are
+lowercase `snake_case`, preferably prefixed with your bundle's name; Core names (`auth_user`, `managed_store_ids`,
+`store_features`, …) and names already declared by another bundle are refused, and an exception drops that variable
+only (logged). `messaging` shares `unread_messages_count` and `daily-report` `daily_report_staff_stores` this way;
+the Core computes none of them itself. Require `"kintai_contract": "^1.5"`.
+
+### Action links: `actions()` (contract 1.6)
+
+```php
+use kintai\Contract\Extension\Action;
+
+public function actions(): array
+{
+    return [
+        new Action(
+            key: 'salary_report',
+            slot: Action::EMPLOYEE_ROW,           // where the link goes, see below
+            label: 'salary_report',               // translation key
+            url: fn(array $ctx): ?string =>      // null hides the link for this context
+                route_url('salary_reports.create', ['id' => $ctx['store_id']]) . '?user_id=' . $ctx['user_id'],
+            icon: '💰',
+            style: Action::DEFAULT,               // DEFAULT, PRIMARY or DANGER
+            permission: 'payroll.generate',
+        ),
+    ];
+}
+```
+
+Slots and the context each one passes to `url`:
+
+| Slot | Where | Context |
+|---|---|---|
+| `Action::EMPLOYEE_ROW` | "⋮" menu of a row of the staff list | `user_id`, `store_id` (main store) |
+| `Action::EMPLOYEE_STORE` | "Reports" card of the employee form, once per store | `user_id`, `store_id`, `store_name` |
+| `Action::STORE_REPORT` | Header of a store's employee report | `store_id` |
+| `Action::STORE_REPORT_ROW` | Row of a store's employee report, and header of that employee's stats page | `store_id`, `user_id`, `period` |
+| `Action::SHIFTS_EMPLOYEE` | Employee schedule toolbar (list, calendar, day) | none |
+
+The Core renders the link in the slot's own style, only for users holding `permission` and, if `storeFeature` is set,
+with that feature on. A key already used in the slot is ignored; an exception in `url` drops that link (logged).
+The Core adds no link of its own: `shift-swap` ships "Request a swap" this way. Require
+`"kintai_contract": "^1.6"`.
+
+### Notifications and activity log labels (contract 1.7)
+
+```php
+public function notificationTypes(): array
+{
+    return ['timeoff_approved' => '✓', 'timeoff_refused' => '✗'];   // type => icon
+}
+```
+
+Declare the types of the notifications your bundle creates, with their icon; the label is the translation
+`notif_{type}` from your bundle's `lang/` files. Core types can't be redefined. Notifications already received keep
+their translated label when your bundle is disabled, as long as the translation exists.
+
+Activity log entries you write (`AuditLogger`) get their label the same way: ship `audit_{action}` in your `lang/`
+files, dots and dashes replaced by underscores (`timeoff.approved` → `audit_timeoff_approved`). Require
+`"kintai_contract": "^1.7"` for `notificationTypes()`; the translation conventions need nothing.
+
+### Scheduled jobs: `cronJobs()` (contract 1.8)
+
+```php
+use kintai\Contract\Cron\CronJob;
+use kintai\Contract\Http\Request;
+use kintai\Contract\Http\Response;
+
+final class SendRemindersJob implements CronJob
+{
+    public function __construct(private readonly ReminderService $reminders) {}
+
+    public function getName(): string
+    {
+        return 'timeoff-reminders';               // lowercase letters, digits, dashes
+    }
+
+    public function run(Request $request): Response
+    {
+        return Response::json(['ok' => true, 'sent' => $this->reminders->sendDue()]);
+    }
+}
+
+// In your Bundle class:
+public function cronJobs(): array
+{
+    return [SendRemindersJob::class];             // resolved by the container
+}
+```
+
+While your bundle is active, an external scheduler (cron-job.org, a server crontab…) runs the job by calling
+`/cron/run/{name}` with a cron token the Owner created (`?token=` or `Authorization: Bearer`) — typical on shared
+hosting — or, on a server with SSH access, a local crontab runs `php scripts/cron.php {name}` (no token; extra
+URL parameters become `--key=value`). Core names (`backup`,
+`log-purge`, `license-check`) and names already taken are refused (logged); a class that can't be built is skipped.
+`daily-report` ships `auto-validate` this way. Require `"kintai_contract": "^1.8"`.
+
+Since contract 1.20, a job's label (listed by `php scripts/cron.php`) is found by convention in your `lang/` files:
+`cron_job_{name}` with dashes turned into underscores (`cron_job_timeoff_reminders`); without it, the name is shown.
+
+### Profile sections: `profileSections()` (contract 1.12)
+
+```php
+use kintai\Contract\Extension\ProfileSection;
+
+public function profileSections(): array
+{
+    return [
+        new ProfileSection(
+            key: 'directory',
+            view: 'team-directory::profile-section',   // rendered with $user (the signed-in user's row)
+            flags: ['show_in_directory', 'share_email', 'share_phone', 'share_mobile_phone'],
+            order: 10,
+        ),
+    ];
+}
+```
+
+The Core renders your view inside the "My information" form of the profile, before its "Save" button, while your
+bundle is active. On save, it writes the `flags` you declared (checkboxes, `0`/`1`, a field missing from the request
+keeps its value) into the `users` table — only columns the Core opens to bundles are accepted
+(`ProfileSections::WRITABLE_USER_COLUMNS`), anything else is ignored and logged; keep other data in your own tables
+and routes. Ship a hidden `0` field before each checkbox so unchecking works. A key already taken is ignored; an
+exception while rendering drops that section (logged). The Core has no section of its own: `team-directory` ships
+the directory checkboxes this way. Require `"kintai_contract": "^1.12"`.
+
+### Core events: `eventListeners()` (contract 1.13)
+
+```php
+use kintai\Contract\Event\EmployeeCreated;
+
+public function eventListeners(): array
+{
+    return [
+        EmployeeCreated::class => function (EmployeeCreated $event): void {
+            // $event->user (users row, without secrets), $event->storeId (?int), $event->createdBy (?int),
+            // $event->source ('form', 'excel_import' or 'api')
+        },
+    ];
+}
+```
+
+The Core announces what happens on its side so your bundle can react without the Core knowing about it. One listener
+per event class (`kintai\Contract\Event\…`); anything else is ignored and logged. A listener that throws is logged and
+never stops the Core action nor the other bundles' listeners. Available events:
+
+| Event | When | Data |
+|---|---|---|
+| `EmployeeCreated` | right after an account is created: "New employee" form, Excel import quick-create, `POST /api/v1/users` | `user`, `storeId` (store the employee was assigned to, `null` if none — always `null` from the API), `createdBy`, `source` |
+| `OpenShiftClosed` (1.17) | a shift published to the open-shift board stops being so (`is_open` 1 → 0) from the shift form or `PUT /api/v1/shifts/{id}` | `shift` (the saved row), `closedBy` |
+
+`hiring-report` creates the employee's hiring report this way, and `shift-claim` withdraws the pending claims of a
+closed open shift. Require `"kintai_contract": "^1.13"` (`^1.17` for `OpenShiftClosed`).
+
+### Dashboard stat cards: `dashboardStats()` (contract 1.19)
+
+```php
+use kintai\Contract\Extension\DashboardStat;
+
+public function dashboardStats(): array
+{
+    return [
+        new DashboardStat('pending_swaps', 'swaps',
+            fn(array $context): int => $this->countPendingFor((int) $context['user']['id']),
+            icon: '🔄', tone: 'danger', storeFeature: 'swaps', order: 20),
+    ];
+}
+```
+
+The Core shows your card in the stat row at the top of the employee dashboard, after its own cards (today's and
+upcoming shifts), sorted by `order`. `value` receives the same context as dashboard widgets (`user`, `store_ids`,
+`stores_map`, `today`) and returns what to display; `tone` is one of `DashboardStat::TONES`. With `storeFeature`, the
+card only shows when that feature is on. A key already taken is ignored; an exception drops that card (logged).
+The Core has no card of its own for bundles: `timeoff` and `shift-swap` ship theirs this way. Require
+`"kintai_contract": "^1.19"`.
+
+### Shift form sections: `shiftFormSections()` (contract 1.17)
+
+```php
+use kintai\Contract\Extension\ShiftFormSection;
+
+public function shiftFormSections(): array
+{
+    return [
+        new ShiftFormSection(
+            key: 'open_shift',
+            view: 'shift-claim::shift-form-section',          // rendered with $shift, $mode ('create'|'edit'), $BASE_URL
+            fields: ['is_open', 'open_shift_note'],
+            actionsView: 'shift-claim::shift-form-actions',   // edit page only, next to "Save"
+            storeFeature: 'open_shifts',
+        ),
+    ];
+}
+```
+
+The Core renders your `view` inside the shift form (create page, edit page and the timeline's dialog) and, on the
+edit page, your `actionsView` in the action bar. Both sit **inside** the shift form: a button that targets your own
+route uses `formaction`/`formmethod` (with `formnovalidate`) — never a nested `<form>`, which browsers ignore. On save,
+the Core writes the `fields` you declared into the shift, and only those, among the columns it opens to bundles
+(`ShiftFormSections::WRITABLE_SHIFT_COLUMNS`: `is_open`, `open_shift_note`); a field nobody declares is ignored, so a
+shift cannot be opened without the bundle. With `storeFeature`, the section only shows when that feature is on. A key
+already taken is ignored; an exception while rendering drops that section (logged). The Core has no section of its
+own: `shift-claim` ships the open-shift fields and buttons this way. Require `"kintai_contract": "^1.17"`.
+
+## Providers: data the Core reads from your bundle (contract 1.9+)
+
+Some Core pages need data your bundle owns. Instead of reading your tables, the Core asks a **provider** your bundle
+implements. Without an active provider the Core simply shows less — never an error.
+
+### Pending requests: `pendingRequestsProviders()` (contract 1.9)
+
+```php
+use kintai\Contract\Provider\PendingRequest;
+use kintai\Contract\Provider\PendingRequestsProvider;
+
+final class PendingLeaveProvider implements PendingRequestsProvider
+{
+    public function __construct(private readonly LeaveRepository $leaves) {}
+
+    public function key(): string { return 'timeoff'; }
+    public function label(): string { return 'pending_timeoff'; }         // section title (translation key)
+    public function emptyLabel(): string { return 'no_pending_request'; }
+    public function permission(): string { return 'timeoff.view'; }
+    public function storeFeature(): ?string { return 'timeoff'; }
+    public function order(): int { return 10; }
+    public function manageUrl(): string { return route_url('admin.timeoff'); }
+
+    public function pending(?array $storeIds): array                      // null = every store
+    {
+        return array_map(fn(array $r) => new PendingRequest(
+            id: (int) $r['id'], storeId: (int) $r['store_id'], userId: (int) $r['user_id'], createdAt: $r['created_at'],
+            columns: [
+                ['label' => 'user', 'value' => (int) $r['user_id'], 'style' => PendingRequest::USER],
+                ['label' => 'type', 'value' => $r['type'], 'style' => PendingRequest::BADGE],
+                ['label' => 'from', 'value' => $r['start_date']],
+            ],
+        ), $this->leaves->pendingForStores($storeIds));
+    }
+}
+
+// In your Bundle class:
+public function pendingRequestsProviders(): array
+{
+    return [new PendingLeaveProvider($this->app->container()->make(LeaveRepository::class))];
+}
+```
+
+The Core uses it for the "Requests" page (one section per provider, a table built from your columns), the
+dashboard's "Pending requests" counter and stale-request alerts — only for users holding `permission`. Column
+styles: `TEXT`, `BADGE`, `USER` (user id, shown as a name), `STORE` (store id, shown as a name), `TIME` (`HH:MM`).
+Return requests in display order. An exception drops your section only (logged). The Core has no provider of its
+own. Require `"kintai_contract": "^1.9"`.
+The manager dashboard's "stale requests" alert also reads them: a request pending for more than three days is
+listed with its provider's `label()`.
+
+### Absences: `absenceProviders()` (contract 1.10)
+
+```php
+use kintai\Contract\Provider\Absence;
+use kintai\Contract\Provider\AbsenceProvider;
+
+final class LeaveAbsences implements AbsenceProvider
+{
+    public function absences(?array $userIds, ?array $storeIds): array   // null = no filter
+    {
+        return array_map(fn(array $r) => new Absence(
+            (int) $r['id'], (int) $r['user_id'], (int) $r['store_id'],
+            $r['start_date'], $r['end_date'],                              // Y-m-d, end included
+            $r['type'], $r['status'],                                      // Absence::APPROVED, PENDING, REFUSED…
+        ), $this->leaves->find($userIds, $storeIds));
+    }
+}
+```
+
+Return absences of **every** status: the Core filters dates and statuses itself. It uses them to flag a shift
+planned during an approved absence, to show absences on the schedule, in the employee's iCal feed and in the
+absenteeism statistics. Absences of every declared provider are added up; a failing provider is skipped (logged).
+Without any provider (`timeoff` disabled or uninstalled), the Core sees no absence. Require
+`"kintai_contract": "^1.10"`.
+
+### Attendance: `attendanceProviders()` (contract 1.11)
+
+```php
+use kintai\Contract\Provider\Attendance;
+use kintai\Contract\Provider\AttendanceProvider;
+
+final class ClockAttendance implements AttendanceProvider
+{
+    public function attendance(?array $userIds, ?array $storeIds, ?string $from = null, ?string $to = null): array
+    {
+        return array_map(fn(array $r) => new Attendance(
+            (int) $r['id'], (int) $r['user_id'], (int) $r['store_id'],
+            $r['shift_date'],                  // Y-m-d, the day worked ($from/$to filter on it, inclusive)
+            $r['clock_in'],                    // Y-m-d H:i:s
+            $r['clock_out'],                   // Y-m-d H:i:s, or null while still clocked in
+        ), $this->clocks->find($userIds, $storeIds, $from, $to));
+    }
+}
+```
+
+The Core uses it on the manager dashboard (clock-ins left open, late arrivals compared with the planned shift).
+Entries of every declared provider are added up; a failing provider is skipped (logged). Without any provider
+(`timeclock` disabled or uninstalled), the Core sees no clock-in. Require `"kintai_contract": "^1.11"`.
+
+### Sales: `salesProviders()` (contract 1.14)
+
+```php
+use kintai\Contract\Provider\DailySales;
+use kintai\Contract\Provider\SalesProvider;
+
+final class ReportSales implements SalesProvider
+{
+    public function dailySales(int $storeId, string $from, string $to, ?array $statuses = null): array
+    {
+        return array_map(fn(array $r) => new DailySales(
+            $r['report_date'],                 // Y-m-d ($from/$to inclusive)
+            $r['status'],                      // filter on $statuses (when given) before anything else
+            (float) $r['sales_total'],         // the day's value, not a running total
+            (float) $r['labor_cost'],
+            (int) $r['customer_count'],
+            (float) $r['waste_total'],
+        ), $this->reports->forStore($storeId, $from, $to, $statuses));
+    }
+}
+```
+
+The Core reads it for a store's profitability page, and bundles read it through `kintai\Contract\Services\Sales`
+(`dailySales($storeId, $from, $to, $statuses)` returns rows sorted by date: `report_date`, `status`, `sales_total`,
+`labor_cost`, `customer_count`, `waste_total`) — `salary-report` pre-fills its sales total this way. If your data is
+entered as running totals, convert it to the day's values yourself, after the status filter. Days of every declared
+provider are merged; a failing provider is skipped (logged). Without any active provider there are no sales, and the
+Core hides a store's profitability page. `daily-report` is the sales provider. Require `"kintai_contract": "^1.14"`.
+
+### Shift swaps: `swapProviders()` (contract 1.18)
+
+```php
+use kintai\Contract\Provider\Swap;
+use kintai\Contract\Provider\SwapProvider;
+
+final class RequestSwaps implements SwapProvider
+{
+    public function swaps(?array $storeIds, ?string $from = null, ?string $to = null): array
+    {
+        return array_map(fn(array $r) => new Swap(
+            (int) $r['id'], (int) $r['store_id'],
+            (int) $r['requester_id'], (int) $r['target_user_id'],
+            $r['created_at'],                  // Y-m-d H:i:s ($from/$to filter on its date, inclusive)
+            $r['status'],                      // every status, the Core filters what it needs
+        ), $this->requests->find($storeIds, $from, $to));
+    }
+}
+```
+
+The Core counts an employee's swaps with it ("Swaps" column of a store's employee report, employee stats page).
+Swaps of every declared provider are merged; a failing provider is skipped (logged). Without any provider (`shift-swap`
+disabled or uninstalled), there is no swap to count. Require `"kintai_contract": "^1.18"`.
 
 ## The RBAC scope contract: `managed_store_ids`
 
@@ -122,7 +716,7 @@ $r->get('/stores/{id:store}/reports/{uid:employee}', [ReportController::class, '
 - **Generate links with `route_url()`, passing the id** (`route_url('store_photos.index', ['id' => $storeId])`): it emits the readable, encoded segment. For a URL you build by hand, use `store_segment($storeId)` / `employee_segment($userId)` instead of the raw id — never the employee's name.
 - **Old links keep working:** a numeric id is resolved and a GET is redirected `301` to the readable URL (a POST is served as is), so bookmarks, e-mails and notifications sent before your bundle migrated are not broken.
 - **Only type what designates a store or an employee.** A report, a photo or a membership id stays a plain `{id}`.
-- **Requires a Core that ships typed route parameters** (see its CHANGELOG): set `kintai_core.min` in `bundle.json` accordingly, since an older Core would read `{id:store}` as a literal segment.
+- **Requires a Core that ships typed route parameters** (see its CHANGELOG): require a `kintai_contract` that such a Core provides, since an older Core would read `{id:store}` as a literal segment.
 
 ## Database migrations
 
@@ -167,7 +761,7 @@ This mechanism is deliberately Core-agnostic: your repository interface and Eloq
 
 ## Assets
 
-**Requires `kintai_core.min: "0.2.0"` or later.** If your bundle needs its own CSS or JS, don't ask for it to be added to Kintai's own `public/assets/` — that was the situation for every bundle before this mechanism existed, and it defeated the entire point of distributing bundles as separate repositories (a CSS tweak meant a Core PR). Ship it yourself, from your own `public/` directory (a sibling of `src/`, `Views/`, `routes.php` — same rule as everything else in the required layout above):
+If your bundle needs its own CSS or JS, don't ask for it to be added to Kintai's own `public/assets/` — that was the situation for every bundle before this mechanism existed, and it defeated the entire point of distributing bundles as separate repositories (a CSS tweak meant a Core PR). Ship it yourself, from your own `public/` directory (a sibling of `src/`, `Views/`, `routes.php` — same rule as everything else in the required layout above):
 
 ```
 your-bundle/
@@ -209,15 +803,15 @@ Required at the bundle's repository root:
 
 ```json
 {
-    "slug": "feedback",
-    "name": "Retours utilisateurs",
+    "slug": "notebook",
+    "name": "Carnet de notes",
     "version": "1.0.0",
-    "description": "Employee feedback (bugs, suggestions) — submission modal, admin list and deletion.",
+    "description": "Team notebook — notes shown on the manager and employee dashboards, pinning, automatic expiry.",
     "author": { "name": "Your Name", "email": "you@example.com", "url": "https://example.com" },
-    "kintai_core": { "min": "0.1.0", "max": "999.999.999" },
+    "kintai_contract": "^1.0",
     "requires_bundles": {},
-    "namespace": "kintai\\Bundles\\Installed\\Feedback",
-    "entry_class": "kintai\\Bundles\\Installed\\Feedback\\FeedbackBundle",
+    "namespace": "kintai\\Bundles\\Installed\\Notebook",
+    "entry_class": "kintai\\Bundles\\Installed\\Notebook\\NotebookBundle",
     "license": "AGPL-3.0-only",
     "homepage": "https://github.com/you/your-bundle"
 }
@@ -231,14 +825,37 @@ Required at the bundle's repository root:
 | `namespace` | Yes | PSR-4 root for everything under `src/`. |
 | `entry_class` | Yes | Fully-qualified entry class name; its file must exist under `src/` once resolved from `namespace` (checked before activation). |
 | `description`, `author`, `license`, `homepage` | No | Informational only. |
-| `kintai_core.min`/`.max` | No (defaults `0.0.0`/`999.999.999`) | The installer refuses to activate a bundle outside these bounds against the running instance's Core version. A bundle whose views use the `data-*` actions or `csp_nonce()` must set `min` to `0.3.0` — see [Content Security Policy](#content-security-policy-no-inline-scripts). |
+| `kintai_contract` | Yes | Semver constraint on the **bundle contract** version (see [Versioned bundle contract](#versioned-bundle-contract)), e.g. `^1.19`. It is the only compatibility check: a bundle without it predates the versioned contract and is refused at install time and never loaded at boot. |
+| `kintai_core.min`/`.max` | No — **informational** | Ignored by the compatibility check since the contract became mandatory (bundles published before it declared an open range and broke when the Core removed internal classes). |
 | `requires_bundles` | No (defaults `{}`) | Slug → version constraint. **Informational only for now** — see Limitations. |
+
+## Versioned bundle contract
+
+The bundle contract has **its own version**, independent of the Core's: `kintai\Contract\Contract::VERSION` (currently `1.0.0`). It follows semver — a minor version only adds things (a class, an optional method, an extension point), a major version removes or changes a signature and is announced in a dedicated "Bundle contract" section of the CHANGELOG.
+
+Declare the contract version your bundle needs in `bundle.json`:
+
+```json
+"kintai_contract": "^1.0"
+```
+
+Supported constraints (Composer rules): `^1.2` (>= 1.2.0, < 2.0.0), `~1.2` / `~1.2.3`, `>=1.0 <2.0` (space = AND), `^1.0 || ^2.0` (OR), `*`, and an exact version.
+
+The Core checks it **twice**:
+
+- **at install time** (market): an incompatible bundle is refused before anything is written to disk;
+- **at boot**: an installed bundle that became incompatible (e.g. after a Core update that raised the contract's major version) is **not loaded**, even if enabled — the application keeps running, the event is logged (`bundle_incompatible_not_loaded`) and the Bundles page shows the reason so the Owner can install a compatible version;
+- **before a Core update**: `/admin/update` reads the contract version of the offered release and lists the installed bundles it would no longer load.
+
+A bundle without `kintai_contract` is treated as incompatible everywhere, including one dropped by hand into `src/Bundles/{Name}/` (which needs a `bundle.json` next to its class).
+
+`kintai_core.min`/`max` is still honoured for bundles that don't declare `kintai_contract` yet, but it will be dropped once every bundle has migrated: declare `kintai_contract` in new bundles.
 
 ## Publishing a release
 
 1. Bump `version` in `bundle.json` (and `getVersion()` in your entry class — they must agree).
 2. Tag the commit `vX.Y.Z` and push the tag.
-3. Create a GitHub Release for that tag (`gh release create vX.Y.Z --generate-notes`, or a CI workflow that does the same on tag push — see `kintai-bundle-feedback`'s `.github/workflows/release.yml` for a minimal one). Nothing to build: the Release's auto-generated `zipball_url` is exactly what `BundleInstallerService` downloads.
+3. Create a GitHub Release for that tag (`gh release create vX.Y.Z --generate-notes`, or a CI workflow that does the same on tag push — see `kintai-bundle-notebook`'s `.github/workflows/release.yml`). Nothing to build: the Release's auto-generated `zipball_url` is exactly what `BundleInstallerService` downloads.
 
 ## Content Security Policy: no inline scripts
 
@@ -262,7 +879,7 @@ Kintai sends `script-src 'self' 'nonce-…'` (`SecurityHeadersMiddleware`): the 
 
 `data-on-*` only calls a **function you defined yourself** on `window` (a function declaration in your script, or `window.f = …`): browser built-ins such as `eval` or `setTimeout` are refused on purpose, so that an injected attribute cannot become a way to run code. `Button`/`Modal` attribute values are already HTML-escaped by the component — pass the raw value, not `htmlspecialchars()` output.
 
-**Version requirement.** The `data-*` actions and `csp_nonce()` exist from **Kintai Core 0.3.0**. A bundle that uses them must declare `"kintai_core": { "min": "0.3.0", … }` in its `bundle.json`, so the installer refuses it on an older Core instead of installing controls that do nothing. Conversely, this is a **breaking change for existing bundles**: a bundle written before 0.3.0 that still uses inline handlers keeps working on a Core older than 0.3.0, but its buttons, selects and confirmations stop working on 0.3.0 and later until it is migrated. `tests/Unit/Security/NoInlineScriptGuardTest.php` in Kintai fails as soon as a Core view reintroduces an inline handler; do the same check on your own views.
+**Version requirement.** The `data-*` actions and `csp_nonce()` exist from **Kintai Core 0.3.0**. Every Core that provides the bundle contract (1.0 shipped with Core 0.3.6) has them, so declaring `kintai_contract` — now mandatory — is enough: an older Core refuses the bundle instead of installing controls that do nothing. Conversely, this is a **breaking change for existing bundles**: a bundle written before 0.3.0 that still uses inline handlers keeps working on a Core older than 0.3.0, but its buttons, selects and confirmations stop working on 0.3.0 and later until it is migrated. `tests/Unit/Security/NoInlineScriptGuardTest.php` in Kintai fails as soon as a Core view reintroduces an inline handler; do the same check on your own views.
 
 ### Migrating an existing bundle
 
@@ -270,7 +887,7 @@ Kintai sends `script-src 'self' 'nonce-…'` (`SecurityHeadersMiddleware`): the 
 2. Replace each with the matching `data-*` attribute from the table above. A `confirm()` becomes `data-confirm`; a handler that called `event.stopPropagation()` needs `data-stop-propagation`, otherwise a delegated ancestor fires too.
 3. Make sure every function called through `data-on-*` is defined **on `window`**: a function declaration in a classic script, or `window.f = …`. A top-level `const f = …` or `let f = …` is not a property of `window` and is refused.
 4. Put the nonce on the inline `<script>` blocks you keep: `<script nonce="<?= csp_nonce() ?>">`.
-5. Raise `kintai_core.min` to `0.3.0` and add the CI check below.
+5. Declare `kintai_contract` and add the CI check below.
 
 ### Checking in CI
 
@@ -332,4 +949,4 @@ Two ways to get discovered:
 
 ## Reference implementation
 
-[`kintai-bundle-feedback`](https://github.com/AudricSan/kintai-bundle-feedback) is the pilot bundle this whole mechanism was built to validate — a complete, working, minimal example of everything above, extracted from Kintai's own `src/Bundles/Feedback/` without any behavior change.
+[`kintai-bundle-notebook`](https://github.com/AudricSan/kintai-bundle-notebook) is a small, complete example of everything above: its own model, repository and migrations, declared permissions, store feature, dashboard widgets and notification type, tests running against the real Core. The former pilot, `kintai-bundle-feedback`, has been retired (the Core no longer loads it).

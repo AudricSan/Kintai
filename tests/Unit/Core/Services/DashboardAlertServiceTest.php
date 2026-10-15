@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 namespace kintai\Tests\Unit\Core\Services;
 
+use kintai\Contract\Provider\PendingRequest;
+use kintai\Contract\Provider\PendingRequestsProvider;
+use kintai\Core\Container;
+use kintai\Core\Extension\ExtensionRegistry;
+use kintai\Core\Extension\PendingRequests;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
-use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
-use kintai\Core\Repositories\TimeclockRepositoryInterface;
-use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Services\DashboardAlertService;
+use kintai\Tests\Support\FakeAttendanceProvider;
+use kintai\Tests\Support\FakeBundleManagerFactory;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -31,17 +35,21 @@ final class DashboardAlertServiceTest extends TestCase
     /** @var array<int, array|null> user_id => utilisateur */
     private array $usersById = [];
 
-    private array $timeoffRequestsFixture = [];
-    private array $swapRequestsFixture = [];
+    /** @var array<string, list<PendingRequest>> clé du fournisseur de demandes (timeoff, swaps…) => demandes en attente */
+    private array $pendingFixture = [];
     private array $timeclocksFixture = [];
+
+    protected function tearDown(): void
+    {
+        (new \ReflectionProperty(Container::class, 'instance'))->setValue(null, null);
+    }
 
     protected function setUp(): void
     {
         $this->shiftsByDate = [];
         $this->storeMembers = [];
         $this->usersById = [];
-        $this->timeoffRequestsFixture = [];
-        $this->swapRequestsFixture = [];
+        $this->pendingFixture = [];
         $this->timeclocksFixture = [];
     }
 
@@ -62,16 +70,37 @@ final class DashboardAlertServiceTest extends TestCase
             fn(int $storeId) => $this->storeMembers[$storeId] ?? []
         );
 
-        $timeoffRequests = $this->createMock(TimeoffRequestRepositoryInterface::class);
-        $timeoffRequests->method('findAll')->willReturnCallback(fn() => $this->timeoffRequestsFixture);
+        // Demandes en attente fournies par des bundles actifs (fournisseurs du contrat 1.9).
+        $providers = [];
+        foreach ($this->pendingFixture as $key => $requests) {
+            $providers[$key] = [self::provider($key, $requests)];
+        }
+        // Pointages fournis par timeclock (contrat 1.11), lus par le Core à travers le registre des extensions.
+        $attendance = $this->timeclocksFixture === [] ? [] : ['timeclock' => [new FakeAttendanceProvider($this->timeclocksFixture)]];
+        $manager = FakeBundleManagerFactory::withActiveSlugs(array_unique([...array_keys($providers), ...array_keys($attendance)]), [], $providers, $attendance);
+        Container::getInstance()->instance(ExtensionRegistry::class, new ExtensionRegistry($manager));
 
-        $swapRequests = $this->createMock(ShiftSwapRequestRepositoryInterface::class);
-        $swapRequests->method('findAll')->willReturnCallback(fn() => $this->swapRequestsFixture);
+        return new DashboardAlertService($shifts, $users, $storeUsers, new PendingRequests(new ExtensionRegistry($manager)));
+    }
 
-        $timeclocks = $this->createMock(TimeclockRepositoryInterface::class);
-        $timeclocks->method('findAll')->willReturnCallback(fn() => $this->timeclocksFixture);
+    /** @param list<PendingRequest> $requests */
+    private static function provider(string $key, array $requests): PendingRequestsProvider
+    {
+        return new class($key, $requests) implements PendingRequestsProvider {
+            public function __construct(private readonly string $k, private readonly array $r) {}
+            public function key(): string { return $this->k; }
+            public function label(): string { return 'pending_' . $this->k; }
+            public function emptyLabel(): string { return 'none'; }
+            public function permission(): string { return $this->k . '.view'; }
+            public function storeFeature(): ?string { return null; }
+            public function order(): int { return 10; }
+            public function manageUrl(): string { return '/' . $this->k; }
 
-        return new DashboardAlertService($shifts, $users, $storeUsers, $timeoffRequests, $swapRequests, $timeclocks);
+            public function pending(?array $storeIds): array
+            {
+                return array_values(array_filter($this->r, fn(PendingRequest $r): bool => $storeIds === null || in_array($r->storeId, $storeIds, true)));
+            }
+        };
     }
 
     public function testDetectsUnfilledShiftInScopeWithinUpcomingWindow(): void
@@ -148,27 +177,25 @@ final class DashboardAlertServiceTest extends TestCase
         $this->assertSame([], $result['users_without_shift']);
     }
 
-    public function testDetectsStaleTimeoffAndSwapRequests(): void
+    /** Demandes en attente depuis plus de 3 jours, de toutes sortes (congés, échanges, candidatures…), du magasin en scope. */
+    public function testDetectsStaleRequestsOfEveryProvider(): void
     {
         $old = date('Y-m-d H:i:s', strtotime('-5 days'));
         $recent = date('Y-m-d H:i:s', strtotime('-1 day'));
 
-        $this->timeoffRequestsFixture = [
-            ['id' => 1, 'store_id' => 1, 'status' => 'pending', 'created_at' => $old],
-            ['id' => 2, 'store_id' => 1, 'status' => 'pending', 'created_at' => $recent],
-            ['id' => 3, 'store_id' => 1, 'status' => 'approved', 'created_at' => $old],
-            ['id' => 4, 'store_id' => 2, 'status' => 'pending', 'created_at' => $old],
-        ];
-        $this->swapRequestsFixture = [
-            ['id' => 10, 'store_id' => 1, 'status' => 'pending', 'created_at' => $old],
+        $this->pendingFixture = [
+            'timeoff' => [new PendingRequest(1, 1, 5, $old), new PendingRequest(2, 1, 5, $recent), new PendingRequest(4, 2, 5, $old)],
+            'swaps'   => [new PendingRequest(10, 1, 5, $old)],
+            'open_shifts' => [new PendingRequest(20, 1, 6, $old)],
         ];
 
         $result = $this->service()->build([1], [1 => 'Store 1']);
 
-        $this->assertCount(2, $result['stale_requests']);
-        $ids = array_column($result['stale_requests'], 'id');
-        $this->assertContains(1, $ids);
-        $this->assertContains(10, $ids);
+        $this->assertCount(3, $result['stale_requests']);
+        $this->assertEqualsCanonicalizing([1, 10, 20], array_column($result['stale_requests'], 'id'));
+        $this->assertEqualsCanonicalizing(['timeoff', 'swaps', 'open_shifts'], array_column($result['stale_requests'], 'type'));
+        $this->assertContains('pending_open_shifts', array_column($result['stale_requests'], 'label'));
+        $this->assertSame(['Store 1'], array_values(array_unique(array_column($result['stale_requests'], 'store_name'))));
     }
 
     public function testDetectsStaleOpenTimeclock(): void

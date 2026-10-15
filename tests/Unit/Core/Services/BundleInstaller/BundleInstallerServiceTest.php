@@ -8,6 +8,8 @@ use Illuminate\Database\Capsule\Manager as Capsule;
 use kintai\Core\Database\BundleMigrationRunner;
 use kintai\Core\InstalledBundleManifestStore;
 use kintai\Core\Repositories\InstalledBundleRepositoryInterface;
+use kintai\Core\Repositories\RoleRepositoryInterface;
+use kintai\Core\Services\BundleInstaller\BundlePermissionGranter;
 use kintai\Core\Services\BundleInstaller\BundleInstallerService;
 use kintai\Core\Services\UpdateService;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -41,6 +43,7 @@ final class BundleInstallerServiceTest extends TestCase
         ?\Closure $releaseFetcher,
         ?\Closure $zipDownloader,
         ?BundleMigrationRunner $migrationRunner = null,
+        ?BundlePermissionGranter $permissionGranter = null,
     ): BundleInstallerService {
         return new BundleInstallerService(
             new UpdateService($this->fakeCoreBasePath),
@@ -50,6 +53,7 @@ final class BundleInstallerServiceTest extends TestCase
             $releaseFetcher,
             $zipDownloader,
             migrationRunner: $migrationRunner,
+            permissionGranter: $permissionGranter,
         );
     }
 
@@ -83,6 +87,7 @@ final class BundleInstallerServiceTest extends TestCase
         array $manifestOverrides = [],
         bool $withEntryClassFile = true,
         ?string $migrationFileContents = null,
+        ?string $entryClassSource = null,
     ): string {
         $manifest = array_merge([
             'slug'        => 'fake-bundle',
@@ -90,6 +95,7 @@ final class BundleInstallerServiceTest extends TestCase
             'version'     => '1.0.0',
             'namespace'   => 'kintai\\Bundles\\Installed\\FakeBundle',
             'entry_class' => 'kintai\\Bundles\\Installed\\FakeBundle\\FakeBundleBundle',
+            'kintai_contract' => '^1.0',
             'kintai_core' => ['min' => '0.1.0', 'max' => '0.9.0'],
         ], $manifestOverrides);
 
@@ -101,7 +107,7 @@ final class BundleInstallerServiceTest extends TestCase
         if ($withEntryClassFile) {
             $zip->addFromString(
                 "{$root}/src/FakeBundleBundle.php",
-                "<?php\nnamespace kintai\\Bundles\\Installed\\FakeBundle;\nfinal class FakeBundleBundle {}\n",
+                $entryClassSource ?? "<?php\nnamespace kintai\\Bundles\\Installed\\FakeBundle;\nfinal class FakeBundleBundle {}\n",
             );
         }
         if ($migrationFileContents !== null) {
@@ -165,8 +171,8 @@ final class BundleInstallerServiceTest extends TestCase
 
     public function testInstallRejectsWhenIncompatibleWithCoreVersion(): void
     {
-        // Le Core factice est en 0.5.0 ; ce manifeste exige 1.0.0+.
-        $zipPath = $this->buildFixtureZip(['kintai_core' => ['min' => '1.0.0', 'max' => '2.0.0']]);
+        // Ce manifeste exige un contrat que ce Core ne fournit pas.
+        $zipPath = $this->buildFixtureZip(['kintai_contract' => '^99.0']);
         $service = $this->makeService(
             fn() => 'https://example.test/fake.zip',
             function (string $url, string $dest) use ($zipPath) { return copy($zipPath, $dest); },
@@ -175,7 +181,23 @@ final class BundleInstallerServiceTest extends TestCase
         $result = $service->install('fake-bundle', 'https://github.com/AudricSan/kintai-bundle-fake', '1.0.0');
 
         $this->assertFalse($result->success);
-        $this->assertStringContainsString('nécessite Kintai', (string) $result->error);
+        // Message traduit (clé brute en test unitaire, sans fichiers de langue chargés).
+        $this->assertStringContainsString('bundle_contract_incompatible', (string) $result->error);
+    }
+
+    /** Bundle antérieur au contrat versionné (sans « kintai_contract ») : refusé, quelle que soit sa plage kintai_core. */
+    public function testInstallRejectsABundleWithoutContract(): void
+    {
+        $zipPath = $this->buildFixtureZip(['kintai_contract' => null, 'kintai_core' => ['min' => '0.1.0', 'max' => '999.999.999']]);
+        $service = $this->makeService(
+            fn() => 'https://example.test/fake.zip',
+            function (string $url, string $dest) use ($zipPath) { return copy($zipPath, $dest); },
+        );
+
+        $result = $service->install('fake-bundle', 'https://github.com/AudricSan/kintai-bundle-fake', '1.0.0');
+
+        $this->assertFalse($result->success);
+        $this->assertStringContainsString('bundle_contract_missing', (string) $result->error);
     }
 
     public function testInstallRejectsWhenEntryClassFileIsMissing(): void
@@ -383,5 +405,85 @@ PHP);
         $dir = sys_get_temp_dir() . '/kintai-no-migrations-' . uniqid();
         mkdir($dir, 0777, true);
         return $dir;
+    }
+
+    /**
+     * Zip d'un bundle dont la classe d'entrée déclare des permissions. Espace de noms propre au test pour ne pas
+     * entrer en collision avec la classe factice des autres tests (une classe chargée le reste pour tout le processus).
+     */
+    private function buildBundleDeclaringPermissions(string $ns): string
+    {
+        return $this->buildFixtureZip(
+            ['namespace' => "kintai\\Bundles\\Installed\\{$ns}", 'entry_class' => "kintai\\Bundles\\Installed\\{$ns}\\FakeBundleBundle"],
+            true,
+            null,
+            "<?php\nnamespace kintai\\Bundles\\Installed\\{$ns};\n"
+            . "final class FakeBundleBundle extends \\kintai\\Core\\BundleContract\\Bundle {\n"
+            . "    public function getName(): string { return 'fake-bundle'; }\n"
+            . "    public function register(): void {}\n"
+            . "    public function permissions(): array { return ['fake_items' => ['view', 'manage']]; }\n"
+            . "}\n",
+        );
+    }
+
+    public function testFirstInstallGrantsTheDeclaredPermissionsToTheManagerRole(): void
+    {
+        $zipPath = $this->buildBundleDeclaringPermissions('GrantOnFirstInstall');
+        $roles = $this->createMock(RoleRepositoryInterface::class);
+        $roles->method('findBySlug')->with('manager')->willReturn(['id' => 2, 'slug' => 'manager']);
+        $roles->method('getPermissions')->willReturn(['shifts.view']);
+        $roles->method('getGlobalPermissionKeys')->willReturn([]);
+        $roles->expects($this->once())->method('savePermissions')
+            ->with(2, ['shifts.view', 'fake_items.view', 'fake_items.manage'], []);
+        $this->installedBundles->method('find')->willReturn(null);
+
+        $service = $this->makeService(
+            fn() => 'https://example.test/fake.zip',
+            function (string $url, string $dest) use ($zipPath) { return copy($zipPath, $dest); },
+            permissionGranter: new BundlePermissionGranter($roles),
+        );
+
+        $result = $service->install('fake-bundle', 'https://github.com/AudricSan/kintai-bundle-fake', '1.0.0');
+
+        $this->assertTrue($result->success);
+    }
+
+    public function testAnUpdateDoesNotGrantAnythingAgain(): void
+    {
+        // Un droit retiré par l'Owner depuis la première installation reste retiré après une mise à jour.
+        $zipPath = $this->buildBundleDeclaringPermissions('NoGrantOnUpdate');
+        $roles = $this->createMock(RoleRepositoryInterface::class);
+        $roles->expects($this->never())->method('savePermissions');
+        $this->installedBundles->method('find')->willReturn(['slug' => 'fake-bundle', 'active_version' => '0.9.0', 'source_registry_url' => null]);
+
+        $service = $this->makeService(
+            fn() => 'https://example.test/fake.zip',
+            function (string $url, string $dest) use ($zipPath) { return copy($zipPath, $dest); },
+            permissionGranter: new BundlePermissionGranter($roles),
+        );
+
+        $result = $service->install('fake-bundle', 'https://github.com/AudricSan/kintai-bundle-fake', '1.0.0');
+
+        $this->assertTrue($result->success);
+    }
+
+    public function testAFailedGrantDoesNotFailTheInstall(): void
+    {
+        // Classe d'entrée sans permissions() (pas un Bundle) : l'octroi échoue, le bundle reste installé.
+        $zipPath = $this->buildFixtureZip();
+        $roles = $this->createMock(RoleRepositoryInterface::class);
+        $roles->expects($this->never())->method('savePermissions');
+        $this->installedBundles->method('find')->willReturn(null);
+
+        $service = $this->makeService(
+            fn() => 'https://example.test/fake.zip',
+            function (string $url, string $dest) use ($zipPath) { return copy($zipPath, $dest); },
+            permissionGranter: new BundlePermissionGranter($roles),
+        );
+
+        $result = $service->install('fake-bundle', 'https://github.com/AudricSan/kintai-bundle-fake', '1.0.0');
+
+        $this->assertTrue($result->success);
+        $this->assertTrue($result->activated);
     }
 }

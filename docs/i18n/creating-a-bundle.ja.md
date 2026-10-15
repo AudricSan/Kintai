@@ -2,9 +2,9 @@
 
 🌐 [English](../creating-a-bundle.md) · [Français](creating-a-bundle.fr.md) · **日本語**
 
-このドキュメントは、**独立して配布される**Kintaiバンドルを作成する人向けです——独自のGitリポジトリ、独自のバージョン履歴を持ち、Kintai自体のコードベースに一切触れることなく `/admin/bundles/market` からインストールできるものです。従来の、今も使える、バンドルを本体リポジトリの `src/Bundles/` に直接置くパターンはここでは扱いません（それについては `docs/architecture.md` の「Modular Bundles」を参照してください）——この方法は今日Kintaiに同梱されている11個のバンドルに対しては今も有効ですが、新しいバンドル、特にサードパーティ製のものは、ここで説明する方式を使うべきです。
+このドキュメントは、**独立して配布される**Kintaiバンドルを作成する人向けです——独自のGitリポジトリ、独自のバージョン履歴を持ち、Kintai自体のコードベースに一切触れることなく `/admin/bundles/market` からインストールできるものです。従来の、今も使える、バンドルを本体リポジトリの `src/Bundles/` に直接置くパターンはここでは扱いません（それについては `docs/architecture.md` の「Modular Bundles」を参照してください）——このフォルダは手動で置かれたバンドルのために今もスキャンされますが、公式バンドルはすべてここで説明する方式で配布されており、新しいバンドル、特にサードパーティ製のものも同様にすべきです。
 
-`kintai-bundle-feedback`（「Feedback」バンドル。この仕組み全体を検証するためのパイロットとしてKintai自体のモノレポから抽出されたもの）は、完全で実在する例です——読みながら別タブで開いておく価値があります。
+`kintai-bundle-notebook`（チームのノート：独自のモデル、リポジトリ、マイグレーション、ビュー、ダッシュボードウィジェット、宣言を持つ）は、小さく完全な実例です——読みながら別タブで開いておく価値があります。
 
 ## なぜ別リポジトリなのか、なぜ`git clone`を使わないのか
 
@@ -59,41 +59,52 @@ abstract class Bundle
 }
 ```
 
-最小限の実例（`kintai-bundle-feedback`の実際のエントリークラスを簡略化したもの）：
+最小限の実例（`kintai-bundle-notebook`の実際のエントリークラスを簡略化したもの）：
 
 ```php
 <?php
 
 declare(strict_types=1);
 
-namespace kintai\Bundles\Installed\Feedback;
+namespace kintai\Bundles\Installed\Notebook;
 
-use kintai\Core\BundleContract\Bundle;
-use kintai\Core\Repositories\FeedbackRepositoryInterface;
-use kintai\Core\Repositories\DatabaseFeedbackRepository;
+use kintai\Bundles\Installed\Notebook\Repositories\DatabaseNotebookEntryRepository;
+use kintai\Bundles\Installed\Notebook\Repositories\NotebookEntryRepositoryInterface;
+use kintai\Contract\Bundle;
+use kintai\Contract\Extension\StoreFeature;
 
-final class FeedbackBundle extends Bundle
+final class NotebookBundle extends Bundle
 {
-    public function getName(): string { return 'feedback'; }
-    public function getVersion(): string { return '1.0.0'; }
-    public function getLabel(): string { return __('bundle_feedback'); }
-    public function getDescription(): string { return __('bundle_feedback_desc'); }
+    public function getName(): string { return 'notebook'; }
+    public function getVersion(): string { return '1.2.0'; }
+    public function getLabel(): string { return __('bundle_notebook'); }
+    public function getDescription(): string { return __('bundle_notebook_desc'); }
 
     public function register(): void
     {
+        // The bundle owns its repository (and its table, created by its own migrations).
         $this->app->container()->singleton(
-            FeedbackRepositoryInterface::class,
-            fn() => new DatabaseFeedbackRepository()
+            NotebookEntryRepositoryInterface::class,
+            fn() => new DatabaseNotebookEntryRepository()
         );
-        $this->loadViewsFrom($this->getPath() . '/Views', 'feedback');
+        $this->loadViewsFrom($this->getPath() . '/Views', 'notebook');
         $this->loadRoutesFrom($this->getPath() . '/routes.php');
+        $this->loadAssetsFrom('public');
+    }
+
+    // What it brings to the Core is declared (see "Extension points" below).
+    public function permissions(): array { return ['notebook' => ['view', 'create', 'manage']]; }
+
+    public function storeFeatures(): array
+    {
+        return [new StoreFeature('notes', 'feature_notes', 'feature_notes_desc', '📝', 90)];
     }
 }
 ```
 
 namespaceは何でも構いません——慣例として、インストールされるバンドルは `kintai\Bundles\Installed\{名前}\` を使用します。これはレガシーなモノレポの慣例（`kintai\Bundles\{名前}\`）とは意図的に区別されており、2つのオートロード機構（`src/Bundles/`用のComposer自身のPSR-4と、`storage/bundles/`配下用の専用`spl_autoload_register`）が同じクラス名で衝突することは決してありません。
 
-**`src/Core/Repositories/*Interface.php` のリポジトリ/インターフェースのペアも、依存してよい安定した領域の一部です**（上記の`FeedbackRepositoryInterface`など）——これらは`BundleContract`とは無関係に、構造上すでに安定した契約です。
+**バンドルはCoreのリポジトリやモデルに決して依存しません**：自身のもの（上記のとおり）を持ち、以下に挙げる `kintai\Contract\…` の名前だけを使います。Coreが必要とするデータは、宣言されたプロバイダーを経由します。
 
 ## RBACスコープの契約：`managed_store_ids`
 
@@ -209,15 +220,15 @@ $css = file_get_contents(bundle_asset_path('your-slug', 'css/pdf-your-bundle.css
 
 ```json
 {
-    "slug": "feedback",
-    "name": "Retours utilisateurs",
+    "slug": "notebook",
+    "name": "Carnet de notes",
     "version": "1.0.0",
-    "description": "Employee feedback (bugs, suggestions) — submission modal, admin list and deletion.",
+    "description": "Team notebook — notes shown on the manager and employee dashboards, pinning, automatic expiry.",
     "author": { "name": "あなたの名前", "email": "you@example.com", "url": "https://example.com" },
     "kintai_core": { "min": "0.1.0", "max": "999.999.999" },
     "requires_bundles": {},
-    "namespace": "kintai\\Bundles\\Installed\\Feedback",
-    "entry_class": "kintai\\Bundles\\Installed\\Feedback\\FeedbackBundle",
+    "namespace": "kintai\\Bundles\\Installed\\Notebook",
+    "entry_class": "kintai\\Bundles\\Installed\\Notebook\\NotebookBundle",
     "license": "AGPL-3.0-only",
     "homepage": "https://github.com/you/your-bundle"
 }
@@ -238,7 +249,7 @@ $css = file_get_contents(bundle_asset_path('your-slug', 'css/pdf-your-bundle.css
 
 1. `bundle.json`の`version`を上げる（エントリークラスの`getVersion()`も——両者は一致している必要があります）。
 2. コミットに`vX.Y.Z`のタグを付け、そのタグをプッシュする。
-3. そのタグに対してGitHub Releaseを作成する（`gh release create vX.Y.Z --generate-notes`、またはタグのプッシュ時に同じことを行うCIワークフロー——最小限の例として`kintai-bundle-feedback`の`.github/workflows/release.yml`を参照）。何も構築する必要はありません：Releaseが自動生成する`zipball_url`こそが、`BundleInstallerService`がダウンロードするものそのものです。
+3. そのタグに対してGitHub Releaseを作成する（`gh release create vX.Y.Z --generate-notes`、またはタグのプッシュ時に同じことを行うCIワークフロー——`kintai-bundle-notebook`の`.github/workflows/release.yml`を参照）。何も構築する必要はありません：Releaseが自動生成する`zipball_url`こそが、`BundleInstallerService`がダウンロードするものそのものです。
 
 ## Content Security Policy：インラインスクリプトは使えません
 
@@ -332,4 +343,4 @@ Kintai自身のリポジトリ内にある`config/official-bundles.php`が、ど
 
 ## リファレンス実装
 
-[`kintai-bundle-feedback`](https://github.com/AudricSan/kintai-bundle-feedback) は、この仕組み全体を検証するために作られたパイロットバンドルです——上記すべての完全で動作する最小限の例であり、Kintai自身の`src/Bundles/Feedback/`から、動作を一切変えずに抽出されました。
+[`kintai-bundle-notebook`](https://github.com/AudricSan/kintai-bundle-notebook) は、上記すべての小さく完全な例です：独自のモデル、リポジトリ、マイグレーション、宣言された権限・店舗ごとの機能・ダッシュボードウィジェット・通知タイプ、実際のCoreに対して実行されるテスト。以前のパイロット `kintai-bundle-feedback` は廃止されました（Coreはもう読み込みません）。

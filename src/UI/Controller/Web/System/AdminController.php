@@ -14,26 +14,10 @@ use kintai\UI\ViewRenderer;
 final class AdminController
 {
     use HasBaseUrl;
-    private const NAV_OWNER_KEYS = [
-        'shifts', 'calendar', 'shift_types', 'timeclocks',
-        'users', 'stores',
-        'timeoff', 'swaps', 'open_shifts', 'messages',
-        'hiring_report', 'daily_reports', 'resignation_report', 'salary_report', 'photos',
-        'audit_log',
-    ];
-
-    private const NAV_MANAGER_KEYS = [
-        'shifts', 'calendar', 'shift_types', 'timeclocks',
-        'timeoff', 'swaps', 'open_shifts', 'messages',
-        'employee_report', 'hiring_report', 'daily_reports', 'resignation_report', 'salary_report', 'photos',
-    ];
-
+    // Entrées masquables : calculées par la vue depuis kintai\Core\Extension\Navigation (mêmes clés que la barre du haut).
     private const NAV_OWNER_SECTIONS   = ['planning', 'hr', 'requests', 'statistics', 'system'];
     private const NAV_MANAGER_SECTIONS = ['planning', 'hr', 'requests', 'statistics'];
 
-    private const BOTTOM_NAV_POOL_OWNER   = ['shifts', 'team', 'requests', 'messages', 'swaps', 'timeclocks', 'daily_reports'];
-    private const BOTTOM_NAV_POOL_MANAGER = ['shifts', 'team', 'requests', 'messages', 'swaps', 'timeclocks', 'daily_reports'];
-    private const BOTTOM_NAV_DEFAULT      = ['shifts', 'team', 'requests'];
 
     public function __construct(
         private readonly ViewRenderer $view,
@@ -47,7 +31,6 @@ final class AdminController
         $isOwner   = !empty($user['is_admin']);
         $userId    = (int) $user['id'];
 
-        $allowedKeys     = $isOwner ? self::NAV_OWNER_KEYS : self::NAV_MANAGER_KEYS;
         $defaultSections = $isOwner ? self::NAV_OWNER_SECTIONS : self::NAV_MANAGER_SECTIONS;
         $hidden          = $this->navPrefs->getHidden($userId);
         $rawOrder        = $this->navPrefs->getSectionOrder($userId);
@@ -56,17 +39,15 @@ final class AdminController
             $defaultSections
         )));
 
-        $bottomNavPool    = $isOwner ? self::BOTTOM_NAV_POOL_OWNER : self::BOTTOM_NAV_POOL_MANAGER;
-        $bottomNavSaved   = $this->navPrefs->getBottomNavItems($userId);
-        $bottomNavItems   = !empty($bottomNavSaved) ? $bottomNavSaved : self::BOTTOM_NAV_DEFAULT;
+        // Barre mobile : choix calculés par la vue depuis la navigation réelle ; anciennes clés converties.
+        $bottomNavSaved   = \kintai\Core\Extension\Navigation::migrateLegacyMobileKeys($this->navPrefs->getBottomNavItems($userId));
+        $bottomNavItems   = !empty($bottomNavSaved) ? $bottomNavSaved : \kintai\Core\Extension\Navigation::MOBILE_DEFAULT_MANAGER;
 
         return Response::html($this->view->render('system.nav-settings', [
             'hidden'          => $hidden,
-            'allowedKeys'     => $allowedKeys,
             'isOwner'         => $isOwner,
             'sectionOrder'    => $sectionOrder,
             'defaultSections' => $defaultSections,
-            'bottomNavPool'   => $bottomNavPool,
             'bottomNavItems'  => $bottomNavItems,
             'title'           => __('nav_settings'),
         ], 'layout.app'));
@@ -104,7 +85,7 @@ final class AdminController
             }
         }
 
-        $pool         = $isOwner ? self::BOTTOM_NAV_POOL_OWNER : self::BOTTOM_NAV_POOL_MANAGER;
+        $pool         = \kintai\Core\Extension\Navigation::current()->mobileKeys(true);
         $rawBottom    = array_values((array) $request->post('bottom_nav', []));
         $bottomItems  = array_values(array_intersect($rawBottom, $pool));
         $count        = count($bottomItems);

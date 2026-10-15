@@ -13,12 +13,9 @@ use kintai\Core\Repositories\NotificationRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
-use kintai\Core\Repositories\ShiftSwapRequestRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
-use kintai\Core\Repositories\TimeclockRepositoryInterface;
-use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
 use kintai\Core\Repositories\TranslationRepositoryInterface;
 use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserNavPrefsRepositoryInterface;
@@ -66,12 +63,9 @@ final class EmployeeControllerShiftDayCanManageTest extends TestCase
             $this->stores,
             $this->storeUsers,
             $this->createMock(UserRepositoryInterface::class),
-            $this->createMock(TimeoffRequestRepositoryInterface::class),
-            $this->createMock(ShiftSwapRequestRepositoryInterface::class),
             $this->createMock(UserShiftTypeRateRepositoryInterface::class),
             new AuditLogger(),
             $this->createMock(IcalTokenRepositoryInterface::class),
-            $this->createMock(TimeclockRepositoryInterface::class),
             $this->createMock(AvailabilityRepositoryInterface::class),
             $this->createMock(UserDashboardPrefsRepositoryInterface::class),
             new NotificationService(

@@ -32,9 +32,13 @@ final class DatabaseDevicePushTokenRepository implements DevicePushTokenReposito
         return $record->toArray();
     }
 
-    public function deleteByToken(string $token): int
+    public function deleteByToken(string $token, ?int $userId = null): int
     {
-        return DevicePushToken::where('token', $token)->delete();
+        $query = DevicePushToken::where('token', $token);
+        if ($userId !== null) {
+            $query->where('user_id', $userId);
+        }
+        return $query->delete();
     }
 
     public function touchLastUsed(int $id): void

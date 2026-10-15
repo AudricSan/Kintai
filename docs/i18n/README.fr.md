@@ -44,7 +44,7 @@ Kintai est le pont entre le tableur Excel et l'ERP d'entreprise : planning, poin
 
 **Temps & présence** — Pointage clock-in/out avec chronomètre en direct, édition admin du pointage, estimation automatique du salaire à partir des shifts/pauses/taux horaires/déductions.
 
-**Espace employé** — Tableau de bord personnalisé, disponibilités hebdomadaires, demandes de congés, échanges de shifts, flux iCal, widget de feedback flottant.
+**Espace employé** — Tableau de bord personnalisé, disponibilités hebdomadaires, demandes de congés, échanges de shifts, flux iCal.
 
 **Communication** — Messagerie interne par fils de discussion (mise à jour en direct via SSE), centre de notifications avec toasts et statut lu/non lu.
 
@@ -64,7 +64,7 @@ Détail complet dans [docs/i18n/architecture.fr.md](architecture.fr.md) et [docs
 | :--- | :--- |
 | Super admin | Tous les magasins, journal d'audit, configuration globale |
 | Manager/admin magasin | Planning, personnel, congés, échanges, rapports et stats de son/ses magasin(s) |
-| Staff | Son propre planning, pointage, congés, échanges, messages, feedback |
+| Staff | Son propre planning, pointage, congés, échanges, messages |
 
 Flux typique : shifts créés ou importés → conflits vérifiés → employés notifiés → présence pointée → rapports journaliers validés → paie estimée.
 
@@ -86,7 +86,7 @@ composer install
 php -S 127.0.0.1:8000 -t public
 ```
 
-Ouvrir ensuite `http://127.0.0.1:8000/install.php` — l'installateur web crée `config/database.local.php`, exécute les migrations et crée le compte administrateur.
+Ouvrir ensuite `http://127.0.0.1:8000/install.php` — l'installateur web crée `config/database.local.php`, exécute les migrations, crée le compte administrateur, enregistre la langue de l'instance choisie (`APP_LOCALE` dans `.env`, modifiable ensuite dans les paramètres de l'instance), vous connecte et ouvre l'assistant de configuration (`/admin/setup`) : saisissez une clé de licence ou continuez avec le plan gratuit, puis choisissez les bundles (fonctionnalités) à installer — autant que votre licence le permet (4 en plan gratuit). Ils sont téléchargés depuis le catalogue de bundles ; ceux qui n'ont pas pu être installés sont listés pour être réessayés depuis le catalogue.
 
 L'installateur enregistre aussi l'adresse depuis laquelle vous installez comme **URL publique** de l'instance, utilisée pour les liens des e-mails (réinitialisation du mot de passe). Vérifiez-la dans les réglages Owner (`/admin/owner-settings`) si les utilisateurs accèdent à Kintai par une autre adresse ; la variable d'environnement `APP_URL`, si elle est définie, prime. Sans URL publique, les e-mails de réinitialisation ne partent pas et l'Owner voit un avertissement.
 

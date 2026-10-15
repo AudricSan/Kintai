@@ -11,7 +11,10 @@ use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
-use kintai\Core\Repositories\TimeoffRequestRepositoryInterface;
+use kintai\Contract\Event\OpenShiftClosed;
+use kintai\Core\Extension\Absences;
+use kintai\Core\Extension\Events;
+use kintai\Core\Extension\ShiftFormSections;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Request;
@@ -39,7 +42,6 @@ final class AdminShiftController
         private readonly AuditLogger $auditLogger,
         private readonly NotificationService $notifs,
         private readonly ShiftServiceInterface $shiftService,
-        private readonly TimeoffRequestRepositoryInterface $timeoffRequests,
         private readonly PermissionService $permissions,
     ) {}
 
@@ -73,7 +75,8 @@ final class AdminShiftController
         if ($userId <= 0 || $shiftDate === '') {
             return false;
         }
-        foreach ($this->timeoffRequests->findByUser($userId) as $req) {
+        // Absences lues à travers les fournisseurs (Bundle::absenceProviders()) ; aucune sans bundle timeoff.
+        foreach (Absences::current()->forUser($userId) as $req) {
             if (($req['status'] ?? '') !== 'approved') continue;
             if (($req['start_date'] ?? '') <= $shiftDate && $shiftDate <= ($req['end_date'] ?? '')) {
                 return true;
@@ -645,7 +648,9 @@ final class AdminShiftController
         $crossMidnight = ($end < $start) ? 1 : 0;
         $endsDate = $crossMidnight ? date('Y-m-d', strtotime($shiftDate . ' +1 day')) : $shiftDate;
 
-        $isOpen = $request->post('is_open') === '1';
+        // Champs des sections de bundles (bourse aux shifts…, contrat 1.17) : pris en compte seulement s'ils sont déclarés.
+        $sectionFields = ShiftFormSections::current()->fields();
+        $isOpen = in_array('is_open', $sectionFields, true) && $request->post('is_open') === '1';
         $uid    = (int) $request->post('user_id', 0);
 
         if (!$isOpen && $uid > 0 && $this->hasApprovedTimeoffConflict($uid, $shiftDate)) {
@@ -669,7 +674,7 @@ final class AdminShiftController
             'ends_at'          => $endsDate  . ' ' . $endTime   . ':00',
             'notes'            => $request->post('notes', '') ?: null,
             'is_open'          => $isOpen ? 1 : 0,
-            'open_shift_note'  => $request->post('open_shift_note', '') ?: null,
+            'open_shift_note'  => in_array('open_shift_note', $sectionFields, true) ? ($request->post('open_shift_note', '') ?: null) : null,
             'hourly_rate_override' => $this->postedOverride($request, 'hourly_rate_override'),
             'net_minutes_override' => $this->postedOverride($request, 'net_minutes_override'),
         ]);
@@ -762,17 +767,13 @@ final class AdminShiftController
         $shiftDate = $request->post('shift_date', $shift['shift_date'] ?? '');
         $endsDate  = $crossMidnight ? date('Y-m-d', strtotime($shiftDate . ' +1 day')) : $shiftDate;
 
-        $isOpen  = $request->post('is_open') === '1';
+        // Champs des sections de bundles (bourse aux shifts…, contrat 1.17), seulement s'ils sont déclarés ; champ absent :
+        // état actuel conservé (audit du 13/10/2026, M12).
+        $sectionFields = ShiftFormSections::current()->fields();
         $wasOpen = (int) ($shift['is_open'] ?? 0) === 1;
-
-        // M-1 : passage de is_open=1 → 0 via le formulaire : annuler les candidatures pending
-        if ($wasOpen && !$isOpen) {
-            foreach ($this->shiftClaims->findByShift((int) $shift['id']) as $claim) {
-                if (($claim['status'] ?? '') === 'pending') {
-                    $this->shiftClaims->save(array_merge($claim, ['status' => 'withdrawn']));
-                }
-            }
-        }
+        $isOpen  = in_array('is_open', $sectionFields, true)
+            ? $request->postFlag('is_open', $shift['is_open'] ?? 0) === 1
+            : $wasOpen;
 
         $targetUid = $isOpen ? 0 : (int) $request->post('user_id', $shift['user_id']);
         if (!$isOpen && $targetUid > 0 && $this->hasApprovedTimeoffConflict($targetUid, $shiftDate)) {
@@ -794,14 +795,20 @@ final class AdminShiftController
             'cross_midnight'   => $crossMidnight,
             'starts_at'        => $shiftDate . ' ' . $startTime . ':00',
             'ends_at'          => $endsDate  . ' ' . $endTime   . ':00',
-            'notes'            => $request->post('notes', '') ?: null,
+            'notes'            => $request->hasPost('notes') ? ($request->post('notes', '') ?: null) : ($shift['notes'] ?? null),
             'is_open'          => $isOpen ? 1 : 0,
-            'open_shift_note'  => $request->post('open_shift_note', '') ?: null,
-            'hourly_rate_override' => $this->postedOverride($request, 'hourly_rate_override'),
-            'net_minutes_override' => $this->postedOverride($request, 'net_minutes_override'),
+            'open_shift_note'  => in_array('open_shift_note', $sectionFields, true) && $request->hasPost('open_shift_note') ? ($request->post('open_shift_note', '') ?: null) : ($shift['open_shift_note'] ?? null),
+            'hourly_rate_override' => $request->hasPost('hourly_rate_override') ? $this->postedOverride($request, 'hourly_rate_override') : ($shift['hourly_rate_override'] ?? null),
+            'net_minutes_override' => $request->hasPost('net_minutes_override') ? $this->postedOverride($request, 'net_minutes_override') : ($shift['net_minutes_override'] ?? null),
         ]));
 
         $this->auditLogger->logUpdate($request, 'shift.updated', 'shift', (int) $shift['id'], $old, $saved, [], $newStoreId);
+
+        // Shift retiré de la bourse : les bundles qui l'écoutent (shift-claim retire les candidatures en attente).
+        if ($wasOpen && !$isOpen) {
+            $authId = (int) ($request->getAttribute('auth_user')['id'] ?? 0);
+            Events::current()->dispatch(new OpenShiftClosed($saved, $authId > 0 ? $authId : null));
+        }
 
         $newUid    = $isOpen ? 0 : (int) $request->post('user_id', $shift['user_id']);
         $prevUid   = (int) ($shift['user_id'] ?? 0);
@@ -989,8 +996,9 @@ final class AdminShiftController
 
         $pauseMin    = (int) ($body['pause_minutes'] ?? 0);
         $notes       = trim($body['notes'] ?? '') ?: null;
-        $openNote    = trim($body['open_shift_note'] ?? '') ?: null;
-        $isOpen      = !empty($body['is_open']) ? 1 : 0;
+        $sectionFields = ShiftFormSections::current()->fields();
+        $openNote    = in_array('open_shift_note', $sectionFields, true) ? (trim($body['open_shift_note'] ?? '') ?: null) : null;
+        $isOpen      = in_array('is_open', $sectionFields, true) && !empty($body['is_open']) ? 1 : 0;
         $bodyUid     = (int) ($body['user_id'] ?? 0);
 
         if (!$isOpen && $bodyUid > 0 && $this->hasApprovedTimeoffConflict($bodyUid, $shiftDate)) {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\Core\Services\BundleInstaller;
 
+use kintai\Core\InstalledBundleAutoloader;
 use kintai\Core\BundleContract\BundleManifest;
 use kintai\Core\Database\BundleMigrationRunner;
 use kintai\Core\InstalledBundleManifestStore;
@@ -40,6 +41,8 @@ final class BundleInstallerService
         private readonly ?\Closure $zipDownloader = null,
         private readonly HttpFetcher $http = new HttpFetcher(),
         private readonly ?BundleMigrationRunner $migrationRunner = null,
+        // Droits du rôle Manager pour les catégories déclarées, à la première installation d'un bundle.
+        private readonly ?BundlePermissionGranter $permissionGranter = null,
     ) {
     }
 
@@ -58,6 +61,32 @@ final class BundleInstallerService
         return $this->run($slug, $repositoryUrl, $version, $sourceRegistryUrl, dryRun: false, onProgress: $onProgress, expectedCommit: $expectedCommit);
     }
 
+    /** Identifiant d'un bundle : devient un nom de dossier sous storage/bundles/, donc jamais de `/`, `..` ni majuscule. */
+    public static function isValidSlug(string $slug): bool
+    {
+        return preg_match('/^[a-z0-9][a-z0-9-]{0,62}$/', $slug) === 1;
+    }
+
+    /** Numéro de version (X.Y.Z, suffixe de pré-version optionnel) : même raison, il devient un nom de dossier. */
+    public static function isValidVersion(string $version): bool
+    {
+        return preg_match('/^\d{1,5}\.\d{1,5}\.\d{1,5}(?:-[0-9A-Za-z][0-9A-Za-z.-]{0,30})?$/', $version) === 1;
+    }
+
+    /** Pose lastError et renvoie false si le couple slug/version ne peut pas servir de chemin disque. */
+    private function acceptsIdentity(string $slug, ?string $version = null): bool
+    {
+        if (!self::isValidSlug($slug)) {
+            $this->lastError = "Identifiant de bundle invalide : « {$slug} ».";
+            return false;
+        }
+        if ($version !== null && !self::isValidVersion($version)) {
+            $this->lastError = "Numéro de version invalide : « {$version} ».";
+            return false;
+        }
+        return true;
+    }
+
     public function dryRun(string $slug, string $repositoryUrl, string $version, ?string $expectedCommit = null): BundleInstallResult
     {
         return $this->run($slug, $repositoryUrl, $version, null, dryRun: true, expectedCommit: $expectedCommit);
@@ -73,6 +102,10 @@ final class BundleInstallerService
     public function uninstall(string $slug): bool
     {
         $this->lastError = null;
+
+        if (!$this->acceptsIdentity($slug)) {
+            return false;
+        }
 
         if ($this->installedBundles->find($slug) === null) {
             $this->lastError = "Le bundle {$slug} n'est pas géré par l'installateur (bundle du monorepo ou déjà désinstallé).";
@@ -95,6 +128,11 @@ final class BundleInstallerService
      */
     public function rollback(string $slug, string $version): bool
     {
+        $this->lastError = null;
+        if (!$this->acceptsIdentity($slug, $version)) {
+            return false;
+        }
+
         $bundleDir = $this->bundlesDir() . "/{$slug}/{$version}";
         if (!is_dir($bundleDir)) {
             $this->lastError = "La version {$version} de {$slug} n'est pas présente sur ce serveur.";
@@ -115,6 +153,12 @@ final class BundleInstallerService
     {
         $this->lastError = null;
         $progress = $onProgress ?? function (int $percent, string $label): void {};
+
+        // Avant tout chemin disque : sinon un slug « ../.. » déplaçait la création, l'extraction et la
+        // suppression du dossier de préparation hors de storage/bundles.
+        if (!$this->acceptsIdentity($slug, $version)) {
+            return BundleInstallResult::failure($this->lastError);
+        }
 
         $stagingContainer = $this->bundlesDir() . "/{$slug}/.staging/{$version}";
         $zipPath = $stagingContainer . '.zip';
@@ -163,7 +207,7 @@ final class BundleInstallerService
 
         $progress(90, 'Activation du bundle...');
         try {
-            $this->activate($slug, $version, $extractedRoot, $sourceRegistryUrl);
+            $this->activate($slug, $version, $extractedRoot, $sourceRegistryUrl, $manifest->entryClass);
         } catch (\Throwable $e) {
             $this->removeDirIfExists($stagingContainer);
             $this->lastError = "Les migrations du bundle ont échoué : " . $e->getMessage();
@@ -249,9 +293,10 @@ final class BundleInstallerService
             return null;
         }
 
-        $coreVersion = $this->updateService->getCurrentVersion();
-        if (!$manifest->isCompatibleWithCore($coreVersion)) {
-            $this->lastError = "Ce bundle nécessite Kintai {$manifest->kintaiCoreMin} à {$manifest->kintaiCoreMax} (version installée : {$coreVersion}).";
+        // Contrat de bundle (kintai_contract), ou à défaut ancien intervalle kintai_core.min/max.
+        $incompatible = $manifest->incompatibilityReason($this->updateService->getCurrentVersion());
+        if ($incompatible !== null) {
+            $this->lastError = $incompatible;
             return null;
         }
 
@@ -264,8 +309,9 @@ final class BundleInstallerService
         return [$manifest, $extractedRoot];
     }
 
-    private function activate(string $slug, string $version, string $extractedRoot, ?string $sourceRegistryUrl): void
+    private function activate(string $slug, string $version, string $extractedRoot, ?string $sourceRegistryUrl, string $entryClass): void
     {
+        $firstInstall = $this->installedBundles->find($slug) === null;
         $finalDir = $this->bundlesDir() . "/{$slug}/{$version}";
         $this->removeDirIfExists($finalDir);
 
@@ -289,6 +335,18 @@ final class BundleInstallerService
 
         $this->manifestStore->setActiveVersion($slug, $version);
         $this->installedBundles->upsert($slug, $version, $sourceRegistryUrl);
+
+        if ($firstInstall && $this->permissionGranter !== null) {
+            try {
+                // Classes du bundle chargeables dès cette requête (l'autoloader du démarrage ne le connaît pas encore).
+                (new InstalledBundleAutoloader($this->manifestStore, $this->bundlesDir()))->register();
+                $granted = $this->permissionGranter->grantDeclaredBy($entryClass);
+                Log::info('bundle_manager_permissions_granted', ['slug' => $slug, 'keys' => $granted]);
+            } catch (\Throwable $e) {
+                // Le bundle est installé ; seuls les droits restent à accorder à la main dans Rôles.
+                Log::warning('bundle_manager_permissions_failed', ['slug' => $slug, 'error' => $e->getMessage()]);
+            }
+        }
 
         Log::info('bundle_installed', ['slug' => $slug, 'version' => $version]);
     }

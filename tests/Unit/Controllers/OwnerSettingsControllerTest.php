@@ -12,6 +12,9 @@ use kintai\Core\Services\AppSettingsService;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\Log;
 use kintai\Core\Services\PublicUrlResolver;
+use kintai\Core\Services\EnvFileWriter;
+use kintai\Core\Services\InstanceLocale;
+use kintai\Core\Repositories\LanguageRepositoryInterface;
 use kintai\UI\Controller\Web\System\OwnerSettingsController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\TestCase;
@@ -144,7 +147,7 @@ final class OwnerSettingsControllerTest extends TestCase
     public function testSaveDefaultsAccessLogEnabledToOffWhenCheckboxUnchecked(): void
     {
         $controller = $this->makeController(['access_log_enabled' => '1']);
-        $_POST = [];
+        $_POST = ['access_log_enabled' => '0'];
 
         $controller->save(new Request());
 
@@ -228,5 +231,98 @@ final class OwnerSettingsControllerTest extends TestCase
         $response = $controller->save(new Request());
 
         $this->assertSame(302, $response->status());
+    }
+
+    /** Limite de débit de l'API (audit M9) : réglable par l'Owner, 0 = désactivée, valeur bornée. */
+    public function testSaveStoresTheApiRateLimit(): void
+    {
+        $controller = $this->makeController();
+        $_POST = ['api_rate_limit_per_minute' => '120'];
+
+        $controller->save(new Request());
+
+        $this->assertSame('120', $this->stored['api_rate_limit_per_minute']);
+    }
+
+    public function testSaveClampsTheApiRateLimit(): void
+    {
+        $controller = $this->makeController();
+        $_POST = ['api_rate_limit_per_minute' => '-5'];
+        $controller->save(new Request());
+        $this->assertSame('0', $this->stored['api_rate_limit_per_minute']);
+
+        $_POST = ['api_rate_limit_per_minute' => '999999999'];
+        $controller->save(new Request());
+        $this->assertSame('100000', $this->stored['api_rate_limit_per_minute']);
+    }
+
+    public function testSaveKeepsTheCurrentApiRateLimitWhenTheFieldIsAbsent(): void
+    {
+        $controller = $this->makeController();
+        $_POST = [];
+
+        $controller->save(new Request());
+
+        $this->assertSame('300', $this->stored['api_rate_limit_per_minute']);
+    }
+
+    /** Audit M12 : une requête partielle ne coupe plus le journal ni la maintenance, n'efface plus les textes. */
+    public function testFieldsAbsentFromTheRequestKeepTheirValue(): void
+    {
+        $controller = $this->makeController([
+            'access_log_enabled' => '1', 'maintenance_mode_enabled' => '1', 'maintenance_message' => 'Travaux',
+            'app_subtitle' => 'Kintai Tokyo', 'app_login_notice' => 'Bienvenue', 'log_retention_days' => '30',
+        ]);
+        $_POST = [];
+
+        $controller->save(new Request());
+
+        $this->assertSame('1', $this->stored['access_log_enabled']);
+        $this->assertSame('1', $this->stored['maintenance_mode_enabled']);
+        $this->assertSame('Travaux', $this->stored['maintenance_message']);
+        $this->assertSame('Kintai Tokyo', $this->stored['app_subtitle']);
+        $this->assertSame('Bienvenue', $this->stored['app_login_notice']);
+        $this->assertSame('30', $this->stored['log_retention_days']);
+    }
+
+    private function makeControllerWithLocale(string $envDir): OwnerSettingsController
+    {
+        $base = $this->makeController();
+        $languages = $this->createStub(LanguageRepositoryInterface::class);
+        $languages->method('findAllActive')->willReturn([['code' => 'fr', 'name' => 'Français'], ['code' => 'ja', 'name' => '日本語']]);
+        $languages->method('findDefault')->willReturn(['code' => 'fr']);
+        $settings = (new \ReflectionProperty($base, 'settings'))->getValue($base);
+
+        return new OwnerSettingsController(
+            new ViewRenderer(sys_get_temp_dir()), $settings, new AuditLogger(), new PublicUrlResolver($settings, ''),
+            new InstanceLocale($languages, new EnvFileWriter($envDir)), $languages,
+        );
+    }
+
+    public function testSaveWritesTheInstanceLanguageToTheEnvironmentFile(): void
+    {
+        $dir = sys_get_temp_dir() . '/kintai-owner-locale-' . uniqid();
+        mkdir($dir);
+        try {
+            $_POST = ['app_locale' => 'ja'];
+            $response = $this->makeControllerWithLocale($dir)->save(new Request());
+
+            $this->assertSame("APP_LOCALE=ja\n", file_get_contents($dir . '/.env'));
+            $this->assertStringContainsString('success=1', (string) ($response->headers()['Location'] ?? ''));
+        } finally {
+            @unlink($dir . '/.env');
+            @rmdir($dir);
+            unset($_ENV['APP_LOCALE'], $_SERVER['APP_LOCALE']);
+            putenv('APP_LOCALE');
+        }
+    }
+
+    public function testAnUnwritableEnvironmentFileIsReportedAndOtherSettingsAreKept(): void
+    {
+        $_POST = ['app_locale' => 'ja', 'app_subtitle' => 'Ma société'];
+        $response = $this->makeControllerWithLocale(sys_get_temp_dir() . '/kintai-missing-dir-' . uniqid())->save(new Request());
+
+        $this->assertStringContainsString('error=instance_locale_not_saved', (string) ($response->headers()['Location'] ?? ''));
+        $this->assertSame('Ma société', $this->stored['app_subtitle']);
     }
 }

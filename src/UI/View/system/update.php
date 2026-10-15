@@ -77,6 +77,18 @@ ob_start();
                 <p class="text-sm mt-xs" id="backup-update-label"></p>
             </div>
         </div>
+        <?php if (!empty($incompatibleBundles)): ?>
+        <?php // Bundles installés que cette version du Core ne chargera plus (contrat non accepté). ?>
+        <div class="alert alert--warning mt-sm">
+            <strong><?= __('update_bundles_incompatible_title') ?></strong>
+            <p class="text-sm mt-xs"><?= htmlspecialchars(__('update_bundles_incompatible_hint', ['contract' => (string) $targetContract])) ?></p>
+            <ul class="text-sm">
+                <?php foreach ($incompatibleBundles as $_b): ?>
+                <li><strong><?= htmlspecialchars($_b['name']) ?></strong> v<?= htmlspecialchars($_b['version']) ?> — <?= htmlspecialchars($_b['reason']) ?></li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+        <?php endif; ?>
     <?php else: ?>
         <div class="alert alert--success mt-sm"><?= sprintf(__('backup_up_to_date'), htmlspecialchars($currentVersion)) ?></div>
     <?php endif; ?>

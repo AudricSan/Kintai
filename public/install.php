@@ -50,17 +50,12 @@ function pdo_options(): array
     ];
 }
 
-function run_seeds(PDO $pdo, string $dir): void
-{
-    $files = glob($dir . '/*.sql') ?: [];
-    sort($files);
-    foreach ($files as $file) {
-        $sql = trim((string) file_get_contents($file));
-        if ($sql !== '') {
-            $pdo->exec($sql);
-        }
-    }
-}
+// ─── Langues proposées ────────────────────────────────────────────────────────
+
+// Langues actives de lang/languages.json, lues avant le démarrage de l'application : l'une devient la langue de
+// l'instance (APP_LOCALE, voir InstanceLocale), celle de tous les textes tant qu'un utilisateur n'a pas choisi la sienne.
+$installLanguages = (new \kintai\Core\Repositories\JsonLanguageRepository(BASE_PATH . '/lang'))->findAllActive();
+$installLanguageCodes = array_column($installLanguages, 'code');
 
 // ─── Installation logic ───────────────────────────────────────────────────────
 
@@ -81,6 +76,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $mysqlUsername = trim($_POST['mysql_username']  ?? '');
     $mysqlPassword =      $_POST['mysql_password']  ?? '';
     $runSeeds      = isset($_POST['run_seeds']);
+    // Absent (installation scriptée, ex. scripts/ci/install-smoke-test.sh) : langue par défaut actuelle.
+    $appLocale     = trim($_POST['app_locale']      ?? \kintai\Core\Services\InstanceLocale::resolve(new \kintai\Core\Repositories\JsonLanguageRepository(BASE_PATH . '/lang')));
 
     // 2 — Validate
     if ($adminFirstName === '') {
@@ -94,6 +91,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if (strlen($adminPassword) < 8) {
         $errors[] = 'Password must be at least 8 characters.';
+    }
+    if ($installLanguageCodes !== [] && !in_array($appLocale, $installLanguageCodes, true)) {
+        $errors[] = 'Please select a default language.';
     }
     if (!in_array($dbDriver, ['sqlite', 'mysql'], true)) {
         $errors[] = 'Please select a valid database driver.';
@@ -116,6 +116,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'password' => $mysqlPassword,
                 'charset'  => 'utf8mb4',
             ];
+
+            // ── Step 0: Langue de l'instance (fichier d'environnement) ─────
+            // En premier : un fichier .env non inscriptible arrête l'installation avant toute écriture en base.
+
+            if ($appLocale !== '') {
+                (new \kintai\Core\Services\EnvFileWriter(BASE_PATH))->set(\kintai\Core\Services\InstanceLocale::ENV_KEY, $appLocale);
+            }
 
             // ── Step A: Create database (MySQL only) ──────────────────────
 
@@ -179,9 +186,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $runner->run();
 
             if ($runSeeds) {
-                $pdo = $app->container()->make(Capsule::class)->getConnection()->getPdo();
-                run_seeds($pdo, BASE_PATH . '/database/seeds/' . $dbDriver);
-                unset($pdo);
+                // Données de démonstration du Core, écrites par les modèles (indépendantes du pilote et du schéma).
+                (new \kintai\Core\Database\DemoDataSeeder())->run();
             }
 
             // ── Step D: Create admin user via the framework ───────────────
@@ -222,12 +228,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ->setMany([\kintai\Core\Services\PublicUrlResolver::SETTING_KEY => $publicUrl]);
             }
 
+            // ── Step D ter: Assistant de configuration (licence, puis bundles) ─
+            // Aucun bundle actif au départ ; l'Owner choisit sa licence puis ses bundles dans /admin/setup.
+            \kintai\Core\Services\SetupWizard::start(
+                $app->container()->make(\kintai\Core\Repositories\AppSettingsRepositoryInterface::class),
+                $app->container()->make(\kintai\Core\Services\AppSettingsService::class)->updateChannel(),
+            );
+
             // ── Step E: Lock installation ─────────────────────────────────
 
             file_put_contents(BASE_PATH . '/storage/installed.lock', bin2hex(random_bytes(32)));
 
+            // Connexion de l'Owner (même session que l'application) et envoi vers l'assistant.
+            \kintai\Core\Middleware\SessionMiddleware::start($installScheme === 'https');
+            $app->container()->make(\kintai\Core\Auth\AuthService::class)->attempt($adminEmail, $adminPassword);
+
             $success = true;
-            header('Refresh: 2; URL=/');
+            header('Refresh: 2; URL=' . $installBase . '/admin/setup');
 
         } catch (Throwable $e) {
             $errors[] = 'Installation failed: ' . $e->getMessage();
@@ -265,7 +282,7 @@ $defaultUsername = env('DB_USERNAME', 'root');
         h2:first-child { margin-top: 0; }
         .form-row { margin-bottom: 14px; }
         label { display: block; font-size: .82rem; font-weight: 600; color: #475569; margin-bottom: 5px; }
-        input[type=text], input[type=email], input[type=password], input[type=number] {
+        input[type=text], input[type=email], input[type=password], input[type=number], select {
             width: 100%; padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 7px;
             font-size: .88rem; color: #0f172a; background: #f8fafc;
             transition: border-color .15s, box-shadow .15s;
@@ -346,6 +363,19 @@ $defaultUsername = env('DB_USERNAME', 'root');
                 <input type="password" id="admin_password" name="admin_password" required>
             </div>
 
+            <?php if ($installLanguages !== []): ?>
+            <h2>Default language</h2>
+            <div class="form-row">
+                <label for="app_locale">Language of the application <small class="pw-hint">(for every user who has not chosen their own; can be changed later in the instance settings)</small></label>
+                <select id="app_locale" name="app_locale" required>
+                    <?php $selectedLocale = $_POST['app_locale'] ?? \kintai\Core\Services\InstanceLocale::resolve(new \kintai\Core\Repositories\JsonLanguageRepository(BASE_PATH . '/lang')); ?>
+                    <?php foreach ($installLanguages as $lang): ?>
+                        <option value="<?= htmlspecialchars($lang['code'], ENT_QUOTES) ?>" <?= $selectedLocale === $lang['code'] ? 'selected' : '' ?>><?= htmlspecialchars($lang['name'], ENT_QUOTES) ?></option>
+                    <?php endforeach ?>
+                </select>
+            </div>
+            <?php endif ?>
+
             <h2>Database driver</h2>
 
             <div class="driver-group">
@@ -391,7 +421,7 @@ $defaultUsername = env('DB_USERNAME', 'root');
             <div class="check-row" id="seeds-row">
                 <input type="checkbox" id="run_seeds" name="run_seeds"
                        <?= isset($_POST['run_seeds']) ? 'checked' : '' ?>>
-                <label for="run_seeds">Run database seeders</label>
+                <label for="run_seeds">Add demo data (2 stores, 6 accounts, 2 weeks of schedule)</label>
             </div>
 
             <button type="submit" class="btn">Install Kintai</button>
