@@ -48,7 +48,15 @@
     font-size: var(--text-sm);
 }
 
+/* Un formulaire POST par langue (jeton CSRF) : ses boutons restent les enfants directs de la rangée. */
+.login-lang form { display: contents; }
+
 .login-lang__link {
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    cursor: pointer;
     color: var(--color-text-muted);
     text-decoration: none;
 }

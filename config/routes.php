@@ -172,7 +172,9 @@ $router->group('/employee', function ($r) {
 
 // --- Changement de vue / langue ---
 $router->post('/switch-device', [AuthController::class, 'switchDevice'], middleware: [AuthMiddleware::class], name: 'switch.device');
-$router->get('/lang/{locale}', [AuthController::class, 'switchLanguage'], name: 'lang.switch');
+// POST (jeton CSRF) : la langue choisie est enregistrée dans le profil ; en GET, une simple image sur un autre site la
+// changeait (audit n°8).
+$router->post('/lang/{locale}', [AuthController::class, 'switchLanguage'], name: 'lang.switch');
 
 // --- Accueil / Dashboard ---
 $router->get('/', [HomeController::class, 'index'], middleware: [AuthMiddleware::class, PermissionMiddleware::class], name: 'home', permission: 'public');

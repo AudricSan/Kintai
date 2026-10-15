@@ -119,7 +119,7 @@ final class AuthControllerSwitchRefererTest extends TestCase
     #[DataProvider('referers')]
     public function testLanguageSwitchOnlyReturnsToAPageOfTheSite(?string $referer, string $expected): void
     {
-        $request = $this->request('GET', '/lang/ja', $referer);
+        $request = $this->request('POST', '/lang/ja', $referer);
         $request->setRouteParams(['locale' => 'ja']);
 
         $this->assertSame($expected, $this->location($this->controller->switchLanguage($request)));
@@ -135,7 +135,7 @@ final class AuthControllerSwitchRefererTest extends TestCase
 
     public function testUnknownLanguageAlsoUsesTheSafeReturn(): void
     {
-        $request = $this->request('GET', '/lang/xx', 'https://evil.example/');
+        $request = $this->request('POST', '/lang/xx', 'https://evil.example/');
         $request->setRouteParams(['locale' => 'xx']);
 
         $this->assertSame('/', $this->location($this->controller->switchLanguage($request)));
