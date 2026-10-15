@@ -372,25 +372,4 @@ final class HomeController
             'period_days'     => self::STATS_WIDGET_PERIOD_DAYS,
         ];
     }
-
-    public function saveDashboardWidgets(Request $request): Response
-    {
-        $user   = $request->getAttribute('auth_user');
-        $userId = (int) $user['id'];
-
-        $checked = (array) ($request->allPost()['widgets'] ?? []);
-        // Widgets d'un bundle désactivé en ce moment : non proposés, mais conservés pour sa réactivation.
-        $widgets = DashboardWidgets::mergePreferences(
-            DashboardWidgets::current()->keys(DashboardWidget::MANAGER, self::ADMIN_WIDGETS),
-            array_map('strval', array_keys($checked)),
-            $this->dashboardPrefs->getEnabledWidgets($userId, 'admin'),
-        );
-
-        $this->dashboardPrefs->saveWidgets($userId, $widgets, 'admin');
-
-        $sn   = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '/index.php');
-        $base = rtrim(str_replace('\\', '/', dirname($sn)), '/');
-        $base = ($base === '.' || $base === '/') ? '' : $base;
-        return Response::redirect($base . '/?success=saved');
-    }
 }

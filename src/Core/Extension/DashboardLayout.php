@@ -120,6 +120,22 @@ final class DashboardLayout
         return ['order' => $order, 'widths' => $newWidths];
     }
 
+    /**
+     * Disposition après l'ajout d'un widget au tableau de bord : il passe en dernière position, les autres widgets
+     * gardent leur place et leur largeur.
+     *
+     * @param list<string> $keys Widgets proposés, dans l'ordre par défaut
+     * @param array{order: list<string>, widths: array<string, string>}|null $previous
+     * @return array{order: list<string>, widths: array<string, string>}
+     */
+    public static function moveToEnd(array $keys, ?array $previous, string $key): array
+    {
+        $previous = self::normalize($previous);
+        $order = array_values(array_diff(array_unique(array_merge($previous['order'], $keys)), [$key]));
+        $order[] = $key;
+        return self::normalize(['order' => $order, 'widths' => $previous['widths']]);
+    }
+
     private static function isKey(mixed $key): bool
     {
         return is_string($key) && preg_match(self::KEY, $key) === 1;

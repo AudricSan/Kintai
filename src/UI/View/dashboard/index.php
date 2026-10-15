@@ -89,25 +89,20 @@ $_dashChartData = [];
         <button type="button" class="btn btn--ghost btn--sm" data-on-click="adminDashCustomize"><?= __('close') ?></button>
     </div>
     <div class="card-body">
+        <p class="text-sm text-muted"><?= __('dashboard_layout_hint') ?></p>
         <div class="dash-layout-tools">
-            <p class="text-sm text-muted"><?= __('dashboard_layout_hint') ?></p>
+            <?php
+            $_dashHidden = [];
+            foreach ($all_widgets as $wk) {
+                if (!admin_widget_on($wk, $enabled_widgets_all)) {
+                    $_dashHidden[$wk] = $widgetLabels[$wk] ?? $wk;
+                }
+            }
+            include __DIR__ . '/../_partials/_dashboard-add-widget.php';
+            unset($_dashHidden);
+            ?>
             <button type="button" class="btn btn--ghost btn--sm" data-dash-reset><?= __('dashboard_layout_reset') ?></button>
         </div>
-        <form method="POST" action="<?= route_url('admin.dashboard.widgets') ?>">
-            <?= csrf_field() ?>
-            <div class="dash-widget-list">
-                <?php foreach ($all_widgets as $wk): ?>
-                <label class="dash-widget-item">
-                    <input type="checkbox" name="widgets[<?= htmlspecialchars($wk) ?>]" value="1"
-                           <?= admin_widget_on($wk, $enabled_widgets_all) ? 'checked' : '' ?>>
-                    <span><?= htmlspecialchars($widgetLabels[$wk] ?? $wk) ?></span>
-                </label>
-                <?php endforeach; ?>
-            </div>
-            <div class="form-actions mt-sm">
-                <button type="submit" class="btn btn--primary btn--sm"><?= __('save') ?></button>
-            </div>
-        </form>
     </div>
 </div>
 
@@ -570,8 +565,9 @@ foreach ($bundle_widgets as $_bundleWidget) {
 }
 $_dashLabels  = $widgetLabels;
 $_dashSaveUrl = route_url('admin.dashboard.layout');
+$_dashWidgetsUrl = route_url('admin.dashboard.widgets');
 include __DIR__ . '/../_partials/_dashboard-grid.php';
-unset($_bundleWidget, $_dashBlocks, $_dashLabels, $_dashSaveUrl);
+unset($_bundleWidget, $_dashBlocks, $_dashLabels, $_dashSaveUrl, $_dashWidgetsUrl);
 ?>
 
 <?php if ($_dashChartData !== []): ?>

@@ -69,32 +69,26 @@ foreach ($_empWidgetPermMap as $_wk => $_wp) {
 <?php
 ob_start();
 ?>
+<?php
+$widgetLabels = [
+    'shifts_today'   => __('my_shifts_today'),
+    'upcoming'       => __('my_upcoming_shifts'),
+    'monthly_stats'  => __('monthly_stats'),
+] + $bundle_widget_meta['labels'];
+$_dashHidden = [];
+foreach ($all_widgets as $wk) {
+    if (!widget_on($wk, $widgetsAll)) {
+        $_dashHidden[$wk] = $widgetLabels[$wk] ?? $wk;
+    }
+}
+?>
+<p class="text-sm text-muted"><?= __('dashboard_layout_hint') ?></p>
 <div class="dash-layout-tools">
-    <p class="text-sm text-muted"><?= __('dashboard_layout_hint') ?></p>
+    <?php include __DIR__ . '/../_partials/_dashboard-add-widget.php'; ?>
     <button type="button" class="btn btn--ghost btn--sm" data-dash-reset><?= __('dashboard_layout_reset') ?></button>
 </div>
-<form method="POST" action="<?= route_url('employee.dashboard.widgets') ?>">
-    <?= csrf_field() ?>
-    <div class="dash-widget-list">
-        <?php
-        $widgetLabels = [
-            'shifts_today'   => __('my_shifts_today'),
-            'upcoming'       => __('my_upcoming_shifts'),
-            'monthly_stats'  => __('monthly_stats'),
-        ] + $bundle_widget_meta['labels'];
-        foreach ($all_widgets as $wk): ?>
-        <label class="dash-widget-item">
-            <input type="checkbox" name="widgets[<?= htmlspecialchars($wk) ?>]" value="1"
-                   <?= widget_on($wk, $widgetsAll) ? 'checked' : '' ?>>
-            <span><?= htmlspecialchars($widgetLabels[$wk] ?? $wk) ?></span>
-        </label>
-        <?php endforeach; ?>
-    </div>
-    <div class="form-actions mt-sm">
-        <?= Button::make(__('save'))->primary()->sm()->submit()->render() ?>
-    </div>
-</form>
 <?php
+unset($_dashHidden);
 echo Card::make()
     ->header('<span>' . __('dashboard_customize') . '</span> ' . Button::make(__('close'))->ghost()->sm()->attrs(['data-on-click' => 'dashCustomizeToggle'])->render())
     ->body(ob_get_clean())
@@ -283,8 +277,9 @@ foreach ($bundle_widgets as $_bundleWidget) {
 }
 $_dashLabels  = $widgetLabels;
 $_dashSaveUrl = route_url('employee.dashboard.layout');
+$_dashWidgetsUrl = route_url('employee.dashboard.widgets');
 include __DIR__ . '/../_partials/_dashboard-grid.php';
-unset($_bundleWidget, $_dashBlocks, $_dashLabels, $_dashSaveUrl);
+unset($_bundleWidget, $_dashBlocks, $_dashLabels, $_dashSaveUrl, $_dashWidgetsUrl);
 ?>
 
 <script src="<?= $BASE_URL ?>/assets/js/modules/dashboard.js"></script>

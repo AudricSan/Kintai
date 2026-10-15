@@ -53,6 +53,24 @@ final class DashboardGridRenderTest extends TestCase
         $this->assertStringContainsString('data-dash-reset', $html);
     }
 
+    public function testHiddenWidgetsAreOfferedInTheAddMenuAndShownOnesCanBeRemoved(): void
+    {
+        $html = $this->view->renderPartial('employee.dashboard', [
+            'BASE_URL'            => '',
+            'shifts_today'        => [],
+            'upcoming'            => [],
+            'enabled_widgets'     => array_flip(['shifts_today']),
+            'all_widgets'         => ['shifts_today', 'upcoming', 'monthly_stats'],
+            'widget_layout'       => ['order' => ['shifts_today', 'upcoming', 'monthly_stats'], 'widths' => []],
+        ]);
+
+        preg_match_all('/data-dash-add="([a-z_]+)"/', $html, $m);
+        $this->assertSame(['upcoming', 'monthly_stats'], $m[1]);
+        $this->assertSame(1, substr_count($html, 'data-dash-remove'));
+        $this->assertStringContainsString('data-widgets-url=', $html);
+        $this->assertStringNotContainsString('type="checkbox"', $html);
+    }
+
     public function testFinancialAndHrWidgetsAreIndependentHalfWidthWidgetsByDefault(): void
     {
         $html = $this->view->renderPartial('dashboard.index', [

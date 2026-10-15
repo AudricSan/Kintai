@@ -5,6 +5,10 @@
  * barre d'outils — poignée de glisser-déposer, flèches ↑↓ (mobile tactile, clavier) et bascule demi / pleine largeur.
  * Chaque changement est enregistré aussitôt, en arrière-plan (POST JSON vers data-save-url) ; « Réinitialiser l'ordre »
  * revient à la disposition par défaut et recharge la page.
+ *
+ * Widgets affichés (POST JSON vers data-widgets-url) : le bouton ✕ d'un widget le retire de la page et le remet dans
+ * la liste « Ajouter un widget » ; ajouter un widget le place en fin de tableau de bord puis recharge la page (son
+ * contenu est rendu côté serveur), le mode édition restant ouvert et la page positionnée sur le nouveau widget.
  */
 (function () {
     'use strict';
@@ -13,6 +17,8 @@
     if (!grid) return;
 
     var saveUrl = grid.getAttribute('data-save-url');
+    var widgetsUrl = grid.getAttribute('data-widgets-url');
+    var EDIT_FLAG = 'kintai.dashEditing';
     var saveTimer = null;
     var dragged = null;
 
@@ -34,8 +40,9 @@
         }, 300);
     }
 
-    function post(body) {
-        return fetch(saveUrl, {
+    // Renvoie une promesse résolue avec la réponse, ou avec null en cas d'échec (signalé sur la grille).
+    function post(body, url) {
+        return fetch(url || saveUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body: JSON.stringify(body)
@@ -45,6 +52,51 @@
         }).catch(function () {
             grid.classList.add('dash-grid--save-error');
             grid.setAttribute('title', grid.getAttribute('data-label-error') || '');
+            return null;
+        });
+    }
+
+    function addMenu() {
+        return document.querySelector('[data-dash-add-menu]');
+    }
+
+    function refreshAddMenu() {
+        var menu = addMenu();
+        if (!menu) return;
+        var empty = menu.querySelector('[data-dash-add-empty]');
+        if (empty) empty.hidden = menu.querySelector('[data-dash-add]') !== null;
+    }
+
+    // Retrait : le widget quitte la page et revient dans la liste « Ajouter un widget ».
+    function removeWidget(item) {
+        var key = item.getAttribute('data-widget-key');
+        post({ remove: key }, widgetsUrl).then(function (res) {
+            if (!res) return;
+            var menu = addMenu();
+            var list = menu && menu.querySelector('.dash-add-widget__menu');
+            if (list) {
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'dash-add-widget__item';
+                btn.setAttribute('role', 'menuitem');
+                btn.setAttribute('data-dash-add', key);
+                btn.textContent = item.getAttribute('data-widget-label') || key;
+                list.insertBefore(btn, list.querySelector('[data-dash-add-empty]'));
+            }
+            item.remove();
+            refreshAddMenu();
+            window.dispatchEvent(new Event('resize'));
+        });
+    }
+
+    function addWidget(btn) {
+        var key = btn.getAttribute('data-dash-add');
+        btn.disabled = true;
+        post({ add: key }, widgetsUrl).then(function (res) {
+            if (!res) { btn.disabled = false; return; }
+            try { sessionStorage.setItem(EDIT_FLAG, '1'); } catch (err) { /* stockage indisponible */ }
+            window.location.hash = 'dash-widget-' + key;
+            window.location.reload();
         });
     }
 
@@ -67,11 +119,15 @@
 
     // ── Flèches et largeur ───────────────────────────────────────────────────
     grid.addEventListener('click', function (e) {
-        var btn = e.target.closest('[data-dash-move], [data-dash-width]');
+        var btn = e.target.closest('[data-dash-move], [data-dash-width], [data-dash-remove]');
         if (!btn || !grid.contains(btn)) return;
         var item = btn.closest('[data-widget-key]');
         if (!item) return;
 
+        if (btn.hasAttribute('data-dash-remove')) {
+            removeWidget(item);
+            return;
+        }
         if (btn.hasAttribute('data-dash-width')) {
             setWidth(item, item.getAttribute('data-widget-width') === 'half' ? 'full' : 'half');
         } else if (btn.getAttribute('data-dash-move') === 'up') {
@@ -129,8 +185,13 @@
         save();
     });
 
-    // ── Réinitialisation (bouton du panneau « Personnaliser ») ─────────────────────────────────────────────────
+    // ── Panneau « Personnaliser » : réinitialisation et ajout d'un widget ──────────────────────────────────────
     document.addEventListener('click', function (e) {
+        var add = e.target.closest('[data-dash-add]');
+        if (add) {
+            addWidget(add);
+            return;
+        }
         var btn = e.target.closest('[data-dash-reset]');
         if (!btn) return;
         btn.disabled = true;
@@ -138,4 +199,18 @@
     });
 
     window.kintaiDashLayout = { setEditing: setEditing };
+
+    // Après l'ajout d'un widget : rouvrir le panneau « Personnaliser » (et donc le mode édition).
+    var reopen = false;
+    try {
+        reopen = sessionStorage.getItem(EDIT_FLAG) === '1';
+        sessionStorage.removeItem(EDIT_FLAG);
+    } catch (err) { /* stockage indisponible */ }
+    if (reopen) {
+        var panel = document.querySelector('.dash-customize-panel.hidden');
+        if (panel) {
+            panel.classList.remove('hidden');
+            setEditing(true);
+        }
+    }
 }());

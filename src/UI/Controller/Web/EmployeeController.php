@@ -550,24 +550,6 @@ final class EmployeeController
         return Response::redirect($this->base() . '/profile?tab=availability&store_id=' . $storeId . '&success=saved');
     }
 
-    public function saveDashboardWidgets(Request $request): Response
-    {
-        $user    = $request->getAttribute('auth_user');
-        $userId  = (int) ($user['id'] ?? 0);
-        $body    = $request->allPost();
-        $checked = $body['widgets'] ?? [];
-        $oldWidgets = $this->dashboardPrefs->getEnabledWidgets($userId, 'employee');
-        // Widgets d'un bundle désactivé en ce moment : non proposés, mais conservés pour sa réactivation.
-        $widgets = DashboardWidgets::mergePreferences(
-            DashboardWidgets::current()->keys(DashboardWidget::EMPLOYEE, self::EMPLOYEE_WIDGETS),
-            array_map('strval', array_keys((array) $checked)),
-            $oldWidgets,
-        );
-        $this->dashboardPrefs->saveWidgets($userId, $widgets, 'employee');
-        $this->auditLogger->logUpdate($request, 'dashboard_prefs.updated', 'user_dashboard_prefs', $userId, $oldWidgets, $widgets, []);
-        return Response::redirect($this->base() . '/employee?success=prefs');
-    }
-
     // Bourse aux shifts : bundle distribué hors monorepo (kintai-bundle-shift-claim), voir docs/architecture.md
 
     // -------------------------------------------------------------------------

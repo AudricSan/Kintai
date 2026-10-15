@@ -166,17 +166,24 @@ final class DashboardWidgetsTest extends TestCase
         $this->assertSame([...self::CORE, 'acme_board'], $dash->keys(DashboardWidget::MANAGER, self::CORE));
     }
 
-    public function testPreferencesKeepWidgetsOfDisabledBundles(): void
+    public function testToggleAddsAtTheEndAndKeepsWidgetsOfDisabledBundles(): void
     {
+        // « gone_widget » vient d'un bundle désactivé : non proposé, mais conservé ; « Bad Key » est écarté.
         $this->assertSame(
-            ['kpi_counters', 'acme_board', 'gone_widget'],
-            DashboardWidgets::mergePreferences(
-                ['kpi_counters', 'shifts_today', 'acme_board'],
-                ['kpi_counters', 'acme_board', 'injected_key'],
-                ['shifts_today', 'gone_widget', 'Bad Key']
-            )
+            ['gone_widget', 'kpi_counters', 'acme_board'],
+            DashboardWidgets::toggle(['kpi_counters', 'shifts_today', 'acme_board'], ['acme_board', 'gone_widget', 'Bad Key', 'kpi_counters'], 'acme_board', true),
         );
-        $this->assertSame(['kpi_counters'], DashboardWidgets::mergePreferences(['kpi_counters'], ['kpi_counters'], null));
+        $this->assertSame(
+            ['acme_board', 'gone_widget'],
+            DashboardWidgets::toggle(['kpi_counters', 'acme_board'], ['kpi_counters', 'acme_board', 'gone_widget'], 'kpi_counters', false),
+        );
+    }
+
+    public function testToggleStartsFromTheDefaultSelectionWithoutPreferences(): void
+    {
+        $this->assertSame(['kpi_counters', 'acme_board'], DashboardWidgets::toggle(['kpi_counters', 'shifts_today', 'acme_board'], null, 'shifts_today', false));
+        // Déjà affiché par défaut : l'ajout le replace simplement en dernier, sans doublon.
+        $this->assertSame(['shifts_today', 'kpi_counters'], DashboardWidgets::toggle(['kpi_counters', 'shifts_today'], null, 'kpi_counters', true));
     }
 
     public function testInvalidWidgetIsRejected(): void
