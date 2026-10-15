@@ -550,6 +550,29 @@ if (!function_exists('notification_type_catalog')) {
     {
         return notification_type_catalog()[$type]['icon'] ?? '•';
     }
+
+    /**
+     * Texte d'une notification dans la langue courante : traduction de body_key avec ses paramètres, sinon
+     * l'instantané body (lignes antérieures à body_key, ou clé d'un bundle désactivé depuis).
+     */
+    function notification_body(array $notification): string
+    {
+        $key = (string) ($notification['body_key'] ?? '');
+        if ($key !== '') {
+            $params     = is_array($notification['params'] ?? null) ? $notification['params'] : [];
+            $translated = __($key, $params);
+            if ($translated !== $key) {
+                return $translated;
+            }
+        }
+        return (string) ($notification['body'] ?? '');
+    }
+
+    /** Libellé du badge de la cloche, identique côté serveur et dans notifications.js : 1…99, puis « 99+ ». */
+    function notification_badge_label(int $count): string
+    {
+        return $count > 99 ? '99+' : (string) $count;
+    }
 }
 
 if (!function_exists('translation_or')) {
