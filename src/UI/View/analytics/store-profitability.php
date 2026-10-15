@@ -83,7 +83,6 @@ ob_start();
         </div>
     </div>
     <form method="GET" action="" class="form-contents">
-        <?= csrf_field() ?>
         <label class="form-label"><?= __('custom_range') ?></label>
         <div class="form-filter">
             <input type="date" name="from" value="<?= htmlspecialchars($from) ?>" class="form-control form-control-sm" data-submit-on-change>

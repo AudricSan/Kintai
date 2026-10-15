@@ -223,7 +223,6 @@ if ($_canManage) {
 
 <div class="card card--filters mb-sm">
     <form method="GET" action="" class="filter-bar">
-        <?= csrf_field() ?>
         <div class="shifts-filters__row">
             <div class="shifts-filters__group">
                 <label class="shifts-filters__label" for="sf-month"><?= __('month') ?></label>

@@ -125,7 +125,6 @@ ob_start();
 <div class="filter-bar">
     <?php if (count($available_stores) > 1): ?>
     <form method="GET" action="" class="form-contents">
-        <?= csrf_field() ?>
         <input type="hidden" name="view"  value="<?= htmlspecialchars($period_mode) ?>">
         <input type="hidden" name="start" value="<?= htmlspecialchars($days[0]->format('Y-m-d')) ?>">
         <select name="store_id" class="form-control filter-bar__select" data-submit-on-change>
