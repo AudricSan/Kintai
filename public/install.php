@@ -209,12 +209,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ->setMany([\kintai\Core\Services\PublicUrlResolver::SETTING_KEY => $publicUrl]);
             }
 
+            // ── Step D ter: Assistant de configuration (licence, puis bundles) ─
+            // Aucun bundle actif au départ ; l'Owner choisit sa licence puis ses bundles dans /admin/setup.
+            \kintai\Core\Services\SetupWizard::start(
+                $app->container()->make(\kintai\Core\Repositories\AppSettingsRepositoryInterface::class),
+                $app->container()->make(\kintai\Core\Services\AppSettingsService::class)->updateChannel(),
+            );
+
             // ── Step E: Lock installation ─────────────────────────────────
 
             file_put_contents(BASE_PATH . '/storage/installed.lock', bin2hex(random_bytes(32)));
 
+            // Connexion de l'Owner (même session que l'application) et envoi vers l'assistant.
+            \kintai\Core\Middleware\SessionMiddleware::start($installScheme === 'https');
+            $app->container()->make(\kintai\Core\Auth\AuthService::class)->attempt($adminEmail, $adminPassword);
+
             $success = true;
-            header('Refresh: 2; URL=/');
+            header('Refresh: 2; URL=' . $installBase . '/admin/setup');
 
         } catch (Throwable $e) {
             $errors[] = 'Installation failed: ' . $e->getMessage();

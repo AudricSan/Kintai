@@ -86,7 +86,7 @@ composer install
 php -S 127.0.0.1:8000 -t public
 ```
 
-Ouvrir ensuite `http://127.0.0.1:8000/install.php` — l'installateur web crée `config/database.local.php`, exécute les migrations et crée le compte administrateur.
+Ouvrir ensuite `http://127.0.0.1:8000/install.php` — l'installateur web crée `config/database.local.php`, exécute les migrations, crée le compte administrateur, vous connecte et ouvre l'assistant de configuration (`/admin/setup`) : saisissez une clé de licence ou continuez avec le plan gratuit, puis choisissez les bundles (fonctionnalités) à installer — autant que votre licence le permet (4 en plan gratuit). Ils sont téléchargés depuis le catalogue de bundles ; ceux qui n'ont pas pu être installés sont listés pour être réessayés depuis le catalogue.
 
 L'installateur enregistre aussi l'adresse depuis laquelle vous installez comme **URL publique** de l'instance, utilisée pour les liens des e-mails (réinitialisation du mot de passe). Vérifiez-la dans les réglages Owner (`/admin/owner-settings`) si les utilisateurs accèdent à Kintai par une autre adresse ; la variable d'environnement `APP_URL`, si elle est définie, prime. Sans URL publique, les e-mails de réinitialisation ne partent pas et l'Owner voit un avertissement.
 
