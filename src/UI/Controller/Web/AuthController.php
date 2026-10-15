@@ -12,6 +12,7 @@ use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Extension\ProfileSections;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\Services\LocaleCookie;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\AvatarImageOptimizer;
 use kintai\Core\Repositories\AvailabilityRepositoryInterface;
@@ -74,9 +75,12 @@ final class AuthController
         }
 
         return Response::html($this->view->render('auth.login', [
-            'title'      => 'Connexion',
+            'title'      => __('login_page'),
             'error'      => !empty($_GET['error']),
             'login_mode' => $_GET['mode'] ?? 'code',
+            // Sélecteur de langue de la page de connexion (pour la session ; voir switchLanguage()).
+            'login_languages' => $this->languages->findAllActive(),
+            'current_locale'  => \kintai\Core\Container::getInstance()->make(\kintai\Core\Services\TranslationService::class)->getLocale(),
         ], 'layout.guest'));
     }
 
@@ -107,8 +111,10 @@ final class AuthController
                 $this->users->save(['id' => $userId, 'last_login_at' => date('Y-m-d H:i:s')]);
             }
 
-            // Laisser la préférence BD de l'utilisateur prendre effet (I18nMiddleware)
+            // Laisser la préférence BD de l'utilisateur prendre effet (I18nMiddleware), et la retenir pour la page
+            // de connexion de ce navigateur après déconnexion.
             unset($_SESSION['locale']);
+            LocaleCookie::remember(is_array($authUser) ? (string) ($authUser['language'] ?? '') : null);
 
             if ($this->auth->isAdmin()) {
                 $destination = $this->base() . '/admin/shifts/timeline';
@@ -141,7 +147,10 @@ final class AuthController
         return Response::redirect(back_url($this->base() . '/'));
     }
 
-    /** Change la langue de l'utilisateur (session + BD si connecté). */
+    /**
+     * Sélecteur de langue. Connecté : enregistrée dans le profil (et retenue pour la page de connexion). Non
+     * connecté (page de connexion) : pour la session seulement.
+     */
     public function switchLanguage(Request $request): Response
     {
         $locale = $request->param('locale');
@@ -150,20 +159,16 @@ final class AuthController
             return Response::redirect(back_url($this->base() . '/'));
         }
 
-        $_SESSION['locale'] = $locale;
-
-        // Persister en BD si l'utilisateur est connecté
         $user = $this->auth->user();
         if ($user) {
-            try {
-                $dbUser = $this->users->findById((int) $user['id']);
-                if ($dbUser) {
-                    $dbUser['language']    = $locale;
-                    $this->users->save($dbUser);
-                }
-            } catch (\Throwable) {
-                // Colonne language absente (migration non exécutée) — session suffit
+            $dbUser = $this->users->findById((int) $user['id']);
+            if ($dbUser) {
+                $dbUser['language'] = $locale;
+                $this->users->save($dbUser);
+                LocaleCookie::remember($locale);
             }
+        } else {
+            $_SESSION['locale'] = $locale;
         }
 
         // Retour à la page d'origine seulement si elle appartient au site (back_url() vérifie l'origine du Referer) :
@@ -281,11 +286,11 @@ final class AuthController
 
         $userId      = (int) $user['id'];
         $activeCodes = array_column($this->languages->findAllActive(), 'code');
-        $default     = $this->languages->findDefault();
-        // Champ absent : la langue actuelle est conservée (voir le commentaire plus bas).
-        $language    = $request->post('language', $user['language'] ?? ($default['code'] ?? 'fr'));
+        // Champ absent : la langue actuelle est conservée (voir le commentaire plus bas). Vide : le compte suit la
+        // langue de l'instance ; une langue inconnue ou désactivée revient aussi à la langue de l'instance.
+        $language    = (string) $request->post('language', (string) ($user['language'] ?? ''));
         if (!in_array($language, $activeCodes, true)) {
-            $language = $default['code'] ?? 'fr';
+            $language = '';
         }
 
         // Récupérer l'utilisateur complet depuis la DB pour être sûr de ne rien perdre
@@ -311,7 +316,7 @@ final class AuthController
             }
             $this->users->save($dbUser);
 
-            $_SESSION['locale'] = $language;
+            LocaleCookie::remember($language);
             $this->auditLogger->logUpdate($request, 'user.update_profile', 'user', $userId, $oldUser, $dbUser, [], null, $userId);
         }
 

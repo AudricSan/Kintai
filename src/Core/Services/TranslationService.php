@@ -28,8 +28,7 @@ final class TranslationService
         $this->locale = $locale;
         $this->translations = $this->translationRepository->findByLocale($locale);
 
-        $default = $this->languageRepository->findDefault();
-        $defaultCode = $default['code'] ?? 'en';
+        $defaultCode = InstanceLocale::resolve($this->languageRepository);
         $this->fallbackTranslations = $defaultCode !== $locale
             ? $this->translationRepository->findByLocale($defaultCode)
             : [];

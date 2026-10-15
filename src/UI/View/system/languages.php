@@ -3,6 +3,7 @@ use kintai\UI\Components\Flash;
 use kintai\UI\Components\Badge;
 
 /** @var array  $languages */
+/** @var string $instance_locale Langue de l'instance (APP_LOCALE) */
 /** @var string|null $BASE_URL */
 
 $activeCount = count(array_filter($languages, fn($l) => !empty($l['is_active'])));
@@ -11,7 +12,6 @@ echo Flash::fromQuery('success', [
     'created'     => __('language_created_success'),
     'updated'     => __('language_updated_success'),
     'deleted'     => __('language_deleted_success'),
-    'default_set' => __('language_default_set_success'),
     'toggled'     => __('language_toggled_success'),
 ])->render();
 
@@ -45,7 +45,7 @@ echo Flash::fromQuery('error', [
                 <?php foreach ($languages as $lang): ?>
                 <?php
                     $code       = $lang['code'];
-                    $isDefault  = !empty($lang['is_default']);
+                    $isDefault  = $code === ($instance_locale ?? null);
                     $isActive   = !empty($lang['is_active']);
                     $canDelete  = !$isDefault && !($isActive && $activeCount <= 1);
                 ?>
@@ -73,11 +73,6 @@ echo Flash::fromQuery('error', [
                     <td data-label="<?= htmlspecialchars(__('language_default')) ?>" class="td-center">
                         <?php if ($isDefault): ?>
                             <?= Badge::make(__('language_default'))->primary()->sm()->render() ?>
-                        <?php else: ?>
-                        <form method="POST" action="<?= $BASE_URL ?>/admin/languages/<?= htmlspecialchars($code) ?>/default" class="form-inline">
-                            <?= csrf_field() ?>
-                            <button type="submit" class="btn btn--ghost btn--xs"><?= __('set_as_default') ?></button>
-                        </form>
                         <?php endif; ?>
                     </td>
                     <td data-label="<?= htmlspecialchars(__('actions')) ?>" class="td-center td-nowrap">

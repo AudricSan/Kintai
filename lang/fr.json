@@ -1,4 +1,8 @@
 {
+    "language_follow_instance": "Langue de l'instance (:language)",
+    "instance_locale": "Langue de l'instance",
+    "instance_locale_hint": "Langue de tous les textes pour les utilisateurs qui n'ont pas choisi la leur dans leur profil. Enregistrée dans le fichier d'environnement (APP_LOCALE).",
+    "instance_locale_not_saved": "Les autres réglages sont enregistrés, mais pas la langue de l'instance : le fichier d'environnement (.env) n'est pas modifiable par le serveur.",
     "cron_job_backup": "Sauvegarde de la base de données",
     "cron_job_log_purge": "Purge du journal d'activité",
     "cron_job_license_check": "Vérification de la licence",

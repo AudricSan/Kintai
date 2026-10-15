@@ -138,10 +138,11 @@ ob_start();
     </div>
 
     <div class="form-group">
-        <label class="form-label form-label--required"><?= __('language') ?></label>
+        <label class="form-label"><?= __('language') ?></label>
         <select name="language" class="form-control">
+            <option value="" <?= ($user['language'] ?? '') === '' ? 'selected' : '' ?>><?= htmlspecialchars(__('language_follow_instance', ['language' => (string) ($instance_language_name ?? '')])) ?></option>
             <?php foreach (($active_languages ?? []) as $_lang): ?>
-            <option value="<?= htmlspecialchars($_lang['code']) ?>" <?= ($user['language'] ?? 'fr') === $_lang['code'] ? 'selected' : '' ?>><?= htmlspecialchars($_lang['name']) ?></option>
+            <option value="<?= htmlspecialchars($_lang['code']) ?>" <?= ($user['language'] ?? '') === $_lang['code'] ? 'selected' : '' ?>><?= htmlspecialchars($_lang['name']) ?></option>
             <?php endforeach; ?>
         </select>
     </div>

@@ -75,13 +75,11 @@ final class IcalService
 
     private function resolveLocale(array $user, array $store): string
     {
-        $raw  = $user['language'] ?? $store['locale'] ?? 'fr';
-        $lang = strtolower(substr((string) $raw, 0, 2));
-        return match ($lang) {
-            'ja'    => 'ja',
-            'en'    => 'en',
-            default => 'fr',
-        };
+        // Langue du profil de l'employé, sinon celle du magasin, sinon celle de l'instance.
+        if ((string) ($user['language'] ?? '') === '' && (string) ($store['locale'] ?? '') !== '') {
+            return strtolower(substr((string) $store['locale'], 0, 2));
+        }
+        return user_locale($user);
     }
 
     private function buildShiftEvent(

@@ -7,6 +7,7 @@ namespace kintai\Tests\Unit\Core;
 use kintai\Core\Middleware\I18nMiddleware;
 use kintai\Core\Repositories\LanguageRepositoryInterface;
 use kintai\Core\Repositories\TranslationRepositoryInterface;
+use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\TranslationService;
@@ -18,6 +19,7 @@ final class I18nMiddlewareTest extends TestCase
     private LanguageRepositoryInterface&MockObject $languages;
     private TranslationService $translationService;
     private I18nMiddleware $middleware;
+    private UserRepositoryInterface&MockObject $users;
 
     protected function setUp(): void
     {
@@ -27,12 +29,14 @@ final class I18nMiddlewareTest extends TestCase
         $translationRepo->method('findByLocale')->willReturn([]);
 
         $this->translationService = new TranslationService($translationRepo, $this->languages);
-        $this->middleware = new I18nMiddleware($this->translationService, $this->languages);
+        $this->users = $this->createMock(UserRepositoryInterface::class);
+        $this->middleware = new I18nMiddleware($this->translationService, $this->languages, $this->users);
     }
 
     protected function tearDown(): void
     {
-        unset($_SESSION['locale']);
+        unset($_SESSION['locale'], $_SESSION['auth_user_id'], $_ENV['APP_LOCALE']);
+        $_COOKIE = [];
     }
 
     private function makeRequest(array $server = []): Request
@@ -85,12 +89,41 @@ final class I18nMiddlewareTest extends TestCase
         $this->assertSame('en', $this->translationService->getLocale());
     }
 
-    public function testUserProfileLocaleUsedWhenNoSession(): void
+    public function testLoggedInUserGetsTheProfileLanguageBeforeSessionCookieAndBrowser(): void
     {
-        $this->languages->method('findAllActive')->willReturn([['code' => 'fr'], ['code' => 'ja']]);
+        $this->languages->method('findAllActive')->willReturn([['code' => 'fr'], ['code' => 'ja'], ['code' => 'en']]);
+        $this->users->method('findById')->with(1)->willReturn(['id' => 1, 'language' => 'ja']);
 
-        $req = $this->makeRequest();
-        $req->setAttribute('auth_user', ['id' => 1, 'language' => 'ja']);
+        $req = $this->makeRequest(['HTTP_ACCEPT_LANGUAGE' => 'en-US']);
+        $_SESSION['auth_user_id'] = 1;
+        $_SESSION['locale'] = 'fr';
+        $_COOKIE['kintai_locale'] = 'en';
+
+        $this->middleware->handle($req, $this->noop());
+
+        $this->assertSame('ja', $this->translationService->getLocale());
+    }
+
+    public function testLoggedInUserWithoutLanguageFollowsTheInstanceNotTheBrowser(): void
+    {
+        $this->languages->method('findAllActive')->willReturn([['code' => 'fr'], ['code' => 'ja'], ['code' => 'en']]);
+        $this->users->method('findById')->willReturn(['id' => 1, 'language' => '']);
+        $_ENV['APP_LOCALE'] = 'ja';
+
+        $req = $this->makeRequest(['HTTP_ACCEPT_LANGUAGE' => 'en-US']);
+        $_SESSION['auth_user_id'] = 1;
+
+        $this->middleware->handle($req, $this->noop());
+
+        $this->assertSame('ja', $this->translationService->getLocale());
+    }
+
+    public function testLastAccountLanguageCookieComesBeforeTheBrowserOnTheLoginPage(): void
+    {
+        $this->languages->method('findAllActive')->willReturn([['code' => 'fr'], ['code' => 'ja'], ['code' => 'en']]);
+
+        $req = $this->makeRequest(['HTTP_ACCEPT_LANGUAGE' => 'en-US']);
+        $_COOKIE['kintai_locale'] = 'ja';
 
         $this->middleware->handle($req, $this->noop());
 
@@ -106,6 +139,17 @@ final class I18nMiddlewareTest extends TestCase
         $this->middleware->handle($req, $this->noop());
 
         $this->assertSame('ja', $this->translationService->getLocale());
+    }
+
+    public function testInstanceLanguageWinsOverTheLegacyDefault(): void
+    {
+        $this->languages->method('findAllActive')->willReturn([['code' => 'fr'], ['code' => 'en']]);
+        $this->languages->method('findDefault')->willReturn(['code' => 'fr']);
+        $_ENV['APP_LOCALE'] = 'en';
+
+        $this->middleware->handle($this->makeRequest(), $this->noop());
+
+        $this->assertSame('en', $this->translationService->getLocale());
     }
 
     public function testDefaultLocaleUsedAsUltimateFallback(): void

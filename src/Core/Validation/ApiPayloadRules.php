@@ -31,7 +31,8 @@ final class ApiPayloadRules
             'mobile_phone'        => ['type' => 'string', 'nullable' => true, 'max' => 30],
             'color'               => ['type' => 'color'],
             'is_active'           => ['type' => 'bool'],
-            'language'            => ['type' => 'string', 'max' => 10, 'pattern' => self::LANGUAGE],
+            // null ou absent à la création : le compte suit la langue de l'instance.
+            'language'            => ['type' => 'string', 'nullable' => true, 'max' => 10, 'pattern' => self::LANGUAGE],
             'gender'              => ['type' => 'string', 'nullable' => true, 'max' => 20],
             'tax_classification'  => ['type' => 'string', 'nullable' => true, 'max' => 50],
             'birth_date'          => ['type' => 'date', 'nullable' => true],

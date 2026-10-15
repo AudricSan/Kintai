@@ -89,4 +89,41 @@ final class AuthControllerUpdateProfileTest extends TestCase
         $this->expectExceptionMessage('DB write failed');
         $controller->updateProfile(new Request());
     }
+
+    /** Choix vide (« Langue de l'instance ») ou langue désactivée : le compte suit la langue de l'instance (''). */
+    public function testAnEmptyOrInactiveLanguageMeansFollowingTheInstance(): void
+    {
+        $userId = 43;
+        $_SESSION['auth_user_id'] = $userId;
+
+        $saved = [];
+        $users = $this->createMock(UserRepositoryInterface::class);
+        $users->method('findById')->with($userId)->willReturn(['id' => $userId, 'language' => 'fr']);
+        $users->method('save')->willReturnCallback(function (array $u) use (&$saved): array {
+            $saved[] = $u['language'];
+            return $u;
+        });
+
+        $storeUsers      = $this->createMock(StoreUserRepositoryInterface::class);
+        $stores          = $this->createMock(StoreRepositoryInterface::class);
+        $roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
+        $roleAssignments->method('findByUser')->willReturn([]);
+        $auth = new AuthService($users, $storeUsers, $stores, $this->createMock(RoleRepositoryInterface::class), $roleAssignments, $this->createStub(RememberTokenRepositoryInterface::class));
+
+        $languages = $this->createMock(LanguageRepositoryInterface::class);
+        $languages->method('findAllActive')->willReturn([['code' => 'fr'], ['code' => 'en']]);
+
+        $controller = new AuthController(
+            new ViewRenderer(sys_get_temp_dir()), $auth, new AuditLogger(), $users, $stores, $storeUsers,
+            $this->createMock(IcalTokenRepositoryInterface::class), $this->createMock(UserNavPrefsRepositoryInterface::class),
+            $this->createMock(AvailabilityRepositoryInterface::class), $languages, new AvatarImageOptimizer(),
+        );
+
+        foreach (['', 'de', 'en'] as $choice) {
+            $_POST = ['language' => $choice];
+            $controller->updateProfile(new Request());
+        }
+
+        $this->assertSame(['', '', 'en'], $saved);
+    }
 }

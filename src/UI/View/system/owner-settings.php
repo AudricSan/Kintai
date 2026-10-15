@@ -52,6 +52,9 @@ echo Flash::fromQuery('success', ['default' => __('save_success')])->render();
 if (($error ?? null) === 'public_url_invalid') {
     echo Alert::make(__('public_url_invalid'))->danger()->render();
 }
+if (($error ?? null) === 'instance_locale_not_saved') {
+    echo Alert::make(__('instance_locale_not_saved'))->danger()->render();
+}
 ?>
 <div class="page-header">
     <h2 class="page-header__title"><?= __('owner_settings') ?></h2>
@@ -81,6 +84,18 @@ if (($error ?? null) === 'public_url_invalid') {
             value="<?= htmlspecialchars($settings['app_support_email'] ?? '', ENT_QUOTES) ?>">
         <p class="form-hint"><?= __('support_email_hint') ?></p>
     </div>
+
+    <?php if (!empty($instance_languages)): ?>
+    <div class="form-group">
+        <label class="form-label" for="app_locale"><?= __('instance_locale') ?></label>
+        <select id="app_locale" name="app_locale" class="form-control">
+            <?php foreach ($instance_languages as $_lang): ?>
+            <option value="<?= htmlspecialchars($_lang['code'], ENT_QUOTES) ?>" <?= ($instance_locale ?? '') === $_lang['code'] ? 'selected' : '' ?>><?= htmlspecialchars($_lang['name']) ?></option>
+            <?php endforeach; ?>
+        </select>
+        <p class="form-hint"><?= __('instance_locale_hint') ?></p>
+    </div>
+    <?php endif; ?>
 
     <div class="form-group">
         <label class="form-label" for="app_public_url"><?= __('public_url') ?></label>
