@@ -92,7 +92,7 @@ Then open `http://127.0.0.1:8000/install.php` — the web installer creates `con
 
 The installer also records the address you install from as the instance's **public URL**, used for the links in emails (password reset). Check it under Owner settings (`/admin/owner-settings`) if users reach Kintai through another address; the `APP_URL` environment variable, when set, takes precedence. Without a public URL, password reset emails are not sent and the Owner sees a warning.
 
-To install without a browser (scripted deployment), `scripts/provision.php` does the same from the command line — SQLite by default, `--db-driver=mysql` plus `--db-*` options otherwise, environment variables as fallback (see the header of the script). Pass `--app-url`, since there is no request address to learn the public URL from:
+To install without a browser (scripted deployment), `scripts/provision.php` does the same from the command line — SQLite by default, `--db-driver=mysql` plus `--db-*` options otherwise, environment variables as fallback (see the header of the script). Pass `--app-url`, since there is no request address to learn the public URL from. The instance language is English unless you pass `--locale=fr` or `--locale=ja` (same default as the web installer):
 
 ```bash
 php scripts/provision.php --admin-email=admin@example.com --admin-password='…' --app-url=https://kintai.example.com

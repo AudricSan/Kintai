@@ -23,6 +23,7 @@ Toutes les évolutions notables de Kintai sont documentées ici.
 
 ### Modifié
 
+- Une nouvelle instance est désormais en anglais par défaut : l'installateur web présélectionne l'anglais et `scripts/provision.php` écrit `APP_LOCALE=en`, sauf nouvelle option `--locale=fr|ja` (ou `APP_LOCALE`) ; une langue inconnue est refusée. Une installation en ligne de commande retombait jusqu'ici sur le japonais marqué par défaut dans `lang/languages.json`. Les instances existantes gardent leur langue : ce repli ne change pas pour elles.
 - Résoudre un conflit de shifts (un par un ou tout le mois) prévient désormais l'employé dont le shift est supprimé, avec la même notification « shift supprimé » qu'une suppression directe ; il ne l'apprenait jusqu'ici qu'en consultant son planning.
 - Licences — une installation neuve peut activer une licence sans rien configurer : `config/license_server.php` pointe par défaut vers le serveur de licence officiel de Kintai (`https://licence.audricrosier.be/public/api/v1`, clé API produit et clé publique de vérification des jetons, publiques par conception — seule la clé de licence de l'Owner est privée). Auparavant les trois valeurs étaient vides dans `.env.example` : le bouton « Activer » de l'étape Licence de l'assistant restait grisé. `.env` peut toujours remplacer chaque valeur pour un serveur de licence privé ; une valeur vide garde l'officielle. Toujours aucun appel réseau tant qu'aucune clé de licence n'est saisie.
 

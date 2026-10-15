@@ -10,6 +10,7 @@
  *       [--admin-first-name=Admin] \
  *       [--admin-last-name=Demo] \
  *       [--app-url=https://kintai.example.com] \
+ *       [--locale=en|fr|ja] \
  *       [--db-driver=sqlite|mysql] \
  *       [--db-host=127.0.0.1] \
  *       [--db-port=3306] \
@@ -21,7 +22,7 @@
  *       [--force]
  *
  * Environment variables are used as fallback: ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_FIRST_NAME, ADMIN_LAST_NAME,
- * APP_URL, DB_DRIVER, DB_HOST, DB_PORT, DB_DATABASE, DB_USERNAME, DB_PASSWORD, DB_PREFIX.
+ * APP_URL, APP_LOCALE, DB_DRIVER, DB_HOST, DB_PORT, DB_DATABASE, DB_USERNAME, DB_PASSWORD, DB_PREFIX.
  */
 
 declare(strict_types=1);
@@ -38,9 +39,12 @@ use kintai\Core\Auth\PasswordPolicy;
 use kintai\Core\Database\DemoDataSeeder;
 use kintai\Core\Database\MigrationRunner;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
+use kintai\Core\Repositories\JsonLanguageRepository;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
+use kintai\Core\Services\EnvFileWriter;
+use kintai\Core\Services\InstanceLocale;
 use kintai\Core\Services\PublicUrlResolver;
 
 // ─── Parse CLI options ───────────────────────────────────────────────────
@@ -51,6 +55,7 @@ $opts = getopt('', [
     'admin-first-name:',
     'admin-last-name:',
     'app-url:',
+    'locale:',
     'db-driver:',
     'db-host:',
     'db-port:',
@@ -77,6 +82,7 @@ $adminPassword  = option($opts, 'admin-password', 'ADMIN_PASSWORD');
 $adminFirstName = trim(option($opts, 'admin-first-name', 'ADMIN_FIRST_NAME', 'Admin'));
 $adminLastName  = trim(option($opts, 'admin-last-name', 'ADMIN_LAST_NAME', 'Kintai'));
 $appUrl         = trim(option($opts, 'app-url', 'APP_URL'));
+$appLocale      = trim(option($opts, 'locale', 'APP_LOCALE'));
 $dbDriver       = option($opts, 'db-driver', 'DB_DRIVER', 'sqlite');
 $dbHost         = option($opts, 'db-host', 'DB_HOST', '127.0.0.1');
 $dbPort         = (int) option($opts, 'db-port', 'DB_PORT', '3306');
@@ -116,6 +122,15 @@ if ($appUrl !== '') {
     if ($publicUrl === null) {
         fail("--app-url doit être une adresse http(s) complète, sans paramètres ni identifiants (reçu : {$appUrl}).");
     }
+}
+// Langue de l'instance (APP_LOCALE) : celle de tous les textes tant qu'un utilisateur n'a pas choisi la sienne. Sans
+// --locale, la même que propose l'installateur web (anglais) ; jamais le repli « is_default » de lang/languages.json.
+$languageRepo  = new JsonLanguageRepository(BASE_PATH . '/lang');
+$activeLocales = array_column($languageRepo->findAllActive(), 'code');
+if ($appLocale === '') {
+    $appLocale = InstanceLocale::defaultForNewInstance($languageRepo);
+} elseif (!in_array($appLocale, $activeLocales, true)) {
+    fail('--locale doit être une langue active (' . implode(', ', $activeLocales) . "), reçu : {$appLocale}.");
 }
 if (file_exists(BASE_PATH . '/storage/installed.lock') && !$force) {
     fail('instance déjà installée. Utilise --force pour réinstaller.');
@@ -260,7 +275,12 @@ try {
             . "passe ne partiront pas tant qu'elle n'est pas renseignée dans les réglages Owner.\n";
     }
 
-    // ─── Step 7 bis : Assistant de configuration ───────────────────────────
+    // ─── Step 7 bis : Langue de l'instance ───────────────────────────────────
+
+    (new EnvFileWriter(BASE_PATH))->set(InstanceLocale::ENV_KEY, $appLocale);
+    echo "[Kintai] Langue de l'instance : {$appLocale}\n";
+
+    // ─── Step 7 ter : Assistant de configuration ───────────────────────────
 
     // Comme l'installateur web : aucun bundle actif, l'Owner choisit licence et bundles dans /admin/setup (un
     // bandeau l'y invite à sa première connexion).

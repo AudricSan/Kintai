@@ -36,6 +36,17 @@ final class InstanceLocaleTest extends TestCase
         $this->assertSame('ja', InstanceLocale::resolve($this->languages(['fr', 'en', 'ja'], 'ja')));
     }
 
+    /** Nouvelle instance (installateur web, provision.php) : anglais, jamais le is_default historique. */
+    public function testANewInstanceDefaultsToEnglish(): void
+    {
+        $this->assertSame('en', InstanceLocale::defaultForNewInstance($this->languages(['fr', 'en', 'ja'], 'ja')));
+    }
+
+    public function testANewInstanceWithoutEnglishTakesTheFirstActiveLanguage(): void
+    {
+        $this->assertSame('fr', InstanceLocale::defaultForNewInstance($this->languages(['fr', 'ja'], 'ja')));
+    }
+
     public function testAnInactiveConfiguredLanguageIsIgnored(): void
     {
         $_ENV['APP_LOCALE'] = 'de';
