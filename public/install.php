@@ -8,14 +8,18 @@ require BASE_PATH . '/vendor/autoload.php';
 require BASE_PATH . '/src/Core/helpers.php';
 kintai_normalize_script_name();
 
-use Illuminate\Database\Capsule\Manager as Capsule;
-use kintai\Core\Application;
-use kintai\Core\Database\MigrationRunner;
-use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
-use kintai\Core\Repositories\RoleRepositoryInterface;
-use kintai\Core\Repositories\UserRepositoryInterface;
+use kintai\Core\Container;
+use kintai\Core\Install\InstallFailure;
+use kintai\Core\Install\InstallInput;
+use kintai\Core\Install\InstallRequirements;
+use kintai\Core\Install\WebInstaller;
+use kintai\Core\Repositories\JsonLanguageRepository;
+use kintai\Core\Repositories\JsonTranslationRepository;
+use kintai\Core\Services\InstanceLocale;
+use kintai\Core\Services\PublicUrlResolver;
+use kintai\Core\Services\TranslationService;
 
-// ─── Already installed ────────────────────────────────────────────────────────
+// ─── Déjà installé ────────────────────────────────────────────────────────────
 
 $installedLockFile = BASE_PATH . '/storage/installed.lock';
 if (file_exists($installedLockFile) || kintai_installed_via_database(BASE_PATH)) {
@@ -29,423 +33,103 @@ if (file_exists($installedLockFile) || kintai_installed_via_database(BASE_PATH))
     exit;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function mysql_dsn_without_db(array $cfg): string
-{
-    return sprintf(
-        'mysql:host=%s;port=%d;charset=%s',
-        $cfg['host'],
-        (int) ($cfg['port'] ?? 3306),
-        $cfg['charset'] ?? 'utf8mb4'
-    );
-}
-
-function pdo_options(): array
-{
-    return [
-        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        PDO::ATTR_EMULATE_PREPARES   => false,
-    ];
-}
-
-// ─── Langues proposées ────────────────────────────────────────────────────────
+// ─── Langue de la page ────────────────────────────────────────────────────────
 
 // Langues actives de lang/languages.json, lues avant le démarrage de l'application : l'une devient la langue de
 // l'instance (APP_LOCALE, voir InstanceLocale), celle de tous les textes tant qu'un utilisateur n'a pas choisi la sienne.
-$installLanguages = (new \kintai\Core\Repositories\JsonLanguageRepository(BASE_PATH . '/lang'))->findAllActive();
-$installLanguageCodes = array_column($installLanguages, 'code');
+$languageRepository = new JsonLanguageRepository(BASE_PATH . '/lang');
+$installLanguages   = $languageRepository->findAllActive();
+$languageCodes      = array_column($installLanguages, 'code');
+$defaultLocale      = InstanceLocale::defaultForNewInstance($languageRepository);
 
-// ─── Installation logic ───────────────────────────────────────────────────────
+/** Langue de la page : celle choisie dans le formulaire, sinon la préférée du navigateur parmi les langues actives. */
+$pageLocale = (static function () use ($languageCodes, $defaultLocale): string {
+    $posted = is_string($_POST['app_locale'] ?? null) ? $_POST['app_locale'] : '';
+    if (in_array($posted, $languageCodes, true)) {
+        return $posted;
+    }
+    foreach (explode(',', (string) ($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '')) as $part) {
+        $code = strtolower(substr(trim(explode(';', $part)[0]), 0, 2));
+        if (in_array($code, $languageCodes, true)) {
+            return $code;
+        }
+    }
+    return $defaultLocale;
+})();
 
-$errors  = [];
-$success = false;
+// __() passe par le TranslationService du conteneur ; l'application n'est pas encore démarrée, il est fourni ici.
+$registerTranslations = static function (string $locale) use ($languageRepository): void {
+    $translations = new TranslationService(new JsonTranslationRepository(BASE_PATH . '/lang'), $languageRepository);
+    $translations->setLocale($locale);
+    Container::getInstance()->instance(TranslationService::class, $translations);
+};
+$registerTranslations($pageLocale);
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// ─── Installation ─────────────────────────────────────────────────────────────
 
-    // 1 — Collect and sanitise input
-    $adminFirstName = trim($_POST['admin_first_name'] ?? '');
-    $adminLastName  = trim($_POST['admin_last_name']  ?? '');
-    $adminEmail     = trim($_POST['admin_email']      ?? '');
-    $adminPassword =      $_POST['admin_password']  ?? '';
-    $dbDriver      = trim($_POST['db_driver']       ?? '');
-    $mysqlHost     = trim($_POST['mysql_host']      ?? '127.0.0.1');
-    $mysqlPort     = (int) ($_POST['mysql_port']    ?? 3306);
-    $mysqlDatabase = trim($_POST['mysql_database']  ?? '');
-    $mysqlUsername = trim($_POST['mysql_username']  ?? '');
-    $mysqlPassword =      $_POST['mysql_password']  ?? '';
-    $runSeeds      = isset($_POST['run_seeds']);
-    // Absent (installation scriptée, ex. scripts/ci/install-smoke-test.sh) : langue par défaut actuelle.
-    $appLocale     = trim($_POST['app_locale']      ?? \kintai\Core\Services\InstanceLocale::defaultForNewInstance(new \kintai\Core\Repositories\JsonLanguageRepository(BASE_PATH . '/lang')));
+$requirements = new InstallRequirements(BASE_PATH);
+$errors       = [];
+$result       = null;
+$scheme       = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+$installBase  = base_url();
 
-    // 2 — Validate
-    if ($adminFirstName === '') {
-        $errors[] = 'First name is required.';
-    }
-    if ($adminLastName === '') {
-        $errors[] = 'Last name is required.';
-    }
-    if (!filter_var($adminEmail, FILTER_VALIDATE_EMAIL)) {
-        $errors[] = 'A valid administrator email is required.';
-    }
-    if (strlen($adminPassword) < 8) {
-        $errors[] = 'Password must be at least 8 characters.';
-    }
-    if ($installLanguageCodes !== [] && !in_array($appLocale, $installLanguageCodes, true)) {
-        $errors[] = 'Please select a default language.';
-    }
-    if (!in_array($dbDriver, ['sqlite', 'mysql'], true)) {
-        $errors[] = 'Please select a valid database driver.';
-    }
-    if ($dbDriver === 'mysql') {
-        if ($mysqlHost === '')     $errors[] = 'MySQL host is required.';
-        if ($mysqlDatabase === '') $errors[] = 'MySQL database name is required.';
-        if ($mysqlUsername === '') $errors[] = 'MySQL username is required.';
-    }
+// Changement de langue (sélecteur du formulaire) : la page est seulement réaffichée, rien n'est installé.
+$switchingLanguage = isset($_POST['switch_language']);
 
-    // 3 — Run installation steps
-    if (empty($errors)) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$switchingLanguage) {
+    $input = InstallInput::fromPost($_POST, $defaultLocale);
+    $errors = array_map(static fn (string $key): string => __($key), $input->errors($languageCodes, $requirements));
+
+    if ($errors === []) {
         try {
+            // Adresse par laquelle l'administrateur installe : la bonne dans l'immense majorité des cas.
+            $publicUrl = PublicUrlResolver::normalize($scheme . '://' . (string) ($_SERVER['HTTP_HOST'] ?? '') . $installBase);
+            $result = (new WebInstaller(BASE_PATH))->install($input, $publicUrl);
 
-            $mysqlCfg = [
-                'host'     => $mysqlHost,
-                'port'     => $mysqlPort,
-                'database' => $mysqlDatabase,
-                'username' => $mysqlUsername,
-                'password' => $mysqlPassword,
-                'charset'  => 'utf8mb4',
-            ];
+            // Le démarrage de l'application a remplacé les traductions : celles de la page sont reprises.
+            $registerTranslations($pageLocale);
 
-            // ── Step 0: Langue de l'instance (fichier d'environnement) ─────
-            // En premier : un fichier .env non inscriptible arrête l'installation avant toute écriture en base.
+            // Connexion de l'Owner (même session que l'application), puis assistant de configuration.
+            \kintai\Core\Middleware\SessionMiddleware::start($scheme === 'https');
+            Container::getInstance()->make(\kintai\Core\Auth\AuthService::class)->attempt($input->email, $input->password);
 
-            if ($appLocale !== '') {
-                (new \kintai\Core\Services\EnvFileWriter(BASE_PATH))->set(\kintai\Core\Services\InstanceLocale::ENV_KEY, $appLocale);
+            // Avec des comptes de démonstration, la page reste affichée : ils y sont listés.
+            if ($result['demo_accounts'] === []) {
+                header('Refresh: 3; URL=' . $installBase . '/admin/setup');
             }
-
-            // ── Step A: Create database (MySQL only) ──────────────────────
-
-            if ($dbDriver === 'mysql') {
-                $serverPdo = new PDO(
-                    mysql_dsn_without_db($mysqlCfg),
-                    $mysqlUsername,
-                    $mysqlPassword,
-                    pdo_options()
-                );
-                $serverPdo->exec(
-                    "CREATE DATABASE IF NOT EXISTS `{$mysqlDatabase}` "
-                    . "CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
-                );
-                unset($serverPdo);
-            }
-
-            // ── Step B: Write config/database.local.php ───────────────────
-
-            $localCfg = ['driver' => $dbDriver, 'connections' => []];
-
-            if ($dbDriver === 'mysql') {
-                $localCfg['connections']['mysql'] = [
-                    'host'      => $mysqlHost,
-                    'port'      => $mysqlPort,
-                    'database'  => $mysqlDatabase,
-                    'username'  => $mysqlUsername,
-                    'password'  => $mysqlPassword,
-                    'charset'   => 'utf8mb4',
-                    'collation' => 'utf8mb4_unicode_ci',
-                    'prefix'    => '',
-                ];
-            }
-
-            file_put_contents(
-                BASE_PATH . '/config/database.local.php',
-                '<?php return ' . var_export($localCfg, true) . ';' . PHP_EOL
-            );
-
-            // ── Step B bis: Créer le fichier SQLite s'il n'existe pas ─────
-            // (installation précédente incomplète/supprimée : Eloquent refuse
-            // de se connecter à un fichier SQLite absent, on le crée à la volée)
-
-            if ($dbDriver === 'sqlite') {
-                $sqlitePath = BASE_PATH . '/storage/app/database.sqlite';
-                $sqliteDir  = dirname($sqlitePath);
-                if (!is_dir($sqliteDir)) {
-                    mkdir($sqliteDir, 0755, true);
-                }
-                if (!file_exists($sqlitePath)) {
-                    touch($sqlitePath);
-                }
-            }
-
-            // ── Step C: Boot framework, run migrations, seeds ────────────
-
-            $app = new Application(BASE_PATH);
-            $app->boot();
-
-            $runner = new MigrationRunner($app);
-            $runner->run();
-
-            if ($runSeeds) {
-                // Données de démonstration du Core, écrites par les modèles (indépendantes du pilote et du schéma).
-                (new \kintai\Core\Database\DemoDataSeeder())->run();
-            }
-
-            // ── Step D: Create admin user via the framework ───────────────
-
-            $userRepo = $app->container()->make(UserRepositoryInterface::class);
-
-            $adminUser = $userRepo->save([
-                'first_name'    => $adminFirstName,
-                'last_name'     => $adminLastName,
-                'display_name'  => $adminFirstName . ' ' . $adminLastName,
-                'email'         => $adminEmail,
-                'password_hash' => \kintai\Core\Auth\PasswordHasher::hash($adminPassword),
-                'is_active'     => 1,
-                'created_at'    => date('Y-m-d H:i:s'),
-                'updated_at'    => date('Y-m-d H:i:s'),
-            ]);
-
-            // AuthService::isAdmin() lit role_assignments (RBAC dynamique) — sans cette
-            // affectation, le compte créé par l'installeur ne serait pas reconnu comme Owner.
-            $ownerRole = $app->container()->make(RoleRepositoryInterface::class)->findBySlug('owner');
-            if ($ownerRole !== null) {
-                $app->container()->make(RoleAssignmentRepositoryInterface::class)
-                    ->assign((int) $adminUser['id'], (int) $ownerRole['id'], 'global', null);
-            }
-
-            // ── Step D bis: URL publique de l'instance ────────────────────
-            // Sert aux liens absolus des e-mails (réinitialisation du mot de passe). L'adresse par laquelle
-            // l'administrateur installe est la bonne dans l'immense majorité des cas ; elle reste modifiable
-            // dans /admin/owner-settings, et APP_URL prime si elle est définie (voir PublicUrlResolver).
-            $installScheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-            $installBase   = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/install.php')), '/');
-            $installBase   = ($installBase === '.' ) ? '' : $installBase;
-            $publicUrl     = \kintai\Core\Services\PublicUrlResolver::normalize(
-                $installScheme . '://' . (string) ($_SERVER['HTTP_HOST'] ?? '') . $installBase
-            );
-            if ($publicUrl !== null) {
-                $app->container()->make(\kintai\Core\Repositories\AppSettingsRepositoryInterface::class)
-                    ->setMany([\kintai\Core\Services\PublicUrlResolver::SETTING_KEY => $publicUrl]);
-            }
-
-            // ── Step D ter: Assistant de configuration (licence, puis bundles) ─
-            // Aucun bundle actif au départ ; l'Owner choisit sa licence puis ses bundles dans /admin/setup.
-            \kintai\Core\Services\SetupWizard::start(
-                $app->container()->make(\kintai\Core\Repositories\AppSettingsRepositoryInterface::class),
-                $app->container()->make(\kintai\Core\Services\AppSettingsService::class)->updateChannel(),
-            );
-
-            // ── Step E: Lock installation ─────────────────────────────────
-
-            file_put_contents(BASE_PATH . '/storage/installed.lock', bin2hex(random_bytes(32)));
-
-            // Connexion de l'Owner (même session que l'application) et envoi vers l'assistant.
-            \kintai\Core\Middleware\SessionMiddleware::start($installScheme === 'https');
-            $app->container()->make(\kintai\Core\Auth\AuthService::class)->attempt($adminEmail, $adminPassword);
-
-            $success = true;
-            header('Refresh: 2; URL=' . $installBase . '/admin/setup');
-
-        } catch (Throwable $e) {
-            $errors[] = 'Installation failed: ' . $e->getMessage();
-
-            // Annulation de l'état partiel pour permettre une nouvelle tentative
-            @unlink(BASE_PATH . '/config/database.local.php');
-            @unlink(BASE_PATH . '/storage/installed.lock');
+        } catch (InstallFailure $e) {
+            $registerTranslations($pageLocale);
+            $errors[] = __($e->messageKey, $e->replace);
         }
     }
 }
 
-// ─── Pre-fill from environment ────────────────────────────────────────────────
+// ─── Affichage ────────────────────────────────────────────────────────────────
 
-$defaultHost     = env('DB_HOST', '127.0.0.1');
-$defaultPort     = env('DB_PORT', '3306');
-$defaultDatabase = env('DB_DATABASE', 'kintai');
-$defaultUsername = env('DB_USERNAME', 'root');
+// Aucun script ni style en ligne sur cette page : politique stricte, sans nonce.
+header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; form-action 'self'; frame-ancestors 'self'; object-src 'none'");
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: SAMEORIGIN');
+header('Referrer-Policy: same-origin');
 
-?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kintai — Setup</title>
-    <style>
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f1f5f9; color: #334155; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
-        .card { background: #fff; width: 100%; max-width: 520px; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,.08); overflow: hidden; }
-        .card-header { background: #0f172a; padding: 28px 32px; }
-        .card-header h1 { color: #f8fafc; font-size: 1.35rem; font-weight: 700; letter-spacing: -.01em; }
-        .card-header p  { color: #94a3b8; font-size: .82rem; margin-top: 4px; }
-        .card-body { padding: 28px 32px; }
-        h2 { font-size: .78rem; text-transform: uppercase; letter-spacing: .07em; color: #64748b; margin: 24px 0 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; }
-        h2:first-child { margin-top: 0; }
-        .form-row { margin-bottom: 14px; }
-        label { display: block; font-size: .82rem; font-weight: 600; color: #475569; margin-bottom: 5px; }
-        input[type=text], input[type=email], input[type=password], input[type=number], select {
-            width: 100%; padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 7px;
-            font-size: .88rem; color: #0f172a; background: #f8fafc;
-            transition: border-color .15s, box-shadow .15s;
-        }
-        input:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.15); }
-        .driver-group { display: flex; gap: 10px; }
-        .driver-btn { flex: 1; position: relative; }
-        .driver-btn input[type=radio] { position: absolute; opacity: 0; width: 0; height: 0; }
-        .driver-btn label {
-            display: block; text-align: center; padding: 10px 8px; border: 2px solid #e2e8f0;
-            border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600;
-            color: #64748b; background: #f8fafc; transition: all .15s;
-        }
-        .driver-btn input:checked + label { border-color: #6366f1; color: #4f46e5; background: #eef2ff; }
-        .alert { padding: 12px 14px; border-radius: 8px; font-size: .84rem; margin-bottom: 18px; }
-        .alert-error   { background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; }
-        .alert-success { background: #f0fdf4; border: 1px solid #86efac; color: #15803d; }
-        .alert ul { padding-left: 18px; }
-        .alert ul li + li { margin-top: 3px; }
-        .btn { width: 100%; padding: 11px; background: #4f46e5; color: #fff; font-size: .92rem; font-weight: 700; border: none; border-radius: 8px; cursor: pointer; margin-top: 20px; transition: background .15s; }
-        .btn:hover { background: #4338ca; }
-        .check-row { display: flex; align-items: center; gap: 9px; margin-bottom: 14px; }
-        .check-row input[type=checkbox] { width: 16px; height: 16px; accent-color: #4f46e5; cursor: pointer; flex-shrink: 0; }
-        .check-row label { margin: 0; font-size: .82rem; font-weight: 600; color: #475569; cursor: pointer; }
-        .form-row--flex { display: flex; gap: 10px; }
-        .form-row--flex > div { flex: 1; }
-        .pw-hint { font-weight: 400; color: #94a3b8; }
-        #mysql-section { display: none; }
-    </style>
-</head>
-<body>
-<div class="card">
-    <div class="card-header">
-        <h1>Kintai Setup</h1>
-        <p>Configure your application in one step.</p>
-    </div>
-    <div class="card-body">
-
-        <?php if (!empty($errors)): ?>
-            <div class="alert alert-error">
-                <ul>
-                    <?php foreach ($errors as $err): ?>
-                        <li><?= htmlspecialchars($err, ENT_QUOTES) ?></li>
-                    <?php endforeach ?>
-                </ul>
-            </div>
-        <?php endif ?>
-
-        <?php if ($success): ?>
-            <div class="alert alert-success">
-                Installation complete! Redirecting&hellip;
-            </div>
-        <?php else: ?>
-
-        <form method="POST" action="">
-
-            <h2>Administrator account</h2>
-
-            <div class="form-row form-row--flex">
-                <div>
-                    <label for="admin_first_name">First name</label>
-                    <input type="text" id="admin_first_name" name="admin_first_name"
-                           value="<?= htmlspecialchars($_POST['admin_first_name'] ?? '', ENT_QUOTES) ?>" required>
-                </div>
-                <div>
-                    <label for="admin_last_name">Last name</label>
-                    <input type="text" id="admin_last_name" name="admin_last_name"
-                           value="<?= htmlspecialchars($_POST['admin_last_name'] ?? '', ENT_QUOTES) ?>" required>
-                </div>
-            </div>
-            <div class="form-row">
-                <label for="admin_email">Email</label>
-                <input type="email" id="admin_email" name="admin_email"
-                       value="<?= htmlspecialchars($_POST['admin_email'] ?? '', ENT_QUOTES) ?>" required>
-            </div>
-            <div class="form-row">
-                <label for="admin_password">Password <small class="pw-hint">(min. 8 characters)</small></label>
-                <input type="password" id="admin_password" name="admin_password" required>
-            </div>
-
-            <?php if ($installLanguages !== []): ?>
-            <h2>Default language</h2>
-            <div class="form-row">
-                <label for="app_locale">Language of the application <small class="pw-hint">(for every user who has not chosen their own; can be changed later in the instance settings)</small></label>
-                <select id="app_locale" name="app_locale" required>
-                    <?php $selectedLocale = $_POST['app_locale'] ?? \kintai\Core\Services\InstanceLocale::defaultForNewInstance(new \kintai\Core\Repositories\JsonLanguageRepository(BASE_PATH . '/lang')); ?>
-                    <?php foreach ($installLanguages as $lang): ?>
-                        <option value="<?= htmlspecialchars($lang['code'], ENT_QUOTES) ?>" <?= $selectedLocale === $lang['code'] ? 'selected' : '' ?>><?= htmlspecialchars($lang['name'], ENT_QUOTES) ?></option>
-                    <?php endforeach ?>
-                </select>
-            </div>
-            <?php endif ?>
-
-            <h2>Database driver</h2>
-
-            <div class="driver-group">
-                <?php foreach (['sqlite' => 'SQLite', 'mysql' => 'MySQL'] as $val => $lbl): ?>
-                    <div class="driver-btn">
-                        <input type="radio" id="driver_<?= $val ?>" name="db_driver" value="<?= $val ?>"
-                               <?= (($_POST['db_driver'] ?? 'sqlite') === $val) ? 'checked' : '' ?>>
-                        <label for="driver_<?= $val ?>"><?= $lbl ?></label>
-                    </div>
-                <?php endforeach ?>
-            </div>
-
-            <div id="mysql-section">
-                <h2>MySQL connection</h2>
-                <div class="form-row">
-                    <label for="mysql_host">Host</label>
-                    <input type="text" id="mysql_host" name="mysql_host"
-                           value="<?= htmlspecialchars($_POST['mysql_host'] ?? $defaultHost, ENT_QUOTES) ?>">
-                </div>
-                <div class="form-row">
-                    <label for="mysql_port">Port</label>
-                    <input type="number" id="mysql_port" name="mysql_port"
-                           value="<?= htmlspecialchars($_POST['mysql_port'] ?? $defaultPort, ENT_QUOTES) ?>">
-                </div>
-                <div class="form-row">
-                    <label for="mysql_database">Database name</label>
-                    <input type="text" id="mysql_database" name="mysql_database"
-                           value="<?= htmlspecialchars($_POST['mysql_database'] ?? $defaultDatabase, ENT_QUOTES) ?>">
-                </div>
-                <div class="form-row">
-                    <label for="mysql_username">Username</label>
-                    <input type="text" id="mysql_username" name="mysql_username"
-                           value="<?= htmlspecialchars($_POST['mysql_username'] ?? $defaultUsername, ENT_QUOTES) ?>">
-                </div>
-                <div class="form-row">
-                    <label for="mysql_password">Password</label>
-                    <input type="password" id="mysql_password" name="mysql_password">
-                </div>
-            </div>
-
-            <h2>Options</h2>
-
-            <div class="check-row" id="seeds-row">
-                <input type="checkbox" id="run_seeds" name="run_seeds"
-                       <?= isset($_POST['run_seeds']) ? 'checked' : '' ?>>
-                <label for="run_seeds">Add demo data (2 stores, 6 accounts, 2 weeks of schedule)</label>
-            </div>
-
-            <button type="submit" class="btn">Install Kintai</button>
-        </form>
-
-        <?php endif ?>
-
-    </div>
-</div>
-
-<script>
-(function () {
-    const radios  = document.querySelectorAll('input[name="db_driver"]');
-    const section = document.getElementById('mysql-section');
-
-    function sync() {
-        const checked = document.querySelector('input[name="db_driver"]:checked');
-        const driver  = checked ? checked.value : '';
-        section.style.display = (driver === 'mysql') ? '' : 'none';
-    }
-
-    radios.forEach(r => r.addEventListener('change', sync));
-    sync();
-})();
-</script>
-</body>
-</html>
+$view = [
+    'BASE_URL'         => $installBase,
+    'locale'           => $pageLocale,
+    'languages'        => $installLanguages,
+    'checks'           => $requirements->checks(),
+    'can_install'      => $requirements->canInstall(),
+    'drivers'          => $requirements->availableDrivers(),
+    'errors'           => $errors,
+    'result'           => $result,
+    'setup_url'        => $installBase . '/admin/setup',
+    'demo_password'    => \kintai\Core\Database\DemoDataSeeder::PASSWORD,
+    'old'              => $_POST,
+    'default_host'     => (string) env('DB_HOST', '127.0.0.1'),
+    'default_port'     => (string) env('DB_PORT', '3306'),
+    'default_database' => (string) env('DB_DATABASE', 'kintai'),
+    'default_username' => (string) env('DB_USERNAME', 'root'),
+];
+(static function (array $__vars): void {
+    extract($__vars);
+    require BASE_PATH . '/src/UI/View/install/index.php';
+})($view);
