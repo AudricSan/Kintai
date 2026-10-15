@@ -77,6 +77,34 @@ Flux typique : shifts créés ou importés → conflits vérifiés → employés
 - PHP 8.3+, Composer 2.x
 - `pdo_sqlite` ou `pdo_mysql`, `mbstring`, `gd`, `intl`
 
+### Installation rapide (sans git ni Composer)
+
+Un script en une ligne télécharge l'archive de la dernière Release GitHub — le code et `vendor/`, donc pas besoin de Composer —, la vérifie avec le `SHA256SUMS` de la release et la décompresse dans un nouveau dossier (`./kintai` par défaut ; il refuse d'écrire dans un dossier non vide).
+
+Linux / macOS (nécessite `curl`, `unzip`, et `php` ou `jq`) :
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/AudricSan/Kintai/main/scripts/install.sh | bash
+# options : canal, version précise, dossier cible
+curl -fsSL https://raw.githubusercontent.com/AudricSan/Kintai/main/scripts/install.sh | bash -s -- --channel beta --dir /var/www/kintai
+```
+
+Windows (PowerShell 5.1+) :
+
+```powershell
+irm https://raw.githubusercontent.com/AudricSan/Kintai/main/scripts/install.ps1 | iex
+# options : canal, version précise, dossier cible
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/AudricSan/Kintai/main/scripts/install.ps1))) -Channel beta -Dir C:\xampp\htdocs\kintai
+```
+
+| Option | Variable d'environnement | Défaut | Rôle |
+|---|---|---|---|
+| `--channel` / `-Channel` | `KINTAI_CHANNEL` | `stable` | `stable`, `beta` ou `alpha` — même règle que la mise à jour intégrée (`/admin/update`) |
+| `--version` / `-Version` | `KINTAI_VERSION` | dernière du canal | une release précise, p. ex. `v1.0.0` |
+| `--dir` / `-Dir` | `KINTAI_DIR` | `kintai` | dossier cible (absent ou vide) |
+
+Définissez `GITHUB_TOKEN` si vous atteignez la limite de l'API GitHub anonyme. Faites ensuite pointer le serveur web sur le dossier (voir [Serveur web](#serveur-web)) et ouvrez `/install.php`, ou lancez `scripts/provision.php` (ci-dessous). Le script ne fait qu'installer : une instance existante se met à jour depuis `/admin/update`.
+
 ### Installation locale
 
 ```bash

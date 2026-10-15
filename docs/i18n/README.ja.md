@@ -77,6 +77,34 @@ Kintaiは、Excelの勤怠表と大企業向けERPの間を埋めるツールで
 - PHP 8.3以上、Composer 2.x
 - `pdo_sqlite` または `pdo_mysql`、`mbstring`、`gd`、`intl`
 
+### クイックインストール（git・Composer 不要）
+
+1 行のスクリプトが最新の GitHub Release アーカイブ（コードと `vendor/` を含むため Composer は不要）をダウンロードし、Release の `SHA256SUMS` で検証してから新しいフォルダ（既定は `./kintai`。空でないフォルダには書き込みません）に展開します。
+
+Linux / macOS（`curl`、`unzip`、および `php` または `jq` が必要）：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/AudricSan/Kintai/main/scripts/install.sh | bash
+# オプション：チャンネル、バージョン指定、インストール先
+curl -fsSL https://raw.githubusercontent.com/AudricSan/Kintai/main/scripts/install.sh | bash -s -- --channel beta --dir /var/www/kintai
+```
+
+Windows（PowerShell 5.1 以上）：
+
+```powershell
+irm https://raw.githubusercontent.com/AudricSan/Kintai/main/scripts/install.ps1 | iex
+# オプション：チャンネル、バージョン指定、インストール先
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/AudricSan/Kintai/main/scripts/install.ps1))) -Channel beta -Dir C:\xampp\htdocs\kintai
+```
+
+| オプション | 環境変数 | 既定値 | 内容 |
+|---|---|---|---|
+| `--channel` / `-Channel` | `KINTAI_CHANNEL` | `stable` | `stable`・`beta`・`alpha`（組み込みアップデート `/admin/update` と同じ規則） |
+| `--version` / `-Version` | `KINTAI_VERSION` | チャンネルの最新版 | 特定の Release（例：`v1.0.0`） |
+| `--dir` / `-Dir` | `KINTAI_DIR` | `kintai` | インストール先（存在しないか空であること） |
+
+GitHub の匿名 API のレート制限に達した場合は `GITHUB_TOKEN` を設定してください。その後、Web サーバーをこのフォルダに向け（「Webサーバー」参照）、`/install.php` を開くか、`scripts/provision.php`（下記）を実行します。このスクリプトはインストール専用です。既存のインスタンスは `/admin/update` から更新します。
+
 ### ローカルインストール
 
 ```bash
