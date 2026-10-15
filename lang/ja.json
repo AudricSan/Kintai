@@ -1,4 +1,8 @@
 {
+    "language_follow_instance": "インスタンスの言語（:language）",
+    "instance_locale": "インスタンスの言語",
+    "instance_locale_hint": "プロフィールで言語を選んでいないユーザーに表示されるすべてのテキストの言語。環境ファイル（APP_LOCALE）に保存されます。",
+    "instance_locale_not_saved": "他の設定は保存されましたが、インスタンスの言語は保存されていません：サーバーが環境ファイル（.env）に書き込めません。",
     "cron_job_backup": "データベースのバックアップ",
     "cron_job_log_purge": "アクティビティログの削除",
     "cron_job_license_check": "ライセンスの確認",

@@ -140,25 +140,41 @@ final class NotificationServiceTest extends TestCase
     }
 
     /** Utilisateur introuvable (supprimé entre-temps) → repli sur 'fr'. */
-    public function testNotifyFallsBackToFrenchWhenUserNotFound(): void
+    /** Langue de l'instance (APP_LOCALE) le temps d'un test. */
+    private function withInstanceLocale(string $code, callable $fn): void
     {
-        // 999 n'a jamais été enregistré via registerUser() → findById() renvoie null.
-        $this->service->notify(999, 'timeoff_approved', 'notif_timeoff_approved_body', [], 1);
-
-        $row = Notification::first()->toArray();
-        $body = json_decode((string) $row['data'], true)['body'] ?? null;
-        $this->assertSame($this->lang('fr')['notif_timeoff_approved_body'], $body);
+        $previous = $_ENV['APP_LOCALE'] ?? null;
+        $_ENV['APP_LOCALE'] = $code;
+        try {
+            $fn();
+        } finally {
+            if ($previous === null) {
+                unset($_ENV['APP_LOCALE']);
+            } else {
+                $_ENV['APP_LOCALE'] = $previous;
+            }
+        }
     }
 
-    /** language présent mais vide → repli sur 'fr' plutôt qu'une locale invalide. */
-    public function testNotifyFallsBackToFrenchWhenLanguageIsEmpty(): void
+    public function testNotifyFallsBackToTheInstanceLanguageWhenUserNotFound(): void
     {
-        $this->registerUser(30, '');
-        $this->service->notify(30, 'timeoff_approved', 'notif_timeoff_approved_body', [], 1);
+        // 999 n'a jamais été enregistré via registerUser() → findById() renvoie null.
+        $this->withInstanceLocale('ja', fn() => $this->service->notify(999, 'timeoff_approved', 'notif_timeoff_approved_body', [], 1));
 
         $row = Notification::first()->toArray();
         $body = json_decode((string) $row['data'], true)['body'] ?? null;
-        $this->assertSame($this->lang('fr')['notif_timeoff_approved_body'], $body);
+        $this->assertSame($this->lang('ja')['notif_timeoff_approved_body'], $body);
+    }
+
+    /** language vide → l'utilisateur suit la langue de l'instance. */
+    public function testNotifyFallsBackToTheInstanceLanguageWhenLanguageIsEmpty(): void
+    {
+        $this->registerUser(30, '');
+        $this->withInstanceLocale('en', fn() => $this->service->notify(30, 'timeoff_approved', 'notif_timeoff_approved_body', [], 1));
+
+        $row = Notification::first()->toArray();
+        $body = json_decode((string) $row['data'], true)['body'] ?? null;
+        $this->assertSame($this->lang('en')['notif_timeoff_approved_body'], $body);
     }
 
     /** Les placeholders :xxx sont bien substitués dans la locale résolue. */

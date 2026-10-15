@@ -12,6 +12,9 @@ use kintai\Core\Services\AppSettingsService;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\Log;
 use kintai\Core\Services\PublicUrlResolver;
+use kintai\Core\Services\EnvFileWriter;
+use kintai\Core\Services\InstanceLocale;
+use kintai\Core\Repositories\LanguageRepositoryInterface;
 use kintai\UI\Controller\Web\System\OwnerSettingsController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\TestCase;
@@ -280,5 +283,46 @@ final class OwnerSettingsControllerTest extends TestCase
         $this->assertSame('Kintai Tokyo', $this->stored['app_subtitle']);
         $this->assertSame('Bienvenue', $this->stored['app_login_notice']);
         $this->assertSame('30', $this->stored['log_retention_days']);
+    }
+
+    private function makeControllerWithLocale(string $envDir): OwnerSettingsController
+    {
+        $base = $this->makeController();
+        $languages = $this->createStub(LanguageRepositoryInterface::class);
+        $languages->method('findAllActive')->willReturn([['code' => 'fr', 'name' => 'Français'], ['code' => 'ja', 'name' => '日本語']]);
+        $languages->method('findDefault')->willReturn(['code' => 'fr']);
+        $settings = (new \ReflectionProperty($base, 'settings'))->getValue($base);
+
+        return new OwnerSettingsController(
+            new ViewRenderer(sys_get_temp_dir()), $settings, new AuditLogger(), new PublicUrlResolver($settings, ''),
+            new InstanceLocale($languages, new EnvFileWriter($envDir)), $languages,
+        );
+    }
+
+    public function testSaveWritesTheInstanceLanguageToTheEnvironmentFile(): void
+    {
+        $dir = sys_get_temp_dir() . '/kintai-owner-locale-' . uniqid();
+        mkdir($dir);
+        try {
+            $_POST = ['app_locale' => 'ja'];
+            $response = $this->makeControllerWithLocale($dir)->save(new Request());
+
+            $this->assertSame("APP_LOCALE=ja\n", file_get_contents($dir . '/.env'));
+            $this->assertStringContainsString('success=1', (string) ($response->headers()['Location'] ?? ''));
+        } finally {
+            @unlink($dir . '/.env');
+            @rmdir($dir);
+            unset($_ENV['APP_LOCALE'], $_SERVER['APP_LOCALE']);
+            putenv('APP_LOCALE');
+        }
+    }
+
+    public function testAnUnwritableEnvironmentFileIsReportedAndOtherSettingsAreKept(): void
+    {
+        $_POST = ['app_locale' => 'ja', 'app_subtitle' => 'Ma société'];
+        $response = $this->makeControllerWithLocale(sys_get_temp_dir() . '/kintai-missing-dir-' . uniqid())->save(new Request());
+
+        $this->assertStringContainsString('error=instance_locale_not_saved', (string) ($response->headers()['Location'] ?? ''));
+        $this->assertSame('Ma société', $this->stored['app_subtitle']);
     }
 }

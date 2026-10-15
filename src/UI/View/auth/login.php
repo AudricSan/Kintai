@@ -88,6 +88,16 @@ endif; ?>
     </div>
 </form>
 
+<?php if (count($login_languages ?? []) > 1): ?>
+<nav class="login-lang" aria-label="<?= htmlspecialchars(__('language')) ?>">
+    <?php foreach ($login_languages as $_lang): ?>
+        <a href="<?= route_url('lang.switch', ['locale' => $_lang['code']]) ?>" lang="<?= htmlspecialchars($_lang['code']) ?>"
+           class="login-lang__link<?= ($current_locale ?? '') === $_lang['code'] ? ' login-lang__link--active' : '' ?>"
+           <?= ($current_locale ?? '') === $_lang['code'] ? 'aria-current="true"' : '' ?>><?= htmlspecialchars($_lang['name']) ?></a>
+    <?php endforeach; ?>
+</nav>
+<?php endif; ?>
+
 <script nonce="<?= csp_nonce() ?>">
 (function () {
     var tabs   = document.querySelectorAll('.login-tab[data-tab]');

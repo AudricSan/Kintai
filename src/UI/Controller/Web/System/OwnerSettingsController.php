@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace kintai\UI\Controller\Web\System;
 
 use kintai\Core\Middleware\ApiRateLimitMiddleware;
+use kintai\Core\Repositories\LanguageRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AppSettingsService;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\InstanceLocale;
 use kintai\Core\Services\PublicUrlResolver;
 use kintai\Core\Services\ThemeColorPalette;
 use kintai\UI\Controller\Web\HasBaseUrl;
@@ -22,6 +24,9 @@ final class OwnerSettingsController
         private readonly AppSettingsService $settings,
         private readonly AuditLogger $auditLogger,
         private readonly PublicUrlResolver $publicUrl,
+        // Langue de l'instance (APP_LOCALE) ; le conteneur les injecte toujours.
+        private readonly ?InstanceLocale $instanceLocale = null,
+        private readonly ?LanguageRepositoryInterface $languages = null,
     ) {}
 
     /** GET /admin/owner-settings */
@@ -64,8 +69,10 @@ final class OwnerSettingsController
             'theme_colors'      => $themeColors,
             'theme_colors_dark' => $themeColorsDark,
             'theme_dark_mode'   => $this->settings->themeDarkMode(),
+            'instance_locale'   => $this->instanceLocale?->code(),
+            'instance_languages' => $this->languages?->findAllActive() ?? [],
             'success' => isset($_GET['success']),
-            'error'   => $request->query('error') === 'public_url_invalid' ? 'public_url_invalid' : null,
+            'error'   => in_array($request->query('error'), ['public_url_invalid', 'instance_locale_not_saved'], true) ? $request->query('error') : null,
         ], 'layout.app'));
     }
 
@@ -152,8 +159,21 @@ final class OwnerSettingsController
 
         $this->settings->setMany($newData);
 
+        // Langue de l'instance : écrite dans le fichier d'environnement (APP_LOCALE), pas en base.
+        $localeError = false;
+        $locale = (string) $request->post('app_locale', '');
+        if ($this->instanceLocale !== null && $locale !== '' && $locale !== $this->instanceLocale->code()) {
+            $oldData[InstanceLocale::ENV_KEY] = $this->instanceLocale->code();
+            try {
+                $this->instanceLocale->set($locale);
+                $newData[InstanceLocale::ENV_KEY] = $locale;
+            } catch (\InvalidArgumentException | \RuntimeException) {
+                $localeError = true;
+            }
+        }
+
         $this->auditLogger->logUpdate($request, 'owner_settings.updated', 'system', null, $oldData, $newData, []);
 
-        return Response::redirect($this->base() . '/admin/owner-settings?success=1');
+        return Response::redirect($this->base() . '/admin/owner-settings?' . ($localeError ? 'error=instance_locale_not_saved' : 'success=1'));
     }
 }

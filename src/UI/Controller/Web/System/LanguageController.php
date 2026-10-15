@@ -8,6 +8,7 @@ use kintai\Core\Repositories\LanguageRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\InstanceLocale;
 use kintai\Core\Services\TranslationManagementService;
 use kintai\UI\Controller\Web\HasBaseUrl;
 use kintai\UI\ViewRenderer;
@@ -30,6 +31,8 @@ final class LanguageController
         return Response::html($this->view->render('system.languages', [
             'title'     => __('languages'),
             'languages' => $this->languages->findAll(),
+            // Langue de l'instance (APP_LOCALE) : choisie dans les paramètres de l'instance, plus ici.
+            'instance_locale' => InstanceLocale::resolve($this->languages),
             'error'     => $request->query('error'),
             'success'   => $request->query('success'),
         ], 'layout.app'));
@@ -64,20 +67,6 @@ final class LanguageController
         return Response::redirect($this->base() . '/admin/languages?success=' . ($existing ? 'updated' : 'created'));
     }
 
-    /** POST /admin/languages/{code}/default */
-    public function setDefault(Request $request): Response
-    {
-
-        $code = (string) $request->param('code');
-        if (!$this->languages->setDefault($code)) {
-            return Response::redirect($this->base() . '/admin/languages?error=not_found');
-        }
-
-        $this->auditLogger->log($request, 'language.set_default', 'language', null, ['code' => $code]);
-
-        return Response::redirect($this->base() . '/admin/languages?success=default_set');
-    }
-
     /** POST /admin/languages/{code}/toggle-active */
     public function toggleActive(Request $request): Response
     {
@@ -87,7 +76,8 @@ final class LanguageController
         if (!$lang) {
             return Response::redirect($this->base() . '/admin/languages?error=not_found');
         }
-        if (!empty($lang['is_default']) && !empty($lang['is_active'])) {
+        // La langue de l'instance ne peut être ni désactivée ni supprimée.
+        if ($code === InstanceLocale::resolve($this->languages) && !empty($lang['is_active'])) {
             return Response::redirect($this->base() . '/admin/languages?error=default_forbidden');
         }
 
@@ -107,7 +97,7 @@ final class LanguageController
         if (!$lang) {
             return Response::redirect($this->base() . '/admin/languages');
         }
-        if (!empty($lang['is_default'])) {
+        if ($code === InstanceLocale::resolve($this->languages)) {
             return Response::redirect($this->base() . '/admin/languages?error=delete_default_forbidden');
         }
         if (!empty($lang['is_active']) && count($this->languages->findAllActive()) <= 1) {

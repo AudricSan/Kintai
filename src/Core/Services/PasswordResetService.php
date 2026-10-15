@@ -55,7 +55,7 @@ final class PasswordResetService
 
         // L'e-mail est écrit dans la langue du destinataire (sa préférence), pas celle de la personne qui l'a demandé.
         [$subject, $body] = $this->inLocale(
-            is_string($user['language'] ?? null) ? $user['language'] : null,
+            user_locale($user),
             fn(): array => [__('reset_mail_subject'), $this->buildMailBody($name, $link)],
         );
 

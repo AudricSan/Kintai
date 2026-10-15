@@ -565,6 +565,37 @@ if (!function_exists('translation_or')) {
     }
 }
 
+if (!function_exists('instance_locale')) {
+    /**
+     * Langue de l'instance (APP_LOCALE, voir InstanceLocale), ou l'anglais si l'application n'est pas démarrée.
+     */
+    function instance_locale(): string
+    {
+        try {
+            return \kintai\Core\Container::getInstance()->make(\kintai\Core\Services\InstanceLocale::class)->code();
+        } catch (\Throwable) {
+            $configured = (string) env(\kintai\Core\Services\InstanceLocale::ENV_KEY, '');
+            return $configured !== '' ? $configured : 'en';
+        }
+    }
+}
+
+if (!function_exists('user_locale')) {
+    /**
+     * Langue d'un utilisateur pour ce qui lui est écrit hors de sa session (notifications, e-mails, iCal) : celle
+     * de son profil si elle est active, sinon celle de l'instance.
+     */
+    function user_locale(?array $user): string
+    {
+        try {
+            return \kintai\Core\Container::getInstance()->make(\kintai\Core\Services\InstanceLocale::class)->forUser($user);
+        } catch (\Throwable) {
+            $language = (string) ($user['language'] ?? '');
+            return $language !== '' ? $language : instance_locale();
+        }
+    }
+}
+
 if (!function_exists('audit_action_label')) {
     /**
      * Libellé d'une action du journal d'activité : liste connue de la vue, sinon traduction « audit_{action} » (points

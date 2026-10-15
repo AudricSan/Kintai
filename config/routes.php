@@ -310,7 +310,6 @@ $router->group('/admin', function ($r) {
     // Langues & traductions (Owner uniquement)
     $r->get('/languages',                       [LanguageController::class, 'index'],        middleware: [OwnerOnlyMiddleware::class], name: 'admin.languages', permission: 'public');
     $r->post('/languages',                      [LanguageController::class, 'store'],        middleware: [OwnerOnlyMiddleware::class], name: 'admin.languages.store', permission: 'public');
-    $r->post('/languages/{code}/default',       [LanguageController::class, 'setDefault'],   middleware: [OwnerOnlyMiddleware::class], name: 'admin.languages.set_default', permission: 'public');
     $r->post('/languages/{code}/toggle-active', [LanguageController::class, 'toggleActive'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.languages.toggle_active', permission: 'public');
     $r->post('/languages/{code}/delete',        [LanguageController::class, 'destroy'],      middleware: [OwnerOnlyMiddleware::class], name: 'admin.languages.delete', permission: 'public');
     $r->get('/languages/{code}/edit',           [LanguageController::class, 'edit'],         middleware: [OwnerOnlyMiddleware::class], name: 'admin.languages.edit', permission: 'public');

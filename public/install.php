@@ -50,6 +50,13 @@ function pdo_options(): array
     ];
 }
 
+// ─── Langues proposées ────────────────────────────────────────────────────────
+
+// Langues actives de lang/languages.json, lues avant le démarrage de l'application : l'une devient la langue de
+// l'instance (APP_LOCALE, voir InstanceLocale), celle de tous les textes tant qu'un utilisateur n'a pas choisi la sienne.
+$installLanguages = (new \kintai\Core\Repositories\JsonLanguageRepository(BASE_PATH . '/lang'))->findAllActive();
+$installLanguageCodes = array_column($installLanguages, 'code');
+
 // ─── Installation logic ───────────────────────────────────────────────────────
 
 $errors  = [];
@@ -69,6 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $mysqlUsername = trim($_POST['mysql_username']  ?? '');
     $mysqlPassword =      $_POST['mysql_password']  ?? '';
     $runSeeds      = isset($_POST['run_seeds']);
+    $appLocale     = trim($_POST['app_locale']      ?? '');
 
     // 2 — Validate
     if ($adminFirstName === '') {
@@ -82,6 +90,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if (strlen($adminPassword) < 8) {
         $errors[] = 'Password must be at least 8 characters.';
+    }
+    if ($installLanguageCodes !== [] && !in_array($appLocale, $installLanguageCodes, true)) {
+        $errors[] = 'Please select a default language.';
     }
     if (!in_array($dbDriver, ['sqlite', 'mysql'], true)) {
         $errors[] = 'Please select a valid database driver.';
@@ -104,6 +115,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'password' => $mysqlPassword,
                 'charset'  => 'utf8mb4',
             ];
+
+            // ── Step 0: Langue de l'instance (fichier d'environnement) ─────
+            // En premier : un fichier .env non inscriptible arrête l'installation avant toute écriture en base.
+
+            if ($appLocale !== '') {
+                (new \kintai\Core\Services\EnvFileWriter(BASE_PATH))->set(\kintai\Core\Services\InstanceLocale::ENV_KEY, $appLocale);
+            }
 
             // ── Step A: Create database (MySQL only) ──────────────────────
 
@@ -263,7 +281,7 @@ $defaultUsername = env('DB_USERNAME', 'root');
         h2:first-child { margin-top: 0; }
         .form-row { margin-bottom: 14px; }
         label { display: block; font-size: .82rem; font-weight: 600; color: #475569; margin-bottom: 5px; }
-        input[type=text], input[type=email], input[type=password], input[type=number] {
+        input[type=text], input[type=email], input[type=password], input[type=number], select {
             width: 100%; padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 7px;
             font-size: .88rem; color: #0f172a; background: #f8fafc;
             transition: border-color .15s, box-shadow .15s;
@@ -343,6 +361,19 @@ $defaultUsername = env('DB_USERNAME', 'root');
                 <label for="admin_password">Password <small class="pw-hint">(min. 8 characters)</small></label>
                 <input type="password" id="admin_password" name="admin_password" required>
             </div>
+
+            <?php if ($installLanguages !== []): ?>
+            <h2>Default language</h2>
+            <div class="form-row">
+                <label for="app_locale">Language of the application <small class="pw-hint">(for every user who has not chosen their own; can be changed later in the instance settings)</small></label>
+                <select id="app_locale" name="app_locale" required>
+                    <?php $selectedLocale = $_POST['app_locale'] ?? \kintai\Core\Services\InstanceLocale::resolve(new \kintai\Core\Repositories\JsonLanguageRepository(BASE_PATH . '/lang')); ?>
+                    <?php foreach ($installLanguages as $lang): ?>
+                        <option value="<?= htmlspecialchars($lang['code'], ENT_QUOTES) ?>" <?= $selectedLocale === $lang['code'] ? 'selected' : '' ?>><?= htmlspecialchars($lang['name'], ENT_QUOTES) ?></option>
+                    <?php endforeach ?>
+                </select>
+            </div>
+            <?php endif ?>
 
             <h2>Database driver</h2>
 

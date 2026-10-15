@@ -90,7 +90,11 @@ final class AuthMiddleware implements MiddlewareInterface
 
         // Langue courante
         $view->share('locale', $this->container->make(TranslationService::class)->getLocale());
-        $view->share('active_languages', $this->container->make(LanguageRepositoryInterface::class)->findAllActive());
+        $activeLanguages = $this->container->make(LanguageRepositoryInterface::class)->findAllActive();
+        $view->share('active_languages', $activeLanguages);
+        // Langue de l'instance, proposée dans le profil (« suivre la langue de l'instance »).
+        $instanceCode = \kintai\Core\Services\InstanceLocale::resolve($this->container->make(LanguageRepositoryInterface::class));
+        $view->share('instance_language_name', (string) (array_column($activeLanguages, 'name', 'code')[$instanceCode] ?? $instanceCode));
 
         // Fonctionnalités activées pour le store de l'utilisateur (null = tout activé)
         $storeFeatures = null;

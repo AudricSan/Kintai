@@ -77,16 +77,7 @@ class NotificationService
 
     private function resolveLocale(int $userId): string
     {
-        $user = $this->users->findById($userId);
-        $raw  = $user['language'] ?? 'fr';
-        if ($raw === null || $raw === '') {
-            $raw = 'fr';
-        }
-        $lang = strtolower(substr((string) $raw, 0, 2));
-        return match ($lang) {
-            'ja'    => 'ja',
-            'en'    => 'en',
-            default => 'fr',
-        };
+        // Langue du profil du destinataire, sinon celle de l'instance.
+        return user_locale($this->users->findById($userId));
     }
 }
