@@ -1,4 +1,10 @@
 {
+    "updated_at": "Updated on",
+    "log_changes_title": "Changes",
+    "log_field": "Field",
+    "log_old_value": "Old value",
+    "log_new_value": "New value",
+    "log_context_title": "Context",
     "date_long": ":weekday :day :month_year",
     "January": "January",
     "February": "February",
