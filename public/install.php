@@ -76,7 +76,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $mysqlUsername = trim($_POST['mysql_username']  ?? '');
     $mysqlPassword =      $_POST['mysql_password']  ?? '';
     $runSeeds      = isset($_POST['run_seeds']);
-    $appLocale     = trim($_POST['app_locale']      ?? '');
+    // Absent (installation scriptée, ex. scripts/ci/install-smoke-test.sh) : langue par défaut actuelle.
+    $appLocale     = trim($_POST['app_locale']      ?? \kintai\Core\Services\InstanceLocale::resolve(new \kintai\Core\Repositories\JsonLanguageRepository(BASE_PATH . '/lang')));
 
     // 2 — Validate
     if ($adminFirstName === '') {
