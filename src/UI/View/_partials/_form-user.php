@@ -191,7 +191,7 @@ $section = function (string $titleKey, string $body, string $span = '') use ($as
                 ) ?: '··');
                 ?>
                 <div class="input-group">
-                    <span class="avatar-chip" id="userColorPreview" style="--chip-bg:<?= $userColor ?>"><?= $userInitials ?></span>
+                    <span class="avatar-chip <?= style_class(['--chip-bg' => $userColor]) ?>" id="userColorPreview"><?= $userInitials ?></span>
                     <input type="color" name="color" class="input-color" id="userColorInput"
                            value="<?= $userColor ?>"<?= $formAttr ?>
                            data-on-input="@cssVar" data-target="userColorPreview" data-var="--chip-bg">

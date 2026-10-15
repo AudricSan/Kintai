@@ -152,7 +152,7 @@ final class Timeline implements ComponentInterface
                 // Grid lines
                 for ($i = 0; $i <= 24; $i++) {
                     $op = $i % 6 === 0 ? '.5' : '.2';
-                    $html .= '<div class="tl-grid-line" style="left:' . number_format($i / 24 * 100, 5) . '%;opacity:' . $op . '"></div>';
+                    $html .= '<div class="tl-grid-line ' . style_class(['left' => number_format($i / 24 * 100, 5) . '%', 'opacity' => $op]) . '"></div>';
                 }
                 // Shift bars
                 foreach ($laneShifts as $sh) {
@@ -189,7 +189,7 @@ final class Timeline implements ComponentInterface
         $color     = $sh['_color'] ?? '#6366f1';
         $isMe      = !empty($sh['_is_me']);
         $bg        = $isMe ? $color : $color . '70';
-        $border    = $isMe ? "border:2px solid {$color}" : "border:1px solid {$color}aa";
+        $border    = $isMe ? "2px solid {$color}" : "1px solid {$color}aa";
         $textColor = $this->wcagContrastColor($color);
 
         $shPause    = (int) ($sh['pause_minutes'] ?? 0);
@@ -216,8 +216,10 @@ final class Timeline implements ComponentInterface
             . ' data-hours="' . htmlspecialchars($shHoursLabel) . '"'
             . ' data-width-pct="' . number_format($width, 5) . '"'
             . ' data-draggable="1"'
-            . ' class="tl-bar"'
-            . ' style="left:' . number_format($left, 5) . '%;width:' . number_format($width, 5) . '%;background:' . htmlspecialchars($bg) . ';' . $border . ';color:' . $textColor . '">';
+            . ' class="tl-bar ' . style_class([
+                'left' => number_format($left, 5) . '%', 'width' => number_format($width, 5) . '%',
+                'background' => $bg, 'border' => $border, 'color' => $textColor,
+            ]) . '">';
         if ($width > 4) {
             $html .= '<span class="tl-bar-label tl-bar-label--main">' . $this->atFmt($sm) . '–' . $this->atFmt($em) . '</span>';
         }

@@ -21,7 +21,7 @@ $currencyStyle = store_currency_style($store);
 if (!function_exists('statCard')) {
     function statCard(string $label, string $value, string $sub = '', string $color = 'var(--color-primary)'): string {
         return '<div class="sstat-card">'
-            . '<div class="sstat-card__value" style="color:' . $color . '">' . htmlspecialchars($value) . '</div>'
+            . '<div class="sstat-card__value ' . style_class(['color' => $color]) . '">' . htmlspecialchars($value) . '</div>'
             . '<div class="sstat-card__label">' . htmlspecialchars($label) . '</div>'
             . ($sub !== '' ? '<div class="sstat-card__sub">' . htmlspecialchars($sub) . '</div>' : '')
             . '</div>';
@@ -36,7 +36,7 @@ if (!function_exists('statCard')) {
             $display = is_float($val) ? round($val, 1) : $val;
             $out .= '<div class="sstat-bar-col" title="' . htmlspecialchars($label) . ': ' . $display . '">'
                 . '<div class="sstat-bar-value">' . $display . '</div>'
-                . '<div class="sstat-bar" style="height:' . $h . 'px;background:' . $color . '"></div>'
+                . '<div class="sstat-bar ' . style_class(['height' => $h . 'px', 'background' => $color]) . '"></div>'
                 . '<div class="sstat-bar-label">' . htmlspecialchars($label) . '</div>'
                 . '</div>';
         }
@@ -232,7 +232,7 @@ $dowLabels ??= [__('mon_abbr'), __('tue_abbr'), __('wed_abbr'), __('thu_abbr'), 
                         <td><?= number_format($h, 1) ?><?= __('hours_unit') ?></td>
                         <td class="col-40">
                             <div class="sstat-progress">
-                                <div class="sstat-progress-bar" style="width:<?= round($h / $maxH * 100) ?>%"></div>
+                                <div class="sstat-progress-bar <?= style_class(['width' => round($h / $maxH * 100) . '%']) ?>"></div>
                             </div>
                         </td>
                     </tr>

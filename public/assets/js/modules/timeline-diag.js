@@ -17,12 +17,11 @@
     }
 
     function renderDiag(d) {
-        var staffColor = d.understaffed ? '#fca5a5' : '#86efac';
         var html = '<div class="tl-diag-hdr">'
             + '👥 ' + esc(d.staff) + esc(i18n.staff_planned_label)
             + (d.min_staff > 0
                 ? ' · ' + esc(i18n.peak_abbr)
-                  + ' <span style="color:' + staffColor + '">' + esc(d.peak) + '</span>'
+                  + ' <span class="tl-diag-peak ' + (d.understaffed ? 'tl-diag-peak--under' : 'tl-diag-peak--ok') + '">' + esc(d.peak) + '</span>'
                   + '<span class="tl-diag-dim"> / min ' + esc(d.min_staff) + ' ' + esc(i18n.simult_abbr) + '</span>'
                 : '')
             + (d.understaffed ? ' <span class="tl-diag-warn">— ' + esc(i18n.understaffed_warn) + '</span>' : '')

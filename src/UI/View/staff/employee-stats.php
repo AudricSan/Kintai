@@ -50,7 +50,7 @@ if (!function_exists('estatBar')) {
             $display = round($val, 1) . __('hours_unit');
             $out .= '<div class="sstat-bar-col" title="' . htmlspecialchars($label) . ': ' . $display . '">'
                 . '<div class="sstat-bar-value">' . $display . '</div>'
-                . '<div class="sstat-bar" style="height:' . $h . 'px;background:' . $color . '"></div>'
+                . '<div class="sstat-bar ' . style_class(['height' => $h . 'px', 'background' => $color]) . '"></div>'
                 . '<div class="sstat-bar-label">' . htmlspecialchars($label) . '</div>'
                 . '</div>';
         }
@@ -99,7 +99,7 @@ $reportUrl = $BASE_URL . '/admin/stores/' . store_segment((int) $store['id']) . 
 <div class="sstat-section">
   <div class="sstat-section-title"><?= __('employee_name') ?></div>
   <div class="estat-profile">
-    <div class="estat-avatar" style="background:<?= htmlspecialchars($user['color'] ?? '#3B82F6') ?>">
+    <div class="estat-avatar <?= style_class(['background' => $user['color'] ?? '#3B82F6']) ?>">
       <?= strtoupper(substr($empName, 0, 1)) ?>
     </div>
     <div class="estat-profile-info">

@@ -28,7 +28,9 @@ final class SecurityHeadersMiddleware implements MiddlewareInterface
         // le clic sur "Envoyer" ne fait rien).
         // Pas de 'unsafe-inline' pour les scripts : ni <script> inline sans nonce, ni attribut onclick=/onchange=/…
         // (les vues passent par des attributs data-* gérés par public/assets/js/modules/csp-actions.js).
-        // style-src garde 'unsafe-inline' : les attributs style="…" dynamiques (couleurs, largeurs) en dépendent.
+        // style-src garde 'unsafe-inline' tant que des bundles écrivent encore des attributs style="…" : le Core n'en a
+        // plus (style_class(), <style nonce>). Ne pas y ajouter le nonce avant leur migration : un navigateur ignore
+        // 'unsafe-inline' dès qu'un nonce figure dans la directive.
         $response->withHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'nonce-{$nonce}'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; form-action 'self' https://github.com; frame-ancestors 'self'; object-src 'none'");
 
         if ($request->isSecure()) {

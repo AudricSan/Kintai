@@ -740,7 +740,7 @@ $css = file_get_contents(bundle_asset_path('your-slug', 'css/pdf-your-bundle.css
 
 ## バージョン付きバンドル契約
 
-バンドル契約には、Coreとは独立した**独自のバージョン**があります：`kintai\Contract\Contract::VERSION`（現在 `1.21.0`）。semverに従い、マイナーバージョンは追加だけ（クラス、任意のメソッド、拡張ポイント）を行い、メジャーバージョンはシグネチャを削除・変更し、CHANGELOGの専用の「Bundle contract」セクションで告知されます。
+バンドル契約には、Coreとは独立した**独自のバージョン**があります：`kintai\Contract\Contract::VERSION`（現在 `1.22.0`）。semverに従い、マイナーバージョンは追加だけ（クラス、任意のメソッド、拡張ポイント）を行い、メジャーバージョンはシグネチャを削除・変更し、CHANGELOGの専用の「Bundle contract」セクションで告知されます。
 
 バンドルが必要とする契約のバージョンを `bundle.json` に宣言してください：
 
@@ -789,6 +789,17 @@ Kintaiは `script-src 'self' 'nonce-…'`（`SecurityHeadersMiddleware`）を送
 `data-on-*` が呼び出すのは、`window` 上に**自分で定義した関数**（スクリプト内の関数宣言、または `window.f = …`）だけです：`eval` や `setTimeout` などのブラウザ組み込み関数は、注入された属性がコード実行の手段にならないよう意図的に拒否されます。`Button`/`Modal` の属性値はコンポーネントがすでにHTMLエスケープしています——`htmlspecialchars()` の結果ではなく生の値を渡してください。
 
 **必要なバージョン。** `data-*` アクションと `csp_nonce()` は **Kintai Core 0.3.0** から存在します。バンドル契約を提供するCoreはすべて（1.0はCore 0.3.6で登場）これらを持っているため、現在必須の `kintai_contract` を宣言すれば十分です：古いCoreは、何もしないコントロールをインストールする代わりにバンドルを拒否します。逆に、これは**既存バンドルにとって破壊的な変更**です：0.3.0より前に書かれ、まだインラインハンドラーを使っているバンドルは、0.3.0より古いCoreでは動き続けますが、0.3.0以降では移行するまでボタン、セレクト、確認が動かなくなります。Kintaiの `tests/Unit/Security/NoInlineScriptGuardTest.php` は、Coreのビューがインラインハンドラーを再び持ち込んだ時点で失敗します。自分のビューでも同じ確認をしてください。
+
+### 動的スタイル：`style="…"` 禁止
+
+スタイルにも同じルールが適用されます。すべての公式バンドルの移行が終わると、CSP は `style-src` から `'unsafe-inline'` を外し、`style="…"` 属性はブラウザに無視されます。固定の見た目はバンドルの CSS に書きます。描画時にしか分からない値（ユーザーが選んだ色、バーの高さ、割合）は `style_class()`（契約 1.22）を使います。これらの宣言を持つクラスを返します：
+
+```php
+<div class="bar <?= style_class(['height' => $h . 'px', 'background' => $color]) ?>"></div>
+<span class="avatar-chip <?= style_class(['--chip-bg' => $user['color']]) ?>"></span>
+```
+
+ルールはリクエスト中に集められ、レイアウトが 1 つの `<style nonce="…">` にまとめて出力します。レイアウト**なし**で描画するページ（印刷ビュー、PDF プレビュー）は `</body>` の直前で `<?= inline_styles() ?>` を自分で出力し、自前の `<style>` ブロックには nonce を付けます：`<style nonce="<?= csp_nonce() ?>">`。値はフィルタされます（英字、数字、`#`、`%`、`.`、`,`、`-`、空白、括弧のみ）。それ以外は捨てられるため、入力データがルールの外に出ることはありません。JavaScript から `element.style.x` を設定するのは CSP の対象外で引き続き使えますが、JavaScript で `style="…"` 属性付きの HTML を組み立てるのは不可です。
 
 ### 既存バンドルの移行
 

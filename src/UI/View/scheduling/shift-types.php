@@ -55,7 +55,7 @@ echo Flash::fromQuery('error', [
                 <?php $tid = (int) $t['id']; ?>
                 <tr>
                     <td class="td-center td-nowrap">
-                        <span class="color-swatch" style="background:<?= htmlspecialchars($t['color'] ?? '#ccc') ?>"></span>
+                        <span class="color-swatch <?= style_class(['background' => $t['color'] ?? '#ccc']) ?>"></span>
                         <?= htmlspecialchars($t['name'] ?? '') ?>
                     </td>
                     <?php foreach ($all_stores as $s): ?>
@@ -92,7 +92,7 @@ echo Flash::fromQuery('error', [
     ->text(__('start'), fn($t) => $t['start_time'] ?? '')
     ->text(__('end'), fn($t) => $t['end_time'] ?? '')
     ->column(__('color'), fn($t) =>
-        '<span class="color-preview"><span class="color-swatch" style="background:' . htmlspecialchars($t['color'] ?? '#ccc') . '"></span><code class="color-code">' . htmlspecialchars($t['color'] ?? '') . '</code></span>'
+        '<span class="color-preview"><span class="color-swatch ' . style_class(['background' => $t['color'] ?? '#ccc']) . '"></span><code class="color-code">' . htmlspecialchars($t['color'] ?? '') . '</code></span>'
     )
     ->sortable(__('status'), 'status', fn($t) =>
         !empty($t['is_active'])
