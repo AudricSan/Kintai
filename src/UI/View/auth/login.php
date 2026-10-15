@@ -55,7 +55,7 @@ endif; ?>
                 <input type="password" name="password" class="form-control"
                        autocomplete="current-password" placeholder="0000" required
                        <?= $mode !== 'code' ? 'disabled' : '' ?>>
-                <p class="login-hint"><?= __('password_default_hint', ['code' => '0000']) ?></p>
+                <?php // Plus d'indice du mot de passe par défaut sur cette page publique (audit n°8) : les gérants le communiquent. ?>
             </div>
         </div>
 

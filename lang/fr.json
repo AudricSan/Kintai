@@ -851,7 +851,7 @@
     "parse_error": "Impossible de lire le fichier Excel.",
     "password": "Mot de passe",
     "password_auto_generated": "Généré automatiquement",
-    "password_auto_hint": "Laissez vide pour générer un mot de passe automatique (nom+prénom+code employé)",
+    "password_auto_hint": "Laissez vide pour attribuer le mot de passe par défaut « 0000 » : l'employé sera invité à le changer à chaque connexion.",
     "password_changed_success": "Mot de passe modifié avec succès.",
     "password_default_hint": "Mot de passe par défaut : :code",
     "password_edit_hint": "(laisser vide pour ne pas changer)",
