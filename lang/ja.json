@@ -1,4 +1,10 @@
 {
+    "updated_at": "更新日時",
+    "log_changes_title": "変更内容",
+    "log_field": "項目",
+    "log_old_value": "変更前",
+    "log_new_value": "変更後",
+    "log_context_title": "コンテキスト",
     "date_long": ":month_year:day日（:weekday）",
     "January": "1月",
     "February": "2月",

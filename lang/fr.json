@@ -1,4 +1,10 @@
 {
+    "updated_at": "Modifié le",
+    "log_changes_title": "Modifications",
+    "log_field": "Champ",
+    "log_old_value": "Ancienne valeur",
+    "log_new_value": "Nouvelle valeur",
+    "log_context_title": "Contexte",
     "date_long": ":weekday :day :month_year",
     "January": "Janvier",
     "February": "Février",
