@@ -149,6 +149,7 @@ away with a new major version.
 | `kintai\Contract\Exceptions\ConflictException` | stable | 409. |
 | `kintai\Contract\Auth\PermissionService` | stable | Permission and scope checks. |
 | `kintai\Contract\Auth\AuthService` | **provisional** | Session user; to be replaced by CurrentUser (step 2). |
+| `kintai\Contract\Auth\UserAnonymizer` | stable | Deleting an account: `anonymize($userId)` erases personal data, deactivates the account and revokes its rights and tokens, the history stays attached to "Deleted user" (contract 1.21; never call `UserRepositoryInterface::delete()` for that). |
 | `kintai\Contract\Data\UserRepositoryInterface` | stable | Accounts. |
 | `kintai\Contract\Data\StoreRepositoryInterface` | stable | Stores. |
 | `kintai\Contract\Data\StoreUserRepositoryInterface` | stable | Store memberships. |
