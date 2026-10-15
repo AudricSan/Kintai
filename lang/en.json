@@ -1,4 +1,8 @@
 {
+    "error_419_title": "419 — Page Expired",
+    "error_419_message": "This page was open for too long: the action was not saved. Reload the page and try again.",
+    "error_419_back": "Back to the page",
+    "session_expired_login": "Your session expired while the page was open. Please sign in again.",
     "error_shifts_not_in_conflict": "These two shifts do not conflict: nothing was deleted.",
     "display_name_hint": "Optional: left empty, it becomes \"Last name First name\".",
     "language_follow_instance": "Instance language (:language)",

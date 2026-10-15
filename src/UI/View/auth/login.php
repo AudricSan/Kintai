@@ -10,6 +10,9 @@ $mode = ($login_mode ?? 'code') === 'email' ? 'email' : 'code';
 <?php if ($error ?? false):
     echo Alert::make(__('invalid_credentials'))->danger()->render();
 endif; ?>
+<?php if ($expired ?? false):
+    echo Alert::make(__('session_expired_login'))->warning()->render();
+endif; ?>
 
 <!-- Onglets -->
 <div class="login-tabs">
