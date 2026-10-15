@@ -50,6 +50,19 @@ final class DemoDataSeeder
         ['Hugo',  'Moreau',  'hugo.moreau@kintai.local',   'employee', [0, 1]],
     ];
 
+    /**
+     * Comptes créés par run(), affichés par l'installateur à la fin (tous avec le mot de passe PASSWORD).
+     *
+     * @return list<array{name:string, email:string, role:string}>
+     */
+    public static function accounts(): array
+    {
+        return array_map(
+            static fn (array $p): array => ['name' => $p[0] . ' ' . $p[1], 'email' => $p[2], 'role' => $p[3]],
+            self::PEOPLE,
+        );
+    }
+
     /** @return array{stores:int,shift_types:int,users:int,shifts:int} Nombre de lignes créées */
     public function run(): array
     {

@@ -61,10 +61,12 @@ curl -s -o "$WORK/install.html" -X POST "$BASE/install.php" \
   --data-urlencode "admin_last_name=Test" \
   --data-urlencode "admin_email=$EMAIL" \
   --data-urlencode "admin_password=$PASSWORD" \
+  --data-urlencode "admin_password_confirmation=$PASSWORD" \
   --data-urlencode "db_driver=sqlite"
 
-if grep -qE "SQLSTATE|no such table|Fatal error" "$WORK/install.html"; then
-  fail "l'installateur a renvoyé une erreur : $(grep -oE -m1 'SQLSTATE[^<]{0,120}|no such table[^<]{0,60}|Fatal error[^<]{0,120}' "$WORK/install.html")"
+# Les erreurs de l'installateur s'affichent dans un encadré alert--danger, le détail technique part dans error.log.
+if grep -qE "alert--danger|Fatal error|Warning</b>" "$WORK/install.html"; then
+  fail "l'installateur a renvoyé une erreur : $(grep -oE -m1 '<li>[^<]{0,200}|Fatal error[^<]{0,120}|Warning</b>[^<]{0,120}' "$WORK/install.html") — $(tail -n 5 storage/logs/error.log 2>/dev/null)"
 fi
 [ -f storage/installed.lock ] || fail "storage/installed.lock absent après installation"
 
