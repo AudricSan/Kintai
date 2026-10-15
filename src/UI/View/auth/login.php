@@ -94,9 +94,12 @@ endif; ?>
 <?php if (count($login_languages ?? []) > 1): ?>
 <nav class="login-lang" aria-label="<?= htmlspecialchars(__('language')) ?>">
     <?php foreach ($login_languages as $_lang): ?>
-        <a href="<?= route_url('lang.switch', ['locale' => $_lang['code']]) ?>" lang="<?= htmlspecialchars($_lang['code']) ?>"
-           class="login-lang__link<?= ($current_locale ?? '') === $_lang['code'] ? ' login-lang__link--active' : '' ?>"
-           <?= ($current_locale ?? '') === $_lang['code'] ? 'aria-current="true"' : '' ?>><?= htmlspecialchars($_lang['name']) ?></a>
+        <form method="POST" action="<?= route_url('lang.switch', ['locale' => $_lang['code']]) ?>">
+            <?= csrf_field() ?>
+            <button type="submit" lang="<?= htmlspecialchars($_lang['code']) ?>"
+                    class="login-lang__link<?= ($current_locale ?? '') === $_lang['code'] ? ' login-lang__link--active' : '' ?>"
+                    <?= ($current_locale ?? '') === $_lang['code'] ? 'aria-current="true"' : '' ?>><?= htmlspecialchars($_lang['name']) ?></button>
+        </form>
     <?php endforeach; ?>
 </nav>
 <?php endif; ?>

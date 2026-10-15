@@ -175,7 +175,14 @@ img.user-dropdown__avatar {
     gap: var(--space-1);
 }
 
+/* Un formulaire POST par langue (jeton CSRF) : ses boutons restent les enfants directs de la rangée. */
+.user-dropdown__lang-btns form { display: contents; }
+
 .user-dropdown__lang-btn {
+    background: none;
+    border: 0;
+    font-family: inherit;
+    cursor: pointer;
     padding: 0.15rem var(--space-2);
     border-radius: var(--radius-xs);
     font-size: var(--text-xs);
