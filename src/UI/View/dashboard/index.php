@@ -12,6 +12,9 @@ $all_widgets            ??= \kintai\UI\Controller\Web\HomeController::ADMIN_WIDG
 $bundle_widgets         ??= [];
 $bundle_widget_meta     ??= ['labels' => [], 'permissions' => [], 'features' => []];
 $enabled_widgets_all    ??= $enabled_widgets;
+// Ordre et largeur des widgets choisis par l'utilisateur (DashboardLayout), widgets déplaçables en mode édition.
+$widget_layout          ??= ['order' => $all_widgets, 'widths' => []];
+$_dashLayout            = $widget_layout;
 
 // Garde : la vue peut être rendue plusieurs fois dans un même processus (tests).
 if (!function_exists('admin_widget_on')) {
@@ -87,6 +90,10 @@ $_dashChartData = [];
         <button type="button" class="btn btn--ghost btn--sm" data-on-click="adminDashCustomize"><?= __('close') ?></button>
     </div>
     <div class="card-body">
+        <div class="dash-layout-tools">
+            <p class="text-sm text-muted"><?= __('dashboard_layout_hint') ?></p>
+            <button type="button" class="btn btn--ghost btn--sm" data-dash-reset><?= __('dashboard_layout_reset') ?></button>
+        </div>
         <form method="POST" action="<?= route_url('admin.dashboard.widgets') ?>">
             <?= csrf_field() ?>
             <div class="dash-widget-list">
@@ -107,6 +114,8 @@ $_dashChartData = [];
 
 <script src="<?= $BASE_URL ?>/assets/js/modules/admin-dashboard.js"></script>
 
+<?php $_dashBlocks = []; ?>
+<?php ob_start(); ?>
 <?php if (admin_widget_on('kpi_counters', $enabled_widgets)): ?>
 <!-- KPI Stats -->
 <?php $_pendingVisible = $pending_requests_visible ?? false; // au moins une sorte de demande visible (PendingRequests) ?>
@@ -161,6 +170,7 @@ $_dashChartData = [];
     <?php endif; ?>
 </div>
 <?php endif; ?>
+<?php $_dashBlocks['kpi_counters'] = ob_get_clean(); ?>
 
 <?php
 $dashboard_alerts ??= null;
@@ -169,6 +179,7 @@ $_alertTotal = $dashboard_alerts !== null
         + count($dashboard_alerts['stale_requests']) + count($dashboard_alerts['stale_timeclocks'])
     : 0;
 ?>
+<?php ob_start(); ?>
 <?php if (admin_widget_on('dashboard_alerts', $enabled_widgets) && $dashboard_alerts !== null): ?>
 <?php
 // Alertes actionnables (DashboardAlertService) : 4 groupes, 5 éléments affichés par groupe au plus.
@@ -221,12 +232,14 @@ $_alertGroups = [
 </div>
 <?php unset($_alertLimit, $_alertTime, $_alertGroups, $_ak, $_alabel, $_aformat, $_aitems, $_aitem); ?>
 <?php endif; ?>
+<?php $_dashBlocks['dashboard_alerts'] = ob_get_clean(); ?>
 
 <?php
 $store_stats_rows          ??= [];
 $store_stats_period        ??= 30;
 $store_stats_hours_by_week ??= [];
 ?>
+<?php ob_start(); ?>
 <?php if (admin_widget_on('store_stats_summary', $enabled_widgets) && $can('payroll.view') && $store_stats_rows !== []): ?>
 <!-- Aperçu statistiques -->
 <div class="card card--mt">
@@ -300,105 +313,96 @@ $store_stats_hours_by_week ??= [];
     <?php endif; ?>
 </div>
 <?php endif; ?>
+<?php $_dashBlocks['store_stats_summary'] = ob_get_clean(); ?>
 
 <?php
 $financial_overview ??= null;
 $hr_stats           ??= null;
 ?>
-<?php if (
-    (admin_widget_on('financial_overview', $enabled_widgets) && $can('payroll.view') && $financial_overview !== null)
-    || (admin_widget_on('hr_absenteeism', $enabled_widgets) && $can('payroll.view') && $hr_stats !== null)
-): ?>
-<div class="dash-two-col card--mt">
-
-    <?php if (admin_widget_on('financial_overview', $enabled_widgets) && $can('payroll.view') && $financial_overview !== null): ?>
-    <div class="card">
-        <div class="card-header">
-            <span><?= __('widget_financial_overview') ?></span>
-        </div>
-        <div class="stat-grid stat-grid--in-card stat-grid--cols-2">
-            <div class="stat-card">
-                <div class="stat-card__icon stat-card__icon--primary">💰</div>
-                <div class="stat-card__body">
-                    <div class="stat-card__value"><?= format_currency((float) $financial_overview['current_month'], (string) $financial_overview['currency'], (string) $financial_overview['currency_style']) ?></div>
-                    <div class="stat-card__label">
-                        <?= __('current_month') ?>
-                        <?php if ($financial_overview['delta_pct'] !== null): ?>
-                            <span class="<?= $financial_overview['delta_pct'] > 0 ? 'text-danger' : 'text-success' ?>">
-                                (<?= $financial_overview['delta_pct'] > 0 ? '+' : '' ?><?= $financial_overview['delta_pct'] ?>% <?= __('vs_prev_period') ?>)
-                            </span>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-card__icon">📆</div>
-                <div class="stat-card__body">
-                    <div class="stat-card__value"><?= format_currency((float) $financial_overview['previous_month'], (string) $financial_overview['currency'], (string) $financial_overview['currency_style']) ?></div>
-                    <div class="stat-card__label"><?= __('prev_month') ?></div>
-                </div>
-            </div>
-        </div>
-        <?php if (count($financial_overview['trend_by_month']) > 1): ?>
-        <div class="card-body">
-            <div class="sstat-sublabel--strong"><?= __('monthly_trend') ?></div>
-            <div class="sstat-canvas-wrap">
-                <canvas id="chart-monthly-trend"></canvas>
-            </div>
-        </div>
-        <?php
-        $_dashChartData['hasCost']     = true;
-        $_dashChartData['costByMonth'] = array_map('floatval', $financial_overview['trend_by_month']);
-        ?>
-        <?php endif; ?>
+<?php ob_start(); ?>
+<?php if (admin_widget_on('financial_overview', $enabled_widgets) && $can('payroll.view') && $financial_overview !== null): ?>
+<div class="card">
+    <div class="card-header">
+        <span><?= __('widget_financial_overview') ?></span>
     </div>
-    <?php endif; ?>
-
-    <?php if (admin_widget_on('hr_absenteeism', $enabled_widgets) && $can('payroll.view') && $hr_stats !== null): ?>
-    <div class="card">
-        <div class="card-header">
-            <span><?= __('widget_hr_absenteeism') ?></span>
+    <div class="stat-grid stat-grid--in-card stat-grid--cols-2">
+        <div class="stat-card">
+            <div class="stat-card__icon stat-card__icon--primary">💰</div>
+            <div class="stat-card__body">
+                <div class="stat-card__value"><?= format_currency((float) $financial_overview['current_month'], (string) $financial_overview['currency'], (string) $financial_overview['currency_style']) ?></div>
+                <div class="stat-card__label">
+                    <?= __('current_month') ?>
+                    <?php if ($financial_overview['delta_pct'] !== null): ?>
+                        <span class="<?= $financial_overview['delta_pct'] > 0 ? 'text-danger' : 'text-success' ?>">
+                            (<?= $financial_overview['delta_pct'] > 0 ? '+' : '' ?><?= $financial_overview['delta_pct'] ?>% <?= __('vs_prev_period') ?>)
+                        </span>
+                    <?php endif; ?>
+                </div>
+            </div>
         </div>
-        <div class="stat-grid stat-grid--in-card stat-grid--cols-2">
-            <div class="stat-card">
-                <div class="stat-card__icon stat-card__icon--warning">📉</div>
-                <div class="stat-card__body">
-                    <div class="stat-card__value"><?= number_format((float) $hr_stats['abs_rate'], 1) ?>%</div>
-                    <div class="stat-card__label"><?= __('absence_rate') ?></div>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-card__icon stat-card__icon--primary">🌴</div>
-                <div class="stat-card__body">
-                    <div class="stat-card__value"><?= $hr_stats['timeoff_taken'] ?></div>
-                    <div class="stat-card__label"><?= __('timeoff_taken') ?></div>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-card__icon stat-card__icon--danger">⏰</div>
-                <div class="stat-card__body">
-                    <div class="stat-card__value"><?= $hr_stats['late_count'] ?></div>
-                    <div class="stat-card__label"><?= __('late_clock_ins') ?></div>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-card__icon">⏱️</div>
-                <div class="stat-card__body">
-                    <div class="stat-card__value"><?= $hr_stats['overtime_weeks'] ?></div>
-                    <div class="stat-card__label"><?= __('overtime_weeks') ?></div>
-                </div>
+        <div class="stat-card">
+            <div class="stat-card__icon">📆</div>
+            <div class="stat-card__body">
+                <div class="stat-card__value"><?= format_currency((float) $financial_overview['previous_month'], (string) $financial_overview['currency'], (string) $financial_overview['currency_style']) ?></div>
+                <div class="stat-card__label"><?= __('prev_month') ?></div>
             </div>
         </div>
     </div>
+    <?php if (count($financial_overview['trend_by_month']) > 1): ?>
+    <div class="card-body">
+        <div class="sstat-sublabel--strong"><?= __('monthly_trend') ?></div>
+        <div class="sstat-canvas-wrap">
+            <canvas id="chart-monthly-trend"></canvas>
+        </div>
+    </div>
+    <?php
+    $_dashChartData['hasCost']     = true;
+    $_dashChartData['costByMonth'] = array_map('floatval', $financial_overview['trend_by_month']);
+    ?>
     <?php endif; ?>
-
 </div>
 <?php endif; ?>
+<?php $_dashBlocks['financial_overview'] = ob_get_clean(); ?>
 
-<?php if ($_dashChartData !== []): ?>
-<script type="application/json" id="kintai-stats-data"><?= json_encode($_dashChartData, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?></script>
-<script src="<?= $BASE_URL ?>/assets/js/modules/stats-charts.js"></script>
+<?php ob_start(); ?>
+<?php if (admin_widget_on('hr_absenteeism', $enabled_widgets) && $can('payroll.view') && $hr_stats !== null): ?>
+<div class="card">
+    <div class="card-header">
+        <span><?= __('widget_hr_absenteeism') ?></span>
+    </div>
+    <div class="stat-grid stat-grid--in-card stat-grid--cols-2">
+        <div class="stat-card">
+            <div class="stat-card__icon stat-card__icon--warning">📉</div>
+            <div class="stat-card__body">
+                <div class="stat-card__value"><?= number_format((float) $hr_stats['abs_rate'], 1) ?>%</div>
+                <div class="stat-card__label"><?= __('absence_rate') ?></div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card__icon stat-card__icon--primary">🌴</div>
+            <div class="stat-card__body">
+                <div class="stat-card__value"><?= $hr_stats['timeoff_taken'] ?></div>
+                <div class="stat-card__label"><?= __('timeoff_taken') ?></div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card__icon stat-card__icon--danger">⏰</div>
+            <div class="stat-card__body">
+                <div class="stat-card__value"><?= $hr_stats['late_count'] ?></div>
+                <div class="stat-card__label"><?= __('late_clock_ins') ?></div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card__icon">⏱️</div>
+            <div class="stat-card__body">
+                <div class="stat-card__value"><?= $hr_stats['overtime_weeks'] ?></div>
+                <div class="stat-card__label"><?= __('overtime_weeks') ?></div>
+            </div>
+        </div>
+    </div>
+</div>
 <?php endif; ?>
+<?php $_dashBlocks['hr_absenteeism'] = ob_get_clean(); ?>
 
 <?php
 $sort       ??= 'start_asc';
@@ -415,6 +419,7 @@ $_href = function (string $field) use ($sort, $_qs): string {
 };
 ?>
 
+<?php ob_start(); ?>
 <?php if (admin_widget_on('shifts_today', $enabled_widgets) && $can('shifts.view')): ?>
 <!-- Shifts du jour -->
 <?php
@@ -557,8 +562,20 @@ $hasMultipleStores = count($shiftsByStore) > 1;
     <?php endif; ?>
 </div>
 <?php endif; ?>
+<?php $_dashBlocks['shifts_today'] = ob_get_clean(); ?>
 
 
-<?php foreach ($bundle_widgets as $_bundleWidget): ?>
-<?= $_bundleWidget['html'] ?>
-<?php endforeach; ?>
+<?php
+foreach ($bundle_widgets as $_bundleWidget) {
+    $_dashBlocks[$_bundleWidget['key']] = $_bundleWidget['html'];
+}
+$_dashLabels  = $widgetLabels;
+$_dashSaveUrl = route_url('admin.dashboard.layout');
+include __DIR__ . '/../_partials/_dashboard-grid.php';
+unset($_bundleWidget, $_dashBlocks, $_dashLabels, $_dashSaveUrl);
+?>
+
+<?php if ($_dashChartData !== []): ?>
+<script type="application/json" id="kintai-stats-data"><?= json_encode($_dashChartData, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?></script>
+<script src="<?= $BASE_URL ?>/assets/js/modules/stats-charts.js"></script>
+<?php endif; ?>

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace kintai\UI\Controller\Api\V1;
 
 use kintai\Core\Auth\UserTargetGuard;
+use kintai\Core\Exceptions\ValidationException;
+use kintai\Core\Extension\DashboardLayout;
 use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
 use kintai\Core\Repositories\UserNavPrefsRepositoryInterface;
 use kintai\Core\Request;
@@ -31,25 +33,41 @@ final class UserPrefsController
             'user_id'        => $userId,
             'dashboard_type' => $dashboardType,
             'widgets'        => $this->dashboardPrefs->getEnabledWidgets($userId, $dashboardType),
+            'layout'         => $this->dashboardPrefs->getLayout($userId, $dashboardType),
         ]);
     }
 
-    /** PUT /api/v1/users/{user_id}/dashboard-prefs */
+    /**
+     * PUT /api/v1/users/{user_id}/dashboard-prefs
+     *
+     * Champs facultatifs, chacun enregistré seulement s'il est envoyé : `widgets` (widgets activés) et `layout`
+     * ({order: [...], widths: {clé: half|full}} remplace la disposition ; null revient à la disposition par défaut).
+     */
     public function saveDashboardPrefs(Request $request): Response
     {
         $userId        = (int) $request->param('user_id');
         $this->guard->require($request, $userId, 'employees.update');
 
-        $data          = PayloadValidator::validate($request->json() ?? [], ApiPayloadRules::dashboardPrefs());
+        $payload       = $request->json() ?? [];
+        $data          = PayloadValidator::validate($payload, ApiPayloadRules::dashboardPrefs());
         $dashboardType = (string) ($data['dashboard_type'] ?? 'admin');
-        $widgets       = $data['widgets'] ?? [];
 
-        $this->dashboardPrefs->saveWidgets($userId, $widgets, $dashboardType);
+        if (array_key_exists('widgets', $payload)) {
+            $this->dashboardPrefs->saveWidgets($userId, $data['widgets'] ?? [], $dashboardType);
+        }
+        if (array_key_exists('layout', $payload)) {
+            $layout = $payload['layout'];
+            if ($layout !== null && (!is_array($layout) || array_is_list($layout) && $layout !== [])) {
+                throw new ValidationException(['layout' => [__('val_field_invalid', ['field' => 'layout'])]]);
+            }
+            $this->dashboardPrefs->saveLayout($userId, $dashboardType, $layout === null ? null : DashboardLayout::normalize($layout));
+        }
 
         return Response::json([
             'user_id'        => $userId,
             'dashboard_type' => $dashboardType,
-            'widgets'        => $widgets,
+            'widgets'        => $this->dashboardPrefs->getEnabledWidgets($userId, $dashboardType),
+            'layout'         => $this->dashboardPrefs->getLayout($userId, $dashboardType),
         ]);
     }
 

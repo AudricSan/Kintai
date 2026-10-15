@@ -21,7 +21,10 @@ function dashDetailToggle() {
     }
 }
 
+// Panneau de personnalisation ; passe aussi la grille en mode édition (widgets déplaçables, dashboard-layout.js).
 function dashCustomizeToggle() {
     var p = document.getElementById('dash-customize');
-    if (p) p.style.display = p.style.display === 'none' ? 'block' : 'none';
+    if (!p) return;
+    var open = !p.classList.toggle('hidden');
+    if (window.kintaiDashLayout) window.kintaiDashLayout.setEditing(open);
 }

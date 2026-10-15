@@ -1,4 +1,12 @@
 {
+    "dashboard_widget_drag": "Drag to move",
+    "dashboard_widget_up": "Move up",
+    "dashboard_widget_down": "Move down",
+    "dashboard_widget_make_half": "Half width",
+    "dashboard_widget_make_full": "Full width",
+    "dashboard_layout_save_failed": "The layout could not be saved.",
+    "dashboard_layout_hint": "Move widgets with the ⠿ handle or the arrows, and choose their width. Every change is saved right away.",
+    "dashboard_layout_reset": "Reset layout",
     "setup_title": "Kintai setup",
     "setup_step_of": "Step :n of :total",
     "setup_license_title": "License",

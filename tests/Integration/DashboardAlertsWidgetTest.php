@@ -24,6 +24,7 @@ final class DashboardAlertsWidgetTest extends TestCase
 
         $router = new Router();
         $router->get('/admin/dashboard/widgets', [\stdClass::class, 'x'], name: 'admin.dashboard.widgets');
+        $router->post('/admin/dashboard/layout', [\stdClass::class, 'x'], name: 'admin.dashboard.layout');
         $router->get('/admin/shifts/{id}/edit', [\stdClass::class, 'x'], name: 'admin.shifts.edit');
         $router->get('/admin/users/{id}/edit', [\stdClass::class, 'x'], name: 'admin.users.edit');
         $router->get('/admin/requests', [\stdClass::class, 'x'], name: 'admin.requests');

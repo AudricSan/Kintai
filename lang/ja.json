@@ -1,4 +1,12 @@
 {
+    "dashboard_widget_drag": "ドラッグして移動",
+    "dashboard_widget_up": "上へ移動",
+    "dashboard_widget_down": "下へ移動",
+    "dashboard_widget_make_half": "半幅",
+    "dashboard_widget_make_full": "全幅",
+    "dashboard_layout_save_failed": "レイアウトを保存できませんでした。",
+    "dashboard_layout_hint": "⠿ ハンドルまたは矢印でウィジェットを移動し、幅を選択できます。変更はすぐに保存されます。",
+    "dashboard_layout_reset": "配置をリセット",
     "setup_title": "Kintai の設定",
     "setup_step_of": "ステップ :n / :total",
     "setup_license_title": "ライセンス",

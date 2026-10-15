@@ -78,6 +78,45 @@ final class UserPrefsControllerTest extends TestCase
         $this->controller->saveDashboardPrefs($this->request($body));
     }
 
+    public function testLayoutIsSavedWithoutTouchingTheEnabledWidgets(): void
+    {
+        $this->dashboard->expects($this->never())->method('saveWidgets');
+        $this->dashboard->expects($this->once())->method('saveLayout')
+            ->with(20, 'admin', ['order' => ['shifts_today', 'kpi_counters'], 'widths' => ['shifts_today' => 'half']]);
+
+        $response = $this->controller->saveDashboardPrefs($this->request([
+            'dashboard_type' => 'admin',
+            'layout'         => ['order' => ['shifts_today', 'kpi_counters', 'Bad Key'], 'widths' => ['shifts_today' => 'half', 'kpi_counters' => 'huge']],
+        ]));
+
+        $this->assertSame(200, $response->status());
+    }
+
+    public function testANullLayoutResetsIt(): void
+    {
+        $this->dashboard->expects($this->once())->method('saveLayout')->with(20, 'employee', null);
+
+        $this->controller->saveDashboardPrefs($this->request(['dashboard_type' => 'employee', 'layout' => null]));
+    }
+
+    public function testALayoutThatIsNotAnObjectIsRefused(): void
+    {
+        $this->dashboard->expects($this->never())->method('saveLayout');
+
+        $this->expectException(ValidationException::class);
+        $this->controller->saveDashboardPrefs($this->request(['layout' => ['kpi_counters']]));
+    }
+
+    public function testGetReturnsTheLayout(): void
+    {
+        $this->dashboard->method('getLayout')->willReturn(['order' => ['kpi_counters'], 'widths' => []]);
+
+        $req = $this->request([]);
+        $response = $this->controller->getDashboardPrefs($req);
+
+        $this->assertSame(['order' => ['kpi_counters'], 'widths' => []], json_decode($response->body(), true)['layout']);
+    }
+
     public function testNavPrefsMustBeAListOfStrings(): void
     {
         $this->nav->expects($this->never())->method('saveHidden');

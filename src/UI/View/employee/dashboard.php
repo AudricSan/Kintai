@@ -20,6 +20,8 @@ $widgets     = $enabled_widgets ?? array_flip($all_widgets ?? []);
 $bundle_widgets     ??= [];
 $bundle_widget_meta ??= ['labels' => [], 'permissions' => [], 'features' => []];
 $widgetsAll  = $enabled_widgets_all ?? $widgets;
+// Ordre et largeur des widgets choisis par l'utilisateur (DashboardLayout), widgets déplaçables en mode édition.
+$_dashLayout = $widget_layout ?? ['order' => $all_widgets ?? [], 'widths' => []];
 
 function widget_on(string $key, array $widgets): bool {
     return isset($widgets[$key]);
@@ -63,6 +65,10 @@ foreach ($_empWidgetPermMap as $_wk => $_wp) {
 <?php
 ob_start();
 ?>
+<div class="dash-layout-tools">
+    <p class="text-sm text-muted"><?= __('dashboard_layout_hint') ?></p>
+    <button type="button" class="btn btn--ghost btn--sm" data-dash-reset><?= __('dashboard_layout_reset') ?></button>
+</div>
 <form method="POST" action="<?= route_url('employee.dashboard.widgets') ?>">
     <?= csrf_field() ?>
     <div class="dash-widget-list">
@@ -121,6 +127,8 @@ echo Card::make()
     <?php endforeach; ?>
 </div>
 
+<?php $_dashBlocks = []; ?>
+<?php ob_start(); ?>
 <?php if (widget_on('monthly_stats', $widgets) && $stats !== null): ?>
 <?php $cur = $stats['currency'] ?? 'JPY'; $curStyle = $stats['currency_symbol_style'] ?? 'kanji'; ?>
 <?php
@@ -208,7 +216,9 @@ echo Card::make()
     ->render();
 ?>
 <?php endif; ?>
+<?php $_dashBlocks['monthly_stats'] = ob_get_clean(); ?>
 
+<?php ob_start(); ?>
 <?php if (widget_on('shifts_today', $widgets)): ?>
 <?php
 ob_start();
@@ -234,7 +244,9 @@ echo Card::make()
     ->render();
 ?>
 <?php endif; ?>
+<?php $_dashBlocks['shifts_today'] = ob_get_clean(); ?>
 
+<?php ob_start(); ?>
 <?php if (widget_on('upcoming', $widgets)): ?>
 <?php
 ob_start();
@@ -259,9 +271,16 @@ echo Card::make()
     ->render();
 ?>
 <?php endif; ?>
+<?php $_dashBlocks['upcoming'] = ob_get_clean(); ?>
 
-<?php foreach ($bundle_widgets as $_bundleWidget): ?>
-<?= $_bundleWidget['html'] ?>
-<?php endforeach; ?>
+<?php
+foreach ($bundle_widgets as $_bundleWidget) {
+    $_dashBlocks[$_bundleWidget['key']] = $_bundleWidget['html'];
+}
+$_dashLabels  = $widgetLabels;
+$_dashSaveUrl = route_url('employee.dashboard.layout');
+include __DIR__ . '/../_partials/_dashboard-grid.php';
+unset($_bundleWidget, $_dashBlocks, $_dashLabels, $_dashSaveUrl);
+?>
 
 <script src="<?= $BASE_URL ?>/assets/js/modules/dashboard.js"></script>

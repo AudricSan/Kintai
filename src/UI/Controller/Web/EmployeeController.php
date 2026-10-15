@@ -6,6 +6,7 @@ namespace kintai\UI\Controller\Web;
 
 use kintai\Contract\Extension\DashboardWidget;
 use kintai\Core\Extension\DashboardStats;
+use kintai\Core\Extension\DashboardLayout;
 use kintai\Core\Extension\DashboardWidgets;
 use kintai\Core\Repositories\AvailabilityRepositoryInterface;
 use kintai\Core\Repositories\IcalTokenRepositoryInterface;
@@ -130,6 +131,7 @@ final class EmployeeController
             'enabled_widgets'  => $enabledWidgets,
             'enabled_widgets_all' => $enabledAll,
             'all_widgets'      => $widgetKeys,
+            'widget_layout'    => DashboardLayout::resolve($widgetKeys, $this->dashboardPrefs->getLayout($userId, 'employee')),
             'bundle_widgets'   => $bundleWidgets,
             'bundle_stats'     => $bundleStats,
             'bundle_widget_meta' => $dashWidgets->meta(DashboardWidget::EMPLOYEE, self::EMPLOYEE_WIDGETS),

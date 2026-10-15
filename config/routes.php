@@ -8,6 +8,7 @@ use kintai\UI\Controller\Web\PasswordResetController;
 use kintai\UI\Controller\Web\NotificationController;
 use kintai\UI\Controller\Web\CronController;
 use kintai\UI\Controller\Web\EmployeeController;
+use kintai\UI\Controller\Web\DashboardLayoutController;
 use kintai\UI\Controller\Web\HomeController;
 use kintai\UI\Controller\Web\IcalController;
 use kintai\UI\Controller\Web\DocsController;
@@ -140,6 +141,7 @@ $router->group('/employee', function ($r) {
     // Dashboard
     $r->get('',             [EmployeeController::class, 'dashboard'],    name: 'employee.dashboard');
     $r->post('/dashboard/widgets', [EmployeeController::class, 'saveDashboardWidgets'], name: 'employee.dashboard.widgets');
+    $r->post('/dashboard/layout',  [DashboardLayoutController::class, 'saveEmployee'],  name: 'employee.dashboard.layout');
 
     // Shifts
     $r->get('/shifts',          [EmployeeController::class, 'shifts'],         name: 'employee.shifts');
@@ -175,6 +177,7 @@ $router->get('/lang/{locale}', [AuthController::class, 'switchLanguage'], name: 
 // --- Accueil / Dashboard ---
 $router->get('/', [HomeController::class, 'index'], middleware: [AuthMiddleware::class, PermissionMiddleware::class], name: 'home', permission: 'public');
 $router->post('/admin/dashboard/widgets', [HomeController::class, 'saveDashboardWidgets'], middleware: [AuthMiddleware::class, PermissionMiddleware::class], name: 'admin.dashboard.widgets', permission: 'public');
+$router->post('/admin/dashboard/layout', [DashboardLayoutController::class, 'saveManager'], middleware: [AuthMiddleware::class, PermissionMiddleware::class], name: 'admin.dashboard.layout', permission: 'public');
 
 // =============================================================================
 // Routes administration (web)
