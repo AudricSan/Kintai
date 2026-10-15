@@ -22,6 +22,13 @@ return new class($this->capsule) extends Migration {
             return;
         }
 
+        // MySQL se sert de l'index composite pour la clé étrangère store_id et refuse de le supprimer (erreur 1553) :
+        // un index simple sur store_id doit d'abord prendre le relais. SQLite n'en a pas besoin.
+        if ($this->capsule->getConnection()->getDriverName() === 'mysql') {
+            $this->schema()->table('employee_feedbacks', function (Blueprint $table) {
+                $table->index('store_id');
+            });
+        }
         $this->schema()->table('employee_feedbacks', function (Blueprint $table) {
             $table->dropIndex(['store_id', 'feedback_date']);
             $table->dropForeign(['user_id']);
