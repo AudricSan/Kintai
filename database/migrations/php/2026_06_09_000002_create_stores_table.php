@@ -27,13 +27,13 @@ return new class($this->capsule) extends Migration {
             $table->string('address_country')->nullable();
             $table->string('phone')->nullable();
             $table->string('email')->nullable();
-            $table->text('break_settings')->default('{"min_shift_hours": 6, "break_minutes": 60}');
-            $table->text('opening_hours')->default('{}');
+            $table->text('break_settings')->default($this->textDefault('{"min_shift_hours": 6, "break_minutes": 60}'));
+            $table->text('opening_hours')->default($this->textDefault('{}'));
             $table->integer('is_active')->default(1);
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->nullable();
             $table->timestamp('deleted_at')->nullable();
-            $table->text('excel_import_settings')->default('{"col_start":4,"col_end":52,"base_hour":6,"minutes_per_col":30,"block_size":9,"shift_rows":7,"date_row_offsets":[2,0,1,3],"sheet_filter_pattern":"^\\\\d{4}$"}');
+            $table->text('excel_import_settings')->default($this->textDefault('{"col_start":4,"col_end":52,"base_hour":6,"minutes_per_col":30,"block_size":9,"shift_rows":7,"date_row_offsets":[2,0,1,3],"sheet_filter_pattern":"^\\\\d{4}$"}'));
             $table->text('deduction_settings')->nullable();
             $table->integer('low_staff_hour_start')->default(-1);
             $table->integer('low_staff_hour_end')->default(-1);

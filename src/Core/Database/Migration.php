@@ -33,6 +33,21 @@ abstract class Migration
         return false;
     }
 
+    /**
+     * Valeur par défaut d'une colonne TEXT valable sur les deux pilotes. MySQL refuse un littéral sur TEXT
+     * (« BLOB, TEXT, GEOMETRY or JSON column can't have a default value ») : il faut une expression « ('…') »,
+     * échappée par le pilote (un antislash est un caractère d'échappement dans un littéral MySQL). SQLite garde le
+     * littéral, comme avant.
+     */
+    protected function textDefault(string $value): mixed
+    {
+        $connection = $this->capsule->getConnection();
+        if ($connection->getDriverName() !== 'mysql') {
+            return $value;
+        }
+        return new \Illuminate\Database\Query\Expression('(' . $connection->getPdo()->quote($value) . ')');
+    }
+
     protected function schema()
     {
         return $this->capsule->getConnection()->getSchemaBuilder();
