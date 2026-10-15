@@ -62,4 +62,18 @@ final class DashboardLayoutTest extends TestCase
         $this->assertSame(['old_widget', 'shifts_today', 'kpi_counters', 'dashboard_alerts', 'pending_timeoff'], $updated['order']);
         $this->assertSame(['old_widget' => 'half', 'shifts_today' => 'half'], $updated['widths']);
     }
+
+    public function testMoveToEndPutsTheAddedWidgetLastAndKeepsTheOthers(): void
+    {
+        $previous = ['order' => ['shifts_today', 'old_widget', 'kpi_counters'], 'widths' => ['shifts_today' => 'half', 'kpi_counters' => 'half']];
+
+        $this->assertSame(
+            ['order' => ['shifts_today', 'old_widget', 'kpi_counters', 'pending_timeoff', 'dashboard_alerts'], 'widths' => $previous['widths']],
+            DashboardLayout::moveToEnd(self::KEYS, $previous, 'dashboard_alerts'),
+        );
+        $this->assertSame(
+            ['kpi_counters', 'shifts_today', 'pending_timeoff', 'dashboard_alerts'],
+            DashboardLayout::moveToEnd(self::KEYS, null, 'dashboard_alerts')['order'],
+        );
+    }
 }

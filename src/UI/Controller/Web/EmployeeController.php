@@ -64,20 +64,7 @@ final class EmployeeController
         $userId = (int) ($user['id'] ?? 0);
         $today  = date('Y-m-d');
 
-        $myShifts  = $this->shifts->findByUser($userId);
-
-        $shiftsToday = array_values(array_filter(
-            $myShifts,
-            fn($s) => ($s['shift_date'] ?? '') === $today
-        ));
-
-        $upcomingShifts = array_values(array_filter(
-            $myShifts,
-            fn($s) => ($s['shift_date'] ?? '') > $today
-        ));
-        usort($upcomingShifts, fn($a, $b) => strcmp($a['shift_date'] ?? '', $b['shift_date'] ?? ''));
-        $upcomingShifts = array_slice($upcomingShifts, 0, 5);
-
+        [$shiftsToday, $upcomingShifts] = self::personalShifts($this->shifts->findByUser($userId), $today);
 
         $storesMap   = [];
         foreach ($this->stores->findAllWithDeleted() as $s) {
@@ -136,6 +123,21 @@ final class EmployeeController
             'bundle_stats'     => $bundleStats,
             'bundle_widget_meta' => $dashWidgets->meta(DashboardWidget::EMPLOYEE, self::EMPLOYEE_WIDGETS),
         ], 'layout.app'));
+    }
+
+    /**
+     * Shifts d'un utilisateur pour ses widgets personnels (« Mes shifts du jour », « Mes prochains shifts ») : ceux du
+     * jour, et les 5 suivants par date. Partagé avec le tableau de bord gérant (widgets « emp_ »).
+     *
+     * @param list<array<string, mixed>> $myShifts
+     * @return array{0: list<array<string, mixed>>, 1: list<array<string, mixed>>}
+     */
+    public static function personalShifts(array $myShifts, string $today): array
+    {
+        $shiftsToday = array_values(array_filter($myShifts, fn($s) => ($s['shift_date'] ?? '') === $today));
+        $upcoming = array_values(array_filter($myShifts, fn($s) => ($s['shift_date'] ?? '') > $today));
+        usort($upcoming, fn($a, $b) => strcmp($a['shift_date'] ?? '', $b['shift_date'] ?? ''));
+        return [$shiftsToday, array_slice($upcoming, 0, 5)];
     }
 
     // -------------------------------------------------------------------------
@@ -548,24 +550,6 @@ final class EmployeeController
         $this->auditLogger->logUpdate($request, 'availability.updated', 'availability', null, $oldAvailabilities, $newAvailabilities, ['store_id' => $storeId], $storeId);
 
         return Response::redirect($this->base() . '/profile?tab=availability&store_id=' . $storeId . '&success=saved');
-    }
-
-    public function saveDashboardWidgets(Request $request): Response
-    {
-        $user    = $request->getAttribute('auth_user');
-        $userId  = (int) ($user['id'] ?? 0);
-        $body    = $request->allPost();
-        $checked = $body['widgets'] ?? [];
-        $oldWidgets = $this->dashboardPrefs->getEnabledWidgets($userId, 'employee');
-        // Widgets d'un bundle désactivé en ce moment : non proposés, mais conservés pour sa réactivation.
-        $widgets = DashboardWidgets::mergePreferences(
-            DashboardWidgets::current()->keys(DashboardWidget::EMPLOYEE, self::EMPLOYEE_WIDGETS),
-            array_map('strval', array_keys((array) $checked)),
-            $oldWidgets,
-        );
-        $this->dashboardPrefs->saveWidgets($userId, $widgets, 'employee');
-        $this->auditLogger->logUpdate($request, 'dashboard_prefs.updated', 'user_dashboard_prefs', $userId, $oldWidgets, $widgets, []);
-        return Response::redirect($this->base() . '/employee?success=prefs');
     }
 
     // Bourse aux shifts : bundle distribué hors monorepo (kintai-bundle-shift-claim), voir docs/architecture.md
