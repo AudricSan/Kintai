@@ -56,11 +56,29 @@ final class PhotoPermissionsBackfillTest extends TestCase
     private function createCustomRole(Capsule $capsule, string $slug): int
     {
         $conn = $capsule->getConnection();
+        // Instance existante : au moins un compte (sur une installation neuve, le rattrapage ne fait rien).
+        if ($conn->table('users')->count() === 0) {
+            $conn->table('users')->insert(['email' => 'owner@kintai.test', 'password_hash' => 'x', 'first_name' => 'O', 'last_name' => 'W', 'display_name' => 'O W']);
+        }
         $conn->table('roles')->insert([
             'name' => $slug, 'slug' => $slug, 'is_system' => 0,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
         return (int) $conn->table('roles')->where('slug', $slug)->value('id');
+    }
+
+    /** Installation neuve (aucun compte au moment des migrations) : rien n'est accordé, les droits viennent à l'installation du bundle. */
+    public function testDoesNothingOnAFreshInstall(): void
+    {
+        $capsule = $this->migratedCapsule();
+        $conn = $capsule->getConnection();
+        $conn->table('roles')->insert(['name' => 'fresh', 'slug' => 'fresh', 'is_system' => 0, 'created_at' => date('Y-m-d H:i:s')]);
+        $roleId = (int) $conn->table('roles')->where('slug', 'fresh')->value('id');
+        $conn->table('role_permissions')->insert(['role_id' => $roleId, 'permission_key' => 'documents.view']);
+
+        $this->reRunBackfillMigration($capsule);
+
+        $this->assertSame(0, $conn->table('role_permissions')->where('permission_key', 'like', 'photos.%')->count());
     }
 
     public function testMirrorsEachDocumentsActionOntoPhotos(): void

@@ -209,6 +209,7 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(UpdateService::class),
             $c->make(InstalledBundleRepositoryInterface::class),
             migrationRunner: $c->make(BundleMigrationRunner::class),
+            permissionGranter: $c->make(BundleInstaller\BundlePermissionGranter::class),
         ));
 
         // Binding explicite requis : le constructeur a un paramètre ?\Closure
