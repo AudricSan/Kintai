@@ -620,3 +620,43 @@ if (!function_exists('safe_color')) {
         return \kintai\Core\Validation\ColorRule::safe($value, $fallback);
     }
 }
+
+if (!function_exists('month_label')) {
+    /**
+     * Mois et année traduits (« Octobre 2026 », « October 2026 », « 2026年10月 ») pour une date « Y-m » ou « Y-m-d ».
+     * Remplace DateTime::format('F Y'), toujours en anglais. Les noms de mois sont des clés du Core (January…December) :
+     * ils ne venaient jusqu'ici que du bundle salary-report, et s'affichaient en anglais sans lui.
+     */
+    function month_label(string $date): string
+    {
+        $ts = strtotime(strlen($date) === 7 ? $date . '-01' : $date);
+        if ($ts === false) {
+            return $date;
+        }
+        $names = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October',
+            'November', 'December'];
+        $month = __($names[(int) date('n', $ts) - 1]);
+        $label = __('month_year', ['month' => $month, 'year' => date('Y', $ts)]);
+        // Traductions absentes (ligne de commande, tests) : __() rend la clé telle quelle.
+        return $label === 'month_year' ? $month . ' ' . date('Y', $ts) : $label;
+    }
+}
+
+if (!function_exists('date_label')) {
+    /**
+     * Date complète traduite (« Jeudi 15 Octobre 2026 », « Thursday 15 October 2026 », « 2026年10月15日（木曜日） »).
+     * Remplace DateTime::format('l d F Y'), toujours en anglais.
+     */
+    function date_label(string $date): string
+    {
+        $ts = strtotime($date);
+        if ($ts === false) {
+            return $date;
+        }
+        $weekday = __(strtolower(date('l', $ts)));
+        $month   = month_label(date('Y-m', $ts));
+        $vars    = ['weekday' => $weekday, 'day' => date('j', $ts), 'month_year' => $month];
+        $label   = __('date_long', $vars);
+        return $label === 'date_long' ? $weekday . ' ' . date('j', $ts) . ' ' . $month : $label;
+    }
+}

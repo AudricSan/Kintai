@@ -179,7 +179,7 @@ $reportUrl = $BASE_URL . '/admin/stores/' . store_segment((int) $store['id']) . 
     $monthLabels = [];
     foreach (array_keys($monthlyHours) as $ym) {
         $dt = \DateTime::createFromFormat('Y-m', $ym);
-        $monthLabels[$dt ? $dt->format('M Y') : $ym] = round($monthlyHours[$ym], 1);
+        $monthLabels[$dt ? month_label($ym) : $ym] = round($monthlyHours[$ym], 1);
     }
   ?>
   <?= estatBar($monthLabels, 'var(--color-primary)') ?>

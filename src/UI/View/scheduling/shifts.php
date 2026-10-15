@@ -64,7 +64,7 @@ if ($_canManage) {
 
     try {
         $monthDt    = new \DateTime($filter_month . '-01');
-        $monthLabel = $monthDt->format('F Y');
+        $monthLabel = month_label($monthDt->format('Y-m'));
     } catch (\Exception) {
         $monthLabel = $filter_month;
     }
@@ -325,7 +325,7 @@ if ($_canManage) {
                                 <?php
                                 try {
                                     $d = new \DateTime($shiftDate);
-                                    echo htmlspecialchars($d->format('l d F Y'));
+                                    echo htmlspecialchars(date_label($d->format('Y-m-d')));
                                 } catch (\Exception) {
                                     echo htmlspecialchars($shiftDate);
                                 }
