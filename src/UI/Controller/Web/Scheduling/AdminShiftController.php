@@ -858,6 +858,35 @@ final class AdminShiftController
         return Response::redirect($this->base() . '/admin/shifts?success=updated');
     }
 
+    /**
+     * Prévient l'employé qu'un de ses shifts a été supprimé (suppression directe ou résolution d'un conflit). Le shift
+     * est déjà supprimé et audité à ce stade : un échec de notification ne doit pas transformer une action réussie en
+     * 500 générique côté utilisateur.
+     */
+    private function notifyShiftDeleted(array $shift): void
+    {
+        if (empty($shift['user_id'])) {
+            return;
+        }
+        try {
+            $this->notifs->notify(
+                (int) $shift['user_id'],
+                'shift_deleted',
+                'notif_shift_deleted_body',
+                $this->shiftNotificationReplace(
+                    $shift['shift_date'] ?? '',
+                    $shift['start_time'] ?? '',
+                    $shift['end_time'] ?? '',
+                    (int) ($shift['store_id'] ?? 0)
+                ),
+                (int) ($shift['id'] ?? 0),
+                $this->shiftNotificationLink($shift['shift_date'] ?? '')
+            );
+        } catch (\Throwable $e) {
+            Log::warning('shift_notify_failed', ['shift_id' => $shift['id'] ?? null, 'user_id' => $shift['user_id'], 'error' => $e->getMessage()]);
+        }
+    }
+
     public function deleteShift(Request $request): Response
     {
         $id    = (int) $request->param('id');
@@ -870,26 +899,8 @@ final class AdminShiftController
             'shift_date' => $shift['shift_date'] ?? null,
         ], $shift ? (int) $shift['store_id'] : null);
 
-        // Le shift est déjà supprimé (et audité) à ce stade : un échec de notification
-        // ne doit pas transformer une action réussie en 500 générique côté utilisateur.
-        if ($shift !== null && !empty($shift['user_id'])) {
-            try {
-                $this->notifs->notify(
-                    (int) $shift['user_id'],
-                    'shift_deleted',
-                    'notif_shift_deleted_body',
-                    $this->shiftNotificationReplace(
-                        $shift['shift_date'] ?? '',
-                        $shift['start_time'] ?? '',
-                        $shift['end_time'] ?? '',
-                        (int) ($shift['store_id'] ?? 0)
-                    ),
-                    $id,
-                    $this->shiftNotificationLink($shift['shift_date'] ?? '')
-                );
-            } catch (\Throwable $e) {
-                Log::warning('shift_notify_failed', ['shift_id' => $id, 'user_id' => $shift['user_id'], 'error' => $e->getMessage()]);
-            }
+        if ($shift !== null) {
+            $this->notifyShiftDeleted($shift);
         }
 
         $redirectTo = safe_redirect_path((string) $request->post('redirect_to', ''), '');
@@ -1191,6 +1202,7 @@ final class AdminShiftController
                 }
                 $this->shifts->delete($idDelete);
                 $this->auditLogger->logUpdate($request, 'shift.conflict_resolved', 'shift', $idKeep, $shiftDelete, $shiftKeep, ['kept_id' => $idKeep, 'deleted_id' => $idDelete], (int) $shiftKeep['store_id']);
+                $this->notifyShiftDeleted($shiftDelete);
             }
 
             $qs = http_build_query(array_filter([
@@ -1272,6 +1284,9 @@ final class AdminShiftController
             'month' => $month,
             'store_id' => $storeId,
         ], $storeId ?: null);
+        foreach ($deletedShifts as $shift) {
+            $this->notifyShiftDeleted($shift);
+        }
 
         $qs = http_build_query(array_filter([
             'month'    => $month,
