@@ -68,6 +68,21 @@ $widgetLabels = [
     'shifts_today'         => __('widget_shifts_today'),
 ] + $bundle_widget_meta['labels'];
 
+// Widgets employé ajoutés par le gérant (HomeController::EMPLOYEE_WIDGET_PREFIX) : les siens, signalés « personnel ».
+$employee_widgets ??= ['enabled' => [], 'shifts_today' => [], 'upcoming' => [], 'stores_map' => [], 'bundle' => []];
+$_empPrefix = \kintai\UI\Controller\Web\HomeController::EMPLOYEE_WIDGET_PREFIX;
+$widgetLabels += [
+    $_empPrefix . 'shifts_today'  => __('my_shifts_today'),
+    $_empPrefix . 'upcoming'      => __('my_upcoming_shifts'),
+    $_empPrefix . 'monthly_stats' => __('monthly_stats'),
+];
+foreach ($widgetLabels as $_wk => $_wl) {
+    if (str_starts_with((string) $_wk, $_empPrefix)) {
+        $widgetLabels[$_wk] = __('dashboard_widget_personal', ['label' => $_wl]);
+    }
+}
+unset($_wk, $_wl);
+
 // Données de graphiques accumulées par les différents widgets, émises une seule fois
 // (un seul <script id="kintai-stats-data">) pour éviter une collision d'ID si
 // store_stats_summary et financial_overview sont actifs en même temps.
@@ -89,25 +104,20 @@ $_dashChartData = [];
         <button type="button" class="btn btn--ghost btn--sm" data-on-click="adminDashCustomize"><?= __('close') ?></button>
     </div>
     <div class="card-body">
+        <p class="text-sm text-muted"><?= __('dashboard_layout_hint') ?></p>
         <div class="dash-layout-tools">
-            <p class="text-sm text-muted"><?= __('dashboard_layout_hint') ?></p>
+            <?php
+            $_dashHidden = [];
+            foreach ($all_widgets as $wk) {
+                if (!admin_widget_on($wk, $enabled_widgets_all)) {
+                    $_dashHidden[$wk] = $widgetLabels[$wk] ?? $wk;
+                }
+            }
+            include __DIR__ . '/../_partials/_dashboard-add-widget.php';
+            unset($_dashHidden);
+            ?>
             <button type="button" class="btn btn--ghost btn--sm" data-dash-reset><?= __('dashboard_layout_reset') ?></button>
         </div>
-        <form method="POST" action="<?= route_url('admin.dashboard.widgets') ?>">
-            <?= csrf_field() ?>
-            <div class="dash-widget-list">
-                <?php foreach ($all_widgets as $wk): ?>
-                <label class="dash-widget-item">
-                    <input type="checkbox" name="widgets[<?= htmlspecialchars($wk) ?>]" value="1"
-                           <?= admin_widget_on($wk, $enabled_widgets_all) ? 'checked' : '' ?>>
-                    <span><?= htmlspecialchars($widgetLabels[$wk] ?? $wk) ?></span>
-                </label>
-                <?php endforeach; ?>
-            </div>
-            <div class="form-actions mt-sm">
-                <button type="submit" class="btn btn--primary btn--sm"><?= __('save') ?></button>
-            </div>
-        </form>
     </div>
 </div>
 
@@ -568,11 +578,32 @@ $hasMultipleStores = count($shiftsByStore) > 1;
 foreach ($bundle_widgets as $_bundleWidget) {
     $_dashBlocks[$_bundleWidget['key']] = $_bundleWidget['html'];
 }
+
+// Widgets employé du gérant : ceux du Core (même rendu que sur le tableau de bord employé), puis ceux des bundles.
+$_empWidgets     = $employee_widgets['enabled'];
+$_empStats       = $employee_month_stats ?? null;
+$_empShiftsToday = $employee_widgets['shifts_today'];
+$_empUpcoming    = $employee_widgets['upcoming'];
+$_empStoresMap   = $employee_widgets['stores_map'];
+include __DIR__ . '/../_partials/_employee-widgets.php';
+$_empShown = false;
+foreach ($_empBlocks as $_ek => $_eh) {
+    $_dashBlocks[$_empPrefix . $_ek] = $_eh;
+    $_empShown = $_empShown || trim($_eh) !== '';
+}
+foreach ($employee_widgets['bundle'] as $_bundleWidget) {
+    $_dashBlocks[$_bundleWidget['key']] = $_bundleWidget['html'];
+}
+unset($_empWidgets, $_empStats, $_empShiftsToday, $_empUpcoming, $_empStoresMap, $_empBlocks, $_ek, $_eh);
 $_dashLabels  = $widgetLabels;
 $_dashSaveUrl = route_url('admin.dashboard.layout');
+$_dashWidgetsUrl = route_url('admin.dashboard.widgets');
 include __DIR__ . '/../_partials/_dashboard-grid.php';
-unset($_bundleWidget, $_dashBlocks, $_dashLabels, $_dashSaveUrl);
+unset($_bundleWidget, $_dashBlocks, $_dashLabels, $_dashSaveUrl, $_dashWidgetsUrl);
 ?>
+<?php if ($_empShown): // Navigation de mois et détail des shifts de « Mes stats du mois ». ?>
+<script src="<?= $BASE_URL ?>/assets/js/modules/dashboard.js"></script>
+<?php endif; ?>
 
 <?php if ($_dashChartData !== []): ?>
 <script type="application/json" id="kintai-stats-data"><?= json_encode($_dashChartData, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?></script>

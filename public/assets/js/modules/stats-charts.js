@@ -2,10 +2,23 @@
     'use strict';
 
     var cfg = {};
-    try {
-        var el = document.getElementById('kintai-stats-data');
-        if (el) cfg = JSON.parse(el.textContent);
-    } catch (e) { /* pas de données */ }
+    var profitCfg = {};
+
+    // Données des graphiques (JSON émis par la page) ; relues par refresh() quand un widget est ajouté sans
+    // rechargement (dashboard-layout.js).
+    function readData() {
+        cfg = {};
+        profitCfg = {};
+        try {
+            var el = document.getElementById('kintai-stats-data');
+            if (el) cfg = JSON.parse(el.textContent);
+        } catch (e) { /* pas de données */ }
+        try {
+            var profEl = document.getElementById('kintai-profit-data');
+            if (profEl) profitCfg = JSON.parse(profEl.textContent);
+        } catch (e) { /* pas de données rentabilité */ }
+    }
+    readData();
 
     function cssVar(name, fallback) {
         var v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -152,12 +165,6 @@
     }
 
     // Données de la page rentabilité (si présentes)
-    var profitCfg = {};
-    try {
-        var profEl = document.getElementById('kintai-profit-data');
-        if (profEl) profitCfg = JSON.parse(profEl.textContent);
-    } catch (e) { /* pas de données rentabilité */ }
-
     function init() {
         // ── Page statistiques ──────────────────────────────────────────────
         var weekCanvas = document.getElementById('chart-weekly-hours');
@@ -272,4 +279,6 @@
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(init, 120);
     });
+
+    window.kintaiStatsCharts = { refresh: function () { readData(); init(); } };
 })();

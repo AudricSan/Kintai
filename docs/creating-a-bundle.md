@@ -320,6 +320,11 @@ to render keeps its key so users keep their choices (`notebook` kept `team_notes
 `shift-swap` kept `pending_swaps` and `timeclock` kept `timeclocks_today` and `timeclock` when they were extracted).
 Require `"kintai_contract": "^1.4"`.
 
+A manager can also add their own `EMPLOYEE` widgets to the manager dashboard (off by default, offered in "Add a widget",
+never the other way round). There the widget is stored under the key `emp_{key}`, and its `data` receives the same
+context as on the employee dashboard: the manager's own `store_ids`, with `managed_store_ids` set to `null`. This is
+why widget keys are limited to 41 characters.
+
 ### View variables: `viewVariables()` (contract 1.5)
 
 ```php
