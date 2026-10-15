@@ -1,4 +1,5 @@
 {
+    "display_name_hint": "Facultatif : laissé vide, il devient « Nom Prénom ».",
     "language_follow_instance": "Langue de l'instance (:language)",
     "instance_locale": "Langue de l'instance",
     "instance_locale_hint": "Langue de tous les textes pour les utilisateurs qui n'ont pas choisi la leur dans leur profil. Enregistrée dans le fichier d'environnement (APP_LOCALE).",

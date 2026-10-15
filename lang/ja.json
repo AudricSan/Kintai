@@ -1,4 +1,5 @@
 {
+    "display_name_hint": "任意：空欄の場合は「姓 名」になります。",
     "language_follow_instance": "インスタンスの言語（:language）",
     "instance_locale": "インスタンスの言語",
     "instance_locale_hint": "プロフィールで言語を選んでいないユーザーに表示されるすべてのテキストの言語。環境ファイル（APP_LOCALE）に保存されます。",

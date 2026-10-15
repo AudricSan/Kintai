@@ -1,4 +1,5 @@
 {
+    "display_name_hint": "Optional: left empty, it becomes \"Last name First name\".",
     "language_follow_instance": "Instance language (:language)",
     "instance_locale": "Instance language",
     "instance_locale_hint": "Language of every text for users who have not chosen their own in their profile. Saved in the environment file (APP_LOCALE).",

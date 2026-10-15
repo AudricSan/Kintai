@@ -200,7 +200,7 @@ final class UserControllerTest extends TestCase
             'deleted_at' => '2020-01-01', 'last_login_at' => 'x', 'avatar_path' => '../../etc/passwd',
         ]));
 
-        $this->assertSame('Aiko Sato', $saved['display_name']);
+        $this->assertSame('Sato Aiko', $saved['display_name']);
         $this->assertSame('E-12', $saved['employee_code']);
         foreach (['deleted_at', 'last_login_at', 'avatar_path'] as $field) {
             $this->assertArrayNotHasKey($field, $saved);

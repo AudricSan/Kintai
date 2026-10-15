@@ -366,7 +366,7 @@ final class AdminUserControllerTest extends TestCase
         $this->controller->quickCreateUser($req);
 
         $this->assertNotNull($captured);
-        $this->assertSame('Jane Smith', $captured['display_name']);
+        $this->assertSame('Smith Jane', $captured['display_name']);
     }
 
     public function testQuickCreateUserGeneratesEmailWhenMissing(): void
@@ -726,6 +726,31 @@ final class AdminUserControllerTest extends TestCase
         $this->controller->storeUser($req);
 
         $this->assertNotNull($capturedStoreUser);
+    }
+
+    /** Nom affiché laissé vide (ou espaces) dans le formulaire : « Nom Prénom », jamais une chaîne vide. */
+    public function testStoreUserFillsAnEmptyDisplayName(): void
+    {
+        $req = $this->makePostRequest([
+            'display_name' => '   ',
+            'last_name'    => 'Doe',
+            'first_name'   => 'John',
+            'email'        => 'john.doe@example.com',
+            'furigana_last_name'  => 'ドウ',
+            'furigana_first_name' => 'ジョン',
+        ]);
+        $req->setAttribute('managed_store_ids', null);
+        $this->roleAssignments->method('findByUser')->willReturn([]);
+
+        $captured = null;
+        $this->users->method('save')->willReturnCallback(function (array $d) use (&$captured) {
+            $captured ??= $d;
+            return $d + ['id' => 22];
+        });
+
+        $this->controller->storeUser($req);
+
+        $this->assertSame('Doe John', $captured['display_name']);
     }
 
     // -------------------------------------------------------------------------
