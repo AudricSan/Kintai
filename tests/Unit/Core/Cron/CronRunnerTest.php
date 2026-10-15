@@ -6,6 +6,7 @@ namespace kintai\Tests\Unit\Core\Cron;
 
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use kintai\Core\Container;
 use kintai\Core\Cron\CronJobInterface;
 use kintai\Core\Cron\CronRunner;
@@ -20,18 +21,26 @@ use kintai\Core\Services\TranslationService;
 
 final class CronRunnerTest extends TestCase
 {
-    private CronTokenRepositoryInterface&MockObject $cronTokens;
-    private CronJobInterface&MockObject $sampleJob;
-    private CronRunner $runner;
+    private CronTokenRepositoryInterface&Stub $cronTokens;
+    private CronJobInterface&Stub $sampleJob;
+    private ?CronRunner $runner = null;
 
     protected function setUp(): void
     {
-        $this->cronTokens = $this->createMock(CronTokenRepositoryInterface::class);
-        $this->sampleJob  = $this->createMock(CronJobInterface::class);
+        $this->cronTokens = $this->createStub(CronTokenRepositoryInterface::class);
+        $this->sampleJob  = $this->createStub(CronJobInterface::class);
         $this->sampleJob->method('getName')->willReturn('test-job');
+    }
 
-        $this->runner = new CronRunner($this->cronTokens);
-        $this->runner->register($this->sampleJob);
+    /** Objet testé, construit à la première utilisation : un test peut d'abord remplacer un bouchon par un mock. */
+    private function runner(): CronRunner
+    {
+        if ($this->runner === null) {
+            $this->runner = new CronRunner($this->cronTokens);
+            $this->runner->register($this->sampleJob);
+        }
+
+        return $this->runner;
     }
 
     // -------------------------------------------------------------------------
@@ -40,23 +49,23 @@ final class CronRunnerTest extends TestCase
 
     public function testGetJobReturnsRegisteredJob(): void
     {
-        $this->assertSame($this->sampleJob, $this->runner->getJob('test-job'));
+        $this->assertSame($this->sampleJob, $this->runner()->getJob('test-job'));
     }
 
     public function testGetJobReturnsNullForUnknownJob(): void
     {
-        $this->assertNull($this->runner->getJob('nope'));
+        $this->assertNull($this->runner()->getJob('nope'));
     }
 
     public function testGetJobsReturnsAllRegisteredJobs(): void
     {
-        $this->assertCount(1, $this->runner->getJobs());
-        $this->assertArrayHasKey('test-job', $this->runner->getJobs());
+        $this->assertCount(1, $this->runner()->getJobs());
+        $this->assertArrayHasKey('test-job', $this->runner()->getJobs());
     }
 
     public function testGetJobMetaReturnsStructuredArray(): void
     {
-        $meta = $this->runner->getJobMeta();
+        $meta = $this->runner()->getJobMeta();
         $this->assertCount(1, $meta);
         $this->assertSame('test-job', $meta[0]['name']);
         $this->assertNotEmpty($meta[0]['label']);
@@ -89,6 +98,9 @@ final class CronRunnerTest extends TestCase
 
     public function testRunWithValidQueryTokenExecutesJob(): void
     {
+        $this->cronTokens = $this->createMock(CronTokenRepositoryInterface::class);
+        $this->sampleJob = $this->createMock(CronJobInterface::class);
+        $this->sampleJob->method('getName')->willReturn('test-job');
         $req = $this->requestWithQuery('valid-raw-token');
 
         $this->cronTokens->method('findByToken')
@@ -99,12 +111,13 @@ final class CronRunnerTest extends TestCase
         $this->cronTokens->expects($this->once())->method('touchLastUsed')->with(1);
         $this->sampleJob->expects($this->once())->method('run')->with($req)->willReturn(Response::json(['ok' => true]));
 
-        $response = $this->runner->run('test-job', $req);
+        $response = $this->runner()->run('test-job', $req);
         $this->assertSame(200, $response->status());
     }
 
     public function testRunWithValidBearerTokenExecutesJob(): void
     {
+        $this->cronTokens = $this->createMock(CronTokenRepositoryInterface::class);
         $req = $this->requestWithBearer('valid-bearer-token');
 
         $this->cronTokens->method('findByToken')
@@ -115,7 +128,7 @@ final class CronRunnerTest extends TestCase
         $this->cronTokens->expects($this->once())->method('touchLastUsed')->with(2);
         $this->sampleJob->method('run')->willReturn(Response::json(['ok' => true]));
 
-        $response = $this->runner->run('test-job', $req);
+        $response = $this->runner()->run('test-job', $req);
         $this->assertSame(200, $response->status());
     }
 
@@ -125,7 +138,7 @@ final class CronRunnerTest extends TestCase
 
         $this->expectException(ForbiddenException::class);
         $this->expectExceptionMessage('error_cron_token_missing');
-        $this->runner->run('test-job', $req);
+        $this->runner()->run('test-job', $req);
     }
 
     public function testRunThrowsForbiddenWhenTokenNotFound(): void
@@ -136,7 +149,7 @@ final class CronRunnerTest extends TestCase
 
         $this->expectException(ForbiddenException::class);
         $this->expectExceptionMessage('error_cron_token_invalid');
-        $this->runner->run('test-job', $req);
+        $this->runner()->run('test-job', $req);
     }
 
     public function testRunThrowsForbiddenWhenTokenExpired(): void
@@ -150,7 +163,7 @@ final class CronRunnerTest extends TestCase
 
         $this->expectException(ForbiddenException::class);
         $this->expectExceptionMessage('error_cron_token_expired');
-        $this->runner->run('test-job', $req);
+        $this->runner()->run('test-job', $req);
     }
 
     public function testRunThrowsNotFoundWhenJobUnknown(): void
@@ -159,7 +172,7 @@ final class CronRunnerTest extends TestCase
 
         $this->expectException(NotFoundException::class);
         $this->expectExceptionMessage('error_cron_unknown_job');
-        $this->runner->run('unknown-job', $req);
+        $this->runner()->run('unknown-job', $req);
     }
 
     // -------------------------------------------------------------------------
@@ -187,6 +200,9 @@ final class CronRunnerTest extends TestCase
 
     public function testRunLocalExecutesJobWithoutToken(): void
     {
+        $this->cronTokens = $this->createMock(CronTokenRepositoryInterface::class);
+        $this->sampleJob = $this->createMock(CronJobInterface::class);
+        $this->sampleJob->method('getName')->willReturn('test-job');
         $expected = Response::json(['ok' => true]);
         $this->sampleJob->expects($this->once())->method('run')->willReturn($expected);
         $this->cronTokens->expects($this->never())->method('findByToken');
@@ -194,13 +210,13 @@ final class CronRunnerTest extends TestCase
         $_SERVER = ['REQUEST_METHOD' => 'GET', 'REQUEST_URI' => '/cron/run/test-job', 'SCRIPT_NAME' => '/index.php'];
         $_GET = ['date' => '2026-10-13'];
 
-        $this->assertSame($expected, $this->runner->runLocal('test-job', new Request()));
+        $this->assertSame($expected, $this->runner()->runLocal('test-job', new Request()));
     }
 
     public function testRunLocalThrowsNotFoundWhenJobUnknown(): void
     {
         $this->expectException(NotFoundException::class);
-        $this->runner->runLocal('nope', $this->requestWithBearer('x'));
+        $this->runner()->runLocal('nope', $this->requestWithBearer('x'));
     }
 
     private function requestWithBearer(string $token): Request

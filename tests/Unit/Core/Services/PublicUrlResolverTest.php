@@ -18,7 +18,7 @@ final class PublicUrlResolverTest extends TestCase
 {
     private function resolver(string $setting = '', string $env = ''): PublicUrlResolver
     {
-        $repo = $this->createMock(AppSettingsRepositoryInterface::class);
+        $repo = $this->createStub(AppSettingsRepositoryInterface::class);
         $repo->method('all')->willReturn($setting === '' ? [] : [PublicUrlResolver::SETTING_KEY => $setting]);
 
         return new PublicUrlResolver(new AppSettingsService($repo), $env);

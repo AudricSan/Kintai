@@ -12,6 +12,7 @@ use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -24,9 +25,9 @@ use PHPUnit\Framework\TestCase;
  */
 final class AuthServiceConstantTimeLoginTest extends TestCase
 {
-    private UserRepositoryInterface&MockObject $users;
-    private StoreRepositoryInterface&MockObject $stores;
-    private StoreUserRepositoryInterface&MockObject $storeUsers;
+    private UserRepositoryInterface&Stub $users;
+    private StoreRepositoryInterface&Stub $stores;
+    private StoreUserRepositoryInterface&Stub $storeUsers;
     private AuthService $auth;
     /** Durée d'un password_verify réel au coût utilisé par l'application (12). */
     private float $verifyDuration;
@@ -38,16 +39,16 @@ final class AuthServiceConstantTimeLoginTest extends TestCase
         }
         $_SESSION = [];
 
-        $this->users = $this->createMock(UserRepositoryInterface::class);
-        $this->stores = $this->createMock(StoreRepositoryInterface::class);
-        $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
+        $this->users = $this->createStub(UserRepositoryInterface::class);
+        $this->stores = $this->createStub(StoreRepositoryInterface::class);
+        $this->storeUsers = $this->createStub(StoreUserRepositoryInterface::class);
 
         $this->auth = new AuthService(
             $this->users,
             $this->storeUsers,
             $this->stores,
-            $this->createMock(RoleRepositoryInterface::class),
-            $this->createMock(RoleAssignmentRepositoryInterface::class),
+            $this->createStub(RoleRepositoryInterface::class),
+            $this->createStub(RoleAssignmentRepositoryInterface::class),
             $this->createStub(RememberTokenRepositoryInterface::class),
         );
 

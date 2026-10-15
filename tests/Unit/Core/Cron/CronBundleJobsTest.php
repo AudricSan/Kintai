@@ -38,7 +38,7 @@ final class CronBundleJobsTest extends TestCase
 {
     private function runner(): CronRunner
     {
-        $runner = new CronRunner($this->createMock(CronTokenRepositoryInterface::class));
+        $runner = new CronRunner($this->createStub(CronTokenRepositoryInterface::class));
         foreach (['backup', 'log-purge', 'license-check'] as $core) {
             $runner->register(new NamedTestJob($core));
         }

@@ -11,6 +11,7 @@ use kintai\Core\Services\AuditLogger;
 use kintai\UI\Controller\Web\System\ActivityController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -23,7 +24,7 @@ use PHPUnit\Framework\TestCase;
 final class ActivityControllerTest extends TestCase
 {
     private LogRepositoryInterface&MockObject $logs;
-    private UserRepositoryInterface&MockObject $users;
+    private UserRepositoryInterface&Stub $users;
     private ActivityController $controller;
 
     protected function setUp(): void
@@ -33,7 +34,7 @@ final class ActivityControllerTest extends TestCase
         $this->writeViewFile($viewDir, 'layout.app', '<?= $content ?>');
 
         $this->logs = $this->createMock(LogRepositoryInterface::class);
-        $this->users = $this->createMock(UserRepositoryInterface::class);
+        $this->users = $this->createStub(UserRepositoryInterface::class);
         $this->users->method('findAll')->willReturn([]);
 
         $this->controller = new ActivityController(

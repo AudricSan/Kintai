@@ -17,15 +17,16 @@ use kintai\Core\Request;
 use kintai\UI\Controller\Web\NotificationController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 final class NotificationControllerTest extends TestCase
 {
-    private NotificationRepositoryInterface&MockObject $notifications;
-    private DevicePushTokenRepositoryInterface&MockObject $pushTokens;
-    private RoleAssignmentRepositoryInterface&MockObject $roleAssignments;
+    private NotificationRepositoryInterface&Stub $notifications;
+    private DevicePushTokenRepositoryInterface&Stub $pushTokens;
+    private RoleAssignmentRepositoryInterface&Stub $roleAssignments;
     private AuthService $auth;
-    private NotificationController $controller;
+    private ?NotificationController $controller = null;
 
     protected function setUp(): void
     {
@@ -37,27 +38,35 @@ final class NotificationControllerTest extends TestCase
         $users = $this->createMock(UserRepositoryInterface::class);
         $users->method('findById')->with(5)->willReturn(['id' => 5, 'email' => 'employee@example.com']);
 
-        $this->roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
+        $this->roleAssignments = $this->createStub(RoleAssignmentRepositoryInterface::class);
         $this->roleAssignments->method('findByUser')->willReturn([]);
 
         $this->auth = new AuthService(
             $users,
-            $this->createMock(StoreUserRepositoryInterface::class),
-            $this->createMock(StoreRepositoryInterface::class),
-            $this->createMock(RoleRepositoryInterface::class),
+            $this->createStub(StoreUserRepositoryInterface::class),
+            $this->createStub(StoreRepositoryInterface::class),
+            $this->createStub(RoleRepositoryInterface::class),
             $this->roleAssignments,
-            $this->createMock(RememberTokenRepositoryInterface::class),
+            $this->createStub(RememberTokenRepositoryInterface::class),
         );
 
-        $this->notifications = $this->createMock(NotificationRepositoryInterface::class);
-        $this->pushTokens    = $this->createMock(DevicePushTokenRepositoryInterface::class);
+        $this->notifications = $this->createStub(NotificationRepositoryInterface::class);
+        $this->pushTokens    = $this->createStub(DevicePushTokenRepositoryInterface::class);
+    }
 
-        $this->controller = new NotificationController(
-            $this->auth,
-            $this->notifications,
-            $this->pushTokens,
-            new ViewRenderer(sys_get_temp_dir()),
-        );
+    /** Objet testé, construit à la première utilisation : un test peut d'abord remplacer un bouchon par un mock. */
+    private function controller(): NotificationController
+    {
+        if ($this->controller === null) {
+            $this->controller = new NotificationController(
+                $this->auth,
+                $this->notifications,
+                $this->pushTokens,
+                new ViewRenderer(sys_get_temp_dir()),
+            );
+        }
+
+        return $this->controller;
     }
 
     protected function tearDown(): void
@@ -95,9 +104,10 @@ final class NotificationControllerTest extends TestCase
      */
     public function testDeleteAllCallsRepositoryForCurrentUserOnly(): void
     {
+        $this->notifications = $this->createMock(NotificationRepositoryInterface::class);
         $this->notifications->expects($this->once())->method('deleteAllForUser')->with(5);
 
-        $response = $this->controller->deleteAll($this->makeRequest());
+        $response = $this->controller()->deleteAll($this->makeRequest());
 
         $this->assertSame(302, $response->status());
     }
@@ -107,7 +117,7 @@ final class NotificationControllerTest extends TestCase
         $previous = $_SERVER['SCRIPT_NAME'] ?? null;
         $_SERVER['SCRIPT_NAME'] = '/Kintai/index.php';
         try {
-            $response = $this->controller->deleteAll($this->makeRequest());
+            $response = $this->controller()->deleteAll($this->makeRequest());
         } finally {
             $previous === null ? $_SERVER['SCRIPT_NAME'] = '/index.php' : $_SERVER['SCRIPT_NAME'] = $previous;
         }
@@ -118,9 +128,10 @@ final class NotificationControllerTest extends TestCase
 
     public function testDeleteAllReturnsJsonForAjaxRequests(): void
     {
+        $this->notifications = $this->createMock(NotificationRepositoryInterface::class);
         $this->notifications->expects($this->once())->method('deleteAllForUser')->with(5);
 
-        $response = $this->controller->deleteAll($this->makeRequest(ajax: true));
+        $response = $this->controller()->deleteAll($this->makeRequest(ajax: true));
 
         $this->assertSame(200, $response->status());
     }
@@ -131,30 +142,33 @@ final class NotificationControllerTest extends TestCase
 
     public function testPushSubscribeSavesTokenForCurrentUserAsWebPlatform(): void
     {
+        $this->pushTokens = $this->createMock(DevicePushTokenRepositoryInterface::class);
         $this->pushTokens->expects($this->once())->method('save')->with([
             'user_id'  => 5,
             'token'    => 'fcm-token-abc',
             'platform' => 'web',
         ]);
 
-        $response = $this->controller->pushSubscribe($this->makeJsonRequest(['token' => 'fcm-token-abc']));
+        $response = $this->controller()->pushSubscribe($this->makeJsonRequest(['token' => 'fcm-token-abc']));
 
         $this->assertSame(200, $response->status());
     }
 
     public function testPushSubscribeRejectsEmptyToken(): void
     {
+        $this->pushTokens = $this->createMock(DevicePushTokenRepositoryInterface::class);
         $this->pushTokens->expects($this->never())->method('save');
 
         $this->expectException(\kintai\Core\Exceptions\ValidationException::class);
-        $this->controller->pushSubscribe($this->makeJsonRequest(['token' => '']));
+        $this->controller()->pushSubscribe($this->makeJsonRequest(['token' => '']));
     }
 
     public function testPushUnsubscribeDeletesToken(): void
     {
+        $this->pushTokens = $this->createMock(DevicePushTokenRepositoryInterface::class);
         $this->pushTokens->expects($this->once())->method('deleteByToken')->with('fcm-token-abc', $this->callback(fn($uid) => is_int($uid) && $uid > 0));
 
-        $response = $this->controller->pushUnsubscribe($this->makeJsonRequest(['token' => 'fcm-token-abc']));
+        $response = $this->controller()->pushUnsubscribe($this->makeJsonRequest(['token' => 'fcm-token-abc']));
 
         $this->assertSame(200, $response->status());
     }
@@ -162,16 +176,18 @@ final class NotificationControllerTest extends TestCase
     /** Audit n°7 : la désinscription ne doit retirer que l'appareil de l'utilisateur connecté (id 5 ici). */
     public function testPushUnsubscribeIsScopedToTheLoggedInUser(): void
     {
+        $this->pushTokens = $this->createMock(DevicePushTokenRepositoryInterface::class);
         $this->pushTokens->expects($this->once())->method('deleteByToken')->with('fcm-token-abc', 5);
 
-        $this->controller->pushUnsubscribe($this->makeJsonRequest(['token' => 'fcm-token-abc']));
+        $this->controller()->pushUnsubscribe($this->makeJsonRequest(['token' => 'fcm-token-abc']));
     }
 
     public function testPushUnsubscribeIsNoopWithoutToken(): void
     {
+        $this->pushTokens = $this->createMock(DevicePushTokenRepositoryInterface::class);
         $this->pushTokens->expects($this->never())->method('deleteByToken');
 
-        $response = $this->controller->pushUnsubscribe($this->makeJsonRequest([]));
+        $response = $this->controller()->pushUnsubscribe($this->makeJsonRequest([]));
 
         $this->assertSame(200, $response->status());
     }
@@ -204,7 +220,7 @@ final class NotificationControllerTest extends TestCase
         $req = new \kintai\Core\Request();
         $req->setRouteParams(['id' => '3']);
 
-        $response = $this->controller->markRead($req);
+        $response = $this->controller()->markRead($req);
 
         $location = (string) ((fn() => $this->headers['Location'] ?? '')->call($response));
         $this->assertSame(302, $response->status());
@@ -226,12 +242,13 @@ final class NotificationControllerTest extends TestCase
 
     public function testOpenMarksReadAndRedirectsToStoredLink(): void
     {
-        $this->notifications->method('findById')->with(10)->willReturn([
+        $this->notifications = $this->createMock(NotificationRepositoryInterface::class);
+        $this->notifications->expects($this->atLeastOnce())->method('findById')->with(10)->willReturn([
             'id' => 10, 'user_id' => 5, 'link' => '/employee/shifts/day?start=2026-08-03',
         ]);
         $this->notifications->expects($this->once())->method('markRead')->with(10, 5);
 
-        $response = $this->controller->open($this->makeGetRequest(10));
+        $response = $this->controller()->open($this->makeGetRequest(10));
 
         $this->assertSame(302, $response->status());
         $headersRef = new \ReflectionProperty($response, 'headers');
@@ -241,10 +258,11 @@ final class NotificationControllerTest extends TestCase
 
     public function testOpenFallsBackToNotificationsListWhenNoLink(): void
     {
-        $this->notifications->method('findById')->with(10)->willReturn(['id' => 10, 'user_id' => 5, 'link' => null]);
+        $this->notifications = $this->createMock(NotificationRepositoryInterface::class);
+        $this->notifications->expects($this->atLeastOnce())->method('findById')->with(10)->willReturn(['id' => 10, 'user_id' => 5, 'link' => null]);
         $this->notifications->expects($this->once())->method('markRead')->with(10, 5);
 
-        $response = $this->controller->open($this->makeGetRequest(10));
+        $response = $this->controller()->open($this->makeGetRequest(10));
 
         $headersRef = new \ReflectionProperty($response, 'headers');
         $headersRef->setAccessible(true);
@@ -254,10 +272,11 @@ final class NotificationControllerTest extends TestCase
     /** Un lien stocké absolu/protocole-relatif (jamais généré par ce code, mais défensif) est ignoré. */
     public function testOpenIgnoresProtocolRelativeLink(): void
     {
-        $this->notifications->method('findById')->with(10)->willReturn(['id' => 10, 'user_id' => 5, 'link' => '//evil.example.com']);
+        $this->notifications = $this->createMock(NotificationRepositoryInterface::class);
+        $this->notifications->expects($this->atLeastOnce())->method('findById')->with(10)->willReturn(['id' => 10, 'user_id' => 5, 'link' => '//evil.example.com']);
         $this->notifications->method('markRead');
 
-        $response = $this->controller->open($this->makeGetRequest(10));
+        $response = $this->controller()->open($this->makeGetRequest(10));
 
         $headersRef = new \ReflectionProperty($response, 'headers');
         $headersRef->setAccessible(true);
@@ -266,18 +285,20 @@ final class NotificationControllerTest extends TestCase
 
     public function testOpenThrowsNotFoundForAnotherUsersNotification(): void
     {
-        $this->notifications->method('findById')->with(10)->willReturn(['id' => 10, 'user_id' => 999, 'link' => null]);
+        $this->notifications = $this->createMock(NotificationRepositoryInterface::class);
+        $this->notifications->expects($this->atLeastOnce())->method('findById')->with(10)->willReturn(['id' => 10, 'user_id' => 999, 'link' => null]);
         $this->notifications->expects($this->never())->method('markRead');
 
         $this->expectException(\kintai\Core\Exceptions\NotFoundException::class);
-        $this->controller->open($this->makeGetRequest(10));
+        $this->controller()->open($this->makeGetRequest(10));
     }
 
     public function testOpenThrowsNotFoundWhenNotificationDoesNotExist(): void
     {
-        $this->notifications->method('findById')->with(10)->willReturn(null);
+        $this->notifications = $this->createMock(NotificationRepositoryInterface::class);
+        $this->notifications->expects($this->atLeastOnce())->method('findById')->with(10)->willReturn(null);
 
         $this->expectException(\kintai\Core\Exceptions\NotFoundException::class);
-        $this->controller->open($this->makeGetRequest(10));
+        $this->controller()->open($this->makeGetRequest(10));
     }
 }

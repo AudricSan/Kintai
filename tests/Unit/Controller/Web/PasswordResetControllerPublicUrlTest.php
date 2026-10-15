@@ -15,6 +15,7 @@ use kintai\Core\Services\PublicUrlResolver;
 use kintai\UI\Controller\Web\PasswordResetController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -24,7 +25,7 @@ use PHPUnit\Framework\TestCase;
 final class PasswordResetControllerPublicUrlTest extends TestCase
 {
     private PasswordResetRepositoryInterface&MockObject $resets;
-    private UserRepositoryInterface&MockObject $users;
+    private UserRepositoryInterface&Stub $users;
     private string $viewDir;
 
     protected function setUp(): void
@@ -39,7 +40,7 @@ final class PasswordResetControllerPublicUrlTest extends TestCase
         }
 
         $this->resets = $this->createMock(PasswordResetRepositoryInterface::class);
-        $this->users  = $this->createMock(UserRepositoryInterface::class);
+        $this->users  = $this->createStub(UserRepositoryInterface::class);
         $this->users->method('findByEmail')->willReturn([
             'id' => 7, 'email' => 'user@test.com', 'display_name' => 'User', 'is_active' => 1, 'deleted_at' => null,
         ]);
@@ -53,7 +54,7 @@ final class PasswordResetControllerPublicUrlTest extends TestCase
 
     private function controller(string $setting, string $env = ''): PasswordResetController
     {
-        $repo = $this->createMock(AppSettingsRepositoryInterface::class);
+        $repo = $this->createStub(AppSettingsRepositoryInterface::class);
         $repo->method('all')->willReturn($setting === '' ? [] : [PublicUrlResolver::SETTING_KEY => $setting]);
 
         $service = new PasswordResetService(

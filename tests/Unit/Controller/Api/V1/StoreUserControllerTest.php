@@ -13,21 +13,22 @@ use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\Log;
 use kintai\UI\Controller\Api\V1\StoreUserController;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use kintai\Core\Exceptions\ForbiddenException;
 use PHPUnit\Framework\TestCase;
 
 final class StoreUserControllerTest extends TestCase
 {
     private StoreUserRepositoryInterface&MockObject $storeUsers;
-    private StoreRepositoryInterface&MockObject $stores;
-    private UserRepositoryInterface&MockObject $users;
+    private StoreRepositoryInterface&Stub $stores;
+    private UserRepositoryInterface&Stub $users;
     private StoreUserController $controller;
 
     protected function setUp(): void
     {
         $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
-        $this->stores     = $this->createMock(StoreRepositoryInterface::class);
-        $this->users      = $this->createMock(UserRepositoryInterface::class);
+        $this->stores     = $this->createStub(StoreRepositoryInterface::class);
+        $this->users      = $this->createStub(UserRepositoryInterface::class);
         $this->stores->method('findById')->willReturn(['id' => 3]);
         $this->controller = new StoreUserController($this->storeUsers, $this->stores, $this->users, new AuditLogger());
     }

@@ -24,7 +24,7 @@ final class LogContextSpoofingTest extends TestCase
     protected function setUp(): void
     {
         $this->server = $_SERVER;
-        $repo = $this->createMock(LogRepositoryInterface::class);
+        $repo = $this->createStub(LogRepositoryInterface::class);
         $repo->method('record')->willReturnCallback(function (...$args): void {
             $this->recorded = $args;
         });

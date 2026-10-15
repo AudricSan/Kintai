@@ -9,6 +9,7 @@ use kintai\Core\Repositories\InstalledBundleRepositoryInterface;
 use kintai\Core\Services\BundleInstaller\BundleInstallerService;
 use kintai\Core\Services\UpdateService;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 if (!defined('BASE_PATH')) {
@@ -28,7 +29,7 @@ final class BundleInstallerServicePinnedCommitTest extends TestCase
 
     private string $bundlesDir;
     private string $fakeCoreBasePath;
-    private InstalledBundleRepositoryInterface&MockObject $installedBundles;
+    private InstalledBundleRepositoryInterface&Stub $installedBundles;
 
     protected function setUp(): void
     {
@@ -39,7 +40,7 @@ final class BundleInstallerServicePinnedCommitTest extends TestCase
         mkdir($this->fakeCoreBasePath . '/config', 0777, true);
         file_put_contents($this->fakeCoreBasePath . '/config/app.php', "<?php\nreturn ['version' => '0.5.0'];\n");
 
-        $this->installedBundles = $this->createMock(InstalledBundleRepositoryInterface::class);
+        $this->installedBundles = $this->createStub(InstalledBundleRepositoryInterface::class);
     }
 
     /** Un zipball GitHub valide portant `$commit` dans son commentaire et son dossier racine. */
@@ -83,6 +84,7 @@ final class BundleInstallerServicePinnedCommitTest extends TestCase
 
     public function testInstallSucceedsWhenTheArchiveMatchesThePinnedCommit(): void
     {
+        $this->installedBundles = $this->createMock(InstalledBundleRepositoryInterface::class);
         $this->installedBundles->expects($this->once())->method('upsert');
 
         $result = $this->service($this->githubZip(self::PINNED))
@@ -94,6 +96,7 @@ final class BundleInstallerServicePinnedCommitTest extends TestCase
 
     public function testInstallIsRefusedWhenTheTagWasMovedToAnotherCommit(): void
     {
+        $this->installedBundles = $this->createMock(InstalledBundleRepositoryInterface::class);
         // GitHub sert l'archive du commit ACTUEL du tag ; le registry en a épinglé un autre.
         $this->installedBundles->expects($this->never())->method('upsert');
 
@@ -116,6 +119,7 @@ final class BundleInstallerServicePinnedCommitTest extends TestCase
 
     public function testInstallWithoutAPinStillWorksForRegistriesThatDoNotPinCommits(): void
     {
+        $this->installedBundles = $this->createMock(InstalledBundleRepositoryInterface::class);
         $this->installedBundles->expects($this->once())->method('upsert');
 
         $result = $this->service($this->githubZip(self::OTHER))
@@ -135,6 +139,7 @@ final class BundleInstallerServicePinnedCommitTest extends TestCase
 
     public function testAnArchiveWithNoReadableCommitIsRefusedWhenAPinExists(): void
     {
+        $this->installedBundles = $this->createMock(InstalledBundleRepositoryInterface::class);
         $this->installedBundles->expects($this->never())->method('upsert');
 
         // Archive sans commentaire et dont le dossier racine ne porte aucun sha.

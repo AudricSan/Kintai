@@ -48,13 +48,13 @@ final class AuthControllerShowProfilePasswordWarningTest extends TestCase
 
         $this->users = $this->createMock(UserRepositoryInterface::class);
 
-        $storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
+        $storeUsers = $this->createStub(StoreUserRepositoryInterface::class);
         $storeUsers->method('findByUser')->willReturn([]);
 
-        $roleAssignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
+        $roleAssignments = $this->createStub(RoleAssignmentRepositoryInterface::class);
         $roleAssignments->method('findByUser')->willReturn([]);
 
-        $navPrefs = $this->createMock(UserNavPrefsRepositoryInterface::class);
+        $navPrefs = $this->createStub(UserNavPrefsRepositoryInterface::class);
         $navPrefs->method('getHidden')->willReturn([]);
         $navPrefs->method('getSectionOrder')->willReturn([]);
         $navPrefs->method('getBottomNavItems')->willReturn([]);
@@ -62,8 +62,8 @@ final class AuthControllerShowProfilePasswordWarningTest extends TestCase
         $auth = new AuthService(
             $this->users,
             $storeUsers,
-            $this->createMock(StoreRepositoryInterface::class),
-            $this->createMock(RoleRepositoryInterface::class),
+            $this->createStub(StoreRepositoryInterface::class),
+            $this->createStub(RoleRepositoryInterface::class),
             $roleAssignments,
             $this->createStub(RememberTokenRepositoryInterface::class),
         );
@@ -73,12 +73,12 @@ final class AuthControllerShowProfilePasswordWarningTest extends TestCase
             $auth,
             new AuditLogger(),
             $this->users,
-            $this->createMock(StoreRepositoryInterface::class),
+            $this->createStub(StoreRepositoryInterface::class),
             $storeUsers,
-            $this->createMock(IcalTokenRepositoryInterface::class),
+            $this->createStub(IcalTokenRepositoryInterface::class),
             $navPrefs,
-            $this->createMock(AvailabilityRepositoryInterface::class),
-            $this->createMock(LanguageRepositoryInterface::class),
+            $this->createStub(AvailabilityRepositoryInterface::class),
+            $this->createStub(LanguageRepositoryInterface::class),
             new AvatarImageOptimizer(),
         );
     }

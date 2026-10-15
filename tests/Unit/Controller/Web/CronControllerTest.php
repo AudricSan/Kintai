@@ -12,6 +12,7 @@ use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\UI\Controller\Web\CronController;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -21,12 +22,20 @@ use PHPUnit\Framework\TestCase;
  */
 final class CronControllerTest extends TestCase
 {
-    private CronTokenRepositoryInterface&MockObject $cronTokens;
-    private CronController $controller;
+    private CronTokenRepositoryInterface&Stub $cronTokens;
+    private ?CronController $controller = null;
 
     protected function setUp(): void
     {
-        $this->cronTokens = $this->createMock(CronTokenRepositoryInterface::class);
+        $this->cronTokens = $this->createStub(CronTokenRepositoryInterface::class);
+    }
+
+    /** Contrôleur construit à la première utilisation : un test peut d'abord remplacer le bouchon des jetons par un mock. */
+    private function controller(): CronController
+    {
+        if ($this->controller !== null) {
+            return $this->controller;
+        }
         $runner = new CronRunner($this->cronTokens);
 
         $stubJob = new class implements CronJobInterface {
@@ -42,11 +51,12 @@ final class CronControllerTest extends TestCase
         };
         $runner->register($stubJob);
 
-        $this->controller = new CronController($runner);
+        return $this->controller = new CronController($runner);
     }
 
     public function testRunDispatchesToTheRegisteredJobWithAValidToken(): void
     {
+        $this->cronTokens = $this->createMock(CronTokenRepositoryInterface::class);
         $this->cronTokens->method('findByToken')->willReturn([
             'id' => 1, 'user_id' => 1, 'job_name' => 'stub-job', 'token' => 'hashed',
         ]);
@@ -56,7 +66,7 @@ final class CronControllerTest extends TestCase
         $req = new Request();
         $req->setRouteParams(['job' => 'stub-job']);
 
-        $response = $this->controller->run($req);
+        $response = $this->controller()->run($req);
 
         $this->assertSame(200, $response->status());
     }
@@ -68,7 +78,7 @@ final class CronControllerTest extends TestCase
         $_GET = [];
 
         $this->expectException(ForbiddenException::class);
-        $this->controller->run($req);
+        $this->controller()->run($req);
     }
 
     public function testRunRejectsTokenScopedToADifferentJob(): void
@@ -82,7 +92,7 @@ final class CronControllerTest extends TestCase
         $req->setRouteParams(['job' => 'stub-job']);
 
         $this->expectException(ForbiddenException::class);
-        $this->controller->run($req);
+        $this->controller()->run($req);
     }
 
     protected function tearDown(): void

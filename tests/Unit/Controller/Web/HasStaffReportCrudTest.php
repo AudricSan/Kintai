@@ -12,17 +12,18 @@ use kintai\Core\Request;
 use kintai\UI\Controller\Web\HasAdminAccess;
 use kintai\UI\Controller\Web\Staff\HasStaffReportCrud;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 final class HasStaffReportCrudTest extends TestCase
 {
-    private StoreRepositoryInterface&MockObject $stores;
-    private StoreUserRepositoryInterface&MockObject $storeUsers;
+    private StoreRepositoryInterface&Stub $stores;
+    private StoreUserRepositoryInterface&Stub $storeUsers;
 
     protected function setUp(): void
     {
-        $this->stores     = $this->createMock(StoreRepositoryInterface::class);
-        $this->storeUsers = $this->createMock(StoreUserRepositoryInterface::class);
+        $this->stores     = $this->createStub(StoreRepositoryInterface::class);
+        $this->storeUsers = $this->createStub(StoreUserRepositoryInterface::class);
     }
 
     /** Contrôleur minimal utilisant le trait ; $withStoreUsers=false simule une ancienne version de bundle. */

@@ -7,16 +7,17 @@ namespace kintai\Tests\Unit\Core\Validation;
 use kintai\Core\Repositories\LanguageRepositoryInterface;
 use kintai\Core\Validation\StoreValidator;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 final class StoreValidatorTest extends TestCase
 {
-    private LanguageRepositoryInterface&MockObject $languages;
+    private LanguageRepositoryInterface&Stub $languages;
     private StoreValidator $validator;
 
     protected function setUp(): void
     {
-        $this->languages = $this->createMock(LanguageRepositoryInterface::class);
+        $this->languages = $this->createStub(LanguageRepositoryInterface::class);
         $this->languages->method('findAllActive')->willReturn([['code' => 'en'], ['code' => 'fr'], ['code' => 'ja']]);
 
         $this->validator = new StoreValidator($this->languages);

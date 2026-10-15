@@ -12,25 +12,35 @@ use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\TranslationService;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 final class I18nMiddlewareTest extends TestCase
 {
-    private LanguageRepositoryInterface&MockObject $languages;
+    private LanguageRepositoryInterface&Stub $languages;
     private TranslationService $translationService;
-    private I18nMiddleware $middleware;
-    private UserRepositoryInterface&MockObject $users;
+    private ?I18nMiddleware $middleware = null;
+    private UserRepositoryInterface&Stub $users;
 
     protected function setUp(): void
     {
-        $this->languages = $this->createMock(LanguageRepositoryInterface::class);
+        $this->languages = $this->createStub(LanguageRepositoryInterface::class);
 
-        $translationRepo = $this->createMock(TranslationRepositoryInterface::class);
+        $translationRepo = $this->createStub(TranslationRepositoryInterface::class);
         $translationRepo->method('findByLocale')->willReturn([]);
 
         $this->translationService = new TranslationService($translationRepo, $this->languages);
-        $this->users = $this->createMock(UserRepositoryInterface::class);
-        $this->middleware = new I18nMiddleware($this->translationService, $this->languages, $this->users);
+        $this->users = $this->createStub(UserRepositoryInterface::class);
+    }
+
+    /** Objet testé, construit à la première utilisation : un test peut d'abord remplacer un bouchon par un mock. */
+    private function middleware(): I18nMiddleware
+    {
+        if ($this->middleware === null) {
+            $this->middleware = new I18nMiddleware($this->translationService, $this->languages, $this->users);
+        }
+
+        return $this->middleware;
     }
 
     protected function tearDown(): void
@@ -63,7 +73,7 @@ final class I18nMiddlewareTest extends TestCase
     {
         $this->languages->method('findAllActive')->willReturn([]);
 
-        $this->middleware->handle($this->makeRequest(), $this->noop());
+        $this->middleware()->handle($this->makeRequest(), $this->noop());
 
         $this->assertSame('en', $this->translationService->getLocale());
     }
@@ -73,7 +83,7 @@ final class I18nMiddlewareTest extends TestCase
         $this->languages->method('findAllActive')->willReturn([['code' => 'fr'], ['code' => 'en']]);
         $_SESSION['locale'] = 'fr';
 
-        $this->middleware->handle($this->makeRequest(), $this->noop());
+        $this->middleware()->handle($this->makeRequest(), $this->noop());
 
         $this->assertSame('fr', $this->translationService->getLocale());
     }
@@ -84,22 +94,23 @@ final class I18nMiddlewareTest extends TestCase
         $this->languages->method('findDefault')->willReturn(['code' => 'en']);
         $_SESSION['locale'] = 'fr'; // fr désactivée entre-temps par l'Owner
 
-        $this->middleware->handle($this->makeRequest(), $this->noop());
+        $this->middleware()->handle($this->makeRequest(), $this->noop());
 
         $this->assertSame('en', $this->translationService->getLocale());
     }
 
     public function testLoggedInUserGetsTheProfileLanguageBeforeSessionCookieAndBrowser(): void
     {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
         $this->languages->method('findAllActive')->willReturn([['code' => 'fr'], ['code' => 'ja'], ['code' => 'en']]);
-        $this->users->method('findById')->with(1)->willReturn(['id' => 1, 'language' => 'ja']);
+        $this->users->expects($this->atLeastOnce())->method('findById')->with(1)->willReturn(['id' => 1, 'language' => 'ja']);
 
         $req = $this->makeRequest(['HTTP_ACCEPT_LANGUAGE' => 'en-US']);
         $_SESSION['auth_user_id'] = 1;
         $_SESSION['locale'] = 'fr';
         $_COOKIE['kintai_locale'] = 'en';
 
-        $this->middleware->handle($req, $this->noop());
+        $this->middleware()->handle($req, $this->noop());
 
         $this->assertSame('ja', $this->translationService->getLocale());
     }
@@ -113,7 +124,7 @@ final class I18nMiddlewareTest extends TestCase
         $req = $this->makeRequest(['HTTP_ACCEPT_LANGUAGE' => 'en-US']);
         $_SESSION['auth_user_id'] = 1;
 
-        $this->middleware->handle($req, $this->noop());
+        $this->middleware()->handle($req, $this->noop());
 
         $this->assertSame('ja', $this->translationService->getLocale());
     }
@@ -125,7 +136,7 @@ final class I18nMiddlewareTest extends TestCase
         $req = $this->makeRequest(['HTTP_ACCEPT_LANGUAGE' => 'en-US']);
         $_COOKIE['kintai_locale'] = 'ja';
 
-        $this->middleware->handle($req, $this->noop());
+        $this->middleware()->handle($req, $this->noop());
 
         $this->assertSame('ja', $this->translationService->getLocale());
     }
@@ -136,7 +147,7 @@ final class I18nMiddlewareTest extends TestCase
 
         $req = $this->makeRequest(['HTTP_ACCEPT_LANGUAGE' => 'ja-JP,ja;q=0.9']);
 
-        $this->middleware->handle($req, $this->noop());
+        $this->middleware()->handle($req, $this->noop());
 
         $this->assertSame('ja', $this->translationService->getLocale());
     }
@@ -147,7 +158,7 @@ final class I18nMiddlewareTest extends TestCase
         $this->languages->method('findDefault')->willReturn(['code' => 'fr']);
         $_ENV['APP_LOCALE'] = 'en';
 
-        $this->middleware->handle($this->makeRequest(), $this->noop());
+        $this->middleware()->handle($this->makeRequest(), $this->noop());
 
         $this->assertSame('en', $this->translationService->getLocale());
     }
@@ -159,7 +170,7 @@ final class I18nMiddlewareTest extends TestCase
 
         $req = $this->makeRequest(['HTTP_ACCEPT_LANGUAGE' => 'de-DE,de;q=0.9']); // 'de' non actif
 
-        $this->middleware->handle($req, $this->noop());
+        $this->middleware()->handle($req, $this->noop());
 
         $this->assertSame('fr', $this->translationService->getLocale());
     }

@@ -31,9 +31,9 @@ final class ShiftServiceTest extends TestCase
     {
 
         $this->service = new ShiftService(
-            $this->createMock(ShiftRepositoryInterface::class),
-            $this->createMock(ShiftTypeRepositoryInterface::class),
-            $this->createMock(UserRepositoryInterface::class),
+            $this->createStub(ShiftRepositoryInterface::class),
+            $this->createStub(ShiftTypeRepositoryInterface::class),
+            $this->createStub(UserRepositoryInterface::class),
         );
     }
 
