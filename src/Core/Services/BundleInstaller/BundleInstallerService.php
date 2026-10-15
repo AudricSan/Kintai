@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\Core\Services\BundleInstaller;
 
+use kintai\Core\InstalledBundleAutoloader;
 use kintai\Core\BundleContract\BundleManifest;
 use kintai\Core\Database\BundleMigrationRunner;
 use kintai\Core\InstalledBundleManifestStore;
@@ -40,6 +41,8 @@ final class BundleInstallerService
         private readonly ?\Closure $zipDownloader = null,
         private readonly HttpFetcher $http = new HttpFetcher(),
         private readonly ?BundleMigrationRunner $migrationRunner = null,
+        // Droits du rôle Manager pour les catégories déclarées, à la première installation d'un bundle.
+        private readonly ?BundlePermissionGranter $permissionGranter = null,
     ) {
     }
 
@@ -204,7 +207,7 @@ final class BundleInstallerService
 
         $progress(90, 'Activation du bundle...');
         try {
-            $this->activate($slug, $version, $extractedRoot, $sourceRegistryUrl);
+            $this->activate($slug, $version, $extractedRoot, $sourceRegistryUrl, $manifest->entryClass);
         } catch (\Throwable $e) {
             $this->removeDirIfExists($stagingContainer);
             $this->lastError = "Les migrations du bundle ont échoué : " . $e->getMessage();
@@ -306,8 +309,9 @@ final class BundleInstallerService
         return [$manifest, $extractedRoot];
     }
 
-    private function activate(string $slug, string $version, string $extractedRoot, ?string $sourceRegistryUrl): void
+    private function activate(string $slug, string $version, string $extractedRoot, ?string $sourceRegistryUrl, string $entryClass): void
     {
+        $firstInstall = $this->installedBundles->find($slug) === null;
         $finalDir = $this->bundlesDir() . "/{$slug}/{$version}";
         $this->removeDirIfExists($finalDir);
 
@@ -331,6 +335,18 @@ final class BundleInstallerService
 
         $this->manifestStore->setActiveVersion($slug, $version);
         $this->installedBundles->upsert($slug, $version, $sourceRegistryUrl);
+
+        if ($firstInstall && $this->permissionGranter !== null) {
+            try {
+                // Classes du bundle chargeables dès cette requête (l'autoloader du démarrage ne le connaît pas encore).
+                (new InstalledBundleAutoloader($this->manifestStore, $this->bundlesDir()))->register();
+                $granted = $this->permissionGranter->grantToManager(BundlePermissionGranter::declaredPermissions($entryClass));
+                Log::info('bundle_manager_permissions_granted', ['slug' => $slug, 'keys' => $granted]);
+            } catch (\Throwable $e) {
+                // Le bundle est installé ; seuls les droits restent à accorder à la main dans Rôles.
+                Log::warning('bundle_manager_permissions_failed', ['slug' => $slug, 'error' => $e->getMessage()]);
+            }
+        }
 
         Log::info('bundle_installed', ['slug' => $slug, 'version' => $version]);
     }

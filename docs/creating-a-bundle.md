@@ -253,7 +253,9 @@ another bundle is ignored (logged). The Roles page labels a category with the tr
 `perm_category_{category}` and an action with the Core's label for the common actions (`view`, `create`, `update`,
 `delete`, `approve`, …), otherwise with the action name itself as a translation key — ship those keys in your
 bundle's `lang/`. Disabling the bundle hides the category from the Roles page but keeps the grants in the
-database, so re-enabling it restores them. Require `"kintai_contract": "^1.2"`.
+database, so re-enabling it restores them. On the bundle's first install (setup assistant or catalogue), every
+declared permission is granted to the Manager role, which uses it on its own stores; updates grant nothing again, so a
+right the Owner withdrew stays withdrawn. Require `"kintai_contract": "^1.2"`.
 
 ### Per-store features: `storeFeatures()` (contract 1.3)
 

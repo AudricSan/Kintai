@@ -18,8 +18,8 @@ use kintai\Core\Database\Migration;
  * l'accès aux photos qu'un rôle personnalisé avait avant ce changement
  * (c'est littéralement ce qui gouvernait /admin/photos jusqu'ici).
  *
- * Idempotente : n'insère que les clés manquantes (une install fraîche les
- * reçoit déjà via le seed de MANAGER_DEFAULTS).
+ * Idempotente : n'insère que les clés manquantes. Ne fait rien sur une installation
+ * neuve : les droits d'un bundle y sont accordés au rôle Manager à son installation.
  */
 return new class($this->capsule) extends Migration {
 
@@ -28,6 +28,11 @@ return new class($this->capsule) extends Migration {
     public function up(): void
     {
         $conn = $this->capsule->getConnection();
+        // Installation neuve (aucun compte encore créé) : rien à rattraper ; les droits d'un bundle sont accordés au
+        // rôle Manager à son installation (BundlePermissionGranter).
+        if ($conn->table('users')->count() === 0) {
+            return;
+        }
 
         foreach (self::ACTIONS as $action) {
             $roleIds = $conn->table('role_permissions')
