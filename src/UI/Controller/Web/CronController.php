@@ -12,7 +12,8 @@ use kintai\Core\Response;
  * Point d'entrée HTTP des tâches planifiées : `/cron/run/{tâche}`, via CronRunner, pour toutes les tâches du Core
  * (`backup`, `log-purge`, `license-check`) et celles des bundles actifs (`auto-validate` de daily-report,
  * `photo-retention` de store-photos…). Protégé par un jeton par tâche, stocké (haché) dans la table `cron_tokens`,
- * passé en `?token=` ou en en-tête `Authorization: Bearer <jeton>` ; jeton créé par
+ * passé de préférence en en-tête `Authorization: Bearer <jeton>` (un `?token=` finit dans les journaux d'accès du
+ * serveur) ; `?token=` reste accepté pour les planificateurs qui ne savent appeler qu'une URL. Jeton créé par
  * `php scripts/create-cron-token.php --user-id=1 --job=backup` ou la page d'administration.
  *
  *    ─── Hébergement mutualisé (OVH…) : tâches planifiées de l'hébergeur ───────
