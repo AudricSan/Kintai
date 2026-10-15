@@ -100,6 +100,8 @@ php scripts/provision.php --admin-email=admin@example.com --admin-password='…'
 
 Seul `public/` doit être servi. Faites-y pointer la racine de documents du serveur web (`DocumentRoot` d'Apache, `root` de nginx) — jamais la racine du dépôt, sous peine de rendre `.env`, `storage/app/database.sqlite`, les sauvegardes et le code source téléchargeables. `php -S … -t public` le fait déjà. Sous Apache, si le serveur (ou le dossier `www/` d'un hébergement mutualisé) pointe malgré tout sur la racine du dépôt, un `.htaccess` à la racine réécrit de façon transparente chaque requête vers `public/` — l'URL reste propre, rien en dehors de `public/` n'est accessible, et cela fonctionne aussi depuis un sous-dossier (`/Kintai/`). nginx n'a pas d'équivalent, son `root` doit donc être correct.
 
+Sous Apache, `public/.htaccess` redirige toute requête en HTTP simple vers HTTPS (301), sauf les hôtes de développement local (`localhost`, `127.x`, `[::1]`, `*.test`, `*.localhost`, adresses de réseau privé) et les requêtes déjà marquées HTTPS par un proxy ou un hébergeur qui termine lui-même le TLS (`X-Forwarded-Proto: https`). Servez le site de production en HTTPS avec un certificat valide.
+
 ### Mise à jour
 
 ```bash

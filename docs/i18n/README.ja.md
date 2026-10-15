@@ -100,6 +100,8 @@ php scripts/provision.php --admin-email=admin@example.com --admin-password='…'
 
 配信するのは `public/` だけです。Webサーバーのドキュメントルート（Apacheの `DocumentRoot`、nginxの `root`）をそこに向けてください——リポジトリのルートに向けてはいけません。向けてしまうと、`.env`、`storage/app/database.sqlite`、バックアップ、ソースコードがダウンロードできてしまいます。`php -S … -t public` はすでにそうなっています。Apacheでは、サーバー（または共有ホスティングの `www/` フォルダー）がそれでもリポジトリのルートを指している場合、ルートの `.htaccess` がすべてのリクエストを `public/` へ透過的に書き換えます。URLはそのままきれいに保たれ、`public/` の外側には一切アクセスできず、サブフォルダー（`/Kintai/`）からでも動作します。nginxには同等の仕組みがないため、`root` を正しく設定する必要があります。
 
+Apache では `public/.htaccess` が HTTP のリクエストをすべて HTTPS へリダイレクトします（301）。ただし、ローカル開発用のホスト（`localhost`、`127.x`、`[::1]`、`*.test`、`*.localhost`、プライベートネットワークのアドレス）と、TLS を終端するプロキシやホスティングによってすでに HTTPS と示されたリクエスト（`X-Forwarded-Proto: https`）は除きます。本番サイトは有効な証明書を使って HTTPS で配信してください。
+
 ### アップデート
 
 ```bash
