@@ -40,6 +40,13 @@ final class HomeController
         'hr_absenteeism'     => DashboardLayout::HALF,
     ];
 
+    /**
+     * Préfixe des widgets employé proposés sur le tableau de bord gérant : un gérant peut y ajouter ses widgets
+     * personnels (« emp_shifts_today » = ses shifts du jour), l'inverse n'est pas proposé. Le préfixe évite la
+     * collision avec les clés du gérant (« shifts_today » = tous les shifts du jour).
+     */
+    public const EMPLOYEE_WIDGET_PREFIX = 'emp_';
+
     /** Fenêtre glissante (jours) du widget "Aperçu statistiques", alignée sur la période "30 jours" des pages analytics. */
     private const STATS_WIDGET_PERIOD_DAYS = 30;
 
@@ -138,12 +145,12 @@ final class HomeController
         // Widgets proposés : ceux du Core et ceux des bundles actifs (Bundle::dashboardWidgets(), contrat 1.4). Les
         // widgets historiques d'un bundle qui déclare les siens ne sont plus rendus par le Core ($enabledWidgets).
         $dashWidgets = DashboardWidgets::current();
-        $widgetKeys  = $dashWidgets->keys(DashboardWidget::MANAGER, self::ADMIN_WIDGETS);
+        $widgetKeys  = self::offeredWidgetKeys($dashWidgets);
         $saved = $this->dashboardPrefs->getEnabledWidgets((int) $user['id'], 'admin');
         $enabledAll = array_flip(array_values(
             $saved !== null
                 ? array_intersect($saved, $widgetKeys)
-                : $widgetKeys
+                : self::defaultWidgetKeys($dashWidgets)
         ));
         $enabledWidgets = $enabledAll;
 
@@ -210,6 +217,8 @@ final class HomeController
             $this->storeFeatureCheck(),
         );
 
+        $employeeWidgets = $this->employeeWidgets($dashWidgets, $user, array_keys($enabledAll), $today, $userCan);
+
         return Response::html($this->view->render('dashboard.index', [
             'title'              => 'Dashboard',
             'stats'              => [
@@ -235,8 +244,101 @@ final class HomeController
             'all_widgets'         => $widgetKeys,
             'widget_layout'       => DashboardLayout::resolve($widgetKeys, $this->dashboardPrefs->getLayout((int) $user['id'], 'admin'), self::ADMIN_WIDGET_WIDTHS),
             'bundle_widgets'      => $bundleWidgets,
-            'bundle_widget_meta'  => $dashWidgets->meta(DashboardWidget::MANAGER, self::ADMIN_WIDGETS),
+            'bundle_widget_meta'  => self::prefixedMeta($dashWidgets),
+            'employee_widgets'    => $employeeWidgets,
         ], 'layout.app'));
+    }
+
+    /**
+     * Widgets proposés sur le tableau de bord gérant : ceux du gérant (Core puis bundles), puis les widgets employé
+     * préfixés EMPLOYEE_WIDGET_PREFIX.
+     *
+     * @return list<string>
+     */
+    public static function offeredWidgetKeys(DashboardWidgets $dashWidgets): array
+    {
+        $employee = array_map(
+            static fn(string $k): string => self::EMPLOYEE_WIDGET_PREFIX . $k,
+            $dashWidgets->keys(DashboardWidget::EMPLOYEE, EmployeeController::EMPLOYEE_WIDGETS),
+        );
+        return array_values(array_unique(array_merge(self::defaultWidgetKeys($dashWidgets), $employee)));
+    }
+
+    /**
+     * Widgets affichés tant que le gérant n'a rien choisi : ceux du gérant ; ses widgets employé s'ajoutent à la demande.
+     *
+     * @return list<string>
+     */
+    public static function defaultWidgetKeys(DashboardWidgets $dashWidgets): array
+    {
+        return $dashWidgets->keys(DashboardWidget::MANAGER, self::ADMIN_WIDGETS);
+    }
+
+    /**
+     * Libellés, permissions et fonctionnalités des widgets de bundles du gérant, et de ceux de l'employé sous leur clé
+     * préfixée.
+     *
+     * @return array{labels: array<string, string>, permissions: array<string, string>, features: array<string, string>}
+     */
+    private static function prefixedMeta(DashboardWidgets $dashWidgets): array
+    {
+        $meta = $dashWidgets->meta(DashboardWidget::MANAGER, self::ADMIN_WIDGETS);
+        foreach ($dashWidgets->meta(DashboardWidget::EMPLOYEE, EmployeeController::EMPLOYEE_WIDGETS) as $type => $values) {
+            foreach ($values as $key => $value) {
+                $meta[$type][self::EMPLOYEE_WIDGET_PREFIX . $key] = $value;
+            }
+        }
+        return $meta;
+    }
+
+    /**
+     * Données des widgets employé ajoutés par le gérant à son tableau de bord (les siens : ses shifts, ses magasins),
+     * calculées seulement si au moins l'un d'eux est activé.
+     *
+     * @param list<string> $enabledKeys Widgets activés (clés du tableau de bord gérant)
+     * @return array{enabled: array<string, int>, shifts_today: array, upcoming: array, stores_map: array<int, string>, bundle: list<array{key: string, html: string}>}
+     */
+    private function employeeWidgets(DashboardWidgets $dashWidgets, array $user, array $enabledKeys, string $today, \Closure $userCan): array
+    {
+        $enabled = [];
+        foreach ($enabledKeys as $key) {
+            if (str_starts_with($key, self::EMPLOYEE_WIDGET_PREFIX)) {
+                $enabled[substr($key, strlen(self::EMPLOYEE_WIDGET_PREFIX))] = 1;
+            }
+        }
+        $result = ['enabled' => $enabled, 'shifts_today' => [], 'upcoming' => [], 'stores_map' => [], 'bundle' => []];
+        if ($enabled === []) {
+            return $result;
+        }
+
+        $userId = (int) $user['id'];
+        foreach ($this->stores->findAllWithDeleted() as $s) {
+            $result['stores_map'][(int) $s['id']] = $s['name'] ?? ('#' . $s['id']);
+        }
+        if (isset($enabled['shifts_today']) || isset($enabled['upcoming'])) {
+            [$result['shifts_today'], $result['upcoming']] = EmployeeController::personalShifts($this->shifts->findByUser($userId), $today);
+        }
+
+        // Widgets employé des bundles : même contexte que sur le tableau de bord employé (ses propres magasins).
+        $rendered = $dashWidgets->render(
+            DashboardWidget::EMPLOYEE,
+            EmployeeController::EMPLOYEE_WIDGETS,
+            array_keys($enabled),
+            [
+                'user'              => $user,
+                'store_ids'         => array_map(static fn($m): int => (int) $m['store_id'], $this->storeUsers->findByUser($userId)),
+                'managed_store_ids' => null,
+                'stores_map'        => $result['stores_map'],
+                'today'             => $today,
+            ],
+            $this->view,
+            $userCan,
+            $this->storeFeatureCheck(),
+        );
+        foreach ($rendered as $widget) {
+            $result['bundle'][] = ['key' => self::EMPLOYEE_WIDGET_PREFIX . $widget['key'], 'html' => $widget['html']];
+        }
+        return $result;
     }
 
     /** Fonctionnalité active pour les magasins de l'utilisateur (même règle que $feat dans les vues). */

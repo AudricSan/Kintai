@@ -42,6 +42,7 @@
     "dashboard_widget_remove": "ウィジェットを削除",
     "dashboard_widget_all_shown": "すべてのウィジェットが表示されています。",
     "dashboard_widget_unknown": "不明なウィジェットです。",
+    "dashboard_widget_personal": ":label（個人）",
     "dashboard_layout_save_failed": "レイアウトを保存できませんでした。",
     "dashboard_layout_hint": "⠿ ハンドルまたは矢印でウィジェットを移動し、幅を選択し、ウィジェットを追加したり ✕ で削除したりできます。変更はすぐに保存されます。",
     "dashboard_layout_reset": "配置をリセット",

@@ -42,6 +42,7 @@
     "dashboard_widget_remove": "Remove widget",
     "dashboard_widget_all_shown": "All widgets are already displayed.",
     "dashboard_widget_unknown": "Unknown widget.",
+    "dashboard_widget_personal": ":label (personal)",
     "dashboard_layout_save_failed": "The layout could not be saved.",
     "dashboard_layout_hint": "Move widgets with the ⠿ handle or the arrows, choose their width, add widgets or remove them with ✕. Every change is saved right away.",
     "dashboard_layout_reset": "Reset layout",

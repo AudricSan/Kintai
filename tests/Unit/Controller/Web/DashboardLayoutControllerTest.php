@@ -33,10 +33,11 @@ final class DashboardLayoutControllerTest extends TestCase
 
     public function testManagerLayoutIsMergedIntoTheSavedOne(): void
     {
-        // dashboard_alerts, store_stats_summary… ne sont pas affichés : ils gardent leur place.
+        // dashboard_alerts, store_stats_summary… (et les widgets employé « emp_ ») ne sont pas affichés : ils gardent leur place.
         $this->prefs->method('getLayout')->with(7, 'admin')->willReturn(null);
         $this->prefs->expects($this->once())->method('saveLayout')->with(7, 'admin', [
-            'order'  => ['shifts_today', 'dashboard_alerts', 'store_stats_summary', 'financial_overview', 'hr_absenteeism', 'kpi_counters'],
+            'order'  => ['shifts_today', 'dashboard_alerts', 'store_stats_summary', 'financial_overview', 'hr_absenteeism', 'kpi_counters',
+                         'emp_shifts_today', 'emp_upcoming', 'emp_monthly_stats'],
             'widths' => ['shifts_today' => 'half', 'kpi_counters' => 'full'],
         ]);
 
@@ -75,13 +76,39 @@ final class DashboardLayoutControllerTest extends TestCase
         $this->prefs->method('getLayout')->with(7, 'admin')->willReturn($saved);
         $this->prefs->expects($this->once())->method('saveWidgets')->with(7, ['kpi_counters', 'hr_absenteeism', 'shifts_today'], 'admin');
         $this->prefs->expects($this->once())->method('saveLayout')->with(7, 'admin', [
-            'order'  => ['hr_absenteeism', 'kpi_counters', 'dashboard_alerts', 'store_stats_summary', 'financial_overview', 'shifts_today'],
+            'order'  => ['hr_absenteeism', 'kpi_counters', 'dashboard_alerts', 'store_stats_summary', 'financial_overview',
+                         'emp_shifts_today', 'emp_upcoming', 'emp_monthly_stats', 'shifts_today'],
             'widths' => $saved['widths'],
         ]);
 
         $response = $this->controller->widgetsManager($this->request(['add' => 'shifts_today']));
 
         $this->assertSame(200, $response->status());
+    }
+
+    public function testManagerCanAddHisEmployeeWidgets(): void
+    {
+        // Sans préférences : les widgets du gérant sont affichés par défaut, pas ses widgets employé.
+        $this->prefs->method('getEnabledWidgets')->willReturn(null);
+        $this->prefs->method('getLayout')->willReturn(null);
+        $this->prefs->expects($this->once())->method('saveWidgets')
+            ->with(7, ['kpi_counters', 'dashboard_alerts', 'store_stats_summary', 'financial_overview', 'hr_absenteeism', 'shifts_today', 'emp_upcoming'], 'admin');
+
+        $this->controller->widgetsManager($this->request(['add' => 'emp_upcoming']));
+    }
+
+    public function testEmployeeCannotAddManagerWidgets(): void
+    {
+        $this->prefs->expects($this->never())->method('saveWidgets');
+
+        foreach (['kpi_counters', 'emp_upcoming'] as $key) {
+            try {
+                $this->controller->widgetsEmployee($this->request(['add' => $key]));
+                $this->fail("« {$key} » ne doit pas être proposé côté employé");
+            } catch (ValidationException) {
+                $this->addToAssertionCount(1);
+            }
+        }
     }
 
     public function testRemovedWidgetLeavesTheLayoutUntouched(): void

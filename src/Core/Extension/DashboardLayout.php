@@ -16,7 +16,8 @@ final class DashboardLayout
     public const HALF = 'half';
     public const FULL = 'full';
 
-    private const KEY = '/^[a-z][a-z0-9_]{1,40}$/';
+    /** Clé de widget : celle d'un widget (41 caractères au plus), éventuellement préfixée « emp_ » côté gérant. */
+    public const KEY = '/^[a-z][a-z0-9_]{1,47}$/';
 
     /**
      * Disposition nettoyée : clés bien formées et sans doublon, largeurs limitées à HALF/FULL.

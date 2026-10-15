@@ -136,18 +136,18 @@ final class DashboardWidgets
 
     /**
      * Widgets activés après l'ajout ($add = true) ou le retrait d'un widget proposé. Sans préférences enregistrées
-     * (null), la sélection de départ est celle par défaut : tous les widgets proposés. Les widgets enregistrés mais pas
+     * (null), la sélection de départ est celle par défaut ($defaults). Les widgets enregistrés mais pas
      * proposés en ce moment (bundle désactivé) sont conservés, pour qu'ils reviennent à sa réactivation.
      *
-     * @param list<string>      $offered
+     * @param list<string>      $defaults Widgets affichés par défaut
      * @param list<string>|null $previous
      * @return list<string>
      */
-    public static function toggle(array $offered, ?array $previous, string $key, bool $add): array
+    public static function toggle(array $defaults, ?array $previous, string $key, bool $add): array
     {
         $enabled = array_values(array_filter(
-            $previous ?? $offered,
-            static fn($k): bool => is_string($k) && preg_match('/^[a-z][a-z0-9_]{1,40}$/', $k) === 1,
+            $previous ?? $defaults,
+            static fn($k): bool => is_string($k) && preg_match(DashboardLayout::KEY, $k) === 1,
         ));
         $enabled = array_values(array_diff($enabled, [$key]));
         if ($add) {
