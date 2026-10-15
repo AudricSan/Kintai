@@ -10,7 +10,9 @@
     align-items: center;
     gap: var(--space-2);
     padding: var(--space-2) var(--space-6);
-    background: var(--color-warning-light);
+    /* La teinte d'avertissement est translucide en thème sombre (rgba) : posée sur un fond opaque, sinon le
+       contenu défile visible sous ce bandeau collant. */
+    background: linear-gradient(var(--color-warning-light), var(--color-warning-light)), var(--color-surface);
     color: var(--color-warning-dark);
     border-bottom: 1px solid var(--color-warning-border);
     font-size: var(--text-sm);
