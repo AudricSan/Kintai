@@ -914,6 +914,39 @@ final class AdminUserControllerTest extends TestCase
         $this->assertSame(302, $response->status());
     }
 
+    /** Un code employé déjà porté par un autre compte est refusé avec un message, pas par une erreur 500 de la base. */
+    public function testUpdateUserRedirectsWithErrorWhenEmployeeCodeTakenByAnotherUser(): void
+    {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
+        $this->grantRequesterGlobalRole($this->roleAssignments, $this->roles);
+        $this->users->expects($this->atLeastOnce())->method('findById')->with(5)->willReturn(['id' => 5, 'email' => 'me@example.com', 'last_name' => 'Doe', 'first_name' => 'John', 'furigana_last_name' => 'ド', 'furigana_first_name' => 'ジ']);
+        $this->users->expects($this->atLeastOnce())->method('findByEmployeeCode')->with('EMP9')->willReturn(['id' => 99]);
+        $this->users->expects($this->never())->method('save');
+
+        $req = $this->makePostRequest(['email' => 'me@example.com', 'employee_code' => 'emp9']);
+        $req->setRouteParams(['id' => 5]);
+
+        $response = $this->controller()->updateUser($req);
+
+        $this->assertSame(302, $response->status());
+        $this->assertStringContainsString('error=employee_code_taken', $response->headers()['Location'] ?? '');
+    }
+
+    /** Garder son propre code ne doit pas être pris pour un doublon. */
+    public function testUpdateUserAllowsKeepingOwnEmployeeCode(): void
+    {
+        $this->users = $this->createMock(UserRepositoryInterface::class);
+        $this->grantRequesterGlobalRole($this->roleAssignments, $this->roles);
+        $this->users->expects($this->atLeastOnce())->method('findById')->with(5)->willReturn(['id' => 5, 'email' => 'me@example.com', 'last_name' => 'Doe', 'first_name' => 'John', 'employee_code' => 'EMP9']);
+        $this->users->expects($this->atLeastOnce())->method('findByEmployeeCode')->with('EMP9')->willReturn(['id' => 5]);
+        $this->users->expects($this->once())->method('save')->willReturn(['id' => 5]);
+
+        $req = $this->makePostRequest(['email' => 'me@example.com', 'employee_code' => 'EMP9', 'furigana_last_name' => 'テスト', 'furigana_first_name' => 'テスト']);
+        $req->setRouteParams(['id' => 5]);
+
+        $this->assertSame(302, $this->controller()->updateUser($req)->status());
+    }
+
     public function testUpdateUserAllowsKeepingOwnEmailUnchanged(): void
     {
         $this->users = $this->createMock(UserRepositoryInterface::class);

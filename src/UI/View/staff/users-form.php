@@ -47,6 +47,7 @@ echo Flash::fromQuery('error', [
     'furigana_required'    => __('furigana_required'),
     'plan_limit_employees' => __('plan_limit_employees'),
     'employee_code_invalid_url' => __('employee_code_invalid_url'),
+    'employee_code_taken'  => __('val_employee_code_taken'),
 ])->render();
 ?>
 <div class="page-header">

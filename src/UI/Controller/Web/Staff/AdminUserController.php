@@ -448,6 +448,10 @@ final class AdminUserController
         if ($empCode !== null && !EmployeeRouteBinder::isValidCode($empCode)) {
             return Response::redirect($this->base() . '/admin/users/create?error=employee_code_invalid_url');
         }
+        // Code déjà pris : sans ce contrôle, la contrainte unique de la base donnait une erreur 500.
+        if ($empCode !== null && $this->users->findByEmployeeCode($empCode) !== null) {
+            return Response::redirect($this->base() . '/admin/users/create?error=employee_code_taken');
+        }
         if ($password === '') {
             // Mot de passe par défaut « 0000 », comme l'API et la réinitialisation : signalé comme à changer (rappel à
             // chaque connexion, pas de jeton API). Avant : nom+prénom+code employé, devinable par n'importe quel collègue
@@ -812,6 +816,10 @@ final class AdminUserController
         $empCode = strtoupper(trim((string) $request->post('employee_code', $user['employee_code'] ?? ''))) ?: null;
         if ($empCode !== null && !EmployeeRouteBinder::isValidCode($empCode)) {
             return $this->updateUserError($request, $user, 'employee_code_invalid_url');
+        }
+        $holder = $empCode !== null ? $this->users->findByEmployeeCode($empCode) : null;
+        if ($holder !== null && (int) $holder['id'] !== (int) $user['id']) {
+            return $this->updateUserError($request, $user, 'employee_code_taken');
         }
         // Champ facultatif : vide = null, absent = valeur actuelle.
         $optional = fn(string $field): mixed => $request->hasPost($field) ? ($request->post($field, '') ?: null) : ($user[$field] ?? null);
