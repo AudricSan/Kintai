@@ -24,14 +24,23 @@ final class NotificationController
         private readonly ViewRenderer $view,
     ) {}
 
+    private const PER_PAGE = 30;
+
+    /** Nombre maximal de notifications renvoyées par un appel de poll (le curseur reprend la suite au suivant). */
+    private const POLL_BATCH = 50;
+
     public function index(Request $request): Response
     {
-        $userId        = (int) $this->auth->user()['id'];
-        $notifications = $this->repo->findByUser($userId, 50);
+        $userId     = (int) $this->auth->user()['id'];
+        $total      = $this->repo->countByUser($userId);
+        $totalPages = max(1, (int) ceil($total / self::PER_PAGE));
+        $page       = min($totalPages, max(1, (int) $request->query('page', 1)));
 
         return Response::html($this->view->render('notifications.index', [
             'title'         => __('notifications'),
-            'notifications' => $notifications,
+            'notifications' => $this->repo->findByUser($userId, self::PER_PAGE, ($page - 1) * self::PER_PAGE),
+            'page'          => $page,
+            'totalPages'    => $totalPages,
         ], 'layout.app'));
     }
 
@@ -141,34 +150,52 @@ final class NotificationController
     }
 
     /**
-     * Endpoint de polling : renvoie les notifications non lues créées après $since.
-     * Appelé toutes les 15 s par le JS pour afficher les toasts en temps réel.
+     * GET /notifications/poll?after_id=&count=
+     * Appelé toutes les 15 s par notifications.js (un seul onglet à la fois). Le curseur est l'id de la dernière
+     * notification vue, attribué par la base : ni l'horloge du navigateur ni la précision à la seconde n'entrent
+     * en jeu, donc aucune notification perdue ni affichée deux fois.
+     *
+     * - notifications : nouvelles notifications NON LUES (pour les toasts) ;
+     * - last_id       : nouveau curseur (lues comprises, pour ne pas les redemander) ;
+     * - panel_html    : contenu du panneau de la cloche, seulement si quelque chose a changé (nouvelles
+     *                   notifications, ou nombre de non lues différent de `count` connu du navigateur).
      */
     public function poll(Request $request): Response
     {
-        $userId = (int) $this->auth->user()['id'];
-        $since  = $request->query('since', '');
+        $userId  = (int) $this->auth->user()['id'];
+        $afterId = max(0, (int) $request->query('after_id', 0));
+        $known   = (int) $request->query('count', -1);
 
-        // Convertir la date ISO 8601 (ex: 2026-05-13T12:00:00.000Z) en Y-m-d H:i:s
-        if ($since !== '') {
-            $ts = strtotime($since);
-            $since = $ts !== false ? date('Y-m-d H:i:s', $ts) : date('Y-m-d H:i:s');
-        } else {
-            $since = date('Y-m-d H:i:s');
-        }
-
-        $recent = $this->repo->findUnreadSince($userId, $since);
+        $new    = $this->repo->findAfterId($userId, $afterId, self::POLL_BATCH);
         $count  = $this->repo->countUnread($userId);
+        $lastId = $new === [] ? $afterId : (int) end($new)['id'];
 
-        return Response::json([
-            'notifications' => array_map(fn($n) => [
+        $payload = [
+            'notifications' => array_values(array_map(fn(array $n) => [
                 'id'    => (int) $n['id'],
                 'type'  => $n['type'] ?? '',
                 'title' => notification_type_label($n['type'] ?? ''),
-                'body'  => $n['body'] ?? '',
+                'body'  => notification_body($n),
                 'link'  => route_url('notifications.open', ['id' => (int) $n['id']]),
-            ], $recent),
+            ], array_filter($new, fn(array $n) => (int) ($n['is_read'] ?? 0) === 0))),
             'unread_count' => $count,
+            'badge'        => notification_badge_label($count),
+            'last_id'      => $lastId,
+        ];
+
+        if ($new !== [] || $known !== $count) {
+            $payload['panel_html'] = $this->panelHtml($userId, $count);
+        }
+
+        return Response::json($payload);
+    }
+
+    /** Contenu du panneau de la cloche, même partiel que la topbar. */
+    private function panelHtml(int $userId, int $unread): string
+    {
+        return $this->view->renderPartial('layout.partials._notif_panel', [
+            'notif_items'  => $this->repo->findByUser($userId, 10),
+            'notif_unread' => $unread,
         ]);
     }
 }
