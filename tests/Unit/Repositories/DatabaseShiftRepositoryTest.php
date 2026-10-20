@@ -83,6 +83,41 @@ final class DatabaseShiftRepositoryTest extends TestCase
         $this->assertSame([1, 2, 3], array_map('intval', $ids));
     }
 
+    // -------------------------------------------------------------------------
+    // findBetween()
+    // -------------------------------------------------------------------------
+
+    public function testFindBetweenFiltersStoresAndRangeBoundsIncluded(): void
+    {
+        EloquentShift::insert([
+            $this->shift(1, 1, 10, '2025-06-01'),
+            $this->shift(2, 2, 10, '2025-06-15'),
+            $this->shift(3, 3, 10, '2025-06-15'),
+            $this->shift(4, 1, 10, '2025-06-30'),
+            $this->shift(5, 1, 10, '2025-07-01'),
+            $this->shift(6, 1, 10, '2025-05-31'),
+        ]);
+
+        $ids = fn(?array $stores) => array_map('intval', array_column($this->repo->findBetween($stores, '2025-06-01', '2025-06-30'), 'id'));
+
+        $this->assertSame([1, 2, 4], $ids([1, 2]));
+        $this->assertSame([1, 2, 3, 4], $ids(null));
+        $this->assertSame([], $ids([]));
+    }
+
+    public function testFindBetweenOrdersByDateThenId(): void
+    {
+        EloquentShift::insert([
+            $this->shift(1, 1, 10, '2025-06-20'),
+            $this->shift(2, 1, 10, '2025-06-05'),
+            $this->shift(3, 1, 11, '2025-06-05'),
+        ]);
+
+        $ids = array_map('intval', array_column($this->repo->findBetween([1], '2025-06-01', '2025-06-30'), 'id'));
+
+        $this->assertSame([2, 3, 1], $ids);
+    }
+
     public function testFindByStoreBetweenOrdersByUserThenDateThenId(): void
     {
         // Ordre explicite (et non celui de l'index que la base choisit) : les statistiques en dépendent.
