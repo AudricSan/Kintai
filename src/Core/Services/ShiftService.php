@@ -22,10 +22,8 @@ final class ShiftService implements ShiftServiceInterface
         $monthStart = $month . '-01';
         $monthEnd   = date('Y-m-t', strtotime($monthStart));
 
-        // Use Eloquent powerful query builder via repository if available, 
-        // or filter in memory if the repository doesn't support complex filters yet.
-        // For now, we fetch all and filter to maintain compatibility while refactoring.
-        $all = $this->shifts->findAll();
+        // Plage et magasins filtrés en base : l'historique complet n'est plus chargé.
+        $all = $this->shifts->findBetween($storeIds, $monthStart, $monthEnd);
 
         return array_values(array_filter($all, function ($s) use ($storeIds, $monthStart, $monthEnd, $filterStoreId, $filterUserId) {
             $sid = (int) ($s['store_id'] ?? 0);
