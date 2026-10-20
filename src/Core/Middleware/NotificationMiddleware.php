@@ -15,10 +15,15 @@ use kintai\UI\ViewRenderer;
 /**
  * Injecte dans toutes les vues :
  *  - $unread_notifications_count  : entier pour le badge
- *  - $recent_notifications        : notifs non lues créées depuis la dernière visite (pour les toasts)
  *  - $notifications_dropdown      : les 10 dernières (toutes) pour le dropdown cloche
+ *  - $notifications_last_id       : curseur de départ du polling (id de la plus récente)
  *
- * Utilise $_SESSION['last_notif_check'] pour déterminer les "nouvelles" notifs.
+ * Les toasts des notifications reçues entre deux pages sont gérés par notifications.js (dernier id vu, mémorisé
+ * dans le navigateur), plus par un horodatage de session : celui-ci, tronqué à la seconde et réécrit à chaque
+ * requête (poll compris), faisait perdre ou doubler des notifications.
+ *
+ * Sans effet sur les requêtes AJAX/JSON (dont le poll de la cloche) : elles ne rendent pas la topbar, inutile d'y
+ * refaire ces requêtes à chaque appel.
  */
 final class NotificationMiddleware implements MiddlewareInterface
 {
@@ -26,10 +31,13 @@ final class NotificationMiddleware implements MiddlewareInterface
 
     public function handle(Request $request, Closure $next): Response
     {
+        if ($request->wantsJson()) {
+            return $next($request);
+        }
+
         $auth = $this->container->make(AuthService::class);
         $view = $this->container->make(ViewRenderer::class);
 
-        $recent   = [];
         $dropdown = [];
         $count    = 0;
 
@@ -42,9 +50,6 @@ final class NotificationMiddleware implements MiddlewareInterface
 
                 $count    = $repo->countUnread($userId);
                 $dropdown = $repo->findByUser($userId, 10);
-
-                $since  = $_SESSION['last_notif_check'] ?? date('Y-m-d H:i:s');
-                $recent = $repo->findUnreadSince($userId, $since);
             } catch (\Throwable) {
                 // Table pas encore créée : tout à zéro
             }
@@ -52,7 +57,7 @@ final class NotificationMiddleware implements MiddlewareInterface
 
         $view->share('unread_notifications_count', $count);
         $view->share('notifications_dropdown', $dropdown);
-        $view->share('recent_notifications', $recent);
+        $view->share('notifications_last_id', (int) ($dropdown[0]['id'] ?? 0));
 
         // Config publique du web push (clé API/app id/clé VAPID — voir config/push.php) :
         // partagée partout comme le reste, mais uniquement lue/rendue si un onglet en a
@@ -73,13 +78,6 @@ final class NotificationMiddleware implements MiddlewareInterface
         }
         $view->share('push_web_config', $pushWebConfig);
 
-        $response = $next($request);
-
-        // Mettre à jour le timestamp après que la réponse est générée
-        if ($auth->check()) {
-            $_SESSION['last_notif_check'] = date('Y-m-d H:i:s');
-        }
-
-        return $response;
+        return $next($request);
     }
 }

@@ -68,6 +68,46 @@ jobs:
       - name: CLI provisioning smoke test
         run: bash scripts/ci/provision-smoke-test.sh
 
+  crawl-smoke:
+    # Parcours des pages d'une instance de démonstration (propriétaire, gérant, employé) : aucune page ne doit
+    # répondre 5xx ni afficher d'erreur PHP. Les tests unitaires simulent les dépôts et ne voient pas ces pannes.
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_sqlite, mbstring, gd, intl, curl
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-dev
+
+      - name: Page crawl smoke test
+        run: bash scripts/ci/crawl-smoke-test.sh
+  crawl-bundles-smoke:
+    # Même parcours que crawl-smoke, avec les 12 bundles officiels installés depuis leur branche develop
+    # (BUNDLES_REF) : migrations réelles, droits du gérant, pages et routes des bundles.
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_sqlite, mbstring, gd, intl, curl, zip
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-dev
+
+      - name: Page crawl smoke test with bundles
+        run: bash scripts/ci/crawl-bundles-smoke-test.sh
   mysql-smoke:
     # Installation neuve sur un vrai MySQL (migrations, données de démonstration), pages principales et API.
     # Seul job qui exécute MySQL : sans lui, les écarts SQLite / MySQL n'étaient jamais vérifiés.
