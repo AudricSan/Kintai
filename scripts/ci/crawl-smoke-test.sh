@@ -42,7 +42,7 @@ for _ in $(seq 1 50); do
   sleep 0.2
 done
 
-php scripts/ci/crawl-smoke.php "$BASE" \
+php scripts/ci/crawl-smoke.php ${CRAWL_FLAGS:-} "$BASE" \
   "$EMAIL" "$PASSWORD" \
   alice.martin@kintai.local "$DEMO_PASSWORD" \
   chloe.dupont@kintai.local "$DEMO_PASSWORD" \
