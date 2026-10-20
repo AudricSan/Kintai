@@ -91,7 +91,7 @@ final class AdminShiftControllerTest extends TestCase
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
 
-        $this->shifts->method('findAll')->willReturn([]);
+        $this->shifts->method('findBetween')->willReturn([]);
         $this->shiftTypes->method('findAll')->willReturn([]);
         $this->stores->method('findAll')->willReturn([]);
 
@@ -116,7 +116,7 @@ final class AdminShiftControllerTest extends TestCase
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
 
-        $this->shifts->method('findAll')->willReturn([]);
+        $this->shifts->method('findBetween')->willReturn([]);
         $this->shiftTypes->method('findAll')->willReturn([]);
         $this->stores->method('findAll')->willReturn([]);
 

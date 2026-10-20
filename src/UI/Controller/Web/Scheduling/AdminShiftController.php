@@ -1058,7 +1058,10 @@ final class AdminShiftController
         $filterMonth   = $request->query('month') ?? '';
         if (!preg_match('/^\d{4}-\d{2}$/', $filterMonth)) $filterMonth = '';
 
-        $allShifts = $this->filterByStore($this->shifts->findAll(), $managedIds);
+        // Avec un mois, seule sa plage est lue en base ; sans mois, tout l'historique reste nécessaire.
+        $allShifts = $filterMonth !== ''
+            ? $this->shifts->findBetween($managedIds, $filterMonth . '-01', date('Y-m-t', strtotime($filterMonth . '-01')))
+            : $this->filterByStore($this->shifts->findAll(), $managedIds);
 
         if ($filterStoreId > 0) {
             $allShifts = array_values(array_filter(
@@ -1220,7 +1223,7 @@ final class AdminShiftController
 
         $mStart    = $month . '-01';
         $mEnd      = date('Y-m-t', strtotime($mStart));
-        $allShifts = $this->filterByStore($this->shifts->findAll(), $managedIds);
+        $allShifts = $this->shifts->findBetween($managedIds, $mStart, $mEnd);
 
         if ($storeId > 0) {
             $allShifts = array_values(array_filter(

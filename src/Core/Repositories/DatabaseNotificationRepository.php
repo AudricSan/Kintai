@@ -6,14 +6,9 @@ namespace kintai\Core\Repositories;
 use kintai\Domain\Eloquent\Notification as EloquentNotification;
 
 /**
- * La table `notifications` n'a que `id, user_id, type, data, read_at,
- * created_at` (voir la migration) : pas de colonnes `body`/`reference_id`/
- * `is_read`. Ce repository est le seul point de traduction entre ce schéma
- * réel et le modèle de lecture (`body`/`reference_id`/`is_read`) attendu par
- * NotificationService et tous les appelants (vues, endpoint de polling, API) —
- * `body`/`reference_id` sont encodés en JSON dans `data`, `is_read` est
- * dérivé de `read_at`. Rien d'autre dans l'app n'a besoin de connaître cette
- * différence.
+ * Les colonnes réelles de `notifications` correspondent au modèle de lecture (voir
+ * NotificationRepositoryInterface), à deux traductions près : params est stocké en JSON et décodé en tableau, et
+ * is_read n'existe pas en base (dérivé de read_at).
  */
 final class DatabaseNotificationRepository implements NotificationRepositoryInterface
 {
@@ -25,25 +20,30 @@ final class DatabaseNotificationRepository implements NotificationRepositoryInte
         return $record ? $this->fromStorage($record->toArray()) : null;
     }
 
-    public function findByUser(int $userId, int $limit = 20): array
+    public function findByUser(int $userId, int $limit = 20, int $offset = 0): array
     {
-        return array_map(
-            fn(array $row) => $this->fromStorage($row),
+        return $this->map(
             EloquentNotification::where('user_id', $userId)
-                ->orderBy('created_at', 'desc')
+                ->orderBy('id', 'desc')
+                ->skip(max(0, $offset))
                 ->take($limit)
                 ->get()
                 ->toArray()
         );
     }
 
-    public function findUnreadSince(int $userId, string $since): array
+    public function countByUser(int $userId): int
     {
-        return array_map(
-            fn(array $row) => $this->fromStorage($row),
+        return EloquentNotification::where('user_id', $userId)->count();
+    }
+
+    public function findAfterId(int $userId, int $afterId, int $limit = 50): array
+    {
+        return $this->map(
             EloquentNotification::where('user_id', $userId)
-                ->whereNull('read_at')
-                ->where('created_at', '>', $since)
+                ->where('id', '>', $afterId)
+                ->orderBy('id')
+                ->take($limit)
                 ->get()
                 ->toArray()
         );
@@ -95,36 +95,38 @@ final class DatabaseNotificationRepository implements NotificationRepositoryInte
         EloquentNotification::where('user_id', $userId)->delete();
     }
 
-    /** Traduit le modèle de lecture (body/reference_id/link/is_read) vers les vraies colonnes (data/read_at). */
+    /** @param array[] $rows */
+    private function map(array $rows): array
+    {
+        return array_map(fn(array $row) => $this->fromStorage($row), $rows);
+    }
+
     private function toStorage(array $data): array
     {
         $storage = $data;
-        if (array_key_exists('body', $storage) || array_key_exists('reference_id', $storage) || array_key_exists('link', $storage)) {
-            $storage['data'] = json_encode([
-                'body'         => $storage['body'] ?? '',
-                'reference_id' => $storage['reference_id'] ?? null,
-                'link'         => $storage['link'] ?? null,
-            ], JSON_UNESCAPED_UNICODE);
-            unset($storage['body'], $storage['reference_id'], $storage['link']);
+        if (array_key_exists('params', $storage)) {
+            $storage['params'] = is_array($storage['params']) && $storage['params'] !== []
+                ? json_encode($storage['params'], JSON_UNESCAPED_UNICODE)
+                : null;
         }
-        // is_read n'est jamais stocké tel quel : uniquement dérivé de read_at à la lecture.
-        // Une valeur explicite à la création (notify() envoie toujours is_read=0) doit
-        // rester sans effet — read_at, absent du payload, garde sa valeur par défaut NULL.
+        // is_read n'est jamais stocké : uniquement dérivé de read_at à la lecture. Une valeur explicite à la
+        // création reste sans effet, read_at garde sa valeur par défaut NULL.
         unset($storage['is_read']);
         return $storage;
     }
 
-    /** Traduit les vraies colonnes (data/read_at) vers le modèle de lecture (body/reference_id/link/is_read). */
     private function fromStorage(array $row): array
     {
-        $decoded = json_decode((string) ($row['data'] ?? ''), true);
-        $decoded = is_array($decoded) ? $decoded : [];
+        $params = json_decode((string) ($row['params'] ?? ''), true);
 
         return array_merge($row, [
-            'body'         => $decoded['body'] ?? '',
-            'reference_id' => $decoded['reference_id'] ?? null,
-            'link'         => $decoded['link'] ?? null,
-            'is_read'      => ($row['read_at'] ?? null) !== null ? 1 : 0,
+            'body_key'       => $row['body_key'] ?? null,
+            'params'         => is_array($params) ? $params : [],
+            'body'           => (string) ($row['body'] ?? ''),
+            'link'           => $row['link'] ?? null,
+            'reference_type' => $row['reference_type'] ?? null,
+            'reference_id'   => isset($row['reference_id']) ? (int) $row['reference_id'] : null,
+            'is_read'        => ($row['read_at'] ?? null) !== null ? 1 : 0,
         ]);
     }
 }

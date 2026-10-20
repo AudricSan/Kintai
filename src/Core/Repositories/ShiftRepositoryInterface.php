@@ -44,6 +44,12 @@ interface ShiftRepositoryInterface
     public function findAll(): array;
 
     /**
+     * Retourne les shifts d'une plage de dates (bornes incluses, YYYY-MM-DD), triés par date puis id.
+     * $storeIds = null : tous les magasins ; tableau vide : aucun résultat.
+     */
+    public function findBetween(?array $storeIds, string $from, string $to): array;
+
+    /**
      * Retourne tous les shifts pour une date donnée (YYYY-MM-DD), tous stores confondus.
      */
     public function findAllByDate(string $date): array;

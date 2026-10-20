@@ -69,6 +69,24 @@ final class DatabaseShiftRepository implements ShiftRepositoryInterface
         return EloquentShift::all()->toArray();
     }
 
+    public function findBetween(?array $storeIds, string $from, string $to): array
+    {
+        if ($storeIds === []) {
+            return [];
+        }
+        $query = EloquentShift::whereBetween('shift_date', [$from, $to]);
+        if ($storeIds !== null) {
+            $query->whereIn('store_id', array_map('intval', $storeIds));
+        }
+        // Lecture brute : le modèle Shift n'a ni cast ni accesseur (voir findByStoreBetween()).
+        return $query->orderBy('shift_date')
+            ->orderBy('id')
+            ->toBase()
+            ->get()
+            ->map(static fn($row): array => (array) $row)
+            ->all();
+    }
+
     public function findAllByDate(string $date): array
     {
         return EloquentShift::where('shift_date', $date)->get()->toArray();

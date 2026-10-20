@@ -28,13 +28,22 @@ final class NotificationController
         [$page, $limit] = Paginator::params($request);
         $items = $userId > 0 ? $this->notifications->findByUser($userId, 1000) : [];
 
-        return Response::json(Paginator::paginate($items, $page, $limit));
+        return Response::json(Paginator::paginate(array_map([$this, 'present'], $items), $page, $limit));
     }
 
     /** GET /api/v1/notifications/{id} */
     public function show(Request $request): Response
     {
-        return Response::json($this->findOwn($request));
+        return Response::json($this->present($this->findOwn($request)));
+    }
+
+    /** Ajoute le titre et le texte traduits dans la langue courante (body_key + params, sinon l'instantané body). */
+    private function present(array $item): array
+    {
+        return array_merge($item, [
+            'title' => notification_type_label((string) ($item['type'] ?? '')),
+            'body'  => notification_body($item),
+        ]);
     }
 
     /** POST /api/v1/notifications/{id}/read */

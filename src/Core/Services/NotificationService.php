@@ -8,9 +8,9 @@ use kintai\Core\Repositories\NotificationRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 
 /**
- * La locale de chaque notification est résolue par destinataire : langue de
- * l'utilisateur (`users.language`) sinon 'fr' par défaut — même principe que l'e-mail
- * des rapports journaliers (bundle daily-report).
+ * Le push et l'instantané body sont traduits dans la langue du destinataire (`users.language`, sinon celle de
+ * l'instance) — même principe que l'e-mail des rapports journaliers (bundle daily-report). L'affichage dans
+ * l'application, lui, retraduit body_key dans la langue courante (notification_body()).
  */
 class NotificationService
 {
@@ -29,20 +29,29 @@ class NotificationService
      */
     public function notify(int $userId, string $type, string $bodyKey, array $replace = [], ?int $referenceId = null, ?string $link = null): void
     {
+        // Paramètres réduits à des chaînes : ils sont stockés en JSON pour retraduire plus tard, avec le même
+        // résultat qu'aujourd'hui.
+        $params = array_map(fn($v) => is_scalar($v) || $v === null ? (string) $v : '', $replace);
+
         $locale   = $this->resolveLocale($userId);
         $previous = $this->translations->getLocale();
         $this->translations->setLocale($locale);
 
         try {
             $title = $this->translations->translate('notif_' . $type);
-            $body  = $this->translations->translate($bodyKey, $replace);
+            $body  = $this->translations->translate($bodyKey, $params);
         } finally {
             $this->translations->setLocale($previous);
         }
 
+        // body_key + params : le texte est retraduit à l'affichage dans la langue courante du lecteur (voir
+        // notification_body()). body n'est qu'un instantané de repli, pour une clé devenue introuvable (ex. bundle
+        // désactivé depuis) : on garde au moins le texte dans la langue du destinataire au moment de l'envoi.
         $saved = $this->repo->save([
             'user_id'      => $userId,
             'type'         => $type,
+            'body_key'     => $bodyKey,
+            'params'       => $params,
             'reference_id' => $referenceId,
             'body'         => $body,
             'link'         => $link,
