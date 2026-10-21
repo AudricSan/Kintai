@@ -21,6 +21,8 @@ class NotificationService
         private readonly UserRepositoryInterface $users,
         // Optionnel : sans registre, aucune notification n'est rattachée à un type d'objet (pas de « lu » automatique).
         private readonly ?NotificationTypeRegistry $types = null,
+        // Optionnel : sans préférences, le push part toujours (comportement d'avant les préférences).
+        private readonly ?NotificationPreferenceService $preferences = null,
     ) {}
 
     /**
@@ -65,7 +67,12 @@ class NotificationService
         // Best-effort : une notification en base ne doit jamais échouer parce que
         // l'envoi push (appel réseau externe vers FCM) a un problème. PushNotificationService
         // avale déjà ses propres erreurs (voir sa docblock) ; ceinture-bretelles ici.
+        // La cloche (ci-dessus) est toujours alimentée ; le push respecte la préférence du type et les heures
+        // silencieuses de l'utilisateur (un push retenu n'est pas rejoué : la notification reste dans la cloche).
         try {
+            if (!$this->channelAllowed($userId, $type, 'push')) {
+                return;
+            }
             $this->push->sendToUser($userId, $title === 'notif_' . $type ? 'Kintai' : $title, $body, [
                 'type'              => $type,
                 'reference_id'      => (string) ($referenceId ?? ''),
@@ -82,6 +89,8 @@ class NotificationService
     /** @param int[] $userIds */
     public function notifyMany(array $userIds, string $type, string $bodyKey, array $replace = [], ?int $referenceId = null, ?string $link = null): void
     {
+        // Préférences de tous les destinataires en une requête.
+        $this->preferences?->preload($userIds);
         foreach (array_unique($userIds) as $uid) {
             $this->notify((int) $uid, $type, $bodyKey, $replace, $referenceId, $link);
         }
@@ -100,6 +109,15 @@ class NotificationService
         } catch (\Throwable $e) {
             Log::warning('notification_mark_read_failed', ['user_id' => $userId, 'reference_type' => $referenceType, 'error' => $e->getMessage()]);
         }
+    }
+
+    /** Canal externe autorisé : préférence activée pour ce type, hors heures silencieuses. */
+    private function channelAllowed(int $userId, string $type, string $channel): bool
+    {
+        if ($this->preferences === null) {
+            return true;
+        }
+        return $this->preferences->isEnabled($userId, $type, $channel) && !$this->preferences->isQuietNow($userId);
     }
 
     private function resolveLocale(int $userId): string

@@ -147,7 +147,7 @@
     <script src="<?= $BASE_URL ?>/assets/js/app.js?v=<?= asset_version() ?>"></script>
     <script src="<?= $BASE_URL ?>/assets/js/modules/notifications.js?v=<?= asset_version() ?>"></script>
     <script src="<?= $BASE_URL ?>/assets/js/modules/old-input.js?v=<?= asset_version() ?>"></script>
-    <?php if (!empty($push_web_config) && !empty($auth_user['id'] ?? null) && ($tab ?? '') === 'push'): ?>
+    <?php if (!empty($push_web_config) && !empty($auth_user['id'] ?? null) && ($tab ?? '') === 'notifications'): ?>
         <div id="push-meta"
              data-project-id="<?= htmlspecialchars($push_web_config['project_id']) ?>"
              data-api-key="<?= htmlspecialchars($push_web_config['api_key']) ?>"

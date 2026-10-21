@@ -20,6 +20,7 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\NotificationRepositoryInterface;
+use kintai\Core\Repositories\NotificationPreferenceRepositoryInterface;
 use kintai\Core\Repositories\PasswordResetRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
@@ -75,6 +76,12 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(TranslationService::class),
             $c->make(UserRepositoryInterface::class),
             $c->make(NotificationTypeRegistry::class),
+            $c->make(NotificationPreferenceService::class),
+        ));
+        $this->container->singleton(NotificationPreferenceService::class, fn(Container $c) => new NotificationPreferenceService(
+            $c->make(NotificationPreferenceRepositoryInterface::class),
+            $c->make(NotificationTypeRegistry::class),
+            $c->make(UserRepositoryInterface::class),
         ));
         
         $this->container->singleton(IcalService::class, fn(Container $c) => new IcalService(

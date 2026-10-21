@@ -58,6 +58,7 @@ use kintai\UI\Controller\Api\V1\ActivityController as ApiActivityController;
 use kintai\UI\Controller\Api\V1\IcalTokenController as ApiIcalTokenController;
 use kintai\UI\Controller\Api\V1\UserPrefsController as ApiUserPrefsController;
 use kintai\UI\Controller\Api\V1\PushTokenController as ApiPushTokenController;
+use kintai\UI\Controller\Api\V1\NotificationPreferenceController as ApiNotificationPreferenceController;
 
 
 /** @var \kintai\Core\Router $router */
@@ -109,6 +110,7 @@ $router->group('/profile', function ($r) {
     $r->post('/avatar',      [AuthController::class, 'uploadAvatar'],         name: 'profile.avatar');
     $r->post('/avatar/delete', [AuthController::class, 'removeAvatar'],       name: 'profile.avatar.delete');
     $r->post('/password',    [AuthController::class, 'saveProfilePassword'],  name: 'profile.password');
+    $r->post('/notifications', [AuthController::class, 'saveNotificationPreferences'], name: 'profile.notifications');
     $r->get('/export',       [AuthController::class, 'exportData'],           name: 'profile.export');
     $r->post('/delete',      [AuthController::class, 'deleteAccount'],        name: 'profile.delete');
 }, middleware: [AuthMiddleware::class]);
@@ -388,6 +390,8 @@ $router->group('/api/v1', function ($r) {
     $r->put('/users/{user_id}/rates/{id}',                            [ApiUserShiftRateController::class, 'update'],         name: 'api.v1.users.rates.update', permission: 'employees.update');
     $r->delete('/users/{user_id}/rates/{id}',                         [ApiUserShiftRateController::class, 'destroy'],        name: 'api.v1.users.rates.destroy', permission: 'employees.update');
     // Users — jetons d'appareil push (notifications mobiles, FCM)
+    $r->get('/users/{user_id}/notification-preferences',             [ApiNotificationPreferenceController::class, 'show'],   name: 'api.v1.users.notification_preferences.show', permission: ['perm' => 'employees.update', 'self' => 'user_id']);
+    $r->put('/users/{user_id}/notification-preferences',             [ApiNotificationPreferenceController::class, 'update'], name: 'api.v1.users.notification_preferences.update', permission: ['perm' => 'employees.update', 'self' => 'user_id']);
     $r->post('/users/{user_id}/push-tokens',                          [ApiPushTokenController::class, 'store'],              name: 'api.v1.users.push_tokens.store', permission: ['perm' => 'employees.update', 'self' => 'user_id']);
     $r->delete('/users/{user_id}/push-tokens',                        [ApiPushTokenController::class, 'destroy'],            name: 'api.v1.users.push_tokens.destroy', permission: ['perm' => 'employees.update', 'self' => 'user_id']);
     $r->get('/users/{user_id}/ical-tokens',                           [ApiIcalTokenController::class, 'index'],              name: 'api.v1.users.ical_tokens.index', permission: ['perm' => 'employees.view', 'self' => 'user_id']);
