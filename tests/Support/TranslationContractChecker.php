@@ -105,6 +105,7 @@ final class TranslationContractChecker
     {
         $underscored = str_replace('-', '_', $slug);
         return str_starts_with($key, $prefix)
+            || $key === rtrim($prefix, '_')
             || $key === 'bundle_' . $underscored
             || $key === 'bundle_' . $underscored . '_desc'
             || str_starts_with($key, 'notif_')
