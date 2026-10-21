@@ -47,6 +47,13 @@ final class BundleActivationService
         return array_values(array_filter(array_keys($this->discovery->discover()), $isEnabled));
     }
 
+    /** Nombre de bundles encore activables selon le quota, ou null si illimité. */
+    public function room(): ?int
+    {
+        $max = $this->planLimits->maxActiveBundles();
+        return $max === null ? null : max(0, $max - count($this->enabledSlugs()));
+    }
+
     /** Active le bundle s'il reste de la place dans le quota : ACTIVATED, ALREADY ou QUOTA_FULL. */
     public function activateIfRoom(string $slug): string
     {

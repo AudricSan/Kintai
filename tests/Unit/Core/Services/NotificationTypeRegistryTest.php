@@ -114,6 +114,21 @@ final class NotificationTypeRegistryTest extends TestCase
         $this->assertCount(3, $grouped['planning']);
     }
 
+    /** Les alertes système des Owners existent dans le registre (icône, push) mais ne sont pas une préférence à cocher. */
+    public function testOwnerAlertsAreRegisteredButNotInThePreferenceGrid(): void
+    {
+        $registry = $this->registry([]);
+
+        foreach (array_keys(\kintai\Core\Services\SystemNotificationService::REFERENCE_IDS) as $type) {
+            $this->assertNotNull($registry->get($type), $type);
+            $this->assertSame('system', $registry->get($type)->category);
+            $this->assertSame('system', $registry->get($type)->referenceType);
+            $this->assertTrue(NotificationTypeRegistry::isOwnerAlert($type));
+        }
+        $this->assertArrayNotHasKey('system', $registry->byCategory());
+        $this->assertFalse(NotificationTypeRegistry::isOwnerAlert('shift_assigned'));
+    }
+
     public function testFromDeclarationRejectsMalformedValues(): void
     {
         foreach ([42, ['channels' => 'all'], ['reference_type' => 5], ['icon' => 3]] as $bad) {
