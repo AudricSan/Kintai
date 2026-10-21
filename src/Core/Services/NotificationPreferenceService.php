@@ -107,7 +107,7 @@ final class NotificationPreferenceService
     {
         $checked = ['push' => array_flip($push), 'email' => array_flip($email)];
         foreach ($this->types->all() as $type) {
-            if ($type->type === self::TEST_TYPE) {
+            if ($type->type === self::TEST_TYPE || NotificationTypeRegistry::isOwnerAlert($type->type)) {
                 continue;
             }
             foreach (self::CHANNELS as $channel) {
