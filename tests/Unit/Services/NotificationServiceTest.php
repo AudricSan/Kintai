@@ -97,6 +97,17 @@ final class NotificationServiceTest extends TestCase
         return json_decode((string) file_get_contents(BASE_PATH . "/lang/{$locale}.json"), true);
     }
 
+    public function testPushPayloadIsFlaggedQuietOnlyDuringQuietHours(): void
+    {
+        $normal = NotificationService::pushPayload('shift_assigned', 12, '/employee/shifts', 42, false);
+        $this->assertSame(['type' => 'shift_assigned', 'reference_id' => '12', 'link' => '/employee/shifts', 'notification_id' => '42'], $normal);
+
+        $quiet = NotificationService::pushPayload('shift_assigned', null, null, 42, true);
+        $this->assertSame('1', $quiet['quiet']);
+        $this->assertSame('', $quiet['reference_id']);
+        $this->assertSame('', $quiet['link']);
+    }
+
     /** Un lien qui n'est pas un chemin interne n'est jamais enregistré : il finirait dans la cloche, le push et l'e-mail. */
     public function testNotifyDropsALinkThatIsNotAnInternalPath(): void
     {

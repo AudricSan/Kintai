@@ -192,14 +192,16 @@ final class NotificationEmailTest extends TestCase
         $this->assertSame('[Kintai] Shift modifié', $this->sent[0]['subject']);
     }
 
-    public function testNoEmailDuringQuietHours(): void
+    /** Un e-mail ne réveille personne : les heures silencieuses ne le retiennent pas. */
+    public function testEmailIsStillSentDuringQuietHours(): void
     {
         $now = new \DateTimeImmutable();
         $this->assertTrue($this->prefs->saveQuietHours(7, true, $now->modify('-1 hour')->format('H:i'), $now->modify('+1 hour')->format('H:i')));
+        $this->assertTrue($this->prefs->isQuietNow(7), 'précondition');
 
         $this->service()->notify(7, 'shift_assigned', 'notif_shift_assigned_body');
 
-        $this->assertSame([], $this->sent);
+        $this->assertCount(1, $this->sent);
         $this->assertSame(1, Notification::count());
     }
 

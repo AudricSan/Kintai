@@ -154,6 +154,7 @@
              data-subscribe-url="<?= route_url('notifications.push_subscribe') ?>"
              data-unsubscribe-url="<?= route_url('notifications.push_unsubscribe') ?>"
              data-status-url="<?= route_url('notifications.push_status') ?>"
+             data-user-id="<?= (int) $auth_user['id'] ?>"
              hidden></div>
         <script src="<?= $BASE_URL ?>/assets/js/modules/push.js?v=<?= asset_version() ?>"></script>
     <?php endif; ?>
@@ -171,6 +172,7 @@
     <?php endif; ?>
 
     <?php include __DIR__ . '/partials/_confirm-modal.php'; ?>
+    <?php include __DIR__ . '/partials/_page-overlay.php'; ?>
     <?php if (!empty($password_reminder_popup)) {
         include __DIR__ . '/partials/_password-reminder-modal.php';
     } ?>

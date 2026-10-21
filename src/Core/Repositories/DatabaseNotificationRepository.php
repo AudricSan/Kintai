@@ -32,6 +32,18 @@ final class DatabaseNotificationRepository implements NotificationRepositoryInte
         );
     }
 
+    public function findUnreadByUser(int $userId, int $limit = 10): array
+    {
+        return $this->map(
+            EloquentNotification::where('user_id', $userId)
+                ->whereNull('read_at')
+                ->orderBy('id', 'desc')
+                ->take($limit)
+                ->get()
+                ->toArray()
+        );
+    }
+
     public function countByUser(int $userId): int
     {
         return EloquentNotification::where('user_id', $userId)->count();

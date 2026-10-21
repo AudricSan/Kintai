@@ -115,6 +115,18 @@ abstract class Bundle
     }
 
     /**
+     * Point d'extension « fenêtres de page » (contrat 1.27) : fenêtres affichées par-dessus les pages d'un utilisateur
+     * connecté (une question à poser, une validation à faire), rendues par le Core dans un garde, une seule à la fois.
+     * Voir kintai\Contract\Extension\PageOverlay.
+     *
+     * @return list<\kintai\Contract\Extension\PageOverlay>
+     */
+    public function pageOverlays(): array
+    {
+        return [];
+    }
+
+    /**
      * Point d'extension « variables de vue » (contrat 1.5) : variables partagées avec toutes les vues des pages
      * authentifiées, sous la forme nom => fn(array $utilisateur): mixed (ex. un compteur affiché en badge dans la
      * navigation, voir NavItem::$badge). Chaque fonction est appelée à chaque page : elle doit rester légère.
@@ -155,7 +167,7 @@ abstract class Bundle
     /**
      * Point d'extension « tâches planifiées » (contrat 1.8) : classes implémentant kintai\Contract\Cron\CronJob,
      * résolues par le conteneur et lancées par un planificateur externe via /cron/run/{nom}?token=… (jeton créé par
-     * l'Owner). Le nom (getName()) doit être unique ; ceux du Core (backup, log-purge, license-check, notification-purge) sont réservés.
+     * l'Owner). Le nom (getName()) doit être unique ; ceux du Core (backup, log-purge, license-check, notification-purge, system-notifications) sont réservés.
      *
      * @return list<class-string>
      */

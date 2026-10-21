@@ -30,6 +30,9 @@ final readonly class BundleRegistryEntry
      * @param array<string, string> $commits Version -> sha (40 hex minuscules) du commit vers lequel pointe son tag,
      *        épinglé par le registry (voir scripts/sync-versions.js du dépôt KintaiBundle). Vide pour un registry qui
      *        ne l'épingle pas : l'installation se fait alors sans ce contrôle.
+     * @param array<string, mixed>|null $setupQuestion Question que l'assistant de configuration pose pour proposer ce bundle
+     *        ({"text": {fr, en, ja}, "icon", "theme"}), facultative ; ignorée par tout le reste du Core.
+     * @param list<string> $requires Slugs des bundles qu'il demande (aide à la sélection : cocher l'un coche les autres).
      */
     public function __construct(
         public string $slug,
@@ -39,6 +42,8 @@ final readonly class BundleRegistryEntry
         public array $versions,
         public array $versionsByChannel,
         public array $commits = [],
+        public ?array $setupQuestion = null,
+        public array $requires = [],
     ) {
     }
 
@@ -76,6 +81,10 @@ final readonly class BundleRegistryEntry
             versions: $versions,
             versionsByChannel: $versionsByChannel,
             commits: self::normalizeCommits($data['commits'] ?? []),
+            setupQuestion: is_array($data['setup_question'] ?? null) ? $data['setup_question'] : null,
+            requires: is_array($data['requires_bundles'] ?? null)
+                ? array_values(array_filter(array_map('strval', array_is_list($data['requires_bundles']) ? $data['requires_bundles'] : array_keys($data['requires_bundles'])), static fn(string $s): bool => preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $s) === 1))
+                : [],
         );
     }
 

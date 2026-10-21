@@ -534,6 +534,15 @@ if (!function_exists('notification_type_catalog')) {
         return $catalog;
     }
 
+    /**
+     * Identifiant d'un jour de planning (« 2026-08-02 » → 20260802) pour les notifications dont l'objet n'existe plus
+     * (shift supprimé) : le reference_id désigne alors le jour, reference_type « shift_day ».
+     */
+    function shift_day_reference(string $date): int
+    {
+        return (int) preg_replace('/\D/', '', $date);
+    }
+
     /** Libellé d'un type : catalogue, sinon traduction « notif_{type} » si elle existe (bundle inactif), sinon le type. */
     function notification_type_label(string $type): string
     {
