@@ -92,9 +92,12 @@ $_dashChartData = [];
 <!-- En-tête dashboard + bouton Personnaliser -->
 <div class="page-header">
     <h2 class="page-header__title"><?= __('dashboard') ?></h2>
-    <button type="button" class="btn btn--ghost btn--sm" data-on-click="adminDashCustomize">
-        <?= __('customize') ?>
-    </button>
+    <div class="page-header__actions">
+        <?php include __DIR__ . '/../_partials/_dashboard-actions.php'; ?>
+        <button type="button" class="btn btn--ghost btn--sm" data-on-click="adminDashCustomize">
+            <?= __('customize') ?>
+        </button>
+    </div>
 </div>
 
 <!-- Panneau de personnalisation -->

@@ -14,10 +14,12 @@
  * @var string                                                 $_dashSaveUrl    Disposition (ordre, taille, repli)
  * @var string                                                 $_dashWidgetsUrl Ajout / retrait d'un widget
  * @var array<string, array{0: int, 1: int}>                   $widget_limits   Bornes de largeur des widgets de bundles
+ * @var array<string, int>                                     $widget_refresh  Rafraîchissement des widgets de bundles (secondes)
  */
 use kintai\Core\Extension\DashboardLayout;
 
 $_dashLimits    = $widget_limits ?? [];
+$_dashRefresh   = ($widget_refresh ?? []) + DashboardLayout::CORE_REFRESH;
 $_dashCollapsed = $_dashLayout['collapsed'] ?? [];
 $_dashCompact   = ($_dashLayout['density'] ?? '') === DashboardLayout::COMPACT;
 ?>
@@ -39,6 +41,7 @@ $_dashCompact   = ($_dashLayout['density'] ?? '') === DashboardLayout::COMPACT;
                  data-widget-label="<?= htmlspecialchars($_dl) ?>" data-widget-key="<?= htmlspecialchars($_dk) ?>"
                  data-widget-width="<?= $_dc ?>" data-widget-height="<?= $_dh ?>"
                  data-widget-min="<?= (int) $_dMin ?>" data-widget-max="<?= (int) $_dMax ?>"
+                 data-widget-refresh="<?= (int) ($_dashRefresh[$_dk] ?? 0) ?>"
                  data-widget-collapsed="<?= $_dFolded ? '1' : '0' ?>">
             <button type="button" class="dash-grid__fold" data-dash-fold
                     aria-expanded="<?= $_dFolded ? 'false' : 'true' ?>"
@@ -79,4 +82,5 @@ $_dashCompact   = ($_dashLayout['density'] ?? '') === DashboardLayout::COMPACT;
     <?php endforeach; ?>
 </div>
 <script src="<?= $BASE_URL ?>/assets/js/modules/dashboard-layout.js"></script>
-<?php unset($_dk, $_dc, $_dh, $_dl, $_dFolded, $_dMin, $_dMax, $_dashLimits, $_dashCollapsed, $_dashCompact); ?>
+<script src="<?= $BASE_URL ?>/assets/js/modules/dashboard-live.js"></script>
+<?php unset($_dashRefresh, $_dk, $_dc, $_dh, $_dl, $_dFolded, $_dMin, $_dMax, $_dashLimits, $_dashCollapsed, $_dashCompact); ?>
