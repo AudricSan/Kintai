@@ -16,6 +16,14 @@ interface NotificationRepositoryInterface
     /** @return array[] Notifications de l'utilisateur (lues ou non), les plus récentes d'abord. */
     public function findByUser(int $userId, int $limit = 20, int $offset = 0): array;
 
+    /**
+     * Notifications NON LUES de l'utilisateur, les plus récentes d'abord : contenu de la cloche, qui ne montre que
+     * ce qui reste à traiter (l'historique complet, lues comprises, est sur /notifications).
+     *
+     * @return array[]
+     */
+    public function findUnreadByUser(int $userId, int $limit = 10): array;
+
     public function countByUser(int $userId): int;
 
     /**

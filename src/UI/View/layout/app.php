@@ -154,6 +154,7 @@
              data-subscribe-url="<?= route_url('notifications.push_subscribe') ?>"
              data-unsubscribe-url="<?= route_url('notifications.push_unsubscribe') ?>"
              data-status-url="<?= route_url('notifications.push_status') ?>"
+             data-user-id="<?= (int) $auth_user['id'] ?>"
              hidden></div>
         <script src="<?= $BASE_URL ?>/assets/js/modules/push.js?v=<?= asset_version() ?>"></script>
     <?php endif; ?>
