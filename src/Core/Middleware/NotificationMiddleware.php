@@ -16,8 +16,8 @@ use kintai\UI\ViewRenderer;
 /**
  * Injecte dans toutes les vues :
  *  - $unread_notifications_count  : entier pour le badge
- *  - $notifications_dropdown      : les 10 dernières (toutes) pour le dropdown cloche
- *  - $notifications_last_id       : curseur de départ du polling (id de la plus récente)
+ *  - $notifications_dropdown      : les 10 dernières NON LUES pour le dropdown cloche (les lues restent dans /notifications)
+ *  - $notifications_last_id       : curseur de départ du polling (id de la plus récente, lue ou non)
  *
  * Les toasts des notifications reçues entre deux pages sont gérés par notifications.js (dernier id vu, mémorisé
  * dans le navigateur), plus par un horodatage de session : celui-ci, tronqué à la seconde et réécrit à chaque
@@ -41,6 +41,7 @@ final class NotificationMiddleware implements MiddlewareInterface
 
         $dropdown = [];
         $count    = 0;
+        $lastId   = 0;
 
         if ($auth->check()) {
             $user   = $auth->user();
@@ -50,7 +51,10 @@ final class NotificationMiddleware implements MiddlewareInterface
                 $repo = $this->container->make(NotificationRepositoryInterface::class);
 
                 $count    = $repo->countUnread($userId);
-                $dropdown = $repo->findByUser($userId, 10);
+                $dropdown = $repo->findUnreadByUser($userId, 10);
+                // Le curseur du polling suit la plus récente notification, lue ou non : sinon une récente déjà lue
+                // (donc absente de la cloche) serait redemandée au premier poll.
+                $lastId   = (int) ($repo->findByUser($userId, 1)[0]['id'] ?? 0);
             } catch (\Throwable) {
                 // Table pas encore créée : tout à zéro
             }
@@ -58,7 +62,7 @@ final class NotificationMiddleware implements MiddlewareInterface
 
         $view->share('unread_notifications_count', $count);
         $view->share('notifications_dropdown', $dropdown);
-        $view->share('notifications_last_id', (int) ($dropdown[0]['id'] ?? 0));
+        $view->share('notifications_last_id', $lastId);
 
         // Config publique du web push natif : la seule clé VAPID publique (la privée ne quitte jamais le serveur).
         // Vide quand le web push n'est pas opérationnel (clés absentes ou extension PHP manquante), pour que push.js
