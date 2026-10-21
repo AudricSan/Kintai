@@ -104,6 +104,8 @@ final class NotificationServiceWebPushTest extends TestCase
             public function deleteById(int $id): void {}
             public function touchLastUsed(int $id): void {}
             public function deleteAllForUser(int $userId): void {}
+            public function countAll(): int { return 0; }
+            public function purgeUnusedSince(string $before): int { return 0; }
         };
 
         $this->service = new NotificationService(

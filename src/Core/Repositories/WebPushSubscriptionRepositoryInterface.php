@@ -33,6 +33,16 @@ interface WebPushSubscriptionRepositoryInterface
 
     public function touchLastUsed(int $id): void;
 
+    public function countAll(): int;
+
+    /**
+     * Purge : supprime les abonnements inutilisés depuis cette date (last_used_at, ou created_at quand aucun envoi
+     * n'a encore réussi) : adresses mortes que le service de push n'a jamais signalées expirées (404 / 410).
+     *
+     * @return int nombre d'abonnements supprimés
+     */
+    public function purgeUnusedSince(string $before): int;
+
     /** Supprime tous les abonnements de l'utilisateur (suppression du compte, SQLite n'applique pas les cascades). */
     public function deleteAllForUser(int $userId): void;
 }

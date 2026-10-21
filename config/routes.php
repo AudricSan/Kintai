@@ -37,6 +37,7 @@ use kintai\UI\Controller\Web\System\LanguageController;
 use kintai\UI\Controller\Web\System\LicenseController;
 use kintai\UI\Controller\Web\System\SetupWizardController;
 use kintai\UI\Controller\Web\System\MailTestController;
+use kintai\UI\Controller\Web\System\NotificationSettingsController;
 use kintai\UI\Controller\Web\System\OwnerSettingsController;
 use kintai\Core\Middleware\AuthMiddleware;
 use kintai\Core\Middleware\OwnerOnlyMiddleware;
@@ -294,6 +295,12 @@ $router->group('/admin', function ($r) {
     // Diagnostic mail
     $r->get('/mail-test',  [MailTestController::class, 'show'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.mail_test', permission: 'public');
     $r->post('/mail-test', [MailTestController::class, 'send'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.mail_test.send', permission: 'public');
+
+    // Notifications de l'instance : conservation, état des canaux, notification de test, clés du web push.
+    $r->get('/notifications-settings',          [NotificationSettingsController::class, 'show'],            middleware: [OwnerOnlyMiddleware::class], name: 'admin.notifications_settings', permission: 'public');
+    $r->post('/notifications-settings',         [NotificationSettingsController::class, 'save'],            middleware: [OwnerOnlyMiddleware::class], name: 'admin.notifications_settings.save', permission: 'public');
+    $r->post('/notifications-settings/test',    [NotificationSettingsController::class, 'sendTest'],        middleware: [OwnerOnlyMiddleware::class], name: 'admin.notifications_settings.test', permission: 'public');
+    $r->post('/notifications-settings/vapid',   [NotificationSettingsController::class, 'regenerateVapid'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.notifications_settings.vapid', permission: 'public');
 
     // Sauvegardes
     $r->get('/backup',               [BackupController::class, 'index'],  middleware: [OwnerOnlyMiddleware::class], name: 'admin.backup', permission: 'public');

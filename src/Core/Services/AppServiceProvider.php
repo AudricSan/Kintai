@@ -10,6 +10,7 @@ use kintai\Core\Cron\BackupJob;
 use kintai\Core\Cron\CronRunner;
 use kintai\Core\Cron\LicenseCheckJob;
 use kintai\Core\Cron\LogPurgeJob;
+use kintai\Core\Cron\NotificationPurgeJob;
 use kintai\Core\Database\BundleMigrationRunner;
 use kintai\Core\Database\MigrationRunner;
 use kintai\Core\Repositories\CronTokenRepositoryInterface;
@@ -81,6 +82,19 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(WebPushService::class),
             $c->make(NotificationMailer::class),
         ));
+        $this->container->singleton(NotificationChannelStatus::class, function (Container $c) {
+            $path = dirname(dirname(dirname(__DIR__))) . '/config/push.php';
+
+            return new NotificationChannelStatus(
+                $c->make(VapidKeyStore::class),
+                $c->make(WebPushSubscriptionRepositoryInterface::class),
+                $c->make(DevicePushTokenRepositoryInterface::class),
+                $c->make(MailerService::class),
+                $c->make(PublicUrlResolver::class),
+                $c->make(UserRepositoryInterface::class),
+                file_exists($path) ? require $path : [],
+            );
+        });
         $this->container->singleton(UnsubscribeTokens::class, fn(Container $c) => new UnsubscribeTokens($c->make(AppSettingsRepositoryInterface::class)));
         $this->container->singleton(NotificationMailer::class, fn(Container $c) => new NotificationMailer(
             $c->make(MailerService::class),
@@ -250,6 +264,7 @@ final class AppServiceProvider extends ServiceProvider
             $runner = new CronRunner($c->make(CronTokenRepositoryInterface::class));
             $runner->register($c->make(BackupJob::class));
             $runner->register($c->make(LogPurgeJob::class));
+            $runner->register($c->make(NotificationPurgeJob::class));
             $runner->register($c->make(LicenseCheckJob::class));
             if ($c->has(\kintai\Core\Extension\ExtensionRegistry::class)) {
                 $runner->registerBundleJobs(

@@ -19,6 +19,12 @@ final class NotificationPreferenceService
 {
     public const CHANNELS = ['push', 'email'];
 
+    /**
+     * Notification de test de l'Owner : elle passe par tous les canaux actifs, sans tenir compte des préférences ni des
+     * heures silencieuses (c'est précisément ce qu'on veut vérifier), et n'apparaît donc pas dans la grille.
+     */
+    public const TEST_TYPE = 'notification_test';
+
     /** Plage proposée à l'activation des heures silencieuses. */
     public const DEFAULT_QUIET_START = '22:00';
     public const DEFAULT_QUIET_END   = '07:00';
@@ -101,6 +107,9 @@ final class NotificationPreferenceService
     {
         $checked = ['push' => array_flip($push), 'email' => array_flip($email)];
         foreach ($this->types->all() as $type) {
+            if ($type->type === self::TEST_TYPE) {
+                continue;
+            }
             foreach (self::CHANNELS as $channel) {
                 $this->store($userId, $type, $channel, isset($checked[$channel][$type->type]));
             }

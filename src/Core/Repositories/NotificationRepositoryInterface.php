@@ -44,6 +44,14 @@ interface NotificationRepositoryInterface
 
     public function delete(int $id): int;
 
+    /**
+     * Purge : supprime les notifications LUES avant cette date (read_at), par lots pour ne pas verrouiller la table.
+     * Une notification non lue n'est jamais supprimée, quel que soit son âge.
+     *
+     * @return int nombre de notifications supprimées
+     */
+    public function purgeReadBefore(string $before, int $batchSize = 1000): int;
+
     /** Supprime toutes les notifications (lues ou non) de l'utilisateur. */
     public function deleteAllForUser(int $userId): void;
 }

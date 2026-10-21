@@ -142,7 +142,7 @@ class NotificationService
     /** Canal externe autorisé : préférence activée pour ce type, hors heures silencieuses. */
     private function channelAllowed(int $userId, string $type, string $channel): bool
     {
-        if ($this->preferences === null) {
+        if ($this->preferences === null || $type === NotificationPreferenceService::TEST_TYPE) {
             return true;
         }
         return $this->preferences->isEnabled($userId, $type, $channel) && !$this->preferences->isQuietNow($userId);

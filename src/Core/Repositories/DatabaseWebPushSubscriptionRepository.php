@@ -66,6 +66,21 @@ final class DatabaseWebPushSubscriptionRepository implements WebPushSubscription
         WebPushSubscription::where('id', $id)->update(['last_used_at' => date('Y-m-d H:i:s')]);
     }
 
+    public function countAll(): int
+    {
+        return WebPushSubscription::count();
+    }
+
+    public function purgeUnusedSince(string $before): int
+    {
+        return WebPushSubscription::where(function ($q) use ($before) {
+            $q->where('last_used_at', '<', $before)
+                ->orWhere(function ($q) use ($before) {
+                    $q->whereNull('last_used_at')->where('created_at', '<', $before);
+                });
+        })->delete();
+    }
+
     public function deleteAllForUser(int $userId): void
     {
         WebPushSubscription::where('user_id', $userId)->delete();
