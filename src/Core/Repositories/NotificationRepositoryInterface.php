@@ -34,6 +34,14 @@ interface NotificationRepositoryInterface
 
     public function markAllRead(int $userId): void;
 
+    /**
+     * Marque comme lues les notifications non lues de l'utilisateur qui désignent l'un de ces objets (« lu » automatique
+     * à la visite de la page de l'objet). Ne touche jamais les notifications d'un autre utilisateur.
+     *
+     * @param list<int> $referenceIds
+     */
+    public function markReadByReference(int $userId, string $referenceType, array $referenceIds): void;
+
     public function delete(int $id): int;
 
     /** Supprime toutes les notifications (lues ou non) de l'utilisateur. */

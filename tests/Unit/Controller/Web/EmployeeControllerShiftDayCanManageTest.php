@@ -44,6 +44,7 @@ final class EmployeeControllerShiftDayCanManageTest extends TestCase
     private RoleAssignmentRepositoryInterface&Stub $assignments;
     private RoleRepositoryInterface&Stub $roles;
     private EmployeeController $controller;
+    private string $viewDir;
 
     protected function setUp(): void
     {
@@ -56,9 +57,21 @@ final class EmployeeControllerShiftDayCanManageTest extends TestCase
         $this->assignments = $this->createStub(RoleAssignmentRepositoryInterface::class);
         $this->roles = $this->createStub(RoleRepositoryInterface::class);
 
-        $this->controller = new EmployeeController(
-            new ViewRenderer($viewDir),
-            $this->createStub(ShiftRepositoryInterface::class),
+        $this->viewDir    = $viewDir;
+        $this->controller = $this->buildController($this->createStub(ShiftRepositoryInterface::class), $this->createStub(NotificationRepositoryInterface::class));
+
+        $this->storeUsers->method('findByUser')->willReturnCallback(fn($a0) => $a0 === 9 ? [
+            ['user_id' => 9, 'store_id' => 1, 'role' => 'staff'],
+            ['user_id' => 9, 'store_id' => 2, 'role' => 'staff'],
+        ] : []);
+        $this->stores->method('findById')->willReturn(['id' => 1, 'name' => 'Store 1', 'currency' => 'JPY']);
+    }
+
+    private function buildController(ShiftRepositoryInterface $shifts, NotificationRepositoryInterface $notifRepo): EmployeeController
+    {
+        return new EmployeeController(
+            new ViewRenderer($this->viewDir),
+            $shifts,
             $this->createStub(ShiftTypeRepositoryInterface::class),
             $this->stores,
             $this->storeUsers,
@@ -69,7 +82,7 @@ final class EmployeeControllerShiftDayCanManageTest extends TestCase
             $this->createStub(AvailabilityRepositoryInterface::class),
             $this->createStub(UserDashboardPrefsRepositoryInterface::class),
             new NotificationService(
-                $this->createStub(NotificationRepositoryInterface::class),
+                $notifRepo,
                 new PushNotificationService([], $this->createStub(DevicePushTokenRepositoryInterface::class)),
                 new TranslationService(
                     $this->createStub(TranslationRepositoryInterface::class),
@@ -80,12 +93,6 @@ final class EmployeeControllerShiftDayCanManageTest extends TestCase
             $this->createStub(UserNavPrefsRepositoryInterface::class),
             new PermissionService($this->assignments, $this->roles),
         );
-
-        $this->storeUsers->method('findByUser')->willReturnCallback(fn($a0) => $a0 === 9 ? [
-            ['user_id' => 9, 'store_id' => 1, 'role' => 'staff'],
-            ['user_id' => 9, 'store_id' => 2, 'role' => 'staff'],
-        ] : []);
-        $this->stores->method('findById')->willReturn(['id' => 1, 'name' => 'Store 1', 'currency' => 'JPY']);
     }
 
     protected function tearDown(): void
@@ -167,5 +174,37 @@ final class EmployeeControllerShiftDayCanManageTest extends TestCase
             mkdir($parent, 0777, true);
         }
         file_put_contents($file, $phpBody);
+    }
+
+    /** « Lu » automatique : seuls les shifts de l'utilisateur affichés dans la plage sont rapportés au service. */
+    public function testShiftDayMarksTheUsersOwnDisplayedShiftsAsRead(): void
+    {
+        $date   = date('Y-m-d');
+        $shifts = $this->createStub(ShiftRepositoryInterface::class);
+        $shifts->method('findByStore')->willReturn([
+            ['id' => 31, 'user_id' => 9, 'store_id' => 1, 'shift_date' => $date],
+            ['id' => 32, 'user_id' => 4, 'store_id' => 1, 'shift_date' => $date],
+            ['id' => 33, 'user_id' => 9, 'store_id' => 1, 'shift_date' => date('Y-m-d', strtotime('+30 days'))],
+        ]);
+        $notifRepo = $this->createMock(NotificationRepositoryInterface::class);
+        $notifRepo->expects($this->once())->method('markReadByReference')->with(9, 'shift', [31]);
+
+        $_GET = ['store_id' => '1'];
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 9]);
+
+        $this->assertSame(200, $this->buildController($shifts, $notifRepo)->shiftDay($req)->status());
+    }
+
+    public function testShiftDayPassesTheHighlightedShiftToTheView(): void
+    {
+        $this->writeViewFile($this->viewDir, 'scheduling.shifts-timeline', 'HIGHLIGHT=<?= $highlight_id ?>');
+
+        $_GET = ['store_id' => '1', 'highlight' => '31'];
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 9]);
+
+        $this->assertStringContainsString('HIGHLIGHT=31', $this->controller->shiftDay($req)->body());
+        $this->writeViewFile($this->viewDir, 'scheduling.shifts-timeline', '<?= $can_manage ? "CAN_MANAGE_TRUE" : "CAN_MANAGE_FALSE" ?>');
     }
 }

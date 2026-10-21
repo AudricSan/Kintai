@@ -150,6 +150,7 @@ final class NotificationMiddlewareTest extends TestCase
             public function save(array $data): array { throw new \RuntimeException('table absente'); }
             public function markRead(int $id, int $userId): void { throw new \RuntimeException('table absente'); }
             public function markAllRead(int $userId): void { throw new \RuntimeException('table absente'); }
+            public function markReadByReference(int $userId, string $referenceType, array $referenceIds): void { throw new \RuntimeException('table absente'); }
             public function delete(int $id): int { throw new \RuntimeException('table absente'); }
             public function deleteAllForUser(int $userId): void { throw new \RuntimeException('table absente'); }
         });

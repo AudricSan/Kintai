@@ -77,6 +77,18 @@ final class DatabaseNotificationRepository implements NotificationRepositoryInte
             ->update(['read_at' => date('Y-m-d H:i:s')]);
     }
 
+    public function markReadByReference(int $userId, string $referenceType, array $referenceIds): void
+    {
+        if ($referenceIds === []) {
+            return;
+        }
+        EloquentNotification::where('user_id', $userId)
+            ->where('reference_type', $referenceType)
+            ->whereIn('reference_id', array_map('intval', $referenceIds))
+            ->whereNull('read_at')
+            ->update(['read_at' => date('Y-m-d H:i:s')]);
+    }
+
     public function markAllRead(int $userId): void
     {
         EloquentNotification::where('user_id', $userId)

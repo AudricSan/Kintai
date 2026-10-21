@@ -560,6 +560,14 @@
     touch-action: none;
 }
 
+/* Shift désigné par une notification (?highlight=) : contour et halo le distinguent des autres barres. */
+.tl-bar--highlight {
+    outline: 3px solid var(--color-primary);
+    outline-offset: 1px;
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--color-primary) 25%, transparent);
+    z-index: 2;
+}
+
 .tl-bar-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .tl-bar-label--main {
