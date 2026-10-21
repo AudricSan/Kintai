@@ -10,6 +10,7 @@ use kintai\Core\Response;
 use kintai\Core\Services\AppSettingsService;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\BackupService;
+use kintai\Core\Services\SystemNotificationService;
 
 final class BackupJob implements CronJobInterface
 {
@@ -43,6 +44,8 @@ final class BackupJob implements CronJobInterface
         try {
             $result = $this->backupService->create($note);
             $this->backupService->enforceRetention($this->settings->backupMaxKeep());
+            // Succès : l'éventuelle alerte « sauvegarde en échec » des Owners n'a plus d'objet.
+            $this->settings->setMany([SystemNotificationService::BACKUP_FAILURE_KEY => '']);
 
             $this->auditLogger->log($request, 'backup.created', 'system', null, [
                 'filename' => $result['filename'],
@@ -56,6 +59,8 @@ final class BackupJob implements CronJobInterface
                 'size'     => $result['size'],
             ]);
         } catch (\RuntimeException $e) {
+            // Mémorisé pour SystemNotificationService (notification « backup_failed » aux Owners).
+            $this->settings->setMany([SystemNotificationService::BACKUP_FAILURE_KEY => date('Y-m-d H:i:s')]);
             return Response::json([
                 'ok'    => false,
                 'error' => $e->getMessage(),

@@ -29,6 +29,12 @@ final class NotificationTypeRegistry
         return $this->types ??= self::coreTypes() + $this->extensions->notificationTypes();
     }
 
+    /** Alerte système adressée aux Owners (SystemNotificationService) : hors de la grille des préférences. */
+    public static function isOwnerAlert(string $type): bool
+    {
+        return isset(SystemNotificationService::REFERENCE_IDS[$type]);
+    }
+
     public function get(string $type): ?NotificationType
     {
         return $this->all()[$type] ?? null;
@@ -43,8 +49,8 @@ final class NotificationTypeRegistry
     {
         $grouped = array_fill_keys(NotificationType::CATEGORIES, []);
         foreach ($this->all() as $type) {
-            // La notification de test de l'Owner n'est pas un choix de l'utilisateur.
-            if ($type->type === NotificationPreferenceService::TEST_TYPE) {
+            // La notification de test et les alertes système des Owners ne sont pas des choix de l'utilisateur.
+            if ($type->type === NotificationPreferenceService::TEST_TYPE || self::isOwnerAlert($type->type)) {
                 continue;
             }
             $grouped[$type->category][] = $type;
@@ -66,6 +72,14 @@ final class NotificationTypeRegistry
             'shift_deleted'  => new NotificationType('shift_deleted', '🗑', 'planning', true, true, 'shift_day'),
             // Liaison Google Calendar tombée (accès retiré, jeton expiré) : seul moyen de prévenir l'employé que son agenda ne suit plus.
             'calendar_sync_error' => new NotificationType('calendar_sync_error', '📆', 'planning', true, false),
+            // Notifications système, Owners uniquement (SystemNotificationService) : push par défaut, pas d'e-mail.
+            'core_update_available' => new NotificationType('core_update_available', '⬆️', 'system', true, false, 'system'),
+            'migration_pending' => new NotificationType('migration_pending', '🗄', 'system', true, false, 'system'),
+            'bundle_update_available' => new NotificationType('bundle_update_available', '🧩', 'system', true, false, 'system'),
+            'backup_failed' => new NotificationType('backup_failed', '⚠️', 'system', true, false, 'system'),
+            'backup_stale' => new NotificationType('backup_stale', '💾', 'system', true, false, 'system'),
+            'channel_broken' => new NotificationType('channel_broken', '📡', 'system', true, false, 'system'),
+            'license_quota' => new NotificationType('license_quota', '🔑', 'system', true, false, 'system'),
             // Notification de test de l'Owner (paramètres des notifications) : ne figure pas dans les préférences.
             NotificationPreferenceService::TEST_TYPE => new NotificationType(NotificationPreferenceService::TEST_TYPE, '🔔', 'system', true, true),
         ];
