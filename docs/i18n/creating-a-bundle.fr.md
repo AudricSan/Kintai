@@ -987,6 +987,19 @@ Deux façons d'être découvert :
 - **Votre propre registre** — écrivez et hébergez vous-même un `registry.json` (n'importe où, accessible en HTTPS), puis n'importe qui peut ajouter son URL depuis `/admin/bundles/registries`. Aucune approbation de quiconque n'est nécessaire.
 - **Le registre officiel de Kintai** ([`AudricSan/KintaiBundle`](https://github.com/AudricSan/KintaiBundle)) — ouvrez une pull request qui ajoute une entrée à son `registry.json`. Y figurer ne rend **pas** votre bundle « officiel » — voir ci-dessous.
 
+### Apparaître dans le questionnaire de l'assistant (entrée de registry)
+
+L'assistant de configuration pose quelques questions métier pour recommander des bundles. Votre entrée de registry
+(`registry.json`) peut ajouter la vôtre, et les bundles dont vous dépendez, sans toucher au Core :
+
+```json
+{ "slug": "acme-crm", "setup_question": { "text": { "en": "Do you use a CRM?", "fr": "Utilisez-vous un CRM ?" }, "icon": "🤝", "theme": "communication" },
+  "requires_bundles": ["messaging"] }
+```
+
+`theme` vaut `planning`, `requests`, `communication`, `reports` ou `hr` (sinon « Autres »). Sans `setup_question`, votre bundle reste
+proposé dans la liste complète. `requires_bundles` coche les prérequis pour l'utilisateur (une aide, pas un blocage).
+
 ## Officiel ou tiers
 
 `config/official-bundles.php`, dans le dépôt de Kintai lui-même, est la **seule** source de vérité sur les slugs maintenus par le projet Kintai — un bundle ne peut pas se déclarer officiel lui-même, quel que soit le registre qui le liste. Tout le reste est marqué « tiers » dans le catalogue, et l'installer ou le mettre à jour exige de cocher explicitement `confirm_third_party`, vérifié côté serveur (pas seulement masqué en JavaScript) — attendez-vous à ce que vos utilisateurs voient un avertissement, et concevez votre bundle en supposant qu'ils le liront avant de continuer.
