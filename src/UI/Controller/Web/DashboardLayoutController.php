@@ -8,6 +8,7 @@ use kintai\Contract\Extension\DashboardWidget;
 use kintai\Core\Exceptions\ValidationException;
 use kintai\Core\Extension\DashboardLayout;
 use kintai\Core\Extension\DashboardWidgets;
+use kintai\Core\Repositories\UserDashboardLayoutRepositoryInterface;
 use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
@@ -15,7 +16,7 @@ use kintai\Core\Services\AuditLogger;
 
 /**
  * Personnalisation des tableaux de bord, appelée en arrière-plan par dashboard-layout.js en mode édition :
- * - disposition (ordre et largeur des widgets), à chaque déplacement. Corps JSON : {order: [...], widths: {clé:
+ * - disposition (ordre, largeur, hauteur, repli des widgets et densité), à chaque modification. Corps JSON : {order: [...], widths: {clé:
  *   half|full}} pour les widgets affichés, ou {reset: true} pour revenir à la disposition par défaut ;
  * - widgets affichés : {add: clé} ajoute un widget en fin de tableau de bord, {remove: clé} le retire. Les autres
  *   widgets gardent leur place et leur largeur.
@@ -25,6 +26,8 @@ final class DashboardLayoutController
     public function __construct(
         private readonly UserDashboardPrefsRepositoryInterface $dashboardPrefs,
         private readonly AuditLogger $auditLogger,
+        // Mises en page nommées : la modification de la disposition en cours est reportée sur celle qui est active.
+        private readonly ?UserDashboardLayoutRepositoryInterface $layouts = null,
     ) {}
 
     /** POST /admin/dashboard/layout */
@@ -61,6 +64,8 @@ final class DashboardLayoutController
 
         if (($body['reset'] ?? false) === true) {
             $this->dashboardPrefs->saveLayout($userId, $dashboardType, null);
+            // Revenir au défaut : la disposition en cours n'est plus celle d'une mise en page nommée.
+            $this->layouts?->deactivateAll($userId, $dashboardType);
             return Response::json(['layout' => null]);
         }
 
@@ -69,8 +74,11 @@ final class DashboardLayoutController
             $this->dashboardPrefs->getLayout($userId, $dashboardType),
             is_array($body['order'] ?? null) ? array_values($body['order']) : [],
             is_array($body['widths'] ?? null) ? $body['widths'] : [],
+            // Hauteurs, widgets repliés et densité : seulement ce que la page envoie (le reste est conservé).
+            array_intersect_key($body, array_flip(['heights', 'collapsed', 'density'])),
         );
         $this->dashboardPrefs->saveLayout($userId, $dashboardType, $layout);
+        $this->layouts?->updateActive($userId, $dashboardType, $layout);
 
         return Response::json(['layout' => $layout]);
     }

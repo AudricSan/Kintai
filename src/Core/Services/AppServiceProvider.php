@@ -214,6 +214,9 @@ final class AppServiceProvider extends ServiceProvider
         // Même raison (paramètre ?\Closure) : BundleRegistryClient et BundleInstallerService.
         $this->container->singleton(BundleRegistryClient::class, fn() => new BundleRegistryClient());
 
+        // Questions de l'assistant qui recommandent des bundles (config/setup-questions.php).
+        $this->container->singleton(\kintai\Core\Setup\SetupQuestionnaire::class, fn() => \kintai\Core\Setup\SetupQuestionnaire::fromConfig(BASE_PATH . '/config/setup-questions.php'));
+
         // Assistant de configuration : bundles du catalogue pour un canal, installés comme depuis /admin/bundles/market.
         $this->container->singleton(SetupWizard::class, fn(Container $c) => new SetupWizard(
             $c->make(\kintai\Core\Repositories\AppSettingsRepositoryInterface::class),
@@ -227,6 +230,7 @@ final class AppServiceProvider extends ServiceProvider
                     $entries[$entry->bundle->slug] = [
                         'slug' => $entry->bundle->slug, 'name' => $entry->bundle->name, 'description' => $entry->bundle->description,
                         'version' => $version, 'repository_url' => $entry->bundle->repositoryUrl, 'registry_url' => $entry->registryUrl,
+                        'setup_question' => $entry->bundle->setupQuestion, 'requires' => $entry->bundle->requires,
                     ];
                 }
                 return array_values($entries);
@@ -260,6 +264,9 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(TranslationRepositoryInterface::class),
         ));
 
+        // Détecteurs des notifications système (Owners) ; le service lui-même s'auto-résout.
+        $this->container->singleton(SystemAlertSourceInterface::class, fn(Container $c) => $c->make(SystemAlertDetectors::class));
+
         // Tâches du Core, puis celles des bundles actifs (Bundle::cronJobs(), contrat 1.8 : auto-validate de
         // daily-report, photo-retention de store-photos…).
         $this->container->singleton(CronRunner::class, function (Container $c) {
@@ -267,6 +274,7 @@ final class AppServiceProvider extends ServiceProvider
             $runner->register($c->make(BackupJob::class));
             $runner->register($c->make(LogPurgeJob::class));
             $runner->register($c->make(NotificationPurgeJob::class));
+            $runner->register($c->make(\kintai\Core\Cron\SystemNotificationsJob::class));
             $runner->register($c->make(LicenseCheckJob::class));
             if ($c->has(\kintai\Core\Extension\ExtensionRegistry::class)) {
                 $runner->registerBundleJobs(

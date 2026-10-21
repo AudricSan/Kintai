@@ -350,7 +350,8 @@ final class NotificationPreferenceServiceTest extends TestCase
         $this->assertSame(1, Notification::where('user_id', 7)->count(), 'la cloche reçoit toujours la notification');
     }
 
-    public function testNotifySkipsPushDuringQuietHoursButStillFillsTheBell(): void
+    /** Heures silencieuses : le push part quand même (muet, voir pushPayload), la cloche aussi ; rien n'est retenu. */
+    public function testNotifyStillSendsPushDuringQuietHours(): void
     {
         $service = $this->service();
         $service->saveQuietHours(7, true, '22:00', '07:00');
@@ -359,13 +360,27 @@ final class NotificationPreferenceServiceTest extends TestCase
 
         $this->notifier($service, $attempts)->notify(7, 'shift_assigned', 'notif_shift_assigned_body');
 
-        $this->assertSame(0, $attempts);
+        $this->assertSame(1, $attempts);
         $this->assertSame(1, Notification::where('user_id', 7)->count());
 
-        // Hors plage, le push repart.
+        // Hors plage : même comportement côté envoi.
         $this->now = new \DateTimeImmutable('2026-10-22 09:00:00');
         $this->notifier($service, $attempts)->notify(7, 'shift_assigned', 'notif_shift_assigned_body');
-        $this->assertSame(1, $attempts);
+        $this->assertSame(2, $attempts);
+    }
+
+    /** Un push que l'utilisateur a coupé pour ce type reste coupé, heures silencieuses ou pas. */
+    public function testQuietHoursDoNotReenableAPushTheUserTurnedOff(): void
+    {
+        $service = $this->service();
+        $service->saveChanges(7, ['shift_assigned' => ['push' => false]]);
+        $service->saveQuietHours(7, true, '22:00', '07:00');
+        $this->now = new \DateTimeImmutable('2026-10-21 23:00:00');
+        $attempts = 0;
+
+        $this->notifier($service, $attempts)->notify(7, 'shift_assigned', 'notif_shift_assigned_body');
+
+        $this->assertSame(0, $attempts);
     }
 
     public function testNotifyManyAppliesEachRecipientsOwnPreferences(): void

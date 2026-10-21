@@ -3,8 +3,10 @@
  * enregistrement de l'abonnement côté serveur.
  *
  * Chargé sur toutes les pages connectées quand le web push est opérationnel (#push-meta rendu par le layout) :
- *  - à chaque chargement, l'abonnement du navigateur est renvoyé au serveur (mise à jour silencieuse), ce qui couvre
- *    une rotation de l'abonnement, un abonnement perdu côté serveur ou un navigateur partagé entre deux comptes ;
+ *  - l'abonnement du navigateur est renvoyé au serveur (mise à jour silencieuse), ce qui couvre une rotation de
+ *    l'abonnement, un abonnement perdu côté serveur ou un navigateur partagé entre deux comptes. Hors de l'onglet
+ *    Notifications du profil (qui montre l'état réel), pas plus d'une fois toutes les 6 heures par compte, clé et
+ *    abonnement : sans cela, chaque page chargée coûtait deux requêtes et une écriture en base ;
  *  - l'état « activé » n'est affiché qu'après une réponse positive du serveur ;
  *  - à la déconnexion, l'abonnement de ce navigateur est supprimé (serveur et navigateur).
  *
@@ -21,6 +23,11 @@
     var subscribeUrl   = meta.dataset.subscribeUrl || '';
     var unsubscribeUrl = meta.dataset.unsubscribeUrl || '';
     var statusUrl      = meta.dataset.statusUrl || '';
+    var userId         = meta.dataset.userId || '';
+
+    // Délai minimal entre deux resynchronisations silencieuses d'un même abonnement.
+    var SYNC_EVERY_MS  = 6 * 60 * 60 * 1000;
+    var SYNC_STORAGE   = 'kintai-push-sync';
 
     var blocks = {
         unsupported: document.getElementById('push-status-unsupported'),
@@ -86,12 +93,46 @@
         });
     }
 
+    // Vrai quand l'état affiché doit venir du serveur (onglet Notifications du profil) : pas de resynchronisation différée.
+    function showsState() {
+        return Object.keys(blocks).some(function (key) { return blocks[key] !== null; });
+    }
+
+    // Empreinte de ce qui a été synchronisé : compte, clé du serveur et abonnement. Un changement de l'un d'eux
+    // (autre compte sur ce navigateur, clés VAPID régénérées, nouvel abonnement) force une nouvelle synchronisation.
+    function syncStamp(subscription) {
+        return userId + '|' + vapidKey + '|' + subscription.endpoint;
+    }
+
+    function recentlySynced(subscription) {
+        try {
+            var saved = JSON.parse(window.localStorage.getItem(SYNC_STORAGE) || 'null');
+            return !!saved && saved.stamp === syncStamp(subscription)
+                && typeof saved.at === 'number' && Date.now() - saved.at >= 0 && Date.now() - saved.at < SYNC_EVERY_MS;
+        } catch (err) {
+            return false;
+        }
+    }
+
+    function markSynced(subscription) {
+        try {
+            window.localStorage.setItem(SYNC_STORAGE, JSON.stringify({ stamp: syncStamp(subscription), at: Date.now() }));
+        } catch (err) { /* stockage indisponible (navigation privée…) : on resynchronisera, sans conséquence */ }
+    }
+
+    function forgetSynced() {
+        try { window.localStorage.removeItem(SYNC_STORAGE); } catch (err) { /* idem */ }
+    }
+
     // Envoie l'abonnement au serveur ; vrai seulement si le serveur répond 2xx.
     function sendSubscription(subscription) {
         var json = subscription.toJSON();
         if (!json.endpoint || !json.keys) return Promise.resolve(false);
         return post(subscribeUrl, { endpoint: json.endpoint, keys: json.keys }).then(function (response) {
-            if (response.ok) rememberEndpoint(json.endpoint);
+            if (response.ok) {
+                rememberEndpoint(json.endpoint);
+                markSynced(subscription);
+            }
             return response.ok;
         }).catch(function () { return false; });
     }
@@ -139,6 +180,7 @@
             });
         }).then(function () {
             rememberEndpoint('');
+            forgetSynced();
             renderState('disabled');
         }).catch(function () { renderState('error'); });
     }
@@ -161,6 +203,12 @@
                 }
                 return subscription.unsubscribe().then(function () { renderState('disabled'); });
             }
+            // Déjà synchronisé il y a peu et aucun état à afficher sur cette page : rien à envoyer. On garde quand même
+            // l'adresse pour le formulaire de déconnexion, qui supprime l'abonnement côté serveur.
+            if (!showsState() && recentlySynced(subscription)) {
+                rememberEndpoint(subscription.endpoint);
+                return;
+            }
             return sendSubscription(subscription).then(function (ok) {
                 if (!ok) {
                     renderState('disabled');
@@ -180,6 +228,7 @@
         var form = e.target;
         if (!(form instanceof HTMLFormElement) || !form.hasAttribute('data-push-logout') || form.dataset.pushDone === '1') return;
         e.preventDefault();
+        forgetSynced();
         var done = function () { form.dataset.pushDone = '1'; form.submit(); };
         // Jamais bloquant : au bout d'une seconde la déconnexion a lieu quoi qu'il arrive.
         var timer = setTimeout(done, 1000);

@@ -282,9 +282,10 @@ final class BundleInstallerService
         }
 
         $data = json_decode((string) file_get_contents($manifestPath), true);
-        $manifest = BundleManifest::fromArray($data);
+        $errors = BundleManifest::validationErrors($data, $expectedSlug, false);
+        $manifest = $errors === [] ? BundleManifest::fromArray($data) : null;
         if ($manifest === null) {
-            $this->lastError = 'bundle.json invalide ou incomplet.';
+            $this->lastError = 'bundle.json invalide : ' . ($errors !== [] ? implode(' ', $errors) : 'incomplet.');
             return null;
         }
 

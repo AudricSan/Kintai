@@ -9,6 +9,7 @@ use kintai\UI\Controller\Web\NotificationController;
 use kintai\UI\Controller\Web\CronController;
 use kintai\UI\Controller\Web\EmployeeController;
 use kintai\UI\Controller\Web\DashboardLayoutController;
+use kintai\UI\Controller\Web\DashboardLayoutsController;
 use kintai\UI\Controller\Web\HomeController;
 use kintai\UI\Controller\Web\IcalController;
 use kintai\UI\Controller\Web\DocsController;
@@ -151,6 +152,7 @@ $router->group('/employee', function ($r) {
     $r->get('',             [EmployeeController::class, 'dashboard'],    name: 'employee.dashboard');
     $r->post('/dashboard/widgets', [DashboardLayoutController::class, 'widgetsEmployee'], name: 'employee.dashboard.widgets');
     $r->post('/dashboard/layout',  [DashboardLayoutController::class, 'saveEmployee'],  name: 'employee.dashboard.layout');
+    $r->post('/dashboard/layouts', [DashboardLayoutsController::class, 'manageEmployee'], name: 'employee.dashboard.layouts');
 
     // Shifts
     $r->get('/shifts',          [EmployeeController::class, 'shifts'],         name: 'employee.shifts');
@@ -189,6 +191,7 @@ $router->post('/lang/{locale}', [AuthController::class, 'switchLanguage'], name:
 $router->get('/', [HomeController::class, 'index'], middleware: [AuthMiddleware::class, PermissionMiddleware::class], name: 'home', permission: 'public');
 $router->post('/admin/dashboard/widgets', [DashboardLayoutController::class, 'widgetsManager'], middleware: [AuthMiddleware::class, PermissionMiddleware::class], name: 'admin.dashboard.widgets', permission: 'public');
 $router->post('/admin/dashboard/layout', [DashboardLayoutController::class, 'saveManager'], middleware: [AuthMiddleware::class, PermissionMiddleware::class], name: 'admin.dashboard.layout', permission: 'public');
+$router->post('/admin/dashboard/layouts', [DashboardLayoutsController::class, 'manageManager'], middleware: [AuthMiddleware::class, PermissionMiddleware::class], name: 'admin.dashboard.layouts', permission: 'public');
 
 // =============================================================================
 // Routes administration (web)
@@ -350,7 +353,10 @@ $router->group('/admin', function ($r) {
     // Assistant de configuration ouvert par l'installateur : licence, puis bundles (voir SetupWizard).
     $r->get('/setup',          [SetupWizardController::class, 'show'],    middleware: [OwnerOnlyMiddleware::class], name: 'admin.setup', permission: 'public');
     $r->post('/setup/license', [SetupWizardController::class, 'license'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.setup.license', permission: 'public');
+    $r->post('/setup/step/{step}', [SetupWizardController::class, 'step'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.setup.step', permission: 'public');
+    $r->post('/setup/finish', [SetupWizardController::class, 'finish'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.setup.finish', permission: 'public');
     $r->post('/setup/bundles', [SetupWizardController::class, 'bundles'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.setup.bundles', permission: 'public');
+    $r->post('/setup/questions', [SetupWizardController::class, 'questions'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.setup.questions', permission: 'public');
     $r->get('/license',           [LicenseController::class, 'show'],       middleware: [OwnerOnlyMiddleware::class], name: 'admin.license', permission: 'public');
     $r->post('/license/activate', [LicenseController::class, 'activate'],   middleware: [OwnerOnlyMiddleware::class], name: 'admin.license.activate', permission: 'public');
     $r->post('/license/refresh',  [LicenseController::class, 'refresh'],    middleware: [OwnerOnlyMiddleware::class], name: 'admin.license.refresh', permission: 'public');

@@ -117,6 +117,8 @@ self.addEventListener('push', (e) => {
       icon: BASE + '/assets/img/kintai-192.png',
       badge: BASE + '/assets/img/kintai-192.png',
       data,
+      // Heures silencieuses de l'utilisateur (décidées par le serveur à l'envoi) : affichée sans son ni vibration.
+      silent: data.quiet === '1',
     })
   );
 });

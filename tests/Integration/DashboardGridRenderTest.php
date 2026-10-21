@@ -27,11 +27,11 @@ final class DashboardGridRenderTest extends TestCase
         Container::getInstance()->instance(Router::class, $router);
     }
 
-    /** @return list<array{string, string}> [clé, largeur] des widgets, dans l'ordre du document */
+    /** @return list<array{string, string}> [clé, largeur] des widgets, dans l'ordre du document (6 colonnes = « half », 12 = « full ») */
     private static function items(string $html): array
     {
-        preg_match_all('/data-widget-key="([a-z_]+)" data-widget-width="(half|full)"/', $html, $m, PREG_SET_ORDER);
-        return array_map(static fn(array $x): array => [$x[1], $x[2]], $m);
+        preg_match_all('/data-widget-key="([a-z_]+)"\s+data-widget-width="(\d+)"/', $html, $m, PREG_SET_ORDER);
+        return array_map(static fn(array $x): array => [$x[1], match ($x[2]) { '6' => 'half', '12' => 'full', default => $x[2] }], $m);
     }
 
     public function testManagerWidgetsFollowTheLayout(): void
@@ -125,5 +125,75 @@ final class DashboardGridRenderTest extends TestCase
         ]);
 
         $this->assertSame([['timeclock', 'full'], ['upcoming', 'half'], ['shifts_today', 'full']], self::items($html));
+    }
+
+    /** Grille 12 colonnes : largeur et hauteur sont des classes, jamais un style en ligne ; repli et densité aussi. */
+    public function testWidgetSizeFoldingAndDensityAreRenderedAsClasses(): void
+    {
+        $html = $this->view->renderPartial('employee.dashboard', [
+            'BASE_URL'        => '',
+            'shifts_today'    => [],
+            'upcoming'        => [],
+            'enabled_widgets' => array_flip(['shifts_today', 'upcoming']),
+            'all_widgets'     => ['shifts_today', 'upcoming', 'timeclock'],
+            'bundle_widgets'  => [['key' => 'timeclock', 'html' => '<div class="card">pointage</div>']],
+            'widget_limits'   => ['timeclock' => [3, 8]],
+            'widget_layout'   => [
+                'order'     => ['timeclock', 'upcoming', 'shifts_today'],
+                'widths'    => ['timeclock' => 12, 'upcoming' => 4, 'shifts_today' => 'half'],
+                'heights'   => ['upcoming' => 3, 'timeclock' => 1, 'shifts_today' => 1],
+                'collapsed' => ['shifts_today'],
+                'density'   => 'compact',
+            ],
+        ]);
+
+        $this->assertStringContainsString('class="dash-grid dash-grid--compact"', $html);
+        $this->assertSame([['timeclock', '8'], ['upcoming', '4'], ['shifts_today', 'half']], self::items($html), 'la largeur est bornée par le widget (3–8)');
+        $this->assertMatchesRegularExpression('/id="dash-widget-upcoming"\s+class="dash-grid__item dash-w-4 dash-h-3"/', $html);
+        $this->assertMatchesRegularExpression('/id="dash-widget-timeclock"\s+class="dash-grid__item dash-w-8 dash-h-1"/', $html);
+        $this->assertMatchesRegularExpression('/id="dash-widget-shifts_today"\s+class="dash-grid__item dash-w-6 dash-h-1 dash-grid__item--collapsed"/', $html);
+        $this->assertStringContainsString('data-widget-min="3" data-widget-max="8"', $html);
+        $this->assertStringContainsString('aria-expanded="false"', $html, 'le widget replié propose de le déplier');
+        $this->assertStringNotContainsString(' style="', $html);
+    }
+
+    /** Une ancienne disposition (« half » / « full » seulement) s'affiche comme avant. */
+    public function testOldHalfAndFullLayoutsRenderAsSixAndTwelveColumns(): void
+    {
+        $html = $this->view->renderPartial('employee.dashboard', [
+            'BASE_URL'        => '',
+            'shifts_today'    => [],
+            'upcoming'        => [],
+            'enabled_widgets' => array_flip(['shifts_today', 'upcoming']),
+            'all_widgets'     => ['shifts_today', 'upcoming'],
+            'bundle_widgets'  => [],
+            'widget_layout'   => ['order' => ['upcoming', 'shifts_today'], 'widths' => ['upcoming' => 'half']],
+        ]);
+
+        $this->assertStringContainsString('dash-w-6 dash-h-1', $html);
+        $this->assertStringContainsString('dash-w-12 dash-h-1', $html);
+        $this->assertStringNotContainsString('dash-grid--compact', $html);
+    }
+
+    /** Rafraîchissement : intervalle par widget (Core par défaut, bundle déclaré), actions d'en-tête et mode mural. */
+    public function testRefreshIntervalsAndHeaderActionsAreRendered(): void
+    {
+        $html = $this->view->renderPartial('employee.dashboard', [
+            'BASE_URL'        => '',
+            'shifts_today'    => [],
+            'upcoming'        => [],
+            'enabled_widgets' => array_flip(['shifts_today', 'upcoming', 'monthly_stats']),
+            'all_widgets'     => ['shifts_today', 'upcoming', 'monthly_stats', 'timeclock'],
+            'bundle_widgets'  => [['key' => 'timeclock', 'html' => '<div class="card">pointage</div>']],
+            'widget_refresh'  => ['timeclock' => 45],
+            'widget_layout'   => ['order' => ['shifts_today', 'monthly_stats', 'timeclock'], 'widths' => []],
+        ]);
+
+        $this->assertMatchesRegularExpression('/data-widget-key="shifts_today"[^>]*data-widget-refresh="120"/s', $html);
+        $this->assertMatchesRegularExpression('/data-widget-key="timeclock"[^>]*data-widget-refresh="45"/s', $html);
+        $this->assertStringContainsString('data-dash-refresh-now', $html);
+        $this->assertStringContainsString('data-dash-wall', $html);
+        $this->assertStringContainsString('data-dash-wall-exit', $html);
+        $this->assertStringContainsString('dashboard-live.js', $html);
     }
 }

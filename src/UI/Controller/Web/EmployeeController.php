@@ -22,6 +22,7 @@ use kintai\Core\Auth\PermissionService;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\DashboardLayoutResolver;
 use kintai\Core\Services\NotificationService;
 use kintai\UI\Controller\Web\HasBaseUrl;
 use kintai\UI\Controller\Web\HasStoreFeatureCheck;
@@ -52,6 +53,8 @@ final class EmployeeController
         private readonly NotificationService $notifs,
         private readonly UserNavPrefsRepositoryInterface $navPrefs,
         private readonly PermissionService $permissions,
+        // Disposition de l'utilisateur, sinon défaut de son rôle ; mises en page nommées (null : disposition enregistrée seule).
+        private readonly ?DashboardLayoutResolver $layoutResolver = null,
     ) {}
 
     // -------------------------------------------------------------------------
@@ -75,6 +78,7 @@ final class EmployeeController
         // widgets historiques d'un bundle qui déclare les siens ne sont plus rendus par le Core ($enabledWidgets).
         $dashWidgets = DashboardWidgets::current();
         $widgetKeys  = $dashWidgets->keys(DashboardWidget::EMPLOYEE, self::EMPLOYEE_WIDGETS);
+        $sizes       = $dashWidgets->sizes(DashboardWidget::EMPLOYEE, self::EMPLOYEE_WIDGETS);
         $saved       = $this->dashboardPrefs->getEnabledWidgets($userId, 'employee');
         $enabledAll  = array_flip(array_values(
             $saved !== null
@@ -118,7 +122,12 @@ final class EmployeeController
             'enabled_widgets'  => $enabledWidgets,
             'enabled_widgets_all' => $enabledAll,
             'all_widgets'      => $widgetKeys,
-            'widget_layout'    => DashboardLayout::resolve($widgetKeys, $this->dashboardPrefs->getLayout($userId, 'employee')),
+            'widget_layout'    => DashboardLayout::resolve($widgetKeys, $this->layoutResolver?->layoutFor($userId, 'employee') ?? $this->dashboardPrefs->getLayout($userId, 'employee'), $sizes['widths'], $sizes['heights']),
+            'dashboard_layouts' => $this->layoutResolver?->namedLayouts($userId, 'employee') ?? [],
+            'dashboard_layouts_route' => 'employee.dashboard.layouts',
+            'dashboard_roles'  => !empty($user['is_admin']) ? ($this->layoutResolver?->roleOptions('employee') ?? []) : [],
+            'widget_limits'    => $sizes['limits'],
+            'widget_refresh'   => $sizes['refresh'],
             'bundle_widgets'   => $bundleWidgets,
             'bundle_stats'     => $bundleStats,
             'bundle_widget_meta' => $dashWidgets->meta(DashboardWidget::EMPLOYEE, self::EMPLOYEE_WIDGETS),
@@ -441,6 +450,11 @@ final class EmployeeController
         if ($ownShiftIds !== []) {
             $this->notifs->markReadFor($userId, 'shift', $ownShiftIds);
         }
+        // Un shift supprimé n'est plus affiché : sa notification désigne le jour, lu dès que ce jour est à l'écran.
+        $this->notifs->markReadFor($userId, 'shift_day', array_map(
+            static fn(\DateTimeInterface $d) => shift_day_reference($d->format('Y-m-d')),
+            $days
+        ));
 
         // Taux horaires et devise (store affiché)
         $ratesMap    = []; // uid → shift_type_id → hourly_rate

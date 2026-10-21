@@ -84,7 +84,7 @@ final class SetupWizardTest extends TestCase
         require $root . '/src/' . $class . 'Bundle.php';
     }
 
-    public function testStartPutsANewInstanceOnTheLicenseStepWithoutActiveBundles(): void
+    public function testStartPutsANewInstanceOnTheFirstStepWithoutActiveBundles(): void
     {
         $settings = $this->settings();
         SetupWizard::start($settings, 'alpha');
@@ -94,12 +94,66 @@ final class SetupWizardTest extends TestCase
         $installed = [];
         $wizard = $this->wizard($settings, $installed);
         $this->assertTrue($wizard->isPending());
-        $this->assertSame(SetupWizard::STEP_LICENSE, $wizard->step());
+        $this->assertSame(SetupWizard::STEP_ORGANISATION, $wizard->step());
 
-        $wizard->licenseDone();
-        $this->assertSame(SetupWizard::STEP_BUNDLES, $wizard->step());
         $wizard->finish();
         $this->assertFalse($wizard->isPending());
+    }
+
+    public function testStepsComeInOrderAndDoneOrSkippedOnesAreLeftBehind(): void
+    {
+        $settings = $this->settings();
+        SetupWizard::start($settings, 'release');
+        $installed = [];
+        $wizard = $this->wizard($settings, $installed);
+
+        $walked = [];
+        while (($step = $wizard->step()) !== SetupWizard::STEP_RECAP) {
+            $walked[] = $step;
+            $wizard->mark($step, count($walked) % 2 === 0);
+        }
+
+        $this->assertSame(['organisation', 'store', 'mail', 'notifications', 'operations', 'bundles', 'license'], $walked, 'Bundles avant Licence');
+        $this->assertSame(SetupWizard::DONE, $wizard->progress()['organisation']);
+        $this->assertSame(SetupWizard::SKIPPED, $wizard->progress()['store']);
+    }
+
+    public function testAStepCanBeRevisitedAndUnknownOnesAreIgnored(): void
+    {
+        $settings = $this->settings();
+        SetupWizard::start($settings, 'release');
+        $installed = [];
+        $wizard = $this->wizard($settings, $installed);
+        $wizard->mark('organisation');
+        $wizard->mark('nonexistent');
+        $wizard->mark(SetupWizard::STEP_RECAP);
+
+        $this->assertSame('store', $wizard->step());
+        $this->assertSame(['organisation', 'store', 'mail', 'notifications', 'operations', 'bundles', 'license'], array_keys($wizard->progress()));
+        $this->assertTrue(SetupWizard::isStep('mail'));
+        $this->assertFalse(SetupWizard::isStep('../etc'));
+    }
+
+    public function testNavigationBetweenSteps(): void
+    {
+        $this->assertSame('store', SetupWizard::nextStep('organisation'));
+        $this->assertSame('recap', SetupWizard::nextStep('license'));
+        $this->assertSame('recap', SetupWizard::nextStep('recap'));
+        $this->assertNull(SetupWizard::previousStep('organisation'));
+        $this->assertSame('bundles', SetupWizard::previousStep('license'));
+        $this->assertSame(1, SetupWizard::position('organisation'));
+        $this->assertSame(8, SetupWizard::position('recap'));
+    }
+
+    public function testProgressOfAnInstanceInTheOldTwoStepWizardIsKept(): void
+    {
+        $settings = $this->settings();
+        $settings->setMany([SetupWizard::PENDING_KEY => '1', SetupWizard::STEP_KEY => 'bundles']);
+        $installed = [];
+        $wizard = $this->wizard($settings, $installed);
+
+        $this->assertSame(SetupWizard::DONE, $wizard->progress()['license'], 'la licence était déjà faite');
+        $this->assertSame('organisation', $wizard->step(), 'les nouvelles étapes lui sont proposées');
     }
 
     public function testAnInstanceInstalledBeforeTheWizardIsNotConcerned(): void
@@ -115,8 +169,81 @@ final class SetupWizardTest extends TestCase
         $wizard = $this->wizard($settings, $installed);
 
         $this->assertSame('setup_bundles_unknown', $wizard->install(['timeoff', 'pirate'], 'release')['error']);
-        $this->assertSame('setup_bundles_too_many', $wizard->install(['timeoff', 'timeclock', 'shift-swap', 'notebook', 'messaging'], 'release')['error']);
         $this->assertSame([], $installed, 'rien installé');
+    }
+
+    public function testBundlesBeyondTheQuotaAreRememberedNotRefused(): void
+    {
+        $settings = $this->settings();
+        $installed = [];
+        $wizard = $this->wizard($settings, $installed);
+
+        $result = $wizard->install(['timeoff', 'timeclock', 'shift-swap', 'notebook', 'messaging'], 'release');
+
+        $this->assertNull($result['error']);
+        $this->assertSame(['timeoff', 'timeclock', 'shift-swap', 'notebook'], $result['installed'], 'les 4 premiers (plan gratuit)');
+        $this->assertSame(['messaging'], $result['pending']);
+        $this->assertSame(['messaging'], $wizard->pendingBundles(), 'mémorisé, pas téléchargé');
+        $this->assertCount(4, $installed);
+    }
+
+    public function testPendingBundlesInstallInOrderOnceThereIsRoom(): void
+    {
+        $settings = $this->settings();
+        $installed = [];
+        $wizard = $this->wizard($settings, $installed);
+        $wizard->install(['timeoff', 'timeclock', 'shift-swap', 'notebook', 'messaging'], 'release');
+        $this->assertSame(['messaging'], $wizard->pendingBundles());
+
+        // Pas de place : rien ne bouge, le bundle reste en attente.
+        $none = $wizard->installPending('release');
+        $this->assertSame([], $none['installed']);
+        $this->assertSame(['messaging'], $none['pending']);
+
+        // Une place se libère (ici : un bundle désactivé) : le bundle en attente s'installe.
+        $settings->set('enabled_bundles', json_encode(['timeoff', 'timeclock', 'shift-swap']));
+        $result = $wizard->installPending('release');
+
+        $this->assertSame(['messaging'], $result['installed']);
+        $this->assertSame([], $result['pending']);
+        $this->assertSame([], $wizard->pendingBundles());
+    }
+
+    public function testAFailedPendingInstallStaysPending(): void
+    {
+        $settings = $this->settings();
+        $installed = [];
+        $wizard = $this->wizard($settings, $installed, ['messaging' => 'réseau']);
+        $wizard->install(['timeoff', 'timeclock', 'shift-swap', 'notebook', 'messaging'], 'release');
+        $settings->set('enabled_bundles', json_encode(['timeoff']));
+
+        $result = $wizard->installPending('release');
+
+        $this->assertSame(['messaging' => 'réseau'], $result['failed']);
+        $this->assertSame(['messaging'], $result['pending']);
+        $this->assertSame(['messaging'], $wizard->pendingBundles(), 'il pourra être réessayé');
+    }
+
+    public function testNothingPendingMeansNothingToDo(): void
+    {
+        $installed = [];
+        $result = $this->wizard($this->settings(), $installed)->installPending('release');
+
+        $this->assertSame([], $result['installed']);
+        $this->assertSame([], $result['pending']);
+        $this->assertSame([], $installed);
+    }
+
+    public function testAnotherChoiceReplacesTheRememberedList(): void
+    {
+        $settings = $this->settings();
+        $installed = [];
+        $wizard = $this->wizard($settings, $installed);
+        $wizard->install(['timeoff', 'timeclock', 'shift-swap', 'notebook', 'messaging'], 'release');
+
+        $wizard->install([], 'release');
+
+        $this->assertSame([], $wizard->pendingBundles());
     }
 
     public function testChosenBundlesAreInstalledOnTheChannelAndEnabledFailuresReported(): void

@@ -3,7 +3,7 @@
  * Contenu du panneau de la cloche. Partagé par la topbar (chargement de page) et par
  * NotificationController::poll() (rafraîchissement sans rechargement), pour ne pas dupliquer ce HTML en JS.
  *
- * @var array[] $notif_items   Dernières notifications (lues ou non)
+ * @var array[] $notif_items   Dernières notifications NON LUES (une fois lue, une notification quitte la cloche)
  * @var int     $notif_unread  Nombre de non lues
  */
 $notif_items  = $notif_items ?? [];
@@ -27,12 +27,11 @@ $notif_unread = (int) ($notif_unread ?? 0);
     </div>
 </div>
 <?php if (empty($notif_items)): ?>
-    <div class="notif-dropdown__empty"><?= __('no_notifications') ?></div>
+    <div class="notif-dropdown__empty"><?= __('no_new_notifications') ?></div>
 <?php else: ?>
     <?php foreach ($notif_items as $_n): ?>
-        <?php $_nRead = (int) ($_n['is_read'] ?? 0); ?>
         <a href="<?= route_url('notifications.open', ['id' => (int) $_n['id']]) ?>"
-           class="notif-entry<?= $_nRead ? '' : ' notif-entry--unread' ?>">
+           class="notif-entry notif-entry--unread">
             <span class="notif-entry__icon"><?= notification_type_icon($_n['type'] ?? '') ?></span>
             <div class="notif-entry__body">
                 <div class="notif-entry__title"><?= htmlspecialchars(notification_type_label($_n['type'] ?? '')) ?></div>
@@ -41,7 +40,8 @@ $notif_unread = (int) ($notif_unread ?? 0);
             </div>
         </a>
     <?php endforeach; ?>
-    <div class="notif-dropdown__footer">
-        <a href="<?= route_url('notifications.index') ?>"><?= __('notifications') ?> →</a>
-    </div>
 <?php endif; ?>
+<?php /* L'historique complet (lues comprises) reste accessible, même quand la cloche est vide. */ ?>
+<div class="notif-dropdown__footer">
+    <a href="<?= route_url('notifications.index') ?>"><?= __('view_all_notifications') ?> →</a>
+</div>

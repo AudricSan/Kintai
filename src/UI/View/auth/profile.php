@@ -483,6 +483,7 @@ $_filteredBnPool = $_navigation->mobileChoices($_isManagerView, $route_visible ?
 ob_start();
 ?>
 <p class="text-muted mb-sm"><?= __('ical_feeds_description') ?></p>
+<div class="alert alert--info mb-sm"><?= __('ical_google_delay_notice') ?></div>
 <?php if (empty($ical_links)): ?>
     <p class="text-muted"><?= __('no_store_assigned') ?></p>
 <?php else: ?>
@@ -498,6 +499,11 @@ ob_start();
                     data-on-click="@copy">
                 <?= __('ical_copy') ?>
             </button>
+            <?php if (!empty($link['add'])): ?>
+            <a class="btn btn--primary btn--sm" href="<?= htmlspecialchars($link['add']['google']) ?>" target="_blank" rel="noopener"><?= __('ical_add_google') ?></a>
+            <a class="btn btn--ghost btn--sm" href="<?= htmlspecialchars($link['add']['outlook']) ?>" target="_blank" rel="noopener"><?= __('ical_add_outlook') ?></a>
+            <a class="btn btn--ghost btn--sm" href="<?= htmlspecialchars($link['add']['webcal']) ?>"><?= __('ical_add_apple') ?></a>
+            <?php endif; ?>
             <form method="POST"
                   action="<?= $BASE_URL ?>/ical/<?= (int) $link['store_id'] ?>/regenerate"
                   data-confirm="<?= htmlspecialchars(__('ical_regenerate_confirm'), ENT_QUOTES) ?>">
