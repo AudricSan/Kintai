@@ -237,4 +237,23 @@ final class DatabaseNotificationRepositoryTest extends TestCase
 
         $this->assertSame(0, $this->repo->findById((int) $n['id'])['is_read']);
     }
+
+    /** La cloche ne montre que les non lues, de l'utilisateur concerné, plus récentes d'abord, dans la limite demandée. */
+    public function testFindUnreadByUserSkipsReadAndOtherUsers(): void
+    {
+        $read   = $this->add(5, 'lue');
+        $first  = $this->add(5, 'a');
+        $this->add(6, 'autre utilisateur');
+        $second = $this->add(5, 'b');
+        $third  = $this->add(5, 'c');
+        $this->repo->markRead((int) $read['id'], 5);
+
+        $ids = array_column($this->repo->findUnreadByUser(5, 10), 'id');
+        $this->assertSame([(int) $third['id'], (int) $second['id'], (int) $first['id']], array_map('intval', $ids));
+
+        $this->assertCount(2, $this->repo->findUnreadByUser(5, 2));
+
+        // Une notification lue quitte la cloche mais reste dans l'historique complet.
+        $this->assertCount(4, $this->repo->findByUser(5, 10));
+    }
 }

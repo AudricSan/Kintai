@@ -385,7 +385,7 @@ x", 'https://evil.example.com'] as $bad) {
             ['id' => 43, 'type' => 'shift_assigned', 'body' => 'déjà lue', 'is_read' => 1],
         ]);
         $this->notifications->method('countUnread')->willReturn(1);
-        $this->notifications->method('findByUser')->willReturn([]);
+        $this->notifications->method('findUnreadByUser')->willReturn([]);
 
         try {
             $data = $this->json($this->controller()->poll($this->makePollRequest(['after_id' => '40', 'count' => '0'])));
@@ -407,7 +407,7 @@ x", 'https://evil.example.com'] as $bad) {
         $this->notifications = $this->createMock(NotificationRepositoryInterface::class);
         $this->notifications->method('findAfterId')->willReturn([]);
         $this->notifications->method('countUnread')->willReturn(3);
-        $this->notifications->expects($this->never())->method('findByUser');
+        $this->notifications->expects($this->never())->method('findUnreadByUser');
 
         try {
             $data = $this->json($this->controller()->poll($this->makePollRequest(['after_id' => '40', 'count' => '3'])));
@@ -425,9 +425,9 @@ x", 'https://evil.example.com'] as $bad) {
     {
         $this->bindRouter();
         $this->notifications->method('findAfterId')->willReturn([]);
-        $this->notifications->method('countUnread')->willReturn(0);
-        $this->notifications->method('findByUser')->willReturn([
-            ['id' => 40, 'type' => 'shift_assigned', 'body' => 'Shift <b>', 'is_read' => 1, 'created_at' => '2026-10-19 10:00:00'],
+        $this->notifications->method('countUnread')->willReturn(1);
+        $this->notifications->method('findUnreadByUser')->willReturn([
+            ['id' => 40, 'type' => 'shift_assigned', 'body' => 'Shift <b>', 'is_read' => 0, 'created_at' => '2026-10-19 10:00:00'],
         ]);
 
         try {
@@ -438,6 +438,25 @@ x", 'https://evil.example.com'] as $bad) {
 
         $this->assertStringContainsString('notif-entry', $data['panel_html']);
         $this->assertStringContainsString('Shift &lt;b&gt;', $data['panel_html']);
-        $this->assertStringNotContainsString('notif-entry--unread', $data['panel_html']);
+        $this->assertStringContainsString('notif-entry--unread', $data['panel_html']);
+    }
+
+    /** Cloche vide (tout est lu) : message dédié, et l'historique complet reste joignable. */
+    public function testPollPanelWhenEverythingIsReadStillLinksToTheHistory(): void
+    {
+        $this->bindRouter();
+        $this->notifications->method('findAfterId')->willReturn([]);
+        $this->notifications->method('countUnread')->willReturn(0);
+        $this->notifications->method('findUnreadByUser')->willReturn([]);
+
+        try {
+            $data = $this->json($this->controller()->poll($this->makePollRequest(['after_id' => '40', 'count' => '2'])));
+        } finally {
+            $_GET = [];
+        }
+
+        $this->assertStringNotContainsString('notif-entry', $data['panel_html']);
+        $this->assertStringContainsString('notif-dropdown__empty', $data['panel_html']);
+        $this->assertStringContainsString('notif-dropdown__footer', $data['panel_html']);
     }
 }
