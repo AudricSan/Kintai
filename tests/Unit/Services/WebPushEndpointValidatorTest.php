@@ -19,6 +19,13 @@ final class WebPushEndpointValidatorTest extends TestCase
             str_starts_with($host, 'metadata.') => ['169.254.169.254'],
             str_starts_with($host, 'mixte.') => ['142.250.74.10', '192.168.1.5'],
             str_starts_with($host, 'inconnu.') => [],
+            // Un nom peut avoir une adresse IPv4 publique et une IPv6 interne : une seule suffit à le refuser.
+            str_starts_with($host, 'v6interne.') => ['142.250.74.10', 'fd00::1'],
+            str_starts_with($host, 'v6boucle.') => ['::1'],
+            str_starts_with($host, 'v6mappee.') => ['::ffff:10.0.0.1'],
+            str_starts_with($host, 'nat64.') => ['64:ff9b::a00:1'],
+            str_starts_with($host, 'sixtofour.') => ['2002:a00:1::1'],
+            str_starts_with($host, 'v6public.') => ['2a00:1450:4007:80f::200e'],
             default => ['142.250.74.10'],
         });
     }
@@ -32,6 +39,7 @@ final class WebPushEndpointValidatorTest extends TestCase
             'Apple'                     => ['https://web.push.apple.com/QGxGp3Wy'],
             'Windows'                   => ['https://wns2-par02p.notify.windows.com/w/?token=BQYAAAB'],
             'port 443 explicite'        => ['https://fcm.googleapis.com:443/fcm/send/abc'],
+            'IPv6 publique'             => ['https://v6public.exemple.org/x'],
         ];
     }
 
@@ -62,8 +70,41 @@ final class WebPushEndpointValidatorTest extends TestCase
             'métadonnées d\'hébergeur'     => ['https://metadata.exemple.org/latest'],
             'une adresse privée parmi d\'autres' => ['https://mixte.exemple.org/x'],
             'ne se résout pas'             => ['https://inconnu.exemple.org/x'],
+            'IPv4 publique + IPv6 privée'  => ['https://v6interne.exemple.org/x'],
+            'IPv6 de bouclage'             => ['https://v6boucle.exemple.org/x'],
+            'IPv6 mappée sur IPv4 privée'  => ['https://v6mappee.exemple.org/x'],
+            'NAT64 vers une adresse privée' => ['https://nat64.exemple.org/x'],
+            '6to4'                         => ['https://sixtofour.exemple.org/x'],
             'trop longue'                  => ['https://fcm.googleapis.com/' . str_repeat('a', 2000)],
         ];
+    }
+
+    /** @return array<string, array{string, bool}> */
+    public static function addresses(): array
+    {
+        return [
+            'IPv4 publique'     => ['142.250.74.10', true],
+            'IPv6 publique'     => ['2a00:1450:4007:80f::200e', true],
+            'IPv4 privée'       => ['10.0.0.1', false],
+            'lien local IPv4'   => ['169.254.169.254', false],
+            'bouclage IPv6'     => ['::1', false],
+            'non spécifiée'     => ['::', false],
+            'lien local IPv6'   => ['fe80::1', false],
+            'unique locale'     => ['fc00::1', false],
+            'mappée privée'     => ['::ffff:192.168.0.1', false],
+            'NAT64'             => ['64:ff9b::7f00:1', false],
+            'NAT64 local'       => ['64:ff9b:1::1', false],
+            '6to4'              => ['2002:c0a8:1::1', false],
+            'Teredo'            => ['2001:0:4136:e378:8000:63bf:3fff:fdd2', false],
+            'documentation'     => ['2001:db8::1', false],
+            'pas une adresse'   => ['n-importe-quoi', false],
+        ];
+    }
+
+    #[DataProvider('addresses')]
+    public function testIsPublicIp(string $ip, bool $expected): void
+    {
+        $this->assertSame($expected, WebPushEndpointValidator::isPublicIp($ip));
     }
 
     #[DataProvider('refused')]

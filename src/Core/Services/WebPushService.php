@@ -30,6 +30,8 @@ final class WebPushService
         private readonly VapidKeyStore $keys,
         // Injectable pour les tests ; par défaut un client avec des délais courts, qui ne suit pas les redirections.
         private readonly ?ClientInterface $client = null,
+        // Contrôle de l'adresse refait à chaque envoi : le nom a pu changer de cible depuis l'abonnement (rebinding DNS).
+        private readonly ?WebPushEndpointValidator $endpoints = null,
     ) {}
 
     /**
@@ -85,6 +87,12 @@ final class WebPushService
 
             $byEndpoint = [];
             foreach ($subscriptions as $row) {
+                // Une adresse qui ne passe plus le contrôle n'est pas contactée (et pas supprimée : un échec DNS passager
+                // ne doit pas faire perdre l'abonnement ; la purge des abonnements inutilisés s'en charge).
+                if ($this->endpoints !== null && !$this->endpoints->isAcceptable((string) $row['endpoint'])) {
+                    Log::warning('web_push_endpoint_rejected', ['user_id' => $userId, 'subscription_id' => (int) $row['id']]);
+                    continue;
+                }
                 $byEndpoint[$row['endpoint']] = $row;
                 // aes128gcm (RFC 8291) : le seul encodage accepté par Safari / Apple, et pris en charge par tous les autres.
                 $webPush->queueNotification(Subscription::create([

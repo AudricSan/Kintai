@@ -8,6 +8,7 @@ use GuzzleHttp\Psr7\Response as PsrResponse;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Repositories\WebPushSubscriptionRepositoryInterface;
 use kintai\Core\Services\VapidKeyStore;
+use kintai\Core\Services\WebPushEndpointValidator;
 use kintai\Core\Services\WebPushService;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestInterface;
@@ -109,6 +110,28 @@ final class WebPushServiceTest extends TestCase
         }
         $this->sent[] = $request;
         return new PsrResponse($this->statusByEndpoint[(string) $request->getUri()] ?? 201);
+    }
+
+    /** Le nom a pu changer de cible depuis l'abonnement (rebinding DNS) : l'adresse est recontrôlée à chaque envoi. */
+    public function testDoesNotContactAnEndpointThatNoLongerPassesTheCheck(): void
+    {
+        $this->rows[] = $this->subscription(1, 7, 'https://devenu-interne.exemple.org/a');
+        $this->rows[] = $this->subscription(2, 7, 'https://toujours-public.exemple.org/b');
+
+        $validator = new WebPushEndpointValidator(static fn(string $host): array => str_starts_with($host, 'devenu-interne.') ? ['10.0.0.5'] : ['142.250.74.10']);
+        $client = new class($this) implements ClientInterface {
+            public function __construct(private WebPushServiceTest $test) {}
+
+            public function sendRequest(RequestInterface $request): ResponseInterface
+            {
+                return $this->test->handle($request);
+            }
+        };
+        (new WebPushService($this->subscriptions, $this->keys, $client, $validator))->sendToUser(7, 'Titre', 'Corps');
+
+        $this->assertCount(1, $this->sent, 'seule l\'adresse restée publique est contactée');
+        $this->assertSame('https://toujours-public.exemple.org/b', (string) $this->sent[0]->getUri());
+        $this->assertSame([], $this->deleted, 'un contrôle refusé ne supprime pas l\'abonnement');
     }
 
     public function testSendsAnEncryptedVapidSignedMessageToEachBrowserOfTheUser(): void
