@@ -1,120 +1,75 @@
 <?php
-use kintai\UI\Components\Button;
-use kintai\UI\Components\Card;
-
 /**
- * Assistant de configuration (SetupWizardController) : étape « license », « bundles » ou bilan « done ».
+ * Assistant de configuration (SetupWizardController) : une étape à la fois, avec la barre de progression.
  *
- * @var string                    $step
- * @var string|null               $error
+ * @var string                    $step       étape affichée (organisation… recap, ou bundles_result)
+ * @var list<string>              $steps      toutes les étapes, dans l'ordre
+ * @var array<string, ?string>    $progress   état de chaque étape : done, skipped ou null
+ * @var int                       $position   rang de l'étape (à partir de 1)
+ * @var int                       $total
+ * @var string|null               $previous   étape précédente
+ * @var string                    $next       étape suivante
+ * @var bool                      $skippable  l'étape peut être passée
+ * @var string|null               $error      erreur (clé) passée dans l'URL
+ * @var list<string>              $errors     erreurs de saisie (phrases)
+ * @var array<string, mixed>|null $stepData   variables de l'étape de formulaire
  * @var bool|null                 $licenseConfigured
  * @var string|null               $licenseError
  * @var list<array<string, mixed>>|null $bundles
  * @var int|null                  $maxBundles
- * @var array<string, mixed>|null $result
+ * @var array<string, mixed>|null $result     bilan de l'installation des bundles
+ * @var array<string, ?string>|null $summaries  récapitulatif des étapes de formulaire
+ * @var array<string, mixed>|null $mail_test  résultat de l'essai d'e-mail
  */
 $error ??= null;
-$errors = [
+$errors ??= [];
+$stepData ??= [];
+$errorMessages = [
     'missing_license_key'    => __('license_missing_key'),
     'license_invalid'        => __('setup_license_invalid'),
     'setup_bundles_unknown'  => __('setup_bundles_unknown'),
     'setup_bundles_too_many' => __('setup_bundles_too_many', ['max' => (int) ($maxBundles ?? 0)]),
 ];
-$stepNumber = ['license' => 1, 'bundles' => 2, 'done' => 3][$step] ?? 1;
+$screen = $step === 'bundles_result' ? 'bundles' : $step;
 ?>
 <div class="page-header">
     <h2 class="page-header__title"><?= __('setup_title') ?></h2>
 </div>
 
-<p class="text-muted mb-sm"><?= __('setup_step_of', ['n' => $stepNumber, 'total' => 3]) ?></p>
+<ol class="setup-steps" aria-label="<?= htmlspecialchars(__('setup_progress')) ?>">
+    <?php foreach ($steps as $_id): ?>
+        <?php
+        $_state = $progress[$_id] ?? null;
+        $_class = 'setup-steps__item'
+            . ($_id === $screen ? ' setup-steps__item--current' : '')
+            . ($_state === 'done' ? ' setup-steps__item--done' : '')
+            . ($_state === 'skipped' ? ' setup-steps__item--skipped' : '');
+        ?>
+        <li class="<?= $_class ?>"<?= $_id === $screen ? ' aria-current="step"' : '' ?>>
+            <a href="<?= route_url('admin.setup') ?>?step=<?= htmlspecialchars($_id) ?>">
+                <span class="setup-steps__mark" aria-hidden="true"><?= $_state === 'done' ? '✓' : ($_state === 'skipped' ? '–' : (string) (array_search($_id, $steps, true) + 1)) ?></span>
+                <span class="setup-steps__label"><?= __('setup_step_' . $_id) ?></span>
+            </a>
+        </li>
+    <?php endforeach; ?>
+</ol>
+<p class="text-muted mb-sm"><?= __('setup_step_of', ['n' => $position, 'total' => $total]) ?></p>
 
-<?php if ($error !== null && isset($errors[$error])): ?>
-    <div class="alert alert--danger mb-sm"><?= htmlspecialchars($errors[$error]) ?>
+<?php if ($error !== null && isset($errorMessages[$error])): ?>
+    <div class="alert alert--danger mb-sm"><?= htmlspecialchars($errorMessages[$error]) ?>
         <?php if ($error === 'license_invalid' && !empty($licenseError)): ?> (<?= htmlspecialchars((string) $licenseError) ?>)<?php endif; ?></div>
 <?php endif; ?>
+<?php foreach ($errors as $_message): ?>
+    <div class="alert alert--danger mb-sm"><?= htmlspecialchars((string) $_message) ?></div>
+<?php endforeach; ?>
 
-<?php if ($step === 'license'): ?>
-<?php ob_start(); ?>
-    <p class="mb-sm"><?= __('setup_license_intro') ?></p>
-    <?php if (empty($licenseConfigured)): ?>
-        <div class="alert alert--info mb-sm"><?= __('license_server_not_configured_hint') ?></div>
-    <?php endif; ?>
-    <form method="POST" action="<?= route_url('admin.setup.license') ?>" class="form-stack">
-        <?= csrf_field() ?>
-        <div class="form-group">
-            <label class="form-label"><?= __('license_key_label') ?></label>
-            <input type="text" name="license_key" class="form-control" placeholder="<?= __('license_key_placeholder') ?>">
-        </div>
-        <div class="form-actions">
-            <?= Button::make(__('license_activate_btn'))->primary()->submit()->disabled(empty($licenseConfigured))->render() ?>
-        </div>
-    </form>
-    <form method="POST" action="<?= route_url('admin.setup.license') ?>" class="mt-sm">
-        <?= csrf_field() ?>
-        <input type="hidden" name="skip" value="1">
-        <?= Button::make(__('setup_license_skip'))->ghost()->submit()->render() ?>
-    </form>
-<?php echo Card::make()->header(__('setup_license_title'))->body(ob_get_clean())->render(); ?>
+<?php
+$partial = __DIR__ . '/setup/_' . $step . '.php';
+if (is_file($partial)) {
+    include $partial;
+}
+?>
 
-<?php elseif ($step === 'bundles'): ?>
-<?php ob_start(); ?>
-    <p class="mb-sm">
-        <?= $maxBundles !== null ? __('setup_bundles_intro_max', ['max' => $maxBundles]) : __('setup_bundles_intro_unlimited') ?>
-    </p>
-    <?php if (empty($bundles)): ?>
-        <div class="alert alert--warning mb-sm"><?= __('setup_bundles_catalog_unavailable') ?></div>
-    <?php else: ?>
-    <form method="POST" action="<?= route_url('admin.setup.bundles') ?>" id="setup-bundles-form"
-          data-max="<?= $maxBundles !== null ? (int) $maxBundles : '' ?>">
-        <?= csrf_field() ?>
-        <div class="dash-widget-list">
-            <?php foreach ($bundles as $b): ?>
-            <label class="dash-widget-item">
-                <input type="checkbox" name="bundles[]" value="<?= htmlspecialchars((string) $b['slug']) ?>">
-                <span><strong><?= htmlspecialchars((string) $b['name']) ?></strong>
-                    <span class="text-muted text-sm"> — <?= htmlspecialchars((string) $b['description']) ?></span></span>
-            </label>
-            <?php endforeach; ?>
-        </div>
-        <?php if ($maxBundles !== null): ?>
-            <p class="form-hint" id="setup-bundles-count" data-template="<?= htmlspecialchars(__('setup_bundles_selected', ['count' => '{count}', 'max' => $maxBundles]), ENT_QUOTES) ?>"></p>
-        <?php endif; ?>
-        <div class="form-actions">
-            <?= Button::make(__('setup_bundles_install'))->primary()->submit()->render() ?>
-        </div>
-        <p class="form-hint"><?= __('setup_bundles_wait') ?></p>
-    </form>
-    <?php endif; ?>
-    <form method="POST" action="<?= route_url('admin.setup.bundles') ?>" class="mt-sm">
-        <?= csrf_field() ?>
-        <input type="hidden" name="skip" value="1">
-        <?= Button::make(__('setup_bundles_skip'))->ghost()->submit()->render() ?>
-    </form>
-<?php echo Card::make()->header(__('setup_bundles_title'))->body(ob_get_clean())->render(); ?>
-<script src="<?= $BASE_URL ?>/assets/js/modules/setup-wizard.js?v=<?= asset_version() ?>"></script>
-
-<?php else: ?>
-<?php ob_start(); ?>
-    <?php if (!empty($result['installed'])): ?>
-        <div class="alert alert--success mb-sm"><?= htmlspecialchars(__('setup_done_installed', ['list' => implode(', ', $result['installed'])])) ?></div>
-    <?php endif; ?>
-    <?php if (!empty($result['inactive'])): ?>
-        <div class="alert alert--warning mb-sm"><?= htmlspecialchars(__('setup_done_inactive', ['list' => implode(', ', $result['inactive'])])) ?></div>
-    <?php endif; ?>
-    <?php if (!empty($result['failed'])): ?>
-        <div class="alert alert--warning mb-sm">
-            <?= htmlspecialchars(__('setup_done_failed')) ?>
-            <ul class="text-sm">
-                <?php foreach ($result['failed'] as $slug => $reason): ?>
-                    <li><strong><?= htmlspecialchars((string) $slug) ?></strong> — <?= htmlspecialchars((string) $reason) ?></li>
-                <?php endforeach; ?>
-            </ul>
-            <a href="<?= route_url('admin.bundles.market') ?>"><?= htmlspecialchars(__('setup_done_open_market')) ?></a>
-        </div>
-    <?php endif; ?>
-    <p class="mb-sm"><?= __('setup_done_intro') ?></p>
-    <div class="form-actions">
-        <?= Button::make(__('setup_done_dashboard'))->primary()->link(base_url() . '/')->render() ?>
-    </div>
-<?php echo Card::make()->header(__('setup_done_title'))->body(ob_get_clean())->render(); ?>
+<?php if ($previous !== null && $step !== 'bundles_result'): ?>
+    <p class="mt-sm"><a href="<?= route_url('admin.setup') ?>?step=<?= htmlspecialchars($previous) ?>">← <?= __('setup_back') ?></a></p>
 <?php endif; ?>
