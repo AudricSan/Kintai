@@ -123,8 +123,8 @@ trait CalendarSyncFixture
             $this->appSettings,
             $this->notifications,
             new PublicUrlResolver($this->appSettings, 'https://kintai.test'),
-            fn(int $userId): array => array_values(array_filter($this->absences, fn(array $a) => (int) $a['user_id'] === $userId)),
         );
+        $this->sync->useAbsenceReader(fn(int $userId): array => array_values(array_filter($this->absences, fn(array $a) => (int) $a['user_id'] === $userId)));
     }
 
     private function tearDownCalendarFixture(): void

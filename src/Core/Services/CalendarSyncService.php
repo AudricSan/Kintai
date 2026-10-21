@@ -43,7 +43,9 @@ final class CalendarSyncService
     /** @var array<int, string> jetons d'accès obtenus pendant ce traitement, par liaison */
     private array $accessTokens = [];
 
-    /** @param ?\Closure(int): list<array<string, mixed>> $absenceReader remplacé en test ; défaut : fournisseurs d'absences des bundles */
+    /** @var ?\Closure(int): list<array<string, mixed>> lecteur d'absences remplacé en test ; défaut : fournisseurs d'absences des bundles */
+    private ?\Closure $absenceReader = null;
+
     public function __construct(
         private readonly CalendarSyncRepositoryInterface $repo,
         private readonly GoogleCalendarClient $client,
@@ -57,8 +59,18 @@ final class CalendarSyncService
         private readonly AppSettingsService $appSettings,
         private readonly NotificationService $notifications,
         private readonly PublicUrlResolver $publicUrl,
-        private readonly ?\Closure $absenceReader = null,
     ) {}
+
+    /**
+     * Remplace la lecture des absences (tests). Pas un paramètre du constructeur : le conteneur instancie chaque
+     * paramètre typé par une classe, et une Closure ne s'instancie pas.
+     *
+     * @param \Closure(int): list<array<string, mixed>> $reader
+     */
+    public function useAbsenceReader(\Closure $reader): void
+    {
+        $this->absenceReader = $reader;
+    }
 
     // ── Mise en file ────────────────────────────────────────────────────────
 
