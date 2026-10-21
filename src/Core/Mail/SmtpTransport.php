@@ -8,7 +8,7 @@ namespace kintai\Core\Mail;
  * Client SMTP minimal sans dépendance tierce.
  * Supporte STARTTLS (port 587) et SSL direct (port 465), AUTH LOGIN.
  */
-final class SmtpTransport
+final class SmtpTransport implements MailTransportInterface
 {
     /** @var resource|null */
     private mixed $socket = null;
@@ -40,6 +40,7 @@ final class SmtpTransport
         string $subject,
         string $htmlBody,
         array  $attachmentPaths = [],
+        array  $extraHeaders = [],
     ): bool {
         try {
             $this->connect();
@@ -51,7 +52,7 @@ final class SmtpTransport
             }
 
             $this->command('DATA', [354]);
-            $this->write($this->buildRawMessage($fromAddress, $fromName, $to, $subject, $htmlBody, $attachmentPaths));
+            $this->write($this->buildRawMessage($fromAddress, $fromName, $to, $subject, $htmlBody, $attachmentPaths, $extraHeaders));
             $this->write('.');
             $this->expectCode([250]);
 
@@ -154,6 +155,7 @@ final class SmtpTransport
         string $subject,
         string $htmlBody,
         array  $attachmentPaths,
+        array  $extraHeaders = [],
     ): string {
         $encodedSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
         $fromHeader     = $fromName !== ''
@@ -169,6 +171,7 @@ final class SmtpTransport
                 'From: ' . $fromHeader,
                 'To: ' . implode(', ', $to),
                 'Subject: ' . $encodedSubject,
+                ...MailHeaders::format($extraHeaders),
                 'MIME-Version: 1.0',
                 'Content-Type: text/html; charset=UTF-8',
                 'Content-Transfer-Encoding: quoted-printable',
@@ -185,6 +188,7 @@ final class SmtpTransport
             'From: ' . $fromHeader,
             'To: ' . implode(', ', $to),
             'Subject: ' . $encodedSubject,
+            ...MailHeaders::format($extraHeaders),
             'MIME-Version: 1.0',
             'Content-Type: multipart/mixed; boundary="' . $boundary . '"',
             '',

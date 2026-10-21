@@ -93,6 +93,15 @@ final class ProfileNotificationsTabTest extends TestCase
         $this->assertStringContainsString('push_not_configured', $html);
     }
 
+    public function testWarnsThatEmailIsNotSetUpOnlyWhenItIsNot(): void
+    {
+        $grid = ['planning' => [['type' => new NotificationType('shift_assigned', '📅', 'planning'), 'push' => true, 'email' => true]]];
+
+        $this->assertStringContainsString('notif_email_unavailable', $this->render($grid, null, ['email_available' => false]));
+        $this->assertStringContainsString('notif_email_unavailable', $this->render($grid, null));
+        $this->assertStringNotContainsString('notif_email_unavailable', $this->render($grid, null, ['email_available' => true]));
+    }
+
     public function testRespectsCspAndNoInlineStyle(): void
     {
         $html = $this->render([

@@ -25,6 +25,8 @@ class NotificationService
         private readonly ?NotificationPreferenceService $preferences = null,
         // Optionnel : sans lui, pas de web push (le push mobile FCM, lui, passe par $push).
         private readonly ?WebPushService $webPush = null,
+        // Optionnel : sans lui, pas d'e-mail.
+        private readonly ?NotificationMailer $mailer = null,
     ) {}
 
     /**
@@ -71,25 +73,44 @@ class NotificationService
         // avale déjà ses propres erreurs (voir sa docblock) ; ceinture-bretelles ici.
         // La cloche (ci-dessus) est toujours alimentée ; le push respecte la préférence du type et les heures
         // silencieuses de l'utilisateur (un push retenu n'est pas rejoué : la notification reste dans la cloche).
+        $notificationId = (int) ($saved['id'] ?? 0);
+        $pushTitle      = $title === 'notif_' . $type ? 'Kintai' : $title;
+
+        // Un canal en panne ou refusé par l'utilisateur ne gêne jamais les autres : un bloc chacun.
         try {
-            if (!$this->channelAllowed($userId, $type, 'push')) {
-                return;
+            if ($this->channelAllowed($userId, $type, 'push')) {
+                $this->sendPush($userId, $type, $pushTitle, $body, $referenceId, $link, $notificationId);
             }
-            $pushTitle = $title === 'notif_' . $type ? 'Kintai' : $title;
-            $pushData  = [
-                'type'              => $type,
-                'reference_id'      => (string) ($referenceId ?? ''),
-                'link'              => $link ?? '',
-                // Permet au clic sur la notification système (service worker) de réutiliser
-                // le même mécanisme "marquer lu + rediriger" que le dropdown web — voir
-                // NotificationController::open() et le notificationclick de sw.js.tpl.
-                'notification_id'   => (string) ($saved['id'] ?? ''),
-            ];
-            // Mobile (FCM) puis navigateurs (web push natif) : le canal « push » des préférences couvre les deux.
-            $this->push->sendToUser($userId, $pushTitle, $body, $pushData);
-            $this->webPush?->sendToUser($userId, $pushTitle, $body, $pushData);
         } catch (\Throwable) {
         }
+
+        // E-mail : même règle (préférence du type, heures silencieuses), envoi immédiat. NotificationMailer ne lève
+        // jamais ; le try/catch n'est qu'une ceinture-bretelles.
+        try {
+            if ($this->mailer !== null && $this->channelAllowed($userId, $type, 'email')) {
+                $user = $this->users->findById($userId);
+                if ($user !== null) {
+                    $this->mailer->send($user, $type, $pushTitle, $body, $notificationId);
+                }
+            }
+        } catch (\Throwable) {
+        }
+    }
+
+    private function sendPush(int $userId, string $type, string $pushTitle, string $body, ?int $referenceId, ?string $link, int $notificationId): void
+    {
+        $pushData = [
+            'type'            => $type,
+            'reference_id'    => (string) ($referenceId ?? ''),
+            'link'            => $link ?? '',
+            // Permet au clic sur la notification système (service worker) de réutiliser
+            // le même mécanisme "marquer lu + rediriger" que le dropdown web — voir
+            // NotificationController::open() et le notificationclick de sw.js.tpl.
+            'notification_id' => (string) $notificationId,
+        ];
+        // Mobile (FCM) puis navigateurs (web push natif) : le canal « push » des préférences couvre les deux.
+        $this->push->sendToUser($userId, $pushTitle, $body, $pushData);
+        $this->webPush?->sendToUser($userId, $pushTitle, $body, $pushData);
     }
 
     /** @param int[] $userIds */
