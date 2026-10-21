@@ -1110,7 +1110,7 @@
     "notif_category_messages": "Messages",
     "notif_category_reports": "Reports",
     "notif_category_system": "System",
-    "notif_quiet_intro": "During these hours no push or email is sent. They are not replayed afterwards: find them in the bell.",
+    "notif_quiet_intro": "During these hours push notifications arrive without sound or vibration (depending on your browser or device) and nothing is held back. E-mails are sent as usual.",
     "notif_quiet_enable": "Enable quiet hours",
     "notif_quiet_start": "Start",
     "notif_quiet_end": "End",

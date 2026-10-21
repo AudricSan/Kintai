@@ -1110,7 +1110,7 @@
     "notif_category_messages": "メッセージ",
     "notif_category_reports": "レポート",
     "notif_category_system": "システム",
-    "notif_quiet_intro": "この時間帯はプッシュ通知もメールも送信されません。後から再送はされないため、ベルで確認してください。",
+    "notif_quiet_intro": "この時間帯、プッシュ通知は音やバイブレーションなしで届きます（ブラウザや端末によります）。通知が保留されることはありません。メールは通常どおり送信されます。",
     "notif_quiet_enable": "サイレント時間を有効にする",
     "notif_quiet_start": "開始",
     "notif_quiet_end": "終了",
