@@ -559,6 +559,36 @@ public function shiftFormSections(): array
 
 Le Core rend votre `view` dans le formulaire de shift (page de création, page de modification et fenêtre de la frise) et, sur la page de modification, votre `actionsView` dans la barre d'actions. Les deux sont **à l'intérieur** du formulaire de shift : un bouton qui vise votre propre route utilise `formaction`/`formmethod` (avec `formnovalidate`) — jamais un `<form>` imbriqué, que les navigateurs ignorent. À l'enregistrement, le Core écrit dans le shift les `fields` déclarés, et eux seuls, parmi les colonnes qu'il ouvre aux bundles (`ShiftFormSections::WRITABLE_SHIFT_COLUMNS` : `is_open`, `open_shift_note`) ; un champ que personne ne déclare est ignoré, donc un shift ne peut pas être ouvert sans le bundle. Avec `storeFeature`, la section n'apparaît que si cette fonctionnalité est activée. Une clé déjà prise est ignorée ; une exception au rendu retire cette section (journalisé). Le Core n'a aucune section à lui : `shift-claim` fournit ainsi les champs et boutons du shift ouvert. Exigez `"kintai_contract": "^1.17"`.
 
+### Fenêtres de page : `pageOverlays()` (contrat 1.27)
+
+```php
+use kintai\Contract\Extension\PageOverlay;
+
+public function pageOverlays(): array
+{
+    return [
+        new PageOverlay(
+            key: 'planning_check',
+            view: 'planning-check::overlay',                         // votre vue namespacée = contenu de la fenêtre
+            visibleWhen: fn(array $ctx): bool => /* décision côté serveur : user, now, today, path, store_ids, can() */ true,
+            data: fn(array $ctx): array => ['date' => $ctx['today']],
+            permission: 'planning_check.submit',
+            priority: 10,                                            // plus petit = plus prioritaire
+            dismissible: true,                                       // Échap / clic hors fenêtre / [data-overlay-close]
+            oncePerSession: false,
+            placement: PageOverlay::DIALOG,                          // ou PageOverlay::BAR : barre non bloquante en bas de page
+        ),
+    ];
+}
+```
+
+Le Core affiche **une seule** fenêtre à la fois (la plus prioritaire parmi les visibles), sous forme de dialogue accessible
+(`role="dialog"`, focus piégé), dans un garde : une exception dans `visibleWhen`, `data` ou la vue la retire et est journalisée.
+Elle n'apparaît jamais sur la connexion, l'impression ni l'édition d'un shift. Votre vue doit titrer la fenêtre avec
+`id="<?= $overlay_title_id ?>"`. La fermer la masque jusqu'à la page suivante ; le serveur décide si elle revient. Chaque action
+de la fenêtre passe par vos propres routes, qui contrôlent la permission et la portée magasin — la fenêtre n'est qu'une
+présentation. Exigez `"kintai_contract": "^1.27"`.
+
 ## Fournisseurs : les données que le Core lit dans votre bundle (contrat 1.9+)
 
 Certaines pages du Core ont besoin de données que possède votre bundle. Au lieu de lire vos tables, le Core interroge un **fournisseur** que votre bundle implémente. Sans fournisseur actif, le Core affiche simplement moins de choses — jamais une erreur.

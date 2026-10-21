@@ -444,6 +444,11 @@ final class EmployeeController
         if ($ownShiftIds !== []) {
             $this->notifs->markReadFor($userId, 'shift', $ownShiftIds);
         }
+        // Un shift supprimé n'est plus affiché : sa notification désigne le jour, lu dès que ce jour est à l'écran.
+        $this->notifs->markReadFor($userId, 'shift_day', array_map(
+            static fn(\DateTimeInterface $d) => shift_day_reference($d->format('Y-m-d')),
+            $days
+        ));
 
         // Taux horaires et devise (store affiché)
         $ratesMap    = []; // uid → shift_type_id → hourly_rate

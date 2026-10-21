@@ -91,7 +91,14 @@ final class IcalController
             'format'   => 'ical',
         ], $storeId);
 
-        return Response::ical($content, $filename);
+        // ETag sur le contenu sans DTSTAMP (qui change à chaque appel) : un client dont l'agenda n'a pas changé reçoit un 304,
+        // ce qui limite la charge des relectures fréquentes.
+        $etag = '"' . md5((string) preg_replace('/^DTSTAMP:.*\r?\n/m', '', $content)) . '"';
+        if ($request->header('If-None-Match') === $etag) {
+            return Response::empty()->withStatus(304)->withHeader('ETag', $etag);
+        }
+
+        return Response::ical($content, $filename)->withHeader('ETag', $etag);
     }
 
     /**

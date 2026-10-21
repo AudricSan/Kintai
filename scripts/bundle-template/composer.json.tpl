@@ -5,7 +5,8 @@
     "license": "AGPL-3.0-only",
     "require-dev": {
         "phpunit/phpunit": "^12.5",
-        "illuminate/database": "^13.19"
+        "illuminate/database": "^13.19",
+        "vlucas/phpdotenv": "^5.6"
     },
     "autoload-dev": {
         "psr-4": {
