@@ -17,6 +17,7 @@
     var dismissible = overlay.getAttribute('data-dismissible') === '1';
     var once = overlay.getAttribute('data-once') === '1';
     var previous = document.activeElement;
+    var isBar = overlay.getAttribute('data-placement') === 'bar';
 
     try {
         if (once && sessionStorage.getItem(storageKey) === '1') {
@@ -40,26 +41,29 @@
         if (previous && typeof previous.focus === 'function') previous.focus();
     }
 
-    document.documentElement.classList.add('page-overlay-open');
-    var items = focusable();
-    if (items.length) {
-        items[0].focus();
-    } else {
-        overlay.setAttribute('tabindex', '-1');
-        overlay.focus();
+    // Une barre ne bloque rien : ni défilement, ni focus déplacé, ni piège au clavier.
+    if (!isBar) {
+        document.documentElement.classList.add('page-overlay-open');
+        var items = focusable();
+        if (items.length) {
+            items[0].focus();
+        } else {
+            overlay.setAttribute('tabindex', '-1');
+            overlay.focus();
+        }
     }
 
     overlay.addEventListener('click', function (e) {
         if (e.target.closest('[data-overlay-close]')) {
             e.preventDefault();
             close();
-        } else if (dismissible && e.target === overlay) {
+        } else if (dismissible && !isBar && e.target === overlay) {
             close();
         }
     });
 
     document.addEventListener('keydown', function (e) {
-        if (!document.body.contains(overlay)) return;
+        if (!document.body.contains(overlay) || isBar) return;
         if (e.key === 'Escape' && dismissible) {
             close();
             return;

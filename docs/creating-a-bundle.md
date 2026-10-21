@@ -651,6 +651,7 @@ public function pageOverlays(): array
             priority: 10,                                            // smaller = more prioritary
             dismissible: true,                                       // Esc / click outside / [data-overlay-close]
             oncePerSession: false,
+            placement: PageOverlay::DIALOG,                          // or PageOverlay::BAR: a non-blocking bar at the bottom of the page
         ),
     ];
 }

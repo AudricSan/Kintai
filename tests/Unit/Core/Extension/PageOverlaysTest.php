@@ -195,6 +195,27 @@ final class PageOverlaysTest extends TestCase
         new PageOverlay('Bad Key', 'acme::ok');
     }
 
+    public function testABarIsANonModalRegionAndAnUnknownPlacementIsRefused(): void
+    {
+        $overlays = $this->overlays(['acme' => [new PageOverlay('reminder', 'acme::ok', placement: PageOverlay::BAR)]]);
+        $container = \kintai\Core\Container::getInstance();
+        $container->instance(ViewRenderer::class, $this->view());
+        $container->instance(\kintai\Core\Auth\PermissionService::class, (new \ReflectionClass(\kintai\Core\Auth\PermissionService::class))->newInstanceWithoutConstructor());
+        $users = $this->createStub(\kintai\Core\Repositories\StoreUserRepositoryInterface::class);
+        $users->method('findByUser')->willReturn([]);
+        $container->instance(\kintai\Core\Repositories\StoreUserRepositoryInterface::class, $users);
+
+        $html = PageOverlayHost::html(['id' => 7], '/admin/dashboard', null, $overlays);
+
+        $this->assertStringContainsString('page-overlay page-overlay--bar', $html);
+        $this->assertStringContainsString('role="region"', $html);
+        $this->assertStringNotContainsString('aria-modal', $html, 'une barre ne bloque pas la page');
+        $this->assertStringContainsString('data-placement="bar"', $html);
+
+        $this->expectException(\InvalidArgumentException::class);
+        new PageOverlay('reminder', 'acme::ok', placement: 'popup');
+    }
+
     public function testAnEmptyViewIsRefused(): void
     {
         $this->expectException(\InvalidArgumentException::class);

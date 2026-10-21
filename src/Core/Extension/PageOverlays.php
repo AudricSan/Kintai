@@ -74,7 +74,7 @@ final class PageOverlays
      * @param array<string, mixed>     $context Voir PageOverlay::$visibleWhen
      * @param callable(string): bool   $can     Permission accordée (portée globale ou sur un magasin) ?
      * @param callable(?string): bool  $feat    Fonctionnalité par magasin active ?
-     * @return array{key: string, html: string, dismissible: bool, session_only: bool}|null
+     * @return array{key: string, html: string, dismissible: bool, session_only: bool, placement: string}|null
      */
     public function render(array $context, ViewRenderer $view, callable $can, callable $feat): ?array
     {
@@ -109,7 +109,7 @@ final class PageOverlays
                 }
             }, '');
             if ($html !== '') {
-                return ['key' => $overlay->key, 'html' => $html, 'dismissible' => $overlay->dismissible, 'session_only' => $overlay->oncePerSession];
+                return ['key' => $overlay->key, 'html' => $html, 'dismissible' => $overlay->dismissible, 'session_only' => $overlay->oncePerSession, 'placement' => $overlay->placement];
             }
         }
         return null;

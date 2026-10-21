@@ -567,6 +567,7 @@ public function pageOverlays(): array
             priority: 10,                                            // 小さいほど優先
             dismissible: true,                                       // Esc／外側クリック／[data-overlay-close]
             oncePerSession: false,
+            placement: PageOverlay::DIALOG,                          // または PageOverlay::BAR：ページ下部の非ブロッキングバー
         ),
     ];
 }

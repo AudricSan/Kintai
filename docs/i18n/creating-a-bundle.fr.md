@@ -576,6 +576,7 @@ public function pageOverlays(): array
             priority: 10,                                            // plus petit = plus prioritaire
             dismissible: true,                                       // Échap / clic hors fenêtre / [data-overlay-close]
             oncePerSession: false,
+            placement: PageOverlay::DIALOG,                          // ou PageOverlay::BAR : barre non bloquante en bas de page
         ),
     ];
 }

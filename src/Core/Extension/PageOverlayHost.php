@@ -74,8 +74,10 @@ final class PageOverlayHost
             return '';
         }
 
-        return '<div class="page-overlay" id="page-overlay-' . htmlspecialchars($rendered['key']) . '" role="dialog" aria-modal="true"'
-            . ' aria-labelledby="page-overlay-' . htmlspecialchars($rendered['key']) . '-title" data-page-overlay'
+        $bar = $rendered['placement'] === 'bar';
+        return '<div class="page-overlay' . ($bar ? ' page-overlay--bar' : '') . '" id="page-overlay-' . htmlspecialchars($rendered['key']) . '"'
+            . ($bar ? ' role="region"' : ' role="dialog" aria-modal="true"')
+            . ' aria-labelledby="page-overlay-' . htmlspecialchars($rendered['key']) . '-title" data-page-overlay data-placement="' . ($bar ? 'bar' : 'dialog') . '"'
             . ' data-overlay-key="' . htmlspecialchars($rendered['key']) . '"'
             . ' data-dismissible="' . ($rendered['dismissible'] ? '1' : '0') . '" data-once="' . ($rendered['session_only'] ? '1' : '0') . '">'
             . '<div class="page-overlay__panel">' . $rendered['html'] . '</div></div>';
