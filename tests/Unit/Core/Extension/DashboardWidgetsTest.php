@@ -191,4 +191,55 @@ final class DashboardWidgetsTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         new DashboardWidget('ok_key', 'admin', 'label', 'acme::w');
     }
+
+    // ── Tailles déclarées par les bundles (contrat 1.26) ────────────────────────────────────────────────────────
+
+    public function testSizesExposeDefaultsLimitsAndRefreshOfDeclaredWidgets(): void
+    {
+        $widgets = $this->widgets(['acme' => [
+            new DashboardWidget('acme_small', DashboardWidget::MANAGER, 'k', 'v', defaultWidth: 4, defaultHeight: 2, minWidth: 3, maxWidth: 6, refreshInterval: 60),
+            new DashboardWidget('acme_plain', DashboardWidget::MANAGER, 'k', 'v'),
+            new DashboardWidget('acme_employee', DashboardWidget::EMPLOYEE, 'k', 'v', defaultWidth: 6),
+        ]]);
+
+        $sizes = $widgets->sizes(DashboardWidget::MANAGER, self::CORE);
+
+        $this->assertSame(['acme_small' => 4], $sizes['widths'], 'sans largeur par défaut, la pleine largeur d\'avant s\'applique');
+        $this->assertSame(['acme_small' => 2], $sizes['heights']);
+        $this->assertSame(['acme_plain' => [1, 12], 'acme_small' => [3, 6]], $sizes['limits']);
+        $this->assertSame(['acme_small' => 60], $sizes['refresh']);
+    }
+
+    public function testTheDefaultsKeepTheOldBehaviour(): void
+    {
+        $widget = new DashboardWidget('acme_plain', DashboardWidget::MANAGER, 'k', 'v');
+
+        $this->assertNull($widget->defaultWidth);
+        $this->assertSame(1, $widget->defaultHeight);
+        $this->assertSame([1, 12], [$widget->minWidth, $widget->maxWidth]);
+        $this->assertSame(0, $widget->refreshInterval);
+    }
+
+    /** @return array<string, array{0: array<string, mixed>}> */
+    public static function invalidSizes(): array
+    {
+        return [
+            'min above max'          => [['minWidth' => 8, 'maxWidth' => 4]],
+            'max above 12'           => [['maxWidth' => 13]],
+            'min below 1'            => [['minWidth' => 0]],
+            'default under the min'  => [['minWidth' => 4, 'defaultWidth' => 3]],
+            'default over the max'   => [['maxWidth' => 6, 'defaultWidth' => 7]],
+            'height above 6'         => [['defaultHeight' => 7]],
+            'height below 1'         => [['defaultHeight' => 0]],
+            'refresh under 15 s'     => [['refreshInterval' => 5]],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidSizes')]
+    public function testInvalidSizesAreRejected(array $args): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        new DashboardWidget('acme_bad', DashboardWidget::MANAGER, 'k', 'v', ...$args);
+    }
 }

@@ -15,7 +15,7 @@ use kintai\Core\Services\AuditLogger;
 
 /**
  * Personnalisation des tableaux de bord, appelée en arrière-plan par dashboard-layout.js en mode édition :
- * - disposition (ordre et largeur des widgets), à chaque déplacement. Corps JSON : {order: [...], widths: {clé:
+ * - disposition (ordre, largeur, hauteur, repli des widgets et densité), à chaque modification. Corps JSON : {order: [...], widths: {clé:
  *   half|full}} pour les widgets affichés, ou {reset: true} pour revenir à la disposition par défaut ;
  * - widgets affichés : {add: clé} ajoute un widget en fin de tableau de bord, {remove: clé} le retire. Les autres
  *   widgets gardent leur place et leur largeur.
@@ -69,6 +69,8 @@ final class DashboardLayoutController
             $this->dashboardPrefs->getLayout($userId, $dashboardType),
             is_array($body['order'] ?? null) ? array_values($body['order']) : [],
             is_array($body['widths'] ?? null) ? $body['widths'] : [],
+            // Hauteurs, widgets repliés et densité : seulement ce que la page envoie (le reste est conservé).
+            array_intersect_key($body, array_flip(['heights', 'collapsed', 'density'])),
         );
         $this->dashboardPrefs->saveLayout($userId, $dashboardType, $layout);
 

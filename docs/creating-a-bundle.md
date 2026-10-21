@@ -325,6 +325,20 @@ never the other way round). There the widget is stored under the key `emp_{key}`
 context as on the employee dashboard: the manager's own `store_ids`, with `managed_store_ids` set to `null`. This is
 why widget keys are limited to 41 characters.
 
+#### Size and refresh (contract 1.26)
+
+The grid has 12 columns. Declare how your widget should look with optional arguments (the defaults keep the previous
+behaviour: full width, height of the content, never refreshed):
+
+```php
+new DashboardWidget(key: 'team_notes', /* … */ defaultWidth: 4, defaultHeight: 2, minWidth: 3, maxWidth: 8, refreshInterval: 120)
+```
+
+`defaultWidth` is in columns (1–12), `defaultHeight` is a minimum in rows (1–6), `minWidth`/`maxWidth` bound what the user
+can choose, `refreshInterval` is in seconds (0 = never, otherwise at least 15). Design the view for narrow cards (3–4 columns:
+truncate lists, link to "see all") as well as wide ones.
+
+
 ### View variables: `viewVariables()` (contract 1.5)
 
 ```php
@@ -438,6 +452,44 @@ from being displayed. The `referenceType` is the one declared by the type. Requi
 
 When the bundle has no detail page, link to the list with `?highlight={id}` and give the matching `.data-table` row the
 class `tr--highlight` (Core styling), then call `markReadFor()` for the rows displayed.
+
+### Global functions you may call (contract 1.24)
+
+A bundle may call only the global functions declared in `src/Contract/functions.php` (`__`, `csrf_field`, `csrf_token`,
+`csp_nonce`, `route_url`, `base_url`, `back_url`, `safe_redirect_path`, `store_segment`, `employee_segment`,
+`route_segment`, `bundle_asset`, `translation_or`, `user_locale`, `month_label`, `date_label`, `format_currency`,
+`currency_symbol`, `store_currency_style`, `style_class`, `inline_styles`; provisional: `bundle_asset_path`,
+`storage_path`). Every other global function of the Core is internal and may change without notice.
+`ContractUsageScanner::functionViolations()` (used by the bundle's `ContractUsageTest`) reports any call to a function that
+is neither PHP's, nor declared, nor defined by the bundle. Don't `include` a Core view partial either: ship your own.
+
+### Translations: your keys, the Core's keys, overrides (contract 1.25)
+
+- Your own keys carry your slug as a prefix (`daily-report` → `daily_report_title`), plus the reserved conventions
+  `bundle_{slug}`, `bundle_{slug}_desc`, `notif_{type}`, `audit_{action}` and `cron_job_{name}`. Provide all three languages
+  (`fr`, `en`, `ja`) with the same `:name` parameters.
+- You may use the Core keys listed in `src/Contract/translation-keys.php` (`save`, `cancel`, `delete`, month names…) without
+  redefining them. Any other Core key is internal.
+- To change the wording of a Core key, declare it in `lang/overrides/{locale}.json` (same `:name` parameters). Redefining a
+  Core key in `lang/{locale}.json` without declaring it is a collision: reported by `TranslationContractChecker`, ignored by the
+  Core in strict mode. The Owner's own edits (Languages screen) win over your override, which wins over the Core.
+- `TranslationContractChecker::violations($bundleDir, $slug, $coreLangDir)` returns the violations by rule (`parity`,
+  `placeholders`, `prefix`, `collisions`, `overrides`, `unknown`): call it from a test of your bundle.
+
+### Start from a generated skeleton
+
+```bash
+php scripts/new-bundle.php my-feature --name="My feature"     # creates ../KintaiBundleDev/kintai-bundle-my-feature
+cd ../KintaiBundleDev/kintai-bundle-my-feature && composer install && vendor/bin/phpunit
+```
+
+The skeleton already follows the contract (prefixed translations, navigation, permission, route, view, CSP-safe) and its
+`tests/ContractTest.php` is the single check to run before every release: manifest schema, classes, functions, translations.
+Checklist: idea → permissions → tables and migrations → extension points → routes and RBAC → views without inline code →
+translations (fr/en/ja) → tests → local registration → install test → tagged GitHub release → registry entry.
+
+
+
 ### Scheduled jobs: `cronJobs()` (contract 1.8)
 
 ```php
@@ -581,6 +633,35 @@ the Core writes the `fields` you declared into the shift, and only those, among 
 shift cannot be opened without the bundle. With `storeFeature`, the section only shows when that feature is on. A key
 already taken is ignored; an exception while rendering drops that section (logged). The Core has no section of its
 own: `shift-claim` ships the open-shift fields and buttons this way. Require `"kintai_contract": "^1.17"`.
+
+### Page overlays: `pageOverlays()` (contract 1.27)
+
+```php
+use kintai\Contract\Extension\PageOverlay;
+
+public function pageOverlays(): array
+{
+    return [
+        new PageOverlay(
+            key: 'planning_check',
+            view: 'planning-check::overlay',                         // your namespaced view = the window's content
+            visibleWhen: fn(array $ctx): bool => /* decide server-side: user, now, today, path, store_ids, can() */ true,
+            data: fn(array $ctx): array => ['date' => $ctx['today']],
+            permission: 'planning_check.submit',
+            priority: 10,                                            // smaller = more prioritary
+            dismissible: true,                                       // Esc / click outside / [data-overlay-close]
+            oncePerSession: false,
+            placement: PageOverlay::DIALOG,                          // or PageOverlay::BAR: a non-blocking bar at the bottom of the page
+        ),
+    ];
+}
+```
+
+The Core shows **one** overlay at a time (the most prioritary visible one), as an accessible dialog (`role="dialog"`, focus
+trapped), in a guard: an exception in `visibleWhen`, `data` or the view removes it and is logged. It never appears on the
+sign-in, print or shift-edit pages. Your view must title the window with `id="<?= $overlay_title_id ?>"`. Closing hides it
+until the next page; the server decides whether it comes back. Every action of the window goes through your own routes, which
+check the permission and the store scope — the overlay is only a presentation. Require `"kintai_contract": "^1.27"`.
 
 ## Providers: data the Core reads from your bundle (contract 1.9+)
 

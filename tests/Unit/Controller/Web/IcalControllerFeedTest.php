@@ -120,4 +120,27 @@ final class IcalControllerFeedTest extends TestCase
 
         $this->assertSame(200, $this->controller->feed($this->request())->status());
     }
+
+    /** L'ETag ignore DTSTAMP : un client dont l'agenda n'a pas changé reçoit un 304 au lieu du flux complet. */
+    public function testFeedAnswers304WhenTheCalendarHasNotChanged(): void
+    {
+        $this->users->method('findById')->willReturnCallback(fn($a0) => $a0 === 9 ? ['id' => 9, 'is_active' => 1] : null);
+        $this->storeUsers->method('findMembership')->willReturn(['id' => 1]);
+
+        $first = $this->controller->feed($this->request());
+        $etag = $first->headers()['ETag'] ?? '';
+        $this->assertNotSame('', $etag);
+
+        $_SERVER['HTTP_IF_NONE_MATCH'] = $etag;
+        try {
+            $request = $this->request();
+            $second = $this->controller->feed($request);
+        } finally {
+            unset($_SERVER['HTTP_IF_NONE_MATCH']);
+        }
+
+        $this->assertSame(304, $second->status());
+        $this->assertSame('', $second->body());
+        $this->assertSame(200, $this->controller->feed($this->request())->status(), 'sans If-None-Match : flux complet');
+    }
 }
