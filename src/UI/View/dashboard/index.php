@@ -121,6 +121,7 @@ $_dashChartData = [];
             ?>
             <button type="button" class="btn btn--ghost btn--sm" data-dash-reset><?= __('dashboard_layout_reset') ?></button>
         </div>
+        <?php include __DIR__ . '/../_partials/_dashboard-layouts.php'; ?>
     </div>
 </div>
 

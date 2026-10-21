@@ -22,6 +22,7 @@ use kintai\Core\Auth\PermissionService;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\DashboardLayoutResolver;
 use kintai\Core\Services\NotificationService;
 use kintai\UI\Controller\Web\HasBaseUrl;
 use kintai\UI\Controller\Web\HasStoreFeatureCheck;
@@ -52,6 +53,8 @@ final class EmployeeController
         private readonly NotificationService $notifs,
         private readonly UserNavPrefsRepositoryInterface $navPrefs,
         private readonly PermissionService $permissions,
+        // Disposition de l'utilisateur, sinon défaut de son rôle ; mises en page nommées (null : disposition enregistrée seule).
+        private readonly ?DashboardLayoutResolver $layoutResolver = null,
     ) {}
 
     // -------------------------------------------------------------------------
@@ -119,7 +122,10 @@ final class EmployeeController
             'enabled_widgets'  => $enabledWidgets,
             'enabled_widgets_all' => $enabledAll,
             'all_widgets'      => $widgetKeys,
-            'widget_layout'    => DashboardLayout::resolve($widgetKeys, $this->dashboardPrefs->getLayout($userId, 'employee'), $sizes['widths'], $sizes['heights']),
+            'widget_layout'    => DashboardLayout::resolve($widgetKeys, $this->layoutResolver?->layoutFor($userId, 'employee') ?? $this->dashboardPrefs->getLayout($userId, 'employee'), $sizes['widths'], $sizes['heights']),
+            'dashboard_layouts' => $this->layoutResolver?->namedLayouts($userId, 'employee') ?? [],
+            'dashboard_layouts_route' => 'employee.dashboard.layouts',
+            'dashboard_roles'  => !empty($user['is_admin']) ? ($this->layoutResolver?->roleOptions('employee') ?? []) : [],
             'widget_limits'    => $sizes['limits'],
             'widget_refresh'   => $sizes['refresh'],
             'bundle_widgets'   => $bundleWidgets,

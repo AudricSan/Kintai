@@ -8,6 +8,7 @@ use kintai\Contract\Extension\DashboardWidget;
 use kintai\Core\Exceptions\ValidationException;
 use kintai\Core\Extension\DashboardLayout;
 use kintai\Core\Extension\DashboardWidgets;
+use kintai\Core\Repositories\UserDashboardLayoutRepositoryInterface;
 use kintai\Core\Repositories\UserDashboardPrefsRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
@@ -25,6 +26,8 @@ final class DashboardLayoutController
     public function __construct(
         private readonly UserDashboardPrefsRepositoryInterface $dashboardPrefs,
         private readonly AuditLogger $auditLogger,
+        // Mises en page nommées : la modification de la disposition en cours est reportée sur celle qui est active.
+        private readonly ?UserDashboardLayoutRepositoryInterface $layouts = null,
     ) {}
 
     /** POST /admin/dashboard/layout */
@@ -61,6 +64,8 @@ final class DashboardLayoutController
 
         if (($body['reset'] ?? false) === true) {
             $this->dashboardPrefs->saveLayout($userId, $dashboardType, null);
+            // Revenir au défaut : la disposition en cours n'est plus celle d'une mise en page nommée.
+            $this->layouts?->deactivateAll($userId, $dashboardType);
             return Response::json(['layout' => null]);
         }
 
@@ -73,6 +78,7 @@ final class DashboardLayoutController
             array_intersect_key($body, array_flip(['heights', 'collapsed', 'density'])),
         );
         $this->dashboardPrefs->saveLayout($userId, $dashboardType, $layout);
+        $this->layouts?->updateActive($userId, $dashboardType, $layout);
 
         return Response::json(['layout' => $layout]);
     }
