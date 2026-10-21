@@ -106,6 +106,8 @@ final class AppServiceProvider extends ServiceProvider
         $this->container->singleton(WebPushService::class, fn(Container $c) => new WebPushService(
             $c->make(WebPushSubscriptionRepositoryInterface::class),
             $c->make(VapidKeyStore::class),
+            null,
+            $c->make(WebPushEndpointValidator::class),
         ));
         $this->container->singleton(NotificationPreferenceService::class, fn(Container $c) => new NotificationPreferenceService(
             $c->make(NotificationPreferenceRepositoryInterface::class),
