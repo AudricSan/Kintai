@@ -37,6 +37,10 @@ class NotificationService
      */
     public function notify(int $userId, string $type, string $bodyKey, array $replace = [], ?int $referenceId = null, ?string $link = null): void
     {
+        // Le lien vient du code appelant (souvent d'un bundle) mais finit dans la cloche, les toasts, le push et l'e-mail :
+        // un chemin qui n'est pas interne (autre origine, « /\ »…) est écarté ici, une seule fois, pour tous les canaux.
+        $link = $link !== null ? (safe_redirect_path($link, '') ?: null) : null;
+
         // Paramètres réduits à des chaînes : ils sont stockés en JSON pour retraduire plus tard, avec le même
         // résultat qu'aujourd'hui.
         $params = array_map(fn($v) => is_scalar($v) || $v === null ? (string) $v : '', $replace);

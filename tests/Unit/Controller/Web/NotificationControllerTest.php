@@ -312,6 +312,24 @@ final class NotificationControllerTest extends TestCase
         $this->assertSame('/notifications', $headersRef->getValue($response)['Location'] ?? null);
     }
 
+    /** « /\site » est lu par les navigateurs comme « //site » : une autre origine. */
+    public function testOpenIgnoresBackslashAndControlCharacterLinks(): void
+    {
+        foreach (['/\evil.example.com', '/ok\evil', "/ok
+x", 'https://evil.example.com'] as $bad) {
+            $this->notifications = $this->createMock(NotificationRepositoryInterface::class);
+            $this->notifications->method('findById')->with(10)->willReturn(['id' => 10, 'user_id' => 5, 'link' => $bad]);
+            $this->notifications->method('markRead');
+            $this->controller = null;
+
+            $response = $this->controller()->open($this->makeGetRequest(10));
+
+            $headersRef = new \ReflectionProperty($response, 'headers');
+            $headersRef->setAccessible(true);
+            $this->assertSame('/notifications', $headersRef->getValue($response)['Location'] ?? null, $bad);
+        }
+    }
+
     public function testOpenThrowsNotFoundForAnotherUsersNotification(): void
     {
         $this->notifications = $this->createMock(NotificationRepositoryInterface::class);
