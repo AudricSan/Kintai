@@ -382,6 +382,8 @@ $this->notifications->markReadFor($currentUserId, 'timeoff', $request->id);   //
 ```
 
 `markReadFor()` は `kintai\Contract\Services\NotificationService` にあり、例外を投げないため、失敗してもページの表示は妨げられません。`referenceType` は種類で宣言したものです。`"kintai_contract": "^1.23"` を要求してください。
+
+バンドルに詳細ページがない場合は、リンクを `?highlight={id}` 付きの一覧にし、対応する `.data-table` の行にクラス `tr--highlight`（Coreのスタイル）を付け、表示した行について `markReadFor()` を呼びます。
 ### 定期ジョブ：`cronJobs()`（契約1.8）
 
 ```php

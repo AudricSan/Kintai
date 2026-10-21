@@ -435,6 +435,9 @@ $this->notifications->markReadFor($currentUserId, 'timeoff', $request->id);   //
 
 `markReadFor()` is on `kintai\Contract\Services\NotificationService`; it never throws, so a failure cannot prevent the page
 from being displayed. The `referenceType` is the one declared by the type. Require `"kintai_contract": "^1.23"`.
+
+When the bundle has no detail page, link to the list with `?highlight={id}` and give the matching `.data-table` row the
+class `tr--highlight` (Core styling), then call `markReadFor()` for the rows displayed.
 ### Scheduled jobs: `cronJobs()` (contract 1.8)
 
 ```php

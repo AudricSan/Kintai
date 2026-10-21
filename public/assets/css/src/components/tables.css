@@ -63,6 +63,15 @@
     background: var(--color-table-highlight);
 }
 
+/* Ligne désignée par une notification (?highlight={id}) : contour intérieur, visible même au survol. */
+.data-table tbody tr.tr--highlight td {
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+.data-table tbody tr.tr--highlight td:first-child {
+    box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
 .data-table tbody tr.tr--clickable {
     cursor: pointer;
 }
