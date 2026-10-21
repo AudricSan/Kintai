@@ -288,6 +288,20 @@ Vos widgets sont listés dans le panneau « Personnaliser » du tableau de bord 
 
 Un gérant peut aussi ajouter ses propres widgets `EMPLOYEE` à son tableau de bord gérant (désactivés par défaut, proposés dans « Ajouter un widget », jamais l'inverse). Le widget y est enregistré sous la clé `emp_{clé}` et son `data` reçoit le même contexte que sur le tableau de bord employé : les `store_ids` du gérant lui-même, avec `managed_store_ids` à `null`. C'est pourquoi les clés de widget sont limitées à 41 caractères.
 
+#### Taille et rafraîchissement (contrat 1.26)
+
+La grille compte 12 colonnes. Déclarez l'apparence souhaitée avec des arguments facultatifs (les valeurs par défaut gardent le
+comportement précédent : pleine largeur, hauteur du contenu, jamais rafraîchi) :
+
+```php
+new DashboardWidget(key: 'team_notes', /* … */ defaultWidth: 4, defaultHeight: 2, minWidth: 3, maxWidth: 8, refreshInterval: 120)
+```
+
+`defaultWidth` est en colonnes (1–12), `defaultHeight` est un minimum en lignes (1–6), `minWidth`/`maxWidth` bornent le choix de
+l'utilisateur, `refreshInterval` est en secondes (0 = jamais, sinon au moins 15). Concevez la vue pour des cartes étroites
+(3–4 colonnes : listes tronquées, lien « voir tout ») comme pour des cartes larges.
+
+
 ### Variables de vue : `viewVariables()` (contrat 1.5)
 
 ```php

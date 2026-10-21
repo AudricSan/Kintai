@@ -288,6 +288,18 @@ public function dashboardWidgets(): array
 
 店長は自分の `EMPLOYEE` ウィジェットを店長ダッシュボードにも追加できます（既定では無効、「ウィジェットを追加」から選択。逆はできません）。その場合ウィジェットはキー `emp_{key}` で保存され、`data` は従業員ダッシュボードと同じコンテキストを受け取ります：店長自身の `store_ids`、`managed_store_ids` は `null`。そのためウィジェットのキーは41文字までに制限されています。
 
+#### サイズと更新（契約1.26）
+
+グリッドは 12 列です。任意の引数でウィジェットの見た目を宣言します（既定値は従来の動作：全幅、内容の高さ、更新なし）。
+
+```php
+new DashboardWidget(key: 'team_notes', /* … */ defaultWidth: 4, defaultHeight: 2, minWidth: 3, maxWidth: 8, refreshInterval: 120)
+```
+
+`defaultWidth` は列数（1〜12）、`defaultHeight` は最小の行数（1〜6）、`minWidth`/`maxWidth` はユーザーが選べる範囲、`refreshInterval` は秒
+（0 = 更新なし、それ以外は 15 以上）です。幅の広いカードだけでなく、狭いカード（3〜4 列：一覧を省略し「すべて見る」へのリンク）にも対応するビューを作ってください。
+
+
 ### ビュー変数：`viewVariables()`（契約1.5）
 
 ```php

@@ -325,6 +325,20 @@ never the other way round). There the widget is stored under the key `emp_{key}`
 context as on the employee dashboard: the manager's own `store_ids`, with `managed_store_ids` set to `null`. This is
 why widget keys are limited to 41 characters.
 
+#### Size and refresh (contract 1.26)
+
+The grid has 12 columns. Declare how your widget should look with optional arguments (the defaults keep the previous
+behaviour: full width, height of the content, never refreshed):
+
+```php
+new DashboardWidget(key: 'team_notes', /* … */ defaultWidth: 4, defaultHeight: 2, minWidth: 3, maxWidth: 8, refreshInterval: 120)
+```
+
+`defaultWidth` is in columns (1–12), `defaultHeight` is a minimum in rows (1–6), `minWidth`/`maxWidth` bound what the user
+can choose, `refreshInterval` is in seconds (0 = never, otherwise at least 15). Design the view for narrow cards (3–4 columns:
+truncate lists, link to "see all") as well as wide ones.
+
+
 ### View variables: `viewVariables()` (contract 1.5)
 
 ```php

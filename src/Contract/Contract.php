@@ -18,10 +18,12 @@ namespace kintai\Contract;
 final class Contract
 {
     /** Version du contrat fournie par ce Core. */
-    public const VERSION = '1.25.0';
+    public const VERSION = '1.26.0';
 
     /*
      * Historique :
+     * - 1.26.0 : DashboardWidget gagne des champs optionnels de taille sur la grille de 12 colonnes (defaultWidth,
+     *   defaultHeight, minWidth, maxWidth) et de rafraîchissement (refreshInterval) ; valeurs par défaut = ancien comportement.
      * - 1.25.0 : traductions du contrat — clés du Core utilisables (src/Contract/translation-keys.php), surcharge explicite
      *   d'une clé du Core par lang/overrides/{locale}.json, préfixe obligatoire des clés d'un bundle.
      * - 1.24.0 : fonctions globales du contrat déclarées (src/Contract/functions.php : __, csrf_field, route_url, back_url,
