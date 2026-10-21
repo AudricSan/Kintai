@@ -29,6 +29,7 @@ Kintaiの主要な変更履歴をここに記録しています。
 - **リリース — v0.3.4のタグは作成されたがGitHub Releaseが公開されなかった問題** — `[Unreleased]` がv0.1.1以降のすべての項目（約129,000文字）を蓄積しており、GitHubは125,000文字を超えるRelease本文を拒否します（`HTTP 422: body is too long`）。その時点でワークフローはすでにタグをpush済みでした。`release.yml` は、120,000バイト未満の最後の完全な行でノートを切り詰め、完全な `CHANGELOG.md` へのリンクを付けるようになり、公開済みの内容は日付付きセクションにアーカイブされ、`[Unreleased]` には新しい内容だけが残ります。`docs/releasing.md` を参照してください。
 
 ### 追加
+- Wiki — 対象者別の新しい構成（はじめに、従業員ガイド、マネージャーガイド、管理、インストールと運用、開発者、プロジェクト）と、英語・フランス語・日本語の新規23ページ：クイックツアー、用語集、FAQ、プロフィール、ダッシュボード、通知、カレンダー（iCalとGoogleカレンダー。オーナー向けのGoogle Cloud設定を含む）、インストール可能なアプリ、バンドルと一覧、セットアップアシスタント、定期タスク、メールとプッシュの設定、トラブルシューティング、バンドルコントラクト、バンドル作成ガイド全文（`docs/` から移動）。サイドバーのグループはアプリが翻訳します（`docs_group_employee`、`_manager`、`_admin`、`_operations`、`_developers`、`_project`）。`php scripts/check-wiki.php <フォルダ>` は公開前にwikiを検証します：サイドバーの全ページが3言語に存在すること、言語行があること、内部リンクと画像が有効なこと。
 
 - 通知で示される表の行：`.data-table` の行にクラス `tr--highlight`（`?highlight={id}`）を付けると、背景に色が付き左側にバーが表示されます。通知が詳細ページではなく一覧を指すバンドル向けです。
 - バンドル契約1.23 — 通知の種類と自動「既読」（通知刷新のCore側の最終ロット）：`Bundle::notificationTypes()` は従来の `type => アイコン` に加え、拡張形式 `['icon', 'category', 'channels' => ['push', 'email'], 'reference_type']`（ユーザー設定のカテゴリとチャネルの初期値。不正な宣言は無視されログに記録）を受け付けます。また `NotificationService::markReadFor(userId, referenceType, id|ids)` により、バンドルの詳細ページは開いたばかりの対象の通知を既読にできます（例外は投げません）。Coreはロット L2・L3 から両方に対応済みで、今回それらを文書化し（`docs/creating-a-bundle.md`、fr/ja）`Contract::VERSION` を引き上げます。各公式バンドルは個別のPRで移行します。
