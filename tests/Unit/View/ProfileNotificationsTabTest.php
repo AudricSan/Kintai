@@ -74,6 +74,25 @@ final class ProfileNotificationsTabTest extends TestCase
         $this->assertStringNotContainsString('<table class="data-table notif-prefs-table">', $html);
     }
 
+    public function testDeviceCardShowsEveryStateBlockWhenWebPushIsAvailable(): void
+    {
+        $html = $this->render([], null, ['push_web_config' => ['vapid_key' => 'public-key']]);
+
+        foreach (['unsupported', 'ios', 'denied', 'disabled', 'enabled', 'error'] as $state) {
+            $this->assertStringContainsString('id="push-status-' . $state . '"', $html, $state);
+        }
+        $this->assertStringContainsString('id="push-enable-btn"', $html);
+        $this->assertStringContainsString('id="push-disable-btn"', $html);
+    }
+
+    public function testDeviceCardSaysWhenWebPushIsNotAvailable(): void
+    {
+        $html = $this->render([], null, ['push_web_config' => []]);
+
+        $this->assertStringNotContainsString('id="push-enable-btn"', $html);
+        $this->assertStringContainsString('push_not_configured', $html);
+    }
+
     public function testRespectsCspAndNoInlineStyle(): void
     {
         $html = $this->render([

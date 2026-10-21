@@ -7,10 +7,11 @@ namespace kintai\UI\Controller\Web;
 use kintai\Core\Auth\AuthService;
 use kintai\Core\Exceptions\NotFoundException;
 use kintai\Core\Exceptions\ValidationException;
-use kintai\Core\Repositories\DevicePushTokenRepositoryInterface;
 use kintai\Core\Repositories\NotificationRepositoryInterface;
+use kintai\Core\Repositories\WebPushSubscriptionRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\Services\WebPushEndpointValidator;
 use kintai\UI\ViewRenderer;
 
 final class NotificationController
@@ -20,7 +21,8 @@ final class NotificationController
     public function __construct(
         private readonly AuthService $auth,
         private readonly NotificationRepositoryInterface $repo,
-        private readonly DevicePushTokenRepositoryInterface $pushTokens,
+        private readonly WebPushSubscriptionRepositoryInterface $subscriptions,
+        private readonly WebPushEndpointValidator $endpoints,
         private readonly ViewRenderer $view,
     ) {}
 
@@ -111,42 +113,58 @@ final class NotificationController
     }
 
     /**
-     * POST /notifications/push-subscribe
-     * Enregistre le jeton FCM obtenu par push.js pour ce navigateur (web push).
-     * Distinct de l'API Bearer /api/v1/users/{id}/push-tokens : ici l'appelant
-     * est le navigateur dans une session authentifiée, pas un client externe.
+     * POST /notifications/push-subscribe  {endpoint, keys: {p256dh, auth}}
+     * Enregistre l'abonnement web push (VAPID) de ce navigateur pour l'utilisateur connecté. Appelé à l'activation,
+     * puis à chaque chargement de page par push.js (mise à jour silencieuse : rotation de l'abonnement, abonnement
+     * perdu côté serveur). Un abonnement déjà enregistré pour un autre compte passe à celui-ci.
      */
     public function pushSubscribe(Request $request): Response
     {
-        $userId = (int) $this->auth->user()['id'];
-        $token  = trim((string) ($request->json('token') ?? ''));
-        if ($token === '') {
-            throw new ValidationException(['token' => [__('validation_device_token_required')]]);
+        $userId   = (int) $this->auth->user()['id'];
+        $endpoint = trim((string) ($request->json('endpoint') ?? ''));
+        $keys     = $request->json('keys');
+        $p256dh   = is_array($keys) ? trim((string) ($keys['p256dh'] ?? '')) : '';
+        $authKey  = is_array($keys) ? trim((string) ($keys['auth'] ?? '')) : '';
+
+        // Clés en base64 URL (alphabet restreint, longueur bornée) : rien d'autre n'est jamais stocké.
+        $validKey = static fn(string $k, int $max): bool => $k !== '' && strlen($k) <= $max && preg_match('/^[A-Za-z0-9_-]+={0,2}$/', $k) === 1;
+        if (!$this->endpoints->isAcceptable($endpoint) || !$validKey($p256dh, 128) || !$validKey($authKey, 64)) {
+            throw new ValidationException(['endpoint' => [__('validation_push_subscription_invalid')]]);
         }
 
-        $this->pushTokens->save([
-            'user_id'  => $userId,
-            'token'    => $token,
-            'platform' => 'web',
-        ]);
+        $this->subscriptions->save($userId, $endpoint, $p256dh, $authKey, $_SERVER['HTTP_USER_AGENT'] ?? null);
 
         return Response::json(['ok' => true]);
     }
 
     /**
-     * POST /notifications/push-unsubscribe
-     * Désenregistre le jeton (l'utilisateur a désactivé les notifications push
-     * sur ce navigateur).
+     * POST /notifications/push-unsubscribe  {endpoint}
+     * Supprime l'abonnement de ce navigateur (l'utilisateur a désactivé les notifications sur cet appareil). Ne
+     * touche que les abonnements de l'utilisateur connecté.
      */
     public function pushUnsubscribe(Request $request): Response
     {
-        $userId = (int) $this->auth->user()['id'];
-        $token  = trim((string) ($request->json('token') ?? ''));
-        if ($token !== '') {
-            $this->pushTokens->deleteByToken($token, $userId);
+        $userId   = (int) $this->auth->user()['id'];
+        $endpoint = trim((string) ($request->json('endpoint') ?? ''));
+        if ($endpoint !== '') {
+            $this->subscriptions->deleteByEndpoint($endpoint, $userId);
         }
 
         return Response::json(['ok' => true]);
+    }
+
+    /**
+     * POST /notifications/push-status  {endpoint}
+     * Cet abonnement est-il enregistré pour l'utilisateur connecté ? Sert à afficher l'état réel de l'appareil
+     * (un abonnement du navigateur peut avoir expiré côté serveur, ou appartenir à un autre compte).
+     */
+    public function pushStatus(Request $request): Response
+    {
+        $userId   = (int) $this->auth->user()['id'];
+        $endpoint = trim((string) ($request->json('endpoint') ?? ''));
+        $row      = $endpoint !== '' ? $this->subscriptions->findByEndpoint($endpoint) : null;
+
+        return Response::json(['subscribed' => $row !== null && (int) $row['user_id'] === $userId]);
     }
 
     /**

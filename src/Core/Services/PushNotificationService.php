@@ -46,7 +46,8 @@ final class PushNotificationService
             return;
         }
 
-        $devices = $this->tokens->findByUser($userId);
+        // Les navigateurs ont leur propre canal (WebPushService) ; d'anciennes lignes « web » n'ont jamais fonctionné.
+        $devices = array_filter($this->tokens->findByUser($userId), static fn(array $d) => ($d['platform'] ?? '') !== 'web');
         if ($devices === []) {
             return;
         }

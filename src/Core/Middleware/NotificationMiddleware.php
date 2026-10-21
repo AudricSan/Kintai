@@ -9,6 +9,7 @@ use kintai\Core\Auth\AuthService;
 use kintai\Core\Container;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\Services\VapidKeyStore;
 use kintai\Core\Repositories\NotificationRepositoryInterface;
 use kintai\UI\ViewRenderer;
 
@@ -59,21 +60,18 @@ final class NotificationMiddleware implements MiddlewareInterface
         $view->share('notifications_dropdown', $dropdown);
         $view->share('notifications_last_id', (int) ($dropdown[0]['id'] ?? 0));
 
-        // Config publique du web push (clé API/app id/clé VAPID — voir config/push.php) :
-        // partagée partout comme le reste, mais uniquement lue/rendue si un onglet en a
-        // besoin. Vide tant que l'Owner n'a pas renseigné PUSH_FCM_WEB_VAPID_KEY, pour que
-        // push.js ne charge/exécute rien sur une instance qui n'a pas configuré ce canal.
+        // Config publique du web push natif : la seule clé VAPID publique (la privée ne quitte jamais le serveur).
+        // Vide quand le web push n'est pas opérationnel (clés absentes ou extension PHP manquante), pour que push.js
+        // ne charge rien et que le profil l'indique.
         $pushWebConfig = [];
         if ($auth->check()) {
-            $pushConfig = file_exists(BASE_PATH . '/config/push.php') ? require BASE_PATH . '/config/push.php' : [];
-            $web        = $pushConfig['fcm']['web'] ?? [];
-            if (!empty($web['vapid_key']) && !empty($pushConfig['fcm']['project_id'])) {
-                $pushWebConfig = [
-                    'project_id' => $pushConfig['fcm']['project_id'],
-                    'api_key'    => $web['api_key'] ?? '',
-                    'app_id'     => $web['app_id'] ?? '',
-                    'vapid_key'  => $web['vapid_key'],
-                ];
+            try {
+                $keys = $this->container->make(VapidKeyStore::class);
+                if ($keys->isAvailable()) {
+                    $pushWebConfig = ['vapid_key' => (string) $keys->publicKey()];
+                }
+            } catch (\Throwable) {
+                // Réglages indisponibles : pas de web push sur cette requête.
             }
         }
         $view->share('push_web_config', $pushWebConfig);

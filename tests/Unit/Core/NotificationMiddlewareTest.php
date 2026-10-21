@@ -7,6 +7,7 @@ namespace kintai\Tests\Unit\Core;
 use kintai\Core\Auth\AuthService;
 use kintai\Core\Container;
 use kintai\Core\Middleware\NotificationMiddleware;
+use kintai\Core\Repositories\AppSettingsRepositoryInterface;
 use kintai\Core\Repositories\NotificationRepositoryInterface;
 use kintai\Core\Repositories\RememberTokenRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
@@ -16,6 +17,7 @@ use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\Services\VapidKeyStore;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\TestCase;
 
@@ -24,11 +26,9 @@ if (!defined('BASE_PATH')) {
 }
 
 /**
- * Couvre push_web_config, partagé à toutes les vues par ce middleware : vide tant
- * que PUSH_FCM_WEB_VAPID_KEY n'est pas configurée (config/push.php), pour que
- * push.js/le bouton "Activer" du profil ne s'affichent nulle part sur une instance
- * qui n'a pas mis en place le web push — voir aussi IcalService pour le même
- * principe de "no-op tant que non configuré" côté iCal.
+ * Couvre push_web_config, partagé à toutes les vues par ce middleware : vide tant que le web push n'est pas
+ * opérationnel (clés VAPID absentes), pour que push.js et le bouton "Activer" du profil ne s'affichent nulle part ;
+ * sinon la seule clé publique, jamais la clé privée.
  */
 final class NotificationMiddlewareTest extends TestCase
 {
@@ -44,17 +44,11 @@ final class NotificationMiddlewareTest extends TestCase
         $this->view       = new ViewRenderer(sys_get_temp_dir());
         $this->container->instance(ViewRenderer::class, $this->view);
 
-        foreach (['PUSH_FCM_ENABLED', 'PUSH_FCM_PROJECT_ID', 'PUSH_FCM_WEB_API_KEY', 'PUSH_FCM_WEB_APP_ID', 'PUSH_FCM_WEB_VAPID_KEY'] as $key) {
-            unset($_ENV[$key]);
-        }
     }
 
     protected function tearDown(): void
     {
         unset($_SESSION['auth_user_id']);
-        foreach (['PUSH_FCM_ENABLED', 'PUSH_FCM_PROJECT_ID', 'PUSH_FCM_WEB_API_KEY', 'PUSH_FCM_WEB_APP_ID', 'PUSH_FCM_WEB_VAPID_KEY'] as $key) {
-            unset($_ENV[$key]);
-        }
     }
 
     private function bindAuth(?array $user): void
@@ -92,10 +86,28 @@ final class NotificationMiddlewareTest extends TestCase
         return fn(Request $req) => Response::json(['ok' => true]);
     }
 
+    /** Réglages en mémoire ; clés VAPID présentes ou non. */
+    private function bindVapid(?string $public, ?string $private = 'private-key'): void
+    {
+        $settings = new class($public, $private) implements AppSettingsRepositoryInterface {
+            public array $values = [];
+
+            public function __construct(?string $public, ?string $private)
+            {
+                $this->values = array_filter([VapidKeyStore::PUBLIC_KEY => $public, VapidKeyStore::PRIVATE_KEY => $private], fn($v) => $v !== null);
+            }
+
+            public function all(): array { return $this->values; }
+            public function get(string $key): ?string { return $this->values[$key] ?? null; }
+            public function set(string $key, string $value): void { $this->values[$key] = $value; }
+            public function setMany(array $settings): void { $this->values = $settings + $this->values; }
+        };
+        $this->container->instance(VapidKeyStore::class, new VapidKeyStore($settings));
+    }
+
     public function testPushWebConfigEmptyWhenAnonymous(): void
     {
-        $_ENV['PUSH_FCM_PROJECT_ID']      = 'proj';
-        $_ENV['PUSH_FCM_WEB_VAPID_KEY']   = 'vapid-key';
+        $this->bindVapid('public-key');
         $this->bindAuth(null);
         $this->bindNotifications();
         $middleware = new NotificationMiddleware($this->container);
@@ -105,10 +117,9 @@ final class NotificationMiddlewareTest extends TestCase
         $this->assertSame([], $this->view->get('push_web_config'));
     }
 
-    public function testPushWebConfigEmptyWhenVapidKeyNotConfigured(): void
+    public function testPushWebConfigEmptyWhenKeysAreMissing(): void
     {
-        $_ENV['PUSH_FCM_PROJECT_ID'] = 'proj';
-        // PUSH_FCM_WEB_VAPID_KEY volontairement absente.
+        $this->bindVapid(null, null);
         $this->bindAuth(['id' => 7]);
         $this->bindNotifications();
         $middleware = new NotificationMiddleware($this->container);
@@ -118,26 +129,29 @@ final class NotificationMiddlewareTest extends TestCase
         $this->assertSame([], $this->view->get('push_web_config'));
     }
 
-    public function testPushWebConfigPopulatedWhenAuthenticatedAndConfigured(): void
+    public function testPushWebConfigExposesOnlyThePublicKeyWhenAuthenticated(): void
     {
-        $_ENV['PUSH_FCM_PROJECT_ID']    = 'my-project';
-        $_ENV['PUSH_FCM_WEB_API_KEY']   = 'api-key-123';
-        $_ENV['PUSH_FCM_WEB_APP_ID']    = 'app-id-456';
-        $_ENV['PUSH_FCM_WEB_VAPID_KEY'] = 'vapid-key-789';
+        $this->bindVapid('public-key-789', 'private-key-SECRET');
         $this->bindAuth(['id' => 7]);
         $this->bindNotifications();
         $middleware = new NotificationMiddleware($this->container);
 
         $middleware->handle(new Request(), $this->noop());
 
-        $this->assertSame([
-            'project_id' => 'my-project',
-            'api_key'    => 'api-key-123',
-            'app_id'     => 'app-id-456',
-            'vapid_key'  => 'vapid-key-789',
-        ], $this->view->get('push_web_config'));
+        $this->assertSame(['vapid_key' => 'public-key-789'], $this->view->get('push_web_config'));
     }
 
+    public function testPushWebConfigEmptyWhenTheSettingsAreUnreachable(): void
+    {
+        // Aucun VapidKeyStore dans le conteneur et pas de base : le middleware ne doit pas échouer pour autant.
+        $this->bindAuth(['id' => 7]);
+        $this->bindNotifications();
+        $middleware = new NotificationMiddleware($this->container);
+
+        $middleware->handle(new Request(), $this->noop());
+
+        $this->assertSame([], $this->view->get('push_web_config'));
+    }
     public function testDegradesGracefullyWhenNotificationRepositoryThrows(): void
     {
         $this->bindAuth(['id' => 7]);

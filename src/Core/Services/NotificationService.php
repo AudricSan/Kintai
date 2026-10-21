@@ -23,6 +23,8 @@ class NotificationService
         private readonly ?NotificationTypeRegistry $types = null,
         // Optionnel : sans préférences, le push part toujours (comportement d'avant les préférences).
         private readonly ?NotificationPreferenceService $preferences = null,
+        // Optionnel : sans lui, pas de web push (le push mobile FCM, lui, passe par $push).
+        private readonly ?WebPushService $webPush = null,
     ) {}
 
     /**
@@ -73,7 +75,8 @@ class NotificationService
             if (!$this->channelAllowed($userId, $type, 'push')) {
                 return;
             }
-            $this->push->sendToUser($userId, $title === 'notif_' . $type ? 'Kintai' : $title, $body, [
+            $pushTitle = $title === 'notif_' . $type ? 'Kintai' : $title;
+            $pushData  = [
                 'type'              => $type,
                 'reference_id'      => (string) ($referenceId ?? ''),
                 'link'              => $link ?? '',
@@ -81,7 +84,10 @@ class NotificationService
                 // le même mécanisme "marquer lu + rediriger" que le dropdown web — voir
                 // NotificationController::open() et le notificationclick de sw.js.tpl.
                 'notification_id'   => (string) ($saved['id'] ?? ''),
-            ]);
+            ];
+            // Mobile (FCM) puis navigateurs (web push natif) : le canal « push » des préférences couvre les deux.
+            $this->push->sendToUser($userId, $pushTitle, $body, $pushData);
+            $this->webPush?->sendToUser($userId, $pushTitle, $body, $pushData);
         } catch (\Throwable) {
         }
     }
@@ -91,6 +97,7 @@ class NotificationService
     {
         // Préférences de tous les destinataires en une requête.
         $this->preferences?->preload($userIds);
+        $this->webPush?->preload($userIds);
         foreach (array_unique($userIds) as $uid) {
             $this->notify((int) $uid, $type, $bodyKey, $replace, $referenceId, $link);
         }

@@ -147,14 +147,13 @@
     <script src="<?= $BASE_URL ?>/assets/js/app.js?v=<?= asset_version() ?>"></script>
     <script src="<?= $BASE_URL ?>/assets/js/modules/notifications.js?v=<?= asset_version() ?>"></script>
     <script src="<?= $BASE_URL ?>/assets/js/modules/old-input.js?v=<?= asset_version() ?>"></script>
-    <?php if (!empty($push_web_config) && !empty($auth_user['id'] ?? null) && ($tab ?? '') === 'notifications'): ?>
+    <?php /* Web push natif : chargé sur toutes les pages connectées pour resynchroniser l'abonnement du navigateur. */ ?>
+    <?php if (!empty($push_web_config) && !empty($auth_user['id'] ?? null)): ?>
         <div id="push-meta"
-             data-project-id="<?= htmlspecialchars($push_web_config['project_id']) ?>"
-             data-api-key="<?= htmlspecialchars($push_web_config['api_key']) ?>"
-             data-app-id="<?= htmlspecialchars($push_web_config['app_id']) ?>"
              data-vapid-key="<?= htmlspecialchars($push_web_config['vapid_key']) ?>"
              data-subscribe-url="<?= route_url('notifications.push_subscribe') ?>"
              data-unsubscribe-url="<?= route_url('notifications.push_unsubscribe') ?>"
+             data-status-url="<?= route_url('notifications.push_status') ?>"
              hidden></div>
         <script src="<?= $BASE_URL ?>/assets/js/modules/push.js?v=<?= asset_version() ?>"></script>
     <?php endif; ?>

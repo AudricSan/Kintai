@@ -128,6 +128,7 @@ $router->group('/notifications', function ($r) {
     $r->get('/{id}/open',    [NotificationController::class, 'open'],        name: 'notifications.open');
     $r->post('/push-subscribe',   [NotificationController::class, 'pushSubscribe'],   name: 'notifications.push_subscribe');
     $r->post('/push-unsubscribe', [NotificationController::class, 'pushUnsubscribe'], name: 'notifications.push_unsubscribe');
+    $r->post('/push-status',      [NotificationController::class, 'pushStatus'],      name: 'notifications.push_status');
 }, middleware: [AuthMiddleware::class]);
 
 // --- Support (footer : "signaler un problème" → issue GitHub) ---
