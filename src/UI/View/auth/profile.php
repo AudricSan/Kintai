@@ -577,7 +577,7 @@ ob_start();
                     </tr>
                     <?php foreach ($_rows as $_row): $_t = $_row['type']; ?>
                         <tr>
-                            <td><span aria-hidden="true"><?= htmlspecialchars($_t->icon) ?></span> <?= __('notif_' . $_t->type) ?></td>
+                            <td><input type="hidden" form="<?= $_notifForm ?>" name="shown[]" value="<?= htmlspecialchars($_t->type) ?>"><span aria-hidden="true"><?= htmlspecialchars($_t->icon) ?></span> <?= __('notif_' . $_t->type) ?></td>
                             <td>
                                 <label class="form-toggle">
                                     <input type="checkbox" class="form-toggle__input" checked disabled>

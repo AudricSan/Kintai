@@ -141,6 +141,24 @@ final class AuthControllerNotificationPreferencesTest extends TestCase
         $this->assertSame('07:00', $this->usersById[9]['quiet_hours_end']);
     }
 
+    /** shown[] limite l'enregistrement aux lignes que le formulaire affichait : un type apparu depuis n'est pas coupé. */
+    public function testOnlyTheRowsTheFormShowedAreSaved(): void
+    {
+        $_POST = [
+            'push'  => ['shift_assigned'],
+            'email' => ['shift_assigned'],
+            'shown' => ['shift_assigned', 'shift_deleted'],
+        ];
+
+        $this->controller->saveNotificationPreferences(new Request());
+
+        // shift_deleted (affiché, décoché) : push et e-mail coupés ; shift_updated (non affiché) : inchangé.
+        $this->assertSame(
+            [['type' => 'shift_deleted', 'channel' => 'email', 'enabled' => false], ['type' => 'shift_deleted', 'channel' => 'push', 'enabled' => false]],
+            NotificationPreference::orderBy('channel')->get(['type', 'channel', 'enabled'])->toArray(),
+        );
+    }
+
     public function testEverythingUncheckedTurnsExternalChannelsOffAndQuietHoursOff(): void
     {
         $_POST = ['quiet_start' => '22:00', 'quiet_end' => '07:00'];

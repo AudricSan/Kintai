@@ -100,14 +100,18 @@ final class NotificationPreferenceService
      * égal à la valeur par défaut supprime l'écart. Les types qui ne sont pas actifs (bundle désactivé) gardent leurs
      * préférences.
      *
-     * @param list<string> $push  types cochés dans la colonne Push
-     * @param list<string> $email types cochés dans la colonne E-mail
+     * @param list<string>      $push  types cochés dans la colonne Push
+     * @param list<string>      $email types cochés dans la colonne E-mail
+     * @param list<string>|null $shown types que le formulaire affichait. Une case décochée n'a de sens que pour une ligne que
+     *                                  l'utilisateur a vue : un type apparu depuis (bundle activé pendant que la page était
+     *                                  ouverte) ne doit pas être compté « décoché » et coupé à son insu. Null : tous les types actifs.
      */
-    public function saveGrid(int $userId, array $push, array $email): void
+    public function saveGrid(int $userId, array $push, array $email, ?array $shown = null): void
     {
         $checked = ['push' => array_flip($push), 'email' => array_flip($email)];
+        $seen    = $shown !== null ? array_flip($shown) : null;
         foreach ($this->types->all() as $type) {
-            if ($type->type === self::TEST_TYPE) {
+            if ($type->type === self::TEST_TYPE || ($seen !== null && !isset($seen[$type->type]))) {
                 continue;
             }
             foreach (self::CHANNELS as $channel) {
