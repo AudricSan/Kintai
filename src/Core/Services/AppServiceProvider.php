@@ -218,6 +218,9 @@ final class AppServiceProvider extends ServiceProvider
         // Même raison (paramètre ?\Closure) : BundleRegistryClient et BundleInstallerService.
         $this->container->singleton(BundleRegistryClient::class, fn() => new BundleRegistryClient());
 
+        // Questions de l'assistant qui recommandent des bundles (config/setup-questions.php).
+        $this->container->singleton(\kintai\Core\Setup\SetupQuestionnaire::class, fn() => \kintai\Core\Setup\SetupQuestionnaire::fromConfig(BASE_PATH . '/config/setup-questions.php'));
+
         // Assistant de configuration : bundles du catalogue pour un canal, installés comme depuis /admin/bundles/market.
         $this->container->singleton(SetupWizard::class, fn(Container $c) => new SetupWizard(
             $c->make(\kintai\Core\Repositories\AppSettingsRepositoryInterface::class),
@@ -231,6 +234,7 @@ final class AppServiceProvider extends ServiceProvider
                     $entries[$entry->bundle->slug] = [
                         'slug' => $entry->bundle->slug, 'name' => $entry->bundle->name, 'description' => $entry->bundle->description,
                         'version' => $version, 'repository_url' => $entry->bundle->repositoryUrl, 'registry_url' => $entry->registryUrl,
+                        'setup_question' => $entry->bundle->setupQuestion, 'requires' => $entry->bundle->requires,
                     ];
                 }
                 return array_values($entries);

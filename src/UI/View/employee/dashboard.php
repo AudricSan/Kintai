@@ -62,6 +62,7 @@ foreach ($_empWidgetPermMap as $_wk => $_wp) {
 <div class="page-header">
     <h2 class="page-header__title"><?= __('dashboard') ?></h2>
     <div class="page-header__actions">
+        <?php include __DIR__ . '/../_partials/_dashboard-actions.php'; ?>
         <?= Button::make(__('customize'))->ghost()->sm()->attrs(['data-on-click' => 'dashCustomizeToggle'])->render() ?>
     </div>
 </div>

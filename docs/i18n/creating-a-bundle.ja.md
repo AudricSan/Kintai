@@ -978,6 +978,19 @@ Kintaiは `script-src 'self' 'nonce-…'`（`SecurityHeadersMiddleware`）を送
 - **自分のレジストリ** — `registry.json` を自分で書いてホストし（HTTPSで到達できればどこでも）、誰でも `/admin/bundles/registries` からそのURLを追加できます。誰の承認も必要ありません。
 - **Kintai公式レジストリ**（[`AudricSan/KintaiBundle`](https://github.com/AudricSan/KintaiBundle)） — その `registry.json` に項目を追加するプルリクエストを開いてください。そこに載っても、バンドルが「公式」になるわけでは**ありません**——下記参照。
 
+### セットアップの質問に表示する（レジストリのエントリ）
+
+セットアップウィザードは、バンドルを提案するためにいくつかの業務上の質問をします。レジストリのエントリ（`registry.json`）で、Core を変更せずに
+独自の質問と必要なバンドルを追加できます。
+
+```json
+{ "slug": "acme-crm", "setup_question": { "text": { "en": "Do you use a CRM?", "fr": "Utilisez-vous un CRM ?" }, "icon": "🤝", "theme": "communication" },
+  "requires_bundles": ["messaging"] }
+```
+
+`theme` は `planning`、`requests`、`communication`、`reports`、`hr` のいずれか（それ以外は「その他」）。`setup_question` がなくても、バンドルは全一覧に表示されます。
+`requires_bundles` は前提バンドルを自動で選択します（補助であり、ブロックではありません）。
+
 ## 公式とサードパーティ
 
 Kintai本体のリポジトリにある `config/official-bundles.php` が、Kintaiプロジェクト自身が保守するスラッグについての**唯一の**情報源です——どのレジストリに載っていても、バンドルが自分を公式と宣言することはできません。それ以外はカタログで「サードパーティ」と表示され、インストールやアップデートには `confirm_third_party` チェックボックスの明示的な確認が必要で、これはサーバー側で強制されます（JavaScriptで隠すだけではありません）——ユーザーには警告が表示されることを想定し、先に進む前にそれが読まれる前提でバンドルを設計してください。
