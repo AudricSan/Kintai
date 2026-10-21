@@ -79,7 +79,7 @@ final class AdminShiftResolveConflictTest extends TestCase
     {
         $this->shifts->expects($this->once())->method('delete')->with(1);
         // L'employé est prévenu, comme pour une suppression directe.
-        $this->notifs->expects($this->once())->method('notify')->with(3, 'shift_deleted', 'notif_shift_deleted_body', $this->anything(), 1);
+        $this->notifs->expects($this->once())->method('notify')->with(3, 'shift_deleted', 'notif_shift_deleted_body', $this->anything(), $this->greaterThan(20000101));
         $this->assertSame(302, $this->resolve(2, 1)->status());
     }
 

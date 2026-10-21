@@ -187,13 +187,19 @@ final class EmployeeControllerShiftDayCanManageTest extends TestCase
             ['id' => 33, 'user_id' => 9, 'store_id' => 1, 'shift_date' => date('Y-m-d', strtotime('+30 days'))],
         ]);
         $notifRepo = $this->createMock(NotificationRepositoryInterface::class);
-        $notifRepo->expects($this->once())->method('markReadByReference')->with(9, 'shift', [31]);
+        // Deux appels : les shifts affichés, puis les jours affichés (notifications de shifts supprimés).
+        $calls = [];
+        $notifRepo->expects($this->exactly(2))->method('markReadByReference')
+            ->willReturnCallback(function (int $uid, string $type, array $ids) use (&$calls) { $calls[$type] = [$uid, $ids]; });
 
         $_GET = ['store_id' => '1'];
         $req = new Request();
         $req->setAttribute('auth_user', ['id' => 9]);
 
         $this->assertSame(200, $this->buildController($shifts, $notifRepo)->shiftDay($req)->status());
+        $this->assertSame([9, [31]], $calls['shift']);
+        $this->assertSame(9, $calls['shift_day'][0]);
+        $this->assertContains(shift_day_reference($date), $calls['shift_day'][1]);
     }
 
     public function testShiftDayPassesTheHighlightedShiftToTheView(): void
