@@ -97,7 +97,7 @@ final class NotificationSettingsControllerTest extends TestCase
         $_SESSION['_csrf_token'] = 'x';
         $router = new Router();
         // Routes citées par la page et ses onglets.
-        foreach (['x', 'admin.owner_settings', 'admin.backup', 'admin.update', 'admin.languages', 'admin.bundles', 'admin.roles', 'admin.license', 'admin.notifications_settings', 'admin.notifications_settings.save', 'admin.notifications_settings.test', 'admin.notifications_settings.vapid', 'home', 'auth.login'] as $i => $name) {
+        foreach (['x', 'admin.owner_settings', 'admin.backup', 'admin.update', 'admin.languages', 'admin.bundles', 'admin.roles', 'admin.license', 'admin.calendar_settings', 'admin.notifications_settings', 'admin.notifications_settings.save', 'admin.notifications_settings.test', 'admin.notifications_settings.vapid', 'home', 'auth.login'] as $i => $name) {
             $router->get('/p' . $i, ['X', 'y'], name: $name);
         }
         Container::getInstance()->instance(Router::class, $router);

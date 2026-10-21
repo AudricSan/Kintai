@@ -579,10 +579,12 @@ never stops the Core action nor the other bundles' listeners. Available events:
 | Event | When | Data |
 |---|---|---|
 | `EmployeeCreated` | right after an account is created: "New employee" form, Excel import quick-create, `POST /api/v1/users` | `user`, `storeId` (store the employee was assigned to, `null` if none — always `null` from the API), `createdBy`, `source` |
+| `ShiftSaved` (1.28) | a shift is written by the repository, whatever the path (admin form, API, Excel import, swap, open-shift claim) | `shift` (the saved row), `before` (the row before the change, `null` for a new shift); helpers `isNew()`, `userId()`, `previousUserId()` (employee the shift was taken from) |
+| `ShiftDeleted` (1.28) | a shift is deleted, whatever the path | `shift` (the row as it was before deletion); helpers `shiftId()`, `userId()` |
 | `OpenShiftClosed` (1.17) | a shift published to the open-shift board stops being so (`is_open` 1 → 0) from the shift form or `PUT /api/v1/shifts/{id}` | `shift` (the saved row), `closedBy` |
 
 `hiring-report` creates the employee's hiring report this way, and `shift-claim` withdraws the pending claims of a
-closed open shift. Require `"kintai_contract": "^1.13"` (`^1.17` for `OpenShiftClosed`).
+closed open shift. Require `"kintai_contract": "^1.13"` (`^1.17` for `OpenShiftClosed`, `^1.28` for `ShiftSaved`/`ShiftDeleted`).
 
 ### Dashboard stat cards: `dashboardStats()` (contract 1.19)
 

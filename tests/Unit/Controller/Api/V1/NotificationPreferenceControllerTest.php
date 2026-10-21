@@ -88,7 +88,8 @@ final class NotificationPreferenceControllerTest extends TestCase
         $this->assertSame(
             [['type' => 'shift_assigned', 'category' => 'planning', 'push' => true, 'email' => true],
              ['type' => 'shift_updated', 'category' => 'planning', 'push' => true, 'email' => false],
-             ['type' => 'shift_deleted', 'category' => 'planning', 'push' => true, 'email' => true]],
+             ['type' => 'shift_deleted', 'category' => 'planning', 'push' => true, 'email' => true],
+             ['type' => 'calendar_sync_error', 'category' => 'planning', 'push' => true, 'email' => false]],
             $data['preferences'],
         );
         $this->assertSame(['enabled' => false, 'start' => '22:00', 'end' => '07:00'], $data['quiet_hours']);

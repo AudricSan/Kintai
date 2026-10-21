@@ -111,7 +111,7 @@ final class NotificationTypeRegistryTest extends TestCase
         ])->byCategory();
 
         $this->assertSame(['planning', 'requests', 'messages'], array_keys($grouped));
-        $this->assertCount(3, $grouped['planning']);
+        $this->assertCount(4, $grouped['planning']);
     }
 
     public function testFromDeclarationRejectsMalformedValues(): void

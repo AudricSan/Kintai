@@ -517,9 +517,11 @@ Le Core annonce ce qui se passe de son côté pour que votre bundle puisse réag
 | Événement | Quand | Données |
 |---|---|---|
 | `EmployeeCreated` | juste après la création d'un compte : formulaire « Nouvel employé », création rapide de l'import Excel, `POST /api/v1/users` | `user`, `storeId` (magasin auquel l'employé a été rattaché, `null` sinon — toujours `null` depuis l'API), `createdBy`, `source` |
+| `ShiftSaved` (1.28) | un shift est écrit par le dépôt, quel que soit le chemin (formulaire admin, API, import Excel, échange, reprise d'un shift ouvert) | `shift` (la ligne enregistrée), `before` (la ligne avant modification, `null` pour un shift créé) ; aides `isNew()`, `userId()`, `previousUserId()` (employé à qui le shift a été retiré) |
+| `ShiftDeleted` (1.28) | un shift est supprimé, quel que soit le chemin | `shift` (la ligne telle qu'elle était avant la suppression) ; aides `shiftId()`, `userId()` |
 | `OpenShiftClosed` (1.17) | un shift publié dans la bourse cesse de l'être (`is_open` 1 → 0) depuis le formulaire de shift ou `PUT /api/v1/shifts/{id}` | `shift` (la ligne enregistrée), `closedBy` |
 
-`hiring-report` crée ainsi le rapport d'embauche de l'employé, et `shift-claim` retire les candidatures en attente d'un shift ouvert fermé. Exigez `"kintai_contract": "^1.13"` (`^1.17` pour `OpenShiftClosed`).
+`hiring-report` crée ainsi le rapport d'embauche de l'employé, et `shift-claim` retire les candidatures en attente d'un shift ouvert fermé. Exigez `"kintai_contract": "^1.13"` (`^1.17` pour `OpenShiftClosed`, `^1.28` pour `ShiftSaved`/`ShiftDeleted`).
 
 ### Cartes de statistiques du tableau de bord : `dashboardStats()` (contrat 1.19)
 
