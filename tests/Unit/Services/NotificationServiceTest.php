@@ -12,6 +12,9 @@ use kintai\Core\Repositories\JsonTranslationRepository;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Services\NotificationService;
 use kintai\Core\Services\PushNotificationService;
+use kintai\Core\BundleManager;
+use kintai\Core\Extension\ExtensionRegistry;
+use kintai\Core\Services\NotificationTypeRegistry;
 use kintai\Core\Services\TranslationService;
 use kintai\Domain\Eloquent\Notification;
 use PHPUnit\Framework\TestCase;
@@ -36,6 +39,8 @@ if (!defined('BASE_PATH')) {
 final class NotificationServiceTest extends TestCase
 {
     private NotificationService $service;
+    private PushNotificationService $push;
+    private TranslationService $translations;
     private UserRepositoryInterface $users;
 
     /** @var array<int, array{id:int, language:?string}> */
@@ -77,7 +82,9 @@ final class NotificationServiceTest extends TestCase
             fn(int $id) => $this->usersById[$id] ?? null
         );
 
-        $this->service = new NotificationService(new DatabaseNotificationRepository(), $push, $translations, $this->users);
+        $this->push         = $push;
+        $this->translations = $translations;
+        $this->service      = new NotificationService(new DatabaseNotificationRepository(), $push, $translations, $this->users);
     }
 
     private function registerUser(int $id, ?string $language): void
@@ -241,5 +248,40 @@ final class NotificationServiceTest extends TestCase
         $this->service->notify(5, 'timeoff_approved', 'notif_timeoff_approved_body', [], 1);
 
         $this->assertNull(Notification::first()->link);
+    }
+    private function serviceWithRegistry(): NotificationService
+    {
+        $manager = (new \ReflectionClass(BundleManager::class))->newInstanceWithoutConstructor();
+        (new \ReflectionProperty($manager, 'bundles'))->setValue($manager, []);
+
+        return new NotificationService(
+            new DatabaseNotificationRepository(),
+            $this->push,
+            $this->translations,
+            $this->users,
+            new NotificationTypeRegistry(new ExtensionRegistry($manager)),
+        );
+    }
+
+    /** Le type d'objet vient du registre : visiter l'objet pourra marquer ses notifications comme lues. */
+    public function testNotifyStoresTheReferenceTypeOfTheRegistry(): void
+    {
+        $this->registerUser(5, 'fr');
+        $this->serviceWithRegistry()->notify(5, 'shift_assigned', 'notif_shift_assigned_body', [], 12);
+
+        $this->assertSame('shift', Notification::first()->reference_type);
+        $this->assertSame(12, (int) Notification::first()->reference_id);
+    }
+
+    public function testNotifyLeavesReferenceTypeEmptyWithoutIdOrKnownType(): void
+    {
+        $this->registerUser(5, 'fr');
+        $service = $this->serviceWithRegistry();
+        $service->notify(5, 'shift_assigned', 'notif_shift_assigned_body');
+        $service->notify(5, 'unknown_type', 'notif_shift_assigned_body', [], 3);
+
+        foreach (Notification::all() as $row) {
+            $this->assertNull($row->reference_type);
+        }
     }
 }

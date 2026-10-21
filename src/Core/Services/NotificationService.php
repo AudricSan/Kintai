@@ -19,6 +19,8 @@ class NotificationService
         private readonly PushNotificationService $push,
         private readonly TranslationService $translations,
         private readonly UserRepositoryInterface $users,
+        // Optionnel : sans registre, aucune notification n'est rattachée à un type d'objet (pas de « lu » automatique).
+        private readonly ?NotificationTypeRegistry $types = null,
     ) {}
 
     /**
@@ -52,6 +54,7 @@ class NotificationService
             'type'         => $type,
             'body_key'     => $bodyKey,
             'params'       => $params,
+            'reference_type' => $referenceId !== null ? $this->types?->get($type)?->referenceType : null,
             'reference_id' => $referenceId,
             'body'         => $body,
             'link'         => $link,

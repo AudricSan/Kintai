@@ -138,10 +138,14 @@ abstract class Bundle
     }
 
     /**
-     * Point d'extension « types de notification » (contrat 1.7) : type => icône (un emoji) des notifications créées
-     * par le bundle. Le libellé est la traduction « notif_{type} » (fichiers lang/ du bundle).
+     * Point d'extension « types de notification » (contrat 1.7) : types des notifications créées par le bundle.
+     * Le libellé est la traduction « notif_{type} » (fichiers lang/ du bundle). Deux formats :
+     *  - simple : type => icône (un emoji) ; catégorie « system », push activé, e-mail désactivé ;
+     *  - enrichi : type => ['icon' => …, 'category' => planning|requests|messages|reports|system,
+     *    'channels' => ['push' => bool, 'email' => bool] (valeurs par défaut des préférences),
+     *    'reference_type' => type d'objet désigné par l'identifiant passé à notify()] — voir NotificationType.
      *
-     * @return array<string, string>
+     * @return array<string, string|array<string, mixed>>
      */
     public function notificationTypes(): array
     {

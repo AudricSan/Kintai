@@ -74,6 +74,7 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(PushNotificationService::class),
             $c->make(TranslationService::class),
             $c->make(UserRepositoryInterface::class),
+            $c->make(NotificationTypeRegistry::class),
         ));
         
         $this->container->singleton(IcalService::class, fn(Container $c) => new IcalService(
