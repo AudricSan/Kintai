@@ -8,6 +8,7 @@ use kintai\Contract\Extension\Action;
 use kintai\Contract\Extension\DashboardStat;
 use kintai\Contract\Extension\DashboardWidget;
 use kintai\Contract\Extension\NavItem;
+use kintai\Contract\Extension\NotificationType;
 use kintai\Contract\Extension\ProfileSection;
 use kintai\Contract\Extension\ShiftFormSection;
 use kintai\Contract\Extension\StoreFeature;
@@ -263,10 +264,10 @@ final class ExtensionRegistry
     }
 
     /**
-     * Types de notification déclarés par les bundles actifs : type => icône. Un type mal formé, une icône qui n'est pas
-     * une chaîne courte ou un type déjà déclaré est ignoré et journalisé.
+     * Types de notification déclarés par les bundles actifs, ancien format (type => icône) ou enrichi (contrat 1.23).
+     * Un type mal formé, une déclaration invalide ou un type déjà déclaré est ignoré et journalisé.
      *
-     * @return array<string, string>
+     * @return array<string, NotificationType>
      */
     public function notificationTypes(): array
     {
@@ -282,13 +283,15 @@ final class ExtensionRegistry
                 Log::warning('bundle_extension_failed', ['bundle' => $bundle->getName(), 'point' => 'notificationTypes', 'error' => $e->getMessage()]);
                 continue;
             }
-            foreach (is_array($declared) ? $declared : [] as $type => $icon) {
-                if (!is_string($type) || preg_match('/^[a-z][a-z0-9_]{1,60}$/', $type) !== 1 || !is_string($icon)
-                    || mb_strlen($icon) > 8 || isset($types[$type])) {
-                    Log::warning('bundle_extension_invalid', ['bundle' => $bundle->getName(), 'point' => 'notificationTypes']);
-                    continue;
+            foreach (is_array($declared) ? $declared : [] as $type => $declaration) {
+                try {
+                    if (!is_string($type) || isset($types[$type])) {
+                        throw new \InvalidArgumentException('type absent ou déjà déclaré');
+                    }
+                    $types[$type] = NotificationType::fromDeclaration($type, $declaration);
+                } catch (\InvalidArgumentException $e) {
+                    Log::warning('bundle_extension_invalid', ['bundle' => $bundle->getName(), 'point' => 'notificationTypes', 'error' => $e->getMessage()]);
                 }
-                $types[$type] = $icon;
             }
         }
         return $this->notificationTypes = $types;
