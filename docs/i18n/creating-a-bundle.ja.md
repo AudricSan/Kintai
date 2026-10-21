@@ -384,6 +384,17 @@ $this->notifications->markReadFor($currentUserId, 'timeoff', $request->id);   //
 `markReadFor()` は `kintai\Contract\Services\NotificationService` にあり、例外を投げないため、失敗してもページの表示は妨げられません。`referenceType` は種類で宣言したものです。`"kintai_contract": "^1.23"` を要求してください。
 
 バンドルに詳細ページがない場合は、リンクを `?highlight={id}` 付きの一覧にし、対応する `.data-table` の行にクラス `tr--highlight`（Coreのスタイル）を付け、表示した行について `markReadFor()` を呼びます。
+
+### 呼び出せるグローバル関数（契約1.24）
+
+バンドルが呼び出せるグローバル関数は `src/Contract/functions.php` で宣言されたものだけです（`__`、`csrf_field`、`csrf_token`、
+`csp_nonce`、`route_url`、`base_url`、`back_url`、`safe_redirect_path`、`store_segment`、`employee_segment`、`route_segment`、
+`bundle_asset`、`translation_or`、`user_locale`、`month_label`、`date_label`、`format_currency`、`currency_symbol`、
+`store_currency_style`、`style_class`、`inline_styles`。暫定：`bundle_asset_path`、`storage_path`）。Core のそれ以外のグローバル関数は
+内部用で、予告なく変更される可能性があります。`ContractUsageScanner::functionViolations()`（バンドルの `ContractUsageTest` が使用）は、
+PHP の関数でも宣言済みでもバンドル自身の定義でもない関数の呼び出しを報告します。Core のビューのパーシャルを `include` することも避け、
+自前のものを用意してください。
+
 ### 定期ジョブ：`cronJobs()`（契約1.8）
 
 ```php

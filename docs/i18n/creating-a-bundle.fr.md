@@ -389,6 +389,18 @@ pas empêcher l'affichage de la page. Le `referenceType` est celui déclaré par
 
 Si le bundle n'a pas de page de détail, faites pointer le lien vers la liste avec `?highlight={id}` et donnez la classe
 `tr--highlight` (style du Core) à la ligne `.data-table` correspondante, puis appelez `markReadFor()` pour les lignes affichées.
+
+### Fonctions globales utilisables (contrat 1.24)
+
+Un bundle ne peut appeler que les fonctions globales déclarées dans `src/Contract/functions.php` (`__`, `csrf_field`,
+`csrf_token`, `csp_nonce`, `route_url`, `base_url`, `back_url`, `safe_redirect_path`, `store_segment`, `employee_segment`,
+`route_segment`, `bundle_asset`, `translation_or`, `user_locale`, `month_label`, `date_label`, `format_currency`,
+`currency_symbol`, `store_currency_style`, `style_class`, `inline_styles` ; provisoires : `bundle_asset_path`,
+`storage_path`). Toute autre fonction globale du Core est interne et peut changer sans préavis.
+`ContractUsageScanner::functionViolations()` (utilisé par le `ContractUsageTest` du bundle) signale tout appel à une
+fonction qui n'est ni celle de PHP, ni déclarée, ni définie par le bundle. N'incluez pas non plus un partiel de vue du Core :
+fournissez le vôtre.
+
 ### Tâches planifiées : `cronJobs()` (contrat 1.8)
 
 ```php

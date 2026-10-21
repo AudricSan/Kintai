@@ -438,6 +438,17 @@ from being displayed. The `referenceType` is the one declared by the type. Requi
 
 When the bundle has no detail page, link to the list with `?highlight={id}` and give the matching `.data-table` row the
 class `tr--highlight` (Core styling), then call `markReadFor()` for the rows displayed.
+
+### Global functions you may call (contract 1.24)
+
+A bundle may call only the global functions declared in `src/Contract/functions.php` (`__`, `csrf_field`, `csrf_token`,
+`csp_nonce`, `route_url`, `base_url`, `back_url`, `safe_redirect_path`, `store_segment`, `employee_segment`,
+`route_segment`, `bundle_asset`, `translation_or`, `user_locale`, `month_label`, `date_label`, `format_currency`,
+`currency_symbol`, `store_currency_style`, `style_class`, `inline_styles`; provisional: `bundle_asset_path`,
+`storage_path`). Every other global function of the Core is internal and may change without notice.
+`ContractUsageScanner::functionViolations()` (used by the bundle's `ContractUsageTest`) reports any call to a function that
+is neither PHP's, nor declared, nor defined by the bundle. Don't `include` a Core view partial either: ship your own.
+
 ### Scheduled jobs: `cronJobs()` (contract 1.8)
 
 ```php
