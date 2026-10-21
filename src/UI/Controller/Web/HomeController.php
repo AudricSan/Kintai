@@ -146,6 +146,7 @@ final class HomeController
         // widgets historiques d'un bundle qui déclare les siens ne sont plus rendus par le Core ($enabledWidgets).
         $dashWidgets = DashboardWidgets::current();
         $widgetKeys  = self::offeredWidgetKeys($dashWidgets);
+        $sizes       = $dashWidgets->sizes(DashboardWidget::MANAGER, self::ADMIN_WIDGETS);
         $saved = $this->dashboardPrefs->getEnabledWidgets((int) $user['id'], 'admin');
         $enabledAll = array_flip(array_values(
             $saved !== null
@@ -242,7 +243,8 @@ final class HomeController
             'enabled_widgets'     => $enabledWidgets,
             'enabled_widgets_all' => $enabledAll,
             'all_widgets'         => $widgetKeys,
-            'widget_layout'       => DashboardLayout::resolve($widgetKeys, $this->dashboardPrefs->getLayout((int) $user['id'], 'admin'), self::ADMIN_WIDGET_WIDTHS),
+            'widget_layout'       => DashboardLayout::resolve($widgetKeys, $this->dashboardPrefs->getLayout((int) $user['id'], 'admin'), self::ADMIN_WIDGET_WIDTHS + $sizes['widths'], $sizes['heights']),
+            'widget_limits'       => $sizes['limits'],
             'bundle_widgets'      => $bundleWidgets,
             'bundle_widget_meta'  => self::prefixedMeta($dashWidgets),
             'employee_widgets'    => $employeeWidgets,
