@@ -21,13 +21,25 @@ final class MailStep implements SetupStepInterface
 
     /**
      * @param ?EnvFileWriter $env  écrivain du fichier d'environnement (remplacé en test)
-     * @param ?\Closure $factory  fn(array $config): MailerService, mailer construit pour l'essai (remplacé en test)
      */
     public function __construct(
         private readonly MailerService $mailer,
         private readonly ?EnvFileWriter $env = null,
-        private readonly ?\Closure $factory = null,
     ) {}
+
+    /** @var ?\Closure fn(array $config): MailerService, mailer construit pour l'essai (remplacé en test) */
+    private ?\Closure $factory = null;
+
+    /**
+     * Remplace la construction du mailer d'essai (tests). Pas un paramètre du constructeur : le conteneur instancie chaque
+     * paramètre typé par une classe et ne sait pas fournir une Closure.
+     *
+     * @param \Closure(array): MailerService $factory
+     */
+    public function useMailerFactory(\Closure $factory): void
+    {
+        $this->factory = $factory;
+    }
 
     public function id(): string
     {

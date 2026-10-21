@@ -136,7 +136,11 @@ final class SetupStepsTest extends TestCase
     private function mail(?\Closure $factory = null): MailStep
     {
         $mailer = new MailerService(['driver' => 'native', 'from' => ['address' => 'noreply@example.com']]);
-        return new MailStep($mailer, new EnvFileWriter($this->envDir), $factory);
+        $step = new MailStep($mailer, new EnvFileWriter($this->envDir));
+        if ($factory !== null) {
+            $step->useMailerFactory($factory);
+        }
+        return $step;
     }
 
     public function testSmtpSettingsAreWrittenToTheEnvironmentFileAndTheOldPasswordIsKept(): void
