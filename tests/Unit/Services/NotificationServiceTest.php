@@ -97,6 +97,20 @@ final class NotificationServiceTest extends TestCase
         return json_decode((string) file_get_contents(BASE_PATH . "/lang/{$locale}.json"), true);
     }
 
+    /** Un lien qui n'est pas un chemin interne n'est jamais enregistré : il finirait dans la cloche, le push et l'e-mail. */
+    public function testNotifyDropsALinkThatIsNotAnInternalPath(): void
+    {
+        $this->registerUser(1, 'fr');
+        foreach (['//evil.example', '/\evil.example', 'https://evil.example/x', 'javascript:alert(1)', '/ok' . "
+" . 'x'] as $bad) {
+            $this->service->notify(1, 'shift_assigned', 'notif_shift_assigned_body', [], null, $bad);
+        }
+        $this->service->notify(1, 'shift_assigned', 'notif_shift_assigned_body', [], null, '/employee/shifts/day?start=2026-08-03&highlight=4');
+
+        $links = Notification::orderBy('id')->pluck('link')->all();
+        $this->assertSame([null, null, null, null, null, '/employee/shifts/day?start=2026-08-03&highlight=4'], $links);
+    }
+
     public function testNotifyInsertsARealRowWithoutThrowing(): void
     {
         $this->registerUser(5, 'fr');
