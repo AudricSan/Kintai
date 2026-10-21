@@ -11,6 +11,12 @@ ob_start();
     <?php if (!empty($result['inactive'])): ?>
         <div class="alert alert--warning mb-sm"><?= htmlspecialchars(__('setup_done_inactive', ['list' => implode(', ', $result['inactive'])])) ?></div>
     <?php endif; ?>
+    <?php if (!empty($result['pending'])): ?>
+        <div class="alert alert--info mb-sm">
+            <?= htmlspecialchars(__('setup_pending_waiting', ['list' => implode(', ', $result['pending'])])) ?>
+            <a href="<?= route_url('admin.setup') ?>?step=license"><?= __('setup_sel_activate_license') ?></a>
+        </div>
+    <?php endif; ?>
     <?php if (!empty($result['failed'])): ?>
         <div class="alert alert--warning mb-sm">
             <?= htmlspecialchars(__('setup_done_failed')) ?>

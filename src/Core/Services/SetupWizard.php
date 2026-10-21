@@ -25,6 +25,8 @@ final class SetupWizard
     /** Ancienne clé (assistant en deux étapes) : lue seulement pour reprendre une progression existante. */
     public const STEP_KEY = 'setup_wizard_step';
     public const DONE_KEY = 'setup_wizard_done';
+    /** Bundles choisis au-delà du quota, mémorisés (JSON, dans l'ordre) et installés dès qu'une licence les permet. */
+    public const PENDING_BUNDLES_KEY = 'setup_pending_bundles';
 
     public const STEP_ORGANISATION = 'organisation';
     public const STEP_STORE = 'store';
@@ -169,6 +171,12 @@ final class SetupWizard
         $this->settings->set(self::PENDING_KEY, '0');
     }
 
+    /** Place restante dans le quota (nombre de bundles encore activables), ou null si illimité. */
+    public function room(): ?int
+    {
+        return $this->activation->room();
+    }
+
     /** Nombre de bundles que la licence permet d'activer, ou null si illimité. */
     public function maxBundles(): ?int
     {
@@ -182,15 +190,53 @@ final class SetupWizard
     }
 
     /**
-     * Installe et active les bundles choisis. Un choix hors catalogue ou au-delà du quota est refusé en entier ;
-     * un échec d'installation n'empêche pas les autres (il est rapporté).
+     * Bundles choisis mais pas encore installés faute de licence, dans l'ordre de priorité.
+     *
+     * @return list<string>
+     */
+    public function pendingBundles(): array
+    {
+        $decoded = json_decode((string) $this->settings->get(self::PENDING_BUNDLES_KEY), true);
+        return is_array($decoded) ? array_values(array_filter($decoded, 'is_string')) : [];
+    }
+
+    /**
+     * Une licence vient d'être activée : installe, dans l'ordre mémorisé et dans la limite de la nouvelle place, les
+     * bundles qui attendaient. Ceux qui ne passent pas encore, ou dont le téléchargement échoue, restent en attente.
+     *
+     * @return array{error: ?string, installed: list<string>, failed: array<string, string>, inactive: list<string>, pending: list<string>}
+     */
+    public function installPending(string $channel): array
+    {
+        $pending = $this->pendingBundles();
+        $empty = ['error' => null, 'installed' => [], 'failed' => [], 'inactive' => [], 'pending' => $pending];
+        if ($pending === []) {
+            return $empty;
+        }
+        $room = $this->activation->room();
+        if ($room === 0) {
+            return $empty;
+        }
+
+        $batch = $room === null ? $pending : array_slice($pending, 0, $room);
+        $result = $this->install($batch, $channel, false);
+        $remaining = array_values(array_diff($pending, $result['installed']));
+        $this->settings->set(self::PENDING_BUNDLES_KEY, json_encode($remaining, JSON_THROW_ON_ERROR));
+        $result['pending'] = $remaining;
+        return $result;
+    }
+
+    /**
+     * Installe et active les bundles choisis, dans l'ordre donné. Un choix hors catalogue est refusé en entier. Ceux qui
+     * dépassent la place restante du quota ne sont pas installés : ils sont mémorisés « en attente de licence »
+     * ($remember) et rapportés dans `pending`. Un échec d'installation n'empêche pas les autres (il est rapporté).
      *
      * @param list<string> $slugs
-     * @return array{error: ?string, installed: list<string>, failed: array<string, string>, inactive: list<string>}
+     * @return array{error: ?string, installed: list<string>, failed: array<string, string>, inactive: list<string>, pending: list<string>}
      */
-    public function install(array $slugs, string $channel): array
+    public function install(array $slugs, string $channel, bool $remember = true): array
     {
-        $result = ['error' => null, 'installed' => [], 'failed' => [], 'inactive' => []];
+        $result = ['error' => null, 'installed' => [], 'failed' => [], 'inactive' => [], 'pending' => []];
         $bySlug = [];
         foreach ($this->availableBundles($channel) as $entry) {
             $bySlug[$entry['slug']] = $entry;
@@ -200,10 +246,15 @@ final class SetupWizard
             $result['error'] = 'setup_bundles_unknown';
             return $result;
         }
-        $max = $this->maxBundles();
-        if ($max !== null && count($slugs) > $max) {
-            $result['error'] = 'setup_bundles_too_many';
-            return $result;
+        $room = $this->activation->room();
+        if ($room !== null && count($slugs) > $room) {
+            $result['pending'] = array_slice($slugs, $room);
+            $slugs = array_slice($slugs, 0, $room);
+            if ($remember) {
+                $this->settings->set(self::PENDING_BUNDLES_KEY, json_encode($result['pending'], JSON_THROW_ON_ERROR));
+            }
+        } elseif ($remember) {
+            $this->settings->set(self::PENDING_BUNDLES_KEY, '[]');
         }
 
         foreach ($slugs as $slug) {

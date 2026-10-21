@@ -12,6 +12,7 @@ use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\LicenseClientService;
 use kintai\Core\Services\SetupWizard;
 use kintai\Core\Setup\MailStep;
+use kintai\Core\Setup\SetupQuestionnaire;
 use kintai\Core\Setup\SetupSteps;
 use kintai\UI\Controller\Web\HasBaseUrl;
 use kintai\UI\ViewRenderer;
@@ -32,6 +33,7 @@ final class SetupWizardController
         private readonly AppSettingsService $settings,
         private readonly AuditLogger $auditLogger,
         private readonly SetupSteps $steps,
+        private readonly SetupQuestionnaire $questionnaire,
     ) {}
 
     /** GET /admin/setup[?step=…] — étape demandée, sinon la première à faire ; tableau de bord si l'assistant est terminé. */
@@ -105,12 +107,34 @@ final class SetupWizardController
         }
 
         $this->wizard->licenseDone();
+        $pending = $this->wizard->pendingBundles() === [] ? null : $this->wizard->installPending($this->settings->bundleUpdateChannel());
+        if ($pending !== null) {
+            $this->auditLogger->log($request, 'setup.pending_bundles_installed', 'system', null, ['installed' => $pending['installed'], 'failed' => array_keys($pending['failed'])]);
+            return $this->render($request, 'bundles_result', ['result' => $pending, 'next' => SetupWizard::STEP_RECAP]);
+        }
         return Response::redirect($this->base() . '/admin/setup?step=' . SetupWizard::STEP_RECAP);
     }
 
     /**
-     * POST /admin/setup/bundles — installe et active les bundles choisis, puis affiche le bilan (installés, inactifs
-     * faute de place, échecs à refaire depuis le catalogue). Avec « skip », passe l'étape sans rien installer.
+     * POST /admin/setup/questions — réponses du questionnaire : affiche la sélection des bundles avec ceux que les
+     * réponses recommandent déjà cochés (modifiable avant de valider).
+     */
+    public function questions(Request $request): Response
+    {
+        $catalog   = $this->wizard->availableBundles($this->settings->bundleUpdateChannel());
+        $questions = $this->questionnaire->questions($catalog, user_locale(null));
+        $yes       = array_values(array_map('strval', (array) $request->post('answers', [])));
+
+        return $this->render($request, SetupWizard::STEP_BUNDLES, [
+            'mode'        => 'select',
+            'recommended' => $this->questionnaire->recommend($questions, $yes),
+        ]);
+    }
+
+    /**
+     * POST /admin/setup/bundles — installe et active les bundles choisis dans l'ordre de priorité du questionnaire, dans la
+     * limite du quota : les autres sont mémorisés « en attente de licence » et s'installeront d'eux-mêmes quand une licence
+     * le permettra. Affiche le bilan. Avec « skip », passe l'étape sans rien installer.
      */
     public function bundles(Request $request): Response
     {
@@ -120,6 +144,8 @@ final class SetupWizardController
         }
 
         $slugs = array_values(array_filter(array_map('strval', (array) $request->post('bundles', [])), static fn(string $s): bool => $s !== ''));
+        $catalog = $this->wizard->availableBundles($this->settings->bundleUpdateChannel());
+        $slugs = $this->questionnaire->prioritise($slugs, $this->questionnaire->questions($catalog, $this->locale()));
         set_time_limit(0);
         $result = $this->wizard->install($slugs, $this->settings->bundleUpdateChannel());
         if ($result['error'] !== null) {
@@ -132,6 +158,11 @@ final class SetupWizardController
         $this->wizard->mark(SetupWizard::STEP_BUNDLES);
 
         return $this->render($request, 'bundles_result', ['result' => $result]);
+    }
+
+    private function locale(): string
+    {
+        return user_locale(null);
     }
 
     /** @param array<string, mixed> $extra variables propres à l'écran (erreurs, essai d'e-mail, bilan des bundles) */
@@ -160,8 +191,17 @@ final class SetupWizardController
             $data['licenseConfigured'] = $this->license->isConfigured();
             $data['licenseError'] = $this->license->state()['error'] ?? null;
         } elseif ($step === SetupWizard::STEP_BUNDLES) {
-            $data['bundles'] = $this->wizard->availableBundles($this->settings->bundleUpdateChannel());
+            $catalog = $this->wizard->availableBundles($this->settings->bundleUpdateChannel());
+            $questions = $this->questionnaire->questions($catalog, $this->locale());
+            $data['bundles'] = $catalog;
             $data['maxBundles'] = $this->wizard->maxBundles();
+            $data['room'] = $this->wizard->room();
+            $data['questions'] = $questions;
+            $data['cards'] = $this->questionnaire->cards($questions);
+            $data['pending'] = $this->wizard->pendingBundles();
+            // Questionnaire d'abord ; la liste complète à la demande (?mode=list) ou après les réponses.
+            $data['mode'] = $extra['mode'] ?? ($request->query('mode') === 'list' ? 'select' : 'questions');
+            $data['recommended'] = $extra['recommended'] ?? [];
         } elseif ($step === SetupWizard::STEP_RECAP) {
             $summaries = [];
             foreach ($this->steps->all() as $id => $s) {

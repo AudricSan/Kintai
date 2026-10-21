@@ -353,6 +353,7 @@ $router->group('/admin', function ($r) {
     $r->post('/setup/step/{step}', [SetupWizardController::class, 'step'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.setup.step', permission: 'public');
     $r->post('/setup/finish', [SetupWizardController::class, 'finish'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.setup.finish', permission: 'public');
     $r->post('/setup/bundles', [SetupWizardController::class, 'bundles'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.setup.bundles', permission: 'public');
+    $r->post('/setup/questions', [SetupWizardController::class, 'questions'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.setup.questions', permission: 'public');
     $r->get('/license',           [LicenseController::class, 'show'],       middleware: [OwnerOnlyMiddleware::class], name: 'admin.license', permission: 'public');
     $r->post('/license/activate', [LicenseController::class, 'activate'],   middleware: [OwnerOnlyMiddleware::class], name: 'admin.license.activate', permission: 'public');
     $r->post('/license/refresh',  [LicenseController::class, 'refresh'],    middleware: [OwnerOnlyMiddleware::class], name: 'admin.license.refresh', permission: 'public');

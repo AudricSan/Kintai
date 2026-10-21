@@ -999,6 +999,19 @@ Two ways to get discovered:
 - **Your own registry** — write and host a `registry.json` yourself (anywhere reachable over HTTPS), then anyone can add its URL from `/admin/bundles/registries`. No approval needed from anyone.
 - **The official Kintai registry** ([`AudricSan/KintaiBundle`](https://github.com/AudricSan/KintaiBundle)) — open a pull request adding an entry to its `registry.json`. Being listed there does **not** make your bundle "official" — see below.
 
+### Appear in the setup questionnaire (registry entry)
+
+The setup wizard asks a few business questions to recommend bundles. Your registry entry (`registry.json`) may add yours, and
+the bundles it needs, without touching the Core:
+
+```json
+{ "slug": "acme-crm", "setup_question": { "text": { "en": "Do you use a CRM?", "fr": "Utilisez-vous un CRM ?" }, "icon": "🤝", "theme": "communication" },
+  "requires_bundles": ["messaging"] }
+```
+
+`theme` is one of `planning`, `requests`, `communication`, `reports`, `hr` (otherwise "Other"). Without `setup_question` your
+bundle is still offered in the full list. `requires_bundles` ticks the prerequisites for the user (a hint, not a block).
+
 ## Official vs. third-party
 
 `config/official-bundles.php`, inside Kintai's own repository, is the **only** source of truth for which slugs are maintained by the Kintai project itself — a bundle can't self-declare as official, whichever registry lists it. Anything else is flagged "third-party" in the catalog UI, and installing or updating it requires an explicit `confirm_third_party` checkbox, enforced server-side (not just hidden by JavaScript) — expect your users to see a warning, and design your bundle assuming they'll read it before proceeding.

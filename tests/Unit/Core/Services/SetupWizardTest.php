@@ -169,8 +169,81 @@ final class SetupWizardTest extends TestCase
         $wizard = $this->wizard($settings, $installed);
 
         $this->assertSame('setup_bundles_unknown', $wizard->install(['timeoff', 'pirate'], 'release')['error']);
-        $this->assertSame('setup_bundles_too_many', $wizard->install(['timeoff', 'timeclock', 'shift-swap', 'notebook', 'messaging'], 'release')['error']);
         $this->assertSame([], $installed, 'rien installé');
+    }
+
+    public function testBundlesBeyondTheQuotaAreRememberedNotRefused(): void
+    {
+        $settings = $this->settings();
+        $installed = [];
+        $wizard = $this->wizard($settings, $installed);
+
+        $result = $wizard->install(['timeoff', 'timeclock', 'shift-swap', 'notebook', 'messaging'], 'release');
+
+        $this->assertNull($result['error']);
+        $this->assertSame(['timeoff', 'timeclock', 'shift-swap', 'notebook'], $result['installed'], 'les 4 premiers (plan gratuit)');
+        $this->assertSame(['messaging'], $result['pending']);
+        $this->assertSame(['messaging'], $wizard->pendingBundles(), 'mémorisé, pas téléchargé');
+        $this->assertCount(4, $installed);
+    }
+
+    public function testPendingBundlesInstallInOrderOnceThereIsRoom(): void
+    {
+        $settings = $this->settings();
+        $installed = [];
+        $wizard = $this->wizard($settings, $installed);
+        $wizard->install(['timeoff', 'timeclock', 'shift-swap', 'notebook', 'messaging'], 'release');
+        $this->assertSame(['messaging'], $wizard->pendingBundles());
+
+        // Pas de place : rien ne bouge, le bundle reste en attente.
+        $none = $wizard->installPending('release');
+        $this->assertSame([], $none['installed']);
+        $this->assertSame(['messaging'], $none['pending']);
+
+        // Une place se libère (ici : un bundle désactivé) : le bundle en attente s'installe.
+        $settings->set('enabled_bundles', json_encode(['timeoff', 'timeclock', 'shift-swap']));
+        $result = $wizard->installPending('release');
+
+        $this->assertSame(['messaging'], $result['installed']);
+        $this->assertSame([], $result['pending']);
+        $this->assertSame([], $wizard->pendingBundles());
+    }
+
+    public function testAFailedPendingInstallStaysPending(): void
+    {
+        $settings = $this->settings();
+        $installed = [];
+        $wizard = $this->wizard($settings, $installed, ['messaging' => 'réseau']);
+        $wizard->install(['timeoff', 'timeclock', 'shift-swap', 'notebook', 'messaging'], 'release');
+        $settings->set('enabled_bundles', json_encode(['timeoff']));
+
+        $result = $wizard->installPending('release');
+
+        $this->assertSame(['messaging' => 'réseau'], $result['failed']);
+        $this->assertSame(['messaging'], $result['pending']);
+        $this->assertSame(['messaging'], $wizard->pendingBundles(), 'il pourra être réessayé');
+    }
+
+    public function testNothingPendingMeansNothingToDo(): void
+    {
+        $installed = [];
+        $result = $this->wizard($this->settings(), $installed)->installPending('release');
+
+        $this->assertSame([], $result['installed']);
+        $this->assertSame([], $result['pending']);
+        $this->assertSame([], $installed);
+    }
+
+    public function testAnotherChoiceReplacesTheRememberedList(): void
+    {
+        $settings = $this->settings();
+        $installed = [];
+        $wizard = $this->wizard($settings, $installed);
+        $wizard->install(['timeoff', 'timeclock', 'shift-swap', 'notebook', 'messaging'], 'release');
+
+        $wizard->install([], 'release');
+
+        $this->assertSame([], $wizard->pendingBundles());
     }
 
     public function testChosenBundlesAreInstalledOnTheChannelAndEnabledFailuresReported(): void

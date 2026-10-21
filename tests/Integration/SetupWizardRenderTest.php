@@ -24,7 +24,7 @@ final class SetupWizardRenderTest extends TestCase
         $this->view = new ViewRenderer(BASE_PATH . '/src/UI/View');
         $router = new Router();
         foreach ([
-            'admin.setup', 'admin.setup.license', 'admin.setup.bundles', 'admin.setup.step', 'admin.setup.finish', 'admin.owner_settings',
+            'admin.setup', 'admin.setup.license', 'admin.setup.bundles', 'admin.setup.questions', 'admin.setup.step', 'admin.setup.finish', 'admin.owner_settings',
             'admin.stores', 'admin.mail_test', 'admin.notifications_settings', 'admin.backup', 'admin.bundles.market', 'admin.license',
         ] as $i => $name) {
             $router->post('/r' . $i . ($name === 'admin.setup.step' ? '/{step}' : ''), [\stdClass::class, 'x'], name: $name);
@@ -100,6 +100,48 @@ final class SetupWizardRenderTest extends TestCase
         $this->assertStringContainsString('Ma Boutique', $recap);
         $this->assertStringContainsString('setup_finish', $recap, 'le bouton de fin existe');
         $this->assertSame(7, substr_count($recap, '<tr>'), 'une ligne par étape sauf le récapitulatif');
+    }
+
+    public function testBundlesStepStartsWithTheQuestionnaireThenOffersGuidedCards(): void
+    {
+        $questions = [
+            ['id' => 'timeoff', 'text' => 'Congés ?', 'hint' => 'Demandes', 'bundles' => ['timeoff'], 'icon' => '🏖', 'theme' => 'requests'],
+            ['id' => 'exchange', 'text' => 'Échanges ?', 'hint' => 'Swaps', 'bundles' => ['shift-swap'], 'icon' => '🔁', 'theme' => 'requests'],
+        ];
+        $bundles = [
+            ['slug' => 'timeoff', 'name' => 'Congés', 'description' => 'Demandes d\'absence', 'requires' => []],
+            ['slug' => 'shift-swap', 'name' => 'Échanges', 'description' => 'Échanges de shifts', 'requires' => ['timeoff']],
+            ['slug' => 'acme', 'name' => 'Acme', 'description' => 'Tiers', 'requires' => []],
+        ];
+        $cards = ['timeoff' => ['icon' => '🏖', 'theme' => 'requests', 'hint' => 'Demandes'], 'shift-swap' => ['icon' => '🔁', 'theme' => 'requests', 'hint' => 'Swaps']];
+        $base = ['bundles' => $bundles, 'maxBundles' => 4, 'room' => 4, 'questions' => $questions, 'cards' => $cards, 'pending' => []];
+
+        $ask = $this->render('bundles', $base + ['mode' => 'questions']);
+        $this->assertStringContainsString('name="answers[]" value="timeoff"', $ask);
+        $this->assertStringContainsString('name="answers[]" value="exchange"', $ask);
+        $this->assertStringNotContainsString('name="bundles[]"', $ask, 'le questionnaire d\'abord');
+        $this->assertStringContainsString('mode=list', $ask, 'la liste complète reste accessible');
+
+        $select = $this->render('bundles', $base + ['mode' => 'select', 'recommended' => ['shift-swap', 'timeoff']]);
+        $this->assertSame(3, substr_count($select, 'name="bundles[]"'), 'tout le catalogue, tiers compris');
+        $this->assertSame(2, substr_count($select, 'checked'), 'les bundles recommandés sont cochés');
+        $this->assertStringContainsString('data-requires="timeoff"', $select, 'prérequis exposés à la sélection');
+        $this->assertStringContainsString('data-room="4"', $select);
+        $this->assertStringContainsString('id="setup-bundles-search"', $select);
+        $this->assertLessThan(strpos($select, 'value="shift-swap"'), strpos($select, 'value="timeoff"'), 'ordre de priorité des questions');
+        $this->assertLessThan(strpos($select, 'value="acme"'), strpos($select, 'value="shift-swap"'), 'hors questionnaire en dernier');
+        $this->assertStringContainsString('setup_theme_requests', $select);
+        $this->assertStringContainsString('setup_theme_other', $select);
+    }
+
+    public function testPendingBundlesAreShownOnTheSelectionAndTheResult(): void
+    {
+        $base = ['bundles' => [['slug' => 'timeoff', 'name' => 'Congés', 'description' => '', 'requires' => []]], 'maxBundles' => 4, 'room' => 0, 'questions' => [], 'cards' => [], 'mode' => 'select'];
+
+        $this->assertStringContainsString('setup_pending_waiting', $this->render('bundles', $base + ['pending' => ['messaging']]));
+        $result = $this->render('bundles_result', ['result' => ['installed' => [], 'inactive' => [], 'failed' => [], 'pending' => ['messaging']]]);
+        $this->assertStringContainsString('setup_pending_waiting', $result);
+        $this->assertStringContainsString('step=license', $result);
     }
 
     public function testTheBundlesResultOffersToContinue(): void

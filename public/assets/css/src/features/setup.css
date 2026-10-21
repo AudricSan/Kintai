@@ -83,3 +83,49 @@
 }
 
 .setup-recap th { text-align: left; font-weight: 600; }
+
+/* ── Étape Bundles : questionnaire et cartes de sélection ── */
+.setup-questions { display: grid; gap: var(--space-2); }
+
+.setup-question,
+.setup-card {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+    cursor: pointer;
+}
+
+.setup-question:hover,
+.setup-card:hover { border-color: var(--color-primary-light); }
+
+.setup-question:has(input:checked),
+.setup-card:has(input:checked) { border-color: var(--color-primary); background: var(--color-surface-alt); }
+
+.setup-question__icon,
+.setup-card__icon { font-size: 1.5rem; line-height: 1; }
+
+.setup-question__body,
+.setup-card__body { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+
+.setup-card--recommended { border-style: dashed; }
+
+.setup-card__benefit { color: var(--color-text); }
+
+.setup-search { margin-bottom: var(--space-3); max-width: 24rem; }
+
+.setup-theme { margin-bottom: var(--space-4); }
+
+.setup-theme__title { margin: 0 0 var(--space-2); font-size: var(--text-sm); font-weight: 600; color: var(--color-text-muted); }
+
+.setup-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+    align-items: stretch;
+    gap: var(--space-3);
+}
+
+.setup-quota-warning[hidden] { display: none; }

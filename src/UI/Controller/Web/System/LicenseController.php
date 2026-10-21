@@ -9,7 +9,10 @@ use kintai\Core\FeatureManager;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\AppSettingsService;
 use kintai\Core\Services\LicenseClientService;
+use kintai\Core\Services\SetupWizard;
+use kintai\Core\SessionFlash;
 use kintai\Core\Services\PlanLimitService;
 use kintai\UI\Controller\Web\HasBaseUrl;
 use kintai\UI\ViewRenderer;
@@ -25,6 +28,9 @@ final class LicenseController
         private readonly PlanLimitService $planLimits,
         private readonly BundleDiscoveryService $discovery,
         private readonly FeatureManager $features,
+        // Bundles choisis dans l'assistant au-delà du quota : installés dès que la licence les permet.
+        private readonly ?SetupWizard $setupWizard = null,
+        private readonly ?AppSettingsService $settings = null,
     ) {}
 
     /** GET /admin/license */
@@ -72,7 +78,39 @@ final class LicenseController
             return Response::redirect($this->base() . '/admin/license?error=' . urlencode((string) ($result['error'] ?? 'unknown')));
         }
 
+        $this->installPendingBundles($request);
+
         return Response::redirect($this->base() . '/admin/license?success=activated');
+    }
+
+    /**
+     * Une licence vient d'être activée : les bundles que l'assistant avait mémorisés « en attente de licence » sont
+     * installés dans l'ordre, dans la limite de la nouvelle place. Un échec ne touche pas à la licence : il est signalé et le
+     * bundle reste en attente.
+     */
+    private function installPendingBundles(Request $request): void
+    {
+        if ($this->setupWizard === null || $this->settings === null || $this->setupWizard->pendingBundles() === []) {
+            return;
+        }
+        set_time_limit(0);
+        try {
+            $result = $this->setupWizard->installPending($this->settings->bundleUpdateChannel());
+        } catch (\Throwable $e) {
+            SessionFlash::put('warning', __('setup_pending_failed', ['list' => '—']));
+            return;
+        }
+        $this->auditLogger->log($request, 'license.pending_bundles_installed', 'system', null, [
+            'installed' => $result['installed'],
+            'failed'    => array_keys($result['failed']),
+            'pending'   => $result['pending'],
+        ]);
+        if ($result['installed'] !== []) {
+            SessionFlash::put('success', __('setup_pending_installed', ['list' => implode(', ', $result['installed'])]));
+        }
+        if ($result['failed'] !== []) {
+            SessionFlash::put('warning', __('setup_pending_failed', ['list' => implode(', ', array_keys($result['failed']))]));
+        }
     }
 
     /** POST /admin/license/refresh */

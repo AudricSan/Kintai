@@ -28,7 +28,6 @@ $errorMessages = [
     'missing_license_key'    => __('license_missing_key'),
     'license_invalid'        => __('setup_license_invalid'),
     'setup_bundles_unknown'  => __('setup_bundles_unknown'),
-    'setup_bundles_too_many' => __('setup_bundles_too_many', ['max' => (int) ($maxBundles ?? 0)]),
 ];
 $screen = $step === 'bundles_result' ? 'bundles' : $step;
 ?>

@@ -10,7 +10,15 @@ use kintai\Core\Request;
 use kintai\Core\Router;
 use kintai\Core\Services\AppSettingsService;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\BundleDiscoveryService;
+use kintai\Core\FeatureManager;
+use kintai\Core\InstalledBundleManifestStore;
+use kintai\Core\Repositories\AppSettingsRepositoryInterface;
+use kintai\Core\Repositories\StoreRepositoryInterface;
+use kintai\Core\Repositories\UserRepositoryInterface;
+use kintai\Core\Services\BundleActivationService;
 use kintai\Core\Services\LicenseClientService;
+use kintai\Core\Services\PlanLimitService;
 use kintai\Core\Services\SetupWizard;
 use kintai\Core\Setup\SetupStepInterface;
 use kintai\Core\Setup\SetupSteps;
@@ -33,6 +41,8 @@ final class SetupWizardControllerTest extends TestCase
     public array $saved = [];
     /** @var list<string> */
     public array $errorsToReturn = [];
+    /** @var list<array<string, string>> */
+    public array $catalog = [];
     private string $views = '';
 
     protected function setUp(): void
@@ -40,8 +50,20 @@ final class SetupWizardControllerTest extends TestCase
         $this->store = new InMemoryAppSettings();
         SetupWizard::start($this->store, 'release');
 
-        $this->wizard = (new \ReflectionClass(SetupWizard::class))->newInstanceWithoutConstructor();
-        (new \ReflectionProperty(SetupWizard::class, 'settings'))->setValue($this->wizard, $this->store);
+        $dir = sys_get_temp_dir() . '/kintai-setup-ctl-' . bin2hex(random_bytes(4));
+        mkdir($dir, 0777, true);
+        $planLimits = new PlanLimitService(
+            $this->createStub(StoreRepositoryInterface::class),
+            $this->createStub(UserRepositoryInterface::class),
+            new LicenseClientService($this->createStub(AppSettingsRepositoryInterface::class), ['base_url' => '', 'api_key' => '']),
+        );
+        $activation = new BundleActivationService(
+            $this->store,
+            new FeatureManager([]),
+            new BundleDiscoveryService($dir . '/legacy', new InstalledBundleManifestStore($dir . '/installed.json'), $dir, '1.0.0'),
+            $planLimits,
+        );
+        $this->wizard = new SetupWizard($this->store, fn(string $channel): array => $this->catalog, fn(array $entry): ?string => null, $activation, $planLimits);
 
         // Une seule étape de formulaire factice suffit : le contrôleur ne connaît que l'interface.
         $fake = new class($this) implements SetupStepInterface {
@@ -82,6 +104,10 @@ final class SetupWizardControllerTest extends TestCase
             new AppSettingsService($this->store),
             new AuditLogger(),
             $steps,
+            new \kintai\Core\Setup\SetupQuestionnaire([
+                ['id' => 'timeoff', 'bundles' => ['timeoff'], 'icon' => 'x', 'theme' => 'requests'],
+                ['id' => 'timeclock', 'bundles' => ['timeclock'], 'icon' => 'y', 'theme' => 'planning'],
+            ]),
         );
     }
 
@@ -169,6 +195,20 @@ final class SetupWizardControllerTest extends TestCase
         $response = $this->controller->show($this->request([], [], ['step' => 'not-a-step']));
         $this->assertStringContainsString('name="support_email"', $response->body());
         $this->assertStringContainsString('aria-current="step"', $response->body());
+    }
+
+    public function testAnsweringTheQuestionnaireShowsTheSelectionWithTheRecommendedBundlesChecked(): void
+    {
+        $this->catalog = [
+            ['slug' => 'timeoff', 'name' => 'Congés', 'description' => 'd', 'version' => '1.0.0', 'repository_url' => '', 'registry_url' => ''],
+            ['slug' => 'timeclock', 'name' => 'Pointage', 'description' => 'd', 'version' => '1.0.0', 'repository_url' => '', 'registry_url' => ''],
+        ];
+
+        $html = $this->controller->questions($this->request(['answers' => ['timeclock', 'inconnue']]))->body();
+
+        $this->assertMatchesRegularExpression('/value="timeclock"[^>]*checked/s', $html);
+        $this->assertDoesNotMatchRegularExpression('/value="timeoff"[^>]*checked/s', $html);
+        $this->assertStringContainsString('data-room="4"', $html, 'plan gratuit : 4 bundles');
     }
 
     public function testFinishEndsTheWizardAndShowIsThenRedirected(): void
