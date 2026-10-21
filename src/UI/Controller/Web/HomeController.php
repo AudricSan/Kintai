@@ -245,6 +245,7 @@ final class HomeController
             'all_widgets'         => $widgetKeys,
             'widget_layout'       => DashboardLayout::resolve($widgetKeys, $this->dashboardPrefs->getLayout((int) $user['id'], 'admin'), self::ADMIN_WIDGET_WIDTHS + $sizes['widths'], $sizes['heights']),
             'widget_limits'       => $sizes['limits'],
+            'widget_refresh'      => $sizes['refresh'],
             'bundle_widgets'      => $bundleWidgets,
             'bundle_widget_meta'  => self::prefixedMeta($dashWidgets),
             'employee_widgets'    => $employeeWidgets,

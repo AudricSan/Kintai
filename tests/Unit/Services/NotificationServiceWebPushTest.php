@@ -140,7 +140,8 @@ final class NotificationServiceWebPushTest extends TestCase
         $this->assertSame(1, Notification::count());
     }
 
-    public function testNoWebPushDuringQuietHours(): void
+    /** Rien n'est retenu : pendant les heures silencieuses le web push part aussi (affiché sans son, voir pushPayload). */
+    public function testWebPushIsStillAttemptedDuringQuietHours(): void
     {
         // Plage couvrant toute la journée sauf une minute : « maintenant » y tombe presque sûrement, on la construit autour de l'heure courante.
         $now   = new \DateTimeImmutable();
@@ -151,7 +152,7 @@ final class NotificationServiceWebPushTest extends TestCase
 
         $this->service->notify(7, 'shift_assigned', 'notif_shift_assigned_body');
 
-        $this->assertSame([], $this->lookups);
+        $this->assertSame([[7]], $this->lookups, 'les abonnements sont lus : le push n\'est pas retenu');
         $this->assertSame(1, Notification::count());
     }
 

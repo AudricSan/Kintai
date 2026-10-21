@@ -121,6 +121,7 @@ final class EmployeeController
             'all_widgets'      => $widgetKeys,
             'widget_layout'    => DashboardLayout::resolve($widgetKeys, $this->dashboardPrefs->getLayout($userId, 'employee'), $sizes['widths'], $sizes['heights']),
             'widget_limits'    => $sizes['limits'],
+            'widget_refresh'   => $sizes['refresh'],
             'bundle_widgets'   => $bundleWidgets,
             'bundle_stats'     => $bundleStats,
             'bundle_widget_meta' => $dashWidgets->meta(DashboardWidget::EMPLOYEE, self::EMPLOYEE_WIDGETS),

@@ -26,6 +26,16 @@ final class DashboardLayout
     public const COLUMNS = 12;
     public const MAX_ROWS = 6;
 
+    /** Rafraîchissement automatique par défaut des widgets du Core, en secondes (absent = jamais, ex. graphiques). */
+    public const CORE_REFRESH = [
+        'kpi_counters'     => 60,
+        'dashboard_alerts' => 120,
+        'shifts_today'     => 120,
+        'upcoming'         => 300,
+        'emp_shifts_today' => 120,
+        'emp_upcoming'     => 300,
+    ];
+
     public const COMFORTABLE = 'comfortable';
     public const COMPACT = 'compact';
 
