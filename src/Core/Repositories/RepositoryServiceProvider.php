@@ -21,6 +21,8 @@ final class RepositoryServiceProvider extends ServiceProvider
         $this->container->singleton(UserShiftTypeRateRepositoryInterface::class, fn() => new DatabaseUserShiftTypeRateRepository());
         $this->container->singleton(IcalTokenRepositoryInterface::class, fn() => new DatabaseIcalTokenRepository());
         $this->container->singleton(UserDashboardPrefsRepositoryInterface::class, fn() => new DatabaseUserDashboardPrefsRepository());
+        $this->container->singleton(UserDashboardLayoutRepositoryInterface::class, fn() => new DatabaseUserDashboardLayoutRepository());
+        $this->container->singleton(RoleDashboardLayoutRepositoryInterface::class, fn() => new DatabaseRoleDashboardLayoutRepository());
         $this->container->singleton(UserNavPrefsRepositoryInterface::class, fn() => new DatabaseUserNavPrefsRepository());
         $this->container->singleton(NotificationRepositoryInterface::class, fn() => new DatabaseNotificationRepository());
         $this->container->singleton(NotificationPreferenceRepositoryInterface::class, fn() => new DatabaseNotificationPreferenceRepository());
