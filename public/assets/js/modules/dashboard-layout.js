@@ -1,10 +1,13 @@
 /**
  * Tableaux de bord : widgets déplaçables (partiel _dashboard-grid.php).
  *
+ * Grille de 12 colonnes en mode « flux » : largeur (dash-w-N) et hauteur minimale (dash-h-N) sont des classes.
+ *
  * Le bouton « Personnaliser » appelle window.kintaiDashLayout.setEditing() : en mode édition, chaque widget affiche une
- * barre d'outils — poignée de glisser-déposer, flèches ↑↓ (mobile tactile, clavier) et bascule demi / pleine largeur.
+ * barre d'outils — poignée de glisser-déposer, flèches ↑↓ (clavier, tactile), largeur −/+ (1 à 12 colonnes, dans les
+ * bornes du widget), hauteur −/+ (1 à 6 lignes) et retrait. Hors édition, chaque widget se replie d'un clic (▾).
  * Chaque changement est enregistré aussitôt, en arrière-plan (POST JSON vers data-save-url) ; « Réinitialiser l'ordre »
- * revient à la disposition par défaut et recharge la page.
+ * revient à la disposition par défaut et recharge la page. La densité (compacte / confortable) a son propre bouton.
  *
  * Widgets affichés (POST JSON vers data-widgets-url) : le bouton ✕ d'un widget le retire de la page et le remet dans
  * la liste « Ajouter un widget » ; ajouter un widget le place en fin de tableau de bord, sans rechargement : la page
@@ -33,12 +36,16 @@
         saveTimer = setTimeout(function () {
             var order = [];
             var widths = {};
+            var heights = {};
+            var collapsed = [];
             items().forEach(function (item) {
                 var key = item.getAttribute('data-widget-key');
                 order.push(key);
-                widths[key] = item.getAttribute('data-widget-width');
+                widths[key] = parseInt(item.getAttribute('data-widget-width'), 10) || 12;
+                heights[key] = parseInt(item.getAttribute('data-widget-height'), 10) || 1;
+                if (item.getAttribute('data-widget-collapsed') === '1') collapsed.push(key);
             });
-            post({ order: order, widths: widths });
+            post({ order: order, widths: widths, heights: heights, collapsed: collapsed, density: grid.getAttribute('data-density') || 'comfortable' });
         }, 300);
     }
 
@@ -159,6 +166,7 @@
             s.replaceWith(s.type === 'application/json' ? s : cloneScript(s));
         });
         grid.appendChild(item);
+        setSizeButtons(item);
         importScripts(doc);
         if (dataChanged && window.kintaiStatsCharts) window.kintaiStatsCharts.refresh();
         window.dispatchEvent(new Event('resize'));
@@ -200,21 +208,75 @@
         items().forEach(function (item) { item.draggable = false; });
     }
 
-    function setWidth(item, width) {
-        item.setAttribute('data-widget-width', width);
-        item.classList.toggle('dash-grid__item--half', width === 'half');
-        item.classList.toggle('dash-grid__item--full', width !== 'half');
-        var btn = item.querySelector('[data-dash-width]');
-        if (btn) {
-            btn.textContent = grid.getAttribute(width === 'half' ? 'data-label-full' : 'data-label-half') || '';
-        }
+    // Classe dash-w-N / dash-h-N, attribut, affichage de la valeur et boutons −/+ désactivés aux bornes.
+    function setSize(item, dimension, value) {
+        var isWidth = dimension === 'width';
+        var min = isWidth ? (parseInt(item.getAttribute('data-widget-min'), 10) || 1) : 1;
+        var max = isWidth ? (parseInt(item.getAttribute('data-widget-max'), 10) || 12) : 6;
+        value = Math.max(min, Math.min(max, value));
+        var prefix = isWidth ? 'dash-w-' : 'dash-h-';
+        Array.prototype.slice.call(item.classList).forEach(function (c) {
+            if (c.indexOf(prefix) === 0) item.classList.remove(c);
+        });
+        item.classList.add(prefix + value);
+        item.setAttribute(isWidth ? 'data-widget-width' : 'data-widget-height', String(value));
+        var label = item.querySelector('[data-dash-size-value="' + dimension + '"]');
+        if (label) label.textContent = isWidth ? value + '/12' : value + '\u2195';
+        Array.prototype.forEach.call(item.querySelectorAll('[data-dash-size="' + dimension + '"]'), function (b) {
+            var step = parseInt(b.getAttribute('data-step'), 10);
+            b.disabled = (step < 0 && value <= min) || (step > 0 && value >= max);
+        });
         // Les graphiques (Chart.js) se recalent sur leur nouveau conteneur.
         window.dispatchEvent(new Event('resize'));
     }
 
-    // ── Flèches et largeur ───────────────────────────────────────────────────
+    function setCollapsed(item, collapsed) {
+        item.classList.toggle('dash-grid__item--collapsed', collapsed);
+        item.setAttribute('data-widget-collapsed', collapsed ? '1' : '0');
+        var btn = item.querySelector('[data-dash-fold]');
+        if (btn) {
+            var text = btn.getAttribute(collapsed ? 'data-label-expand' : 'data-label-collapse') || '';
+            btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+            btn.setAttribute('title', text);
+            btn.setAttribute('aria-label', text + ' — ' + (item.getAttribute('data-widget-label') || ''));
+        }
+        window.dispatchEvent(new Event('resize'));
+    }
+
+    function setDensity(density) {
+        grid.classList.toggle('dash-grid--compact', density === 'compact');
+        grid.setAttribute('data-density', density);
+        var btn = document.querySelector('[data-dash-density]');
+        if (btn) {
+            btn.setAttribute('aria-pressed', density === 'compact' ? 'true' : 'false');
+        }
+        window.dispatchEvent(new Event('resize'));
+    }
+
+    // État initial des boutons −/+ (bornes) et du bouton de densité.
+    items().forEach(function (item) {
+        setSizeButtons(item);
+    });
+    var densityButton = document.querySelector('[data-dash-density]');
+    if (densityButton) {
+        densityButton.setAttribute('aria-pressed', grid.getAttribute('data-density') === 'compact' ? 'true' : 'false');
+    }
+
+    function setSizeButtons(item) {
+        ['width', 'height'].forEach(function (dimension) {
+            var current = parseInt(item.getAttribute(dimension === 'width' ? 'data-widget-width' : 'data-widget-height'), 10) || 1;
+            var min = dimension === 'width' ? (parseInt(item.getAttribute('data-widget-min'), 10) || 1) : 1;
+            var max = dimension === 'width' ? (parseInt(item.getAttribute('data-widget-max'), 10) || 12) : 6;
+            Array.prototype.forEach.call(item.querySelectorAll('[data-dash-size="' + dimension + '"]'), function (b) {
+                var step = parseInt(b.getAttribute('data-step'), 10);
+                b.disabled = (step < 0 && current <= min) || (step > 0 && current >= max);
+            });
+        });
+    }
+
+    // ── Flèches, taille et repli ─────────────────────────────────────────────
     grid.addEventListener('click', function (e) {
-        var btn = e.target.closest('[data-dash-move], [data-dash-width], [data-dash-remove]');
+        var btn = e.target.closest('[data-dash-move], [data-dash-size], [data-dash-remove], [data-dash-fold]');
         if (!btn || !grid.contains(btn)) return;
         var item = btn.closest('[data-widget-key]');
         if (!item) return;
@@ -223,8 +285,15 @@
             removeWidget(item);
             return;
         }
-        if (btn.hasAttribute('data-dash-width')) {
-            setWidth(item, item.getAttribute('data-widget-width') === 'half' ? 'full' : 'half');
+        if (btn.hasAttribute('data-dash-fold')) {
+            setCollapsed(item, item.getAttribute('data-widget-collapsed') !== '1');
+            save();
+            return;
+        }
+        if (btn.hasAttribute('data-dash-size')) {
+            var dimension = btn.getAttribute('data-dash-size');
+            var key = dimension === 'width' ? 'data-widget-width' : 'data-widget-height';
+            setSize(item, dimension, (parseInt(item.getAttribute(key), 10) || 1) + parseInt(btn.getAttribute('data-step'), 10));
         } else if (btn.getAttribute('data-dash-move') === 'up') {
             var prev = item.previousElementSibling;
             if (!prev) return;
@@ -261,8 +330,8 @@
         var target = e.target.closest('[data-widget-key]');
         if (!target || target === dragged) return;
         var rect = target.getBoundingClientRect();
-        // Widget en demi-largeur : avant/après selon la moitié gauche/droite ; sinon selon la moitié haute/basse.
-        var after = target.getAttribute('data-widget-width') === 'half'
+        // Widget d'au plus 6 colonnes : avant/après selon la moitié gauche/droite ; sinon selon la moitié haute/basse.
+        var after = (parseInt(target.getAttribute('data-widget-width'), 10) || 12) <= 6
             ? e.clientX > rect.left + rect.width / 2
             : e.clientY > rect.top + rect.height / 2;
         grid.insertBefore(dragged, after ? target.nextElementSibling : target);
@@ -285,6 +354,12 @@
         var add = e.target.closest('[data-dash-add]');
         if (add) {
             addWidget(add);
+            return;
+        }
+        var density = e.target.closest('[data-dash-density]');
+        if (density) {
+            setDensity(grid.getAttribute('data-density') === 'compact' ? 'comfortable' : 'compact');
+            save();
             return;
         }
         var btn = e.target.closest('[data-dash-reset]');

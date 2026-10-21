@@ -68,7 +68,8 @@ final class NotificationTypeRegistry
         return [
             'shift_assigned' => new NotificationType('shift_assigned', '📅', 'planning', true, true, 'shift'),
             'shift_updated'  => new NotificationType('shift_updated', '🔄', 'planning', true, false, 'shift'),
-            'shift_deleted'  => new NotificationType('shift_deleted', '🗑', 'planning', true, true, 'shift'),
+            // Le shift n'existe plus : la notification désigne le JOUR (voir shift_day_reference()), vu dans le planning.
+            'shift_deleted'  => new NotificationType('shift_deleted', '🗑', 'planning', true, true, 'shift_day'),
             // Notifications système, Owners uniquement (SystemNotificationService) : push par défaut, pas d'e-mail.
             'core_update_available' => new NotificationType('core_update_available', '⬆️', 'system', true, false, 'system'),
             'migration_pending' => new NotificationType('migration_pending', '🗄', 'system', true, false, 'system'),

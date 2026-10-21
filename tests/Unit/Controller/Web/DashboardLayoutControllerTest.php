@@ -137,4 +137,46 @@ final class DashboardLayoutControllerTest extends TestCase
 
         $this->controller->widgetsManager($this->request(['add' => 'not_a_widget']));
     }
+
+    /** Hauteurs, widgets repliés et densité envoyés par la page sont enregistrés avec l'ordre et les largeurs. */
+    public function testSizeFoldingAndDensityAreSaved(): void
+    {
+        $this->prefs->method('getLayout')->with(7, 'employee')->willReturn(null);
+        $saved = null;
+        $this->prefs->expects($this->once())->method('saveLayout')->willReturnCallback(function (int $uid, string $type, ?array $layout) use (&$saved): void {
+            $saved = $layout;
+        });
+
+        $this->controller->saveEmployee($this->request([
+            'order'     => ['shifts_today', 'upcoming'],
+            'widths'    => ['shifts_today' => 4, 'upcoming' => 8],
+            'heights'   => ['shifts_today' => 2],
+            'collapsed' => ['upcoming'],
+            'density'   => 'compact',
+        ]));
+
+        $this->assertSame(4, $saved['widths']['shifts_today']);
+        $this->assertSame(8, $saved['widths']['upcoming']);
+        $this->assertSame(['shifts_today' => 2], $saved['heights']);
+        $this->assertSame(['upcoming'], $saved['collapsed']);
+        $this->assertSame('compact', $saved['density']);
+    }
+
+    public function testOutOfRangeSizesAreIgnored(): void
+    {
+        $this->prefs->method('getLayout')->willReturn(null);
+        $saved = null;
+        $this->prefs->method('saveLayout')->willReturnCallback(function (int $uid, string $type, ?array $layout) use (&$saved): void {
+            $saved = $layout;
+        });
+
+        $this->controller->saveEmployee($this->request([
+            'order'   => ['shifts_today'],
+            'widths'  => ['shifts_today' => 40],
+            'heights' => ['shifts_today' => 99],
+        ]));
+
+        $this->assertArrayNotHasKey('shifts_today', $saved['widths']);
+        $this->assertArrayNotHasKey('heights', $saved);
+    }
 }

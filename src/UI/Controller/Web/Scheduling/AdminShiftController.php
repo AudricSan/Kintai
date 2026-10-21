@@ -880,7 +880,7 @@ final class AdminShiftController
                     $shift['end_time'] ?? '',
                     (int) ($shift['store_id'] ?? 0)
                 ),
-                (int) ($shift['id'] ?? 0),
+                shift_day_reference((string) ($shift['shift_date'] ?? '')),
                 $this->shiftNotificationLink($shift['shift_date'] ?? '')
             );
         } catch (\Throwable $e) {
@@ -952,7 +952,7 @@ final class AdminShiftController
                             $shift['end_time'] ?? '',
                             $storeId
                         ),
-                        $id,
+                        shift_day_reference((string) ($shift['shift_date'] ?? '')),
                         $this->shiftNotificationLink($shift['shift_date'] ?? '')
                     );
                 } catch (\Throwable $e) {
