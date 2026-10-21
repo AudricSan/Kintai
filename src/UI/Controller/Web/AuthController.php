@@ -224,10 +224,13 @@ final class AuthController
 
             $tokenRow = $this->icalTokens->findOrCreateForUserAndStore($userId, $storeId);
 
+            $feedUrl = "{$scheme}://{$host}{$base}/ical/{$tokenRow['token']}/{$storeId}/shifts.ics";
             $icalLinks[] = [
                 'store_id'   => $storeId,
                 'store_name' => $store['name'] ?? '',
-                'url'        => "{$scheme}://{$host}{$base}/ical/{$tokenRow['token']}/{$storeId}/shifts.ics",
+                'url'        => $feedUrl,
+                // Ajout en un clic : webcal (Apple, Thunderbird), Google Calendar, Outlook.
+                'add'        => \kintai\Core\Services\CalendarSubscriptionLinks::for($feedUrl, (string) ($store['name'] ?? 'Kintai')),
             ];
         }
 
