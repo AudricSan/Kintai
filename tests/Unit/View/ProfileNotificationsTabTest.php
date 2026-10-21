@@ -1,0 +1,87 @@
+<?php
+
+declare(strict_types=1);
+
+namespace kintai\Tests\Unit\View;
+
+use kintai\Contract\Extension\NotificationType;
+use kintai\Core\Container;
+use kintai\Core\Router;
+use kintai\UI\ViewRenderer;
+use PHPUnit\Framework\TestCase;
+
+/**
+ * Onglet « Notifications » du profil, rendu avec la vraie vue : grille par catégorie, cases rattachées au formulaire
+ * unique par form= (pas de <form> imbriqué), heures silencieuses, et aucun attribut interdit par la CSP.
+ */
+final class ProfileNotificationsTabTest extends TestCase
+{
+    protected function setUp(): void
+    {
+        $_SESSION['_csrf_token'] = 'test-token';
+        $router = new Router();
+        $router->get('/profile', ['X', 'y'], name: 'profile');
+        $router->post('/profile/notifications', ['X', 'y'], name: 'profile.notifications');
+        Container::getInstance()->instance(Router::class, $router);
+    }
+
+    protected function tearDown(): void
+    {
+        unset($_SESSION['_csrf_token']);
+    }
+
+    private function render(array $grid, ?array $quiet, array $extra = []): string
+    {
+        return (new ViewRenderer(__DIR__ . '/../../../src/UI/View'))->render('auth.profile', $extra + [
+            'title'                => 'Profil',
+            'user'                 => ['id' => 9],
+            'has_default_password' => false,
+            'tab'                  => 'notifications',
+            'notif_grid'           => $grid,
+            'quiet_hours'          => $quiet,
+        ]);
+    }
+
+    public function testRendersGridByCategoryWithBoxesBoundToTheSingleForm(): void
+    {
+        $html = $this->render([
+            'planning' => [
+                ['type' => new NotificationType('shift_assigned', '📅', 'planning', true, true), 'push' => true, 'email' => false],
+            ],
+            'messages' => [
+                ['type' => new NotificationType('acme_news', '📰', 'messages', true, false), 'push' => false, 'email' => false],
+            ],
+        ], ['enabled' => true, 'start' => '22:00', 'end' => '07:00']);
+
+        $this->assertMatchesRegularExpression('#action="[^"]*/profile/notifications"#', $html);
+        $this->assertSame(1, substr_count($html, 'id="notif-prefs-form"'));
+        // Cases push/e-mail de chaque type + heures silencieuses : toutes rattachées au formulaire.
+        $this->assertSame(1, preg_match_all('/<input[^>]*form="notif-prefs-form"[^>]*name="push\[\]"[^>]*value="shift_assigned"[^>]*checked/s', $html));
+        $this->assertSame(0, preg_match_all('/name="push\[\]"[^>]*value="acme_news"[^>]*checked/s', $html), 'push décoché de acme_news');
+        $this->assertSame(4, preg_match_all('/name="(?:push|email)\[\]"/', $html));
+        $this->assertMatchesRegularExpression('/name="quiet_enabled"[^>]*checked/s', $html);
+        $this->assertStringContainsString('value="22:00"', $html);
+        $this->assertStringContainsString('value="07:00"', $html);
+        // La colonne cloche est affichée cochée et grisée.
+        $this->assertSame(2, substr_count($html, 'checked disabled'));
+    }
+
+    public function testQuietHoursOffByDefaultAndNoGrid(): void
+    {
+        $html = $this->render([], ['enabled' => false, 'start' => '22:00', 'end' => '07:00']);
+
+        $this->assertDoesNotMatchRegularExpression('/name="quiet_enabled"[^>]*checked/s', $html);
+        $this->assertStringNotContainsString('<table class="data-table notif-prefs-table">', $html);
+    }
+
+    public function testRespectsCspAndNoInlineStyle(): void
+    {
+        $html = $this->render([
+            'planning' => [['type' => new NotificationType('shift_assigned', '📅', 'planning'), 'push' => true, 'email' => false]],
+        ], null);
+
+        $this->assertDoesNotMatchRegularExpression('/\son(click|change|submit|input)=/i', $html);
+        $this->assertDoesNotMatchRegularExpression('/\sstyle="/i', $html);
+        $this->assertStringContainsString('data-on-click="@toggleChecks"', $html);
+    }
+}

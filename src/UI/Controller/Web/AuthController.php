@@ -13,6 +13,7 @@ use kintai\Core\Extension\ProfileSections;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\LocaleCookie;
+use kintai\Core\Services\NotificationPreferenceService;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\AvatarImageOptimizer;
 use kintai\Core\Repositories\AvailabilityRepositoryInterface;
@@ -50,6 +51,7 @@ final class AuthController
         // le conteneur l'injecte toujours en production.
         private readonly ?CredentialRevoker $revoker = null,
         private readonly ?UserAnonymizer $anonymizer = null,
+        private readonly ?NotificationPreferenceService $notifPrefs = null,
     ) {}
 
     /** Le conteneur l'injecte toujours ; un test qui supprime un compte doit le fournir. */
@@ -202,9 +204,10 @@ final class AuthController
         }
 
         // Onglet courant
-        $tab = in_array((string) $request->query('tab'), ['info', 'availability', 'ical', 'push', 'nav', 'data'], true)
-            ? $request->query('tab')
-            : 'info';
+        // « push » : ancien nom de l'onglet, devenu « notifications » (liens enregistrés, anciennes redirections).
+        $tab = (string) $request->query('tab');
+        $tab = $tab === 'push' ? 'notifications' : $tab;
+        $tab = in_array($tab, ['info', 'availability', 'ical', 'notifications', 'nav', 'data'], true) ? $tab : 'info';
 
         // Liens iCal
         $icalLinks = [];
@@ -273,9 +276,41 @@ final class AuthController
             'is_owner'             => $isOwner,
             'is_manager_view'      => $isManagerView,
             'bottom_nav_items'     => $bnItems,
+            // Onglet Notifications : grille type × canal et heures silencieuses.
+            'notif_grid'           => $tab === 'notifications' ? ($this->notifPrefs?->grid($userId) ?? []) : [],
+            'quiet_hours'          => $tab === 'notifications' ? $this->notifPrefs?->quietHours($userId) : null,
             // Sections des bundles actifs dans « Mes informations » (contrat 1.12), ex. l'annuaire.
             'profile_sections'     => ProfileSections::current()->render($user, $this->view),
         ], 'layout.app'));
+    }
+
+    /** Enregistre la grille des préférences de notification et les heures silencieuses (onglet Notifications). */
+    public function saveNotificationPreferences(Request $request): Response
+    {
+        $user = $this->auth->user();
+        if (!$user) {
+            return Response::redirect($this->base() . '/login');
+        }
+        if ($this->notifPrefs === null) {
+            throw new \LogicException('NotificationPreferenceService requis pour enregistrer les préférences.');
+        }
+
+        $userId = (int) $user['id'];
+        $back   = $this->base() . '/profile?tab=notifications';
+        $list   = static fn(mixed $v): array => is_array($v) ? array_values(array_filter($v, 'is_string')) : [];
+
+        $quietOk = $this->notifPrefs->saveQuietHours(
+            $userId,
+            $request->postFlag('quiet_enabled', 0) === 1,
+            (string) $request->post('quiet_start', ''),
+            (string) $request->post('quiet_end', ''),
+        );
+        if (!$quietOk) {
+            return Response::redirect($back . '&error=quiet_hours_invalid');
+        }
+        $this->notifPrefs->saveGrid($userId, $list($request->post('push', [])), $list($request->post('email', [])));
+
+        return Response::redirect($back . '&success=saved');
     }
 
     /** Met à jour le profil de l'utilisateur. */

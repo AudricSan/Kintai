@@ -125,3 +125,28 @@
 
 .share-toggle-list .form-toggle--labeled { margin-left: 0; }
 
+/* Profil › Notifications : grille type × canal */
+.notif-prefs-table th,
+.notif-prefs-table td:not(:first-child) { text-align: center; }
+.notif-prefs-table th:first-child { text-align: left; }
+.notif-prefs-table td:not(:first-child) .form-toggle { margin: 0 auto; }
+.notif-prefs-table__category th {
+    text-align: left;
+    background: var(--color-bg-alt);
+    font-size: var(--text-sm);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+.notif-prefs-table__all {
+    display: block;
+    margin: var(--space-1) auto 0;
+    padding: 0;
+    background: none;
+    border: 0;
+    color: var(--color-primary);
+    font-size: var(--text-xs);
+    font-weight: 400;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
