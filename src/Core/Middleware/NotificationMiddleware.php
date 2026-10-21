@@ -46,6 +46,16 @@ final class NotificationMiddleware implements MiddlewareInterface
             $user   = $auth->user();
             $userId = (int) $user['id'];
 
+            // Repli sans cron : un Owner qui navigue déclenche, au plus une fois par heure, la détection locale des
+            // alertes système (migrations en attente, sauvegarde, canaux, quota). Jamais d'appel réseau ici.
+            try {
+                if ($this->container->make(\kintai\Core\Auth\OwnerGuard::class)->isOwner($userId)) {
+                    $this->container->make(\kintai\Core\Services\SystemNotificationService::class)->runIfDue();
+                }
+            } catch (\Throwable) {
+                // Best effort : une panne ici ne doit pas empêcher d'afficher la page.
+            }
+
             try {
                 $repo = $this->container->make(NotificationRepositoryInterface::class);
 
