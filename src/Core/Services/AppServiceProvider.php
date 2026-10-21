@@ -264,6 +264,9 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(TranslationRepositoryInterface::class),
         ));
 
+        // Détecteurs des notifications système (Owners) ; le service lui-même s'auto-résout.
+        $this->container->singleton(SystemAlertSourceInterface::class, fn(Container $c) => $c->make(SystemAlertDetectors::class));
+
         // Tâches du Core, puis celles des bundles actifs (Bundle::cronJobs(), contrat 1.8 : auto-validate de
         // daily-report, photo-retention de store-photos…).
         $this->container->singleton(CronRunner::class, function (Container $c) {
@@ -271,6 +274,7 @@ final class AppServiceProvider extends ServiceProvider
             $runner->register($c->make(BackupJob::class));
             $runner->register($c->make(LogPurgeJob::class));
             $runner->register($c->make(NotificationPurgeJob::class));
+            $runner->register($c->make(\kintai\Core\Cron\SystemNotificationsJob::class));
             $runner->register($c->make(LicenseCheckJob::class));
             if ($c->has(\kintai\Core\Extension\ExtensionRegistry::class)) {
                 $runner->registerBundleJobs(

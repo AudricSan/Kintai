@@ -78,6 +78,7 @@ final class NotificationMiddlewareTest extends TestCase
         $repo = $this->createStub(NotificationRepositoryInterface::class);
         $repo->method('countUnread')->willReturn(0);
         $repo->method('findByUser')->willReturn([]);
+        $repo->method('findUnreadByUser')->willReturn([]);
         $this->container->instance(NotificationRepositoryInterface::class, $repo);
     }
 
@@ -158,6 +159,7 @@ final class NotificationMiddlewareTest extends TestCase
         $this->container->instance(NotificationRepositoryInterface::class, new class implements NotificationRepositoryInterface {
             public function findById(int $id): ?array { throw new \RuntimeException('table absente'); }
             public function findByUser(int $userId, int $limit = 20, int $offset = 0): array { throw new \RuntimeException('table absente'); }
+            public function findUnreadByUser(int $userId, int $limit = 10): array { throw new \RuntimeException('table absente'); }
             public function countByUser(int $userId): int { throw new \RuntimeException('table absente'); }
             public function findAfterId(int $userId, int $afterId, int $limit = 50): array { throw new \RuntimeException('table absente'); }
             public function countUnread(int $userId): int { throw new \RuntimeException('table absente'); }
@@ -177,18 +179,23 @@ final class NotificationMiddlewareTest extends TestCase
         $this->assertSame(0, $this->view->get('unread_notifications_count'));
     }
 
-    /** Le curseur de départ du polling est l'id de la plus récente notification (la première du dropdown). */
+    /**
+     * La cloche ne montre que les non lues, mais le curseur de départ du polling est l'id de la plus récente
+     * notification, lue ou non : sinon une récente déjà lue serait redemandée au premier poll.
+     */
     public function testSharesLastIdOfNewestNotification(): void
     {
         $this->bindAuth(['id' => 7]);
         $repo = $this->createStub(NotificationRepositoryInterface::class);
         $repo->method('countUnread')->willReturn(2);
-        $repo->method('findByUser')->willReturn([['id' => 42, 'type' => 't'], ['id' => 40, 'type' => 't']]);
+        $repo->method('findByUser')->willReturn([['id' => 42, 'type' => 't', 'is_read' => 1]]);
+        $repo->method('findUnreadByUser')->willReturn([['id' => 40, 'type' => 't'], ['id' => 38, 'type' => 't']]);
         $this->container->instance(NotificationRepositoryInterface::class, $repo);
 
         (new NotificationMiddleware($this->container))->handle(new Request(), $this->noop());
 
         $this->assertSame(42, $this->view->get('notifications_last_id'));
+        $this->assertSame([40, 38], array_column($this->view->get('notifications_dropdown'), 'id'));
         $this->assertSame(2, $this->view->get('unread_notifications_count'));
     }
 
@@ -202,6 +209,7 @@ final class NotificationMiddlewareTest extends TestCase
         $repo = $this->createMock(NotificationRepositoryInterface::class);
         $repo->expects($this->never())->method('countUnread');
         $repo->expects($this->never())->method('findByUser');
+        $repo->expects($this->never())->method('findUnreadByUser');
         $this->container->instance(NotificationRepositoryInterface::class, $repo);
 
         $_SERVER['HTTP_X_REQUESTED_WITH'] = 'XMLHttpRequest';

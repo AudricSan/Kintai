@@ -211,7 +211,7 @@ final class NotificationController
     private function panelHtml(int $userId, int $unread): string
     {
         return $this->view->renderPartial('layout.partials._notif_panel', [
-            'notif_items'  => $this->repo->findByUser($userId, 10),
+            'notif_items'  => $this->repo->findUnreadByUser($userId, 10),
             'notif_unread' => $unread,
         ]);
     }
