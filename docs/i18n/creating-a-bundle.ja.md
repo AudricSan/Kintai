@@ -350,6 +350,38 @@ public function notificationTypes(): array
 
 書き込む操作ログ（`AuditLogger`）も同じ方法でラベルが付きます：`lang/` ファイルに `audit_{action}` を含めてください。ドットとハイフンはアンダースコアに置き換えます（`timeoff.approved` → `audit_timeoff_approved`）。`notificationTypes()` には `"kintai_contract": "^1.7"` を指定してください。翻訳の慣例には何も必要ありません。
 
+### 通知の種類：カテゴリ、チャネル、自動「既読」（契約1.23）
+
+```php
+public function notificationTypes(): array
+{
+    return [
+        'timeoff_approved' => [
+            'icon'           => '✓',
+            'category'       => 'requests',                       // planning | requests | messages | reports | system
+            'channels'       => ['push' => true, 'email' => true], // ユーザー設定の初期値
+            'reference_type' => 'timeoff',                         // notify() に渡すIDが指す対象
+        ],
+        'timeoff_refused' => '✗',                                  // 旧形式：引き続き使用可能
+    ];
+}
+```
+
+拡張形式では、種類がユーザーの通知設定（プロフィール › 通知）に分類され、プッシュとメールの列の**初期値**が決まります。ユーザー自身の選択が常に優先され、ベルは常にすべてを受け取ります。旧形式 `type => icon` には、カテゴリ `system`、プッシュ有効、メール無効、`reference_type` なしが適用されます。不正な宣言は無視されてログに記録され、バンドルの読み込みを妨げることはありません。
+
+`notify()` には必ず**正確なリンク**（一覧ではなく項目そのもの）と、`referenceId` として対象のIDを渡してください。
+
+```php
+$this->notifications->notify($userId, 'timeoff_approved', 'notif_timeoff_approved_body', ['name' => $name], $request->id, route_url('timeoff.show', ['id' => $request->id]));
+```
+
+ユーザーがその対象の詳細ページを開いたら、その通知を既読にします。
+
+```php
+$this->notifications->markReadFor($currentUserId, 'timeoff', $request->id);   // ID または ID の配列
+```
+
+`markReadFor()` は `kintai\Contract\Services\NotificationService` にあり、例外を投げないため、失敗してもページの表示は妨げられません。`referenceType` は種類で宣言したものです。`"kintai_contract": "^1.23"` を要求してください。
 ### 定期ジョブ：`cronJobs()`（契約1.8）
 
 ```php
@@ -742,7 +774,7 @@ $css = file_get_contents(bundle_asset_path('your-slug', 'css/pdf-your-bundle.css
 
 ## バージョン付きバンドル契約
 
-バンドル契約には、Coreとは独立した**独自のバージョン**があります：`kintai\Contract\Contract::VERSION`（現在 `1.22.0`）。semverに従い、マイナーバージョンは追加だけ（クラス、任意のメソッド、拡張ポイント）を行い、メジャーバージョンはシグネチャを削除・変更し、CHANGELOGの専用の「Bundle contract」セクションで告知されます。
+バンドル契約には、Coreとは独立した**独自のバージョン**があります：`kintai\Contract\Contract::VERSION`（現在 `1.23.0`）。semverに従い、マイナーバージョンは追加だけ（クラス、任意のメソッド、拡張ポイント）を行い、メジャーバージョンはシグネチャを削除・変更し、CHANGELOGの専用の「Bundle contract」セクションで告知されます。
 
 バンドルが必要とする契約のバージョンを `bundle.json` に宣言してください：
 

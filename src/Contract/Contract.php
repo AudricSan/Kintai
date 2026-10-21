@@ -18,10 +18,13 @@ namespace kintai\Contract;
 final class Contract
 {
     /** Version du contrat fournie par ce Core. */
-    public const VERSION = '1.22.0';
+    public const VERSION = '1.23.0';
 
     /*
      * Historique :
+     * - 1.23.0 : types de notification enrichis (Bundle::notificationTypes() accepte catégorie, canaux par défaut push/e-mail et
+     *   reference_type, en plus de l'ancien format type => icône) et « lu » automatique NotificationService::markReadFor()
+     *   pour les pages de détail des bundles.
      * - 1.22.0 : helpers de vue style_class() et inline_styles() (styles dynamiques sans attribut style="…", émis dans un
      *   <style> à nonce) ; préalable au retrait de 'unsafe-inline' de la directive style-src de la CSP.
      * - 1.21.0 : kintai\Contract\Auth\UserAnonymizer (suppression d'un compte = anonymisation, même résultat que la fiche
