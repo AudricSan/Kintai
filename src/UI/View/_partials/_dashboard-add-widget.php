@@ -16,4 +16,5 @@
         <p class="dash-add-widget__empty text-sm text-muted" data-dash-add-empty<?= $_dashHidden !== [] ? ' hidden' : '' ?>><?= __('dashboard_widget_all_shown') ?></p>
     </div>
 </details>
+<button type="button" class="btn btn--ghost btn--sm" data-dash-density aria-pressed="false" title="<?= htmlspecialchars(__('dashboard_density_hint')) ?>"><?= __('dashboard_density') ?></button>
 <?php unset($_hk, $_hl); ?>

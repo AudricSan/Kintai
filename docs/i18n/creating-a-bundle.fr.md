@@ -288,6 +288,20 @@ Vos widgets sont listés dans le panneau « Personnaliser » du tableau de bord 
 
 Un gérant peut aussi ajouter ses propres widgets `EMPLOYEE` à son tableau de bord gérant (désactivés par défaut, proposés dans « Ajouter un widget », jamais l'inverse). Le widget y est enregistré sous la clé `emp_{clé}` et son `data` reçoit le même contexte que sur le tableau de bord employé : les `store_ids` du gérant lui-même, avec `managed_store_ids` à `null`. C'est pourquoi les clés de widget sont limitées à 41 caractères.
 
+#### Taille et rafraîchissement (contrat 1.26)
+
+La grille compte 12 colonnes. Déclarez l'apparence souhaitée avec des arguments facultatifs (les valeurs par défaut gardent le
+comportement précédent : pleine largeur, hauteur du contenu, jamais rafraîchi) :
+
+```php
+new DashboardWidget(key: 'team_notes', /* … */ defaultWidth: 4, defaultHeight: 2, minWidth: 3, maxWidth: 8, refreshInterval: 120)
+```
+
+`defaultWidth` est en colonnes (1–12), `defaultHeight` est un minimum en lignes (1–6), `minWidth`/`maxWidth` bornent le choix de
+l'utilisateur, `refreshInterval` est en secondes (0 = jamais, sinon au moins 15). Concevez la vue pour des cartes étroites
+(3–4 colonnes : listes tronquées, lien « voir tout ») comme pour des cartes larges.
+
+
 ### Variables de vue : `viewVariables()` (contrat 1.5)
 
 ```php
@@ -389,6 +403,46 @@ pas empêcher l'affichage de la page. Le `referenceType` est celui déclaré par
 
 Si le bundle n'a pas de page de détail, faites pointer le lien vers la liste avec `?highlight={id}` et donnez la classe
 `tr--highlight` (style du Core) à la ligne `.data-table` correspondante, puis appelez `markReadFor()` pour les lignes affichées.
+
+### Fonctions globales utilisables (contrat 1.24)
+
+Un bundle ne peut appeler que les fonctions globales déclarées dans `src/Contract/functions.php` (`__`, `csrf_field`,
+`csrf_token`, `csp_nonce`, `route_url`, `base_url`, `back_url`, `safe_redirect_path`, `store_segment`, `employee_segment`,
+`route_segment`, `bundle_asset`, `translation_or`, `user_locale`, `month_label`, `date_label`, `format_currency`,
+`currency_symbol`, `store_currency_style`, `style_class`, `inline_styles` ; provisoires : `bundle_asset_path`,
+`storage_path`). Toute autre fonction globale du Core est interne et peut changer sans préavis.
+`ContractUsageScanner::functionViolations()` (utilisé par le `ContractUsageTest` du bundle) signale tout appel à une
+fonction qui n'est ni celle de PHP, ni déclarée, ni définie par le bundle. N'incluez pas non plus un partiel de vue du Core :
+fournissez le vôtre.
+
+### Traductions : vos clés, celles du Core, surcharges (contrat 1.25)
+
+- Vos clés portent le slug en préfixe (`daily-report` → `daily_report_title`), plus les conventions réservées
+  `bundle_{slug}`, `bundle_{slug}_desc`, `notif_{type}`, `audit_{action}` et `cron_job_{nom}`. Fournissez les trois langues
+  (`fr`, `en`, `ja`) avec les mêmes paramètres `:nom`.
+- Vous pouvez utiliser les clés du Core listées dans `src/Contract/translation-keys.php` (`save`, `cancel`, `delete`, noms de
+  mois…) sans les redéfinir. Toute autre clé du Core est interne.
+- Pour changer le libellé d'une clé du Core, déclarez-la dans `lang/overrides/{locale}.json` (mêmes paramètres `:nom`).
+  Redéfinir une clé du Core dans `lang/{locale}.json` sans la déclarer est une collision : signalée par
+  `TranslationContractChecker`, ignorée par le Core en mode strict. Les modifications de l'Owner (écran Langues) l'emportent
+  sur votre surcharge, qui l'emporte sur le Core.
+- `TranslationContractChecker::violations($bundleDir, $slug, $coreLangDir)` renvoie les violations par règle (`parity`,
+  `placeholders`, `prefix`, `collisions`, `overrides`, `unknown`) : appelez-le depuis un test de votre bundle.
+
+### Partir d'un squelette généré
+
+```bash
+php scripts/new-bundle.php ma-fonction --name="Ma fonction"     # crée ../KintaiBundleDev/kintai-bundle-ma-fonction
+cd ../KintaiBundleDev/kintai-bundle-ma-fonction && composer install && vendor/bin/phpunit
+```
+
+Le squelette suit déjà le contrat (traductions préfixées, navigation, permission, route, vue, compatible CSP) et son
+`tests/ContractTest.php` est le contrôle unique à lancer avant chaque release : schéma du manifeste, classes, fonctions,
+traductions. Checklist : idée → permissions → tables et migrations → points d'extension → routes et RBAC → vues sans code
+inline → traductions (fr/en/ja) → tests → enregistrement local → test d'installation → release GitHub taguée → entrée du registry.
+
+
+
 ### Tâches planifiées : `cronJobs()` (contrat 1.8)
 
 ```php
@@ -504,6 +558,36 @@ public function shiftFormSections(): array
 ```
 
 Le Core rend votre `view` dans le formulaire de shift (page de création, page de modification et fenêtre de la frise) et, sur la page de modification, votre `actionsView` dans la barre d'actions. Les deux sont **à l'intérieur** du formulaire de shift : un bouton qui vise votre propre route utilise `formaction`/`formmethod` (avec `formnovalidate`) — jamais un `<form>` imbriqué, que les navigateurs ignorent. À l'enregistrement, le Core écrit dans le shift les `fields` déclarés, et eux seuls, parmi les colonnes qu'il ouvre aux bundles (`ShiftFormSections::WRITABLE_SHIFT_COLUMNS` : `is_open`, `open_shift_note`) ; un champ que personne ne déclare est ignoré, donc un shift ne peut pas être ouvert sans le bundle. Avec `storeFeature`, la section n'apparaît que si cette fonctionnalité est activée. Une clé déjà prise est ignorée ; une exception au rendu retire cette section (journalisé). Le Core n'a aucune section à lui : `shift-claim` fournit ainsi les champs et boutons du shift ouvert. Exigez `"kintai_contract": "^1.17"`.
+
+### Fenêtres de page : `pageOverlays()` (contrat 1.27)
+
+```php
+use kintai\Contract\Extension\PageOverlay;
+
+public function pageOverlays(): array
+{
+    return [
+        new PageOverlay(
+            key: 'planning_check',
+            view: 'planning-check::overlay',                         // votre vue namespacée = contenu de la fenêtre
+            visibleWhen: fn(array $ctx): bool => /* décision côté serveur : user, now, today, path, store_ids, can() */ true,
+            data: fn(array $ctx): array => ['date' => $ctx['today']],
+            permission: 'planning_check.submit',
+            priority: 10,                                            // plus petit = plus prioritaire
+            dismissible: true,                                       // Échap / clic hors fenêtre / [data-overlay-close]
+            oncePerSession: false,
+            placement: PageOverlay::DIALOG,                          // ou PageOverlay::BAR : barre non bloquante en bas de page
+        ),
+    ];
+}
+```
+
+Le Core affiche **une seule** fenêtre à la fois (la plus prioritaire parmi les visibles), sous forme de dialogue accessible
+(`role="dialog"`, focus piégé), dans un garde : une exception dans `visibleWhen`, `data` ou la vue la retire et est journalisée.
+Elle n'apparaît jamais sur la connexion, l'impression ni l'édition d'un shift. Votre vue doit titrer la fenêtre avec
+`id="<?= $overlay_title_id ?>"`. La fermer la masque jusqu'à la page suivante ; le serveur décide si elle revient. Chaque action
+de la fenêtre passe par vos propres routes, qui contrôlent la permission et la portée magasin — la fenêtre n'est qu'une
+présentation. Exigez `"kintai_contract": "^1.27"`.
 
 ## Fournisseurs : les données que le Core lit dans votre bundle (contrat 1.9+)
 
