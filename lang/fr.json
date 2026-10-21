@@ -1080,7 +1080,7 @@
     "notif_category_messages": "Messages",
     "notif_category_reports": "Rapports",
     "notif_category_system": "Système",
-    "notif_quiet_intro": "Pendant ces heures, aucun push ni e-mail n'est envoyé. Ils ne sont pas rejoués ensuite : retrouvez-les dans la cloche.",
+    "notif_quiet_intro": "Pendant ces heures, les push arrivent sans son ni vibration (selon votre navigateur ou votre appareil) et rien n'est retenu. Les e-mails partent normalement.",
     "notif_quiet_enable": "Activer les heures silencieuses",
     "notif_quiet_start": "Début",
     "notif_quiet_end": "Fin",
