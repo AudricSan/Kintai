@@ -401,6 +401,21 @@ Un bundle ne peut appeler que les fonctions globales déclarées dans `src/Contr
 fonction qui n'est ni celle de PHP, ni déclarée, ni définie par le bundle. N'incluez pas non plus un partiel de vue du Core :
 fournissez le vôtre.
 
+### Traductions : vos clés, celles du Core, surcharges (contrat 1.25)
+
+- Vos clés portent le slug en préfixe (`daily-report` → `daily_report_title`), plus les conventions réservées
+  `bundle_{slug}`, `bundle_{slug}_desc`, `notif_{type}`, `audit_{action}` et `cron_job_{nom}`. Fournissez les trois langues
+  (`fr`, `en`, `ja`) avec les mêmes paramètres `:nom`.
+- Vous pouvez utiliser les clés du Core listées dans `src/Contract/translation-keys.php` (`save`, `cancel`, `delete`, noms de
+  mois…) sans les redéfinir. Toute autre clé du Core est interne.
+- Pour changer le libellé d'une clé du Core, déclarez-la dans `lang/overrides/{locale}.json` (mêmes paramètres `:nom`).
+  Redéfinir une clé du Core dans `lang/{locale}.json` sans la déclarer est une collision : signalée par
+  `TranslationContractChecker`, ignorée par le Core en mode strict. Les modifications de l'Owner (écran Langues) l'emportent
+  sur votre surcharge, qui l'emporte sur le Core.
+- `TranslationContractChecker::violations($bundleDir, $slug, $coreLangDir)` renvoie les violations par règle (`parity`,
+  `placeholders`, `prefix`, `collisions`, `overrides`, `unknown`) : appelez-le depuis un test de votre bundle.
+
+
 ### Tâches planifiées : `cronJobs()` (contrat 1.8)
 
 ```php

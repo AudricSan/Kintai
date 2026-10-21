@@ -18,10 +18,12 @@ namespace kintai\Contract;
 final class Contract
 {
     /** Version du contrat fournie par ce Core. */
-    public const VERSION = '1.24.0';
+    public const VERSION = '1.25.0';
 
     /*
      * Historique :
+     * - 1.25.0 : traductions du contrat — clés du Core utilisables (src/Contract/translation-keys.php), surcharge explicite
+     *   d'une clé du Core par lang/overrides/{locale}.json, préfixe obligatoire des clés d'un bundle.
      * - 1.24.0 : fonctions globales du contrat déclarées (src/Contract/functions.php : __, csrf_field, route_url, back_url,
      *   bundle_asset… ; le reste de helpers.php est interne) et vérifiées par ContractUsageScanner::functionViolations().
      * - 1.23.0 : types de notification enrichis (Bundle::notificationTypes() accepte catégorie, canaux par défaut push/e-mail et

@@ -449,6 +449,20 @@ A bundle may call only the global functions declared in `src/Contract/functions.
 `ContractUsageScanner::functionViolations()` (used by the bundle's `ContractUsageTest`) reports any call to a function that
 is neither PHP's, nor declared, nor defined by the bundle. Don't `include` a Core view partial either: ship your own.
 
+### Translations: your keys, the Core's keys, overrides (contract 1.25)
+
+- Your own keys carry your slug as a prefix (`daily-report` → `daily_report_title`), plus the reserved conventions
+  `bundle_{slug}`, `bundle_{slug}_desc`, `notif_{type}`, `audit_{action}` and `cron_job_{name}`. Provide all three languages
+  (`fr`, `en`, `ja`) with the same `:name` parameters.
+- You may use the Core keys listed in `src/Contract/translation-keys.php` (`save`, `cancel`, `delete`, month names…) without
+  redefining them. Any other Core key is internal.
+- To change the wording of a Core key, declare it in `lang/overrides/{locale}.json` (same `:name` parameters). Redefining a
+  Core key in `lang/{locale}.json` without declaring it is a collision: reported by `TranslationContractChecker`, ignored by the
+  Core in strict mode. The Owner's own edits (Languages screen) win over your override, which wins over the Core.
+- `TranslationContractChecker::violations($bundleDir, $slug, $coreLangDir)` returns the violations by rule (`parity`,
+  `placeholders`, `prefix`, `collisions`, `overrides`, `unknown`): call it from a test of your bundle.
+
+
 ### Scheduled jobs: `cronJobs()` (contract 1.8)
 
 ```php

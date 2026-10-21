@@ -395,6 +395,20 @@ $this->notifications->markReadFor($currentUserId, 'timeoff', $request->id);   //
 PHP の関数でも宣言済みでもバンドル自身の定義でもない関数の呼び出しを報告します。Core のビューのパーシャルを `include` することも避け、
 自前のものを用意してください。
 
+### 翻訳：独自キー、Core のキー、上書き（契約1.25）
+
+- 独自キーにはスラッグをプレフィックスとして付けます（`daily-report` → `daily_report_title`）。予約規約は `bundle_{slug}`、
+  `bundle_{slug}_desc`、`notif_{type}`、`audit_{action}`、`cron_job_{名前}` です。3 言語（`fr`、`en`、`ja`）を同じ `:name`
+  パラメータで用意してください。
+- `src/Contract/translation-keys.php` に列挙された Core のキー（`save`、`cancel`、`delete`、月名など）は再定義せずに使えます。それ以外の
+  Core のキーは内部用です。
+- Core のキーの文言を変えるには、`lang/overrides/{locale}.json` に宣言します（同じ `:name` パラメータ）。宣言せずに `lang/{locale}.json` で
+  Core のキーを再定義すると衝突となり、`TranslationContractChecker` が報告し、strict モードでは Core が無視します。オーナーによる編集
+  （言語画面）が最優先で、次にバンドルの上書き、最後に Core です。
+- `TranslationContractChecker::violations($bundleDir, $slug, $coreLangDir)` は規則別（`parity`、`placeholders`、`prefix`、`collisions`、
+  `overrides`、`unknown`）に違反を返します。バンドルのテストから呼び出してください。
+
+
 ### 定期ジョブ：`cronJobs()`（契約1.8）
 
 ```php
