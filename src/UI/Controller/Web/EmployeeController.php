@@ -431,6 +431,17 @@ final class EmployeeController
             }
         }
 
+        // « Lu » automatique : les notifications des shifts de l'utilisateur affichés dans cette plage.
+        $ownShiftIds = [];
+        foreach ($shiftsByDateUser as $byUser) {
+            foreach ($byUser[$userId] ?? [] as $own) {
+                $ownShiftIds[] = (int) $own['id'];
+            }
+        }
+        if ($ownShiftIds !== []) {
+            $this->notifs->markReadFor($userId, 'shift', $ownShiftIds);
+        }
+
         // Taux horaires et devise (store affiché)
         $ratesMap    = []; // uid → shift_type_id → hourly_rate
         $currencyMap = []; // uid → currency string
@@ -469,6 +480,7 @@ final class EmployeeController
             'types_map'           => $typesMap,
             'type_store_ids'      => $typeStoreIds,
             'my_user_id'          => $userId,
+            'highlight_id'        => (int) $request->query('highlight', 0),
             'today'               => date('Y-m-d'),
             'can_manage'          => $canManage,
             'rates_map'           => $ratesMap,

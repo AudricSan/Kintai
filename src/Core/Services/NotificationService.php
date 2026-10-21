@@ -87,6 +87,21 @@ class NotificationService
         }
     }
 
+    /**
+     * « Lu » automatique : l'utilisateur vient de voir l'objet (shift, congé, échange…) désigné par ses notifications
+     * non lues. Ne lève jamais : une panne ici ne doit pas empêcher d'afficher la page.
+     *
+     * @param int|list<int> $referenceId identifiant(s) de l'objet, tel que passé à notify()
+     */
+    public function markReadFor(int $userId, string $referenceType, int|array $referenceId): void
+    {
+        try {
+            $this->repo->markReadByReference($userId, $referenceType, array_values(array_map('intval', (array) $referenceId)));
+        } catch (\Throwable $e) {
+            Log::warning('notification_mark_read_failed', ['user_id' => $userId, 'reference_type' => $referenceType, 'error' => $e->getMessage()]);
+        }
+    }
+
     private function resolveLocale(int $userId): string
     {
         // Langue du profil du destinataire, sinon celle de l'instance.

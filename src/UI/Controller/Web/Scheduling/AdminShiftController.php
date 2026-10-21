@@ -107,9 +107,10 @@ final class AdminShiftController
      * l'employé — permet de cliquer la notification pour aller directement voir le
      * shift, au lieu de devoir le retrouver soi-même dans son planning.
      */
-    private function shiftNotificationLink(string $shiftDate): string
+    private function shiftNotificationLink(string $shiftDate, int $shiftId = 0): string
     {
-        return '/employee/shifts/day?start=' . $shiftDate;
+        // highlight : le shift concerné est mis en évidence dans la vue jour (absent pour un shift supprimé).
+        return '/employee/shifts/day?start=' . $shiftDate . ($shiftId > 0 ? '&highlight=' . $shiftId : '');
     }
 
     /**
@@ -696,7 +697,7 @@ final class AdminShiftController
                     'notif_shift_assigned_body',
                     $this->shiftNotificationReplace($shiftDate, $startTime, $endTime, $storeId),
                     (int) ($saved['id'] ?? 0),
-                    $this->shiftNotificationLink($shiftDate)
+                    $this->shiftNotificationLink($shiftDate, (int) ($saved['id'] ?? 0))
                 );
             } catch (\Throwable $e) {
                 Log::warning('shift_notify_failed', ['shift_id' => (int) ($saved['id'] ?? 0), 'user_id' => $uid, 'error' => $e->getMessage()]);
@@ -820,7 +821,7 @@ final class AdminShiftController
                     'notif_shift_assigned_body',
                     $this->shiftNotificationReplace($shiftDate, $startTime, $endTime, $newStoreId),
                     (int) $shift['id'],
-                    $this->shiftNotificationLink($shiftDate)
+                    $this->shiftNotificationLink($shiftDate, (int) $shift['id'])
                 );
             } catch (\Throwable $e) {
                 Log::warning('shift_notify_failed', ['shift_id' => (int) $shift['id'], 'user_id' => $newUid, 'error' => $e->getMessage()]);
@@ -841,7 +842,7 @@ final class AdminShiftController
                         'notif_shift_updated_body',
                         $this->shiftNotificationReplace($shiftDate, $startTime, $endTime, $newStoreId),
                         (int) $shift['id'],
-                        $this->shiftNotificationLink($shiftDate)
+                        $this->shiftNotificationLink($shiftDate, (int) $shift['id'])
                     );
                 } catch (\Throwable $e) {
                     Log::warning('shift_notify_failed', ['shift_id' => (int) $shift['id'], 'user_id' => $newUid, 'error' => $e->getMessage()]);

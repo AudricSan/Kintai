@@ -284,4 +284,28 @@ final class NotificationServiceTest extends TestCase
             $this->assertNull($row->reference_type);
         }
     }
+    public function testMarkReadForMarksTheObjectNotificationsAsRead(): void
+    {
+        $this->registerUser(5, 'fr');
+        $service = $this->serviceWithRegistry();
+        $service->notify(5, 'shift_assigned', 'notif_shift_assigned_body', [], 12);
+        $service->notify(5, 'shift_assigned', 'notif_shift_assigned_body', [], 13);
+
+        $service->markReadFor(5, 'shift', 12);
+
+        $this->assertNotNull(Notification::where('reference_id', 12)->first()->read_at);
+        $this->assertNull(Notification::where('reference_id', 13)->first()->read_at);
+    }
+
+    /** Une panne du « lu » automatique ne doit jamais empêcher d'afficher la page. */
+    public function testMarkReadForNeverThrows(): void
+    {
+        $repo = $this->createStub(\kintai\Core\Repositories\NotificationRepositoryInterface::class);
+        $repo->method('markReadByReference')->willThrowException(new \RuntimeException('base indisponible'));
+        $service = new NotificationService($repo, $this->push, $this->translations, $this->users);
+
+        $service->markReadFor(5, 'shift', [1, 2]);
+
+        $this->addToAssertionCount(1);
+    }
 }

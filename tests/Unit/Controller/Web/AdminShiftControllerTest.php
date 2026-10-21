@@ -697,7 +697,7 @@ final class AdminShiftControllerTest extends TestCase
             'notif_shift_updated_body',
             ['date' => '2026-08-03', 'start' => '09:00', 'end' => '17:00', 'store' => 'Boutique Test'],
             10,
-            '/employee/shifts/day?start=2026-08-03'
+            '/employee/shifts/day?start=2026-08-03&highlight=10'
         );
 
         $response = $this->controller()->updateShift($req);

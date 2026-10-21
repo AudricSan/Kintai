@@ -200,4 +200,41 @@ final class DatabaseNotificationRepositoryTest extends TestCase
         $this->assertSame([], $this->repo->findByUser(5));
         $this->assertNotNull($this->repo->findById((int) $keptOtherUser['id']));
     }
+    /** « Lu » automatique : seules les non lues du bon utilisateur, du bon type d'objet et du bon id sont touchées. */
+    public function testMarkReadByReferenceTouchesOnlyTheMatchingUnreadNotificationsOfTheUser(): void
+    {
+        $hit1    = $this->add(5, 'a', ['reference_type' => 'shift', 'reference_id' => 12]);
+        $hit2    = $this->add(5, 'b', ['reference_type' => 'shift', 'reference_id' => 13]);
+        $otherId = $this->add(5, 'c', ['reference_type' => 'shift', 'reference_id' => 99]);
+        $otherTy = $this->add(5, 'd', ['reference_type' => 'timeoff', 'reference_id' => 12]);
+        $otherUs = $this->add(6, 'e', ['reference_type' => 'shift', 'reference_id' => 12]);
+        $noRef   = $this->add(5, 'f');
+
+        $this->repo->markReadByReference(5, 'shift', [12, 13]);
+
+        foreach ([$hit1, $hit2] as $n) {
+            $this->assertSame(1, $this->repo->findById((int) $n['id'])['is_read']);
+        }
+        foreach ([$otherId, $otherTy, $otherUs, $noRef] as $n) {
+            $this->assertSame(0, $this->repo->findById((int) $n['id'])['is_read'], $n['body']);
+        }
+    }
+
+    public function testMarkReadByReferenceKeepsTheOriginalReadDate(): void
+    {
+        $n = $this->add(5, 'a', ['reference_type' => 'shift', 'reference_id' => 12, 'read_at' => '2026-08-01 09:00:00']);
+
+        $this->repo->markReadByReference(5, 'shift', [12]);
+
+        $this->assertSame('2026-08-01 09:00:00', $this->repo->findById((int) $n['id'])['read_at']);
+    }
+
+    public function testMarkReadByReferenceWithNoIdsDoesNothing(): void
+    {
+        $n = $this->add(5, 'a', ['reference_type' => 'shift', 'reference_id' => 12]);
+
+        $this->repo->markReadByReference(5, 'shift', []);
+
+        $this->assertSame(0, $this->repo->findById((int) $n['id'])['is_read']);
+    }
 }
