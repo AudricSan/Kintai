@@ -351,3 +351,33 @@
     .dash-grid { grid-template-columns: minmax(0, 1fr); }
     .dash-grid > .dash-grid__item { grid-column: 1 / -1; grid-row: auto; }
 }
+
+/* ── Mise à jour automatique et mode mural ── */
+.dash-updated { margin-right: var(--space-2); }
+.dash-updated--error { color: var(--color-danger); font-weight: 600; }
+
+/* Mode mural : plein écran sans barres, widgets agrandis à la lecture de loin. La sortie reste accessible. */
+html.dash-wall .app-sticky-header,
+html.dash-wall .topbar,
+html.dash-wall .bottom-nav,
+html.dash-wall .app-footer,
+html.dash-wall .dash-customize-panel,
+html.dash-wall .page-header > :not(.page-header__actions),
+html.dash-wall .page-header__actions > :not(.dash-wall-exit) { display: none; }
+
+html.dash-wall .page-header { margin: 0; }
+
+html.dash-wall .page-content { padding-top: var(--space-4); }
+
+html.dash-wall .dash-wall-exit {
+    position: fixed;
+    z-index: 100;
+    top: var(--space-3);
+    right: var(--space-3);
+    opacity: .35;
+}
+
+html.dash-wall .dash-wall-exit:hover,
+html.dash-wall .dash-wall-exit:focus-visible { opacity: 1; }
+
+html.dash-wall .dash-grid { margin-top: 0; }

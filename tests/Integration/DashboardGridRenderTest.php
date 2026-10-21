@@ -174,4 +174,26 @@ final class DashboardGridRenderTest extends TestCase
         $this->assertStringContainsString('dash-w-12 dash-h-1', $html);
         $this->assertStringNotContainsString('dash-grid--compact', $html);
     }
+
+    /** Rafraîchissement : intervalle par widget (Core par défaut, bundle déclaré), actions d'en-tête et mode mural. */
+    public function testRefreshIntervalsAndHeaderActionsAreRendered(): void
+    {
+        $html = $this->view->renderPartial('employee.dashboard', [
+            'BASE_URL'        => '',
+            'shifts_today'    => [],
+            'upcoming'        => [],
+            'enabled_widgets' => array_flip(['shifts_today', 'upcoming', 'monthly_stats']),
+            'all_widgets'     => ['shifts_today', 'upcoming', 'monthly_stats', 'timeclock'],
+            'bundle_widgets'  => [['key' => 'timeclock', 'html' => '<div class="card">pointage</div>']],
+            'widget_refresh'  => ['timeclock' => 45],
+            'widget_layout'   => ['order' => ['shifts_today', 'monthly_stats', 'timeclock'], 'widths' => []],
+        ]);
+
+        $this->assertMatchesRegularExpression('/data-widget-key="shifts_today"[^>]*data-widget-refresh="120"/s', $html);
+        $this->assertMatchesRegularExpression('/data-widget-key="timeclock"[^>]*data-widget-refresh="45"/s', $html);
+        $this->assertStringContainsString('data-dash-refresh-now', $html);
+        $this->assertStringContainsString('data-dash-wall', $html);
+        $this->assertStringContainsString('data-dash-wall-exit', $html);
+        $this->assertStringContainsString('dashboard-live.js', $html);
+    }
 }
