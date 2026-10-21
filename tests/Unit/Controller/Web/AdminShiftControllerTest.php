@@ -732,7 +732,8 @@ final class AdminShiftControllerTest extends TestCase
             'shift_deleted',
             'notif_shift_deleted_body',
             ['date' => '2026-08-02', 'start' => '09:00', 'end' => '17:00', 'store' => 'Boutique Test'],
-            10,
+            // Le shift n'existe plus : la notification désigne le jour (20260802), lu quand ce jour est affiché.
+            20260802,
             '/employee/shifts/day?start=2026-08-02'
         );
 
