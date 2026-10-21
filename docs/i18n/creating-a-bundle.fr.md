@@ -415,6 +415,19 @@ fournissez le vôtre.
 - `TranslationContractChecker::violations($bundleDir, $slug, $coreLangDir)` renvoie les violations par règle (`parity`,
   `placeholders`, `prefix`, `collisions`, `overrides`, `unknown`) : appelez-le depuis un test de votre bundle.
 
+### Partir d'un squelette généré
+
+```bash
+php scripts/new-bundle.php ma-fonction --name="Ma fonction"     # crée ../KintaiBundleDev/kintai-bundle-ma-fonction
+cd ../KintaiBundleDev/kintai-bundle-ma-fonction && composer install && vendor/bin/phpunit
+```
+
+Le squelette suit déjà le contrat (traductions préfixées, navigation, permission, route, vue, compatible CSP) et son
+`tests/ContractTest.php` est le contrôle unique à lancer avant chaque release : schéma du manifeste, classes, fonctions,
+traductions. Checklist : idée → permissions → tables et migrations → points d'extension → routes et RBAC → vues sans code
+inline → traductions (fr/en/ja) → tests → enregistrement local → test d'installation → release GitHub taguée → entrée du registry.
+
+
 
 ### Tâches planifiées : `cronJobs()` (contrat 1.8)
 

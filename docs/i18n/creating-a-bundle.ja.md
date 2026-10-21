@@ -408,6 +408,19 @@ PHP の関数でも宣言済みでもバンドル自身の定義でもない関�
 - `TranslationContractChecker::violations($bundleDir, $slug, $coreLangDir)` は規則別（`parity`、`placeholders`、`prefix`、`collisions`、
   `overrides`、`unknown`）に違反を返します。バンドルのテストから呼び出してください。
 
+### 生成されたひな形から始める
+
+```bash
+php scripts/new-bundle.php my-feature --name="My feature"     # ../KintaiBundleDev/kintai-bundle-my-feature を作成
+cd ../KintaiBundleDev/kintai-bundle-my-feature && composer install && vendor/bin/phpunit
+```
+
+ひな形は最初から契約に沿っています（プレフィックス付き翻訳、ナビゲーション、権限、ルート、ビュー、CSP 対応）。`tests/ContractTest.php` が
+リリース前に実行する唯一の検査です（マニフェストのスキーマ、クラス、関数、翻訳）。チェックリスト：アイデア → 権限 → テーブルとマイグレーション →
+拡張ポイント → ルートと RBAC → インラインコードのないビュー → 翻訳（fr/en/ja）→ テスト → ローカル登録 → インストールテスト → タグ付き GitHub リリース →
+レジストリへの登録。
+
+
 
 ### 定期ジョブ：`cronJobs()`（契約1.8）
 

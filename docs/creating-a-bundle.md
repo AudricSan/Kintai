@@ -462,6 +462,19 @@ is neither PHP's, nor declared, nor defined by the bundle. Don't `include` a Cor
 - `TranslationContractChecker::violations($bundleDir, $slug, $coreLangDir)` returns the violations by rule (`parity`,
   `placeholders`, `prefix`, `collisions`, `overrides`, `unknown`): call it from a test of your bundle.
 
+### Start from a generated skeleton
+
+```bash
+php scripts/new-bundle.php my-feature --name="My feature"     # creates ../KintaiBundleDev/kintai-bundle-my-feature
+cd ../KintaiBundleDev/kintai-bundle-my-feature && composer install && vendor/bin/phpunit
+```
+
+The skeleton already follows the contract (prefixed translations, navigation, permission, route, view, CSP-safe) and its
+`tests/ContractTest.php` is the single check to run before every release: manifest schema, classes, functions, translations.
+Checklist: idea → permissions → tables and migrations → extension points → routes and RBAC → views without inline code →
+translations (fr/en/ja) → tests → local registration → install test → tagged GitHub release → registry entry.
+
+
 
 ### Scheduled jobs: `cronJobs()` (contract 1.8)
 
