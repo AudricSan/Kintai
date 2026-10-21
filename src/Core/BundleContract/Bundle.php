@@ -155,7 +155,7 @@ abstract class Bundle
     /**
      * Point d'extension « tâches planifiées » (contrat 1.8) : classes implémentant kintai\Contract\Cron\CronJob,
      * résolues par le conteneur et lancées par un planificateur externe via /cron/run/{nom}?token=… (jeton créé par
-     * l'Owner). Le nom (getName()) doit être unique ; ceux du Core (backup, log-purge, license-check) sont réservés.
+     * l'Owner). Le nom (getName()) doit être unique ; ceux du Core (backup, log-purge, license-check, notification-purge) sont réservés.
      *
      * @return list<class-string>
      */

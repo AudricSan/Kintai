@@ -33,6 +33,12 @@ final class MailerService
         $this->transport = $transport ?? ($this->driver === 'smtp' ? $this->smtpTransport() : new NativeTransport());
     }
 
+    /** Transport choisi par la configuration : « smtp » ou « native ». */
+    public function driver(): string
+    {
+        return $this->driver === 'smtp' ? 'smtp' : 'native';
+    }
+
     /**
      * L'instance a-t-elle un envoi d'e-mail réglé ? SMTP : serveur et identifiant renseignés. mail() natif : une
      * adresse d'expédition choisie (celle d'origine ne l'est pas) ; son bon fonctionnement ne peut pas se vérifier

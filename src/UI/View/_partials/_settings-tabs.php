@@ -12,6 +12,7 @@ $_settingsPath = '/' . trim($_settingsPath, '/') ?: '/';
 $_settingsTabs = [
     ['label' => __('settings'),  'url' => route_url('admin.owner_settings'), 'match' => '/admin/owner-settings'],
 ];
+$_settingsTabs[] = ['label' => __('notifications'), 'url' => route_url('admin.notifications_settings'), 'match' => '/admin/notifications-settings'];
 $_settingsTabs[] = ['label' => __('backup'),    'url' => route_url('admin.backup'),        'match' => '/admin/backup'];
 $_settingsTabs[] = ['label' => __('update'),    'url' => route_url('admin.update'),        'match' => '/admin/update'];
 $_settingsTabs[] = ['label' => __('languages'), 'url' => route_url('admin.languages'),     'match' => '/admin/languages'];

@@ -102,6 +102,21 @@ final class DatabaseNotificationRepository implements NotificationRepositoryInte
         return $record ? ($record->delete() ? 1 : 0) : 0;
     }
 
+    public function purgeReadBefore(string $before, int $batchSize = 1000): int
+    {
+        $batchSize = max(1, $batchSize);
+        $deleted   = 0;
+        do {
+            $ids = EloquentNotification::whereNotNull('read_at')->where('read_at', '<', $before)
+                ->orderBy('id')->limit($batchSize)->pluck('id')->all();
+            if ($ids !== []) {
+                $deleted += EloquentNotification::whereIn('id', $ids)->delete();
+            }
+        } while (count($ids) === $batchSize);
+
+        return $deleted;
+    }
+
     public function deleteAllForUser(int $userId): void
     {
         EloquentNotification::where('user_id', $userId)->delete();

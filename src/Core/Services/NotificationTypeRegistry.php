@@ -43,6 +43,10 @@ final class NotificationTypeRegistry
     {
         $grouped = array_fill_keys(NotificationType::CATEGORIES, []);
         foreach ($this->all() as $type) {
+            // La notification de test de l'Owner n'est pas un choix de l'utilisateur.
+            if ($type->type === NotificationPreferenceService::TEST_TYPE) {
+                continue;
+            }
             $grouped[$type->category][] = $type;
         }
         return array_filter($grouped);
@@ -59,6 +63,8 @@ final class NotificationTypeRegistry
             'shift_assigned' => new NotificationType('shift_assigned', '📅', 'planning', true, true, 'shift'),
             'shift_updated'  => new NotificationType('shift_updated', '🔄', 'planning', true, false, 'shift'),
             'shift_deleted'  => new NotificationType('shift_deleted', '🗑', 'planning', true, true, 'shift'),
+            // Notification de test de l'Owner (paramètres des notifications) : ne figure pas dans les préférences.
+            NotificationPreferenceService::TEST_TYPE => new NotificationType(NotificationPreferenceService::TEST_TYPE, '🔔', 'system', true, true),
         ];
     }
 }

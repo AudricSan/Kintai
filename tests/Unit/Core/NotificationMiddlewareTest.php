@@ -166,6 +166,7 @@ final class NotificationMiddlewareTest extends TestCase
             public function markAllRead(int $userId): void { throw new \RuntimeException('table absente'); }
             public function markReadByReference(int $userId, string $referenceType, array $referenceIds): void { throw new \RuntimeException('table absente'); }
             public function delete(int $id): int { throw new \RuntimeException('table absente'); }
+            public function purgeReadBefore(string $before, int $batchSize = 1000): int { throw new \RuntimeException('table absente'); }
             public function deleteAllForUser(int $userId): void { throw new \RuntimeException('table absente'); }
         });
         $middleware = new NotificationMiddleware($this->container);

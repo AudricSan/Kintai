@@ -70,6 +70,8 @@ final class WebPushServiceTest extends TestCase
             public function deleteById(int $id): void { $this->deleted[] = $id; }
             public function touchLastUsed(int $id): void { $this->touched[] = $id; }
             public function deleteAllForUser(int $userId): void {}
+            public function countAll(): int { return 0; }
+            public function purgeUnusedSince(string $before): int { return 0; }
         };
     }
 
