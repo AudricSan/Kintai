@@ -1,5 +1,5 @@
 {
-    "version": "1.26.0",
+    "version": "1.27.0",
     "surface": {
         "kintai\\Contract\\Auth\\AuthService": {
             "status": "provisoire",
@@ -522,6 +522,7 @@
         "getVersion": "(): string",
         "navigation": "(): array",
         "notificationTypes": "(): array",
+        "pageOverlays": "(): array",
         "pendingRequestsProviders": "(): array",
         "permissions": "(): array",
         "profileSections": "(): array",

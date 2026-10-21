@@ -18,10 +18,12 @@ namespace kintai\Contract;
 final class Contract
 {
     /** Version du contrat fournie par ce Core. */
-    public const VERSION = '1.26.0';
+    public const VERSION = '1.27.0';
 
     /*
      * Historique :
+     * - 1.27.0 : point d'extension Bundle::pageOverlays() et kintai\Contract\Extension\PageOverlay (fenêtres affichées par-dessus
+     *   les pages, une seule à la fois, rendues dans un garde).
      * - 1.26.0 : DashboardWidget gagne des champs optionnels de taille sur la grille de 12 colonnes (defaultWidth,
      *   defaultHeight, minWidth, maxWidth) et de rafraîchissement (refreshInterval) ; valeurs par défaut = ancien comportement.
      * - 1.25.0 : traductions du contrat — clés du Core utilisables (src/Contract/translation-keys.php), surcharge explicite
