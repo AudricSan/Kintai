@@ -171,6 +171,7 @@
     <?php endif; ?>
 
     <?php include __DIR__ . '/partials/_confirm-modal.php'; ?>
+    <?php include __DIR__ . '/partials/_page-overlay.php'; ?>
     <?php if (!empty($password_reminder_popup)) {
         include __DIR__ . '/partials/_password-reminder-modal.php';
     } ?>

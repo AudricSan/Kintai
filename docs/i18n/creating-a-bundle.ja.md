@@ -550,6 +550,33 @@ public function shiftFormSections(): array
 
 Coreはシフトフォーム（作成ページ、編集ページ、タイムラインのダイアログ）の中に `view` を描画し、編集ページではアクションバーに `actionsView` を描画します。どちらもシフトフォームの**内側**にあります：自分のルートを対象にするボタンは `formaction`/`formmethod`（と `formnovalidate`）を使ってください——ブラウザが無視する入れ子の `<form>` は使わないでください。保存時、Coreは宣言された `fields` だけを、バンドルに開放している列（`ShiftFormSections::WRITABLE_SHIFT_COLUMNS`：`is_open`、`open_shift_note`）の中からシフトに書き込みます。誰も宣言しないフィールドは無視されるため、バンドルなしにシフトを募集にすることはできません。`storeFeature` を指定すると、その機能が有効なときだけセクションが表示されます。すでに使われているキーは無視され、描画中の例外はそのセクションを外します（ログに記録）。Core自身はセクションを持ちません。`shift-claim` は募集シフトのフィールドとボタンをこの方法で提供しています。`"kintai_contract": "^1.17"` を指定してください。
 
+### ページオーバーレイ：`pageOverlays()`（契約1.27）
+
+```php
+use kintai\Contract\Extension\PageOverlay;
+
+public function pageOverlays(): array
+{
+    return [
+        new PageOverlay(
+            key: 'planning_check',
+            view: 'planning-check::overlay',                         // 名前空間付きのビュー = ウィンドウの内容
+            visibleWhen: fn(array $ctx): bool => /* サーバー側で判断：user, now, today, path, store_ids, can() */ true,
+            data: fn(array $ctx): array => ['date' => $ctx['today']],
+            permission: 'planning_check.submit',
+            priority: 10,                                            // 小さいほど優先
+            dismissible: true,                                       // Esc／外側クリック／[data-overlay-close]
+            oncePerSession: false,
+        ),
+    ];
+}
+```
+
+Core は表示可能なもののうち最も優先度の高い **1 つだけ** を、アクセシブルなダイアログ（`role="dialog"`、フォーカストラップ）として、ガード内で表示します。
+`visibleWhen`、`data`、ビューで例外が起きるとそのウィンドウは取り除かれ、ログに記録されます。ログイン、印刷、シフト編集のページには表示されません。
+ビューではウィンドウの見出しに `id="<?= $overlay_title_id ?>"` を付けてください。閉じると次のページまで非表示になり、再表示するかどうかはサーバーが決めます。
+ウィンドウ内の操作はすべてバンドル自身のルートを通り、権限と店舗の範囲を確認します。オーバーレイは表示にすぎません。`"kintai_contract": "^1.27"` を要求してください。
+
 ## プロバイダー：Coreがバンドルから読むデータ（契約1.9以降）
 
 Coreのページの中には、バンドルが持つデータを必要とするものがあります。Coreはバンドルのテーブルを読む代わりに、バンドルが実装する**プロバイダー**に問い合わせます。有効なプロバイダーがなければ、Coreは表示を減らすだけで、エラーにはなりません。

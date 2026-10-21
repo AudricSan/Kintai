@@ -634,6 +634,34 @@ shift cannot be opened without the bundle. With `storeFeature`, the section only
 already taken is ignored; an exception while rendering drops that section (logged). The Core has no section of its
 own: `shift-claim` ships the open-shift fields and buttons this way. Require `"kintai_contract": "^1.17"`.
 
+### Page overlays: `pageOverlays()` (contract 1.27)
+
+```php
+use kintai\Contract\Extension\PageOverlay;
+
+public function pageOverlays(): array
+{
+    return [
+        new PageOverlay(
+            key: 'planning_check',
+            view: 'planning-check::overlay',                         // your namespaced view = the window's content
+            visibleWhen: fn(array $ctx): bool => /* decide server-side: user, now, today, path, store_ids, can() */ true,
+            data: fn(array $ctx): array => ['date' => $ctx['today']],
+            permission: 'planning_check.submit',
+            priority: 10,                                            // smaller = more prioritary
+            dismissible: true,                                       // Esc / click outside / [data-overlay-close]
+            oncePerSession: false,
+        ),
+    ];
+}
+```
+
+The Core shows **one** overlay at a time (the most prioritary visible one), as an accessible dialog (`role="dialog"`, focus
+trapped), in a guard: an exception in `visibleWhen`, `data` or the view removes it and is logged. It never appears on the
+sign-in, print or shift-edit pages. Your view must title the window with `id="<?= $overlay_title_id ?>"`. Closing hides it
+until the next page; the server decides whether it comes back. Every action of the window goes through your own routes, which
+check the permission and the store scope — the overlay is only a presentation. Require `"kintai_contract": "^1.27"`.
+
 ## Providers: data the Core reads from your bundle (contract 1.9+)
 
 Some Core pages need data your bundle owns. Instead of reading your tables, the Core asks a **provider** your bundle
