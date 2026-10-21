@@ -66,10 +66,9 @@ final class NotificationController
 
         $this->repo->markRead($id, $userId);
 
-        $link = (string) ($notification['link'] ?? '');
-        if ($link === '' || !str_starts_with($link, '/') || str_starts_with($link, '//')) {
-            $link = '/notifications';
-        }
+        // Chemin interne uniquement (ni « // », ni « /\ » que les navigateurs lisent comme une autre origine) : un lien
+        // enregistré avant ce contrôle, ou venu d'un bundle, ne doit jamais faire de cette route une redirection ouverte.
+        $link = safe_redirect_path((string) ($notification['link'] ?? ''), '/notifications');
 
         return Response::redirect($this->base() . $link);
     }
