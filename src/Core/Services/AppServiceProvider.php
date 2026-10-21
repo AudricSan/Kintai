@@ -79,6 +79,14 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(NotificationTypeRegistry::class),
             $c->make(NotificationPreferenceService::class),
             $c->make(WebPushService::class),
+            $c->make(NotificationMailer::class),
+        ));
+        $this->container->singleton(UnsubscribeTokens::class, fn(Container $c) => new UnsubscribeTokens($c->make(AppSettingsRepositoryInterface::class)));
+        $this->container->singleton(NotificationMailer::class, fn(Container $c) => new NotificationMailer(
+            $c->make(MailerService::class),
+            $c->make(PublicUrlResolver::class),
+            $c->make(UnsubscribeTokens::class),
+            $c->make(TranslationService::class),
         ));
         $this->container->singleton(VapidKeyStore::class, fn(Container $c) => new VapidKeyStore($c->make(AppSettingsRepositoryInterface::class)));
         $this->container->singleton(WebPushService::class, fn(Container $c) => new WebPushService(

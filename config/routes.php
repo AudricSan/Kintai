@@ -59,6 +59,7 @@ use kintai\UI\Controller\Api\V1\IcalTokenController as ApiIcalTokenController;
 use kintai\UI\Controller\Api\V1\UserPrefsController as ApiUserPrefsController;
 use kintai\UI\Controller\Api\V1\PushTokenController as ApiPushTokenController;
 use kintai\UI\Controller\Api\V1\NotificationPreferenceController as ApiNotificationPreferenceController;
+use kintai\UI\Controller\Web\NotificationUnsubscribeController;
 
 
 /** @var \kintai\Core\Router $router */
@@ -83,6 +84,10 @@ $router->get('/forgot-password',  [PasswordResetController::class, 'showForgotFo
 $router->post('/forgot-password', [PasswordResetController::class, 'sendLink'], middleware: [RateLimiterMiddleware::class], name: 'password.forgot.post');
 $router->get('/reset-password/{token}',  [PasswordResetController::class, 'showResetForm'], name: 'password.reset');
 $router->post('/reset-password/{token}', [PasswordResetController::class, 'reset'], middleware: [RateLimiterMiddleware::class], name: 'password.reset.post');
+
+// Désabonnement d'un type d'e-mail de notification : lien signé ouvert depuis le client e-mail, sans connexion.
+$router->get('/notifications/unsubscribe', [NotificationUnsubscribeController::class, 'show'], middleware: [RateLimiterMiddleware::class], name: 'notifications.unsubscribe');
+$router->post('/notifications/unsubscribe', [NotificationUnsubscribeController::class, 'confirm'], middleware: [RateLimiterMiddleware::class], name: 'notifications.unsubscribe.confirm');
 
 // --- PWA ---
 $router->get('/manifest.json', [PwaController::class, 'manifest'], name: 'pwa.manifest');

@@ -13,6 +13,7 @@ use kintai\Core\Extension\ProfileSections;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\LocaleCookie;
+use kintai\Core\Services\NotificationMailer;
 use kintai\Core\Services\NotificationPreferenceService;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\AvatarImageOptimizer;
@@ -54,6 +55,7 @@ final class AuthController
         private readonly ?UserAnonymizer $anonymizer = null,
         private readonly ?NotificationPreferenceService $notifPrefs = null,
         private readonly ?WebPushSubscriptionRepositoryInterface $webPushSubscriptions = null,
+        private readonly ?NotificationMailer $notifMailer = null,
     ) {}
 
     /** Le conteneur l'injecte toujours ; un test qui supprime un compte doit le fournir. */
@@ -281,6 +283,8 @@ final class AuthController
             // Onglet Notifications : grille type × canal et heures silencieuses.
             'notif_grid'           => $tab === 'notifications' ? ($this->notifPrefs?->grid($userId) ?? []) : [],
             'quiet_hours'          => $tab === 'notifications' ? $this->notifPrefs?->quietHours($userId) : null,
+            // Colonne E-mail : sans e-mail réglé sur l'instance (ou sans URL publique), le choix ne servirait à rien.
+            'email_available'      => $tab === 'notifications' && ($this->notifMailer?->isAvailable() ?? false),
             // Sections des bundles actifs dans « Mes informations » (contrat 1.12), ex. l'annuaire.
             'profile_sections'     => ProfileSections::current()->render($user, $this->view),
         ], 'layout.app'));

@@ -10,6 +10,7 @@ use kintai\UI\Components\Flash;
  * @var string $tab               'info'|'availability'|'ical'|'notifications'|'nav'|'data'
  * @var array  $notif_grid        catégorie → [['type' => NotificationType, 'push' => bool, 'email' => bool]] (onglet notifications)
  * @var array|null $quiet_hours   ['enabled' => bool, 'start' => 'HH:MM', 'end' => 'HH:MM']
+ * @var bool   $email_available   L'envoi d'e-mail est réglé sur l'instance
  * @var array  $stores            id → store
  * @var int    $store_id
  * @var array  $existing          day_of_week → availability row
@@ -547,6 +548,9 @@ $_notifForm = 'notif-prefs-form';
 ob_start();
 ?>
 <p class="text-muted mb-sm"><?= __('notif_prefs_intro') ?></p>
+<?php if (!($email_available ?? false)): ?>
+    <p class="text-muted mb-sm"><?= __('notif_email_unavailable') ?></p>
+<?php endif; ?>
 <?php if (empty($notif_grid)): ?>
     <p class="text-muted"><?= __('notif_prefs_empty') ?></p>
 <?php else: ?>
