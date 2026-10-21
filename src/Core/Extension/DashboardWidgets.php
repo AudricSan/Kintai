@@ -114,6 +114,31 @@ final class DashboardWidgets
     }
 
     /**
+     * Tailles des widgets de bundles pour ce public : largeur par défaut (colonnes), hauteur par défaut (lignes) et
+     * bornes de largeur. Un widget sans largeur par défaut garde la pleine largeur d'avant (non listé).
+     *
+     * @param list<string> $coreKeys
+     * @return array{widths: array<string, int>, heights: array<string, int>, limits: array<string, array{0: int, 1: int}>, refresh: array<string, int>}
+     */
+    public function sizes(string $audience, array $coreKeys): array
+    {
+        $sizes = ['widths' => [], 'heights' => [], 'limits' => [], 'refresh' => []];
+        foreach ($this->declared($audience, $coreKeys) as $widget) {
+            if ($widget->defaultWidth !== null) {
+                $sizes['widths'][$widget->key] = $widget->defaultWidth;
+            }
+            if ($widget->defaultHeight > 1) {
+                $sizes['heights'][$widget->key] = $widget->defaultHeight;
+            }
+            $sizes['limits'][$widget->key] = [$widget->minWidth, $widget->maxWidth];
+            if ($widget->refreshInterval > 0) {
+                $sizes['refresh'][$widget->key] = $widget->refreshInterval;
+            }
+        }
+        return $sizes;
+    }
+
+    /**
      * Libellés (traduits), permissions et fonctionnalités des widgets de bundles, pour le panneau « Personnaliser ».
      *
      * @param list<string> $coreKeys

@@ -38,6 +38,85 @@ final readonly class BundleManifest
     ) {
     }
 
+    /**
+     * Schéma de bundle.json : une phrase par défaut constaté, pour que l'auteur sache quoi corriger (installation,
+     * CI du bundle). Liste vide = manifeste valide. `$expectedSlug` (nom du dépôt sans « kintai-bundle- », slug du
+     * registry…) est comparé au slug déclaré quand il est fourni. `$requireContract` faux : l'absence de
+     * « kintai_contract » n'est pas signalée ici (l'installation la refuse avec son propre message traduit, voir
+     * incompatibilityReason()).
+     *
+     * @return list<string>
+     */
+    public static function validationErrors(mixed $data, ?string $expectedSlug = null, bool $requireContract = true): array
+    {
+        if (!is_array($data)) {
+            return ['bundle.json n\'est pas un objet JSON valide.'];
+        }
+
+        $errors = [];
+        foreach (['slug', 'name', 'version', 'namespace', 'entry_class', 'kintai_contract'] as $required) {
+            if ($required === 'kintai_contract' && !$requireContract) {
+                continue;
+            }
+            if (!isset($data[$required]) || !is_string($data[$required]) || trim($data[$required]) === '') {
+                $errors[] = "Champ « $required » obligatoire (texte non vide).";
+            }
+        }
+
+        $slug = is_string($data['slug'] ?? null) ? $data['slug'] : '';
+        if ($slug !== '' && preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $slug) !== 1) {
+            $errors[] = "Le slug « $slug » doit être en minuscules, chiffres et tirets (ex. « daily-report »).";
+        }
+        if ($slug !== '' && $expectedSlug !== null && $slug !== $expectedSlug) {
+            $errors[] = "Le slug « $slug » ne correspond pas au bundle attendu « $expectedSlug ».";
+        }
+
+        $version = is_string($data['version'] ?? null) ? $data['version'] : '';
+        if ($version !== '' && preg_match('/^\d+\.\d+\.\d+$/', $version) !== 1) {
+            $errors[] = "La version « $version » doit être au format X.Y.Z.";
+        }
+
+        $constraint = is_string($data['kintai_contract'] ?? null) ? trim($data['kintai_contract']) : '';
+        if ($constraint !== '' && VersionConstraint::parse($constraint) === null) {
+            $errors[] = "La contrainte « kintai_contract » (« $constraint ») est illisible (ex. « ^1.25 »).";
+        }
+
+        $namespace = is_string($data['namespace'] ?? null) ? $data['namespace'] : '';
+        $identifier = '[A-Za-z_][A-Za-z0-9_]*';
+        if ($namespace !== '' && preg_match('/^' . $identifier . '(?:\\\\' . $identifier . ')*$/', $namespace) !== 1) {
+            $errors[] = "Le namespace « $namespace » n'est pas un namespace PHP valide.";
+        }
+        $entry = is_string($data['entry_class'] ?? null) ? $data['entry_class'] : '';
+        if ($entry !== '' && $namespace !== '' && !str_starts_with($entry, rtrim($namespace, '\\') . '\\')) {
+            $errors[] = "La classe d'entrée « $entry » doit se trouver dans le namespace « $namespace ».";
+        }
+
+        foreach (['min', 'max'] as $bound) {
+            $value = $data['kintai_core'][$bound] ?? null;
+            if (isset($data['kintai_core']) && $value !== null && (!is_string($value) || preg_match('/^\d+\.\d+\.\d+$/', $value) !== 1)) {
+                $errors[] = "« kintai_core.$bound » doit être une version X.Y.Z (informatif).";
+            }
+        }
+        if (isset($data['kintai_core']) && !is_array($data['kintai_core'])) {
+            $errors[] = "« kintai_core » doit être un objet {min, max}.";
+        }
+
+        if (isset($data['requires_bundles'])) {
+            if (!is_array($data['requires_bundles'])) {
+                $errors[] = "« requires_bundles » doit être un objet slug => contrainte.";
+            } else {
+                foreach ($data['requires_bundles'] as $requiredSlug => $requiredConstraint) {
+                    if (!is_string($requiredSlug) || !is_string($requiredConstraint)) {
+                        $errors[] = "« requires_bundles » : chaque entrée doit être « slug »: « contrainte ».";
+                        break;
+                    }
+                }
+            }
+        }
+
+        return $errors;
+    }
+
     public static function fromArray(mixed $data): ?self
     {
         if (!is_array($data)) {

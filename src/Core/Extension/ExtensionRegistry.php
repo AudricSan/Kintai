@@ -9,6 +9,7 @@ use kintai\Contract\Extension\DashboardStat;
 use kintai\Contract\Extension\DashboardWidget;
 use kintai\Contract\Extension\NavItem;
 use kintai\Contract\Extension\NotificationType;
+use kintai\Contract\Extension\PageOverlay;
 use kintai\Contract\Extension\ProfileSection;
 use kintai\Contract\Extension\ShiftFormSection;
 use kintai\Contract\Extension\StoreFeature;
@@ -41,6 +42,9 @@ final class ExtensionRegistry
 
     /** @var array<string, list<DashboardWidget>>|null */
     private ?array $dashboardWidgets = null;
+
+    /** @var array<string, list<PageOverlay>>|null */
+    private ?array $pageOverlays = null;
 
     /** @var array<string, array<string, \Closure>>|null */
     private ?array $viewVariables = null;
@@ -204,6 +208,27 @@ final class ExtensionRegistry
             }
         }
         return $this->dashboardWidgets = $bySlug;
+    }
+
+    /**
+     * Fenêtres de page déclarées par les bundles actifs (contrat 1.27), par slug de bundle.
+     *
+     * @return array<string, list<PageOverlay>>
+     */
+    public function pageOverlaysByBundle(): array
+    {
+        if ($this->pageOverlays !== null) {
+            return $this->pageOverlays;
+        }
+
+        $bySlug = [];
+        foreach ($this->bundles->getBundles() as $bundle) {
+            $overlays = $this->contributionsOf($bundle, 'pageOverlays', PageOverlay::class);
+            if ($overlays !== []) {
+                $bySlug[$bundle->getName()] = $overlays;
+            }
+        }
+        return $this->pageOverlays = $bySlug;
     }
 
     /**
