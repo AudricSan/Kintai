@@ -119,7 +119,7 @@ final class AdminShiftResolveConflictTest extends TestCase
 
     public function testBulkResolutionNotifiesEachEmployeeWhoseShiftIsDeleted(): void
     {
-        $this->shifts->method('findAll')->willReturn(array_values($this->rows));
+        $this->shifts->method('findBetween')->willReturn(array_values($this->rows));
         $this->shifts->expects($this->exactly(2))->method('delete');
         $this->notifs->expects($this->exactly(2))->method('notify')->with(3, 'shift_deleted');
 

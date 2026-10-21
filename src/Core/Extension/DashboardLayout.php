@@ -16,7 +16,8 @@ final class DashboardLayout
     public const HALF = 'half';
     public const FULL = 'full';
 
-    private const KEY = '/^[a-z][a-z0-9_]{1,40}$/';
+    /** Clé de widget : celle d'un widget (41 caractères au plus), éventuellement préfixée « emp_ » côté gérant. */
+    public const KEY = '/^[a-z][a-z0-9_]{1,47}$/';
 
     /**
      * Disposition nettoyée : clés bien formées et sans doublon, largeurs limitées à HALF/FULL.
@@ -118,6 +119,22 @@ final class DashboardLayout
             }
         }
         return ['order' => $order, 'widths' => $newWidths];
+    }
+
+    /**
+     * Disposition après l'ajout d'un widget au tableau de bord : il passe en dernière position, les autres widgets
+     * gardent leur place et leur largeur.
+     *
+     * @param list<string> $keys Widgets proposés, dans l'ordre par défaut
+     * @param array{order: list<string>, widths: array<string, string>}|null $previous
+     * @return array{order: list<string>, widths: array<string, string>}
+     */
+    public static function moveToEnd(array $keys, ?array $previous, string $key): array
+    {
+        $previous = self::normalize($previous);
+        $order = array_values(array_diff(array_unique(array_merge($previous['order'], $keys)), [$key]));
+        $order[] = $key;
+        return self::normalize(['order' => $order, 'widths' => $previous['widths']]);
     }
 
     private static function isKey(mixed $key): bool

@@ -135,19 +135,25 @@ final class DashboardWidgets
     }
 
     /**
-     * Préférences à enregistrer : les widgets cochés parmi ceux proposés, plus ceux déjà enregistrés mais pas proposés
-     * en ce moment (bundle désactivé), pour qu'ils reviennent à sa réactivation.
+     * Widgets activés après l'ajout ($add = true) ou le retrait d'un widget proposé. Sans préférences enregistrées
+     * (null), la sélection de départ est celle par défaut ($defaults). Les widgets enregistrés mais pas
+     * proposés en ce moment (bundle désactivé) sont conservés, pour qu'ils reviennent à sa réactivation.
      *
-     * @param list<string>      $offered
-     * @param list<string>      $checked
+     * @param list<string>      $defaults Widgets affichés par défaut
      * @param list<string>|null $previous
      * @return list<string>
      */
-    public static function mergePreferences(array $offered, array $checked, ?array $previous): array
+    public static function toggle(array $defaults, ?array $previous, string $key, bool $add): array
     {
-        $keep = array_filter((array) $previous, static fn($k): bool => is_string($k) && !in_array($k, $offered, true)
-            && preg_match('/^[a-z][a-z0-9_]{1,40}$/', $k) === 1);
-        return array_values(array_unique(array_merge(array_values(array_intersect($offered, $checked)), array_values($keep))));
+        $enabled = array_values(array_filter(
+            $previous ?? $defaults,
+            static fn($k): bool => is_string($k) && preg_match(DashboardLayout::KEY, $k) === 1,
+        ));
+        $enabled = array_values(array_diff($enabled, [$key]));
+        if ($add) {
+            $enabled[] = $key;
+        }
+        return array_values(array_unique($enabled));
     }
 
     /** @param callable(string): bool $can @param callable(?string): bool $feat */

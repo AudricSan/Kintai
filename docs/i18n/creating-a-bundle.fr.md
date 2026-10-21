@@ -286,6 +286,8 @@ public function dashboardWidgets(): array
 
 Vos widgets sont listés dans le panneau « Personnaliser » du tableau de bord (activés par défaut) et rendus après ceux du Core, en pleine largeur, jusqu'à ce que l'utilisateur les déplace ou les redimensionne (l'ordre et les largeurs sont enregistrés par utilisateur ; un widget jamais placé va en dernier), pour les utilisateurs qui détiennent `permission` et dont les magasins ont `storeFeature` activé. `data` reçoit le contexte : `user`, `store_ids` (les magasins gérés, ou ceux de l'employé), `managed_store_ids` (`null` = tous les magasins, côté gérant), `stores_map` (id => nom) et `today`. Ne chargez que ce que le widget affiche — `data` s'exécute à chaque affichage du tableau de bord. Une exception dans `data` ou dans la vue ne retire que ce widget (journalisé). Rendez une carte complète (`<div class="card card--mt">…</div>`). Les clés du Core ne peuvent pas être réutilisées. Un bundle qui reprend un widget autrefois rendu par le Core garde sa clé pour que les utilisateurs conservent leurs choix (`notebook` a gardé `team_notes`, `timeoff` `pending_timeoff`, `shift-swap` `pending_swaps` et `timeclock` `timeclocks_today` et `timeclock` lors de leur extraction). Exigez `"kintai_contract": "^1.4"`.
 
+Un gérant peut aussi ajouter ses propres widgets `EMPLOYEE` à son tableau de bord gérant (désactivés par défaut, proposés dans « Ajouter un widget », jamais l'inverse). Le widget y est enregistré sous la clé `emp_{clé}` et son `data` reçoit le même contexte que sur le tableau de bord employé : les `store_ids` du gérant lui-même, avec `managed_store_ids` à `null`. C'est pourquoi les clés de widget sont limitées à 41 caractères.
+
 ### Variables de vue : `viewVariables()` (contrat 1.5)
 
 ```php

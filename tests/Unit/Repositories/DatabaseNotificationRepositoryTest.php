@@ -10,12 +10,9 @@ use kintai\Domain\Eloquent\Notification;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Insère contre le vrai schéma de la table `notifications` (id, user_id,
- * type, data, read_at, created_at) — pas de mock. C'est précisément le test
- * qui manquait : NotificationService::notify() écrivait body/reference_id/
- * is_read, des colonnes qui n'existent pas, et l'erreur SQL résultante
- * n'était jamais détectée car tous les tests de contrôleurs mockent
- * NotificationService/NotificationRepositoryInterface en entier.
+ * Insère contre le vrai schéma de la table `notifications` (celui de 2026_06_09_000012), sans mock : les tests de
+ * contrôleurs mockent NotificationService/NotificationRepositoryInterface en entier et ne détecteraient pas une
+ * colonne inexistante.
  */
 final class DatabaseNotificationRepositoryTest extends TestCase
 {
@@ -32,12 +29,24 @@ final class DatabaseNotificationRepositoryTest extends TestCase
             $table->increments('id');
             $table->integer('user_id');
             $table->string('type');
-            $table->text('data');
+            $table->string('body_key')->nullable();
+            $table->text('params')->nullable();
+            $table->text('body')->nullable();
+            $table->string('link', 500)->nullable();
+            $table->string('reference_type', 40)->nullable();
+            $table->integer('reference_id')->nullable();
             $table->timestamp('read_at')->nullable();
             $table->timestamp('created_at')->useCurrent();
         });
 
         $this->repo = new DatabaseNotificationRepository();
+    }
+
+    private function add(int $userId, string $body = 'x', array $extra = []): array
+    {
+        return $this->repo->save(array_merge([
+            'user_id' => $userId, 'type' => 't', 'body' => $body, 'is_read' => 0, 'created_at' => '2026-08-05 10:00:00',
+        ], $extra));
     }
 
     public function testSaveInsertsAgainstRealSchemaWithBodyAndReferenceId(): void
@@ -53,100 +62,116 @@ final class DatabaseNotificationRepositoryTest extends TestCase
 
         $this->assertSame(5, (int) $saved['user_id']);
         $this->assertSame('timeoff_approved', $saved['type']);
-        $this->assertSame(42, (int) $saved['reference_id']);
+        $this->assertSame(42, $saved['reference_id']);
         $this->assertSame('Votre demande de congé a été approuvée.', $saved['body']);
-        $this->assertSame(0, (int) $saved['is_read']);
-
+        $this->assertSame(0, $saved['is_read']);
         $this->assertSame(1, Notification::count());
     }
 
-    public function testSaveWithoutReferenceIdStoresNull(): void
+    public function testSaveWithoutReferenceIdOrLinkStoresNull(): void
     {
-        $saved = $this->repo->save([
-            'user_id'    => 5,
-            'type'       => 'message_received',
-            'body'       => 'Nouveau message.',
-            'is_read'    => 0,
-            'created_at' => '2026-08-05 10:00:00',
-        ]);
+        $saved = $this->add(5);
 
         $this->assertNull($saved['reference_id']);
-    }
-
-    /**
-     * Régression : le clic sur une notification doit pouvoir amener directement à
-     * ce qu'elle concerne (ex. le shift). link est encodé dans data comme
-     * body/reference_id, décodé de la même façon à la lecture.
-     */
-    public function testSaveAndFindByUserRoundTripLink(): void
-    {
-        $this->repo->save([
-            'user_id' => 5, 'type' => 'shift_assigned', 'body' => 'Nouveau shift.',
-            'link' => '/employee/shifts/day?start=2026-08-05', 'is_read' => 0, 'created_at' => '2026-08-05 10:00:00',
-        ]);
-
-        $rows = $this->repo->findByUser(5);
-
-        $this->assertSame('/employee/shifts/day?start=2026-08-05', $rows[0]['link']);
-    }
-
-    public function testSaveWithoutLinkStoresNull(): void
-    {
-        $saved = $this->repo->save([
-            'user_id' => 5, 'type' => 'timeoff_approved', 'body' => 'Congé approuvé.',
-            'is_read' => 0, 'created_at' => '2026-08-05 10:00:00',
-        ]);
-
         $this->assertNull($saved['link']);
     }
 
-    public function testFindByUserReturnsBodyAndReferenceIdDecoded(): void
+    /** Le texte est retraduit à l'affichage : clé et paramètres doivent survivre à l'aller-retour en base. */
+    public function testBodyKeyAndParamsRoundTrip(): void
     {
-        $this->repo->save([
-            'user_id' => 5, 'type' => 'shift_assigned', 'body' => 'Nouveau shift.',
-            'reference_id' => 7, 'is_read' => 0, 'created_at' => '2026-08-05 10:00:00',
+        $saved = $this->add(5, 'Nouveau shift.', [
+            'body_key' => 'notif_shift_assigned_body',
+            'params'   => ['date' => '2026-08-05', 'store' => 'Shibuya 渋谷'],
         ]);
 
-        $rows = $this->repo->findByUser(5);
+        $found = $this->repo->findById((int) $saved['id']);
+        $this->assertSame('notif_shift_assigned_body', $found['body_key']);
+        $this->assertSame(['date' => '2026-08-05', 'store' => 'Shibuya 渋谷'], $found['params']);
+    }
+
+    public function testEmptyParamsAreStoredAsNullAndReadBackAsEmptyArray(): void
+    {
+        $saved = $this->add(5, 'x', ['params' => []]);
+
+        $this->assertNull(Notification::find((int) $saved['id'])->params);
+        $this->assertSame([], $this->repo->findById((int) $saved['id'])['params']);
+    }
+
+    public function testSaveAndFindByUserRoundTripLink(): void
+    {
+        $this->add(5, 'Nouveau shift.', ['link' => '/employee/shifts/day?start=2026-08-05']);
+
+        $this->assertSame('/employee/shifts/day?start=2026-08-05', $this->repo->findByUser(5)[0]['link']);
+    }
+
+    public function testFindByUserReturnsNewestFirstWithOffset(): void
+    {
+        $a = $this->add(5, 'a');
+        $b = $this->add(5, 'b');
+        $c = $this->add(5, 'c');
+        $this->add(6, 'other');
+
+        $this->assertSame([(int) $c['id'], (int) $b['id']], array_map(fn($r) => (int) $r['id'], $this->repo->findByUser(5, 2)));
+        $this->assertSame([(int) $a['id']], array_map(fn($r) => (int) $r['id'], $this->repo->findByUser(5, 2, 2)));
+        $this->assertSame(3, $this->repo->countByUser(5));
+    }
+
+    /**
+     * Cœur du correctif du polling : le curseur est l'id, pas created_at. Deux notifications créées dans la même
+     * seconde (même created_at) sont toutes deux renvoyées, une seule fois chacune.
+     */
+    public function testFindAfterIdReturnsStrictlyNewerRowsInAscendingOrderRegardlessOfTimestamp(): void
+    {
+        $first  = $this->add(5, 'first');
+        $second = $this->add(5, 'second');
+        $third  = $this->add(5, 'third');
+        $this->add(6, 'other user');
+
+        $rows = $this->repo->findAfterId(5, (int) $first['id']);
+
+        $this->assertSame(['second', 'third'], array_column($rows, 'body'));
+        $this->assertSame([], $this->repo->findAfterId(5, (int) $third['id']));
+        $this->assertCount(1, $this->repo->findAfterId(5, (int) $first['id'], 1));
+        $this->assertSame((int) $second['id'], (int) $this->repo->findAfterId(5, (int) $first['id'], 1)[0]['id']);
+    }
+
+    public function testFindAfterIdIncludesReadRows(): void
+    {
+        $first = $this->add(5, 'first');
+        $read  = $this->add(5, 'read');
+        $this->repo->markRead((int) $read['id'], 5);
+
+        $rows = $this->repo->findAfterId(5, (int) $first['id']);
 
         $this->assertCount(1, $rows);
-        $this->assertSame('Nouveau shift.', $rows[0]['body']);
-        $this->assertSame(7, (int) $rows[0]['reference_id']);
-        $this->assertSame(0, (int) $rows[0]['is_read']);
+        $this->assertSame(1, $rows[0]['is_read']);
     }
 
     public function testMarkReadUpdatesIsReadDerivedField(): void
     {
-        $saved = $this->repo->save([
-            'user_id' => 5, 'type' => 'shift_assigned', 'body' => 'Nouveau shift.',
-            'is_read' => 0, 'created_at' => '2026-08-05 10:00:00',
-        ]);
+        $saved = $this->add(5);
 
         $this->repo->markRead((int) $saved['id'], 5);
 
         $found = $this->repo->findById((int) $saved['id']);
-        $this->assertSame(1, (int) $found['is_read']);
+        $this->assertSame(1, $found['is_read']);
         $this->assertNotNull($found['read_at']);
     }
 
     public function testMarkReadIgnoresOtherUsersNotification(): void
     {
-        $saved = $this->repo->save([
-            'user_id' => 5, 'type' => 'shift_assigned', 'body' => 'Nouveau shift.',
-            'is_read' => 0, 'created_at' => '2026-08-05 10:00:00',
-        ]);
+        $saved = $this->add(5);
 
         $this->repo->markRead((int) $saved['id'], 999);
 
-        $found = $this->repo->findById((int) $saved['id']);
-        $this->assertSame(0, (int) $found['is_read']);
+        $this->assertSame(0, $this->repo->findById((int) $saved['id'])['is_read']);
     }
 
     public function testCountUnreadOnlyCountsUnreadForThatUser(): void
     {
-        $this->repo->save(['user_id' => 5, 'type' => 't', 'body' => 'a', 'is_read' => 0, 'created_at' => '2026-08-05 10:00:00']);
-        $this->repo->save(['user_id' => 5, 'type' => 't', 'body' => 'b', 'is_read' => 0, 'created_at' => '2026-08-05 10:00:00']);
-        $this->repo->save(['user_id' => 6, 'type' => 't', 'body' => 'c', 'is_read' => 0, 'created_at' => '2026-08-05 10:00:00']);
+        $this->add(5, 'a');
+        $this->add(5, 'b');
+        $this->add(6, 'c');
 
         $this->assertSame(2, $this->repo->countUnread(5));
 
@@ -155,20 +180,9 @@ final class DatabaseNotificationRepositoryTest extends TestCase
         $this->assertSame(1, $this->repo->countUnread(6));
     }
 
-    public function testFindUnreadSinceFiltersByDateAndReadState(): void
-    {
-        $this->repo->save(['user_id' => 5, 'type' => 't', 'body' => 'old', 'is_read' => 0, 'created_at' => '2026-08-01 10:00:00']);
-        $this->repo->save(['user_id' => 5, 'type' => 't', 'body' => 'new', 'is_read' => 0, 'created_at' => '2026-08-05 10:00:00']);
-
-        $recent = $this->repo->findUnreadSince(5, '2026-08-02 00:00:00');
-
-        $this->assertCount(1, $recent);
-        $this->assertSame('new', $recent[0]['body']);
-    }
-
     public function testDeleteRemovesRow(): void
     {
-        $saved = $this->repo->save(['user_id' => 5, 'type' => 't', 'body' => 'a', 'is_read' => 0, 'created_at' => '2026-08-05 10:00:00']);
+        $saved = $this->add(5);
 
         $this->assertSame(1, $this->repo->delete((int) $saved['id']));
         $this->assertNull($this->repo->findById((int) $saved['id']));
@@ -176,9 +190,9 @@ final class DatabaseNotificationRepositoryTest extends TestCase
 
     public function testDeleteAllForUserRemovesOnlyThatUsersRowsReadOrNot(): void
     {
-        $keptOtherUser = $this->repo->save(['user_id' => 6, 'type' => 't', 'body' => 'c', 'is_read' => 0, 'created_at' => '2026-08-05 10:00:00']);
-        $this->repo->save(['user_id' => 5, 'type' => 't', 'body' => 'a', 'is_read' => 0, 'created_at' => '2026-08-05 10:00:00']);
-        $read = $this->repo->save(['user_id' => 5, 'type' => 't', 'body' => 'b', 'is_read' => 0, 'created_at' => '2026-08-05 10:00:00']);
+        $keptOtherUser = $this->add(6, 'c');
+        $this->add(5, 'a');
+        $read = $this->add(5, 'b');
         $this->repo->markRead((int) $read['id'], 5);
 
         $this->repo->deleteAllForUser(5);

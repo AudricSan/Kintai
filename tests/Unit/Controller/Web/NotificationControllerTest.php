@@ -13,7 +13,9 @@ use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
+use kintai\Core\Container;
 use kintai\Core\Request;
+use kintai\Core\Router;
 use kintai\UI\Controller\Web\NotificationController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -62,7 +64,7 @@ final class NotificationControllerTest extends TestCase
                 $this->auth,
                 $this->notifications,
                 $this->pushTokens,
-                new ViewRenderer(sys_get_temp_dir()),
+                new ViewRenderer(dirname(__DIR__, 4) . '/src/UI/View'),
             );
         }
 
@@ -300,5 +302,97 @@ final class NotificationControllerTest extends TestCase
 
         $this->expectException(\kintai\Core\Exceptions\NotFoundException::class);
         $this->controller()->open($this->makeGetRequest(10));
+    }
+
+    // -------------------------------------------------------------------------
+    // poll() — curseur par id, panneau rafraîchi seulement si quelque chose a changé
+    // -------------------------------------------------------------------------
+
+    private function bindRouter(): void
+    {
+        $router = new Router();
+        foreach (['notifications.open' => '/notifications/{id}/open', 'notifications.read_all' => '/notifications/read-all',
+                  'notifications.delete_all' => '/notifications/delete-all', 'notifications.index' => '/notifications'] as $name => $path) {
+            $router->get($path, [\stdClass::class, 'x'], name: $name);
+        }
+        Container::getInstance()->instance(Router::class, $router);
+    }
+
+    private function makePollRequest(array $query): Request
+    {
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_SERVER['SCRIPT_NAME']    = '/index.php';
+        $_GET = $query;
+        return new Request();
+    }
+
+    private function json(\kintai\Core\Response $response): array
+    {
+        return json_decode($response->body(), true);
+    }
+
+    public function testPollAsksRepositoryForRowsAfterTheCursorAndAdvancesIt(): void
+    {
+        $this->bindRouter();
+        $this->notifications = $this->createMock(NotificationRepositoryInterface::class);
+        $this->notifications->expects($this->once())->method('findAfterId')->with(5, 40, 50)->willReturn([
+            ['id' => 41, 'type' => 'shift_assigned', 'body' => 'a', 'is_read' => 0],
+            ['id' => 43, 'type' => 'shift_assigned', 'body' => 'déjà lue', 'is_read' => 1],
+        ]);
+        $this->notifications->method('countUnread')->willReturn(1);
+        $this->notifications->method('findByUser')->willReturn([]);
+
+        try {
+            $data = $this->json($this->controller()->poll($this->makePollRequest(['after_id' => '40', 'count' => '0'])));
+        } finally {
+            $_GET = [];
+        }
+
+        $this->assertSame(43, $data['last_id']);
+        $this->assertSame(1, $data['unread_count']);
+        $this->assertSame('1', $data['badge']);
+        // Seules les non lues donnent un toast.
+        $this->assertSame([41], array_column($data['notifications'], 'id'));
+        $this->assertSame('a', $data['notifications'][0]['body']);
+        $this->assertArrayHasKey('panel_html', $data);
+    }
+
+    public function testPollOmitsPanelWhenNothingChanged(): void
+    {
+        $this->notifications = $this->createMock(NotificationRepositoryInterface::class);
+        $this->notifications->method('findAfterId')->willReturn([]);
+        $this->notifications->method('countUnread')->willReturn(3);
+        $this->notifications->expects($this->never())->method('findByUser');
+
+        try {
+            $data = $this->json($this->controller()->poll($this->makePollRequest(['after_id' => '40', 'count' => '3'])));
+        } finally {
+            $_GET = [];
+        }
+
+        $this->assertSame(40, $data['last_id']);
+        $this->assertSame([], $data['notifications']);
+        $this->assertArrayNotHasKey('panel_html', $data);
+    }
+
+    /** Une notification lue ailleurs (autre onglet, autre appareil) change le compteur : le panneau suit. */
+    public function testPollReturnsPanelWhenUnreadCountDiffersFromTheBrowser(): void
+    {
+        $this->bindRouter();
+        $this->notifications->method('findAfterId')->willReturn([]);
+        $this->notifications->method('countUnread')->willReturn(0);
+        $this->notifications->method('findByUser')->willReturn([
+            ['id' => 40, 'type' => 'shift_assigned', 'body' => 'Shift <b>', 'is_read' => 1, 'created_at' => '2026-10-19 10:00:00'],
+        ]);
+
+        try {
+            $data = $this->json($this->controller()->poll($this->makePollRequest(['after_id' => '40', 'count' => '2'])));
+        } finally {
+            $_GET = [];
+        }
+
+        $this->assertStringContainsString('notif-entry', $data['panel_html']);
+        $this->assertStringContainsString('Shift &lt;b&gt;', $data['panel_html']);
+        $this->assertStringNotContainsString('notif-entry--unread', $data['panel_html']);
     }
 }

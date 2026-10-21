@@ -286,6 +286,8 @@ public function dashboardWidgets(): array
 
 ウィジェットはダッシュボードの「カスタマイズ」パネルに表示され（既定で有効）、Coreのウィジェットの後に全幅で描画されます。ユーザーが移動やサイズ変更をするとその並びと幅がユーザーごとに保存され、一度も配置していないウィジェットは最後に置かれます。表示されるのは `permission` を持ち、店舗で `storeFeature` が有効なユーザーだけです。`data` はコンテキストを受け取ります：`user`、`store_ids`（店長が管理する店舗、または従業員自身の店舗）、`managed_store_ids`（`null` = 全店舗、店長側）、`stores_map`（id => 名前）、`today`。ウィジェットに表示するものだけを読み込んでください——`data` はダッシュボードを表示するたびに実行されます。`data` やビューで例外が起きると、そのウィジェットだけが外れます（ログに記録）。完全なカード（`<div class="card card--mt">…</div>`）を描画してください。Coreのキーは再利用できません。以前Coreが描画していたウィジェットを引き継ぐバンドルは、ユーザーの選択が保たれるようそのキーを使い続けます（`notebook` は `team_notes`、`timeoff` は `pending_timeoff`、`shift-swap` は `pending_swaps`、`timeclock` は `timeclocks_today` と `timeclock` を抽出時に引き継ぎました）。`"kintai_contract": "^1.4"` を指定してください。
 
+店長は自分の `EMPLOYEE` ウィジェットを店長ダッシュボードにも追加できます（既定では無効、「ウィジェットを追加」から選択。逆はできません）。その場合ウィジェットはキー `emp_{key}` で保存され、`data` は従業員ダッシュボードと同じコンテキストを受け取ります：店長自身の `store_ids`、`managed_store_ids` は `null`。そのためウィジェットのキーは41文字までに制限されています。
+
 ### ビュー変数：`viewVariables()`（契約1.5）
 
 ```php

@@ -53,6 +53,49 @@ final class DashboardGridRenderTest extends TestCase
         $this->assertStringContainsString('data-dash-reset', $html);
     }
 
+    public function testManagerDashboardOffersAndRendersHisEmployeeWidgets(): void
+    {
+        $html = $this->view->renderPartial('dashboard.index', [
+            'BASE_URL'            => '',
+            'stats'               => ['users' => 1, 'stores' => 1, 'shifts_today' => 0],
+            'shifts_today'        => [],
+            'enabled_widgets'     => array_flip(['kpi_counters', 'emp_upcoming']),
+            'all_widgets'         => [...HomeController::ADMIN_WIDGETS, 'emp_shifts_today', 'emp_upcoming', 'emp_monthly_stats'],
+            'employee_widgets'    => [
+                'enabled'      => ['upcoming' => 1],
+                'shifts_today' => [],
+                'upcoming'     => [['shift_date' => '2026-10-20', 'store_id' => 3, 'start_time' => '09:00', 'end_time' => '17:00']],
+                'stores_map'   => [3 => 'Shibuya'],
+                'bundle'       => [],
+            ],
+            'widget_layout'       => ['order' => ['kpi_counters', 'emp_upcoming'], 'widths' => []],
+        ]);
+
+        $this->assertSame([['kpi_counters', 'full'], ['emp_upcoming', 'full']], self::items($html));
+        $this->assertStringContainsString('Shibuya', $html);
+        preg_match_all('/data-dash-add="([a-z_]+)"/', $html, $m);
+        $this->assertContains('emp_shifts_today', $m[1]);
+        $this->assertNotContains('emp_upcoming', $m[1]);
+    }
+
+    public function testHiddenWidgetsAreOfferedInTheAddMenuAndShownOnesCanBeRemoved(): void
+    {
+        $html = $this->view->renderPartial('employee.dashboard', [
+            'BASE_URL'            => '',
+            'shifts_today'        => [],
+            'upcoming'            => [],
+            'enabled_widgets'     => array_flip(['shifts_today']),
+            'all_widgets'         => ['shifts_today', 'upcoming', 'monthly_stats'],
+            'widget_layout'       => ['order' => ['shifts_today', 'upcoming', 'monthly_stats'], 'widths' => []],
+        ]);
+
+        preg_match_all('/data-dash-add="([a-z_]+)"/', $html, $m);
+        $this->assertSame(['upcoming', 'monthly_stats'], $m[1]);
+        $this->assertSame(1, substr_count($html, 'data-dash-remove'));
+        $this->assertStringContainsString('data-widgets-url=', $html);
+        $this->assertStringNotContainsString('type="checkbox"', $html);
+    }
+
     public function testFinancialAndHrWidgetsAreIndependentHalfWidthWidgetsByDefault(): void
     {
         $html = $this->view->renderPartial('dashboard.index', [
