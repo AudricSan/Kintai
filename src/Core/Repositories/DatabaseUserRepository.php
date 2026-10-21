@@ -102,6 +102,7 @@ final class DatabaseUserRepository implements UserRepositoryInterface
             // SQLite n'applique pas les cascades : les préférences de notification partent avec le compte.
             try {
                 \kintai\Domain\Eloquent\NotificationPreference::where('user_id', $id)->delete();
+                \kintai\Domain\Eloquent\WebPushSubscription::where('user_id', $id)->delete();
             } catch (\Illuminate\Database\QueryException) {
                 // Table absente (migration pas encore jouée) : la suppression du compte prime.
             }

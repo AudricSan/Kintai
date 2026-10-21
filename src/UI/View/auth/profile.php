@@ -521,6 +521,8 @@ ob_start();
     <p class="text-muted"><?= __('push_not_configured') ?></p>
 <?php else: ?>
     <p id="push-status-unsupported" class="text-muted" hidden><?= __('push_unsupported') ?></p>
+    <p id="push-status-ios" class="text-muted" hidden><?= __('push_ios_install_required') ?></p>
+    <p id="push-status-error" class="text-muted" hidden><?= __('push_activation_failed') ?></p>
     <p id="push-status-denied" class="text-muted" hidden><?= __('push_permission_denied') ?></p>
     <div id="push-status-disabled" hidden>
         <p class="text-muted mb-sm"><?= __('push_notifications_description') ?></p>

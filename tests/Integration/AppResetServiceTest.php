@@ -87,7 +87,9 @@ final class AppResetServiceTest extends TestCase
         $this->service->resetData([]);
 
         $this->assertSame(1, $this->capsule->table('users')->count(), 'users doit être conservé');
-        $this->assertSame(1, $this->capsule->table('app_settings')->count(), 'app_settings doit être conservé');
+        // Les clés VAPID (créées par la migration) restent avec le réglage posé par le test : rien n'est supprimé.
+        $this->assertSame('beta', $this->capsule->table('app_settings')->where('key', 'update_channel')->value('value'), 'app_settings doit être conservé');
+        $this->assertNotEmpty($this->capsule->table('app_settings')->where('key', 'web_push_vapid_private')->value('value'), 'les clés VAPID doivent être conservées');
         $this->assertSame(0, $this->capsule->table('shifts')->count(), 'shifts doit être vidé');
         $this->assertSame(0, $this->capsule->table('stores')->count(), 'stores doit être vidé par défaut (non coché)');
         $this->assertSame(0, $this->capsule->table('shift_types')->count(), 'shift_types doit être vidé par défaut (non coché)');

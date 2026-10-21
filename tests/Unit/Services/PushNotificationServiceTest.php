@@ -118,6 +118,30 @@ final class PushNotificationServiceTest extends TestCase
         @unlink($credentials);
     }
 
+    public function testLegacyWebDevicesAreIgnored(): void
+    {
+        // Les navigateurs ont leur propre canal (WebPushService) : une ancienne ligne « web » ne reçoit plus rien.
+        $credentials = $this->writeFakeCredentials();
+        $this->tokens->method('findByUser')->with(1)->willReturn([
+            ['id' => 10, 'user_id' => 1, 'token' => 'old-web-token', 'platform' => 'web'],
+        ]);
+        $this->tokens->expects($this->never())->method('touchLastUsed');
+        $this->tokens->expects($this->never())->method('deleteByToken');
+
+        $calls = [];
+        $transport = function (string $url) use (&$calls) {
+            $calls[] = $url;
+            return ['status' => 200, 'body' => '{}'];
+        };
+        $config = $this->enabledConfig();
+        $config['fcm']['credentials_path'] = $credentials;
+
+        (new PushNotificationService($config, $this->tokens, $transport))->sendToUser(1, 'Titre', 'Corps');
+
+        $this->assertSame([], $calls);
+        @unlink($credentials);
+    }
+
     /**
      * Clé RSA de test statique (jamais transmise à un vrai serveur Google, le
      * transport est mocké) — générer une clé à la volée via openssl_pkey_new()

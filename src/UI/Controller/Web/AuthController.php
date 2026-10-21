@@ -23,6 +23,7 @@ use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserNavPrefsRepositoryInterface;
+use kintai\Core\Repositories\WebPushSubscriptionRepositoryInterface;
 use kintai\UI\Controller\Web\HasBaseUrl;
 use kintai\UI\ViewRenderer;
 
@@ -52,6 +53,7 @@ final class AuthController
         private readonly ?CredentialRevoker $revoker = null,
         private readonly ?UserAnonymizer $anonymizer = null,
         private readonly ?NotificationPreferenceService $notifPrefs = null,
+        private readonly ?WebPushSubscriptionRepositoryInterface $webPushSubscriptions = null,
     ) {}
 
     /** Le conteneur l'injecte toujours ; un test qui supprime un compte doit le fournir. */
@@ -592,6 +594,17 @@ final class AuthController
         $userId   = $authUser ? (int) ($authUser['id'] ?? 0) : null;
 
         $this->auth->logout();
+
+        // Le navigateur qui se déconnecte ne doit plus recevoir les notifications de ce compte : son abonnement web
+        // push (adresse envoyée avec le formulaire par push.js) est supprimé. Seul celui de ce compte l'est.
+        $pushEndpoint = trim((string) $request->post('push_endpoint', ''));
+        if ($pushEndpoint !== '' && $userId !== null && $this->webPushSubscriptions !== null) {
+            try {
+                $this->webPushSubscriptions->deleteByEndpoint($pushEndpoint, $userId);
+            } catch (\Throwable) {
+                // La déconnexion prime sur le nettoyage de l'abonnement.
+            }
+        }
 
         $this->auditLogger->log($request, 'auth.logout', 'user', $userId, [], null, $userId);
         return Response::redirect($this->base() . '/login');

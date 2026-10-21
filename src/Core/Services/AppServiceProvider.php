@@ -21,6 +21,7 @@ use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\NotificationRepositoryInterface;
 use kintai\Core\Repositories\NotificationPreferenceRepositoryInterface;
+use kintai\Core\Repositories\WebPushSubscriptionRepositoryInterface;
 use kintai\Core\Repositories\PasswordResetRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
@@ -77,6 +78,12 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(UserRepositoryInterface::class),
             $c->make(NotificationTypeRegistry::class),
             $c->make(NotificationPreferenceService::class),
+            $c->make(WebPushService::class),
+        ));
+        $this->container->singleton(VapidKeyStore::class, fn(Container $c) => new VapidKeyStore($c->make(AppSettingsRepositoryInterface::class)));
+        $this->container->singleton(WebPushService::class, fn(Container $c) => new WebPushService(
+            $c->make(WebPushSubscriptionRepositoryInterface::class),
+            $c->make(VapidKeyStore::class),
         ));
         $this->container->singleton(NotificationPreferenceService::class, fn(Container $c) => new NotificationPreferenceService(
             $c->make(NotificationPreferenceRepositoryInterface::class),
