@@ -350,6 +350,42 @@ Déclarez les types des notifications que crée votre bundle, avec leur icône ;
 
 Les entrées du journal d'activité que vous écrivez (`AuditLogger`) obtiennent leur libellé de la même façon : fournissez `audit_{action}` dans vos fichiers `lang/`, points et tirets remplacés par des soulignés (`timeoff.approved` → `audit_timeoff_approved`). Exigez `"kintai_contract": "^1.7"` pour `notificationTypes()` ; les conventions de traduction n'exigent rien.
 
+### Types de notification : catégorie, canaux, « lu » automatique (contrat 1.23)
+
+```php
+public function notificationTypes(): array
+{
+    return [
+        'timeoff_approved' => [
+            'icon'           => '✓',
+            'category'       => 'requests',                       // planning | requests | messages | reports | system
+            'channels'       => ['push' => true, 'email' => true], // valeurs par défaut des préférences
+            'reference_type' => 'timeoff',                         // objet désigné par l'id passé à notify()
+        ],
+        'timeoff_refused' => '✗',                                  // ancien format : toujours accepté
+    ];
+}
+```
+
+Le format enrichi range le type dans les préférences de notification de l'utilisateur (profil › Notifications) et fixe
+les **valeurs par défaut** des colonnes push et e-mail ; le choix de l'utilisateur l'emporte toujours, et la cloche reçoit
+toujours tout. L'ancien format `type => icône` reçoit la catégorie `system`, push activé, e-mail désactivé et aucun
+`reference_type`. Une déclaration mal formée est ignorée et journalisée, elle n'empêche jamais le bundle de se charger.
+
+Donnez toujours à `notify()` un **lien précis** (l'élément lui-même, pas la liste) et l'identifiant de l'objet en `referenceId` :
+
+```php
+$this->notifications->notify($userId, 'timeoff_approved', 'notif_timeoff_approved_body', ['name' => $name], $request->id, route_url('timeoff.show', ['id' => $request->id]));
+```
+
+Quand un utilisateur ouvre la page de détail de cet objet, marquez ses notifications comme lues :
+
+```php
+$this->notifications->markReadFor($currentUserId, 'timeoff', $request->id);   // un id ou une liste d'ids
+```
+
+`markReadFor()` est sur `kintai\Contract\Services\NotificationService` ; elle ne lève jamais d'exception, une panne ne peut donc
+pas empêcher l'affichage de la page. Le `referenceType` est celui déclaré par le type. Exigez `"kintai_contract": "^1.23"`.
 ### Tâches planifiées : `cronJobs()` (contrat 1.8)
 
 ```php
@@ -742,7 +778,7 @@ Obligatoire à la racine du dépôt du bundle :
 
 ## Contrat de bundle versionné
 
-Le contrat des bundles a **sa propre version**, indépendante de celle du Core : `kintai\Contract\Contract::VERSION` (actuellement `1.22.0`). Il suit semver — une version mineure ne fait qu'ajouter (une classe, une méthode facultative, un point d'extension), une version majeure retire ou modifie une signature et est annoncée dans une section « Bundle contract » dédiée du CHANGELOG.
+Le contrat des bundles a **sa propre version**, indépendante de celle du Core : `kintai\Contract\Contract::VERSION` (actuellement `1.23.0`). Il suit semver — une version mineure ne fait qu'ajouter (une classe, une méthode facultative, un point d'extension), une version majeure retire ou modifie une signature et est annoncée dans une section « Bundle contract » dédiée du CHANGELOG.
 
 Déclarez dans `bundle.json` la version du contrat dont votre bundle a besoin :
 

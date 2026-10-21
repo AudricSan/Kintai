@@ -399,6 +399,42 @@ Activity log entries you write (`AuditLogger`) get their label the same way: shi
 files, dots and dashes replaced by underscores (`timeoff.approved` → `audit_timeoff_approved`). Require
 `"kintai_contract": "^1.7"` for `notificationTypes()`; the translation conventions need nothing.
 
+### Notification types: category, channels, automatic "read" (contract 1.23)
+
+```php
+public function notificationTypes(): array
+{
+    return [
+        'timeoff_approved' => [
+            'icon'           => '✓',
+            'category'       => 'requests',                       // planning | requests | messages | reports | system
+            'channels'       => ['push' => true, 'email' => true], // defaults of the users' preferences
+            'reference_type' => 'timeoff',                         // object designated by the id given to notify()
+        ],
+        'timeoff_refused' => '✗',                                  // old format: still accepted
+    ];
+}
+```
+
+The enriched format groups the type in the user's notification preferences (profile › Notifications) and sets the
+**defaults** of the push and e-mail columns; a user's own choice always wins, and the bell always receives everything.
+The old `type => icon` format gets the category `system`, push on, e-mail off and no `reference_type`. A malformed
+declaration is ignored and logged, it never prevents the bundle from loading.
+
+Always give `notify()` a **precise link** (the item itself, not the list) and the id of the object as `referenceId`:
+
+```php
+$this->notifications->notify($userId, 'timeoff_approved', 'notif_timeoff_approved_body', ['name' => $name], $request->id, route_url('timeoff.show', ['id' => $request->id]));
+```
+
+When a user opens the detail page of that object, mark its notifications as read:
+
+```php
+$this->notifications->markReadFor($currentUserId, 'timeoff', $request->id);   // an id or a list of ids
+```
+
+`markReadFor()` is on `kintai\Contract\Services\NotificationService`; it never throws, so a failure cannot prevent the page
+from being displayed. The `referenceType` is the one declared by the type. Require `"kintai_contract": "^1.23"`.
 ### Scheduled jobs: `cronJobs()` (contract 1.8)
 
 ```php
@@ -838,7 +874,7 @@ Required at the bundle's repository root:
 
 ## Versioned bundle contract
 
-The bundle contract has **its own version**, independent of the Core's: `kintai\Contract\Contract::VERSION` (currently `1.22.0`). It follows semver — a minor version only adds things (a class, an optional method, an extension point), a major version removes or changes a signature and is announced in a dedicated "Bundle contract" section of the CHANGELOG.
+The bundle contract has **its own version**, independent of the Core's: `kintai\Contract\Contract::VERSION` (currently `1.23.0`). It follows semver — a minor version only adds things (a class, an optional method, an extension point), a major version removes or changes a signature and is announced in a dedicated "Bundle contract" section of the CHANGELOG.
 
 Declare the contract version your bundle needs in `bundle.json`:
 
