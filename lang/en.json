@@ -106,6 +106,8 @@
     "setup_q_exchange_hint": "Swaps between colleagues and open shifts to pick up, approved by the manager.",
     "setup_q_daily": "Do you want an end-of-day report (sales, notes)?",
     "setup_q_daily_hint": "Entered by the manager, approval, sales statistics.",
+    "setup_q_planning": "Do you want tomorrow's schedule approved before it is sent to the boss?",
+    "setup_q_planning_hint": "A window asks the manager to check tomorrow's shifts; once approved, the PDF goes to the boss.",
     "setup_q_messaging": "Do you need internal messaging?",
     "setup_q_messaging_hint": "Conversations between employees and managers, without leaving Kintai.",
     "setup_q_notebook": "Do you want a shared team notebook?",

@@ -106,6 +106,8 @@
     "setup_q_exchange_hint": "Échanges entre collègues et shifts ouverts à reprendre, validés par le gérant.",
     "setup_q_daily": "Voulez-vous un rapport de fin de journée (ventes, remarques) ?",
     "setup_q_daily_hint": "Saisie par le gérant, validation, statistiques de ventes.",
+    "setup_q_planning": "Voulez-vous faire valider le planning du lendemain avant de l'envoyer au patron ?",
+    "setup_q_planning_hint": "Une fenêtre demande au manager de vérifier les shifts de demain ; une fois validés, le PDF part au patron.",
     "setup_q_messaging": "Faut-il une messagerie interne ?",
     "setup_q_messaging_hint": "Conversations entre employés et gérants, sans quitter Kintai.",
     "setup_q_notebook": "Voulez-vous un carnet de notes partagé par équipe ?",

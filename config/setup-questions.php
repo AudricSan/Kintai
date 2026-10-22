@@ -22,6 +22,7 @@ return [
     ['id' => 'timeoff',     'bundles' => ['timeoff'],                         'icon' => '🏖',  'theme' => 'requests'],
     ['id' => 'exchange',    'bundles' => ['shift-swap', 'shift-claim'],       'icon' => '🔁', 'theme' => 'requests'],
     ['id' => 'daily',       'bundles' => ['daily-report'],                    'icon' => '📝', 'theme' => 'reports'],
+    ['id' => 'planning',    'bundles' => ['planning-check'],                  'icon' => '📋', 'theme' => 'reports'],
     ['id' => 'messaging',   'bundles' => ['messaging'],                       'icon' => '💬', 'theme' => 'communication'],
     ['id' => 'notebook',    'bundles' => ['notebook'],                        'icon' => '📒', 'theme' => 'communication'],
     ['id' => 'directory',   'bundles' => ['team-directory'],                  'icon' => '👥', 'theme' => 'communication'],

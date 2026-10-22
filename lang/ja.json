@@ -106,6 +106,8 @@
     "setup_q_exchange_hint": "同僚同士の交代と、店長が承認する募集中シフト。",
     "setup_q_daily": "日次レポート（売上、メモ）が必要ですか？",
     "setup_q_daily_hint": "店長による入力、承認、売上の統計。",
+    "setup_q_planning": "翌日のシフトを承認してから責任者に送りますか？",
+    "setup_q_planning_hint": "マネージャーに翌日のシフト確認を促し、承認後に責任者へ PDF を送ります。",
     "setup_q_messaging": "社内メッセージ機能が必要ですか？",
     "setup_q_messaging_hint": "従業員と店長の会話を Kintai 内で完結。",
     "setup_q_notebook": "チームで共有するノートが必要ですか？",
