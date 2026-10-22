@@ -210,7 +210,7 @@ final class GithubUpdateServiceTest extends TestCase
 
     /**
      * Régression : config/app.php ne conserve jamais que la ligne "X.Y.0"
-     * (voir docs/releasing.md) — une instance jamais mise à jour via
+     * (voir wiki : Releasing-a-Version) — une instance jamais mise à jour via
      * l'auto-updater affiche donc ce placeholder, alors que le tag alpha/beta
      * réel de la ligne porte un Z non nul. La comparaison doit tout de même
      * détecter la mise à jour.

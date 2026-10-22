@@ -3,7 +3,7 @@ name: Release
 # Publie automatiquement une Release GitHub à chaque push/merge sur une
 # branche de canal. Aucun numéro n'est saisi à la main : le tag suivant se
 # déduit du plus haut tag vX.Y.Z existant et du canal qui publie (voir
-# docs/releasing.md).
+# wiki : Releasing-a-Version).
 #
 # Schéma de version X.Y.Z — chaque canal fixe un chiffre, et un seul :
 # - alpha -> incrémente Z            (X.Y.Z -> X.Y.Z+1)
@@ -107,7 +107,7 @@ jobs:
 
           # La plupart des push accumulent leurs notes sous [Unreleased] —
           # sauf le commit de release lui-même, qui renomme [Unreleased] en
-          # "## [X.Y.Z]" dans le même commit (voir docs/releasing.md) et
+          # "## [X.Y.Z]" dans le même commit (voir wiki : Releasing-a-Version) et
           # laisse donc [Unreleased] vide : dans ce cas précis, les notes
           # réelles vivent déjà sous la section versionnée.
           extract_section "## [Unreleased]" > release-notes.txt

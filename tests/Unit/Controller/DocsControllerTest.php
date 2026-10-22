@@ -87,9 +87,10 @@ final class DocsControllerTest extends TestCase
     private function seedFixture(): void
     {
         $this->writeWikiFile('_Sidebar.md', "**[Home](Home)**\n");
-        $this->writeWikiFile('Home.md', "# Home\n\nEnglish body.");
-        $this->writeWikiFile('fr/Home.md', "# Accueil\n\nTexte français.");
-        // ja/Home.md volontairement absent : simule une traduction non disponible.
+        // Wiki à plat : chaque langue a son fichier à la racine, nommé dans la ligne de langue de la page anglaise.
+        $this->writeWikiFile('Home.md', "# Home\n\n🌐 **English** · [Français](Accueil) · [日本語](ホーム)\n\nEnglish body.");
+        $this->writeWikiFile('Accueil.md', "# Accueil\n\n🌐 [English](Home) · **Français** · [日本語](ホーム)\n\nTexte français.");
+        // ホーム.md volontairement absent : simule une traduction non disponible.
     }
 
     private function translationService(string $locale): TranslationService
@@ -169,7 +170,7 @@ final class DocsControllerTest extends TestCase
         $resp = $this->controller('ja')->index(new Request());
 
         $this->assertStringContainsString('https://github.com/', $resp->body());
-        $this->assertStringContainsString('/wiki/ja/Home', $resp->body());
+        $this->assertStringContainsString('/wiki/' . rawurlencode('ホーム'), $resp->body());
     }
 
     public function testIndexUnavailableViewReflectsOwnerStatus(): void

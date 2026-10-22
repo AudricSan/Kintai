@@ -21,7 +21,7 @@ Open an issue using the **Bug Report** template. Include:
 
 ### Suggesting Features
 
-Open an issue using the **Feature Request** template. Explain the use case and why it fits the project's scope — see [docs/vision.md](docs/vision.md) for the product direction.
+Open an issue using the **Feature Request** template. Explain the use case and why it fits the project's scope — see [Product Vision (wiki)](https://github.com/AudricSan/Kintai/wiki/Product-Vision) for the product direction.
 
 ### Submitting a Pull Request
 
@@ -29,7 +29,7 @@ Open an issue using the **Feature Request** template. Explain the use case and w
 2. Create a branch: `git checkout -b feat/my-feature` or `fix/my-bug`
 3. Make your changes following the conventions below
 4. Run the tests: `./vendor/bin/phpunit`
-5. Open a pull request against the `develop` branch (the default integration branch for day-to-day work — merging into it does **not** publish a release). `main`, `alpha`, and `beta` are protected release-channel branches: merging into any of them automatically tags and publishes a GitHub Release, so they're only updated deliberately by promoting `develop` forward (see [docs/releasing.md](docs/releasing.md))
+5. Open a pull request against the `develop` branch (the default integration branch for day-to-day work — merging into it does **not** publish a release). `main`, `alpha`, and `beta` are protected release-channel branches: merging into any of them automatically tags and publishes a GitHub Release, so they're only updated deliberately by promoting `develop` forward (see [Releasing a Version (wiki)](https://github.com/AudricSan/Kintai/wiki/Releasing-a-Version))
 
 ## Code Conventions
 
@@ -43,7 +43,7 @@ Open an issue using the **Feature Request** template. Explain the use case and w
 - Comments in code are written in French; everything else (commit messages, PR descriptions, docs) in English
 - No external framework dependencies beyond `illuminate/database` (Eloquent, used as an ORM only)
 - Never use inline `style="..."` in views — extend a CSS module under `public/assets/css/src/` instead
-- No inline event handlers (`onclick=`, `onchange=`, `onsubmit=`, `oninput=`…), no `javascript:` links and no `<script>` without a nonce in views or components — the Content-Security-Policy (`script-src 'self' 'nonce-…'`) blocks them silently. Use `data-on-click`/`data-on-change`/`data-args`, `data-submit-on-change`, `data-confirm`, `data-stop-propagation` (`public/assets/js/modules/csp-actions.js`) and `<script nonce="<?= csp_nonce() ?>">`; `NoInlineScriptGuardTest` fails on a violation. Bundle authors: see `docs/creating-a-bundle.md` ("Content Security Policy")
+- No inline event handlers (`onclick=`, `onchange=`, `onsubmit=`, `oninput=`…), no `javascript:` links and no `<script>` without a nonce in views or components — the Content-Security-Policy (`script-src 'self' 'nonce-…'`) blocks them silently. Use `data-on-click`/`data-on-change`/`data-args`, `data-submit-on-change`, `data-confirm`, `data-stop-propagation` (`public/assets/js/modules/csp-actions.js`) and `<script nonce="<?= csp_nonce() ?>">`; `NoInlineScriptGuardTest` fails on a violation. Bundle authors: see the wiki page [Creating a Bundle](https://github.com/AudricSan/Kintai/wiki/Creating-a-Bundle) ("Content Security Policy")
 - Filter bars apply instantly — no "Filter" submit button. Text inputs debounce-submit their form on `input` (see the generic wiring in `public/assets/js/app.js` targeting `form.filter-bar`/`form.shifts-filters`), `select`/date fields submit `onchange`. This applies to every filter, including name/text search fields
 
 ## Running Tests
@@ -61,10 +61,10 @@ Every new or changed feature should come with PHPUnit tests under `tests/Unit/` 
 
 ## Documentation languages
 
-README, CHANGELOG, CONTRIBUTING, SECURITY and everything under `docs/` ship in English, French (`.fr.md`) and Japanese (`.ja.md`). English is the source of truth — if you change an English doc, updating the translations is appreciated but not required to get a PR merged. `php scripts/check-translations.php` reports missing or stale translations (non-blocking, runs in CI on every push).
+README, CHANGELOG, CONTRIBUTING and SECURITY ship in English, French (`.fr.md`) and Japanese (`.ja.md`) — the translations live in `docs/i18n/` — and the [wiki](https://github.com/AudricSan/Kintai/wiki) (the long-form documentation) ships in the same three languages. English is the source of truth — if you change an English doc, updating the translations is appreciated but not required to get a PR merged. `php scripts/check-translations.php` reports missing or stale translations (non-blocking, runs in CI on every push).
 
 ## Where to look first
 
-- [docs/architecture.md](docs/architecture.md) — how the framework is put together
-- [docs/database.md](docs/database.md) — models, repositories, migrations
+- [Architecture (wiki)](https://github.com/AudricSan/Kintai/wiki/Architecture) — how the framework is put together
+- [Database Strategy (wiki)](https://github.com/AudricSan/Kintai/wiki/Database-Strategy) — models, repositories, migrations
 - [CHANGELOG.md](CHANGELOG.md) — what's been done recently
