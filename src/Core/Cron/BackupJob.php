@@ -14,15 +14,17 @@ use kintai\Core\Services\SystemNotificationService;
 
 final class BackupJob implements CronJobInterface
 {
+    private readonly AppSettingsService $settings;
+    private readonly BackupService $backupService;
+
     public function __construct(
         private readonly AuditLogger $auditLogger,
-        private readonly ?AppSettingsService $settings = null,
-        private readonly ?BackupService $backupService = null,
+        ?AppSettingsService $settings = null,
+        ?BackupService $backupService = null,
     ) {
-        $this->settings ??= new AppSettingsService(
-            new DatabaseAppSettingsRepository()
-        );
-        $this->backupService ??= new BackupService();
+        // Pas de « ??= » sur une propriété promue en lecture seule : elle lèverait une Error si l'argument est null.
+        $this->settings      = $settings ?? new AppSettingsService(new DatabaseAppSettingsRepository());
+        $this->backupService = $backupService ?? new BackupService();
     }
 
     public function getName(): string

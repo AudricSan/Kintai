@@ -97,4 +97,14 @@ final class BackupJobTest extends TestCase
             rmdir($this->tmpDir);
         }
     }
+
+    public function testOptionalBackupServiceDefaultsWhenOmitted(): void
+    {
+        // Le service de sauvegarde facultatif a une valeur par défaut : « ??= » sur une propriété en lecture seule levait une Error.
+        $repo = $this->createStub(AppSettingsRepositoryInterface::class);
+        $repo->method('all')->willReturn([]);
+        $job = new BackupJob(new AuditLogger(), new AppSettingsService($repo));
+
+        $this->assertSame('backup', $job->getName());
+    }
 }
