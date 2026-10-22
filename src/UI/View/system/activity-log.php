@@ -116,6 +116,7 @@ $actionLabels = [
     'db.migration_failed'                => __('audit_db_migration_failed'),
     'log.purged'                         => __('audit_log_purged'),
     'activity_log.exported'              => __('audit_activity_log_exported'),
+    'activity_log.purged'                => __('audit_activity_log_manual_purged'),
     'api_token.created'                  => __('audit_api_token_created'),
     'api_token.revoked'                  => __('audit_api_token_revoked'),
     'auth.api_login_failed'              => __('audit_auth_api_login_failed'),
@@ -150,6 +151,29 @@ $exportUrl = route_url('admin.activity.export') . ($exportParams ? '?' . http_bu
         <?= Button::make('⬇ ' . __('export_csv'))->ghost()->sm()->link($exportUrl)->render() ?>
     </div>
 </div>
+
+<?php if (!empty($purged) || ($purged ?? null) === 0): ?>
+    <?= \kintai\UI\Components\Alert::make(__('activity_log_purged_done', ['count' => (int) $purged]))->success()->render() ?>
+<?php elseif (!empty($purge_error)): ?>
+    <?= \kintai\UI\Components\Alert::make(__('activity_log_purge_invalid'))->danger()->render() ?>
+<?php endif; ?>
+
+<?php if (!empty($can_purge)): ?>
+<div class="card mb-sm">
+    <form method="POST" action="<?= route_url('admin.activity.purge') ?>" class="flex-row gap-sm"
+          data-confirm="<?= htmlspecialchars(__('activity_log_purge_confirm'), ENT_QUOTES) ?>">
+        <?= csrf_field() ?>
+        <label class="form-label" for="al-purge-keep"><?= __('activity_log_purge') ?></label>
+        <select id="al-purge-keep" name="keep_days" class="form-control form-control-sm">
+            <?php foreach ($purge_options as $_days): ?>
+                <option value="<?= $_days ?>"><?= $_days === 0 ? __('activity_log_purge_all') : __('activity_log_purge_keep', ['days' => $_days]) ?></option>
+            <?php endforeach; ?>
+        </select>
+        <?= Button::make(__('activity_log_purge_button'))->danger()->sm()->submit()->render() ?>
+    </form>
+    <p class="form-hint"><?= __('activity_log_purge_hint') ?></p>
+</div>
+<?php endif; ?>
 
 <div class="card card--filters mb-sm">
     <form method="GET" action="" class="filter-bar">
