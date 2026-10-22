@@ -9,12 +9,18 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\UI\Controller\Web\HasBaseUrl;
 use kintai\UI\ViewRenderer;
 
 final class ActivityController
 {
+    use HasBaseUrl;
+
     /** Plafond de lignes exportées, pour ne pas charger un CSV en mémoire sans limite. */
     private const EXPORT_MAX_ROWS = 20000;
+
+    /** Durées de conservation proposées à la purge manuelle, en jours (0 = tout supprimer). */
+    private const PURGE_KEEP_DAYS = ['0', '7', '30', '90', '180', '365'];
 
     public function __construct(
         private readonly ViewRenderer $view,
@@ -72,7 +78,39 @@ final class ActivityController
             'resource_types' => $resourceTypes,
             'users_map'      => $usersMap,
             'filters'        => $filters,
+            // Purge réservée à l'Owner ; le résultat de la dernière purge revient par l'URL après la redirection.
+            'can_purge'      => !empty(($request->getAttribute('auth_user') ?? [])['is_admin']),
+            'purged'         => $request->query('purged') !== null ? max(0, (int) $request->query('purged')) : null,
+            'purge_error'    => $request->query('purge_error') !== null,
+            'purge_options'  => array_map('intval', self::PURGE_KEEP_DAYS),
         ], 'layout.app'));
+    }
+
+    /**
+     * POST /admin/activity/purge — l'Owner vide le journal pour libérer de l'espace et alléger les requêtes. Conserve
+     * les `keep_days` derniers jours (0 = tout supprimer). La purge est elle-même journalisée, après coup, pour qu'il
+     * en reste une trace même quand tout a été supprimé.
+     */
+    public function purge(Request $request): Response
+    {
+        $keepDays = (string) $request->post('keep_days', '');
+        if (!in_array($keepDays, self::PURGE_KEEP_DAYS, true)) {
+            return Response::redirect($this->base() . '/admin/activity?purge_error=1');
+        }
+
+        $keep   = (int) $keepDays;
+        $cutoff = $keep > 0 ? date('Y-m-d H:i:s', strtotime("-{$keep} days")) : null;
+
+        $deleted = $cutoff !== null ? $this->logs->purgeOlderThan($cutoff) : $this->logs->purgeAll();
+        $this->logs->reclaimSpace();
+
+        $this->auditLogger->log($request, 'activity_log.purged', 'system', null, [
+            'keep_days' => $keep,
+            'cutoff'    => $cutoff,
+            'deleted'   => $deleted,
+        ]);
+
+        return Response::redirect($this->base() . '/admin/activity?purged=' . $deleted);
     }
 
     /** GET /admin/activity/export — export CSV du journal, avec les mêmes filtres que index(). */
