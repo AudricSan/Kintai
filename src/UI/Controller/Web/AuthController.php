@@ -317,7 +317,9 @@ final class AuthController
         if (!$quietOk) {
             return Response::redirect($back . '&error=quiet_hours_invalid');
         }
-        $this->notifPrefs->saveGrid($userId, $list($request->post('push', [])), $list($request->post('email', [])));
+        // shown[] : les lignes que le formulaire affichait (seules leurs cases sont enregistrées). Absent : tous les types actifs.
+        $shown = $request->post('shown') !== null ? $list($request->post('shown')) : null;
+        $this->notifPrefs->saveGrid($userId, $list($request->post('push', [])), $list($request->post('email', [])), $shown);
 
         return Response::redirect($back . '&success=saved');
     }

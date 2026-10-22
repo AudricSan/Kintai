@@ -59,6 +59,10 @@ final class ProfileNotificationsTabTest extends TestCase
         $this->assertSame(1, preg_match_all('/<input[^>]*form="notif-prefs-form"[^>]*name="push\[\]"[^>]*value="shift_assigned"[^>]*checked/s', $html));
         $this->assertSame(0, preg_match_all('/name="push\[\]"[^>]*value="acme_news"[^>]*checked/s', $html), 'push décoché de acme_news');
         $this->assertSame(4, preg_match_all('/name="(?:push|email)\[\]"/', $html));
+        // Chaque ligne affichée est déclarée au serveur (shown[]) : seules ces lignes seront enregistrées.
+        $this->assertSame(1, preg_match_all('/<input type="hidden" form="notif-prefs-form" name="shown\[\]" value="shift_assigned">/', $html));
+        $this->assertSame(1, preg_match_all('/<input type="hidden" form="notif-prefs-form" name="shown\[\]" value="acme_news">/', $html));
+        $this->assertSame(2, preg_match_all('/name="shown\[\]"/', $html), 'une par ligne de la grille');
         $this->assertMatchesRegularExpression('/name="quiet_enabled"[^>]*checked/s', $html);
         $this->assertStringContainsString('value="22:00"', $html);
         $this->assertStringContainsString('value="07:00"', $html);

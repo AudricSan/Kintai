@@ -152,6 +152,23 @@ final class NotificationPreferenceServiceTest extends TestCase
         $this->assertSame(0, NotificationPreference::count());
     }
 
+    /** Un type apparu depuis l'affichage du formulaire (bundle activé entre-temps) n'est pas compté « décoché ». */
+    public function testSaveGridLeavesTypesTheFormDidNotShowUntouched(): void
+    {
+        $service = $this->service();
+        $this->repo->set(7, 'acme_news', 'push', false);
+
+        // Le formulaire n'affichait que les trois types de shift ; acme_news (absent des listes cochées) ne bouge pas.
+        $service->saveGrid(7, ['shift_assigned', 'shift_deleted'], ['shift_assigned', 'shift_deleted'], ['shift_assigned', 'shift_updated', 'shift_deleted']);
+
+        $this->assertSame(
+            [['type' => 'acme_news', 'channel' => 'push', 'enabled' => false], ['type' => 'shift_updated', 'channel' => 'push', 'enabled' => false]],
+            NotificationPreference::orderBy('type')->get(['type', 'channel', 'enabled'])->toArray(),
+            'shift_updated (affiché, décoché) est enregistré ; acme_news (non affiché) garde son état',
+        );
+        $this->assertTrue($service->isEnabled(7, 'acme_legacy', 'push'), 'un type non affiché reste à sa valeur par défaut, pas coupé');
+    }
+
     public function testSaveGridDoesNotTouchPreferencesOfInactiveTypes(): void
     {
         // Préférence enregistrée pour le type d'un bundle désormais désactivé : la grille ne le connaît plus.
