@@ -1185,6 +1185,8 @@
     "profile_must_change_password_warning": "Pour la sécurité de votre compte, choisissez un nouveau mot de passe (8 caractères minimum) : vous utilisez encore le mot de passe par défaut ou un mot de passe trop court.",
     "password_reminder_banner": "Vous utilisez encore le mot de passe par défaut ou un mot de passe trop court.",
     "password_reminder_action": "Changer mon mot de passe",
+    "storage_low_banner": "Le stockage du serveur est presque plein : il reste :free sur :total (:percent %). Les sauvegardes occupent :backups.",
+    "storage_low_action": "Gérer les sauvegardes",
     "password_reminder_title": "Mot de passe à changer",
     "password_reminder_body": "Votre mot de passe est le mot de passe par défaut ou fait moins de 8 caractères. Toute personne qui connaît votre code employé pourrait se connecter à votre place. Choisissez-en un nouveau dès maintenant.",
     "password_reminder_later": "Plus tard",

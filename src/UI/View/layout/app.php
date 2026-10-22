@@ -92,12 +92,21 @@
                 </div>
             <?php endif; ?>
 
+            <?php if ($isOwner && !empty($storage_low)): ?>
+                <?php // Stockage du serveur presque plein : réservé à l'Owner, disparaît dès que de l'espace est libéré. ?>
+                <div class="app-banner" data-app-banner>
+                    <span class="app-banner__icon" aria-hidden="true">⚠</span>
+                    <span><?= htmlspecialchars(__('storage_low_banner', ['free' => $storage_low['free'], 'total' => $storage_low['total'], 'percent' => $storage_low['percent'], 'backups' => $storage_low['backups']])) ?></span>
+                    <a href="<?= route_url('admin.backup') ?>" class="app-banner__link"><?= __('storage_low_action') ?></a>
+                </div>
+            <?php endif; ?>
+
             <?php include __DIR__ . '/partials/_topbar.php'; ?>
         </div>
-        <?php if (!empty($app_maintenance_mode_enabled) || !empty($password_change_recommended)): ?>
+        <?php if (!empty($app_maintenance_mode_enabled) || !empty($password_change_recommended) || ($isOwner && !empty($storage_low))): ?>
             <script nonce="<?= csp_nonce() ?>">
             (function () {
-                // Hauteur cumulée des bandeaux au-dessus de la barre du haut (maintenance, mot de passe) : sert au
+                // Hauteur cumulée des bandeaux au-dessus de la barre du haut (maintenance, mot de passe, stockage) : sert au
                 // positionnement des éléments collants sous l'en-tête (voir --maintenance-banner-h, responsive.css).
                 var banners = document.querySelectorAll('[data-app-banner]');
                 if (!banners.length) return;
