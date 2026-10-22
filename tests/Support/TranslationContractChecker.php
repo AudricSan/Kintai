@@ -13,7 +13,7 @@ use kintai\Core\Repositories\JsonTranslationRepository;
  * Le rapport est groupé par règle pour que chaque bundle choisisse ce qu'il impose (tout, pour la V1) :
  *  - parity       : une clé absente d'une des langues (fr/en/ja) du bundle ;
  *  - placeholders : une clé dont les paramètres « :nom » diffèrent d'une langue à l'autre ;
- *  - prefix       : une clé sans le préfixe du bundle (hors conventions réservées bundle_/notif_/audit_/cron_job_) ;
+ *  - prefix       : une clé sans le préfixe du bundle (hors conventions réservées bundle_/notif_/audit_/cron_job_/perm_category_) ;
  *  - collisions   : une clé du Core redéfinie dans lang/{locale}.json sans être déclarée dans lang/overrides/{locale}.json ;
  *  - overrides    : une surcharge d'une clé que le Core ne fournit pas, ou qui change ses paramètres « :nom » ;
  *  - unknown      : une clé utilisée par le code (littéral __('clé')) que ni le bundle ni le contrat ne fournissent.
@@ -110,7 +110,10 @@ final class TranslationContractChecker
             || $key === 'bundle_' . $underscored . '_desc'
             || str_starts_with($key, 'notif_')
             || str_starts_with($key, 'audit_')
-            || str_starts_with($key, 'cron_job_');
+            || str_starts_with($key, 'cron_job_')
+            // La page des rôles du Core construit « perm_category_{catégorie} » : la catégorie est une clé de
+            // permission stockée en base, qui ne suit pas forcément le slug (open_shifts, swaps…).
+            || str_starts_with($key, 'perm_category_');
     }
 
     /** @return array<string, string> clé => « fichier:ligne » de sa première utilisation littérale */

@@ -46,7 +46,7 @@ final class TranslationContractCheckerTest extends TestCase
     public function testACleanBundleHasNoViolation(): void
     {
         foreach (['fr', 'en', 'ja'] as $l) {
-            $this->write($l, ['daily_report_title' => 'X :n', 'bundle_daily_report' => 'B', 'bundle_daily_report_desc' => 'D', 'notif_dr_sent' => 'N', 'audit_dr_x' => 'A', 'cron_job_dr' => 'C'], ['save' => 'Sauvegarder']);
+            $this->write($l, ['daily_report_title' => 'X :n', 'bundle_daily_report' => 'B', 'bundle_daily_report_desc' => 'D', 'notif_dr_sent' => 'N', 'audit_dr_x' => 'A', 'cron_job_dr' => 'C', 'perm_category_daily_reports' => 'P'], ['save' => 'Sauvegarder']);
         }
         file_put_contents($this->dir . '/bundle/Views/v.php', "<?= __('daily_report_title', ['n' => 1]) ?> <?= __('cancel') ?> <?= __('save') ?>");
 
