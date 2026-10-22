@@ -41,7 +41,6 @@ Thumbs.db
 # Logs & temporaires
 # =========================
 purge-history.ps1
-.wiki/
 .phpunit.result.cache
 .cursor/
 .ai/

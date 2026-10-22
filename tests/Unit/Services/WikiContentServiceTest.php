@@ -29,8 +29,6 @@ final class WikiContentServiceTest extends TestCase
     {
         $this->tmpWiki = sys_get_temp_dir() . '/kintai_wiki_test_' . uniqid();
         mkdir($this->tmpWiki, 0755, true);
-        mkdir($this->tmpWiki . '/fr', 0755, true);
-        mkdir($this->tmpWiki . '/ja', 0755, true);
 
         $router = new Router();
         $router->get('/docs/{lang}/{page}', [DocsController::class, 'show'], name: 'docs.show');
@@ -62,46 +60,46 @@ final class WikiContentServiceTest extends TestCase
         file_put_contents($this->tmpWiki . '/' . $relativePath, $content);
     }
 
+    /** Wiki à plat : l'anglais et ses traductions sont à la racine, chaque langue sous son propre nom. */
     private function seedFixture(): void
     {
         $this->writeWikiFile('_Sidebar.md', <<<MD
-        **[Home](Home)**
+        **[Home](/AudricSan/Kintai/wiki/Home)**
 
-        🌐 [English](Home) · [Français](fr/Home) · [日本語](ja/Home)
+        🌐 [English](/AudricSan/Kintai/wiki/Home) · [Français](/AudricSan/Kintai/wiki/Accueil) · [日本語](/AudricSan/Kintai/wiki/%E3%83%9B%E3%83%BC%E3%83%A0)
 
         **Getting Started**
-        - [Installation](Installation)
+        - [Installation](/AudricSan/Kintai/wiki/Installation)
         MD);
 
         $this->writeWikiFile('Home.md', <<<MD
         # Kintai Wiki
 
-        🌐 **English** · [Français](fr/Home) · [日本語](ja/Home)
+        🌐 **English** · [Français](Accueil) · [日本語](ホーム)
 
         See [Installation](Installation), an [external link](https://example.com),
         an [anchor](#section), and a [broken link](Nonexistent-Page).
         MD);
 
-        $this->writeWikiFile('Installation.md', "# Installation\n\nContent.");
+        $this->writeWikiFile('Installation.md', "# Installation\n\n🌐 **English** · [Français](Installer-Kintai) · [日本語](インストール)\n\nContent.");
 
-        $this->writeWikiFile('fr/Home.md', <<<MD
+        $this->writeWikiFile('Accueil.md', <<<MD
         # Wiki Kintai
 
-        🌐 [English](../Home) · **Français** · [日本語](../ja/Home)
+        🌐 [English](Home) · **Français** · [日本語](ホーム)
 
-        Voir [Installation](Installation), [English](../Home) ou [日本語](../ja/Home).
+        Voir [Installer](Installer-Kintai), [English](Home) ou [日本語](ホーム).
         MD);
 
-        $this->writeWikiFile('fr/Installation.md', "# Installation FR\n\nContenu.");
+        $this->writeWikiFile('Installer-Kintai.md', "# Installation FR\n\n🌐 [English](Installation) · **Français** · [日本語](インストール)\n\nContenu.");
 
-        // Volontairement absent : ja/Installation.md (teste le fallback de titre + indisponibilité)
-        $this->writeWikiFile('ja/Home.md', <<<MD
+        // Volontairement absent : インストール.md (teste le fallback de titre + indisponibilité)
+        $this->writeWikiFile('ホーム.md', <<<MD
         # Kintaiウィキ
 
-        🌐 [English](../Home) · [Français](../fr/Home) · **日本語**
+        🌐 [English](Home) · [Français](Accueil) · **日本語**
         MD);
     }
-
     private function service(): WikiContentService
     {
         return new WikiContentService($this->tmpWiki);
@@ -183,7 +181,7 @@ final class WikiContentServiceTest extends TestCase
         $this->seedFixture();
         $toc = $this->service()->tableOfContents('ja');
 
-        // ja/Installation.md n'existe pas : titre replié sur la version anglaise.
+        // インストール.md n'existe pas : titre replié sur la version anglaise.
         $this->assertSame('Installation', $toc[1]['items'][0]['title']);
         $this->assertFalse($toc[1]['items'][0]['available']);
     }
@@ -199,7 +197,7 @@ final class WikiContentServiceTest extends TestCase
         $toc = $this->service()->tableOfContents('fr');
 
         $this->assertSame(
-            'https://github.com/AudricSan/Kintai/wiki/fr/Home',
+            'https://github.com/AudricSan/Kintai/wiki/Accueil',
             $toc[0]['items'][0]['github_url']
         );
     }
@@ -216,20 +214,21 @@ final class WikiContentServiceTest extends TestCase
         );
     }
 
-    public function testGithubWikiUrlForFrenchHasLangPrefix(): void
+    public function testGithubWikiUrlWithoutTranslationKeepsTheEnglishName(): void
     {
+        // Wiki à plat : plus de préfixe de langue ; sans traduction déclarée, le nom anglais est repris.
         $this->assertSame(
-            'https://github.com/AudricSan/Kintai/wiki/fr/Installation',
+            'https://github.com/AudricSan/Kintai/wiki/Installation',
             $this->service()->githubWikiUrl('fr', 'Installation')
         );
     }
 
-    public function testGithubWikiUrlForJapaneseHasLangPrefix(): void
+    public function testGithubWikiUrlUsesTheTranslatedFileName(): void
     {
-        $this->assertSame(
-            'https://github.com/AudricSan/Kintai/wiki/ja/Installation',
-            $this->service()->githubWikiUrl('ja', 'Installation')
-        );
+        $this->seedFixture();
+
+        $this->assertSame('https://github.com/AudricSan/Kintai/wiki/Installer-Kintai', $this->service()->githubWikiUrl('fr', 'Installation'));
+        $this->assertSame('https://github.com/AudricSan/Kintai/wiki/' . rawurlencode('インストール'), $this->service()->githubWikiUrl('ja', 'Installation'));
     }
 
     public function testGithubWikiUrlDefaultsToHomeWithoutSlug(): void
@@ -243,7 +242,7 @@ final class WikiContentServiceTest extends TestCase
     public function testGithubWikiUrlDefaultsToHomeForInvalidSlug(): void
     {
         $this->assertSame(
-            'https://github.com/AudricSan/Kintai/wiki/fr/Home',
+            'https://github.com/AudricSan/Kintai/wiki/Home',
             $this->service()->githubWikiUrl('fr', '../../../etc/passwd')
         );
     }
@@ -368,10 +367,10 @@ final class WikiContentServiceTest extends TestCase
         $this->assertStringNotContainsString('Nonexistent-Page', $html);
     }
 
-    public function testRenderResolvesParentDirectoryLinkToEnglish(): void
+    public function testRenderResolvesAnEnglishLinkFromATranslatedPage(): void
     {
         $this->seedFixture();
-        // Depuis fr/Home.md : [English](../Home) doit pointer vers /docs/en/Home
+        // Depuis Accueil.md : [English](Home) doit pointer vers /docs/en/Home
         $html = $this->service()->render('fr', 'Home');
 
         $this->assertStringContainsString('docs/en/Home"', $html);
@@ -380,18 +379,114 @@ final class WikiContentServiceTest extends TestCase
     public function testRenderResolvesCrossLanguageSiblingLink(): void
     {
         $this->seedFixture();
-        // Depuis fr/Home.md : [日本語](../ja/Home) doit pointer vers /docs/ja/Home
+        // Depuis Accueil.md : [日本語](ホーム) doit pointer vers /docs/ja/Home (clé anglaise)
         $html = $this->service()->render('fr', 'Home');
 
         $this->assertStringContainsString('docs/ja/Home"', $html);
     }
 
-    public function testRenderSameLanguageLinkFromSubdirectory(): void
+    public function testRenderResolvesATranslatedNameToTheEnglishKey(): void
     {
         $this->seedFixture();
-        // Depuis fr/Home.md : [Installation](Installation) doit pointer vers /docs/fr/Installation
+        // Depuis Accueil.md : [Installer](Installer-Kintai) doit pointer vers /docs/fr/Installation
         $html = $this->service()->render('fr', 'Home');
 
         $this->assertStringContainsString('docs/fr/Installation"', $html);
+    }
+    // -------------------------------------------------------------------------
+    // Noms de fichiers traduits (fr/ et ja/), déclarés par la ligne de langue de la page anglaise
+    // -------------------------------------------------------------------------
+
+    private function seedLocalizedFixture(): void
+    {
+        $this->writeWikiFile('_Sidebar.md', "**[Home](/AudricSan/Kintai/wiki/Home)**\n\n**Admin**\n- [Backups](/AudricSan/Kintai/wiki/Backups)\n");
+        $this->writeWikiFile('Home.md', "# Home\n\n🌐 **English** · [Français](Accueil) · [日本語](ホーム)\n\nSee [Backups](Backups).");
+        $this->writeWikiFile('Backups.md', "# Backups\n\n🌐 **English** · [Français](Sauvegardes) · [日本語](バックアップ)\n");
+        $this->writeWikiFile('Accueil.md', "# Accueil\n\n🌐 [English](Home) · **Français** · [日本語](ホーム)\n\nVoir [Sauvegardes](Sauvegardes) et [Backups](Backups).");
+        $this->writeWikiFile('Sauvegardes.md', "# Sauvegardes\n\n🌐 [English](Backups) · **Français** · [日本語](バックアップ)\n");
+        $this->writeWikiFile('ホーム.md', "# ホーム\n\n🌐 [English](Home) · [Français](Accueil) · **日本語**\n\n[バックアップ](バックアップ)を参照。");
+        $this->writeWikiFile('バックアップ.md', "# バックアップ\n\n🌐 [English](Backups) · [Français](Sauvegardes) · **日本語**\n");
+    }
+
+    public function testTheLanguageLineGivesTheOwnLanguageAndTheOtherVersions(): void
+    {
+        $line = WikiContentService::languageLine("# T\n\n🌐 [English](Backups) · **Français** · [日本語](バックアップ)\n");
+
+        $this->assertSame('fr', $line['own']);
+        $this->assertSame(['en' => 'Backups', 'ja' => 'バックアップ'], $line['links']);
+    }
+
+    public function testLocalizedSlugsAreReadFromAnEnglishPage(): void
+    {
+        $slugs = WikiContentService::localizedSlugsFromPage("# T\n\n🌐 **English** · [Français](Sauvegardes) · [日本語](バックアップ)\n");
+
+        $this->assertSame(['fr' => 'Sauvegardes', 'ja' => 'バックアップ'], $slugs);
+    }
+
+    public function testLegacyLanguageLinksWithAFolderAreStillUnderstood(): void
+    {
+        $slugs = WikiContentService::localizedSlugsFromPage("# T\n\n🌐 **English** · [Français](fr/Sauvegardes) · [日本語](ja/バックアップ)\n");
+
+        $this->assertSame(['fr' => 'Sauvegardes', 'ja' => 'バックアップ'], $slugs);
+    }
+
+    public function testAPageWithoutLanguageLineHasNoTranslations(): void
+    {
+        $this->assertSame([], WikiContentService::localizedSlugsFromPage("# T\n\nSans ligne de langue."));
+    }
+
+    public function testJapaneseAndAccentedSlugsAreValidButTraversalIsNot(): void
+    {
+        $this->assertTrue(WikiContentService::isValidSlug('バックアップ'));
+        $this->assertTrue(WikiContentService::isValidSlug('Sauvegardes-et-mises-à-jour'));
+        $this->assertFalse(WikiContentService::isValidSlug('../バックアップ'));
+        $this->assertFalse(WikiContentService::isValidSlug('_Sidebar'));
+    }
+
+    public function testTheSidebarAcceptsAbsoluteAndEncodedLinks(): void
+    {
+        $groups = WikiContentService::parseSidebarMarkdown("**Admin**\n- [Backups](/AudricSan/Kintai/wiki/Backups)\n- [Photo](/AudricSan/Kintai/wiki/" . rawurlencode('バックアップ') . ")\n- [Rel](Installation)\n");
+
+        $this->assertSame(['Admin' => ['Backups', 'バックアップ', 'Installation']], $groups);
+    }
+
+    public function testPageKeysStayEnglishWhileFilesAreRead(): void
+    {
+        $this->seedLocalizedFixture();
+
+        $this->assertTrue($this->service()->pageExists('fr', 'Backups'));
+        $this->assertTrue($this->service()->pageExists('ja', 'Backups'));
+        $this->assertStringContainsString('<h1>バックアップ</h1>', $this->service()->render('ja', 'Backups'));
+    }
+
+    public function testTableOfContentsUsesTheTranslatedTitle(): void
+    {
+        $this->seedLocalizedFixture();
+        $items = $this->service()->tableOfContents('ja')[1]['items'];
+
+        $this->assertSame('Backups', $items[0]['slug']);
+        $this->assertSame('バックアップ', $items[0]['title']);
+        $this->assertTrue($items[0]['available']);
+    }
+
+    public function testLinksBetweenTranslatedPagesResolveToTheEnglishKey(): void
+    {
+        $this->seedLocalizedFixture();
+
+        $fr = $this->service()->render('fr', 'Home');
+        $ja = $this->service()->render('ja', 'Home');
+
+        $this->assertStringContainsString('docs/fr/Backups"', $fr);
+        $this->assertStringContainsString('docs/en/Backups"', $fr);
+        $this->assertStringContainsString('docs/ja/Backups"', $ja);
+    }
+
+    public function testGithubUrlUsesTheEncodedTranslatedFileName(): void
+    {
+        $this->seedLocalizedFixture();
+        $url = $this->service()->githubWikiUrl('ja', 'Backups');
+
+        $this->assertStringEndsWith('/wiki/' . rawurlencode('バックアップ'), $url);
+        $this->assertStringEndsWith('/wiki/Sauvegardes', $this->service()->githubWikiUrl('fr', 'Backups'));
     }
 }

@@ -70,18 +70,18 @@ final class WikiSyncServiceTest extends TestCase
     private const BASE_URL = 'https://raw.githubusercontent.com/wiki/test-owner/test-repo/';
 
     /**
-     * Jeu de réponses minimal : sidebar avec une seule page ("Home"), disponible
-     * en anglais et français mais pas en japonais (404, traduction manquante).
+     * Jeu de réponses minimal : sidebar avec une seule page ("Home"), disponible en anglais et en français (Accueil)
+     * mais pas en japonais (ホーム, 404 : traduction manquante). Le wiki GitHub est à plat.
      *
      * @return array<string, array{status: int, body: ?string}>
      */
-    private function minimalFixture(string $homeBodyEn = "# Home\n\nEnglish body."): array
+    private function minimalFixture(string $homeBodyEn = "# Home\n\n🌐 **English** · [Français](Accueil) · [日本語](ホーム)\n\nEnglish body."): array
     {
         return [
-            self::BASE_URL . '_Sidebar.md' => ['status' => 200, 'body' => "**[Home](Home)**\n"],
-            self::BASE_URL . 'Home.md'     => ['status' => 200, 'body' => $homeBodyEn],
-            self::BASE_URL . 'fr/Home.md'  => ['status' => 200, 'body' => "# Accueil\n\nTexte français."],
-            self::BASE_URL . 'ja/Home.md'  => ['status' => 404, 'body' => null],
+            self::BASE_URL . '_Sidebar.md'                    => ['status' => 200, 'body' => "**[Home](/test-owner/test-repo/wiki/Home)**\n"],
+            self::BASE_URL . 'Home.md'                        => ['status' => 200, 'body' => $homeBodyEn],
+            self::BASE_URL . 'Accueil.md'                     => ['status' => 200, 'body' => "# Accueil\n\nTexte français."],
+            self::BASE_URL . rawurlencode('ホーム') . '.md'    => ['status' => 404, 'body' => null],
         ];
     }
 
@@ -132,9 +132,8 @@ final class WikiSyncServiceTest extends TestCase
 
         $this->assertFileExists($this->tmpWiki . '/_Sidebar.md');
         $this->assertFileExists($this->tmpWiki . '/Home.md');
-        $this->assertFileExists($this->tmpWiki . '/fr/Home.md');
-        $this->assertSame("# Home\n\nEnglish body.", file_get_contents($this->tmpWiki . '/Home.md'));
-        $this->assertSame("# Accueil\n\nTexte français.", file_get_contents($this->tmpWiki . '/fr/Home.md'));
+        $this->assertFileExists($this->tmpWiki . '/Accueil.md');
+        $this->assertSame("# Accueil\n\nTexte français.", file_get_contents($this->tmpWiki . '/Accueil.md'));
     }
 
     public function testFreshSyncDoesNotCreateFileFor404Translation(): void
@@ -142,7 +141,7 @@ final class WikiSyncServiceTest extends TestCase
         $service = $this->service($this->minimalFixture());
         $service->sync();
 
-        $this->assertFileDoesNotExist($this->tmpWiki . '/ja/Home.md');
+        $this->assertFileDoesNotExist($this->tmpWiki . '/ホーム.md');
     }
 
     public function testFreshSyncReportsAddedCounts(): void
@@ -150,7 +149,7 @@ final class WikiSyncServiceTest extends TestCase
         $service = $this->service($this->minimalFixture());
         $result = $service->sync();
 
-        // _Sidebar.md + Home.md (en) + Home.md (fr) = 3 fichiers ajoutés ; ja/Home.md est ignoré (404).
+        // _Sidebar.md + Home.md (en) + Accueil.md (fr) = 3 fichiers ajoutés ; ホーム.md est ignoré (404).
         $this->assertSame(3, $result['added']);
         $this->assertSame(0, $result['updated']);
         $this->assertSame(0, $result['unchanged']);
@@ -179,15 +178,12 @@ final class WikiSyncServiceTest extends TestCase
         $service = $this->service($this->minimalFixture());
         $service->sync();
 
-        $updatedService = $this->service($this->minimalFixture(homeBodyEn: "# Home\n\nUpdated English body."));
+        $updatedService = $this->service($this->minimalFixture(homeBodyEn: "# Home\n\n🌐 **English** · [Français](Accueil) · [日本語](ホーム)\n\nUpdated English body."));
         $result = $updatedService->sync();
 
         $this->assertSame(1, $result['updated']);
-        $this->assertSame(2, $result['unchanged']); // _Sidebar.md + fr/Home.md inchangés
-        $this->assertSame(
-            "# Home\n\nUpdated English body.",
-            file_get_contents($this->tmpWiki . '/Home.md')
-        );
+        $this->assertSame(2, $result['unchanged']); // _Sidebar.md + Accueil.md inchangés
+        $this->assertStringContainsString('Updated English body.', (string) file_get_contents($this->tmpWiki . '/Home.md'));
     }
 
     // -------------------------------------------------------------------------
@@ -197,14 +193,14 @@ final class WikiSyncServiceTest extends TestCase
     public function testSyncRecordsNon404ErrorsWithoutStoppingOtherPages(): void
     {
         $fixture = $this->minimalFixture();
-        $fixture[self::BASE_URL . 'fr/Home.md'] = ['status' => 503, 'body' => null];
+        $fixture[self::BASE_URL . 'Accueil.md'] = ['status' => 503, 'body' => null];
 
         $service = $this->service($fixture);
         $result = $service->sync();
 
         $this->assertFalse($result['ok']);
         $this->assertNotEmpty($result['errors']);
-        $this->assertStringContainsString('fr/Home.md', $result['errors'][0]);
+        $this->assertStringContainsString('Accueil.md', $result['errors'][0]);
         // La page anglaise, elle, a bien été écrite malgré l'échec de la page française.
         $this->assertFileExists($this->tmpWiki . '/Home.md');
     }
@@ -218,14 +214,14 @@ final class WikiSyncServiceTest extends TestCase
         $fixture = [
             self::BASE_URL . '_Sidebar.md' => [
                 'status' => 200,
-                'body'   => "**[Home](Home)**\n\n**Getting Started**\n- [Installation](Installation)\n",
+                'body'   => "**[Home](/test-owner/test-repo/wiki/Home)**\n\n**Getting Started**\n- [Installation](/test-owner/test-repo/wiki/Installation)\n",
             ],
-            self::BASE_URL . 'Home.md'            => ['status' => 200, 'body' => '# Home'],
-            self::BASE_URL . 'Installation.md'    => ['status' => 200, 'body' => '# Installation'],
-            self::BASE_URL . 'fr/Home.md'         => ['status' => 200, 'body' => '# Accueil'],
-            self::BASE_URL . 'fr/Installation.md' => ['status' => 200, 'body' => '# Installation FR'],
-            self::BASE_URL . 'ja/Home.md'         => ['status' => 200, 'body' => '# ホーム'],
-            self::BASE_URL . 'ja/Installation.md' => ['status' => 200, 'body' => '# インストール'],
+            self::BASE_URL . 'Home.md'          => ['status' => 200, 'body' => "# Home\n\n🌐 **English** · [Français](Accueil) · [日本語](ホーム)"],
+            self::BASE_URL . 'Installation.md'  => ['status' => 200, 'body' => "# Installation\n\n🌐 **English** · [Français](Installer-Kintai) · [日本語](インストール)"],
+            self::BASE_URL . 'Accueil.md'       => ['status' => 200, 'body' => '# Accueil'],
+            self::BASE_URL . 'Installer-Kintai.md' => ['status' => 200, 'body' => '# Installation FR'],
+            self::BASE_URL . rawurlencode('ホーム') . '.md'       => ['status' => 200, 'body' => '# ホーム'],
+            self::BASE_URL . rawurlencode('インストール') . '.md' => ['status' => 200, 'body' => '# インストール'],
         ];
 
         $service = $this->service($fixture);
@@ -234,6 +230,25 @@ final class WikiSyncServiceTest extends TestCase
         $this->assertTrue($result['ok']);
         $this->assertSame(7, $result['added']); // _Sidebar.md + 2 pages x 3 langues
         $this->assertFileExists($this->tmpWiki . '/Installation.md');
-        $this->assertFileExists($this->tmpWiki . '/ja/Installation.md');
+        $this->assertFileExists($this->tmpWiki . '/Installer-Kintai.md');
+        $this->assertFileExists($this->tmpWiki . '/インストール.md');
+    }
+
+    public function testSyncFetchesTranslatedPagesUnderTheirOwnFileName(): void
+    {
+        $en = "# Backups\n\n🌐 **English** · [Français](Sauvegardes) · [日本語](バックアップ)\n";
+        $service = $this->service([
+            self::BASE_URL . '_Sidebar.md'                  => ['status' => 200, 'body' => "**[Home](Home)**\n\n**Admin**\n- [Backups](Backups)\n"],
+            self::BASE_URL . 'Home.md'                      => ['status' => 200, 'body' => "# Home\n"],
+            self::BASE_URL . 'Backups.md'                   => ['status' => 200, 'body' => $en],
+            self::BASE_URL . 'Sauvegardes.md'               => ['status' => 200, 'body' => "# Sauvegardes\n"],
+            self::BASE_URL . rawurlencode('バックアップ') . '.md' => ['status' => 200, 'body' => "# バックアップ\n"],
+        ]);
+
+        $result = $service->sync();
+
+        $this->assertTrue($result['ok']);
+        $this->assertFileExists($this->tmpWiki . '/Sauvegardes.md');
+        $this->assertFileExists($this->tmpWiki . '/バックアップ.md');
     }
 }

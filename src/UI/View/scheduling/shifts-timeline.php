@@ -528,6 +528,25 @@ ob_start();
 </div>
 <?php endif; ?>
 
+<?php if ($_canManage): ?>
+<!-- ── Employé non disponible (déplacement par glisser-déposer) ──────────────── -->
+<div id="availability-overlay" class="modal">
+    <div class="modal__backdrop" data-on-click="availabilityClose"></div>
+    <div class="modal__dialog" data-stop-propagation>
+        <div class="modal__header">
+            <h3 class="modal__title"><?= __('shift_availability_title') ?></h3>
+        </div>
+        <div class="modal__body">
+            <div class="alert alert--danger" role="alert"><p id="availability-message"></p></div>
+        </div>
+        <div class="modal__footer">
+            <?= Button::make(__('cancel'))->primary()->attrs(['data-on-click' => 'availabilityClose'])->render() ?>
+            <?= Button::make(__('shift_availability_force'))->ghost()->attrs(['data-on-click' => 'availabilityForce'])->render() ?>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <script type="application/json" id="kintai-timeline-data"><?= json_encode([
     'baseUrl'   => rtrim($BASE_URL, '/'),
     'csrfToken' => csrf_token(),
