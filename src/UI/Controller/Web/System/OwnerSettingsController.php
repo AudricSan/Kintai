@@ -51,6 +51,8 @@ final class OwnerSettingsController
                 'app_subtitle'      => $this->settings->subtitle(),
                 'app_login_notice'  => $this->settings->loginNotice(),
                 'app_support_email' => $this->settings->supportEmail(),
+                'mail_from_address' => $this->settings->mailFromAddress(),
+                'mail_from_name'    => $this->settings->mailFromName(),
                 'maintenance_mode_enabled' => $this->settings->maintenanceModeEnabled() ? '1' : '0',
                 'maintenance_message'      => $this->settings->maintenanceMessage(),
                 'access_log_enabled'       => $this->settings->accessLogEnabled() ? '1' : '0',
@@ -72,7 +74,7 @@ final class OwnerSettingsController
             'instance_locale'   => $this->instanceLocale?->code(),
             'instance_languages' => $this->languages?->findAllActive() ?? [],
             'success' => isset($_GET['success']),
-            'error'   => in_array($request->query('error'), ['public_url_invalid', 'instance_locale_not_saved'], true) ? $request->query('error') : null,
+            'error'   => in_array($request->query('error'), ['public_url_invalid', 'instance_locale_not_saved', 'mail_from_invalid'], true) ? $request->query('error') : null,
         ], 'layout.app'));
     }
 
@@ -88,6 +90,14 @@ final class OwnerSettingsController
         if ($supportEmail !== '' && !filter_var($supportEmail, FILTER_VALIDATE_EMAIL)) {
             $supportEmail = '';
         }
+
+        // Expéditeur des e-mails : une adresse invalide est refusée (l'ancienne est conservée) plutôt qu'ignorée en silence.
+        // Vide = on retombe sur config/mail.php.
+        $mailFromAddress = trim((string) $request->post('mail_from_address', $this->settings->mailFromAddress()));
+        if ($mailFromAddress !== '' && !filter_var($mailFromAddress, FILTER_VALIDATE_EMAIL)) {
+            return Response::redirect($this->base() . '/admin/owner-settings?error=mail_from_invalid');
+        }
+        $mailFromName = substr(trim((string) $request->post('mail_from_name', $this->settings->mailFromName())), 0, 100);
 
         $darkMode = $request->post('app_theme_dark_mode', $this->settings->themeDarkMode()) === 'manual' ? 'manual' : 'auto';
 
@@ -135,6 +145,8 @@ final class OwnerSettingsController
             'app_subtitle'      => $this->settings->subtitle(),
             'app_login_notice'  => $this->settings->loginNotice(),
             'app_support_email' => $this->settings->supportEmail(),
+            'mail_from_address' => $this->settings->mailFromAddress(),
+            'mail_from_name'    => $this->settings->mailFromName(),
             'maintenance_mode_enabled' => $this->settings->maintenanceModeEnabled() ? '1' : '0',
             'maintenance_message'      => $this->settings->maintenanceMessage(),
             'access_log_enabled'      => $this->settings->accessLogEnabled() ? '1' : '0',
@@ -148,6 +160,8 @@ final class OwnerSettingsController
             'app_subtitle'      => $subtitle,
             'app_login_notice'  => $loginNotice,
             'app_support_email' => $supportEmail,
+            'mail_from_address' => $mailFromAddress,
+            'mail_from_name'    => $mailFromName,
             'maintenance_mode_enabled' => $maintenanceModeEnabled,
             'maintenance_message'      => $maintenanceMessage,
             'access_log_enabled'      => $accessLogEnabled,
