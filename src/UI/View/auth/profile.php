@@ -480,6 +480,10 @@ $_filteredBnPool = $_navigation->mobileChoices($_isManagerView, $route_visible ?
 <?php elseif ($tab === 'ical'): ?>
 
 <?php
+// Liaison Google Calendar : mise à jour automatique, contrairement à l'abonnement iCal que Google relit quand il veut.
+if (isset($calendar)) {
+    include __DIR__ . '/_profile-google-calendar.php';
+}
 ob_start();
 ?>
 <p class="text-muted mb-sm"><?= __('ical_feeds_description') ?></p>

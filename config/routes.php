@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use kintai\UI\Controller\Web\AuthController;
+use kintai\UI\Controller\Web\CalendarLinkController;
+use kintai\UI\Controller\Web\System\CalendarSettingsController;
 use kintai\UI\Controller\Web\BundleAssetController;
 use kintai\UI\Controller\Web\PasswordResetController;
 use kintai\UI\Controller\Web\NotificationController;
@@ -118,6 +120,12 @@ $router->group('/profile', function ($r) {
     $r->post('/avatar/delete', [AuthController::class, 'removeAvatar'],       name: 'profile.avatar.delete');
     $r->post('/password',    [AuthController::class, 'saveProfilePassword'],  name: 'profile.password');
     $r->post('/notifications', [AuthController::class, 'saveNotificationPreferences'], name: 'profile.notifications');
+    // Liaison de l'agenda Google de l'utilisateur (OAuth, Kintai → Google).
+    $r->post('/calendar/google/connect',    [CalendarLinkController::class, 'connect'],    name: 'profile.calendar.connect');
+    $r->get('/calendar/google/callback',    [CalendarLinkController::class, 'callback'],   name: 'profile.calendar.callback');
+    $r->post('/calendar/google/disconnect', [CalendarLinkController::class, 'disconnect'], name: 'profile.calendar.disconnect');
+    $r->post('/calendar/google/options',    [CalendarLinkController::class, 'options'],    name: 'profile.calendar.options');
+    $r->post('/calendar/google/resync',     [CalendarLinkController::class, 'resync'],     name: 'profile.calendar.resync');
     $r->get('/export',       [AuthController::class, 'exportData'],           name: 'profile.export');
     $r->post('/delete',      [AuthController::class, 'deleteAccount'],        name: 'profile.delete');
 }, middleware: [AuthMiddleware::class]);
@@ -304,6 +312,11 @@ $router->group('/admin', function ($r) {
     $r->post('/notifications-settings',         [NotificationSettingsController::class, 'save'],            middleware: [OwnerOnlyMiddleware::class], name: 'admin.notifications_settings.save', permission: 'public');
     $r->post('/notifications-settings/test',    [NotificationSettingsController::class, 'sendTest'],        middleware: [OwnerOnlyMiddleware::class], name: 'admin.notifications_settings.test', permission: 'public');
     $r->post('/notifications-settings/vapid',   [NotificationSettingsController::class, 'regenerateVapid'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.notifications_settings.vapid', permission: 'public');
+
+    // Agendas externes : identifiants Google de l'instance (Owner).
+    $r->get('/calendar-settings',               [CalendarSettingsController::class, 'show'],                middleware: [OwnerOnlyMiddleware::class], name: 'admin.calendar_settings', permission: 'public');
+    $r->post('/calendar-settings',              [CalendarSettingsController::class, 'save'],                middleware: [OwnerOnlyMiddleware::class], name: 'admin.calendar_settings.save', permission: 'public');
+    $r->post('/calendar-settings/test',         [CalendarSettingsController::class, 'test'],                middleware: [OwnerOnlyMiddleware::class], name: 'admin.calendar_settings.test', permission: 'public');
 
     // Sauvegardes
     $r->get('/backup',               [BackupController::class, 'index'],  middleware: [OwnerOnlyMiddleware::class], name: 'admin.backup', permission: 'public');

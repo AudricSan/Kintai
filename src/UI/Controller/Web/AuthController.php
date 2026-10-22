@@ -18,6 +18,8 @@ use kintai\Core\Services\NotificationPreferenceService;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\AvatarImageOptimizer;
 use kintai\Core\Repositories\AvailabilityRepositoryInterface;
+use kintai\Core\Repositories\CalendarSyncRepositoryInterface;
+use kintai\Core\Services\Calendar\GoogleCalendarSettings;
 use kintai\Core\Repositories\IcalTokenRepositoryInterface;
 use kintai\Core\Repositories\LanguageRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
@@ -56,12 +58,46 @@ final class AuthController
         private readonly ?NotificationPreferenceService $notifPrefs = null,
         private readonly ?WebPushSubscriptionRepositoryInterface $webPushSubscriptions = null,
         private readonly ?NotificationMailer $notifMailer = null,
+        private readonly ?CalendarSyncRepositoryInterface $calendars = null,
+        private readonly ?GoogleCalendarSettings $googleCalendar = null,
     ) {}
 
     /** Le conteneur l'injecte toujours ; un test qui supprime un compte doit le fournir. */
     private function anonymizer(): UserAnonymizer
     {
         return $this->anonymizer ?? throw new \LogicException('UserAnonymizer requis pour supprimer un compte.');
+    }
+
+    /**
+     * Liaison Google Calendar de l'utilisateur pour l'onglet iCal : disponible seulement si l'Owner l'a activée.
+     * Le jeton de rafraîchissement n'est jamais transmis à la vue.
+     *
+     * @return array{available: bool, connection: ?array<string, mixed>}
+     */
+    private function calendarPanel(int $userId): array
+    {
+        $connection = null;
+        if ($this->calendars !== null) {
+            try {
+                $row = $this->calendars->findConnectionByUser($userId);
+            } catch (\Throwable) {
+                $row = null; // table absente : migration pas encore jouée
+            }
+            if ($row !== null) {
+                $options = json_decode((string) ($row['options'] ?? ''), true);
+                $options = is_array($options) ? $options : [];
+                $connection = [
+                    'status'        => (string) $row['status'],
+                    'email'         => (string) ($row['account_email'] ?? ''),
+                    'calendar_name' => (string) ($row['calendar_name'] ?? ''),
+                    'last_sync_at'  => $row['last_sync_at'] ?? null,
+                    'last_error'    => $row['last_error'] ?? null,
+                    'name_mode'     => ($options['calendar_name_mode'] ?? 'instance') === 'store' ? 'store' : 'instance',
+                    'store_id'      => (int) ($options['store_id'] ?? 0),
+                ];
+            }
+        }
+        return ['available' => $this->googleCalendar?->isAvailable() ?? false, 'connection' => $connection];
     }
 
     /** @var array<string, string> extension → type MIME (avatars) */
@@ -277,6 +313,7 @@ final class AuthController
             'store_id'             => $storeId,
             'existing'             => $existing,
             'ical_links'           => $icalLinks,
+            'calendar'             => $this->calendarPanel($userId),
             'nav_hidden'           => $navHidden,
             'nav_section_order'    => $navSecOrder,
             'nav_default_sections' => $defaultSecs,

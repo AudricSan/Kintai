@@ -10,7 +10,10 @@ use kintai\Core\Cron\BackupJob;
 use kintai\Core\Cron\CronRunner;
 use kintai\Core\Cron\LicenseCheckJob;
 use kintai\Core\Cron\LogPurgeJob;
+use kintai\Core\Cron\CalendarSyncJob;
 use kintai\Core\Cron\NotificationPurgeJob;
+use kintai\Core\Services\Calendar\CurlHttpTransport;
+use kintai\Core\Services\Calendar\HttpTransportInterface;
 use kintai\Core\Database\BundleMigrationRunner;
 use kintai\Core\Database\MigrationRunner;
 use kintai\Core\Repositories\CronTokenRepositoryInterface;
@@ -95,7 +98,8 @@ final class AppServiceProvider extends ServiceProvider
                 file_exists($path) ? require $path : [],
             );
         });
-        $this->container->singleton(UnsubscribeTokens::class, fn(Container $c) => new UnsubscribeTokens($c->make(AppSettingsRepositoryInterface::class)));
+        $this->container->singleton(HttpTransportInterface::class, fn() => new CurlHttpTransport());
+        $this->container->singleton(UnsubscribeTokens::class,fn(Container $c) => new UnsubscribeTokens($c->make(AppSettingsRepositoryInterface::class)));
         $this->container->singleton(NotificationMailer::class, fn(Container $c) => new NotificationMailer(
             $c->make(MailerService::class),
             $c->make(PublicUrlResolver::class),
@@ -274,6 +278,7 @@ final class AppServiceProvider extends ServiceProvider
             $runner->register($c->make(BackupJob::class));
             $runner->register($c->make(LogPurgeJob::class));
             $runner->register($c->make(NotificationPurgeJob::class));
+            $runner->register($c->make(CalendarSyncJob::class));
             $runner->register($c->make(\kintai\Core\Cron\SystemNotificationsJob::class));
             $runner->register($c->make(LicenseCheckJob::class));
             if ($c->has(\kintai\Core\Extension\ExtensionRegistry::class)) {

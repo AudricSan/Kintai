@@ -6,6 +6,7 @@ namespace kintai\Core\Auth;
 
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
+use kintai\Core\Services\CalendarSyncService;
 
 /**
  * Suppression d'un compte = anonymisation, jamais effacement de la ligne.
@@ -25,6 +26,7 @@ final class UserAnonymizer
         private readonly RoleAssignmentRepositoryInterface $roleAssignments,
         private readonly CredentialRevoker $revoker,
         private readonly ?string $avatarDir = null,
+        private readonly ?CalendarSyncService $calendar = null,
     ) {}
 
     public function anonymize(int $userId): void
@@ -81,6 +83,13 @@ final class UserAnonymizer
 
         // Cookies « rester connecté » et jetons d'API ; les sessions ouvertes sont refusées (compte inactif).
         $this->revoker->revokeAllFor($userId);
+
+        // Liaison d'agenda externe : les événements ne doivent plus suivre un compte supprimé, et le jeton est révoqué chez Google.
+        try {
+            $this->calendar?->disconnect($userId, true);
+        } catch (\Throwable) {
+            // Réseau coupé ou table absente : la suppression du compte prime.
+        }
     }
 
     /** Adresse de remplacement, unique par compte (la colonne email est unique). */

@@ -14,7 +14,7 @@ use kintai\Core\Services\Log;
 final class CronRunner
 {
     /** Tâches du Core : un bundle ne peut pas les remplacer. */
-    public const CORE_JOBS = ['backup', 'log-purge', 'license-check', 'notification-purge', 'system-notifications'];
+    public const CORE_JOBS = ['backup', 'log-purge', 'license-check', 'notification-purge', 'system-notifications', 'calendar-sync'];
 
 
     /** @var array<string, CronJobInterface> */

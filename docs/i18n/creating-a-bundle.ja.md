@@ -508,9 +508,11 @@ Coreは自分の側で起きたことを知らせ、Coreがバンドルを知ら
 | イベント | いつ | データ |
 |---|---|---|
 | `EmployeeCreated` | アカウント作成の直後：「新しい従業員」フォーム、Excelインポートのクイック作成、`POST /api/v1/users` | `user`、`storeId`（従業員が割り当てられた店舗、なければ `null`——APIからは常に `null`）、`createdBy`、`source` |
+| `ShiftSaved`（1.28） | シフトがリポジトリに書き込まれたとき（管理フォーム、API、Excelインポート、交換、募集シフトの引き受けなど経路を問わず） | `shift`（保存された行）、`before`（変更前の行。新規シフトでは `null`）。補助メソッド `isNew()`、`userId()`、`previousUserId()`（シフトを外された従業員） |
+| `ShiftDeleted`（1.28） | シフトが削除されたとき（経路を問わず） | `shift`（削除前の行）。補助メソッド `shiftId()`、`userId()` |
 | `OpenShiftClosed`（1.17） | 募集中に公開されたシフトがシフトフォームまたは `PUT /api/v1/shifts/{id}` から募集終了になったとき（`is_open` 1 → 0） | `shift`（保存された行）、`closedBy` |
 
-`hiring-report` はこの方法で従業員の採用報告を作成し、`shift-claim` は募集終了したシフトの保留中の応募を取り下げます。`"kintai_contract": "^1.13"`（`OpenShiftClosed` には `^1.17`）を指定してください。
+`hiring-report` はこの方法で従業員の採用報告を作成し、`shift-claim` は募集終了したシフトの保留中の応募を取り下げます。`"kintai_contract": "^1.13"`（`OpenShiftClosed` には `^1.17`、`ShiftSaved`/`ShiftDeleted` には `^1.28`）を指定してください。
 
 ### ダッシュボードの統計カード：`dashboardStats()`（契約1.19）
 
