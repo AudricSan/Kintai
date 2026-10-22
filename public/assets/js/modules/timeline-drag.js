@@ -113,6 +113,50 @@
         }
     });
 
+    /* ── Déplacement d'un shift ──────────────────────
+       Si l'employé s'est déclaré non disponible ce jour-là, le serveur répond 409 « availability_conflict » : on
+       affiche l'encadré (Annuler en action principale) et « Forcer l'horaire » rejoue la requête avec le drapeau. */
+    var _pendingMove = null;
+
+    function sendMove(id, payload) {
+        fetch(BASE + '/admin/shifts/' + id + '/move', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+            body: JSON.stringify(payload),
+        }).then(function (r) {
+            if (r.ok) { window.location.reload(); return; }
+            r.json().then(function (d) {
+                if (r.status === 409 && d.code === 'availability_conflict' && !payload.force_availability) {
+                    askAvailability(d.error, id, payload);
+                    return;
+                }
+                alert(i18n.error_prefix + (d.error || r.status));
+            });
+        }).catch(function () { alert(i18n.network_error); });
+    }
+
+    function askAvailability(message, id, payload) {
+        _pendingMove = { id: id, payload: payload };
+        var el = document.getElementById('availability-message');
+        if (el) el.textContent = message || '';
+        if (window.openModal) window.openModal('availability-overlay');
+    }
+
+    window.availabilityClose = function () {
+        _pendingMove = null;
+        if (window.closeModal) window.closeModal('availability-overlay');
+    };
+
+    window.availabilityForce = function () {
+        var pending = _pendingMove;
+        _pendingMove = null;
+        if (window.closeModal) window.closeModal('availability-overlay');
+        if (pending) {
+            pending.payload.force_availability = true;
+            sendMove(pending.id, pending.payload);
+        }
+    };
+
     /* ── Fin du drag (pointerup) ──────────────────── */
     document.addEventListener('pointerup', function () {
         if (!_drag) return;
@@ -124,18 +168,11 @@
             if (!drag.moved) return;
             _blockNextClick = true;
             if (drag.newStart === null) return;
-            fetch(BASE + '/admin/shifts/' + drag.id + '/move', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
-                body: JSON.stringify({
-                    shift_date: drag.date,
-                    start_time: minToStr(drag.newStart),
-                    end_time:   minToStr(drag.newEnd),
-                }),
-            }).then(function (r) {
-                if (r.ok) { window.location.reload(); return; }
-                r.json().then(function (d) { alert(i18n.error_prefix + (d.error || r.status)); });
-            }).catch(function () { alert(i18n.network_error); });
+            sendMove(drag.id, {
+                shift_date: drag.date,
+                start_time: minToStr(drag.newStart),
+                end_time:   minToStr(drag.newEnd),
+            });
         } else {
             var date = drag.dayCard ? drag.dayCard.dataset.date : '';
             sdQcOpen(date, minToStr(drag.startMin % 1440), minToStr(drag.endMin % 1440));

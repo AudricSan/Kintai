@@ -13,6 +13,9 @@ use kintai\UI\Components\Flash;
  */
 
 $redirect_to = trim($redirect_to ?? '');
+// Employé non disponible ce jour-là (avertissement, jamais un blocage) : encadré rouge, Annuler en action principale.
+$availability_conflict = $availability_conflict ?? null;
+$availability_message  = $availability_message ?? '';
 $action = $mode === 'edit'
     ? $BASE_URL . '/admin/shifts/' . (int) $shift['id'] . '/edit'
     : route_url('admin.shifts.create');
@@ -40,7 +43,19 @@ ob_start();
     <?php if ($redirect_to !== ''): ?>
         <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($redirect_to) ?>">
     <?php endif; ?>
+    <?php if ($availability_conflict !== null): ?>
+        <div class="alert alert--danger availability-warning" role="alert">
+            <strong><?= htmlspecialchars(__('shift_availability_title')) ?></strong>
+            <p><?= htmlspecialchars($availability_message) ?></p>
+        </div>
+    <?php endif; ?>
     <?php include __DIR__ . '/../_partials/_form-shift.php'; ?>
+    <?php if ($availability_conflict !== null): ?>
+    <div class="form-actions">
+        <a href="<?= back_url(route_url('admin.shifts')) ?>" class="btn btn--primary"><?= __('cancel') ?></a>
+        <?= Button::make(__('shift_availability_force'))->ghost()->submit()->attrs(['name' => 'force_availability', 'value' => '1'])->render() ?>
+    </div>
+    <?php else: ?>
     <div class="form-actions">
         <?= Button::make($mode === 'edit' ? __('save') : __('new_shift'))->primary()->submit()->render() ?>
         <?php if ($mode === 'edit'): // Boutons des bundles (bourse aux shifts… — contrat 1.17), dans ce formulaire (formaction). ?>
@@ -52,6 +67,7 @@ ob_start();
             <span class="ml-auto"><?= Button::make(__('delete'))->danger()->submit()->attrs(['data-confirm' => __('confirm'), 'formaction' => $BASE_URL . '/admin/shifts/' . (int) $shift['id'] . '/delete', 'formmethod' => 'post', 'formnovalidate' => 'formnovalidate'])->render() ?></span>
         <?php endif; ?>
     </div>
+    <?php endif; ?>
 </form>
 <?php
 echo Card::make()->body(ob_get_clean())->render();
