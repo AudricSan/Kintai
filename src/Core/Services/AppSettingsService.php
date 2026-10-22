@@ -127,6 +127,43 @@ final class AppSettingsService
         return in_array($mode, ['mix', 'kitsune', 'tanuki'], true) ? $mode : 'mix';
     }
 
+    // ── Expéditeur des e-mails ────────────────────────────────────────────────
+
+    /** Adresse d'expédition choisie par l'Owner pour tous les e-mails (vide = celle de config/mail.php). */
+    public function mailFromAddress(): string
+    {
+        $address = trim($this->get('mail_from_address'));
+
+        return filter_var($address, FILTER_VALIDATE_EMAIL) !== false ? $address : '';
+    }
+
+    /** Nom d'expéditeur choisi par l'Owner (vide = celui de config/mail.php). */
+    public function mailFromName(): string
+    {
+        return trim($this->get('mail_from_name'));
+    }
+
+    /**
+     * Configuration d'envoi dont l'expéditeur est celui réglé par l'Owner : un seul endroit pour tous les e-mails
+     * (rapports, notifications, réinitialisation de mot de passe), sans toucher au fichier de configuration.
+     *
+     * @param array<string, mixed> $config contenu de config/mail.php
+     * @return array<string, mixed>
+     */
+    public function mailConfig(array $config): array
+    {
+        $address = $this->mailFromAddress();
+        $name    = $this->mailFromName();
+        if ($address !== '') {
+            $config['from']['address'] = $address;
+        }
+        if ($name !== '') {
+            $config['from']['name'] = $name;
+        }
+
+        return $config;
+    }
+
     // ── Mode maintenance ──────────────────────────────────────────────────────
 
     /** Mode maintenance activé : seul l'Owner peut accéder aux pages web. */

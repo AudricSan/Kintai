@@ -52,6 +52,9 @@ echo Flash::fromQuery('success', ['default' => __('save_success')])->render();
 if (($error ?? null) === 'public_url_invalid') {
     echo Alert::make(__('public_url_invalid'))->danger()->render();
 }
+if (($error ?? null) === 'mail_from_invalid') {
+    echo Alert::make(__('mail_from_invalid'))->danger()->render();
+}
 if (($error ?? null) === 'instance_locale_not_saved') {
     echo Alert::make(__('instance_locale_not_saved'))->danger()->render();
 }
@@ -83,6 +86,23 @@ if (($error ?? null) === 'instance_locale_not_saved') {
             placeholder="<?= __('support_email_placeholder') ?>"
             value="<?= htmlspecialchars($settings['app_support_email'] ?? '', ENT_QUOTES) ?>">
         <p class="form-hint"><?= __('support_email_hint') ?></p>
+    </div>
+
+    <div class="form-group">
+        <label class="form-label" for="mail_from_address"><?= __('mail_from_address') ?></label>
+        <input type="email" id="mail_from_address" name="mail_from_address" class="form-control"
+            maxlength="190"
+            placeholder="<?= __('mail_from_address_placeholder') ?>"
+            value="<?= htmlspecialchars($settings['mail_from_address'] ?? '', ENT_QUOTES) ?>">
+        <p class="form-hint"><?= __('mail_from_address_hint') ?></p>
+    </div>
+
+    <div class="form-group">
+        <label class="form-label" for="mail_from_name"><?= __('mail_from_name') ?></label>
+        <input type="text" id="mail_from_name" name="mail_from_name" class="form-control"
+            maxlength="100"
+            placeholder="Kintai"
+            value="<?= htmlspecialchars($settings['mail_from_name'] ?? '', ENT_QUOTES) ?>">
     </div>
 
     <?php if (!empty($instance_languages)): ?>
