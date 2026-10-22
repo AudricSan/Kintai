@@ -10,6 +10,10 @@ use kintai\Core\Cron\BackupJob;
 use kintai\Core\Cron\CronRunner;
 use kintai\Core\Cron\LicenseCheckJob;
 use kintai\Core\Cron\LogPurgeJob;
+use kintai\Core\Cron\CalendarSyncJob;
+use kintai\Core\Cron\NotificationPurgeJob;
+use kintai\Core\Services\Calendar\CurlHttpTransport;
+use kintai\Core\Services\Calendar\HttpTransportInterface;
 use kintai\Core\Database\BundleMigrationRunner;
 use kintai\Core\Database\MigrationRunner;
 use kintai\Core\Repositories\CronTokenRepositoryInterface;
@@ -20,6 +24,8 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
 use kintai\Core\Repositories\ShiftTypeRepositoryInterface;
 use kintai\Core\Repositories\NotificationRepositoryInterface;
+use kintai\Core\Repositories\NotificationPreferenceRepositoryInterface;
+use kintai\Core\Repositories\WebPushSubscriptionRepositoryInterface;
 use kintai\Core\Repositories\PasswordResetRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Repositories\AppSettingsRepositoryInterface;
@@ -73,6 +79,43 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(NotificationRepositoryInterface::class),
             $c->make(PushNotificationService::class),
             $c->make(TranslationService::class),
+            $c->make(UserRepositoryInterface::class),
+            $c->make(NotificationTypeRegistry::class),
+            $c->make(NotificationPreferenceService::class),
+            $c->make(WebPushService::class),
+            $c->make(NotificationMailer::class),
+        ));
+        $this->container->singleton(NotificationChannelStatus::class, function (Container $c) {
+            $path = dirname(dirname(dirname(__DIR__))) . '/config/push.php';
+
+            return new NotificationChannelStatus(
+                $c->make(VapidKeyStore::class),
+                $c->make(WebPushSubscriptionRepositoryInterface::class),
+                $c->make(DevicePushTokenRepositoryInterface::class),
+                $c->make(MailerService::class),
+                $c->make(PublicUrlResolver::class),
+                $c->make(UserRepositoryInterface::class),
+                file_exists($path) ? require $path : [],
+            );
+        });
+        $this->container->singleton(HttpTransportInterface::class, fn() => new CurlHttpTransport());
+        $this->container->singleton(UnsubscribeTokens::class,fn(Container $c) => new UnsubscribeTokens($c->make(AppSettingsRepositoryInterface::class)));
+        $this->container->singleton(NotificationMailer::class, fn(Container $c) => new NotificationMailer(
+            $c->make(MailerService::class),
+            $c->make(PublicUrlResolver::class),
+            $c->make(UnsubscribeTokens::class),
+            $c->make(TranslationService::class),
+        ));
+        $this->container->singleton(VapidKeyStore::class, fn(Container $c) => new VapidKeyStore($c->make(AppSettingsRepositoryInterface::class)));
+        $this->container->singleton(WebPushService::class, fn(Container $c) => new WebPushService(
+            $c->make(WebPushSubscriptionRepositoryInterface::class),
+            $c->make(VapidKeyStore::class),
+            null,
+            $c->make(WebPushEndpointValidator::class),
+        ));
+        $this->container->singleton(NotificationPreferenceService::class, fn(Container $c) => new NotificationPreferenceService(
+            $c->make(NotificationPreferenceRepositoryInterface::class),
+            $c->make(NotificationTypeRegistry::class),
             $c->make(UserRepositoryInterface::class),
         ));
         
@@ -175,6 +218,9 @@ final class AppServiceProvider extends ServiceProvider
         // Même raison (paramètre ?\Closure) : BundleRegistryClient et BundleInstallerService.
         $this->container->singleton(BundleRegistryClient::class, fn() => new BundleRegistryClient());
 
+        // Questions de l'assistant qui recommandent des bundles (config/setup-questions.php).
+        $this->container->singleton(\kintai\Core\Setup\SetupQuestionnaire::class, fn() => \kintai\Core\Setup\SetupQuestionnaire::fromConfig(BASE_PATH . '/config/setup-questions.php'));
+
         // Assistant de configuration : bundles du catalogue pour un canal, installés comme depuis /admin/bundles/market.
         $this->container->singleton(SetupWizard::class, fn(Container $c) => new SetupWizard(
             $c->make(\kintai\Core\Repositories\AppSettingsRepositoryInterface::class),
@@ -188,6 +234,7 @@ final class AppServiceProvider extends ServiceProvider
                     $entries[$entry->bundle->slug] = [
                         'slug' => $entry->bundle->slug, 'name' => $entry->bundle->name, 'description' => $entry->bundle->description,
                         'version' => $version, 'repository_url' => $entry->bundle->repositoryUrl, 'registry_url' => $entry->registryUrl,
+                        'setup_question' => $entry->bundle->setupQuestion, 'requires' => $entry->bundle->requires,
                     ];
                 }
                 return array_values($entries);
@@ -221,12 +268,18 @@ final class AppServiceProvider extends ServiceProvider
             $c->make(TranslationRepositoryInterface::class),
         ));
 
+        // Détecteurs des notifications système (Owners) ; le service lui-même s'auto-résout.
+        $this->container->singleton(SystemAlertSourceInterface::class, fn(Container $c) => $c->make(SystemAlertDetectors::class));
+
         // Tâches du Core, puis celles des bundles actifs (Bundle::cronJobs(), contrat 1.8 : auto-validate de
         // daily-report, photo-retention de store-photos…).
         $this->container->singleton(CronRunner::class, function (Container $c) {
             $runner = new CronRunner($c->make(CronTokenRepositoryInterface::class));
             $runner->register($c->make(BackupJob::class));
             $runner->register($c->make(LogPurgeJob::class));
+            $runner->register($c->make(NotificationPurgeJob::class));
+            $runner->register($c->make(CalendarSyncJob::class));
+            $runner->register($c->make(\kintai\Core\Cron\SystemNotificationsJob::class));
             $runner->register($c->make(LicenseCheckJob::class));
             if ($c->has(\kintai\Core\Extension\ExtensionRegistry::class)) {
                 $runner->registerBundleJobs(

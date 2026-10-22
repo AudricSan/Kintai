@@ -26,4 +26,5 @@ return [
     'timeclock',
     'team-directory',
     'notebook',
+    'planning-check',
 ];

@@ -100,18 +100,16 @@ async function networkFirst(req) {
   }
 }
 
-// ── Web push (FCM) ──────────────────────────────────────────────────────────
-// PushNotificationService (côté serveur) envoie { notification: {title, body},
-// data: {type, reference_id} } via l'API HTTP v1 de FCM — c'est le format brut
-// reçu ici, sans dépendance au SDK JS Firebase.
+// ── Web push natif (VAPID) ──────────────────────────────────────────────────
+// WebPushService (côté serveur) envoie directement au navigateur une charge utile JSON plate :
+// { title, body, type, link, notification_id, reference_id }.
 self.addEventListener('push', (e) => {
   let payload = {};
   try { payload = e.data ? e.data.json() : {}; } catch (err) { payload = {}; }
 
-  const notif = payload.notification || {};
-  const data  = payload.data || {};
-  const title = notif.title || 'Kintai';
-  const body  = notif.body || '';
+  const data  = payload || {};
+  const title = data.title || 'Kintai';
+  const body  = data.body || '';
 
   e.waitUntil(
     self.registration.showNotification(title, {
@@ -119,7 +117,23 @@ self.addEventListener('push', (e) => {
       icon: BASE + '/assets/img/kintai-192.png',
       badge: BASE + '/assets/img/kintai-192.png',
       data,
+      // Heures silencieuses de l'utilisateur (décidées par le serveur à l'envoi) : affichée sans son ni vibration.
+      silent: data.quiet === '1',
     })
+  );
+});
+
+// Le navigateur a renouvelé ou perdu l'abonnement : on se réabonne avec la même clé serveur. L'enregistrement côté
+// serveur demande une session (jeton CSRF) que le service worker n'a pas ; il est donc fait par push.js, prévenu
+// ici, dans un onglet ouvert, et de toute façon à la prochaine page ouverte.
+self.addEventListener('pushsubscriptionchange', (e) => {
+  const key = (e.oldSubscription && e.oldSubscription.options && e.oldSubscription.options.applicationServerKey) || null;
+  if (!key) return;
+  e.waitUntil(
+    self.registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key })
+      .then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
+      .then((clients) => clients.forEach((c) => c.postMessage({ type: 'push-resubscribed' })))
+      .catch(() => {})
   );
 });
 

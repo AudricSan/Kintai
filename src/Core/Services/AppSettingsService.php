@@ -155,6 +155,18 @@ final class AppSettingsService
         return max(0, (int) $this->get('log_retention_days', '180'));
     }
 
+    /** Rétention minimale des notifications lues : en dessous, une notification pourrait disparaître avant d'avoir été relue. */
+    public const NOTIFICATIONS_RETENTION_MIN = 7;
+    public const NOTIFICATIONS_RETENTION_MAX = 3650;
+
+    /** Jours pendant lesquels une notification LUE est conservée avant la purge (90 par défaut, 7 au minimum). */
+    public function notificationsRetentionDays(): int
+    {
+        $days = (int) $this->get('notifications_retention_days', '90');
+
+        return max(self::NOTIFICATIONS_RETENTION_MIN, min(self::NOTIFICATIONS_RETENTION_MAX, $days > 0 ? $days : 90));
+    }
+
     /** Requêtes API autorisées par minute et par jeton (ApiRateLimitMiddleware) ; 0 = pas de limite. */
     public function apiRateLimitPerMinute(): int
     {

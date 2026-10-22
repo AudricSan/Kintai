@@ -7,7 +7,10 @@ use kintai\UI\Components\Flash;
 
 /**
  * @var array  $user
- * @var string $tab               'info'|'availability'|'ical'|'nav'
+ * @var string $tab               'info'|'availability'|'ical'|'notifications'|'nav'|'data'
+ * @var array  $notif_grid        catégorie → [['type' => NotificationType, 'push' => bool, 'email' => bool]] (onglet notifications)
+ * @var array|null $quiet_hours   ['enabled' => bool, 'start' => 'HH:MM', 'end' => 'HH:MM']
+ * @var bool   $email_available   L'envoi d'e-mail est réglé sur l'instance
  * @var array  $stores            id → store
  * @var int    $store_id
  * @var array  $existing          day_of_week → availability row
@@ -46,6 +49,7 @@ $errMsg = match ($_GET['error'] ?? '') {
     'current_password_wrong' => __('current_password_wrong'),
     'owner_cannot_delete'    => __('error_owner_cannot_remove_self'),
     'avatar_invalid'         => __('avatar_invalid'),
+    'quiet_hours_invalid'    => __('notif_quiet_invalid'),
     default                  => '',
 };
 if ($errMsg !== '') {
@@ -67,8 +71,8 @@ if ($errMsg !== '') {
        class="profile-tab<?= $tab === 'ical' ? ' profile-tab--active' : '' ?>">
         <?= __('profile_tab_ical') ?>
     </a>
-    <a href="<?= route_url('profile') ?>?tab=push"
-       class="profile-tab<?= $tab === 'push' ? ' profile-tab--active' : '' ?>">
+    <a href="<?= route_url('profile') ?>?tab=notifications"
+       class="profile-tab<?= $tab === 'notifications' ? ' profile-tab--active' : '' ?>">
         <?= __('profile_tab_push') ?>
     </a>
     <a href="<?= route_url('profile') ?>?tab=nav"
@@ -476,9 +480,14 @@ $_filteredBnPool = $_navigation->mobileChoices($_isManagerView, $route_visible ?
 <?php elseif ($tab === 'ical'): ?>
 
 <?php
+// Liaison Google Calendar : mise à jour automatique, contrairement à l'abonnement iCal que Google relit quand il veut.
+if (isset($calendar)) {
+    include __DIR__ . '/_profile-google-calendar.php';
+}
 ob_start();
 ?>
 <p class="text-muted mb-sm"><?= __('ical_feeds_description') ?></p>
+<div class="alert alert--info mb-sm"><?= __('ical_google_delay_notice') ?></div>
 <?php if (empty($ical_links)): ?>
     <p class="text-muted"><?= __('no_store_assigned') ?></p>
 <?php else: ?>
@@ -494,6 +503,11 @@ ob_start();
                     data-on-click="@copy">
                 <?= __('ical_copy') ?>
             </button>
+            <?php if (!empty($link['add'])): ?>
+            <a class="btn btn--primary btn--sm" href="<?= htmlspecialchars($link['add']['google']) ?>" target="_blank" rel="noopener"><?= __('ical_add_google') ?></a>
+            <a class="btn btn--ghost btn--sm" href="<?= htmlspecialchars($link['add']['outlook']) ?>" target="_blank" rel="noopener"><?= __('ical_add_outlook') ?></a>
+            <a class="btn btn--ghost btn--sm" href="<?= htmlspecialchars($link['add']['webcal']) ?>"><?= __('ical_add_apple') ?></a>
+            <?php endif; ?>
             <form method="POST"
                   action="<?= $BASE_URL ?>/ical/<?= (int) $link['store_id'] ?>/regenerate"
                   data-confirm="<?= htmlspecialchars(__('ical_regenerate_confirm'), ENT_QUOTES) ?>">
@@ -508,8 +522,8 @@ ob_start();
 echo Card::make(__('ical_feeds'))->body(ob_get_clean())->render();
 ?>
 
-<!-- ═══ TAB : NOTIFICATIONS PUSH ═══ -->
-<?php elseif ($tab === 'push'): ?>
+<!-- ═══ TAB : NOTIFICATIONS ═══ -->
+<?php elseif ($tab === 'notifications'): ?>
 
 <?php
 ob_start();
@@ -518,6 +532,8 @@ ob_start();
     <p class="text-muted"><?= __('push_not_configured') ?></p>
 <?php else: ?>
     <p id="push-status-unsupported" class="text-muted" hidden><?= __('push_unsupported') ?></p>
+    <p id="push-status-ios" class="text-muted" hidden><?= __('push_ios_install_required') ?></p>
+    <p id="push-status-error" class="text-muted" hidden><?= __('push_activation_failed') ?></p>
     <p id="push-status-denied" class="text-muted" hidden><?= __('push_permission_denied') ?></p>
     <div id="push-status-disabled" hidden>
         <p class="text-muted mb-sm"><?= __('push_notifications_description') ?></p>
@@ -529,8 +545,107 @@ ob_start();
     </div>
 <?php endif; ?>
 <?php
-echo Card::make(__('push_notifications'))->body(ob_get_clean())->render();
+echo Card::make(__('notif_card_device'))->body(ob_get_clean())->render();
+
+// Formulaire unique et vide : les cases des deux cartes suivantes s'y rattachent par form= (pas de <form> imbriqué).
+$_notifForm = 'notif-prefs-form';
 ?>
+<form id="<?= $_notifForm ?>" method="POST" action="<?= route_url('profile.notifications') ?>">
+    <?= csrf_field() ?>
+</form>
+
+<?php
+ob_start();
+?>
+<p class="text-muted mb-sm"><?= __('notif_prefs_intro') ?></p>
+<?php if (!($email_available ?? false)): ?>
+    <p class="text-muted mb-sm"><?= __('notif_email_unavailable') ?></p>
+<?php endif; ?>
+<?php if (empty($notif_grid)): ?>
+    <p class="text-muted"><?= __('notif_prefs_empty') ?></p>
+<?php else: ?>
+    <div class="table-wrap">
+        <table class="data-table notif-prefs-table">
+            <thead>
+                <tr>
+                    <th><?= __('notif_col_type') ?></th>
+                    <th><?= __('notif_col_inapp') ?></th>
+                    <th>
+                        <?= __('notif_col_push') ?>
+                        <button type="button" class="notif-prefs-table__all" data-on-click="@toggleChecks" data-target=".notif-check--push"><?= __('notif_toggle_all') ?></button>
+                    </th>
+                    <th>
+                        <?= __('notif_col_email') ?>
+                        <button type="button" class="notif-prefs-table__all" data-on-click="@toggleChecks" data-target=".notif-check--email"><?= __('notif_toggle_all') ?></button>
+                    </th>
+                </tr>
+            </thead>
+            <?php foreach ($notif_grid as $_cat => $_rows): ?>
+                <tbody>
+                    <tr class="notif-prefs-table__category">
+                        <th colspan="4"><?= __('notif_category_' . $_cat) ?></th>
+                    </tr>
+                    <?php foreach ($_rows as $_row): $_t = $_row['type']; ?>
+                        <tr>
+                            <td><input type="hidden" form="<?= $_notifForm ?>" name="shown[]" value="<?= htmlspecialchars($_t->type) ?>"><span aria-hidden="true"><?= htmlspecialchars($_t->icon) ?></span> <?= __('notif_' . $_t->type) ?></td>
+                            <td>
+                                <label class="form-toggle">
+                                    <input type="checkbox" class="form-toggle__input" checked disabled>
+                                    <span class="form-toggle__track"></span>
+                                </label>
+                            </td>
+                            <?php foreach (['push', 'email'] as $_ch): ?>
+                                <td>
+                                    <label class="form-toggle">
+                                        <input type="checkbox" form="<?= $_notifForm ?>" name="<?= $_ch ?>[]"
+                                               value="<?= htmlspecialchars($_t->type) ?>"
+                                               class="form-toggle__input notif-check--<?= $_ch ?>"
+                                               <?= $_row[$_ch] ? 'checked' : '' ?>>
+                                        <span class="form-toggle__track"></span>
+                                    </label>
+                                </td>
+                            <?php endforeach; ?>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            <?php endforeach; ?>
+        </table>
+    </div>
+<?php endif; ?>
+<?php
+echo Card::make(__('notif_card_prefs'))->body(ob_get_clean())->render();
+
+ob_start();
+$_qh = $quiet_hours ?? ['enabled' => false, 'start' => '22:00', 'end' => '07:00'];
+?>
+<p class="text-muted mb-sm"><?= __('notif_quiet_intro') ?></p>
+<div class="form-group mb-sm">
+    <label class="form-toggle">
+        <input type="checkbox" form="<?= $_notifForm ?>" name="quiet_enabled" value="1"
+               class="form-toggle__input" <?= $_qh['enabled'] ? 'checked' : '' ?>>
+        <span class="form-toggle__track"></span>
+    </label>
+    <span><?= __('notif_quiet_enable') ?></span>
+</div>
+<div class="form-row">
+    <div class="form-group">
+        <label class="form-label" for="quiet-start"><?= __('notif_quiet_start') ?></label>
+        <input type="time" id="quiet-start" form="<?= $_notifForm ?>" name="quiet_start"
+               value="<?= htmlspecialchars($_qh['start']) ?>" class="form-control">
+    </div>
+    <div class="form-group">
+        <label class="form-label" for="quiet-end"><?= __('notif_quiet_end') ?></label>
+        <input type="time" id="quiet-end" form="<?= $_notifForm ?>" name="quiet_end"
+               value="<?= htmlspecialchars($_qh['end']) ?>" class="form-control">
+    </div>
+</div>
+<p class="text-muted"><?= __('notif_quiet_bell_note') ?></p>
+<?php
+echo Card::make(__('notif_card_quiet'))->body(ob_get_clean())->render();
+?>
+<div class="form-actions">
+    <?= Button::make(__('save'))->primary()->submit()->attrs(['form' => $_notifForm])->render() ?>
+</div>
 
 <!-- ═══ TAB : CONFIDENTIALITÉ & DONNÉES ═══ -->
 <?php elseif ($tab === 'data'): ?>

@@ -5,6 +5,7 @@ declare(strict_types=1);
 
 namespace kintai\Core\Repositories;
 
+use kintai\Core\Services\ShiftChangeNotifier;
 use kintai\Domain\Eloquent\Shift as EloquentShift;
 use kintai\Domain\Eloquent\ShiftDeletionLog as EloquentShiftDeletionLog;
 
@@ -103,8 +104,10 @@ final class DatabaseShiftRepository implements ShiftRepositoryInterface
 
     public function save(array $data): array
     {
+        $before = null;
         if (!empty($data['id'])) {
             $shift = EloquentShift::findOrFail((int) $data['id']);
+            $before = $shift->toArray();
             $data['ical_sequence'] = ((int) ($shift->ical_sequence ?? 0)) + 1;
             if (!array_key_exists('updated_at', $data)) {
                 $data['updated_at'] = date('Y-m-d H:i:s');
@@ -115,6 +118,8 @@ final class DatabaseShiftRepository implements ShiftRepositoryInterface
             $data['ical_sequence'] = 0;
             $shift = EloquentShift::create($data);
         }
+        // Annonce l'écriture (événements pour les bundles, synchronisation des agendas externes), quel que soit l'appelant.
+        ShiftChangeNotifier::current()->saved($shift->toArray(), $before);
         return $shift->toArray();
     }
 
@@ -142,7 +147,12 @@ final class DatabaseShiftRepository implements ShiftRepositoryInterface
             'deleted_at'       => date('Y-m-d H:i:s'),
         ]);
 
-        return $shift->delete() ? 1 : 0;
+        $row = $shift->toArray();
+        $deleted = $shift->delete() ? 1 : 0;
+        if ($deleted === 1) {
+            ShiftChangeNotifier::current()->deleted($row);
+        }
+        return $deleted;
     }
 
     public function findRecentDeletionsByUserAndStore(int $userId, int $storeId, string $since): array
@@ -184,6 +194,8 @@ final class DatabaseShiftRepository implements ShiftRepositoryInterface
         if ($affected === 0) {
             return null;
         }
-        return EloquentShift::find($id)->toArray();
+        $updated = EloquentShift::find($id)->toArray();
+        ShiftChangeNotifier::current()->saved($updated, $shift->toArray());
+        return $updated;
     }
 }

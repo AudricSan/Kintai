@@ -12,7 +12,8 @@ use kintai\Core\Response;
 
 final class PushTokenController
 {
-    private const PLATFORMS = ['android', 'ios', 'web'];
+    // « web » n'existe plus : les navigateurs s'abonnent en web push natif (POST /notifications/push-subscribe).
+    private const PLATFORMS = ['android', 'ios'];
 
     public function __construct(
         private readonly DevicePushTokenRepositoryInterface $tokens,

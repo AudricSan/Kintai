@@ -32,6 +32,18 @@ final class DatabaseNotificationRepository implements NotificationRepositoryInte
         );
     }
 
+    public function findUnreadByUser(int $userId, int $limit = 10): array
+    {
+        return $this->map(
+            EloquentNotification::where('user_id', $userId)
+                ->whereNull('read_at')
+                ->orderBy('id', 'desc')
+                ->take($limit)
+                ->get()
+                ->toArray()
+        );
+    }
+
     public function countByUser(int $userId): int
     {
         return EloquentNotification::where('user_id', $userId)->count();
@@ -77,6 +89,18 @@ final class DatabaseNotificationRepository implements NotificationRepositoryInte
             ->update(['read_at' => date('Y-m-d H:i:s')]);
     }
 
+    public function markReadByReference(int $userId, string $referenceType, array $referenceIds): void
+    {
+        if ($referenceIds === []) {
+            return;
+        }
+        EloquentNotification::where('user_id', $userId)
+            ->where('reference_type', $referenceType)
+            ->whereIn('reference_id', array_map('intval', $referenceIds))
+            ->whereNull('read_at')
+            ->update(['read_at' => date('Y-m-d H:i:s')]);
+    }
+
     public function markAllRead(int $userId): void
     {
         EloquentNotification::where('user_id', $userId)
@@ -88,6 +112,21 @@ final class DatabaseNotificationRepository implements NotificationRepositoryInte
     {
         $record = EloquentNotification::find($id);
         return $record ? ($record->delete() ? 1 : 0) : 0;
+    }
+
+    public function purgeReadBefore(string $before, int $batchSize = 1000): int
+    {
+        $batchSize = max(1, $batchSize);
+        $deleted   = 0;
+        do {
+            $ids = EloquentNotification::whereNotNull('read_at')->where('read_at', '<', $before)
+                ->orderBy('id')->limit($batchSize)->pluck('id')->all();
+            if ($ids !== []) {
+                $deleted += EloquentNotification::whereIn('id', $ids)->delete();
+            }
+        } while (count($ids) === $batchSize);
+
+        return $deleted;
     }
 
     public function deleteAllForUser(int $userId): void

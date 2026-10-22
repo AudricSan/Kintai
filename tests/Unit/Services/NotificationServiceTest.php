@@ -12,6 +12,9 @@ use kintai\Core\Repositories\JsonTranslationRepository;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Services\NotificationService;
 use kintai\Core\Services\PushNotificationService;
+use kintai\Core\BundleManager;
+use kintai\Core\Extension\ExtensionRegistry;
+use kintai\Core\Services\NotificationTypeRegistry;
 use kintai\Core\Services\TranslationService;
 use kintai\Domain\Eloquent\Notification;
 use PHPUnit\Framework\TestCase;
@@ -36,6 +39,8 @@ if (!defined('BASE_PATH')) {
 final class NotificationServiceTest extends TestCase
 {
     private NotificationService $service;
+    private PushNotificationService $push;
+    private TranslationService $translations;
     private UserRepositoryInterface $users;
 
     /** @var array<int, array{id:int, language:?string}> */
@@ -77,7 +82,9 @@ final class NotificationServiceTest extends TestCase
             fn(int $id) => $this->usersById[$id] ?? null
         );
 
-        $this->service = new NotificationService(new DatabaseNotificationRepository(), $push, $translations, $this->users);
+        $this->push         = $push;
+        $this->translations = $translations;
+        $this->service      = new NotificationService(new DatabaseNotificationRepository(), $push, $translations, $this->users);
     }
 
     private function registerUser(int $id, ?string $language): void
@@ -88,6 +95,31 @@ final class NotificationServiceTest extends TestCase
     private function lang(string $locale): array
     {
         return json_decode((string) file_get_contents(BASE_PATH . "/lang/{$locale}.json"), true);
+    }
+
+    public function testPushPayloadIsFlaggedQuietOnlyDuringQuietHours(): void
+    {
+        $normal = NotificationService::pushPayload('shift_assigned', 12, '/employee/shifts', 42, false);
+        $this->assertSame(['type' => 'shift_assigned', 'reference_id' => '12', 'link' => '/employee/shifts', 'notification_id' => '42'], $normal);
+
+        $quiet = NotificationService::pushPayload('shift_assigned', null, null, 42, true);
+        $this->assertSame('1', $quiet['quiet']);
+        $this->assertSame('', $quiet['reference_id']);
+        $this->assertSame('', $quiet['link']);
+    }
+
+    /** Un lien qui n'est pas un chemin interne n'est jamais enregistré : il finirait dans la cloche, le push et l'e-mail. */
+    public function testNotifyDropsALinkThatIsNotAnInternalPath(): void
+    {
+        $this->registerUser(1, 'fr');
+        foreach (['//evil.example', '/\evil.example', 'https://evil.example/x', 'javascript:alert(1)', '/ok' . "
+" . 'x'] as $bad) {
+            $this->service->notify(1, 'shift_assigned', 'notif_shift_assigned_body', [], null, $bad);
+        }
+        $this->service->notify(1, 'shift_assigned', 'notif_shift_assigned_body', [], null, '/employee/shifts/day?start=2026-08-03&highlight=4');
+
+        $links = Notification::orderBy('id')->pluck('link')->all();
+        $this->assertSame([null, null, null, null, null, '/employee/shifts/day?start=2026-08-03&highlight=4'], $links);
     }
 
     public function testNotifyInsertsARealRowWithoutThrowing(): void
@@ -241,5 +273,64 @@ final class NotificationServiceTest extends TestCase
         $this->service->notify(5, 'timeoff_approved', 'notif_timeoff_approved_body', [], 1);
 
         $this->assertNull(Notification::first()->link);
+    }
+    private function serviceWithRegistry(): NotificationService
+    {
+        $manager = (new \ReflectionClass(BundleManager::class))->newInstanceWithoutConstructor();
+        (new \ReflectionProperty($manager, 'bundles'))->setValue($manager, []);
+
+        return new NotificationService(
+            new DatabaseNotificationRepository(),
+            $this->push,
+            $this->translations,
+            $this->users,
+            new NotificationTypeRegistry(new ExtensionRegistry($manager)),
+        );
+    }
+
+    /** Le type d'objet vient du registre : visiter l'objet pourra marquer ses notifications comme lues. */
+    public function testNotifyStoresTheReferenceTypeOfTheRegistry(): void
+    {
+        $this->registerUser(5, 'fr');
+        $this->serviceWithRegistry()->notify(5, 'shift_assigned', 'notif_shift_assigned_body', [], 12);
+
+        $this->assertSame('shift', Notification::first()->reference_type);
+        $this->assertSame(12, (int) Notification::first()->reference_id);
+    }
+
+    public function testNotifyLeavesReferenceTypeEmptyWithoutIdOrKnownType(): void
+    {
+        $this->registerUser(5, 'fr');
+        $service = $this->serviceWithRegistry();
+        $service->notify(5, 'shift_assigned', 'notif_shift_assigned_body');
+        $service->notify(5, 'unknown_type', 'notif_shift_assigned_body', [], 3);
+
+        foreach (Notification::all() as $row) {
+            $this->assertNull($row->reference_type);
+        }
+    }
+    public function testMarkReadForMarksTheObjectNotificationsAsRead(): void
+    {
+        $this->registerUser(5, 'fr');
+        $service = $this->serviceWithRegistry();
+        $service->notify(5, 'shift_assigned', 'notif_shift_assigned_body', [], 12);
+        $service->notify(5, 'shift_assigned', 'notif_shift_assigned_body', [], 13);
+
+        $service->markReadFor(5, 'shift', 12);
+
+        $this->assertNotNull(Notification::where('reference_id', 12)->first()->read_at);
+        $this->assertNull(Notification::where('reference_id', 13)->first()->read_at);
+    }
+
+    /** Une panne du « lu » automatique ne doit jamais empêcher d'afficher la page. */
+    public function testMarkReadForNeverThrows(): void
+    {
+        $repo = $this->createStub(\kintai\Core\Repositories\NotificationRepositoryInterface::class);
+        $repo->method('markReadByReference')->willThrowException(new \RuntimeException('base indisponible'));
+        $service = new NotificationService($repo, $this->push, $this->translations, $this->users);
+
+        $service->markReadFor(5, 'shift', [1, 2]);
+
+        $this->addToAssertionCount(1);
     }
 }

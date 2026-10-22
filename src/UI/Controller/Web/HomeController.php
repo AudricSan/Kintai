@@ -19,6 +19,7 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\DashboardAlertService;
+use kintai\Core\Services\DashboardLayoutResolver;
 use kintai\Core\Services\ShiftWageCalculator;
 use kintai\Core\Services\StoreStatsServiceInterface;
 use kintai\UI\ViewRenderer;
@@ -71,6 +72,8 @@ final class HomeController
         private readonly DashboardAlertService $dashboardAlerts,
         private readonly PermissionService $permissions,
         private readonly ?PendingRequests $pendingRequests = null,
+        // Disposition de l'utilisateur, sinon défaut de son rôle ; mises en page nommées (null : disposition enregistrée seule).
+        private readonly ?DashboardLayoutResolver $layoutResolver = null,
     ) {}
 
     public function index(Request $request): Response
@@ -146,6 +149,7 @@ final class HomeController
         // widgets historiques d'un bundle qui déclare les siens ne sont plus rendus par le Core ($enabledWidgets).
         $dashWidgets = DashboardWidgets::current();
         $widgetKeys  = self::offeredWidgetKeys($dashWidgets);
+        $sizes       = $dashWidgets->sizes(DashboardWidget::MANAGER, self::ADMIN_WIDGETS);
         $saved = $this->dashboardPrefs->getEnabledWidgets((int) $user['id'], 'admin');
         $enabledAll = array_flip(array_values(
             $saved !== null
@@ -242,7 +246,12 @@ final class HomeController
             'enabled_widgets'     => $enabledWidgets,
             'enabled_widgets_all' => $enabledAll,
             'all_widgets'         => $widgetKeys,
-            'widget_layout'       => DashboardLayout::resolve($widgetKeys, $this->dashboardPrefs->getLayout((int) $user['id'], 'admin'), self::ADMIN_WIDGET_WIDTHS),
+            'widget_layout'       => DashboardLayout::resolve($widgetKeys, $this->layoutResolver?->layoutFor((int) $user['id'], 'admin') ?? $this->dashboardPrefs->getLayout((int) $user['id'], 'admin'), self::ADMIN_WIDGET_WIDTHS + $sizes['widths'], $sizes['heights']),
+            'dashboard_layouts'   => $this->layoutResolver?->namedLayouts((int) $user['id'], 'admin') ?? [],
+            'dashboard_layouts_route' => 'admin.dashboard.layouts',
+            'dashboard_roles'     => !empty($user['is_admin']) ? ($this->layoutResolver?->roleOptions('admin') ?? []) : [],
+            'widget_limits'       => $sizes['limits'],
+            'widget_refresh'      => $sizes['refresh'],
             'bundle_widgets'      => $bundleWidgets,
             'bundle_widget_meta'  => self::prefixedMeta($dashWidgets),
             'employee_widgets'    => $employeeWidgets,

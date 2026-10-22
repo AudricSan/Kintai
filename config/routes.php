@@ -3,12 +3,15 @@
 declare(strict_types=1);
 
 use kintai\UI\Controller\Web\AuthController;
+use kintai\UI\Controller\Web\CalendarLinkController;
+use kintai\UI\Controller\Web\System\CalendarSettingsController;
 use kintai\UI\Controller\Web\BundleAssetController;
 use kintai\UI\Controller\Web\PasswordResetController;
 use kintai\UI\Controller\Web\NotificationController;
 use kintai\UI\Controller\Web\CronController;
 use kintai\UI\Controller\Web\EmployeeController;
 use kintai\UI\Controller\Web\DashboardLayoutController;
+use kintai\UI\Controller\Web\DashboardLayoutsController;
 use kintai\UI\Controller\Web\HomeController;
 use kintai\UI\Controller\Web\IcalController;
 use kintai\UI\Controller\Web\DocsController;
@@ -37,6 +40,7 @@ use kintai\UI\Controller\Web\System\LanguageController;
 use kintai\UI\Controller\Web\System\LicenseController;
 use kintai\UI\Controller\Web\System\SetupWizardController;
 use kintai\UI\Controller\Web\System\MailTestController;
+use kintai\UI\Controller\Web\System\NotificationSettingsController;
 use kintai\UI\Controller\Web\System\OwnerSettingsController;
 use kintai\Core\Middleware\AuthMiddleware;
 use kintai\Core\Middleware\OwnerOnlyMiddleware;
@@ -58,6 +62,8 @@ use kintai\UI\Controller\Api\V1\ActivityController as ApiActivityController;
 use kintai\UI\Controller\Api\V1\IcalTokenController as ApiIcalTokenController;
 use kintai\UI\Controller\Api\V1\UserPrefsController as ApiUserPrefsController;
 use kintai\UI\Controller\Api\V1\PushTokenController as ApiPushTokenController;
+use kintai\UI\Controller\Api\V1\NotificationPreferenceController as ApiNotificationPreferenceController;
+use kintai\UI\Controller\Web\NotificationUnsubscribeController;
 
 
 /** @var \kintai\Core\Router $router */
@@ -82,6 +88,10 @@ $router->get('/forgot-password',  [PasswordResetController::class, 'showForgotFo
 $router->post('/forgot-password', [PasswordResetController::class, 'sendLink'], middleware: [RateLimiterMiddleware::class], name: 'password.forgot.post');
 $router->get('/reset-password/{token}',  [PasswordResetController::class, 'showResetForm'], name: 'password.reset');
 $router->post('/reset-password/{token}', [PasswordResetController::class, 'reset'], middleware: [RateLimiterMiddleware::class], name: 'password.reset.post');
+
+// Désabonnement d'un type d'e-mail de notification : lien signé ouvert depuis le client e-mail, sans connexion.
+$router->get('/notifications/unsubscribe', [NotificationUnsubscribeController::class, 'show'], middleware: [RateLimiterMiddleware::class], name: 'notifications.unsubscribe');
+$router->post('/notifications/unsubscribe', [NotificationUnsubscribeController::class, 'confirm'], middleware: [RateLimiterMiddleware::class], name: 'notifications.unsubscribe.confirm');
 
 // --- PWA ---
 $router->get('/manifest.json', [PwaController::class, 'manifest'], name: 'pwa.manifest');
@@ -109,6 +119,13 @@ $router->group('/profile', function ($r) {
     $r->post('/avatar',      [AuthController::class, 'uploadAvatar'],         name: 'profile.avatar');
     $r->post('/avatar/delete', [AuthController::class, 'removeAvatar'],       name: 'profile.avatar.delete');
     $r->post('/password',    [AuthController::class, 'saveProfilePassword'],  name: 'profile.password');
+    $r->post('/notifications', [AuthController::class, 'saveNotificationPreferences'], name: 'profile.notifications');
+    // Liaison de l'agenda Google de l'utilisateur (OAuth, Kintai → Google).
+    $r->post('/calendar/google/connect',    [CalendarLinkController::class, 'connect'],    name: 'profile.calendar.connect');
+    $r->get('/calendar/google/callback',    [CalendarLinkController::class, 'callback'],   name: 'profile.calendar.callback');
+    $r->post('/calendar/google/disconnect', [CalendarLinkController::class, 'disconnect'], name: 'profile.calendar.disconnect');
+    $r->post('/calendar/google/options',    [CalendarLinkController::class, 'options'],    name: 'profile.calendar.options');
+    $r->post('/calendar/google/resync',     [CalendarLinkController::class, 'resync'],     name: 'profile.calendar.resync');
     $r->get('/export',       [AuthController::class, 'exportData'],           name: 'profile.export');
     $r->post('/delete',      [AuthController::class, 'deleteAccount'],        name: 'profile.delete');
 }, middleware: [AuthMiddleware::class]);
@@ -126,6 +143,7 @@ $router->group('/notifications', function ($r) {
     $r->get('/{id}/open',    [NotificationController::class, 'open'],        name: 'notifications.open');
     $r->post('/push-subscribe',   [NotificationController::class, 'pushSubscribe'],   name: 'notifications.push_subscribe');
     $r->post('/push-unsubscribe', [NotificationController::class, 'pushUnsubscribe'], name: 'notifications.push_unsubscribe');
+    $r->post('/push-status',      [NotificationController::class, 'pushStatus'],      name: 'notifications.push_status');
 }, middleware: [AuthMiddleware::class]);
 
 // --- Support (footer : "signaler un problème" → issue GitHub) ---
@@ -142,6 +160,7 @@ $router->group('/employee', function ($r) {
     $r->get('',             [EmployeeController::class, 'dashboard'],    name: 'employee.dashboard');
     $r->post('/dashboard/widgets', [DashboardLayoutController::class, 'widgetsEmployee'], name: 'employee.dashboard.widgets');
     $r->post('/dashboard/layout',  [DashboardLayoutController::class, 'saveEmployee'],  name: 'employee.dashboard.layout');
+    $r->post('/dashboard/layouts', [DashboardLayoutsController::class, 'manageEmployee'], name: 'employee.dashboard.layouts');
 
     // Shifts
     $r->get('/shifts',          [EmployeeController::class, 'shifts'],         name: 'employee.shifts');
@@ -180,6 +199,7 @@ $router->post('/lang/{locale}', [AuthController::class, 'switchLanguage'], name:
 $router->get('/', [HomeController::class, 'index'], middleware: [AuthMiddleware::class, PermissionMiddleware::class], name: 'home', permission: 'public');
 $router->post('/admin/dashboard/widgets', [DashboardLayoutController::class, 'widgetsManager'], middleware: [AuthMiddleware::class, PermissionMiddleware::class], name: 'admin.dashboard.widgets', permission: 'public');
 $router->post('/admin/dashboard/layout', [DashboardLayoutController::class, 'saveManager'], middleware: [AuthMiddleware::class, PermissionMiddleware::class], name: 'admin.dashboard.layout', permission: 'public');
+$router->post('/admin/dashboard/layouts', [DashboardLayoutsController::class, 'manageManager'], middleware: [AuthMiddleware::class, PermissionMiddleware::class], name: 'admin.dashboard.layouts', permission: 'public');
 
 // =============================================================================
 // Routes administration (web)
@@ -287,6 +307,17 @@ $router->group('/admin', function ($r) {
     $r->get('/mail-test',  [MailTestController::class, 'show'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.mail_test', permission: 'public');
     $r->post('/mail-test', [MailTestController::class, 'send'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.mail_test.send', permission: 'public');
 
+    // Notifications de l'instance : conservation, état des canaux, notification de test, clés du web push.
+    $r->get('/notifications-settings',          [NotificationSettingsController::class, 'show'],            middleware: [OwnerOnlyMiddleware::class], name: 'admin.notifications_settings', permission: 'public');
+    $r->post('/notifications-settings',         [NotificationSettingsController::class, 'save'],            middleware: [OwnerOnlyMiddleware::class], name: 'admin.notifications_settings.save', permission: 'public');
+    $r->post('/notifications-settings/test',    [NotificationSettingsController::class, 'sendTest'],        middleware: [OwnerOnlyMiddleware::class], name: 'admin.notifications_settings.test', permission: 'public');
+    $r->post('/notifications-settings/vapid',   [NotificationSettingsController::class, 'regenerateVapid'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.notifications_settings.vapid', permission: 'public');
+
+    // Agendas externes : identifiants Google de l'instance (Owner).
+    $r->get('/calendar-settings',               [CalendarSettingsController::class, 'show'],                middleware: [OwnerOnlyMiddleware::class], name: 'admin.calendar_settings', permission: 'public');
+    $r->post('/calendar-settings',              [CalendarSettingsController::class, 'save'],                middleware: [OwnerOnlyMiddleware::class], name: 'admin.calendar_settings.save', permission: 'public');
+    $r->post('/calendar-settings/test',         [CalendarSettingsController::class, 'test'],                middleware: [OwnerOnlyMiddleware::class], name: 'admin.calendar_settings.test', permission: 'public');
+
     // Sauvegardes
     $r->get('/backup',               [BackupController::class, 'index'],  middleware: [OwnerOnlyMiddleware::class], name: 'admin.backup', permission: 'public');
     $r->get('/backup/download',      [BackupController::class, 'download'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.backup.download', permission: 'public');
@@ -335,7 +366,10 @@ $router->group('/admin', function ($r) {
     // Assistant de configuration ouvert par l'installateur : licence, puis bundles (voir SetupWizard).
     $r->get('/setup',          [SetupWizardController::class, 'show'],    middleware: [OwnerOnlyMiddleware::class], name: 'admin.setup', permission: 'public');
     $r->post('/setup/license', [SetupWizardController::class, 'license'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.setup.license', permission: 'public');
+    $r->post('/setup/step/{step}', [SetupWizardController::class, 'step'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.setup.step', permission: 'public');
+    $r->post('/setup/finish', [SetupWizardController::class, 'finish'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.setup.finish', permission: 'public');
     $r->post('/setup/bundles', [SetupWizardController::class, 'bundles'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.setup.bundles', permission: 'public');
+    $r->post('/setup/questions', [SetupWizardController::class, 'questions'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.setup.questions', permission: 'public');
     $r->get('/license',           [LicenseController::class, 'show'],       middleware: [OwnerOnlyMiddleware::class], name: 'admin.license', permission: 'public');
     $r->post('/license/activate', [LicenseController::class, 'activate'],   middleware: [OwnerOnlyMiddleware::class], name: 'admin.license.activate', permission: 'public');
     $r->post('/license/refresh',  [LicenseController::class, 'refresh'],    middleware: [OwnerOnlyMiddleware::class], name: 'admin.license.refresh', permission: 'public');
@@ -388,6 +422,8 @@ $router->group('/api/v1', function ($r) {
     $r->put('/users/{user_id}/rates/{id}',                            [ApiUserShiftRateController::class, 'update'],         name: 'api.v1.users.rates.update', permission: 'employees.update');
     $r->delete('/users/{user_id}/rates/{id}',                         [ApiUserShiftRateController::class, 'destroy'],        name: 'api.v1.users.rates.destroy', permission: 'employees.update');
     // Users — jetons d'appareil push (notifications mobiles, FCM)
+    $r->get('/users/{user_id}/notification-preferences',             [ApiNotificationPreferenceController::class, 'show'],   name: 'api.v1.users.notification_preferences.show', permission: ['perm' => 'employees.update', 'self' => 'user_id']);
+    $r->put('/users/{user_id}/notification-preferences',             [ApiNotificationPreferenceController::class, 'update'], name: 'api.v1.users.notification_preferences.update', permission: ['perm' => 'employees.update', 'self' => 'user_id']);
     $r->post('/users/{user_id}/push-tokens',                          [ApiPushTokenController::class, 'store'],              name: 'api.v1.users.push_tokens.store', permission: ['perm' => 'employees.update', 'self' => 'user_id']);
     $r->delete('/users/{user_id}/push-tokens',                        [ApiPushTokenController::class, 'destroy'],            name: 'api.v1.users.push_tokens.destroy', permission: ['perm' => 'employees.update', 'self' => 'user_id']);
     $r->get('/users/{user_id}/ical-tokens',                           [ApiIcalTokenController::class, 'index'],              name: 'api.v1.users.ical_tokens.index', permission: ['perm' => 'employees.view', 'self' => 'user_id']);

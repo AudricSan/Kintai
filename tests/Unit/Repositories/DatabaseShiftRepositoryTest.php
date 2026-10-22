@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Repositories;
 
 use PHPUnit\Framework\TestCase;
+use kintai\Core\Extension\Events;
 use kintai\Core\Repositories\DatabaseShiftRepository;
+use kintai\Core\Services\ShiftChangeNotifier;
 use Illuminate\Database\Capsule\Manager as Capsule;
 use kintai\Domain\Eloquent\Shift as EloquentShift;
 use kintai\Domain\Eloquent\ShiftDeletionLog as EloquentShiftDeletionLog;
@@ -416,5 +418,88 @@ final class DatabaseShiftRepositoryTest extends TestCase
     public function testCloseOpenShiftToReturnsNullWhenShiftNotFound(): void
     {
         $this->assertNull($this->repo->closeOpenShiftTo(999, 42));
+    }
+
+    // -------------------------------------------------------------------------
+    // Annonce des écritures (événements bundles + synchronisation des agendas)
+    // -------------------------------------------------------------------------
+
+    /** @return list<array{string, array, ?array}> */
+    private function recordNotifications(): \ArrayObject
+    {
+        $seen = new \ArrayObject();
+        ShiftChangeNotifier::override(new ShiftChangeNotifier(new Events(), function (string $kind, array $shift, ?array $before) use ($seen) {
+            $seen->append([$kind, $shift, $before]);
+        }));
+        return $seen;
+    }
+
+    protected function tearDown(): void
+    {
+        ShiftChangeNotifier::override(null);
+    }
+
+    public function testSaveAnnouncesACreationWithoutPreviousState(): void
+    {
+        $seen = $this->recordNotifications();
+
+        $saved = $this->repo->save(['store_id' => 1, 'user_id' => 10, 'shift_date' => '2025-06-15']);
+
+        $this->assertCount(1, $seen);
+        [$kind, $shift, $before] = $seen[0];
+        $this->assertSame('saved', $kind);
+        $this->assertSame($saved['id'], $shift['id']);
+        $this->assertNull($before);
+    }
+
+    public function testSaveAnnouncesAnUpdateWithThePreviousEmployee(): void
+    {
+        $created = EloquentShift::create(['store_id' => 1, 'user_id' => 10, 'shift_date' => '2025-06-15']);
+        $seen = $this->recordNotifications();
+
+        $this->repo->save(['id' => $created->id, 'user_id' => 11]);
+
+        [$kind, $shift, $before] = $seen[0];
+        $this->assertSame('saved', $kind);
+        $this->assertSame(11, (int) $shift['user_id']);
+        $this->assertSame(10, (int) $before['user_id']);
+    }
+
+    public function testDeleteAnnouncesTheRemovedShiftOnlyWhenOneWasDeleted(): void
+    {
+        $created = EloquentShift::create(['store_id' => 1, 'user_id' => 10, 'shift_date' => '2025-06-15']);
+        $seen = $this->recordNotifications();
+
+        $this->repo->delete(999);
+        $this->assertCount(0, $seen, 'rien à annoncer quand le shift n’existe pas');
+
+        $this->repo->delete($created->id);
+        $this->assertCount(1, $seen);
+        $this->assertSame('deleted', $seen[0][0]);
+        $this->assertSame($created->id, $seen[0][1]['id']);
+    }
+
+    public function testClosingAnOpenShiftIsAnnouncedAsASaveForTheNewEmployee(): void
+    {
+        $open = EloquentShift::create(['store_id' => 1, 'user_id' => null, 'shift_date' => '2025-06-15', 'is_open' => 1]);
+        $seen = $this->recordNotifications();
+
+        $this->repo->closeOpenShiftTo($open->id, 42);
+
+        $this->assertCount(1, $seen);
+        $this->assertSame('saved', $seen[0][0]);
+        $this->assertSame(42, (int) $seen[0][1]['user_id']);
+        $this->assertNull($seen[0][2]['user_id']);
+    }
+
+    public function testAFailingNotifierNeverUndoesTheWrite(): void
+    {
+        ShiftChangeNotifier::override(new ShiftChangeNotifier(new Events(), function () {
+            throw new \RuntimeException('agenda indisponible');
+        }));
+
+        $saved = $this->repo->save(['store_id' => 1, 'user_id' => 10, 'shift_date' => '2025-06-15']);
+
+        $this->assertNotNull(EloquentShift::find($saved['id']));
     }
 }

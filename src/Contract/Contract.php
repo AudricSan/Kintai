@@ -18,10 +18,23 @@ namespace kintai\Contract;
 final class Contract
 {
     /** Version du contrat fournie par ce Core. */
-    public const VERSION = '1.22.0';
+    public const VERSION = '1.28.0';
 
     /*
      * Historique :
+     * - 1.28.0 : événements kintai\Contract\Event\ShiftSaved et ShiftDeleted, annoncés par le Core à chaque écriture d'un shift
+     *   quel que soit le chemin (administration, API, import, échange, reprise d'un shift ouvert).
+     * - 1.27.0 : point d'extension Bundle::pageOverlays() et kintai\Contract\Extension\PageOverlay (fenêtres affichées par-dessus
+     *   les pages, une seule à la fois, rendues dans un garde).
+     * - 1.26.0 : DashboardWidget gagne des champs optionnels de taille sur la grille de 12 colonnes (defaultWidth,
+     *   defaultHeight, minWidth, maxWidth) et de rafraîchissement (refreshInterval) ; valeurs par défaut = ancien comportement.
+     * - 1.25.0 : traductions du contrat — clés du Core utilisables (src/Contract/translation-keys.php), surcharge explicite
+     *   d'une clé du Core par lang/overrides/{locale}.json, préfixe obligatoire des clés d'un bundle.
+     * - 1.24.0 : fonctions globales du contrat déclarées (src/Contract/functions.php : __, csrf_field, route_url, back_url,
+     *   bundle_asset… ; le reste de helpers.php est interne) et vérifiées par ContractUsageScanner::functionViolations().
+     * - 1.23.0 : types de notification enrichis (Bundle::notificationTypes() accepte catégorie, canaux par défaut push/e-mail et
+     *   reference_type, en plus de l'ancien format type => icône) et « lu » automatique NotificationService::markReadFor()
+     *   pour les pages de détail des bundles.
      * - 1.22.0 : helpers de vue style_class() et inline_styles() (styles dynamiques sans attribut style="…", émis dans un
      *   <style> à nonce) ; préalable au retrait de 'unsafe-inline' de la directive style-src de la CSP.
      * - 1.21.0 : kintai\Contract\Auth\UserAnonymizer (suppression d'un compte = anonymisation, même résultat que la fiche

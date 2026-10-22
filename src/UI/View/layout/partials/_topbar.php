@@ -289,8 +289,10 @@ $ico              = fn(string $k): string => '<span class="topbar-nav-group__lin
 
                 <hr class="user-dropdown__divider">
 
-                <form method="POST" action="<?= route_url('auth.logout') ?>" class="form-contents">
+                <form method="POST" action="<?= route_url('auth.logout') ?>" class="form-contents" data-push-logout>
                     <?= csrf_field() ?>
+                    <?php /* Adresse de l'abonnement web push de ce navigateur, remplie par push.js : supprimée à la déconnexion. */ ?>
+                    <input type="hidden" name="push_endpoint" value="">
                     <button type="submit" class="user-dropdown__item user-dropdown__item--danger" role="menuitem">
                         <span class="user-dropdown__item-icon">⎋</span><?= __('logout') ?>
                     </button>

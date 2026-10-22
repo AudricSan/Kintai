@@ -399,7 +399,7 @@ ob_start();
                                          data-rate-detail="<?= $shRateDetail ?>"
                                          data-width-pct="<?= number_format($width, 5) ?>"
                                          <?php if ($_canManage): ?>data-draggable="1"<?php endif; ?>
-                                         class="tl-bar <?= style_class(['left' => number_format($left, 5) . '%', 'width' => number_format($width, 5) . '%', 'background' => $bg, 'border' => $border, 'color' => $textColor, 'text-shadow' => $shadow]) ?>">
+                                         class="tl-bar<?= (int) ($highlight_id ?? 0) > 0 && (int) ($sh['id'] ?? 0) === (int) $highlight_id ? ' tl-bar--highlight' : '' ?> <?= style_class(['left' => number_format($left, 5) . '%', 'width' => number_format($width, 5) . '%', 'background' => $bg, 'border' => $border, 'color' => $textColor, 'text-shadow' => $shadow]) ?>">
                                         <?php if ($width > 4): ?>
                                             <span class="tl-bar-label tl-bar-label--main">
                                                 <?= TimelineHelpers::atFmt($sh['_sm']) ?>–<?= TimelineHelpers::atFmt($sh['_em']) ?>

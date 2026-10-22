@@ -288,6 +288,18 @@ public function dashboardWidgets(): array
 
 店長は自分の `EMPLOYEE` ウィジェットを店長ダッシュボードにも追加できます（既定では無効、「ウィジェットを追加」から選択。逆はできません）。その場合ウィジェットはキー `emp_{key}` で保存され、`data` は従業員ダッシュボードと同じコンテキストを受け取ります：店長自身の `store_ids`、`managed_store_ids` は `null`。そのためウィジェットのキーは41文字までに制限されています。
 
+#### サイズと更新（契約1.26）
+
+グリッドは 12 列です。任意の引数でウィジェットの見た目を宣言します（既定値は従来の動作：全幅、内容の高さ、更新なし）。
+
+```php
+new DashboardWidget(key: 'team_notes', /* … */ defaultWidth: 4, defaultHeight: 2, minWidth: 3, maxWidth: 8, refreshInterval: 120)
+```
+
+`defaultWidth` は列数（1〜12）、`defaultHeight` は最小の行数（1〜6）、`minWidth`/`maxWidth` はユーザーが選べる範囲、`refreshInterval` は秒
+（0 = 更新なし、それ以外は 15 以上）です。幅の広いカードだけでなく、狭いカード（3〜4 列：一覧を省略し「すべて見る」へのリンク）にも対応するビューを作ってください。
+
+
 ### ビュー変数：`viewVariables()`（契約1.5）
 
 ```php
@@ -349,6 +361,78 @@ public function notificationTypes(): array
 バンドルが作成する通知の種類をアイコンとともに宣言します。ラベルはバンドルの `lang/` ファイルの翻訳 `notif_{type}` です。Coreの種類は再定義できません。すでに受信した通知は、翻訳が存在する限り、バンドルを無効にしても翻訳されたラベルを保ちます。
 
 書き込む操作ログ（`AuditLogger`）も同じ方法でラベルが付きます：`lang/` ファイルに `audit_{action}` を含めてください。ドットとハイフンはアンダースコアに置き換えます（`timeoff.approved` → `audit_timeoff_approved`）。`notificationTypes()` には `"kintai_contract": "^1.7"` を指定してください。翻訳の慣例には何も必要ありません。
+
+### 通知の種類：カテゴリ、チャネル、自動「既読」（契約1.23）
+
+```php
+public function notificationTypes(): array
+{
+    return [
+        'timeoff_approved' => [
+            'icon'           => '✓',
+            'category'       => 'requests',                       // planning | requests | messages | reports | system
+            'channels'       => ['push' => true, 'email' => true], // ユーザー設定の初期値
+            'reference_type' => 'timeoff',                         // notify() に渡すIDが指す対象
+        ],
+        'timeoff_refused' => '✗',                                  // 旧形式：引き続き使用可能
+    ];
+}
+```
+
+拡張形式では、種類がユーザーの通知設定（プロフィール › 通知）に分類され、プッシュとメールの列の**初期値**が決まります。ユーザー自身の選択が常に優先され、ベルは常にすべてを受け取ります。旧形式 `type => icon` には、カテゴリ `system`、プッシュ有効、メール無効、`reference_type` なしが適用されます。不正な宣言は無視されてログに記録され、バンドルの読み込みを妨げることはありません。
+
+`notify()` には必ず**正確なリンク**（一覧ではなく項目そのもの）と、`referenceId` として対象のIDを渡してください。
+
+```php
+$this->notifications->notify($userId, 'timeoff_approved', 'notif_timeoff_approved_body', ['name' => $name], $request->id, route_url('timeoff.show', ['id' => $request->id]));
+```
+
+ユーザーがその対象の詳細ページを開いたら、その通知を既読にします。
+
+```php
+$this->notifications->markReadFor($currentUserId, 'timeoff', $request->id);   // ID または ID の配列
+```
+
+`markReadFor()` は `kintai\Contract\Services\NotificationService` にあり、例外を投げないため、失敗してもページの表示は妨げられません。`referenceType` は種類で宣言したものです。`"kintai_contract": "^1.23"` を要求してください。
+
+バンドルに詳細ページがない場合は、リンクを `?highlight={id}` 付きの一覧にし、対応する `.data-table` の行にクラス `tr--highlight`（Coreのスタイル）を付け、表示した行について `markReadFor()` を呼びます。
+
+### 呼び出せるグローバル関数（契約1.24）
+
+バンドルが呼び出せるグローバル関数は `src/Contract/functions.php` で宣言されたものだけです（`__`、`csrf_field`、`csrf_token`、
+`csp_nonce`、`route_url`、`base_url`、`back_url`、`safe_redirect_path`、`store_segment`、`employee_segment`、`route_segment`、
+`bundle_asset`、`translation_or`、`user_locale`、`month_label`、`date_label`、`format_currency`、`currency_symbol`、
+`store_currency_style`、`style_class`、`inline_styles`。暫定：`bundle_asset_path`、`storage_path`）。Core のそれ以外のグローバル関数は
+内部用で、予告なく変更される可能性があります。`ContractUsageScanner::functionViolations()`（バンドルの `ContractUsageTest` が使用）は、
+PHP の関数でも宣言済みでもバンドル自身の定義でもない関数の呼び出しを報告します。Core のビューのパーシャルを `include` することも避け、
+自前のものを用意してください。
+
+### 翻訳：独自キー、Core のキー、上書き（契約1.25）
+
+- 独自キーにはスラッグをプレフィックスとして付けます（`daily-report` → `daily_report_title`）。予約規約は `bundle_{slug}`、
+  `bundle_{slug}_desc`、`notif_{type}`、`audit_{action}`、`cron_job_{名前}` です。3 言語（`fr`、`en`、`ja`）を同じ `:name`
+  パラメータで用意してください。
+- `src/Contract/translation-keys.php` に列挙された Core のキー（`save`、`cancel`、`delete`、月名など）は再定義せずに使えます。それ以外の
+  Core のキーは内部用です。
+- Core のキーの文言を変えるには、`lang/overrides/{locale}.json` に宣言します（同じ `:name` パラメータ）。宣言せずに `lang/{locale}.json` で
+  Core のキーを再定義すると衝突となり、`TranslationContractChecker` が報告し、strict モードでは Core が無視します。オーナーによる編集
+  （言語画面）が最優先で、次にバンドルの上書き、最後に Core です。
+- `TranslationContractChecker::violations($bundleDir, $slug, $coreLangDir)` は規則別（`parity`、`placeholders`、`prefix`、`collisions`、
+  `overrides`、`unknown`）に違反を返します。バンドルのテストから呼び出してください。
+
+### 生成されたひな形から始める
+
+```bash
+php scripts/new-bundle.php my-feature --name="My feature"     # ../KintaiBundleDev/kintai-bundle-my-feature を作成
+cd ../KintaiBundleDev/kintai-bundle-my-feature && composer install && vendor/bin/phpunit
+```
+
+ひな形は最初から契約に沿っています（プレフィックス付き翻訳、ナビゲーション、権限、ルート、ビュー、CSP 対応）。`tests/ContractTest.php` が
+リリース前に実行する唯一の検査です（マニフェストのスキーマ、クラス、関数、翻訳）。チェックリスト：アイデア → 権限 → テーブルとマイグレーション →
+拡張ポイント → ルートと RBAC → インラインコードのないビュー → 翻訳（fr/en/ja）→ テスト → ローカル登録 → インストールテスト → タグ付き GitHub リリース →
+レジストリへの登録。
+
+
 
 ### 定期ジョブ：`cronJobs()`（契約1.8）
 
@@ -424,9 +508,11 @@ Coreは自分の側で起きたことを知らせ、Coreがバンドルを知ら
 | イベント | いつ | データ |
 |---|---|---|
 | `EmployeeCreated` | アカウント作成の直後：「新しい従業員」フォーム、Excelインポートのクイック作成、`POST /api/v1/users` | `user`、`storeId`（従業員が割り当てられた店舗、なければ `null`——APIからは常に `null`）、`createdBy`、`source` |
+| `ShiftSaved`（1.28） | シフトがリポジトリに書き込まれたとき（管理フォーム、API、Excelインポート、交換、募集シフトの引き受けなど経路を問わず） | `shift`（保存された行）、`before`（変更前の行。新規シフトでは `null`）。補助メソッド `isNew()`、`userId()`、`previousUserId()`（シフトを外された従業員） |
+| `ShiftDeleted`（1.28） | シフトが削除されたとき（経路を問わず） | `shift`（削除前の行）。補助メソッド `shiftId()`、`userId()` |
 | `OpenShiftClosed`（1.17） | 募集中に公開されたシフトがシフトフォームまたは `PUT /api/v1/shifts/{id}` から募集終了になったとき（`is_open` 1 → 0） | `shift`（保存された行）、`closedBy` |
 
-`hiring-report` はこの方法で従業員の採用報告を作成し、`shift-claim` は募集終了したシフトの保留中の応募を取り下げます。`"kintai_contract": "^1.13"`（`OpenShiftClosed` には `^1.17`）を指定してください。
+`hiring-report` はこの方法で従業員の採用報告を作成し、`shift-claim` は募集終了したシフトの保留中の応募を取り下げます。`"kintai_contract": "^1.13"`（`OpenShiftClosed` には `^1.17`、`ShiftSaved`/`ShiftDeleted` には `^1.28`）を指定してください。
 
 ### ダッシュボードの統計カード：`dashboardStats()`（契約1.19）
 
@@ -465,6 +551,34 @@ public function shiftFormSections(): array
 ```
 
 Coreはシフトフォーム（作成ページ、編集ページ、タイムラインのダイアログ）の中に `view` を描画し、編集ページではアクションバーに `actionsView` を描画します。どちらもシフトフォームの**内側**にあります：自分のルートを対象にするボタンは `formaction`/`formmethod`（と `formnovalidate`）を使ってください——ブラウザが無視する入れ子の `<form>` は使わないでください。保存時、Coreは宣言された `fields` だけを、バンドルに開放している列（`ShiftFormSections::WRITABLE_SHIFT_COLUMNS`：`is_open`、`open_shift_note`）の中からシフトに書き込みます。誰も宣言しないフィールドは無視されるため、バンドルなしにシフトを募集にすることはできません。`storeFeature` を指定すると、その機能が有効なときだけセクションが表示されます。すでに使われているキーは無視され、描画中の例外はそのセクションを外します（ログに記録）。Core自身はセクションを持ちません。`shift-claim` は募集シフトのフィールドとボタンをこの方法で提供しています。`"kintai_contract": "^1.17"` を指定してください。
+
+### ページオーバーレイ：`pageOverlays()`（契約1.27）
+
+```php
+use kintai\Contract\Extension\PageOverlay;
+
+public function pageOverlays(): array
+{
+    return [
+        new PageOverlay(
+            key: 'planning_check',
+            view: 'planning-check::overlay',                         // 名前空間付きのビュー = ウィンドウの内容
+            visibleWhen: fn(array $ctx): bool => /* サーバー側で判断：user, now, today, path, store_ids, can() */ true,
+            data: fn(array $ctx): array => ['date' => $ctx['today']],
+            permission: 'planning_check.submit',
+            priority: 10,                                            // 小さいほど優先
+            dismissible: true,                                       // Esc／外側クリック／[data-overlay-close]
+            oncePerSession: false,
+            placement: PageOverlay::DIALOG,                          // または PageOverlay::BAR：ページ下部の非ブロッキングバー
+        ),
+    ];
+}
+```
+
+Core は表示可能なもののうち最も優先度の高い **1 つだけ** を、アクセシブルなダイアログ（`role="dialog"`、フォーカストラップ）として、ガード内で表示します。
+`visibleWhen`、`data`、ビューで例外が起きるとそのウィンドウは取り除かれ、ログに記録されます。ログイン、印刷、シフト編集のページには表示されません。
+ビューではウィンドウの見出しに `id="<?= $overlay_title_id ?>"` を付けてください。閉じると次のページまで非表示になり、再表示するかどうかはサーバーが決めます。
+ウィンドウ内の操作はすべてバンドル自身のルートを通り、権限と店舗の範囲を確認します。オーバーレイは表示にすぎません。`"kintai_contract": "^1.27"` を要求してください。
 
 ## プロバイダー：Coreがバンドルから読むデータ（契約1.9以降）
 
@@ -742,7 +856,7 @@ $css = file_get_contents(bundle_asset_path('your-slug', 'css/pdf-your-bundle.css
 
 ## バージョン付きバンドル契約
 
-バンドル契約には、Coreとは独立した**独自のバージョン**があります：`kintai\Contract\Contract::VERSION`（現在 `1.22.0`）。semverに従い、マイナーバージョンは追加だけ（クラス、任意のメソッド、拡張ポイント）を行い、メジャーバージョンはシグネチャを削除・変更し、CHANGELOGの専用の「Bundle contract」セクションで告知されます。
+バンドル契約には、Coreとは独立した**独自のバージョン**があります：`kintai\Contract\Contract::VERSION`（現在 `1.23.0`）。semverに従い、マイナーバージョンは追加だけ（クラス、任意のメソッド、拡張ポイント）を行い、メジャーバージョンはシグネチャを削除・変更し、CHANGELOGの専用の「Bundle contract」セクションで告知されます。
 
 バンドルが必要とする契約のバージョンを `bundle.json` に宣言してください：
 
@@ -863,6 +977,19 @@ Kintaiは `script-src 'self' 'nonce-…'`（`SecurityHeadersMiddleware`）を送
 見つけてもらう方法は2つです：
 - **自分のレジストリ** — `registry.json` を自分で書いてホストし（HTTPSで到達できればどこでも）、誰でも `/admin/bundles/registries` からそのURLを追加できます。誰の承認も必要ありません。
 - **Kintai公式レジストリ**（[`AudricSan/KintaiBundle`](https://github.com/AudricSan/KintaiBundle)） — その `registry.json` に項目を追加するプルリクエストを開いてください。そこに載っても、バンドルが「公式」になるわけでは**ありません**——下記参照。
+
+### セットアップの質問に表示する（レジストリのエントリ）
+
+セットアップウィザードは、バンドルを提案するためにいくつかの業務上の質問をします。レジストリのエントリ（`registry.json`）で、Core を変更せずに
+独自の質問と必要なバンドルを追加できます。
+
+```json
+{ "slug": "acme-crm", "setup_question": { "text": { "en": "Do you use a CRM?", "fr": "Utilisez-vous un CRM ?" }, "icon": "🤝", "theme": "communication" },
+  "requires_bundles": ["messaging"] }
+```
+
+`theme` は `planning`、`requests`、`communication`、`reports`、`hr` のいずれか（それ以外は「その他」）。`setup_question` がなくても、バンドルは全一覧に表示されます。
+`requires_bundles` は前提バンドルを自動で選択します（補助であり、ブロックではありません）。
 
 ## 公式とサードパーティ
 

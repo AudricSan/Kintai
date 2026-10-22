@@ -14,7 +14,7 @@ namespace kintai\Core\Mail;
  *
  * Requis sur OVH : l'adresse From doit être un e-mail du domaine hébergé.
  */
-final class NativeTransport
+final class NativeTransport implements MailTransportInterface
 {
     /**
      * @param string[] $to
@@ -27,6 +27,7 @@ final class NativeTransport
         string $subject,
         string $htmlBody,
         array  $attachmentPaths = [],
+        array  $extraHeaders = [],
     ): bool {
         $encodedSubject = mb_encode_mimeheader($subject, 'UTF-8', 'B');
         $fromHeader     = $fromName !== ''
@@ -48,6 +49,7 @@ final class NativeTransport
                 'Content-Type: text/html; charset=UTF-8',
                 'Content-Transfer-Encoding: quoted-printable',
                 'From: ' . $fromHeader,
+                ...MailHeaders::format($extraHeaders),
             ]);
             $body    = quoted_printable_encode($htmlBody);
             $success = false;
@@ -71,6 +73,7 @@ final class NativeTransport
             'MIME-Version: 1.0',
             'Content-Type: multipart/mixed; boundary="' . $boundary . '"',
             'From: ' . $fromHeader,
+            ...MailHeaders::format($extraHeaders),
         ]);
 
         $message = "--{$boundary}\r\n"

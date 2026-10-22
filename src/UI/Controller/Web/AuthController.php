@@ -13,15 +13,20 @@ use kintai\Core\Extension\ProfileSections;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\LocaleCookie;
+use kintai\Core\Services\NotificationMailer;
+use kintai\Core\Services\NotificationPreferenceService;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\AvatarImageOptimizer;
 use kintai\Core\Repositories\AvailabilityRepositoryInterface;
+use kintai\Core\Repositories\CalendarSyncRepositoryInterface;
+use kintai\Core\Services\Calendar\GoogleCalendarSettings;
 use kintai\Core\Repositories\IcalTokenRepositoryInterface;
 use kintai\Core\Repositories\LanguageRepositoryInterface;
 use kintai\Core\Repositories\StoreRepositoryInterface;
 use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserNavPrefsRepositoryInterface;
+use kintai\Core\Repositories\WebPushSubscriptionRepositoryInterface;
 use kintai\UI\Controller\Web\HasBaseUrl;
 use kintai\UI\ViewRenderer;
 
@@ -50,12 +55,49 @@ final class AuthController
         // le conteneur l'injecte toujours en production.
         private readonly ?CredentialRevoker $revoker = null,
         private readonly ?UserAnonymizer $anonymizer = null,
+        private readonly ?NotificationPreferenceService $notifPrefs = null,
+        private readonly ?WebPushSubscriptionRepositoryInterface $webPushSubscriptions = null,
+        private readonly ?NotificationMailer $notifMailer = null,
+        private readonly ?CalendarSyncRepositoryInterface $calendars = null,
+        private readonly ?GoogleCalendarSettings $googleCalendar = null,
     ) {}
 
     /** Le conteneur l'injecte toujours ; un test qui supprime un compte doit le fournir. */
     private function anonymizer(): UserAnonymizer
     {
         return $this->anonymizer ?? throw new \LogicException('UserAnonymizer requis pour supprimer un compte.');
+    }
+
+    /**
+     * Liaison Google Calendar de l'utilisateur pour l'onglet iCal : disponible seulement si l'Owner l'a activée.
+     * Le jeton de rafraîchissement n'est jamais transmis à la vue.
+     *
+     * @return array{available: bool, connection: ?array<string, mixed>}
+     */
+    private function calendarPanel(int $userId): array
+    {
+        $connection = null;
+        if ($this->calendars !== null) {
+            try {
+                $row = $this->calendars->findConnectionByUser($userId);
+            } catch (\Throwable) {
+                $row = null; // table absente : migration pas encore jouée
+            }
+            if ($row !== null) {
+                $options = json_decode((string) ($row['options'] ?? ''), true);
+                $options = is_array($options) ? $options : [];
+                $connection = [
+                    'status'        => (string) $row['status'],
+                    'email'         => (string) ($row['account_email'] ?? ''),
+                    'calendar_name' => (string) ($row['calendar_name'] ?? ''),
+                    'last_sync_at'  => $row['last_sync_at'] ?? null,
+                    'last_error'    => $row['last_error'] ?? null,
+                    'name_mode'     => ($options['calendar_name_mode'] ?? 'instance') === 'store' ? 'store' : 'instance',
+                    'store_id'      => (int) ($options['store_id'] ?? 0),
+                ];
+            }
+        }
+        return ['available' => $this->googleCalendar?->isAvailable() ?? false, 'connection' => $connection];
     }
 
     /** @var array<string, string> extension → type MIME (avatars) */
@@ -202,9 +244,10 @@ final class AuthController
         }
 
         // Onglet courant
-        $tab = in_array((string) $request->query('tab'), ['info', 'availability', 'ical', 'push', 'nav', 'data'], true)
-            ? $request->query('tab')
-            : 'info';
+        // « push » : ancien nom de l'onglet, devenu « notifications » (liens enregistrés, anciennes redirections).
+        $tab = (string) $request->query('tab');
+        $tab = $tab === 'push' ? 'notifications' : $tab;
+        $tab = in_array($tab, ['info', 'availability', 'ical', 'notifications', 'nav', 'data'], true) ? $tab : 'info';
 
         // Liens iCal
         $icalLinks = [];
@@ -217,10 +260,13 @@ final class AuthController
 
             $tokenRow = $this->icalTokens->findOrCreateForUserAndStore($userId, $storeId);
 
+            $feedUrl = "{$scheme}://{$host}{$base}/ical/{$tokenRow['token']}/{$storeId}/shifts.ics";
             $icalLinks[] = [
                 'store_id'   => $storeId,
                 'store_name' => $store['name'] ?? '',
-                'url'        => "{$scheme}://{$host}{$base}/ical/{$tokenRow['token']}/{$storeId}/shifts.ics",
+                'url'        => $feedUrl,
+                // Ajout en un clic : webcal (Apple, Thunderbird), Google Calendar, Outlook.
+                'add'        => \kintai\Core\Services\CalendarSubscriptionLinks::for($feedUrl, (string) ($store['name'] ?? 'Kintai')),
             ];
         }
 
@@ -267,15 +313,52 @@ final class AuthController
             'store_id'             => $storeId,
             'existing'             => $existing,
             'ical_links'           => $icalLinks,
+            'calendar'             => $this->calendarPanel($userId),
             'nav_hidden'           => $navHidden,
             'nav_section_order'    => $navSecOrder,
             'nav_default_sections' => $defaultSecs,
             'is_owner'             => $isOwner,
             'is_manager_view'      => $isManagerView,
             'bottom_nav_items'     => $bnItems,
+            // Onglet Notifications : grille type × canal et heures silencieuses.
+            'notif_grid'           => $tab === 'notifications' ? ($this->notifPrefs?->grid($userId) ?? []) : [],
+            'quiet_hours'          => $tab === 'notifications' ? $this->notifPrefs?->quietHours($userId) : null,
+            // Colonne E-mail : sans e-mail réglé sur l'instance (ou sans URL publique), le choix ne servirait à rien.
+            'email_available'      => $tab === 'notifications' && ($this->notifMailer?->isAvailable() ?? false),
             // Sections des bundles actifs dans « Mes informations » (contrat 1.12), ex. l'annuaire.
             'profile_sections'     => ProfileSections::current()->render($user, $this->view),
         ], 'layout.app'));
+    }
+
+    /** Enregistre la grille des préférences de notification et les heures silencieuses (onglet Notifications). */
+    public function saveNotificationPreferences(Request $request): Response
+    {
+        $user = $this->auth->user();
+        if (!$user) {
+            return Response::redirect($this->base() . '/login');
+        }
+        if ($this->notifPrefs === null) {
+            throw new \LogicException('NotificationPreferenceService requis pour enregistrer les préférences.');
+        }
+
+        $userId = (int) $user['id'];
+        $back   = $this->base() . '/profile?tab=notifications';
+        $list   = static fn(mixed $v): array => is_array($v) ? array_values(array_filter($v, 'is_string')) : [];
+
+        $quietOk = $this->notifPrefs->saveQuietHours(
+            $userId,
+            $request->postFlag('quiet_enabled', 0) === 1,
+            (string) $request->post('quiet_start', ''),
+            (string) $request->post('quiet_end', ''),
+        );
+        if (!$quietOk) {
+            return Response::redirect($back . '&error=quiet_hours_invalid');
+        }
+        // shown[] : les lignes que le formulaire affichait (seules leurs cases sont enregistrées). Absent : tous les types actifs.
+        $shown = $request->post('shown') !== null ? $list($request->post('shown')) : null;
+        $this->notifPrefs->saveGrid($userId, $list($request->post('push', [])), $list($request->post('email', [])), $shown);
+
+        return Response::redirect($back . '&success=saved');
     }
 
     /** Met à jour le profil de l'utilisateur. */
@@ -557,6 +640,17 @@ final class AuthController
         $userId   = $authUser ? (int) ($authUser['id'] ?? 0) : null;
 
         $this->auth->logout();
+
+        // Le navigateur qui se déconnecte ne doit plus recevoir les notifications de ce compte : son abonnement web
+        // push (adresse envoyée avec le formulaire par push.js) est supprimé. Seul celui de ce compte l'est.
+        $pushEndpoint = trim((string) $request->post('push_endpoint', ''));
+        if ($pushEndpoint !== '' && $userId !== null && $this->webPushSubscriptions !== null) {
+            try {
+                $this->webPushSubscriptions->deleteByEndpoint($pushEndpoint, $userId);
+            } catch (\Throwable) {
+                // La déconnexion prime sur le nettoyage de l'abonnement.
+            }
+        }
 
         $this->auditLogger->log($request, 'auth.logout', 'user', $userId, [], null, $userId);
         return Response::redirect($this->base() . '/login');

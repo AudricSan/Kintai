@@ -20,6 +20,12 @@ final class CsrfMiddleware implements MiddlewareInterface
     private const SESSION_KEY = '_csrf_token';
     private const FIELD_NAME  = '_token';
 
+    /**
+     * Adresses sans jeton CSRF : elles sont appelées par un client e-mail (désabonnement en un clic, RFC 8058), donc
+     * sans session, et se protègent elles-mêmes par une signature dans l'adresse.
+     */
+    private const EXEMPT_PATHS = ['/notifications/unsubscribe'];
+
     public function handle(Request $request, Closure $next): Response
     {
         if (empty($_SESSION[self::SESSION_KEY])) {
@@ -27,7 +33,7 @@ final class CsrfMiddleware implements MiddlewareInterface
         }
 
         $realMethod = strtoupper($request->server('REQUEST_METHOD', 'GET'));
-        $isApi      = str_starts_with($request->uri(), '/api/');
+        $isApi      = str_starts_with($request->uri(), '/api/') || in_array($request->uri(), self::EXEMPT_PATHS, true);
 
         if (!$isApi && in_array($realMethod, ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
             $token = $request->post(self::FIELD_NAME)

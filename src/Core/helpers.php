@@ -514,30 +514,33 @@ if (!function_exists('notification_type_catalog')) {
      * côté sans l'autre s'affichait avec sa clé technique brute au lieu d'un libellé
      * traduit (ex. notebook_entry_created, initialement oublié dans l'un des deux).
      *
-     * Types du Core et types historiques des bundles officiels (toujours connus : les notifications déjà reçues
-     * restent affichées même si leur bundle est désactivé), plus ceux déclarés par les bundles actifs
-     * (Bundle::notificationTypes(), contrat 1.7, libellé « notif_{type} »).
+     * Types du Core plus ceux déclarés par les bundles actifs (NotificationTypeRegistry, libellé « notif_{type} »).
+     * Les notifications déjà reçues d'un bundle désactivé restent affichées : libellé par convention, icône par défaut.
      */
     function notification_type_catalog(): array
     {
-        $declared = [];
+        $types = [];
         try {
             $container = \kintai\Core\Container::getInstance();
             if ($container->has(\kintai\Core\Extension\ExtensionRegistry::class)) {
-                $declared = $container->make(\kintai\Core\Extension\ExtensionRegistry::class)->notificationTypes();
+                $types = $container->make(\kintai\Core\Services\NotificationTypeRegistry::class)->all();
             }
         } catch (\Throwable) {
         }
-        $bundleTypes = [];
-        foreach ($declared as $type => $icon) {
-            $bundleTypes[$type] = ['label' => __('notif_' . $type), 'icon' => $icon !== '' ? $icon : '•'];
+        $catalog = [];
+        foreach ($types as $type => $definition) {
+            $catalog[$type] = ['label' => __('notif_' . $type), 'icon' => $definition->icon];
         }
+        return $catalog;
+    }
 
-        return [
-            'shift_assigned'         => ['label' => __('notif_shift_assigned'), 'icon' => '📅'],
-            'shift_updated'          => ['label' => __('notif_shift_updated'), 'icon' => '🔄'],
-            'shift_deleted'          => ['label' => __('notif_shift_deleted'), 'icon' => '🗑'],
-        ] + $bundleTypes;
+    /**
+     * Identifiant d'un jour de planning (« 2026-08-02 » → 20260802) pour les notifications dont l'objet n'existe plus
+     * (shift supprimé) : le reference_id désigne alors le jour, reference_type « shift_day ».
+     */
+    function shift_day_reference(string $date): int
+    {
+        return (int) preg_replace('/\D/', '', $date);
     }
 
     /** Libellé d'un type : catalogue, sinon traduction « notif_{type} » si elle existe (bundle inactif), sinon le type. */

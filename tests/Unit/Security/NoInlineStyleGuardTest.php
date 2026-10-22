@@ -19,7 +19,7 @@ final class NoInlineStyleGuardTest extends TestCase
     /**
      * Fichiers hors CSP : le gabarit d'e-mail est lu par un client de messagerie, qui n'accepte que des styles en ligne.
      */
-    private const EXEMPT = ['src/Core/Services/PasswordResetService.php'];
+    private const EXEMPT = ['src/Core/Services/PasswordResetService.php', 'src/Core/Services/NotificationMailer.php'];
 
     /** @return array<string, string> chemin relatif => contenu, sans les lignes de commentaire */
     private function sources(string $dir, string $extension): array

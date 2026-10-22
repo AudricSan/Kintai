@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace kintai\Tests\Unit\Controller\Web;
 
 use kintai\Core\Auth\AuthService;
-use kintai\Core\Repositories\DevicePushTokenRepositoryInterface;
+use kintai\Core\Repositories\WebPushSubscriptionRepositoryInterface;
 use kintai\Core\Repositories\NotificationRepositoryInterface;
 use kintai\Core\Repositories\RememberTokenRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
@@ -15,17 +15,19 @@ use kintai\Core\Repositories\StoreUserRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Container;
 use kintai\Core\Request;
+use kintai\Core\Services\WebPushEndpointValidator;
 use kintai\Core\Router;
 use kintai\UI\Controller\Web\NotificationController;
 use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 final class NotificationControllerTest extends TestCase
 {
     private NotificationRepositoryInterface&Stub $notifications;
-    private DevicePushTokenRepositoryInterface&Stub $pushTokens;
+    private WebPushSubscriptionRepositoryInterface&Stub $subscriptions;
     private RoleAssignmentRepositoryInterface&Stub $roleAssignments;
     private AuthService $auth;
     private ?NotificationController $controller = null;
@@ -53,7 +55,7 @@ final class NotificationControllerTest extends TestCase
         );
 
         $this->notifications = $this->createStub(NotificationRepositoryInterface::class);
-        $this->pushTokens    = $this->createStub(DevicePushTokenRepositoryInterface::class);
+        $this->subscriptions = $this->createStub(WebPushSubscriptionRepositoryInterface::class);
     }
 
     /** Objet testé, construit à la première utilisation : un test peut d'abord remplacer un bouchon par un mock. */
@@ -63,7 +65,8 @@ final class NotificationControllerTest extends TestCase
             $this->controller = new NotificationController(
                 $this->auth,
                 $this->notifications,
-                $this->pushTokens,
+                $this->subscriptions,
+                new WebPushEndpointValidator(static fn(string $host): array => ['142.250.74.10']),
                 new ViewRenderer(dirname(__DIR__, 4) . '/src/UI/View'),
             );
         }
@@ -139,61 +142,85 @@ final class NotificationControllerTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
-    // pushSubscribe() / pushUnsubscribe()
+    // pushSubscribe() / pushUnsubscribe() / pushStatus() — web push natif (VAPID)
     // -------------------------------------------------------------------------
 
-    public function testPushSubscribeSavesTokenForCurrentUserAsWebPlatform(): void
-    {
-        $this->pushTokens = $this->createMock(DevicePushTokenRepositoryInterface::class);
-        $this->pushTokens->expects($this->once())->method('save')->with([
-            'user_id'  => 5,
-            'token'    => 'fcm-token-abc',
-            'platform' => 'web',
-        ]);
+    private const ENDPOINT = 'https://fcm.googleapis.com/fcm/send/abc123';
+    // Valeurs factices volontairement peu aléatoires : le contrôleur ne vérifie que l'alphabet et la longueur.
+    private const KEYS     = ['p256dh' => 'cle-publique-de-test', 'auth' => 'secret-auth-de-test'];
 
-        $response = $this->controller()->pushSubscribe($this->makeJsonRequest(['token' => 'fcm-token-abc']));
+    public function testPushSubscribeSavesTheSubscriptionForCurrentUser(): void
+    {
+        $this->subscriptions = $this->createMock(WebPushSubscriptionRepositoryInterface::class);
+        $this->subscriptions->expects($this->once())->method('save')
+            ->with(5, self::ENDPOINT, self::KEYS['p256dh'], self::KEYS['auth'], $this->anything());
+
+        $response = $this->controller()->pushSubscribe($this->makeJsonRequest(['endpoint' => self::ENDPOINT, 'keys' => self::KEYS]));
 
         $this->assertSame(200, $response->status());
     }
 
-    public function testPushSubscribeRejectsEmptyToken(): void
+    /** @return array<string, array{array}> */
+    public static function invalidSubscriptions(): array
     {
-        $this->pushTokens = $this->createMock(DevicePushTokenRepositoryInterface::class);
-        $this->pushTokens->expects($this->never())->method('save');
+        return [
+            'sans adresse'            => [['keys' => self::KEYS]],
+            'adresse refusée'         => [['endpoint' => 'http://fcm.googleapis.com/x', 'keys' => self::KEYS]],
+            'sans clés'               => [['endpoint' => self::ENDPOINT]],
+            'clé p256dh vide'         => [['endpoint' => self::ENDPOINT, 'keys' => ['p256dh' => '', 'auth' => 'abc']]],
+            'clé auth invalide'       => [['endpoint' => self::ENDPOINT, 'keys' => ['p256dh' => 'abc', 'auth' => '<script>']]],
+            'clés pas des tableaux'   => [['endpoint' => self::ENDPOINT, 'keys' => 'abc']],
+        ];
+    }
+
+    #[DataProvider('invalidSubscriptions')]
+    public function testPushSubscribeRejectsInvalidSubscription(array $body): void
+    {
+        $this->subscriptions = $this->createMock(WebPushSubscriptionRepositoryInterface::class);
+        $this->subscriptions->expects($this->never())->method('save');
 
         $this->expectException(\kintai\Core\Exceptions\ValidationException::class);
-        $this->controller()->pushSubscribe($this->makeJsonRequest(['token' => '']));
+        $this->controller()->pushSubscribe($this->makeJsonRequest($body));
     }
 
-    public function testPushUnsubscribeDeletesToken(): void
+    /** La désinscription ne doit retirer que l'abonnement de l'utilisateur connecté (id 5 ici). */
+    public function testPushUnsubscribeIsScopedToTheLoggedInUser(): void
     {
-        $this->pushTokens = $this->createMock(DevicePushTokenRepositoryInterface::class);
-        $this->pushTokens->expects($this->once())->method('deleteByToken')->with('fcm-token-abc', $this->callback(fn($uid) => is_int($uid) && $uid > 0));
+        $this->subscriptions = $this->createMock(WebPushSubscriptionRepositoryInterface::class);
+        $this->subscriptions->expects($this->once())->method('deleteByEndpoint')->with(self::ENDPOINT, 5);
 
-        $response = $this->controller()->pushUnsubscribe($this->makeJsonRequest(['token' => 'fcm-token-abc']));
+        $response = $this->controller()->pushUnsubscribe($this->makeJsonRequest(['endpoint' => self::ENDPOINT]));
 
         $this->assertSame(200, $response->status());
     }
 
-    /** Audit n°7 : la désinscription ne doit retirer que l'appareil de l'utilisateur connecté (id 5 ici). */
-    public function testPushUnsubscribeIsScopedToTheLoggedInUser(): void
+    public function testPushUnsubscribeIsNoopWithoutEndpoint(): void
     {
-        $this->pushTokens = $this->createMock(DevicePushTokenRepositoryInterface::class);
-        $this->pushTokens->expects($this->once())->method('deleteByToken')->with('fcm-token-abc', 5);
-
-        $this->controller()->pushUnsubscribe($this->makeJsonRequest(['token' => 'fcm-token-abc']));
-    }
-
-    public function testPushUnsubscribeIsNoopWithoutToken(): void
-    {
-        $this->pushTokens = $this->createMock(DevicePushTokenRepositoryInterface::class);
-        $this->pushTokens->expects($this->never())->method('deleteByToken');
+        $this->subscriptions = $this->createMock(WebPushSubscriptionRepositoryInterface::class);
+        $this->subscriptions->expects($this->never())->method('deleteByEndpoint');
 
         $response = $this->controller()->pushUnsubscribe($this->makeJsonRequest([]));
 
         $this->assertSame(200, $response->status());
     }
 
+    public function testPushStatusIsTrueOnlyForTheCurrentUsersSubscription(): void
+    {
+        $this->subscriptions->method('findByEndpoint')->willReturnMap([
+            [self::ENDPOINT, ['id' => 1, 'user_id' => 5]],
+            ['https://updates.push.services.mozilla.com/other', ['id' => 2, 'user_id' => 9]],
+        ]);
+
+        $mine   = json_decode($this->controller()->pushStatus($this->makeJsonRequest(['endpoint' => self::ENDPOINT]))->body(), true);
+        $theirs = json_decode($this->controller()->pushStatus($this->makeJsonRequest(['endpoint' => 'https://updates.push.services.mozilla.com/other']))->body(), true);
+        $unknown = json_decode($this->controller()->pushStatus($this->makeJsonRequest(['endpoint' => 'https://fcm.googleapis.com/inconnu']))->body(), true);
+        $empty  = json_decode($this->controller()->pushStatus($this->makeJsonRequest([]))->body(), true);
+
+        $this->assertSame(['subscribed' => true], $mine);
+        $this->assertSame(['subscribed' => false], $theirs, 'abonnement d\'un autre compte');
+        $this->assertSame(['subscribed' => false], $unknown);
+        $this->assertSame(['subscribed' => false], $empty);
+    }
     // -------------------------------------------------------------------------
     // open() — clic sur une notification : marquer lu + rediriger vers sa cible
     // -------------------------------------------------------------------------
@@ -285,6 +312,24 @@ final class NotificationControllerTest extends TestCase
         $this->assertSame('/notifications', $headersRef->getValue($response)['Location'] ?? null);
     }
 
+    /** « /\site » est lu par les navigateurs comme « //site » : une autre origine. */
+    public function testOpenIgnoresBackslashAndControlCharacterLinks(): void
+    {
+        foreach (['/\evil.example.com', '/ok\evil', "/ok
+x", 'https://evil.example.com'] as $bad) {
+            $this->notifications = $this->createMock(NotificationRepositoryInterface::class);
+            $this->notifications->method('findById')->with(10)->willReturn(['id' => 10, 'user_id' => 5, 'link' => $bad]);
+            $this->notifications->method('markRead');
+            $this->controller = null;
+
+            $response = $this->controller()->open($this->makeGetRequest(10));
+
+            $headersRef = new \ReflectionProperty($response, 'headers');
+            $headersRef->setAccessible(true);
+            $this->assertSame('/notifications', $headersRef->getValue($response)['Location'] ?? null, $bad);
+        }
+    }
+
     public function testOpenThrowsNotFoundForAnotherUsersNotification(): void
     {
         $this->notifications = $this->createMock(NotificationRepositoryInterface::class);
@@ -340,7 +385,7 @@ final class NotificationControllerTest extends TestCase
             ['id' => 43, 'type' => 'shift_assigned', 'body' => 'déjà lue', 'is_read' => 1],
         ]);
         $this->notifications->method('countUnread')->willReturn(1);
-        $this->notifications->method('findByUser')->willReturn([]);
+        $this->notifications->method('findUnreadByUser')->willReturn([]);
 
         try {
             $data = $this->json($this->controller()->poll($this->makePollRequest(['after_id' => '40', 'count' => '0'])));
@@ -362,7 +407,7 @@ final class NotificationControllerTest extends TestCase
         $this->notifications = $this->createMock(NotificationRepositoryInterface::class);
         $this->notifications->method('findAfterId')->willReturn([]);
         $this->notifications->method('countUnread')->willReturn(3);
-        $this->notifications->expects($this->never())->method('findByUser');
+        $this->notifications->expects($this->never())->method('findUnreadByUser');
 
         try {
             $data = $this->json($this->controller()->poll($this->makePollRequest(['after_id' => '40', 'count' => '3'])));
@@ -380,9 +425,9 @@ final class NotificationControllerTest extends TestCase
     {
         $this->bindRouter();
         $this->notifications->method('findAfterId')->willReturn([]);
-        $this->notifications->method('countUnread')->willReturn(0);
-        $this->notifications->method('findByUser')->willReturn([
-            ['id' => 40, 'type' => 'shift_assigned', 'body' => 'Shift <b>', 'is_read' => 1, 'created_at' => '2026-10-19 10:00:00'],
+        $this->notifications->method('countUnread')->willReturn(1);
+        $this->notifications->method('findUnreadByUser')->willReturn([
+            ['id' => 40, 'type' => 'shift_assigned', 'body' => 'Shift <b>', 'is_read' => 0, 'created_at' => '2026-10-19 10:00:00'],
         ]);
 
         try {
@@ -393,6 +438,25 @@ final class NotificationControllerTest extends TestCase
 
         $this->assertStringContainsString('notif-entry', $data['panel_html']);
         $this->assertStringContainsString('Shift &lt;b&gt;', $data['panel_html']);
-        $this->assertStringNotContainsString('notif-entry--unread', $data['panel_html']);
+        $this->assertStringContainsString('notif-entry--unread', $data['panel_html']);
+    }
+
+    /** Cloche vide (tout est lu) : message dédié, et l'historique complet reste joignable. */
+    public function testPollPanelWhenEverythingIsReadStillLinksToTheHistory(): void
+    {
+        $this->bindRouter();
+        $this->notifications->method('findAfterId')->willReturn([]);
+        $this->notifications->method('countUnread')->willReturn(0);
+        $this->notifications->method('findUnreadByUser')->willReturn([]);
+
+        try {
+            $data = $this->json($this->controller()->poll($this->makePollRequest(['after_id' => '40', 'count' => '2'])));
+        } finally {
+            $_GET = [];
+        }
+
+        $this->assertStringNotContainsString('notif-entry', $data['panel_html']);
+        $this->assertStringContainsString('notif-dropdown__empty', $data['panel_html']);
+        $this->assertStringContainsString('notif-dropdown__footer', $data['panel_html']);
     }
 }

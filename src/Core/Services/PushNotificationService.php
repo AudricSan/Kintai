@@ -46,7 +46,8 @@ final class PushNotificationService
             return;
         }
 
-        $devices = $this->tokens->findByUser($userId);
+        // Les navigateurs ont leur propre canal (WebPushService) ; d'anciennes lignes « web » n'ont jamais fonctionné.
+        $devices = array_filter($this->tokens->findByUser($userId), static fn(array $d) => ($d['platform'] ?? '') !== 'web');
         if ($devices === []) {
             return;
         }
@@ -61,16 +62,42 @@ final class PushNotificationService
         }
     }
 
+    /**
+     * Message FCM v1 pour un appareil. Si $data['quiet'] vaut '1' (heures silencieuses de l'utilisateur), la notification
+     * doit s'afficher sans son ni vibration : Android, priorité basse et ni son ni vibration par défaut, sur un canal
+     * « kintai_quiet » que l'application mobile devra déclarer (sans canal de ce nom, Android prend le canal par défaut) ;
+     * iOS, priorité 5 (aucun son n'est demandé).
+     *
+     * @param array<string, scalar> $data
+     * @return array<string, mixed>
+     */
+    public static function buildMessage(string $token, string $title, string $body, array $data): array
+    {
+        $message = [
+            'token'        => $token,
+            'notification' => ['title' => $title, 'body' => $body],
+            'data'         => array_map('strval', $data),
+        ];
+        if (($data['quiet'] ?? '') === '1') {
+            $message['android'] = [
+                'priority'     => 'normal',
+                'notification' => [
+                    'notification_priority'   => 'PRIORITY_LOW',
+                    'default_sound'           => false,
+                    'default_vibrate_timings' => false,
+                    'channel_id'              => 'kintai_quiet',
+                ],
+            ];
+            $message['apns'] = ['headers' => ['apns-priority' => '5']];
+        }
+
+        return $message;
+    }
+
     private function sendToDevice(array $device, string $accessToken, string $title, string $body, array $data): void
     {
         $url = "https://fcm.googleapis.com/v1/projects/{$this->projectId}/messages:send";
-        $payload = json_encode([
-            'message' => [
-                'token'        => $device['token'],
-                'notification' => ['title' => $title, 'body' => $body],
-                'data'         => array_map('strval', $data),
-            ],
-        ], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+        $payload = json_encode(['message' => self::buildMessage((string) $device['token'], $title, $body, $data)], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
 
         $response = $this->httpPost($url, [
             'Authorization: Bearer ' . $accessToken,

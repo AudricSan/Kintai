@@ -23,6 +23,7 @@
  *   @cssVar                               data-target="id" data-var="--x" : pose la valeur du champ dans cette variable CSS
  *   @toggleRows                           data-target=".sélecteur" : affiche/masque les lignes selon l'état coché
  *   @setFormAction                        data-target="id" data-action-template="/x/{value}/y" : change l'action du formulaire
+ *   @toggleChecks                         data-target=".sélecteur" : coche tout, ou décoche tout si tout est déjà coché
  *
  * Seules les fonctions globales écrites par l'application sont appelables, jamais une chaîne évaluée : ce
  * module n'utilise ni eval ni new Function, sans quoi il rouvrirait la brèche que la CSP referme.
@@ -75,6 +76,15 @@
             document.querySelectorAll(el.dataset.target).forEach(function (row) {
                 row.style.display = el.checked ? '' : 'none';
             });
+        },
+        toggleChecks: function (el) {
+            if (!el.dataset.target) return;
+            var boxes = Array.prototype.filter.call(
+                document.querySelectorAll(el.dataset.target),
+                function (box) { return !box.disabled; }
+            );
+            var allChecked = boxes.every(function (box) { return box.checked; });
+            boxes.forEach(function (box) { box.checked = !allChecked; });
         },
         setFormAction: function (el) {
             var form = document.getElementById(el.dataset.target || '');
