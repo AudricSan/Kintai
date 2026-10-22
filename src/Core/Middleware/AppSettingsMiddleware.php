@@ -12,6 +12,7 @@ use kintai\Core\Response;
 use kintai\Core\Services\AppSettingsService;
 use kintai\Core\Services\PlanLimitService;
 use kintai\Core\Services\PublicUrlResolver;
+use kintai\Core\Services\StorageUsageService;
 use kintai\Core\Services\UpdateService;
 use kintai\UI\ViewRenderer;
 
@@ -42,6 +43,13 @@ final class AppSettingsMiddleware implements MiddlewareInterface
                 ? ['active' => $activeBundles, 'max' => $maxBundles] : null);
         } catch (\Throwable) {
             // Table absente (avant migration) ou DB non disponible — on ignore.
+        }
+
+        // Stockage du serveur presque plein : bandeau réservé à l'Owner. Séparé du bloc ci-dessus, la mesure du disque
+        // ne dépend pas de la base et ne doit jamais empêcher la page de s'afficher.
+        try {
+            $this->container->make(ViewRenderer::class)->share('storage_low', $this->container->make(StorageUsageService::class)->lowStorage());
+        } catch (\Throwable) {
         }
 
         return $next($request);
