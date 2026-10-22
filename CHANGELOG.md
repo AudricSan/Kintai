@@ -7,7 +7,7 @@ All notable changes to Kintai are documented here.
 ## [Unreleased]
 
 ### CI
-- New `lint` job on every pull request: PHP and JavaScript syntax of the whole repository, JSON files (languages, `composer.json`, contract snapshot), `composer validate --strict` and `composer audit`, and static analysis with PHPStan (level 0, `phpstan.neon`). The `crawl-smoke` job is removed: `crawl-bundles-smoke` runs the same crawl with the bundles installed.
+- New `lint` job on every pull request: PHP and JavaScript syntax of the whole repository, JSON files (languages, `composer.json`, contract snapshot), `composer validate` and `composer audit`, and static analysis with PHPStan (level 0, `phpstan.neon`). The `crawl-smoke` job is removed: `crawl-bundles-smoke` runs the same crawl with the bundles installed.
 
 ### Added
 - Wiki — new structure by audience (Getting Started, Employee Guide, Manager Guide, Administration, Installation & Operations, Developers, Project) and 23 new pages in English, French and Japanese: quick tour, glossary, FAQ, profile, dashboard, notifications, calendars (iCal and Google Calendar, with the Google Cloud setup for Owners), installable app, bundles and catalogue, setup wizard, scheduled tasks, e-mail and push setup, troubleshooting, bundle contract and the full bundle-creation guide (moved from `docs/`). The side-bar groups are translated by the app (`docs_group_employee`, `_manager`, `_admin`, `_operations`, `_developers`, `_project`). `php scripts/check-wiki.php <folder>` checks a wiki before publishing it: every side-bar page exists in the three languages, the language line is present, internal links and images resolve.

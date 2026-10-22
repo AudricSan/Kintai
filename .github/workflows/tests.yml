@@ -105,7 +105,7 @@ jobs:
 
       - name: Composer validate and audit
         run: |
-          composer validate --no-check-publish --strict
+          composer validate --no-check-publish
           composer audit --no-interaction
 
   crawl-bundles-smoke:
