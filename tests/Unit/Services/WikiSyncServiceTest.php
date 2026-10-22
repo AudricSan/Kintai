@@ -236,4 +236,23 @@ final class WikiSyncServiceTest extends TestCase
         $this->assertFileExists($this->tmpWiki . '/Installation.md');
         $this->assertFileExists($this->tmpWiki . '/ja/Installation.md');
     }
+
+    public function testSyncFetchesTranslatedPagesUnderTheirOwnFileName(): void
+    {
+        $en = "# Backups\n\n🌐 **English** · [Français](fr/Sauvegardes) · [日本語](ja/バックアップ)\n";
+        $service = $this->service([
+            self::BASE_URL . '_Sidebar.md'                 => ['status' => 200, 'body' => "**[Home](Home)**\n\n**Admin**\n- [Backups](Backups)\n"],
+            self::BASE_URL . 'Home.md'                     => ['status' => 200, 'body' => "# Home\n"],
+            self::BASE_URL . 'Backups.md'                  => ['status' => 200, 'body' => $en],
+            self::BASE_URL . 'fr/Sauvegardes.md'           => ['status' => 200, 'body' => "# Sauvegardes\n"],
+            self::BASE_URL . 'ja/' . rawurlencode('バックアップ') . '.md' => ['status' => 200, 'body' => "# バックアップ\n"],
+        ]);
+
+        $result = $service->sync();
+
+        $this->assertTrue($result['ok']);
+        $this->assertFileExists($this->tmpWiki . '/fr/Sauvegardes.md');
+        $this->assertFileExists($this->tmpWiki . '/ja/バックアップ.md');
+        $this->assertFileDoesNotExist($this->tmpWiki . '/fr/Backups.md');
+    }
 }

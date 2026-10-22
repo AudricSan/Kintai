@@ -141,4 +141,30 @@ final class WikiIntegrityCheckerTest extends TestCase
     {
         $this->assertSame(['_Sidebar.md introuvable'], (new WikiIntegrityChecker())->check($this->dir)['errors']);
     }
+
+    public function testTranslatedFileNamesDeclaredByTheEnglishPageAreChecked(): void
+    {
+        file_put_contents("{$this->dir}/Guide.md", "# T\n\n🌐 **English** · [Français](fr/Guide-fr) · [日本語](ja/ガイド)\n\nline\nline\nline\nline\nline\nline\n");
+        $this->page('fr/Guide-fr');
+        $this->page('ja/ガイド');
+        $this->sidebar('Guide');
+        $this->trio('Home');
+
+        $result = (new WikiIntegrityChecker())->check($this->dir);
+
+        $this->assertSame([], $result['errors']);
+        $this->assertSame([], $result['warnings']);
+    }
+
+    public function testAMissingTranslatedFileIsReportedWithItsName(): void
+    {
+        file_put_contents("{$this->dir}/Guide.md", "# T\n\n🌐 **English** · [Français](fr/Guide-fr) · [日本語](ja/ガイド)\n\nline\nline\nline\nline\nline\nline\n");
+        $this->page('fr/Guide-fr');
+        $this->sidebar('Guide');
+        $this->trio('Home');
+
+        $errors = (new WikiIntegrityChecker())->check($this->dir)['errors'];
+
+        $this->assertContains('page manquante (ja) : Guide (ガイド)', $errors);
+    }
 }

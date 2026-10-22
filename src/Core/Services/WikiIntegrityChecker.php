@@ -42,10 +42,26 @@ final class WikiIntegrityChecker
 
         $dirs = ['' => 'en', 'fr/' => 'fr', 'ja/' => 'ja'];
 
+        // Nom de fichier d'une page dans chaque langue : celui que déclare la ligne de langue de sa version anglaise
+        // (sinon le slug lui-même), et correspondance inverse nom traduit => slug anglais.
+        $localName = [];
+        $keyOf     = ['fr' => [], 'ja' => []];
+        foreach (glob("$wikiPath/*.md") ?: [] as $file) {
+            $slug = basename($file, '.md');
+            if ($slug[0] === '_') {
+                continue;
+            }
+            foreach (WikiContentService::localizedSlugsFromPage((string) file_get_contents($file)) as $lang => $local) {
+                $localName[$lang][$slug] = $local;
+                $keyOf[$lang][$local]    = $slug;
+            }
+        }
+
         foreach (array_keys($listed) as $slug) {
             foreach ($dirs as $dir => $lang) {
-                if (!is_file("$wikiPath/{$dir}$slug.md")) {
-                    $errors[] = "page manquante ($lang) : $slug";
+                $file = $lang === 'en' ? $slug : ($localName[$lang][$slug] ?? $slug);
+                if (!is_file("$wikiPath/{$dir}$file.md")) {
+                    $errors[] = "page manquante ($lang) : $slug" . ($file !== $slug ? " ($file)" : '');
                 }
             }
         }
@@ -56,13 +72,14 @@ final class WikiIntegrityChecker
                 if ($name[0] === '_') {
                     continue;
                 }
+                $key     = $lang === 'en' ? $name : ($keyOf[$lang][$name] ?? $name);
                 $content = str_replace("\r\n", "\n", (string) file_get_contents($file));
                 $rel     = "{$dir}$name";
 
                 if (!str_contains($content, '🌐')) {
                     $errors[] = "ligne de choix de langue absente : $rel";
                 }
-                if (!isset($listed[$name]) && $this->nonEmptyLines($content) > self::STUB_MAX_LINES) {
+                if (!isset($listed[$key]) && $this->nonEmptyLines($content) > self::STUB_MAX_LINES) {
                     $warnings[] = "page absente de la barre latérale ($lang) : $name";
                 }
                 foreach ($this->brokenLinks($wikiPath, $dir, $content) as $target) {
@@ -77,7 +94,8 @@ final class WikiIntegrityChecker
             foreach (glob("$wikiPath/{$dir}*.md") ?: [] as $file) {
                 $name = basename($file, '.md');
                 if ($name[0] !== '_') {
-                    $names[$name][$lang] = true;
+                    $key = $lang === 'en' ? $name : ($keyOf[$lang][$name] ?? $name);
+                    $names[$key][$lang] = true;
                 }
             }
         }

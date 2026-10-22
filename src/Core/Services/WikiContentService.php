@@ -87,7 +87,8 @@ final class WikiContentService
         $repo = env('GITHUB_UPDATE_REPO', 'AudricSan/Kintai');
         $dir  = self::LANG_DIRS[$lang] ?? '';
         $slug = ($slug !== null && self::isValidSlug($slug)) ? $slug : 'Home';
-        $path = $dir !== '' ? $dir . '/' . $slug : $slug;
+        $file = rawurlencode($this->localSlug($lang, $slug));
+        $path = $dir !== '' ? $dir . '/' . $file : $file;
 
         return 'https://github.com/' . $repo . '/wiki/' . $path;
     }
@@ -179,22 +180,103 @@ final class WikiContentService
     // Résolution de chemin / slug
     // -------------------------------------------------------------------------
 
+    /** Chemin du fichier d'une page ; $slug est la clé anglaise, le nom du fichier est celui de la langue. */
     private function resolvePath(string $lang, string $slug): string
     {
         $dir = self::LANG_DIRS[$lang];
 
-        return $this->wikiPath . ($dir !== '' ? '/' . $dir : '') . '/' . $slug . '.md';
+        return $this->wikiPath . ($dir !== '' ? '/' . $dir : '') . '/' . $this->localSlug($lang, $slug) . '.md';
     }
 
     /**
-     * Slugs de pages wiki : lettres/chiffres/tirets/underscores, jamais de
+     * Slugs de pages wiki : lettres (accentuées et japonaises comprises), chiffres, tirets, underscores, jamais de
      * chemin ("/", "..") ni de page méta ("_Sidebar", "_Footer"). Partagé avec
      * WikiSyncService pour valider les slugs trouvés dans le _Sidebar.md
      * distant avant de les utiliser comme noms de fichiers locaux.
      */
     public static function isValidSlug(string $slug): bool
     {
-        return $slug !== '' && $slug[0] !== '_' && preg_match('/^[A-Za-z0-9_-]+$/', $slug) === 1;
+        return $slug !== '' && $slug[0] !== '_' && preg_match('/^[\p{L}\p{N}\p{M}_-]+$/u', $slug) === 1;
+    }
+
+    // -------------------------------------------------------------------------
+    // Noms de fichiers localisés (fr/ et ja/)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Noms de fichiers traduits d'une page, lus dans sa ligne de choix de langue (🌐), qui renvoie vers ses versions :
+     * "🌐 **English** · [Français](fr/Sauvegardes) · [日本語](ja/バックアップ)". Statique et pure : partagée avec
+     * WikiSyncService et WikiIntegrityChecker. Une langue absente de la ligne garde le nom anglais.
+     *
+     * @return array<string, string> langue ('fr', 'ja') => nom de fichier sans ".md"
+     */
+    public static function localizedSlugsFromPage(string $markdown): array
+    {
+        $found = [];
+
+        foreach (explode("\n", $markdown) as $line) {
+            if (!str_contains($line, '🌐')) {
+                continue;
+            }
+            if (preg_match_all('/\]\((?:\.\.\/)?(fr|ja)\/([^)#\s]+)\)/u', $line, $matches, PREG_SET_ORDER) > 0) {
+                foreach ($matches as $m) {
+                    $slug = rawurldecode($m[2]);
+                    if (self::isValidSlug($slug)) {
+                        $found[$m[1]] ??= $slug;
+                    }
+                }
+            }
+            break;
+        }
+
+        return $found;
+    }
+
+    /**
+     * Nom de fichier d'une page dans une langue : celui que déclare sa version anglaise, sinon le slug lui-même.
+     * Les clés de page (URL de l'aide, barre latérale) restent les slugs anglais.
+     */
+    private function localSlug(string $lang, string $slug): string
+    {
+        return $this->slugMaps()['local'][$lang][$slug] ?? $slug;
+    }
+
+    /**
+     * Clé de page (slug anglais) d'un nom de fichier traduit, ou le nom lui-même s'il n'est pas connu.
+     */
+    private function pageKey(string $lang, string $localSlug): string
+    {
+        return $this->slugMaps()['key'][$lang][$localSlug] ?? $localSlug;
+    }
+
+    /** @var array{local: array<string, array<string, string>>, key: array<string, array<string, string>>}|null */
+    private ?array $slugMaps = null;
+
+    /**
+     * Correspondances slug anglais <-> nom de fichier traduit, construites une fois depuis les pages anglaises.
+     *
+     * @return array{local: array<string, array<string, string>>, key: array<string, array<string, string>>}
+     */
+    private function slugMaps(): array
+    {
+        if ($this->slugMaps !== null) {
+            return $this->slugMaps;
+        }
+
+        $maps = ['local' => [], 'key' => []];
+
+        foreach (glob($this->wikiPath . '/*.md') ?: [] as $file) {
+            $enSlug = basename($file, '.md');
+            if (!self::isValidSlug($enSlug)) {
+                continue;
+            }
+            foreach (self::localizedSlugsFromPage((string) file_get_contents($file)) as $lang => $local) {
+                $maps['local'][$lang][$enSlug] = $local;
+                $maps['key'][$lang][$local]    = $enSlug;
+            }
+        }
+
+        return $this->slugMaps = $maps;
     }
 
     // -------------------------------------------------------------------------
@@ -328,12 +410,16 @@ final class WikiContentService
             $segments[] = $part;
         }
 
+        // Les cibles peuvent être encodées en pourcentage (noms japonais copiés depuis une URL).
+        $segments = array_map('rawurldecode', $segments);
+
         if (count($segments) === 1 && self::isValidSlug($segments[0])) {
             return ['en', $segments[0]];
         }
 
+        // Le nom d'un fichier traduit est ramené à la clé de page (slug anglais) utilisée dans les URL de l'aide.
         if (count($segments) === 2 && in_array($segments[0], ['fr', 'ja'], true) && self::isValidSlug($segments[1])) {
-            return [$segments[0], $segments[1]];
+            return [$segments[0], $this->pageKey($segments[0], $segments[1])];
         }
 
         return [null, null];

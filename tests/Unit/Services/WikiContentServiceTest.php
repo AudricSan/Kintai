@@ -394,4 +394,79 @@ final class WikiContentServiceTest extends TestCase
 
         $this->assertStringContainsString('docs/fr/Installation"', $html);
     }
+
+    // -------------------------------------------------------------------------
+    // Noms de fichiers traduits (fr/ et ja/), déclarés par la ligne de langue de la page anglaise
+    // -------------------------------------------------------------------------
+
+    private function seedLocalizedFixture(): void
+    {
+        $this->writeWikiFile('_Sidebar.md', "**[Home](Home)**\n\n**Admin**\n- [Backups](Backups)\n");
+        $this->writeWikiFile('Home.md', "# Home\n\n🌐 **English** · [Français](fr/Accueil) · [日本語](ja/ホーム)\n\nSee [Backups](Backups).");
+        $this->writeWikiFile('Backups.md', "# Backups\n\n🌐 **English** · [Français](fr/Sauvegardes) · [日本語](ja/バックアップ)\n");
+        $this->writeWikiFile('fr/Accueil.md', "# Accueil\n\n🌐 [English](../Home) · **Français** · [日本語](../ja/ホーム)\n\nVoir [Sauvegardes](Sauvegardes) et [Backups](../Backups).");
+        $this->writeWikiFile('fr/Sauvegardes.md', "# Sauvegardes\n\n🌐 [English](../Backups) · **Français** · [日本語](../ja/バックアップ)\n");
+        $this->writeWikiFile('ja/ホーム.md', "# ホーム\n\n🌐 [English](../Home) · [Français](../fr/Accueil) · **日本語**\n\n[バックアップ](バックアップ)を参照。");
+        $this->writeWikiFile('ja/バックアップ.md', "# バックアップ\n\n🌐 [English](../Backups) · [Français](../fr/Sauvegardes) · **日本語**\n");
+    }
+
+    public function testLocalizedSlugsAreReadFromTheLanguageLine(): void
+    {
+        $slugs = WikiContentService::localizedSlugsFromPage("# T\n\n🌐 **English** · [Français](fr/Sauvegardes) · [日本語](ja/バックアップ)\n");
+
+        $this->assertSame(['fr' => 'Sauvegardes', 'ja' => 'バックアップ'], $slugs);
+    }
+
+    public function testLocalizedSlugsFromAPageWithoutLanguageLineAreEmpty(): void
+    {
+        $this->assertSame([], WikiContentService::localizedSlugsFromPage("# T\n\nSans ligne de langue."));
+    }
+
+    public function testJapaneseAndAccentedSlugsAreValidButTraversalIsNot(): void
+    {
+        $this->assertTrue(WikiContentService::isValidSlug('バックアップ'));
+        $this->assertTrue(WikiContentService::isValidSlug('Sauvegardes-et-mises-à-jour'));
+        $this->assertFalse(WikiContentService::isValidSlug('../バックアップ'));
+        $this->assertFalse(WikiContentService::isValidSlug('_Sidebar'));
+    }
+
+    public function testPageKeysStayEnglishWhileFilesAreRead(): void
+    {
+        $this->seedLocalizedFixture();
+
+        $this->assertTrue($this->service()->pageExists('fr', 'Backups'));
+        $this->assertTrue($this->service()->pageExists('ja', 'Backups'));
+        $this->assertStringContainsString('<h1>バックアップ</h1>', $this->service()->render('ja', 'Backups'));
+    }
+
+    public function testTableOfContentsUsesTheTranslatedTitle(): void
+    {
+        $this->seedLocalizedFixture();
+        $items = $this->service()->tableOfContents('ja')[1]['items'];
+
+        $this->assertSame('Backups', $items[0]['slug']);
+        $this->assertSame('バックアップ', $items[0]['title']);
+        $this->assertTrue($items[0]['available']);
+    }
+
+    public function testLinksBetweenTranslatedPagesResolveToTheEnglishKey(): void
+    {
+        $this->seedLocalizedFixture();
+
+        $fr = $this->service()->render('fr', 'Home');
+        $ja = $this->service()->render('ja', 'Home');
+
+        $this->assertStringContainsString('docs/fr/Backups"', $fr);
+        $this->assertStringContainsString('docs/en/Backups"', $fr);
+        $this->assertStringContainsString('docs/ja/Backups"', $ja);
+    }
+
+    public function testGithubUrlUsesTheEncodedTranslatedFileName(): void
+    {
+        $this->seedLocalizedFixture();
+        $url = $this->service()->githubWikiUrl('ja', 'Backups');
+
+        $this->assertStringEndsWith('/wiki/ja/' . rawurlencode('バックアップ'), $url);
+        $this->assertStringEndsWith('/wiki/fr/Sauvegardes', $this->service()->githubWikiUrl('fr', 'Backups'));
+    }
 }
