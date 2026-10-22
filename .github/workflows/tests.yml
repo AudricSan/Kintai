@@ -68,9 +68,9 @@ jobs:
       - name: CLI provisioning smoke test
         run: bash scripts/ci/provision-smoke-test.sh
 
-  crawl-smoke:
-    # Parcours des pages d'une instance de démonstration (propriétaire, gérant, employé) : aucune page ne doit
-    # répondre 5xx ni afficher d'erreur PHP. Les tests unitaires simulent les dépôts et ne voient pas ces pannes.
+  lint:
+    # Contrôles statiques rapides : syntaxe PHP et JS, JSON valides (langues, composer), dépendances sans faille connue.
+    # Aucun test ne lit chaque fichier : une erreur de syntaxe dans une page rarement visitée passait inaperçue.
     runs-on: ubuntu-latest
 
     steps:
@@ -80,16 +80,36 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
-          extensions: pdo_sqlite, mbstring, gd, intl, curl, openssl
           coverage: none
 
       - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist --no-dev
+        run: composer install --no-interaction --prefer-dist
 
-      - name: Page crawl smoke test
-        run: bash scripts/ci/crawl-smoke-test.sh
+      - name: PHP syntax
+        run: |
+          set -euo pipefail
+          find src config database public scripts tests -name '*.php' -not -path '*/vendor/*' -print0 | xargs -0 -n1 -P4 php -l > /dev/null
+
+      - name: JavaScript syntax
+        run: |
+          set -euo pipefail
+          find public/assets/js -name '*.js' -print0 | xargs -0 -n1 node --check
+
+      - name: JSON files
+        run: |
+          set -euo pipefail
+          for f in lang/*.json contract.snapshot.json composer.json; do php -r 'json_decode(file_get_contents($argv[1]), false, 512, JSON_THROW_ON_ERROR);' "$f"; done
+
+      - name: Static analysis (PHPStan)
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
+
+      - name: Composer validate and audit
+        run: |
+          composer validate --no-check-publish --strict
+          composer audit --no-interaction
+
   crawl-bundles-smoke:
-    # Même parcours que crawl-smoke, avec les 12 bundles officiels installés depuis leur branche develop
+    # Parcours des pages d'une instance de démonstration (propriétaire, gérant, employé), avec les 12 bundles officiels installés depuis leur branche develop
     # (BUNDLES_REF) : migrations réelles, droits du gérant, pages et routes des bundles.
     runs-on: ubuntu-latest
 
