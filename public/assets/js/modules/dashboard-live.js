@@ -29,6 +29,8 @@
     var refreshBtn = document.querySelector('[data-dash-refresh-now]');
     var wallBtn = document.querySelector('[data-dash-wall]');
     var wallExit = document.querySelector('[data-dash-wall-exit]');
+    // Le mode mural est réservé aux écrans de bureau et de tablette : même seuil que le CSS (téléphone ≤ 768 px).
+    var phone = window.matchMedia('(max-width: 768px)');
 
     function items() {
         return Array.prototype.slice.call(grid.querySelectorAll(':scope > [data-widget-key]'));
@@ -149,12 +151,14 @@
     function setWall(on) {
         document.documentElement.classList.toggle('dash-wall', on);
         if (wallBtn) wallBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
-        if (wallExit) wallExit.hidden = !on;
+        // « Quitter » n'est visible et utilisable qu'en mode mural.
+        if (wallExit) { wallExit.hidden = !on; wallExit.disabled = !on; }
         if (on) acquireWakeLock(); else releaseWakeLock();
         window.dispatchEvent(new Event('resize'));
     }
 
     function enterWall() {
+        if (phone.matches) return;
         setWall(true);
         var el = document.documentElement;
         if (el.requestFullscreen) {
@@ -174,6 +178,17 @@
             setWall(false);
         }
     });
+
+    // Le bouton est caché sur téléphone ; l'état de départ du bouton « Quitter » est aussi désactivé.
+    if (wallBtn) wallBtn.disabled = phone.matches;
+    if (wallExit) wallExit.disabled = true;
+    var onPhoneChange = function () {
+        if (wallBtn) wallBtn.disabled = phone.matches;
+        // Écran réduit ou téléphone tourné en mode mural : on en sort plutôt que de laisser une page sans barres.
+        if (phone.matches && document.documentElement.classList.contains('dash-wall')) exitWall();
+    };
+    if (phone.addEventListener) phone.addEventListener('change', onPhoneChange);
+    else if (phone.addListener) phone.addListener(onPhoneChange);
 
     // Échap (ou tout autre moyen de quitter le plein écran) quitte aussi le mode mural.
     document.addEventListener('fullscreenchange', function () {
