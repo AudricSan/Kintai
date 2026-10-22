@@ -10,7 +10,7 @@ use PHPUnit\Framework\TestCase;
 /**
  * Un zipball GitHub porte le commit de son tag : sha complet dans le commentaire du ZIP, sha abrégé dans
  * le nom du dossier racine. Ces tests fabriquent des archives à ce format (voir « Getting listed in a
- * registry » dans docs/creating-a-bundle.md) et vérifient que seule l'archive du commit épinglé passe.
+ * registry » dans wiki : Creating-a-Bundle) et vérifient que seule l'archive du commit épinglé passe.
  */
 final class ArchiveCommitVerifierTest extends TestCase
 {

@@ -11,4 +11,4 @@
       data-label-expired="<?= htmlspecialchars(__('dashboard_session_expired')) ?>"></span>
 <button type="button" class="btn btn--ghost btn--sm" data-dash-refresh-now><?= __('dashboard_refresh_now') ?></button>
 <button type="button" class="btn btn--ghost btn--sm" data-dash-wall aria-pressed="false"><?= __('dashboard_wall_enter') ?></button>
-<button type="button" class="btn btn--primary btn--sm dash-wall-exit" data-dash-wall-exit hidden><?= __('dashboard_wall_exit') ?></button>
+<button type="button" class="btn btn--primary btn--sm dash-wall-exit" data-dash-wall-exit hidden disabled><?= __('dashboard_wall_exit') ?></button>

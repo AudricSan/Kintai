@@ -116,6 +116,27 @@ final class DatabaseLogRepository implements LogRepositoryInterface
         return EloquentActivityEntry::where('created_at', '<', $before)->delete();
     }
 
+    public function purgeAll(): int
+    {
+        return EloquentActivityEntry::query()->delete();
+    }
+
+    public function reclaimSpace(): void
+    {
+        $model      = new EloquentActivityEntry();
+        $connection = $model->getConnection();
+
+        try {
+            match ($connection->getDriverName()) {
+                'sqlite' => $connection->statement('VACUUM'),
+                'mysql'  => $connection->statement('OPTIMIZE TABLE ' . $connection->getTablePrefix() . $model->getTable()),
+                default  => null,
+            };
+        } catch (\Throwable) {
+            // Gain d'espace non essentiel : la purge, elle, a réussi.
+        }
+    }
+
     private function buildFilterQuery(array $filters): Builder
     {
         $query = EloquentActivityEntry::query();

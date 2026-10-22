@@ -19,14 +19,6 @@ $baseDocs = [
     'CHANGELOG.md',
     'CONTRIBUTING.md',
     'SECURITY.md',
-    'docs/architecture.md',
-    'docs/business-model.md',
-    'docs/creating-a-bundle.md',
-    'docs/database.md',
-    'docs/multi-tenancy.md',
-    'docs/releasing.md',
-    'docs/security-overview.md',
-    'docs/vision.md',
 ];
 
 // Toutes les traductions vivent dans docs/i18n/, quel que soit le dossier du document source.
