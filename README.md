@@ -12,7 +12,7 @@
 
 Kintai is the bridge between a spreadsheet and an enterprise ERP: scheduling, clock-in/out, leave, shift swaps, open-shift bidding, daily reports and payroll estimates for retail and hospitality businesses running multiple stores — self-hosted, on your own infrastructure, with your own data.
 
-> **Status: pre-1.0.** Kintai is functional, but the API and data schema may still evolve before a stable `1.0.0`. See [CHANGELOG.md](CHANGELOG.md) and [docs/releasing.md](docs/releasing.md) for the version scheme.
+> **Status: pre-1.0.** Kintai is functional, but the API and data schema may still evolve before a stable `1.0.0`. See [CHANGELOG.md](CHANGELOG.md) and [Releasing a Version (wiki)](https://github.com/AudricSan/Kintai/wiki/Releasing-a-Version) for the version scheme.
 
 ---
 
@@ -21,7 +21,7 @@ Kintai is the bridge between a spreadsheet and an enterprise ERP: scheduling, cl
 - **You own your data.** No multi-tenant black box: each deployment is a dedicated instance with its own database. Self-host it on your own server with a `git clone` — no vendor lock-in.
 - **Built for real multi-store operations.** Store-level timezones, currencies, break rules, understaffing thresholds, and per-store feature toggles — not a single-location tool stretched to fit.
 - **Japan-ready, globally usable.** CJK-safe PDF exports, `姓 名` name ordering, JPY/EUR/USD display, and FR/EN/JA translations out of the box — designed around Japanese retail conventions but usable anywhere.
-- **Modular by design.** A lean custom PHP 8.3 core (no Laravel, no Symfony, Eloquent as the only borrowed piece) handles scheduling, users, stores and auth; everything else — daily reports, messaging, shift swaps, payroll — ships as a self-contained, independently toggleable bundle. Disable what you don't need, keep the instance light. See [docs/architecture.md](docs/architecture.md).
+- **Modular by design.** A lean custom PHP 8.3 core (no Laravel, no Symfony, Eloquent as the only borrowed piece) handles scheduling, users, stores and auth; everything else — daily reports, messaging, shift swaps, payroll — ships as a self-contained, independently toggleable bundle. Disable what you don't need, keep the instance light. See [Architecture (wiki)](https://github.com/AudricSan/Kintai/wiki/Architecture).
 - **Actually tested.** 1,500+ PHPUnit tests across the core, bundles, repositories and controllers, run on every push via GitHub Actions.
 
 ---
@@ -54,7 +54,7 @@ Kintai is the bridge between a spreadsheet and an enterprise ERP: scheduling, cl
 
 **Operations** — One-click self-update from GitHub Releases (with progress bar and automatic backup/rollback safety net), SQLite/MySQL backup & restore, token-protected cron endpoints for external schedulers.
 
-Full breakdown in [docs/architecture.md](docs/architecture.md) and [docs/database.md](docs/database.md).
+Full breakdown in [Architecture (wiki)](https://github.com/AudricSan/Kintai/wiki/Architecture) and [Database Strategy (wiki)](https://github.com/AudricSan/Kintai/wiki/Database-Strategy).
 
 ---
 
@@ -128,7 +128,7 @@ public/assets/           → modular CSS/JS, no build step
 database/migrations/php/ → Eloquent migrations, SQLite + MySQL from one schema
 ```
 
-Deeper dives: [docs/architecture.md](docs/architecture.md) · [docs/database.md](docs/database.md) · [docs/multi-tenancy.md](docs/multi-tenancy.md)
+Deeper dives: [Architecture (wiki)](https://github.com/AudricSan/Kintai/wiki/Architecture) · [Database Strategy (wiki)](https://github.com/AudricSan/Kintai/wiki/Database-Strategy) · [Multi-Tenancy (wiki)](https://github.com/AudricSan/Kintai/wiki/Multi-Tenancy)
 
 ---
 

@@ -33,7 +33,7 @@ final class BundleSettingsControllerTest extends TestCase
      * Depuis que TeamDirectory (le dernier bundle du monorepo) a été extrait vers son
      * propre dépôt, plus aucun bundle legacy n'est réellement présent dans src/Bundles/ :
      * ce test scanne un dossier synthétique contenant de faux bundles plutôt que le vrai
-     * dossier du dépôt (voir docs/architecture.md "Modular Bundles"). Cinq bundles sont
+     * dossier du dépôt (voir wiki : Architecture "Modular Bundles"). Cinq bundles sont
      * créés (team-directory + fake-bundle-{2..5}) pour pouvoir tester le quota freemium
      * (4 bundles actifs max) avec de vrais slugs découverts, sans mocker PlanLimitService
      * (classe `final`, non mockable).

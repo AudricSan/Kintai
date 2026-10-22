@@ -21,7 +21,7 @@ Ouvrez une issue avec le template **Bug Report**. Incluez :
 
 ### Proposer une fonctionnalité
 
-Ouvrez une issue avec le template **Feature Request**. Expliquez le cas d'usage et en quoi elle s'inscrit dans le périmètre du projet — voir [docs/i18n/vision.fr.md](vision.fr.md) pour la direction produit.
+Ouvrez une issue avec le template **Feature Request**. Expliquez le cas d'usage et en quoi elle s'inscrit dans le périmètre du projet — voir [Vision produit (wiki)](https://github.com/AudricSan/Kintai/wiki/fr/Vision-produit) pour la direction produit.
 
 ### Soumettre une Pull Request
 
@@ -43,7 +43,7 @@ Ouvrez une issue avec le template **Feature Request**. Expliquez le cas d'usage 
 - Les commentaires dans le code sont écrits en français ; tout le reste (messages de commit, descriptions de PR, documentation) en anglais
 - Aucune dépendance framework externe au-delà d'`illuminate/database` (Eloquent, utilisé uniquement comme ORM)
 - Jamais de `style="..."` inline dans les vues — étendez un module CSS sous `public/assets/css/src/`
-- Aucun handler d'événement inline (`onclick=`, `onchange=`, `onsubmit=`, `oninput=`…), aucun lien `javascript:` ni `<script>` sans nonce dans les vues ou composants — la Content-Security-Policy (`script-src 'self' 'nonce-…'`) les bloque en silence. Utilisez `data-on-click`/`data-on-change`/`data-args`, `data-submit-on-change`, `data-confirm`, `data-stop-propagation` (`public/assets/js/modules/csp-actions.js`) et `<script nonce="<?= csp_nonce() ?>">` ; `NoInlineScriptGuardTest` échoue en cas de violation. Auteurs de bundles : voir `docs/creating-a-bundle.md` (« Content Security Policy »)
+- Aucun handler d'événement inline (`onclick=`, `onchange=`, `onsubmit=`, `oninput=`…), aucun lien `javascript:` ni `<script>` sans nonce dans les vues ou composants — la Content-Security-Policy (`script-src 'self' 'nonce-…'`) les bloque en silence. Utilisez `data-on-click`/`data-on-change`/`data-args`, `data-submit-on-change`, `data-confirm`, `data-stop-propagation` (`public/assets/js/modules/csp-actions.js`) et `<script nonce="<?= csp_nonce() ?>">` ; `NoInlineScriptGuardTest` échoue en cas de violation. Auteurs de bundles : voir the wiki page [Creating a Bundle](https://github.com/AudricSan/Kintai/wiki/Creating-a-Bundle) (« Content Security Policy »)
 - Les barres de filtres s'appliquent instantanément — pas de bouton "Filtrer". Les champs texte soumettent le formulaire avec un debounce sur `input` (voir le câblage générique dans `public/assets/js/app.js` qui cible `form.filter-bar`/`form.shifts-filters`), les champs `select`/date soumettent sur `onchange`. Cela s'applique à tous les filtres, y compris les champs de recherche par nom/texte
 
 ## Lancer les tests
@@ -61,10 +61,10 @@ Chaque fonctionnalité nouvelle ou modifiée doit être accompagnée de tests PH
 
 ## Langues de la documentation
 
-Le README, le CHANGELOG, CONTRIBUTING, SECURITY et tout ce qui se trouve sous `docs/` sont disponibles en anglais, français (`.fr.md`) et japonais (`.ja.md`). L'anglais fait foi — si vous modifiez un document anglais, mettre à jour les traductions est apprécié mais pas requis pour qu'une PR soit acceptée. `php scripts/check-translations.php` signale les traductions manquantes ou obsolètes (non bloquant, exécuté en CI à chaque push).
+Le README, le CHANGELOG, CONTRIBUTING et SECURITY sont disponibles en anglais, français (`.fr.md`) et japonais (`.ja.md`) — les traductions se trouvent dans `docs/i18n/` — et le [wiki](https://github.com/AudricSan/Kintai/wiki) (la documentation détaillée) l'est dans les mêmes trois langues. L'anglais fait foi — si vous modifiez un document anglais, mettre à jour les traductions est apprécié mais pas requis pour qu'une PR soit acceptée. `php scripts/check-translations.php` signale les traductions manquantes ou obsolètes (non bloquant, exécuté en CI à chaque push).
 
 ## Par où commencer
 
-- [docs/i18n/architecture.fr.md](architecture.fr.md) — comment le framework est construit
-- [docs/i18n/database.fr.md](database.fr.md) — modèles, repositories, migrations
+- [Architecture (wiki)](https://github.com/AudricSan/Kintai/wiki/fr/Architecture) — comment le framework est construit
+- [Stratégie base de données (wiki)](https://github.com/AudricSan/Kintai/wiki/fr/Strategie-base-de-donnees) — modèles, repositories, migrations
 - [CHANGELOG.fr.md](CHANGELOG.fr.md) — ce qui a été fait récemment

@@ -58,13 +58,18 @@ final class WikiSyncService
 
         $slugs = $this->flattenSlugs(WikiContentService::parseSidebarMarkdown($sidebar['body']));
 
-        foreach (WikiContentService::supportedLangs() as $lang) {
-            $dir = WikiContentService::langSubdir($lang) ?? '';
-            $targetDir = $dir !== '' ? $this->wikiPath . '/' . $dir : $this->wikiPath;
-            $this->ensureDir($targetDir);
+        // L'anglais d'abord : la ligne de langue (🌐) de chaque page anglaise donne le nom du fichier traduit.
+        $langs = WikiContentService::supportedLangs();
+        usort($langs, static fn (string $a, string $b): int => ($b === 'en') <=> ($a === 'en'));
 
+        /** @var array<string, array<string, string>> $localNames slug anglais => [langue => nom de fichier] */
+        $localNames = [];
+
+        foreach ($langs as $lang) {
             foreach ($slugs as $slug) {
-                $remotePath = ($dir !== '' ? $dir . '/' : '') . $slug . '.md';
+                // Le wiki GitHub est à plat : toutes les pages à la racine, avec un nom de fichier propre à la langue.
+                $fileSlug   = $lang === 'en' ? $slug : ($localNames[$slug][$lang] ?? $slug);
+                $remotePath = $fileSlug . '.md';
                 $fetched = $this->fetch($this->rawUrl($remotePath));
 
                 if (!$fetched['ok']) {
@@ -77,7 +82,11 @@ final class WikiSyncService
                     continue;
                 }
 
-                $this->writeIfChanged($targetDir . '/' . $slug . '.md', (string) $fetched['body'], $result);
+                if ($lang === 'en') {
+                    $localNames[$slug] = WikiContentService::localizedSlugsFromPage((string) $fetched['body']);
+                }
+
+                $this->writeIfChanged($this->wikiPath . '/' . $fileSlug . '.md', (string) $fetched['body'], $result);
             }
         }
 
@@ -123,9 +132,12 @@ final class WikiSyncService
         }
     }
 
+    /** Les noms de fichiers japonais ou accentués sont encodés en pourcentage, segment par segment. */
     private function rawUrl(string $path): string
     {
-        return 'https://raw.githubusercontent.com/wiki/' . $this->repo . '/' . $path;
+        $encoded = implode('/', array_map('rawurlencode', explode('/', $path)));
+
+        return 'https://raw.githubusercontent.com/wiki/' . $this->repo . '/' . $encoded;
     }
 
     /**
