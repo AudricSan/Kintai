@@ -11,6 +11,7 @@ use kintai\Core\BundleContract\Bundle;
 use kintai\Core\BundleManager;
 use kintai\Core\Extension\ExtensionRegistry;
 use kintai\Core\Container;
+use kintai\Core\Repositories\AvailabilityRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
@@ -22,6 +23,7 @@ use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\AvailabilityGuard;
 use kintai\Core\Services\NotificationService;
 use kintai\Core\Services\ShiftServiceInterface;
 use kintai\UI\Controller\Web\Scheduling\AdminShiftController;
@@ -80,6 +82,7 @@ final class AdminShiftControllerTest extends TestCase
                 $this->notifs,
                 $this->shiftService,
                 $permissions,
+                new AvailabilityGuard($this->createStub(AvailabilityRepositoryInterface::class)),
             );
         }
 

@@ -21,6 +21,7 @@ use kintai\Core\Request;
 use kintai\Core\Response;
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\AvailabilityGuard;
 use kintai\Core\Services\Log;
 use kintai\Core\Services\ShiftWageCalculator;
 use kintai\UI\ViewRenderer;
@@ -43,6 +44,7 @@ final class AdminShiftController
         private readonly NotificationService $notifs,
         private readonly ShiftServiceInterface $shiftService,
         private readonly PermissionService $permissions,
+        private readonly AvailabilityGuard $availabilityGuard,
     ) {}
 
     /** @return array<int, array> id => type, pour les stores gérés (ou tous si Owner). */
@@ -83,6 +85,79 @@ final class AdminShiftController
             }
         }
         return false;
+    }
+
+    /**
+     * Données de l'encadré « employé non disponible » si l'employé s'est déclaré indisponible ce jour-là, sinon null.
+     * Un avertissement, jamais un blocage : le manager peut forcer l'horaire (force_availability).
+     *
+     * @return array{user_name: string, weekday: string, date: string}|null
+     */
+    private function availabilityConflict(int $userId, int $storeId, string $shiftDate): ?array
+    {
+        $weekday = $this->availabilityGuard->unavailableWeekday($userId, $storeId, $shiftDate);
+        if ($weekday === null) {
+            return null;
+        }
+
+        $user = $this->users->findById($userId) ?? [];
+        $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
+        return [
+            'user_name' => (string) ($user['display_name'] ?? $user['email'] ?? ('#' . $userId)),
+            'weekday'   => __($days[$weekday - 1]),
+            'date'      => $shiftDate,
+        ];
+    }
+
+    /** Phrase de l'avertissement (formulaire et réponses JSON). */
+    private function availabilityMessage(array $conflict): string
+    {
+        return __('shift_availability_conflict', ['name' => $conflict['user_name'], 'weekday' => $conflict['weekday'], 'date' => $conflict['date']]);
+    }
+
+    /** Vrai si le manager a choisi de forcer l'horaire malgré l'indisponibilité de l'employé. */
+    private function availabilityForced(Request $request): bool
+    {
+        return $request->post('force_availability', '') === '1';
+    }
+
+    /**
+     * Réaffiche le formulaire de shift, valeurs saisies conservées, avec l'encadré rouge « employé non disponible » et
+     * ses deux boutons (Annuler, Forcer l'horaire).
+     *
+     * @param array{user_name: string, weekday: string, date: string} $conflict
+     */
+    private function shiftFormWithAvailabilityConflict(Request $request, string $mode, array $shift, array $conflict): Response
+    {
+        $managedIds = $this->managedIds($request);
+        $allUsers   = $managedIds !== null
+            ? array_values(array_filter($this->users->findAll(), fn($u) => in_array((int) $u['id'], $this->memberUserIds($managedIds), true)))
+            : $this->users->findAll();
+
+        return Response::html($this->view->render('scheduling.shifts-form', [
+            'title'                 => $mode === 'edit' ? 'Modifier le shift #' . $shift['id'] : 'Nouveau shift',
+            'mode'                  => $mode,
+            'shift'                 => $shift,
+            'all_users'             => $allUsers,
+            'all_stores'            => $this->availableStores($managedIds),
+            'all_types'             => $this->shiftTypesForManaged($managedIds),
+            'redirect_to'           => safe_redirect_path((string) $request->post('redirect_to', ''), ''),
+            'availability_conflict' => $conflict,
+            'availability_message'  => $this->availabilityMessage($conflict),
+        ], 'layout.app'));
+    }
+
+    /** Champs du formulaire de shift tels que postés, pour le réafficher à l'identique. */
+    private function postedShiftFields(Request $request): array
+    {
+        $fields = [];
+        foreach (['store_id', 'user_id', 'shift_date', 'start_time', 'end_time', 'pause_minutes', 'notes', 'is_open', 'open_shift_note', 'hourly_rate_override', 'net_minutes_override'] as $name) {
+            if ($request->hasPost($name)) {
+                $fields[$name] = $request->post($name, '');
+            }
+        }
+        return $fields;
     }
 
     /**
@@ -658,6 +733,13 @@ final class AdminShiftController
             return Response::redirect($this->base() . '/admin/shifts/create?error=timeoff_conflict&store_id=' . $storeId);
         }
 
+        if (!$isOpen && $uid > 0 && !$this->availabilityForced($request)) {
+            $conflict = $this->availabilityConflict($uid, $storeId, $shiftDate);
+            if ($conflict !== null) {
+                return $this->shiftFormWithAvailabilityConflict($request, 'create', $this->postedShiftFields($request), $conflict);
+            }
+        }
+
         $pauseMinutes = (int) $request->post('pause_minutes', 0);
         $shiftTypeId  = $this->dominantShiftTypeId($storeId, $startTime, $endTime, max(0, $duration - $pauseMinutes));
 
@@ -779,6 +861,15 @@ final class AdminShiftController
         $targetUid = $isOpen ? 0 : (int) $request->post('user_id', $shift['user_id']);
         if (!$isOpen && $targetUid > 0 && $this->hasApprovedTimeoffConflict($targetUid, $shiftDate)) {
             return Response::redirect($this->base() . '/admin/shifts/' . $shift['id'] . '/edit?error=timeoff_conflict');
+        }
+
+        // Seulement quand la personne ou la date change : une simple retouche d'horaire ne doit pas redemander.
+        $moved = $targetUid !== (int) ($shift['user_id'] ?? 0) || $shiftDate !== (string) ($shift['shift_date'] ?? '');
+        if (!$isOpen && $targetUid > 0 && $moved && !$this->availabilityForced($request)) {
+            $conflict = $this->availabilityConflict($targetUid, $newStoreId, $shiftDate);
+            if ($conflict !== null) {
+                return $this->shiftFormWithAvailabilityConflict($request, 'edit', array_merge($shift, $this->postedShiftFields($request)), $conflict);
+            }
         }
 
         $pauseMinutes = (int) $request->post('pause_minutes', $shift['pause_minutes'] ?? 0);
@@ -1015,6 +1106,13 @@ final class AdminShiftController
 
         if (!$isOpen && $bodyUid > 0 && $this->hasApprovedTimeoffConflict($bodyUid, $shiftDate)) {
             return Response::json(['error' => __('shift_timeoff_conflict')], 409);
+        }
+
+        if (!$isOpen && $bodyUid > 0 && empty($body['force_availability'])) {
+            $conflict = $this->availabilityConflict($bodyUid, $storeId, $shiftDate);
+            if ($conflict !== null) {
+                return Response::json(['error' => $this->availabilityMessage($conflict), 'code' => 'availability_conflict'], 409);
+            }
         }
 
         $shiftTypeId = $this->dominantShiftTypeId($storeId, $startTime, $endTime, max(0, $duration - $pauseMin));
@@ -1359,6 +1457,13 @@ final class AdminShiftController
         $moveUid = (int) ($shift['user_id'] ?? 0);
         if (empty($shift['is_open']) && $moveUid > 0 && $this->hasApprovedTimeoffConflict($moveUid, $shiftDate)) {
             return Response::json(['error' => __('shift_timeoff_conflict')], 409);
+        }
+
+        if (empty($shift['is_open']) && $moveUid > 0 && $shiftDate !== (string) ($shift['shift_date'] ?? '') && empty($body['force_availability'])) {
+            $conflict = $this->availabilityConflict($moveUid, (int) $shift['store_id'], $shiftDate);
+            if ($conflict !== null) {
+                return Response::json(['error' => $this->availabilityMessage($conflict), 'code' => 'availability_conflict'], 409);
+            }
         }
 
         $saved = $this->shifts->save(array_merge($shift, [

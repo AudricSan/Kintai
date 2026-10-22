@@ -6,6 +6,7 @@ namespace kintai\Tests\Unit\Controller\Web;
 
 use kintai\Core\Auth\PermissionService;
 use kintai\Core\Exceptions\ForbiddenException;
+use kintai\Core\Repositories\AvailabilityRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
 use kintai\Core\Repositories\RoleRepositoryInterface;
 use kintai\Core\Repositories\ShiftRepositoryInterface;
@@ -16,6 +17,7 @@ use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Repositories\UserShiftTypeRateRepositoryInterface;
 use kintai\Core\Request;
 use kintai\Core\Services\AuditLogger;
+use kintai\Core\Services\AvailabilityGuard;
 use kintai\Core\Services\NotificationService;
 use kintai\Core\Services\ShiftServiceInterface;
 use kintai\UI\Controller\Web\Scheduling\AdminShiftController;
@@ -62,6 +64,7 @@ final class AdminShiftResolveConflictTest extends TestCase
             $this->notifs,
             $this->createStub(ShiftServiceInterface::class),
             new PermissionService($this->createStub(RoleAssignmentRepositoryInterface::class), $this->createStub(RoleRepositoryInterface::class)),
+            new AvailabilityGuard($this->createStub(AvailabilityRepositoryInterface::class)),
         );
     }
 
