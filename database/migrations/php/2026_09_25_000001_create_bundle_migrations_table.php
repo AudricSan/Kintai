@@ -10,7 +10,7 @@ use Illuminate\Database\Schema\Blueprint;
 /**
  * Table de suivi des migrations fournies par les bundles distribués (dossier
  * optionnel `database/migrations/` à la racine d'un bundle — voir
- * BundleMigrationRunner et docs/creating-a-bundle.md). Séparée de `migrations`
+ * BundleMigrationRunner et wiki : Creating-a-Bundle). Séparée de `migrations`
  * (réservée au Core) pour ne jamais risquer de collision de nom entre bundles
  * et permettre un nettoyage ciblé par bundle_slug lors d'un uninstall.
  */
