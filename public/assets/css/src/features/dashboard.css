@@ -356,6 +356,15 @@
 .dash-updated { margin-right: var(--space-2); }
 .dash-updated--error { color: var(--color-danger); font-weight: 600; }
 
+/* « Quitter le mode mural » n'existe que dans ce mode. .btn fixe un display qui l'emporte sur le [hidden] de la feuille
+   de style du navigateur : sans cette règle, le bouton restait visible hors mode mural. */
+.dash-wall-exit[hidden] { display: none; }
+
+/* « Activer le mode mural » est inutile (et inutilisable) sur téléphone : il sert à un écran de magasin. */
+@media (max-width: 768px) {
+    [data-dash-wall] { display: none; }
+}
+
 /* Mode mural : plein écran sans barres, widgets agrandis à la lecture de loin. La sortie reste accessible. */
 html.dash-wall .app-sticky-header,
 html.dash-wall .topbar,
