@@ -40,73 +40,72 @@ final class WikiIntegrityChecker
             }
         }
 
-        $dirs = ['' => 'en', 'fr/' => 'fr', 'ja/' => 'ja'];
-
-        // Nom de fichier d'une page dans chaque langue : celui que déclare la ligne de langue de sa version anglaise
-        // (sinon le slug lui-même), et correspondance inverse nom traduit => slug anglais.
-        $localName = [];
-        $keyOf     = ['fr' => [], 'ja' => []];
+        // Wiki à plat : toutes les pages sont à la racine. Chaque page déclare sa langue et les noms de ses versions
+        // dans sa ligne de langue ; on en tire, par clé de page (nom anglais), le fichier de chaque langue.
+        $pages = []; // nom de fichier => ['key' => clé, 'lang' => langue, 'content' => texte]
         foreach (glob("$wikiPath/*.md") ?: [] as $file) {
-            $slug = basename($file, '.md');
-            if ($slug[0] === '_') {
+            $name = basename($file, '.md');
+            if ($name[0] === '_') {
                 continue;
             }
-            foreach (WikiContentService::localizedSlugsFromPage((string) file_get_contents($file)) as $lang => $local) {
-                $localName[$lang][$slug] = $local;
-                $keyOf[$lang][$local]    = $slug;
+            $content = str_replace("\r\n", "\n", (string) file_get_contents($file));
+            $line    = WikiContentService::languageLine($content);
+            $lang    = $line['own'] ?? 'en';
+            $key     = $lang === 'en' ? $name : ($line['links']['en'] ?? $name);
+            $pages[$name] = ['key' => $key, 'lang' => $lang, 'content' => $content, 'links' => $line['links']];
+        }
+
+        // Fichier attendu de chaque langue pour chaque page anglaise, d'après sa ligne de langue.
+        $expected = [];
+        foreach ($pages as $name => $page) {
+            if ($page['lang'] === 'en') {
+                $expected[$name] = ['en' => $name, 'fr' => $page['links']['fr'] ?? $name, 'ja' => $page['links']['ja'] ?? $name];
             }
         }
 
         foreach (array_keys($listed) as $slug) {
-            foreach ($dirs as $dir => $lang) {
-                $file = $lang === 'en' ? $slug : ($localName[$lang][$slug] ?? $slug);
-                if (!is_file("$wikiPath/{$dir}$file.md")) {
+            if (!isset($pages[$slug])) {
+                $errors[] = "page manquante (en) : $slug";
+                continue;
+            }
+            foreach (['fr', 'ja'] as $lang) {
+                $file = $expected[$slug][$lang];
+                if (!isset($pages[$file])) {
                     $errors[] = "page manquante ($lang) : $slug" . ($file !== $slug ? " ($file)" : '');
                 }
             }
         }
 
-        foreach ($dirs as $dir => $lang) {
-            foreach (glob("$wikiPath/{$dir}*.md") ?: [] as $file) {
-                $name = basename($file, '.md');
-                if ($name[0] === '_') {
-                    continue;
-                }
-                $key     = $lang === 'en' ? $name : ($keyOf[$lang][$name] ?? $name);
-                $content = str_replace("\r\n", "\n", (string) file_get_contents($file));
-                $rel     = "{$dir}$name";
+        $translatedNames = [];
+        foreach ($expected as $names) {
+            $translatedNames[$names['fr']] = $translatedNames[$names['ja']] = true;
+        }
 
-                if (!str_contains($content, '🌐')) {
-                    $errors[] = "ligne de choix de langue absente : $rel";
-                }
-                if (!isset($listed[$key]) && $this->nonEmptyLines($content) > self::STUB_MAX_LINES) {
-                    $warnings[] = "page absente de la barre latérale ($lang) : $name";
-                }
-                foreach ($this->brokenLinks($wikiPath, $dir, $content) as $target) {
-                    $errors[] = "lien cassé dans $rel : $target";
-                }
+        foreach ($pages as $name => $page) {
+            $content = $page['content'];
+
+            if (!str_contains($content, '🌐')) {
+                $errors[] = "ligne de choix de langue absente : $name";
+            }
+            if ($page['lang'] !== 'en' && !isset($expected[$page['key']])) {
+                $errors[] = "page traduite sans page anglaise ({$page['lang']}) : $name";
+            }
+            if ($page['lang'] === 'en' && !isset($listed[$name]) && $this->nonEmptyLines($content) > self::STUB_MAX_LINES) {
+                $warnings[] = "page absente de la barre latérale (en) : $name";
+            }
+            foreach ($this->brokenLinks($wikiPath, $content) as $target) {
+                $errors[] = "lien cassé dans $name : $target";
             }
         }
 
-        // Une page présente dans une langue mais pas dans les autres (hors barre latérale).
-        $names = [];
-        foreach ($dirs as $dir => $lang) {
-            foreach (glob("$wikiPath/{$dir}*.md") ?: [] as $file) {
-                $name = basename($file, '.md');
-                if ($name[0] !== '_') {
-                    $key = $lang === 'en' ? $name : ($keyOf[$lang][$name] ?? $name);
-                    $names[$key][$lang] = true;
+        // Une page anglaise qui annonce une traduction absente (hors barre latérale).
+        foreach ($expected as $slug => $names) {
+            foreach (['fr', 'ja'] as $lang) {
+                if (!isset($listed[$slug]) && !isset($pages[$names[$lang]])) {
+                    $errors[] = "traduction manquante ($lang) : $slug";
                 }
             }
         }
-        foreach ($names as $name => $langs) {
-            foreach (['en', 'fr', 'ja'] as $lang) {
-                if (!isset($langs[$lang]) && !isset($listed[$name])) {
-                    $errors[] = "traduction manquante ($lang) : $name";
-                }
-            }
-        }
-
         sort($errors);
         sort($warnings);
         return ['errors' => array_values(array_unique($errors)), 'warnings' => $warnings];
@@ -116,9 +115,8 @@ final class WikiIntegrityChecker
     {
         return count(array_filter(explode("\n", $content), static fn(string $l) => trim($l) !== ''));
     }
-
-    /** @return list<string> cibles de liens internes qui ne correspondent à aucun fichier */
-    private function brokenLinks(string $wikiPath, string $dir, string $content): array
+    /** @return list<string> cibles de liens internes qui ne correspondent à aucun fichier (le wiki est à plat) */
+    private function brokenLinks(string $wikiPath, string $content): array
     {
         // Les blocs de code ne contiennent pas de liens (exemples de syntaxe, adresses).
         $content = (string) preg_replace('/```.*?```/s', '', $content);
@@ -136,16 +134,11 @@ final class WikiIntegrityChecker
             if ($path === '' || $path === null) {
                 continue;
             }
-            $segments = explode('/', ($dir === '' ? '' : rtrim($dir, '/') . '/') . $path);
-            $resolved = [];
-            foreach ($segments as $seg) {
-                if ($seg === '..') {
-                    array_pop($resolved);
-                } elseif ($seg !== '.' && $seg !== '') {
-                    $resolved[] = $seg;
-                }
+            $target = rawurldecode(ltrim($path, '/'));
+            // Lien absolu du wiki (/Compte/Depot/wiki/Page) : on ne garde que le nom de la page.
+            if (str_contains($target, '/wiki/')) {
+                $target = substr($target, (int) strrpos($target, '/wiki/') + 6);
             }
-            $target = implode('/', $resolved);
             $hasExt = pathinfo($target, PATHINFO_EXTENSION) !== '';
             if (!is_file("$wikiPath/" . ($hasExt ? $target : $target . '.md'))) {
                 $broken[] = $href;

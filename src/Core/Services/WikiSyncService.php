@@ -66,13 +66,10 @@ final class WikiSyncService
         $localNames = [];
 
         foreach ($langs as $lang) {
-            $dir = WikiContentService::langSubdir($lang) ?? '';
-            $targetDir = $dir !== '' ? $this->wikiPath . '/' . $dir : $this->wikiPath;
-            $this->ensureDir($targetDir);
-
             foreach ($slugs as $slug) {
+                // Le wiki GitHub est à plat : toutes les pages à la racine, avec un nom de fichier propre à la langue.
                 $fileSlug   = $lang === 'en' ? $slug : ($localNames[$slug][$lang] ?? $slug);
-                $remotePath = ($dir !== '' ? $dir . '/' : '') . $fileSlug . '.md';
+                $remotePath = $fileSlug . '.md';
                 $fetched = $this->fetch($this->rawUrl($remotePath));
 
                 if (!$fetched['ok']) {
@@ -89,7 +86,7 @@ final class WikiSyncService
                     $localNames[$slug] = WikiContentService::localizedSlugsFromPage((string) $fetched['body']);
                 }
 
-                $this->writeIfChanged($targetDir . '/' . $fileSlug . '.md', (string) $fetched['body'], $result);
+                $this->writeIfChanged($this->wikiPath . '/' . $fileSlug . '.md', (string) $fetched['body'], $result);
             }
         }
 

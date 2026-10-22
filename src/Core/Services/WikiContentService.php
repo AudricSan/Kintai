@@ -10,23 +10,23 @@ use kintai\Core\Exceptions\NotFoundException;
  * Rend en HTML les pages du wiki GitHub (clone local .wiki/, gitignoré) pour
  * une consultation directe dans l'application.
  *
- * Structure attendue (celle du wiki GitHub réel du projet) :
- *   .wiki/Home.md, .wiki/Installation.md, ...   (anglais, à la racine)
- *   .wiki/fr/Home.md, .wiki/ja/Home.md, ...      (traductions, en sous-dossier)
- *   .wiki/_Sidebar.md                            (navigation, format wiki GitHub)
+ * Structure attendue (celle du wiki GitHub réel du projet) : GitHub aplatit les sous-dossiers d'un wiki, donc toutes
+ * les pages sont à la racine, avec un nom de fichier propre à chaque langue :
+ *   .wiki/Home.md, .wiki/Installation.md, ...       (anglais)
+ *   .wiki/Accueil.md, .wiki/ホーム.md, ...           (traductions, au nom traduit)
+ *   .wiki/_Sidebar.md                               (navigation, format wiki GitHub)
  *
- * Les liens internes entre pages du wiki utilisent la convention GitHub Wiki :
- * chemins relatifs sans extension ".md" (ex: "Installation", "../Home",
- * "../ja/Home" depuis une page sous fr/).
+ * La clé d'une page (barre latérale, URL /docs/{lang}/{page}) est son nom anglais. Le nom des fichiers traduits se lit
+ * dans la ligne de langue de chaque page (🌐 [English](Home) · **Français** · [日本語](ホーム)). Les liens internes
+ * sont des noms de page sans extension ".md" ; la barre latérale peut les écrire en liens absolus du wiki.
  */
 final class WikiContentService
 {
-    /** @var array<string, string> Langue => sous-dossier ('' pour l'anglais, à la racine) */
-    private const LANG_DIRS = [
-        'fr' => 'fr',
-        'en' => '',
-        'ja' => 'ja',
-    ];
+    /** Langues du wiki (toutes les pages sont à la racine du dossier). */
+    private const LANGS = ['fr', 'en', 'ja'];
+
+    /** Libellé de langue (ligne 🌐) => code de langue. */
+    private const LANGUAGE_LABELS = ['English' => 'en', 'Français' => 'fr', '日本語' => 'ja'];
 
     /** @var array<string, string> Libellé de groupe (tel qu'écrit dans _Sidebar.md) => clé de traduction */
     private const GROUP_LABEL_KEYS = [
@@ -58,17 +58,7 @@ final class WikiContentService
      */
     public static function supportedLangs(): array
     {
-        return array_keys(self::LANG_DIRS);
-    }
-
-    /**
-     * Sous-dossier `.wiki/` d'une langue ('' pour l'anglais, à la racine), ou
-     * null si la langue n'est pas supportée. Partagé avec WikiSyncService pour
-     * que les deux services s'accordent sur la même disposition de fichiers.
-     */
-    public static function langSubdir(string $lang): ?string
-    {
-        return self::LANG_DIRS[$lang] ?? null;
+        return self::LANGS;
     }
 
     public function isConfigured(): bool
@@ -85,12 +75,9 @@ final class WikiContentService
     public function githubWikiUrl(string $lang, ?string $slug = null): string
     {
         $repo = env('GITHUB_UPDATE_REPO', 'AudricSan/Kintai');
-        $dir  = self::LANG_DIRS[$lang] ?? '';
         $slug = ($slug !== null && self::isValidSlug($slug)) ? $slug : 'Home';
-        $file = rawurlencode($this->localSlug($lang, $slug));
-        $path = $dir !== '' ? $dir . '/' . $file : $file;
 
-        return 'https://github.com/' . $repo . '/wiki/' . $path;
+        return 'https://github.com/' . $repo . '/wiki/' . rawurlencode($this->localSlug($lang, $slug));
     }
 
     /**
@@ -145,7 +132,7 @@ final class WikiContentService
 
     public function pageExists(string $lang, string $slug): bool
     {
-        if (!self::isValidSlug($slug) || !isset(self::LANG_DIRS[$lang])) {
+        if (!self::isValidSlug($slug) || !in_array($lang, self::LANGS, true)) {
             return false;
         }
 
@@ -183,9 +170,7 @@ final class WikiContentService
     /** Chemin du fichier d'une page ; $slug est la clé anglaise, le nom du fichier est celui de la langue. */
     private function resolvePath(string $lang, string $slug): string
     {
-        $dir = self::LANG_DIRS[$lang];
-
-        return $this->wikiPath . ($dir !== '' ? '/' . $dir : '') . '/' . $this->localSlug($lang, $slug) . '.md';
+        return $this->wikiPath . '/' . $this->localSlug($lang, $slug) . '.md';
     }
 
     /**
@@ -204,34 +189,54 @@ final class WikiContentService
     // -------------------------------------------------------------------------
 
     /**
-     * Noms de fichiers traduits d'une page, lus dans sa ligne de choix de langue (🌐), qui renvoie vers ses versions :
-     * "🌐 **English** · [Français](fr/Sauvegardes) · [日本語](ja/バックアップ)". Statique et pure : partagée avec
-     * WikiSyncService et WikiIntegrityChecker. Une langue absente de la ligne garde le nom anglais.
+     * Ligne de choix de langue d'une page : sa propre langue (celle en gras) et les noms des autres versions.
+     * "🌐 [English](Home) · **Français** · [日本語](ホーム)" donne own = fr, links = [en => Home, ja => ホーム].
+     * Statique et pure : partagée avec WikiSyncService et WikiIntegrityChecker. Les anciens liens « fr/X » et « ../X »
+     * sont acceptés ; le libellé décide de la langue.
+     *
+     * @return array{own: string|null, links: array<string, string>}
+     */
+    public static function languageLine(string $markdown): array
+    {
+        foreach (explode("\n", $markdown) as $line) {
+            if (!str_contains($line, '🌐')) {
+                continue;
+            }
+
+            $own = null;
+            foreach (self::LANGUAGE_LABELS as $label => $code) {
+                if (str_contains($line, '**' . $label . '**')) {
+                    $own = $code;
+                }
+            }
+
+            $links = [];
+            if (preg_match_all('/\[([^\]]+)\]\(([^)#\s]+)\)/u', $line, $matches, PREG_SET_ORDER) > 0) {
+                foreach ($matches as $m) {
+                    $code = self::LANGUAGE_LABELS[$m[1]] ?? null;
+                    $slug = rawurldecode(basename($m[2]));
+                    if ($code !== null && self::isValidSlug($slug)) {
+                        $links[$code] ??= $slug;
+                    }
+                }
+            }
+
+            return ['own' => $own, 'links' => $links];
+        }
+
+        return ['own' => null, 'links' => []];
+    }
+
+    /**
+     * Noms de fichiers traduits d'une page anglaise, lus dans sa ligne de langue. Une langue absente de la ligne
+     * garde le nom anglais.
      *
      * @return array<string, string> langue ('fr', 'ja') => nom de fichier sans ".md"
      */
     public static function localizedSlugsFromPage(string $markdown): array
     {
-        $found = [];
-
-        foreach (explode("\n", $markdown) as $line) {
-            if (!str_contains($line, '🌐')) {
-                continue;
-            }
-            if (preg_match_all('/\]\((?:\.\.\/)?(fr|ja)\/([^)#\s]+)\)/u', $line, $matches, PREG_SET_ORDER) > 0) {
-                foreach ($matches as $m) {
-                    $slug = rawurldecode($m[2]);
-                    if (self::isValidSlug($slug)) {
-                        $found[$m[1]] ??= $slug;
-                    }
-                }
-            }
-            break;
-        }
-
-        return $found;
+        return array_diff_key(self::languageLine($markdown)['links'], ['en' => true]);
     }
-
     /**
      * Nom de fichier d'une page dans une langue : celui que déclare sa version anglaise, sinon le slug lui-même.
      * Les clés de page (URL de l'aide, barre latérale) restent les slugs anglais.
@@ -266,13 +271,24 @@ final class WikiContentService
         $maps = ['local' => [], 'key' => []];
 
         foreach (glob($this->wikiPath . '/*.md') ?: [] as $file) {
-            $enSlug = basename($file, '.md');
-            if (!self::isValidSlug($enSlug)) {
+            $name = basename($file, '.md');
+            if (!self::isValidSlug($name)) {
                 continue;
             }
-            foreach (self::localizedSlugsFromPage((string) file_get_contents($file)) as $lang => $local) {
-                $maps['local'][$lang][$enSlug] = $local;
-                $maps['key'][$lang][$local]    = $enSlug;
+            $line = self::languageLine((string) file_get_contents($file));
+
+            if ($line['own'] === 'en' || $line['own'] === null) {
+                // Page anglaise : la clé est son propre nom, les liens donnent les versions traduites.
+                foreach ($line['links'] as $lang => $local) {
+                    if ($lang !== 'en') {
+                        $maps['local'][$lang][$name] = $local;
+                        $maps['key'][$lang][$local]  = $name;
+                    }
+                }
+            } elseif (isset($line['links']['en'])) {
+                // Page traduite : son lien « English » donne la clé.
+                $maps['local'][$line['own']][$line['links']['en']] = $name;
+                $maps['key'][$line['own']][$name]                  = $line['links']['en'];
             }
         }
 
@@ -325,7 +341,8 @@ final class WikiContentService
             }
 
             if (preg_match('/\[([^\]]+)\]\(([^)]+)\)/', $line, $m)) {
-                $slug = trim($m[2]);
+                // Lien relatif (Installation) ou absolu du wiki (/AudricSan/Kintai/wiki/Installation, noms encodés).
+                $slug = rawurldecode(basename(trim($m[2])));
                 if (self::isValidSlug($slug)) {
                     $groups[$current] ??= [];
                     $groups[$current][] = $slug;
@@ -388,43 +405,29 @@ final class WikiContentService
     }
 
     /**
-     * Résout un lien relatif façon GitHub Wiki (depuis la page courante) vers
-     * une paire [langue, slug]. Retourne [null, null] si non résoluble.
+     * Résout un lien interne du wiki vers une paire [langue, clé de page]. Le wiki est à plat : la cible est un nom de
+     * page (anglais ou traduit), éventuellement précédé du chemin absolu du wiki ou d'un ancien « ../ » / « fr/ ».
+     * Retourne [null, null] si non résoluble.
      *
      * @return array{0: string|null, 1: string|null}
      */
     private function resolveWikiLink(string $currentLang, string $target): array
     {
-        $target = strtok($target, '#');
-        $currentDir = self::LANG_DIRS[$currentLang] ?? '';
-        $segments = $currentDir !== '' ? [$currentDir] : [];
+        $name = rawurldecode(basename((string) strtok($target, '#')));
+        if (!self::isValidSlug($name)) {
+            return [null, null];
+        }
 
-        foreach (explode('/', trim((string) $target, '/')) as $part) {
-            if ($part === '' || $part === '.') {
-                continue;
+        $maps = $this->slugMaps();
+        foreach (['fr', 'ja'] as $lang) {
+            if (isset($maps['key'][$lang][$name])) {
+                return [$lang, $maps['key'][$lang][$name]];
             }
-            if ($part === '..') {
-                array_pop($segments);
-                continue;
-            }
-            $segments[] = $part;
         }
 
-        // Les cibles peuvent être encodées en pourcentage (noms japonais copiés depuis une URL).
-        $segments = array_map('rawurldecode', $segments);
-
-        if (count($segments) === 1 && self::isValidSlug($segments[0])) {
-            return ['en', $segments[0]];
-        }
-
-        // Le nom d'un fichier traduit est ramené à la clé de page (slug anglais) utilisée dans les URL de l'aide.
-        if (count($segments) === 2 && in_array($segments[0], ['fr', 'ja'], true) && self::isValidSlug($segments[1])) {
-            return [$segments[0], $this->pageKey($segments[0], $segments[1])];
-        }
-
-        return [null, null];
+        // Page anglaise : rien à convertir. Un lien d'une page traduite vers un nom introuvable reste « anglais ».
+        return ['en', $name];
     }
-
     /**
      * Titre affiché d'une page : premier titre H1 de son contenu (dans la
      * langue donnée, ou à défaut la version anglaise), sinon le slug humanisé.
