@@ -34,6 +34,12 @@ final class WikiContentService
         'Concepts & Architecture' => 'docs_group_concepts',
         'User Guide'              => 'docs_group_user_guide',
         'Reference'                => 'docs_group_reference',
+        'Employee Guide'           => 'docs_group_employee',
+        'Manager Guide'            => 'docs_group_manager',
+        'Administration'           => 'docs_group_admin',
+        'Installation & Operations' => 'docs_group_operations',
+        'Developers'               => 'docs_group_developers',
+        'Project'                  => 'docs_group_project',
     ];
 
     /** Groupe synthétique (avant tout titre de section dans _Sidebar.md, ex: Home) */
