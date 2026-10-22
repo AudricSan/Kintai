@@ -301,6 +301,7 @@ $router->group('/admin', function ($r) {
     // Journal d'activité (unifié)
     $r->get('/activity', [ActivityController::class, 'index'], name: 'admin.activity', permission: 'stores.view');
     $r->get('/activity/export', [ActivityController::class, 'export'], name: 'admin.activity.export', permission: 'stores.view');
+    $r->post('/activity/purge', [ActivityController::class, 'purge'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.activity.purge', permission: 'public');
 
 
     // Diagnostic mail
