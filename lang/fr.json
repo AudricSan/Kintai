@@ -1826,6 +1826,11 @@
     "install_error_database_not_empty": "La base « :name » contient déjà des tables. Pour ne rien effacer par erreur, l'installation n'utilise qu'une base vide : videz-la ou choisissez-en une autre.",
     "install_error_generic": "L'installation a échoué et a été entièrement annulée. Le détail technique est dans storage/logs/error.log.",
     "user_picker_empty": "Aucun employé actif dans ce magasin.",
+    "user_picker_owner": "Propriétaire",
+    "user_picker_search": "Rechercher un employé à ajouter…",
+    "user_picker_none_selected": "Aucun destinataire choisi",
+    "user_picker_no_match": "Aucun résultat",
+    "user_picker_remove": "Retirer",
     "user_picker_select_all": "Tout sélectionner",
     "user_picker_select_none": "Aucun",
     "user_picker_count": ":count sur :total sélectionné(s)"
