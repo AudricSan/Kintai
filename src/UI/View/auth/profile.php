@@ -525,7 +525,8 @@ echo Card::make(__('ical_feeds'))->body(ob_get_clean())->render();
 if (!empty($stores)) {
     ob_start();
     ?>
-    <p class="text-muted mb-sm"><?= __('schedule_export_description') ?></p>
+    <p class="text-muted mb-sm"><?= __('schedule_export_description') ?>
+        <a href="<?= $BASE_URL ?>/exports"><?= __('export_title') ?> →</a></p>
     <form method="GET" action="<?= $BASE_URL ?>/profile/schedule-export" class="form-stack">
         <div class="form-row">
             <?php if (count($stores) > 1): ?>

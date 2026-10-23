@@ -14,6 +14,7 @@ use kintai\UI\Controller\Web\DashboardLayoutController;
 use kintai\UI\Controller\Web\DashboardLayoutsController;
 use kintai\UI\Controller\Web\HomeController;
 use kintai\UI\Controller\Web\IcalController;
+use kintai\UI\Controller\Web\ExportController;
 use kintai\UI\Controller\Web\ScheduleExportController;
 use kintai\UI\Controller\Web\DocsController;
 use kintai\UI\Controller\Web\LegalController;
@@ -136,6 +137,11 @@ $router->group('/profile', function ($r) {
 // Photo de profil : servie hors du groupe /profile pour rester consultable
 // via l'ID d'un autre utilisateur (annuaire collègues, bundle TeamDirectory).
 $router->get('/avatar/{user_id:employee}', [AuthController::class, 'avatar'], middleware: [AuthMiddleware::class], name: 'user.avatar');
+
+// Exports de données (Core et bundles) en JSON, CSV, Excel ou ICS. Les droits sont décidés par jeu de données et par magasin
+// dans ExportAccess, pas par une permission de route : chacun peut au moins exporter ses propres données.
+$router->get('/exports',          [ExportController::class, 'index'],    middleware: [AuthMiddleware::class], name: 'exports.index');
+$router->get('/exports/download', [ExportController::class, 'download'], middleware: [AuthMiddleware::class], name: 'exports.download');
 
 $router->group('/notifications', function ($r) {
     $r->get('',              [NotificationController::class, 'index'],       name: 'notifications.index');

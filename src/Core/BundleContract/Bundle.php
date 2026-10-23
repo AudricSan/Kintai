@@ -221,6 +221,18 @@ abstract class Bundle
     }
 
     /**
+     * Point d'extension « jeux de données exportables » (contrat 1.30) : données du bundle proposées dans la page
+     * « Exports » en JSON, CSV et classeur Excel, pour une personne, un groupe ou un magasin. Le Core vérifie les droits
+     * (ExportDataset::$permission, par magasin) et ne passe au fournisseur qu'un périmètre déjà autorisé.
+     *
+     * @return list<\kintai\Contract\Extension\ExportDataset>
+     */
+    public function exportDatasets(): array
+    {
+        return [];
+    }
+
+    /**
      * Point d'extension « événements » (contrat 1.13) : auditeurs des événements que le Core annonce (classes de
      * kintai\Contract\Event, par exemple EmployeeCreated), un par événement. Le Core appelle chaque auditeur avec
      * l'objet de l'événement ; une exception est journalisée sans interrompre l'action du Core.
