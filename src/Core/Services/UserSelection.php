@@ -99,15 +99,27 @@ final class UserSelection
         return ['ids' => $ids, 'error' => null];
     }
 
-    /** @return list<array<string, mixed>> Comptes actifs membres du magasin */
+    /**
+     * Comptes actifs proposables pour un magasin : ses membres, plus les propriétaires de l'instance (l'Owner n'est
+     * généralement membre d'aucun magasin mais doit pouvoir être choisi).
+     *
+     * @return list<array<string, mixed>>
+     */
     private function activeMembers(int $storeId): array
     {
-        $members = [];
+        $ids = [];
         foreach ($this->storeUsers->findByStore($storeId) as $membership) {
-            if (isset($membership['is_active']) && !(bool) $membership['is_active']) {
-                continue;
+            if (!isset($membership['is_active']) || (bool) $membership['is_active']) {
+                $ids[(int) $membership['user_id']] = true;
             }
-            $user = $this->users->findById((int) $membership['user_id']);
+        }
+        foreach ($this->permissions->ownerUserIds() as $ownerId) {
+            $ids[$ownerId] = true;
+        }
+
+        $members = [];
+        foreach (array_keys($ids) as $id) {
+            $user = $this->users->findById($id);
             if ($user === null || (isset($user['is_active']) && !(bool) $user['is_active'])) {
                 continue;
             }
@@ -134,7 +146,7 @@ final class UserSelection
 
     /**
      * @param array<string, mixed> $user
-     * @return array{id: int, name: string, email: string, language: string}
+     * @return array{id: int, name: string, email: string, language: string, owner: bool}
      */
     private function summary(array $user): array
     {
@@ -147,6 +159,7 @@ final class UserSelection
             'name'     => $name,
             'email'    => trim((string) ($user['email'] ?? '')),
             'language' => (string) ($user['language'] ?? ''),
+            'owner'    => in_array((int) $user['id'], $this->permissions->ownerUserIds(), true),
         ];
     }
 }

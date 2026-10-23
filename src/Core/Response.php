@@ -60,6 +60,19 @@ final class Response
         return $r;
     }
 
+    /** Fichier téléchargé de type quelconque (classeur Excel…), contenu déjà en mémoire. */
+    public static function download(string $body, string $contentType, string $filename): self
+    {
+        $r = new self();
+        $r->body = $body;
+        $r->status = 200;
+        $r->headers['Content-Type'] = $contentType;
+        $r->headers['Content-Disposition'] = "attachment; filename=\"{$filename}\"";
+        $r->headers['Content-Length'] = (string) strlen($body);
+        $r->headers['Cache-Control'] = 'no-cache, no-store';
+        return $r;
+    }
+
     public static function pdf(string $body, string $filename): self
     {
         $r = new self();

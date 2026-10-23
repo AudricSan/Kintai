@@ -14,6 +14,8 @@ use kintai\UI\Controller\Web\DashboardLayoutController;
 use kintai\UI\Controller\Web\DashboardLayoutsController;
 use kintai\UI\Controller\Web\HomeController;
 use kintai\UI\Controller\Web\IcalController;
+use kintai\UI\Controller\Web\ExportController;
+use kintai\UI\Controller\Web\ScheduleExportController;
 use kintai\UI\Controller\Web\DocsController;
 use kintai\UI\Controller\Web\LegalController;
 use kintai\UI\Controller\Web\PrivacyController;
@@ -127,12 +129,19 @@ $router->group('/profile', function ($r) {
     $r->post('/calendar/google/options',    [CalendarLinkController::class, 'options'],    name: 'profile.calendar.options');
     $r->post('/calendar/google/resync',     [CalendarLinkController::class, 'resync'],     name: 'profile.calendar.resync');
     $r->get('/export',       [AuthController::class, 'exportData'],           name: 'profile.export');
+    // Son propre horaire en JSON, CSV ou ICS (fichier ponctuel, contrairement au flux iCal à jeton).
+    $r->get('/schedule-export', [ScheduleExportController::class, 'download'], name: 'profile.schedule_export');
     $r->post('/delete',      [AuthController::class, 'deleteAccount'],        name: 'profile.delete');
 }, middleware: [AuthMiddleware::class]);
 
 // Photo de profil : servie hors du groupe /profile pour rester consultable
 // via l'ID d'un autre utilisateur (annuaire collègues, bundle TeamDirectory).
 $router->get('/avatar/{user_id:employee}', [AuthController::class, 'avatar'], middleware: [AuthMiddleware::class], name: 'user.avatar');
+
+// Exports de données (Core et bundles) en JSON, CSV, Excel ou ICS. Les droits sont décidés par jeu de données et par magasin
+// dans ExportAccess, pas par une permission de route : chacun peut au moins exporter ses propres données.
+$router->get('/exports',          [ExportController::class, 'index'],    middleware: [AuthMiddleware::class], name: 'exports.index');
+$router->get('/exports/download', [ExportController::class, 'download'], middleware: [AuthMiddleware::class], name: 'exports.download');
 
 $router->group('/notifications', function ($r) {
     $r->get('',              [NotificationController::class, 'index'],       name: 'notifications.index');
