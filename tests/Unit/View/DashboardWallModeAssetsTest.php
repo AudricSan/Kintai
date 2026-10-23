@@ -74,14 +74,45 @@ final class DashboardWallModeAssetsTest extends TestCase
 
     public function testThePasswordNeverLeavesThePage(): void
     {
-        $code = (string) preg_replace('/\/\*.*?\*\/|\/\/[^\n]*/s', '', $this->js);
+        $code = (string) preg_replace('/\/\*.*?\*\/|\/\/[^
+]*/s', '', $this->js);
 
-        foreach (['localStorage', 'sessionStorage', 'document.cookie', 'XMLHttpRequest'] as $forbidden) {
+        foreach (['localStorage', 'document.cookie', 'XMLHttpRequest'] as $forbidden) {
             $this->assertStringNotContainsString($forbidden, $code, "Le mot de passe du mode mural ne doit pas passer par $forbidden.");
         }
         // Le seul fetch du module relit la page des widgets ; il n'embarque aucun corps de requête.
         $this->assertStringNotContainsString('body:', $code);
-        $this->assertStringContainsString('var wallPassword = null;', $code);
+        // Seule une empreinte salée est gardée (sessionStorage, pour survivre à F5), jamais le mot de passe en clair.
+        $this->assertStringContainsString('var wallHash = null;', $code);
+        $this->assertStringNotContainsString('wallPassword', $code);
+        $this->assertDoesNotMatchRegularExpression('/storeHash\(\s*pwd\.value/', $code);
+    }
+
+    public function testReloadingThePageKeepsWallModeLocked(): void
+    {
+        // F5 / rechargement : le mode mural est rétabli au chargement avec la même empreinte, sans demander le mot de passe.
+        $this->assertMatchesRegularExpression('/restoreWall\(\).*?loadHash\(\).*?setWall\(true\)/s', $this->js);
+        // La sortie réelle efface l'empreinte, sinon un onglet ressusciterait un mode mural déjà quitté.
+        $this->assertMatchesRegularExpression('/function exitWall\(\).*?storeHash\(null\)/s', $this->js);
+    }
+
+    public function testReloadAndDevToolsShortcutsAreBlockedInWallMode(): void
+    {
+        $this->assertMatchesRegularExpression("/key === 'f5'/", $this->js);
+        $this->assertMatchesRegularExpression("/\['r', 'l', 'u'/", $this->js);
+        $this->assertMatchesRegularExpression('/if \(!inWall\(\) \|\| !isWallBypassKey\(e\)\) return;\s*e\.preventDefault\(\);/', $this->js);
+        // Écouteur en phase de capture, pour passer avant tout autre gestionnaire.
+        $this->assertMatchesRegularExpression('/isWallBypassKey\(e\)\) return;.*?\}, true\);/s', $this->js);
+        $this->assertStringContainsString("addEventListener('beforeunload'", $this->js);
+    }
+
+    public function testWidgetsAreInertInWallModeAndOnlyTheExitButtonAnswers(): void
+    {
+        $this->assertStringContainsString('grid.inert = on;', $this->js);
+        $this->assertMatchesRegularExpression('/html\.dash-wall \.dash-grid\s*\{[^}]*pointer-events:\s*none/', $this->css);
+        // Filet JS : tout clic hors « Quitter » et boîte du mot de passe est annulé, en capture.
+        $this->assertStringContainsString("e.target.closest('[data-dash-wall-exit], [data-wall-lock]')", $this->js);
+        $this->assertMatchesRegularExpression("/\['click', 'auxclick'.*?'contextmenu'.*?blockWallPointer, true\)/s", $this->js);
     }
 
     public function testTheLockDialogStaysVisibleInWallMode(): void

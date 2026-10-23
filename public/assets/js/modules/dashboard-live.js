@@ -12,6 +12,11 @@
  * (classe dash-wall sur <html>), écran maintenu allumé quand le navigateur le permet (Screen Wake Lock). L'activation
  * demande de choisir un mot de passe (boîte data-wall-lock) ; la sortie, par le bouton « Quitter le mode mural », Échap
  * ou la fin du plein écran, le redemande. Il reste derrière la session de l'utilisateur.
+ *
+ * Contournements fermés : le verrou (empreinte salée du mot de passe, jamais le mot de passe) survit à un rechargement
+ * de l'onglet (sessionStorage), si bien que F5 ne sort plus du mode mural ; les raccourcis de rechargement, de
+ * navigation et d'outils de développement sont interceptés tant que le mode est actif ; une confirmation est demandée avant
+ * de quitter la page ; les widgets sont inertes (aucun clic, seul « Quitter » répond) ; Échap est verrouillé en plein écran quand le navigateur le permet (Keyboard Lock).
  */
 (function () {
     'use strict';
@@ -154,6 +159,8 @@
         if (wallBtn) wallBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
         // « Quitter » n'est visible et utilisable qu'en mode mural.
         if (wallExit) { wallExit.hidden = !on; wallExit.disabled = !on; }
+        // Les widgets deviennent inertes (ni clic, ni focus clavier, ni lecteur d'écran) : seul « Quitter » reste actif.
+        grid.inert = on;
         if (on) acquireWakeLock(); else releaseWakeLock();
         window.dispatchEvent(new Event('resize'));
     }
@@ -165,21 +172,73 @@
     function goFullscreen() {
         var el = document.documentElement;
         if (el.requestFullscreen && !document.fullscreenElement) {
-            el.requestFullscreen().catch(function () { /* plein écran refusé : le mode mural reste actif dans la fenêtre */ });
+            el.requestFullscreen().then(lockKeyboard).catch(function () { /* plein écran refusé : le mode mural reste actif dans la fenêtre */ });
         }
+    }
+
+    // Keyboard Lock (Chromium, plein écran) : Échap n'est plus intercepté par le navigateur pour quitter le plein écran.
+    function lockKeyboard() {
+        try {
+            if (navigator.keyboard && navigator.keyboard.lock) navigator.keyboard.lock(['Escape']).catch(function () { /* non pris en charge */ });
+        } catch (err) { /* sans conséquence */ }
+    }
+
+    function unlockKeyboard() {
+        try {
+            if (navigator.keyboard && navigator.keyboard.unlock) navigator.keyboard.unlock();
+        } catch (err) { /* sans conséquence */ }
     }
 
     // ── Mot de passe du mode mural ───────────────────────────────────────────
     // Choisi à l'activation, redemandé pour quitter. Il reste en mémoire dans cette page : ni stocké, ni envoyé. C'est un
     // verrou contre un geste involontaire sur un écran de magasin, pas une protection contre quelqu'un qui maîtrise le
     // navigateur ; la session de l'utilisateur reste, elle, la vraie barrière d'accès.
-    var wallPassword = null;
+    var wallHash = null; // « sel:empreinte » du mot de passe, aussi gardé dans sessionStorage pour survivre à un F5
     var MIN_PASSWORD = 4;
+    var STORE_KEY = 'kintai.dashWall';
     var lock = document.querySelector('[data-wall-lock]');
 
     function lockText(name) {
         var texts = lock && lock.querySelector('[data-wall-lock-texts]');
         return (texts && texts.getAttribute('data-' + name)) || '';
+    }
+
+    function storeHash(value) {
+        try {
+            if (value) sessionStorage.setItem(STORE_KEY, value); else sessionStorage.removeItem(STORE_KEY);
+        } catch (err) { /* stockage indisponible : le verrou ne survivra pas à un rechargement */ }
+    }
+
+    function loadHash() {
+        try { return sessionStorage.getItem(STORE_KEY); } catch (err) { return null; }
+    }
+
+    // Repli quand SubtleCrypto est absent (page non sécurisée) : cyrb53, suffisant pour un verrou anti-geste.
+    function fallbackHash(text) {
+        var h1 = 0xdeadbeef, h2 = 0x41c6ce57, i, ch;
+        for (i = 0; i < text.length; i++) {
+            ch = text.charCodeAt(i);
+            h1 = Math.imul(h1 ^ ch, 2654435761);
+            h2 = Math.imul(h2 ^ ch, 1597334677);
+        }
+        h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+        h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+        return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16);
+    }
+
+    // Promesse de l'empreinte « sel:hex » du mot de passe ; sel fourni, sinon tiré au hasard.
+    function hashPassword(password, salt) {
+        salt = salt || Math.random().toString(36).slice(2) + Date.now().toString(36);
+        var text = salt + ':' + password;
+        if (window.crypto && window.crypto.subtle && window.TextEncoder) {
+            return window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)).then(function (buf) {
+                var hex = Array.prototype.map.call(new Uint8Array(buf), function (b) {
+                    return ('0' + b.toString(16)).slice(-2);
+                }).join('');
+                return salt + ':' + hex;
+            });
+        }
+        return Promise.resolve(salt + ':' + fallbackHash(text));
     }
 
     // mode : « set » (choisir le mot de passe) ou « unlock » (le redonner). onOk à la validation, onCancel sinon.
@@ -227,11 +286,16 @@
             if (setting) {
                 if (pwd.value.length < MIN_PASSWORD) return fail('err-short');
                 if (pwd.value !== confirm.value) return fail('err-mismatch');
-                wallPassword = pwd.value;
-                return finish(true);
+                return hashPassword(pwd.value).then(function (h) {
+                    wallHash = h;
+                    storeHash(h);
+                    finish(true);
+                });
             }
-            if (pwd.value !== wallPassword) return fail('err-wrong');
-            finish(true);
+            hashPassword(pwd.value, wallHash.split(':')[0]).then(function (h) {
+                if (h !== wallHash) return fail('err-wrong');
+                finish(true);
+            });
         }
 
         function onEsc(e) { e.preventDefault(); finish(false); }
@@ -256,7 +320,9 @@
         if (document.fullscreenElement && document.exitFullscreen) {
             document.exitFullscreen().catch(function () { /* déjà sorti */ });
         }
-        wallPassword = null;
+        wallHash = null;
+        storeHash(null);
+        unlockKeyboard();
         setWall(false);
     }
 
@@ -264,13 +330,65 @@
     // remet le plein écran, le navigateur l'ayant quitté de lui-même sur Échap.
     function requestExit() {
         if (!inWall() || !lock || lock.open) return;
-        if (wallPassword === null) { exitWall(); return; }
+        if (wallHash === null) { exitWall(); return; }
         askPassword('unlock', exitWall, goFullscreen);
     }
 
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && inWall() && !document.fullscreenElement) requestExit();
     });
+
+    // Raccourcis qui feraient sortir du mode mural sans mot de passe : rechargement (F5, Ctrl/Cmd+R), plein écran (F11),
+    // barre d'adresse, historique, outils de développement, code source. Interceptés en capture tant que le mode est actif.
+    function isWallBypassKey(e) {
+        var key = (e.key || '').toLowerCase();
+        var mod = e.ctrlKey || e.metaKey;
+        if (key === 'f5' || key === 'f11' || key === 'f12' || key === 'browserrefresh') return true;
+        if (e.altKey && (key === 'arrowleft' || key === 'arrowright' || key === 'home')) return true;
+        if (mod && ['r', 'l', 'u', 's', 'p', 'o', 'k', 'e'].indexOf(key) !== -1) return true;
+        if (mod && e.shiftKey && ['i', 'j', 'c', 'r', 'delete'].indexOf(key) !== -1) return true;
+        return false;
+    }
+
+    // Filet pour les navigateurs sans « inert » : en mode mural, tout clic hors du bouton « Quitter » et de la boîte du mot de
+    // passe est annulé (liens, boutons et menus des widgets, clic du milieu, menu contextuel).
+    function blockWallPointer(e) {
+        if (!inWall() || !e.target.closest) return;
+        if (e.target.closest('[data-dash-wall-exit], [data-wall-lock]')) return;
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    ['click', 'auxclick', 'dblclick', 'contextmenu', 'submit'].forEach(function (type) {
+        document.addEventListener(type, blockWallPointer, true);
+    });
+
+    document.addEventListener('keydown', function (e) {
+        if (!inWall() || !isWallBypassKey(e)) return;
+        e.preventDefault();
+        e.stopPropagation();
+    }, true);
+
+    // Dernier filet (clic sur recharger, Ctrl+W, fermeture) : le navigateur demande confirmation avant de quitter la page.
+    window.addEventListener('beforeunload', function (e) {
+        if (!inWall()) return;
+        e.preventDefault();
+        e.returnValue = '';
+    });
+
+    // Rechargement de l'onglet : le mode mural est rétabli avec le même verrou (le plein écran, lui, exige un geste).
+    (function restoreWall() {
+        var saved = loadHash();
+        if (!saved || !lock || phone.matches) return;
+        wallHash = saved;
+        setWall(true);
+        var resume = function () {
+            document.removeEventListener('pointerdown', resume, true);
+            document.removeEventListener('keydown', resume, true);
+            goFullscreen();
+        };
+        document.addEventListener('pointerdown', resume, true);
+        document.addEventListener('keydown', resume, true);
+    }());
 
     // Le bouton est caché sur téléphone ; l'état de départ du bouton « Quitter » est aussi désactivé.
     if (wallBtn) wallBtn.disabled = phone.matches;
