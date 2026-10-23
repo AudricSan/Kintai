@@ -9,8 +9,9 @@
  * une session expirée : un message clair remplace alors l'écran figé.
  *
  * Mode mural (bouton « Activer le mode mural ») : plein écran (API Fullscreen), barre latérale et en-tête masquées
- * (classe dash-wall sur <html>), écran maintenu allumé quand le navigateur le permet (Screen Wake Lock), sortie par Échap
- * ou le bouton « Quitter le mode mural ». Il reste derrière la session de l'utilisateur.
+ * (classe dash-wall sur <html>), écran maintenu allumé quand le navigateur le permet (Screen Wake Lock). L'activation
+ * demande de choisir un mot de passe (boîte data-wall-lock) ; la sortie, par le bouton « Quitter le mode mural », Échap
+ * ou la fin du plein écran, le redemande. Il reste derrière la session de l'utilisateur.
  */
 (function () {
     'use strict';
@@ -128,7 +129,7 @@
         } else if (e.target.closest('[data-dash-wall]')) {
             enterWall();
         } else if (e.target.closest('[data-dash-wall-exit]')) {
-            exitWall();
+            requestExit();
         }
     });
 
@@ -157,43 +158,132 @@
         window.dispatchEvent(new Event('resize'));
     }
 
-    function enterWall() {
-        if (phone.matches) return;
-        setWall(true);
+    function inWall() {
+        return document.documentElement.classList.contains('dash-wall');
+    }
+
+    function goFullscreen() {
         var el = document.documentElement;
-        if (el.requestFullscreen) {
+        if (el.requestFullscreen && !document.fullscreenElement) {
             el.requestFullscreen().catch(function () { /* plein écran refusé : le mode mural reste actif dans la fenêtre */ });
         }
     }
 
+    // ── Mot de passe du mode mural ───────────────────────────────────────────
+    // Choisi à l'activation, redemandé pour quitter. Il reste en mémoire dans cette page : ni stocké, ni envoyé. C'est un
+    // verrou contre un geste involontaire sur un écran de magasin, pas une protection contre quelqu'un qui maîtrise le
+    // navigateur ; la session de l'utilisateur reste, elle, la vraie barrière d'accès.
+    var wallPassword = null;
+    var MIN_PASSWORD = 4;
+    var lock = document.querySelector('[data-wall-lock]');
+
+    function lockText(name) {
+        var texts = lock && lock.querySelector('[data-wall-lock-texts]');
+        return (texts && texts.getAttribute('data-' + name)) || '';
+    }
+
+    // mode : « set » (choisir le mot de passe) ou « unlock » (le redonner). onOk à la validation, onCancel sinon.
+    function askPassword(mode, onOk, onCancel) {
+        var form = lock.querySelector('[data-wall-lock-form]');
+        var pwd = lock.querySelector('[data-wall-lock-password]');
+        var confirmRow = lock.querySelector('[data-wall-lock-confirm-row]');
+        var confirm = lock.querySelector('[data-wall-lock-confirm]');
+        var error = lock.querySelector('[data-wall-lock-error]');
+        var cancelBtn = lock.querySelector('[data-wall-lock-cancel]');
+        var setting = mode === 'set';
+        var done = false;
+
+        lock.querySelector('[data-wall-lock-title]').textContent = lockText(mode + '-title');
+        lock.querySelector('[data-wall-lock-hint]').textContent = lockText(mode + '-hint');
+        lock.querySelector('[data-wall-lock-submit]').textContent = lockText(mode + '-submit');
+        confirmRow.hidden = !setting;
+        confirm.required = setting;
+        pwd.value = '';
+        confirm.value = '';
+        error.hidden = true;
+
+        function finish(ok) {
+            if (done) return;
+            done = true;
+            form.removeEventListener('submit', onSubmit);
+            lock.removeEventListener('cancel', onEsc);
+            cancelBtn.removeEventListener('click', onCancelClick);
+            pwd.value = '';
+            confirm.value = '';
+            if (lock.open) lock.close();
+            if (ok) onOk(); else onCancel();
+        }
+
+        function fail(key) {
+            error.textContent = lockText(key);
+            error.hidden = false;
+            pwd.value = '';
+            confirm.value = '';
+            pwd.focus();
+        }
+
+        function onSubmit(e) {
+            e.preventDefault();
+            if (setting) {
+                if (pwd.value.length < MIN_PASSWORD) return fail('err-short');
+                if (pwd.value !== confirm.value) return fail('err-mismatch');
+                wallPassword = pwd.value;
+                return finish(true);
+            }
+            if (pwd.value !== wallPassword) return fail('err-wrong');
+            finish(true);
+        }
+
+        function onEsc(e) { e.preventDefault(); finish(false); }
+        function onCancelClick() { finish(false); }
+
+        form.addEventListener('submit', onSubmit);
+        lock.addEventListener('cancel', onEsc);
+        cancelBtn.addEventListener('click', onCancelClick);
+        lock.showModal();
+    }
+
+    function enterWall() {
+        if (phone.matches || !lock || lock.open) return;
+        askPassword('set', function () {
+            setWall(true);
+            goFullscreen();
+        }, function () { /* annulé : le mode mural n'est pas activé */ });
+    }
+
+    // Sortie réelle, une fois le mot de passe donné.
     function exitWall() {
         if (document.fullscreenElement && document.exitFullscreen) {
             document.exitFullscreen().catch(function () { /* déjà sorti */ });
         }
+        wallPassword = null;
         setWall(false);
     }
 
+    // Demande de sortie (bouton, Échap, fin du plein écran) : le mot de passe est exigé. Annuler garde le mode mural et
+    // remet le plein écran, le navigateur l'ayant quitté de lui-même sur Échap.
+    function requestExit() {
+        if (!inWall() || !lock || lock.open) return;
+        if (wallPassword === null) { exitWall(); return; }
+        askPassword('unlock', exitWall, goFullscreen);
+    }
+
     document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && document.documentElement.classList.contains('dash-wall') && !document.fullscreenElement) {
-            setWall(false);
-        }
+        if (e.key === 'Escape' && inWall() && !document.fullscreenElement) requestExit();
     });
 
     // Le bouton est caché sur téléphone ; l'état de départ du bouton « Quitter » est aussi désactivé.
     if (wallBtn) wallBtn.disabled = phone.matches;
     if (wallExit) wallExit.disabled = true;
+    // Un redimensionnement ne doit pas lever le verrou : on ne met à jour que le bouton d'activation.
     var onPhoneChange = function () {
         if (wallBtn) wallBtn.disabled = phone.matches;
-        // Écran réduit ou téléphone tourné en mode mural : on en sort plutôt que de laisser une page sans barres.
-        if (phone.matches && document.documentElement.classList.contains('dash-wall')) exitWall();
     };
     if (phone.addEventListener) phone.addEventListener('change', onPhoneChange);
     else if (phone.addListener) phone.addListener(onPhoneChange);
 
-    // Échap (ou tout autre moyen de quitter le plein écran) quitte aussi le mode mural.
+    // Échap (ou tout autre moyen de quitter le plein écran) demande aussi le mot de passe.
     document.addEventListener('fullscreenchange', function () {
-        if (!document.fullscreenElement && document.documentElement.classList.contains('dash-wall')) {
-            setWall(false);
-        }
+        if (!document.fullscreenElement && inWall()) requestExit();
     });
 }());
