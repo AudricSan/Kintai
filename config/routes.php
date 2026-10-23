@@ -14,6 +14,7 @@ use kintai\UI\Controller\Web\DashboardLayoutController;
 use kintai\UI\Controller\Web\DashboardLayoutsController;
 use kintai\UI\Controller\Web\HomeController;
 use kintai\UI\Controller\Web\IcalController;
+use kintai\UI\Controller\Web\ScheduleExportController;
 use kintai\UI\Controller\Web\DocsController;
 use kintai\UI\Controller\Web\LegalController;
 use kintai\UI\Controller\Web\PrivacyController;
@@ -127,6 +128,8 @@ $router->group('/profile', function ($r) {
     $r->post('/calendar/google/options',    [CalendarLinkController::class, 'options'],    name: 'profile.calendar.options');
     $r->post('/calendar/google/resync',     [CalendarLinkController::class, 'resync'],     name: 'profile.calendar.resync');
     $r->get('/export',       [AuthController::class, 'exportData'],           name: 'profile.export');
+    // Son propre horaire en JSON, CSV ou ICS (fichier ponctuel, contrairement au flux iCal à jeton).
+    $r->get('/schedule-export', [ScheduleExportController::class, 'download'], name: 'profile.schedule_export');
     $r->post('/delete',      [AuthController::class, 'deleteAccount'],        name: 'profile.delete');
 }, middleware: [AuthMiddleware::class]);
 
