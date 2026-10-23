@@ -125,7 +125,7 @@
 
 .nav-order-btn:hover {
     background: var(--color-primary);
-    color: #fff;
+    color: var(--color-on-primary);
     border-color: var(--color-primary);
 }
 

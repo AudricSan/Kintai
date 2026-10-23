@@ -395,6 +395,6 @@ a.pagination__item:hover {
 
 .pagination__item--active {
     background: var(--color-primary);
-    color: #fff;
+    color: var(--color-on-primary);
 }
 

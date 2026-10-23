@@ -77,6 +77,11 @@
     --color-admin-text:     #c2368c;   /* texte badge administrateur (rose — distinct du violet de marque) */
     --light-primary-medium: #ffe0c5;   /* primaire intermédiaire (hover btn--secondary) */
     --color-primary-medium: var(--light-primary-medium);
+    /* Texte posé sur un fond plein (boutons, pastilles) : blanc en clair, sombre en thème sombre où les teintes sont pâles */
+    --color-on-primary: #fff;
+    --color-on-success: #fff;
+    --color-on-warning: #fff;
+    --color-on-danger:  #fff;
     --light-accent:          #4caf50;   /* accent complémentaire — vert du sac "K" de Foxy */
     --light-table-highlight: #dff5e1;  /* survol des lignes de tableau — vert clair de Foxy */
     --color-accent:          var(--light-accent);
@@ -177,6 +182,7 @@
     --dark-primary-light:   rgba(253, 208, 168, 0.16);
     --dark-primary-lighter: rgba(253, 208, 168, 0.08);
     --dark-primary-medium:  rgba(253, 208, 168, 0.30);
+    --dark-on-solid:        #16151f;
 
     --dark-success:         #4fd999;
     --dark-success-hover:   #71e0ac;
@@ -234,6 +240,10 @@
         --color-primary-light:   var(--dark-primary-light);
         --color-primary-lighter: var(--dark-primary-lighter);
         --color-primary-medium:  var(--dark-primary-medium);
+        --color-on-primary: var(--dark-on-solid);
+        --color-on-success: var(--dark-on-solid);
+        --color-on-warning: var(--dark-on-solid);
+        --color-on-danger:  var(--dark-on-solid);
         --color-success:         var(--dark-success);
         --color-success-hover:   var(--dark-success-hover);
         --color-success-light:   var(--dark-success-light);
@@ -282,6 +292,10 @@ html[data-theme="dark"] {
     --color-primary-light:   var(--dark-primary-light);
     --color-primary-lighter: var(--dark-primary-lighter);
     --color-primary-medium:  var(--dark-primary-medium);
+    --color-on-primary: var(--dark-on-solid);
+    --color-on-success: var(--dark-on-solid);
+    --color-on-warning: var(--dark-on-solid);
+    --color-on-danger:  var(--dark-on-solid);
     --color-success:         var(--dark-success);
     --color-success-hover:   var(--dark-success-hover);
     --color-success-light:   var(--dark-success-light);

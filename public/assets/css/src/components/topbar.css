@@ -197,7 +197,7 @@ img.user-dropdown__avatar {
 
 .user-dropdown__lang-btn--active {
     background: var(--color-primary);
-    color: #fff;
+    color: var(--color-on-primary);
     font-weight: 600;
 }
 
