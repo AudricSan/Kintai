@@ -115,7 +115,7 @@ final class ScheduleExportService
     {
         $lines = [implode(';', self::CSV_COLUMNS)];
         foreach ($rows as $row) {
-            $lines[] = implode(';', array_map(fn(string $col): string => $this->cell($row[$col] ?? ''), self::CSV_COLUMNS));
+            $lines[] = implode(';', array_map(static fn(string $col): string => self::csvCell($row[$col] ?? ''), self::CSV_COLUMNS));
         }
 
         return "\xEF\xBB\xBF" . implode("\r\n", $lines) . "\r\n";
@@ -125,7 +125,7 @@ final class ScheduleExportService
      * Une cellule CSV. Un texte qui commence par = + - @ (ou une tabulation) serait lu comme une formule par un tableur : on le
      * fait précéder d'une apostrophe. Les nombres (dont négatifs) et les horaires ne sont pas touchés.
      */
-    private function cell(mixed $value): string
+    public static function csvCell(mixed $value): string
     {
         if (is_bool($value)) {
             return $value ? '1' : '0';

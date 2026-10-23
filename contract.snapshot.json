@@ -1,5 +1,5 @@
 {
-    "version": "1.29.0",
+    "version": "1.30.0",
     "surface": {
         "kintai\\Contract\\Auth\\AuthService": {
             "status": "provisoire",
@@ -522,6 +522,7 @@
         "dashboardStats": "(): array",
         "dashboardWidgets": "(): array",
         "eventListeners": "(): array",
+        "exportDatasets": "(): array",
         "getAssetsPath": "(): ?string",
         "getDescription": "(): string",
         "getLabel": "(): string",

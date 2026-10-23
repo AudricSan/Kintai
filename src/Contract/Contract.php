@@ -18,10 +18,13 @@ namespace kintai\Contract;
 final class Contract
 {
     /** Version du contrat fournie par ce Core. */
-    public const VERSION = '1.29.0';
+    public const VERSION = '1.30.0';
 
     /*
      * Historique :
+     * - 1.30.0 : point d'extension Bundle::exportDatasets() avec kintai\Contract\Extension\ExportDataset (jeu de données
+     *   exportable en JSON, CSV et Excel : permission par magasin, libre-service optionnel) et, côté fournisseur,
+     *   kintai\Contract\Provider\ExportRowsProvider et ExportQuery (périmètre déjà autorisé par le Core).
      * - 1.29.0 : composant de vue kintai\Contract\View\Components\UserPicker (employés à cocher) et service
      *   kintai\Contract\Services\UserSelection (candidats d'un magasin, relecture et validation d'une sélection par
      *   identifiant de compte).
