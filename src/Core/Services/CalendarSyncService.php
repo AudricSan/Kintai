@@ -348,7 +348,7 @@ final class CalendarSyncService
         foreach ($this->shifts->findByUser((int) $connection['user_id']) as $shift) {
             $store = $this->stores->findById((int) ($shift['store_id'] ?? 0));
             if ($store !== null && (string) ($store['timezone'] ?? '') !== '') {
-                return (string) $store['timezone'];
+                return StoreTimezone::resolve((string) $store['timezone']);
             }
         }
         return date_default_timezone_get();

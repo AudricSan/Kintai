@@ -1670,6 +1670,7 @@
     "users_plural": "Users",
     "vacation": "Vacation",
     "val_invalid_currency": "Invalid currency.",
+    "val_invalid_timezone": "Invalid time zone: use an identifier such as Asia/Tokyo or Europe/Paris (UTC+9 is also accepted).",
     "val_invalid_currency_symbol_style": "Invalid currency symbol style.",
     "val_invalid_email": "Invalid email.",
     "val_invalid_locale": "Invalid language.",

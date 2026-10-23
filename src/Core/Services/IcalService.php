@@ -31,7 +31,8 @@ final class IcalService
         $this->translations->setLocale($resolved);
 
         try {
-            $tz        = $store['timezone'] ?? 'UTC';
+            // Toujours un identifiant valide : « UTC+9 » saisi à la main faisait retomber les heures en UTC (+9 h dans l'agenda).
+            $tz        = StoreTimezone::resolve($store['timezone'] ?? null);
             $storeName = $store['name'] ?? __('store');
             $calName   = $storeName . ' — ' . ($user['last_name'] ?? '') . ' ' . ($user['first_name'] ?? '');
             $dtstamp   = gmdate('Ymd\THis\Z');
