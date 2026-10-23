@@ -61,6 +61,32 @@ trait HasAdminAccess
         return array_unique($ids);
     }
 
+    /**
+     * Identifiants des membres d'un magasin encore à afficher dans un planning : un compte supprimé (anonymisé,
+     * deleted_at), désactivé (is_active = 0) ou absent de la base n'a plus de fiche à ouvrir (404) et ne doit plus
+     * encombrer la liste des shifts sous la forme d'un « #90 » sans nom.
+     *
+     * @return list<int>
+     */
+    protected function activeMemberIds(int $storeId): array
+    {
+        $active = [];
+        foreach ($this->users->findAll() as $u) {
+            if (empty($u['deleted_at']) && (int) ($u['is_active'] ?? 1) === 1) {
+                $active[(int) $u['id']] = true;
+            }
+        }
+
+        $ids = [];
+        foreach ($this->storeUsers->findByStore($storeId) as $m) {
+            $uid = (int) $m['user_id'];
+            if (isset($active[$uid])) {
+                $ids[$uid] = $uid;
+            }
+        }
+        return array_values($ids);
+    }
+
     protected function base(): string
     {
         $sn   = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '/index.php');
