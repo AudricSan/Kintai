@@ -1670,6 +1670,7 @@
     "users_plural": "Utilisateurs",
     "vacation": "Vacances",
     "val_invalid_currency": "Devise invalide.",
+    "val_invalid_timezone": "Fuseau horaire invalide : utilisez un identifiant comme Asia/Tokyo ou Europe/Paris (UTC+9 est aussi accepté).",
     "val_invalid_currency_symbol_style": "Style de symbole devise invalide.",
     "val_invalid_email": "Email invalide.",
     "val_invalid_locale": "Langue invalide.",

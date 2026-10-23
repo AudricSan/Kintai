@@ -1670,6 +1670,7 @@
     "users_plural": "ユーザー一覧",
     "vacation": "有給休暇",
     "val_invalid_currency": "通貨が無効です。",
+    "val_invalid_timezone": "タイムゾーンが正しくありません。Asia/Tokyo や Europe/Paris のような形式で入力してください（UTC+9 も使えます）。",
     "val_invalid_currency_symbol_style": "通貨記号のスタイルが無効です。",
     "val_invalid_email": "メールアドレスが無効です。",
     "val_invalid_locale": "言語が無効です。",

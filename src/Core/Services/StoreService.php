@@ -163,13 +163,21 @@ final class StoreService implements StoreServiceInterface
         if ($currencyErrors !== []) {
             throw new ValidationException(['currency' => $currencyErrors[0]], $currencyErrors[0]);
         }
+        $timezoneErrors = StoreValidator::timezoneErrors($data);
+        if ($timezoneErrors !== []) {
+            throw new ValidationException(['timezone' => $timezoneErrors[0]], $timezoneErrors[0]);
+        }
+        $timezoneErrors = StoreValidator::timezoneErrors($data);
+        if ($timezoneErrors !== []) {
+            throw new ValidationException(['timezone' => $timezoneErrors[0]], $timezoneErrors[0]);
+        }
         $this->assertCodeAvailable(strtoupper(trim((string) ($data['code'] ?? $store['code'] ?? ''))), $storeId);
 
         $storeData = array_merge($store, [
             'code'                 => strtoupper(trim($data['code'] ?? $store['code'] ?? '')),
             'name'                 => $data['name'] ?? $store['name'] ?? '',
             'type'                 => $data['type'] ?? $store['type'] ?? 'retail',
-            'timezone'             => $data['timezone'] ?? $store['timezone'] ?? 'UTC',
+            'timezone'             => StoreTimezone::resolve($data['timezone'] ?? $store['timezone'] ?? null),
             'locale'               => $data['locale'] ?? $store['locale'] ?? 'en',
             'currency'             => strtoupper(trim($data['currency'] ?? $store['currency'] ?? 'EUR')),
             'currency_symbol_style' => ($data['currency_symbol_style'] ?? $store['currency_symbol_style'] ?? '') === 'international' ? 'international' : 'kanji',

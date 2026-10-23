@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace kintai\Core\Services\Calendar;
 
+use kintai\Core\Services\StoreTimezone;
 use kintai\Core\Services\TranslationService;
 
 /**
@@ -30,7 +31,8 @@ final class CalendarEventBuilder
     public function forShift(array $shift, array $store, ?array $type, array $user, ?string $publicUrl): array
     {
         return $this->withLocale($user, $store, function () use ($shift, $store, $type, $publicUrl) {
-            $tz        = (string) ($store['timezone'] ?? '') !== '' ? (string) $store['timezone'] : 'UTC';
+            // Un fuseau invalide (« UTC+9 ») était ignoré par Google, qui plaçait l'événement en UTC : +9 h à Tokyo.
+            $tz        = StoreTimezone::resolve($store['timezone'] ?? null);
             $date      = (string) $shift['shift_date'];
             $start     = substr((string) ($shift['start_time'] ?? '00:00'), 0, 5);
             $end       = substr((string) ($shift['end_time'] ?? '00:00'), 0, 5);
