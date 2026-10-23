@@ -18,10 +18,13 @@ namespace kintai\Contract;
 final class Contract
 {
     /** Version du contrat fournie par ce Core. */
-    public const VERSION = '1.28.0';
+    public const VERSION = '1.29.0';
 
     /*
      * Historique :
+     * - 1.29.0 : composant de vue kintai\Contract\View\Components\UserPicker (employés à cocher) et service
+     *   kintai\Contract\Services\UserSelection (candidats d'un magasin, relecture et validation d'une sélection par
+     *   identifiant de compte).
      * - 1.28.0 : événements kintai\Contract\Event\ShiftSaved et ShiftDeleted, annoncés par le Core à chaque écriture d'un shift
      *   quel que soit le chemin (administration, API, import, échange, reprise d'un shift ouvert).
      * - 1.27.0 : point d'extension Bundle::pageOverlays() et kintai\Contract\Extension\PageOverlay (fenêtres affichées par-dessus

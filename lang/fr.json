@@ -1817,5 +1817,9 @@
     "install_error_mysql_privileges": "Cet utilisateur MySQL n'a pas les droits nécessaires : créez la base vous-même (vide) ou utilisez un compte autorisé à la créer.",
     "install_error_not_writable": "Le serveur web ne peut pas écrire :name : donnez-lui les droits d'écriture, puis réessayez.",
     "install_error_database_not_empty": "La base « :name » contient déjà des tables. Pour ne rien effacer par erreur, l'installation n'utilise qu'une base vide : videz-la ou choisissez-en une autre.",
-    "install_error_generic": "L'installation a échoué et a été entièrement annulée. Le détail technique est dans storage/logs/error.log."
+    "install_error_generic": "L'installation a échoué et a été entièrement annulée. Le détail technique est dans storage/logs/error.log.",
+    "user_picker_empty": "Aucun employé actif dans ce magasin.",
+    "user_picker_select_all": "Tout sélectionner",
+    "user_picker_select_none": "Aucun",
+    "user_picker_count": ":count sur :total sélectionné(s)"
 }
