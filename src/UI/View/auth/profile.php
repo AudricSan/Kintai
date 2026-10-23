@@ -520,6 +520,45 @@ ob_start();
 <?php endif; ?>
 <?php
 echo Card::make(__('ical_feeds'))->body(ob_get_clean())->render();
+
+// Téléchargement ponctuel de son horaire (JSON, CSV, ICS) : un formulaire GET, les trois boutons portent le format.
+if (!empty($stores)) {
+    ob_start();
+    ?>
+    <p class="text-muted mb-sm"><?= __('schedule_export_description') ?>
+        <a href="<?= $BASE_URL ?>/exports"><?= __('export_title') ?> →</a></p>
+    <form method="GET" action="<?= $BASE_URL ?>/profile/schedule-export" class="form-stack">
+        <div class="form-row">
+            <?php if (count($stores) > 1): ?>
+            <div class="form-group">
+                <label class="form-label" for="schedule-export-store"><?= __('store') ?></label>
+                <select class="form-control" id="schedule-export-store" name="store_id">
+                    <?php foreach ($stores as $s): ?>
+                    <option value="<?= (int) $s['id'] ?>"><?= htmlspecialchars((string) ($s['name'] ?? '')) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <?php else: ?>
+            <input type="hidden" name="store_id" value="<?= (int) array_key_first($stores) ?>">
+            <?php endif; ?>
+            <div class="form-group">
+                <label class="form-label" for="schedule-export-from"><?= __('schedule_export_from') ?></label>
+                <input type="date" class="form-control" id="schedule-export-from" name="from" value="<?= date('Y-m-d') ?>">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="schedule-export-to"><?= __('schedule_export_to') ?></label>
+                <input type="date" class="form-control" id="schedule-export-to" name="to" value="<?= date('Y-m-d', strtotime('+90 days')) ?>">
+            </div>
+        </div>
+        <div class="form-inline-flex">
+            <button type="submit" name="format" value="ics" class="btn btn--primary btn--sm"><?= __('schedule_export_ics') ?></button>
+            <button type="submit" name="format" value="csv" class="btn btn--ghost btn--sm"><?= __('schedule_export_csv') ?></button>
+            <button type="submit" name="format" value="json" class="btn btn--ghost btn--sm"><?= __('schedule_export_json') ?></button>
+        </div>
+    </form>
+    <?php
+    echo Card::make(__('schedule_export_title'))->body(ob_get_clean())->render();
+}
 ?>
 
 <!-- ═══ TAB : NOTIFICATIONS ═══ -->

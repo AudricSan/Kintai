@@ -356,6 +356,15 @@
 .dash-updated { margin-right: var(--space-2); }
 .dash-updated--error { color: var(--color-danger); font-weight: 600; }
 
+/* « Quitter le mode mural » n'existe que dans ce mode. .btn fixe un display qui l'emporte sur le [hidden] de la feuille
+   de style du navigateur : sans cette règle, le bouton restait visible hors mode mural. */
+.dash-wall-exit[hidden] { display: none; }
+
+/* « Activer le mode mural » est inutile (et inutilisable) sur téléphone : il sert à un écran de magasin. */
+@media (max-width: 768px) {
+    [data-dash-wall] { display: none; }
+}
+
 /* Mode mural : plein écran sans barres, widgets agrandis à la lecture de loin. La sortie reste accessible. */
 html.dash-wall .app-sticky-header,
 html.dash-wall .topbar,
@@ -363,7 +372,7 @@ html.dash-wall .bottom-nav,
 html.dash-wall .app-footer,
 html.dash-wall .dash-customize-panel,
 html.dash-wall .page-header > :not(.page-header__actions),
-html.dash-wall .page-header__actions > :not(.dash-wall-exit) { display: none; }
+html.dash-wall .page-header__actions > :not(.dash-wall-exit):not(.wall-lock) { display: none; }
 
 html.dash-wall .page-header { margin: 0; }
 
@@ -381,6 +390,28 @@ html.dash-wall .dash-wall-exit:hover,
 html.dash-wall .dash-wall-exit:focus-visible { opacity: 1; }
 
 html.dash-wall .dash-grid { margin-top: 0; }
+
+/* Boîte du mot de passe du mode mural (choisir à l'activation, redonner pour quitter). */
+.wall-lock {
+    width: min(92vw, 24rem);
+    padding: var(--space-5);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg, 12px);
+    background: var(--color-surface, #fff);
+    color: inherit;
+}
+
+.wall-lock::backdrop { background: rgb(0 0 0 / .55); }
+
+.wall-lock__form { display: flex; flex-direction: column; gap: var(--space-3); }
+.wall-lock__title { margin: 0; font-size: 1.1rem; }
+.wall-lock__hint { margin: 0; }
+.wall-lock__field { display: flex; flex-direction: column; gap: var(--space-1); }
+.wall-lock__label { font-weight: 600; font-size: .85rem; }
+.wall-lock__error { margin: 0; color: var(--color-danger); font-weight: 600; }
+.wall-lock__error[hidden],
+.wall-lock__field[hidden] { display: none; }
+.wall-lock__actions { display: flex; justify-content: flex-end; gap: var(--space-2); }
 
 /* ── Mises en page nommées (panneau « Personnaliser ») ── */
 .dash-layouts { margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--color-border); }

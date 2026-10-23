@@ -10,6 +10,7 @@ use kintai\Contract\Extension\DashboardWidget;
 use kintai\Contract\Extension\NavItem;
 use kintai\Contract\Extension\NotificationType;
 use kintai\Contract\Extension\PageOverlay;
+use kintai\Contract\Extension\ExportDataset;
 use kintai\Contract\Extension\ProfileSection;
 use kintai\Contract\Extension\ShiftFormSection;
 use kintai\Contract\Extension\StoreFeature;
@@ -69,6 +70,8 @@ final class ExtensionRegistry
 
     /** @var array<string, list<ProfileSection>>|null */
     private ?array $profileSections = null;
+    /** @var array<string, list<ExportDataset>>|null */
+    private ?array $exportDatasets = null;
 
     /** @var array<string, array<class-string, callable>>|null */
     private ?array $eventListeners = null;
@@ -440,6 +443,28 @@ final class ExtensionRegistry
             }
         }
         return $this->profileSections = $bySlug;
+    }
+
+    /**
+     * Jeux de données exportables déclarés par les bundles actifs, par slug de bundle (les doublons de clé sont départagés
+     * par kintai\Core\Extension\ExportDatasets).
+     *
+     * @return array<string, list<ExportDataset>>
+     */
+    public function exportDatasetsByBundle(): array
+    {
+        if ($this->exportDatasets !== null) {
+            return $this->exportDatasets;
+        }
+
+        $bySlug = [];
+        foreach ($this->bundles->getBundles() as $bundle) {
+            $datasets = $this->contributionsOf($bundle, 'exportDatasets', ExportDataset::class);
+            if ($datasets !== []) {
+                $bySlug[$bundle->getName()] = $datasets;
+            }
+        }
+        return $this->exportDatasets = $bySlug;
     }
 
     /**

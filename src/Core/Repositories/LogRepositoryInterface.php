@@ -49,4 +49,13 @@ interface LogRepositoryInterface
 
     /** Supprime les entrées antérieures à la date donnée (Y-m-d H:i:s). Retourne le nombre de lignes supprimées. */
     public function purgeOlderThan(string $before): int;
+
+    /** Supprime toutes les entrées du journal. Retourne le nombre de lignes supprimées. */
+    public function purgeAll(): int;
+
+    /**
+     * Rend au disque l'espace des lignes supprimées (VACUUM en SQLite, OPTIMIZE TABLE en MySQL) : sans cela, le
+     * fichier de base ne rétrécit pas. Sans effet si le moteur ne sait pas le faire.
+     */
+    public function reclaimSpace(): void;
 }

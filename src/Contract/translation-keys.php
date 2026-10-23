@@ -7,7 +7,8 @@ declare(strict_types=1);
  * Comme surface.php (classes) et functions.php (fonctions) : toute autre clé du Core est interne et peut être renommée
  * ou supprimée sans préavis. Un bundle fournit lui-même toutes ses autres clés, préfixées par son slug
  * (`{slug_avec_soulignés}_…`), plus les conventions réservées `bundle_{slug}`, `bundle_{slug}_desc`, `notif_{type}`,
- * `audit_{action}` et `cron_job_{nom}`.
+ * `audit_{action}`, `cron_job_{nom}` et `perm_category_{catégorie}` (libellé de la catégorie de permissions, construit
+ * par la page des rôles du Core).
  *
  * Surcharger une clé du Core (commune ou non) est possible, mais explicitement : lang/overrides/{locale}.json du bundle,
  * avec les mêmes paramètres « :nom » (voir JsonTranslationRepository).

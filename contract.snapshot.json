@@ -1,5 +1,5 @@
 {
-    "version": "1.28.0",
+    "version": "1.30.0",
     "surface": {
         "kintai\\Contract\\Auth\\AuthService": {
             "status": "provisoire",
@@ -165,6 +165,10 @@
             "status": "stable",
             "target": "kintai\\Core\\Services\\TranslationService"
         },
+        "kintai\\Contract\\Services\\UserSelection": {
+            "status": "stable",
+            "target": "kintai\\Core\\Services\\UserSelection"
+        },
         "kintai\\Contract\\View\\Components\\Badge": {
             "status": "stable",
             "target": "kintai\\UI\\Components\\Badge"
@@ -204,6 +208,10 @@
         "kintai\\Contract\\View\\Components\\Table": {
             "status": "stable",
             "target": "kintai\\UI\\Components\\Table"
+        },
+        "kintai\\Contract\\View\\Components\\UserPicker": {
+            "status": "stable",
+            "target": "kintai\\UI\\Components\\UserPicker"
         },
         "kintai\\Contract\\View\\ViewRenderer": {
             "status": "stable",
@@ -514,6 +522,7 @@
         "dashboardStats": "(): array",
         "dashboardWidgets": "(): array",
         "eventListeners": "(): array",
+        "exportDatasets": "(): array",
         "getAssetsPath": "(): ?string",
         "getDescription": "(): string",
         "getLabel": "(): string",

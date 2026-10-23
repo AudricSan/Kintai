@@ -8,12 +8,14 @@ use kintai\Core\Mail\NativeTransport;
 use kintai\Core\Mail\SmtpTransport;
 use kintai\Core\Request;
 use kintai\Core\Response;
+use kintai\Core\Services\AppSettingsService;
 use kintai\UI\ViewRenderer;
 
 final class MailTestController
 {
     public function __construct(
         private readonly ViewRenderer $view,
+        private readonly AppSettingsService $settings,
     ) {}
 
     public function show(Request $request): Response
@@ -94,7 +96,8 @@ final class MailTestController
     private function loadConfig(): array
     {
         $file = defined('BASE_PATH') ? BASE_PATH . '/config/mail.php' : '';
-        return ($file !== '' && file_exists($file)) ? (require $file) : [];
+        // Même expéditeur que les vrais envois : celui réglé par l'Owner, sinon celui du fichier.
+        return $this->settings->mailConfig(($file !== '' && file_exists($file)) ? (require $file) : []);
     }
 
     private function phpIniInfo(): array

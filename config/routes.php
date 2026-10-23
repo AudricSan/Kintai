@@ -14,6 +14,8 @@ use kintai\UI\Controller\Web\DashboardLayoutController;
 use kintai\UI\Controller\Web\DashboardLayoutsController;
 use kintai\UI\Controller\Web\HomeController;
 use kintai\UI\Controller\Web\IcalController;
+use kintai\UI\Controller\Web\ExportController;
+use kintai\UI\Controller\Web\ScheduleExportController;
 use kintai\UI\Controller\Web\DocsController;
 use kintai\UI\Controller\Web\LegalController;
 use kintai\UI\Controller\Web\PrivacyController;
@@ -127,12 +129,19 @@ $router->group('/profile', function ($r) {
     $r->post('/calendar/google/options',    [CalendarLinkController::class, 'options'],    name: 'profile.calendar.options');
     $r->post('/calendar/google/resync',     [CalendarLinkController::class, 'resync'],     name: 'profile.calendar.resync');
     $r->get('/export',       [AuthController::class, 'exportData'],           name: 'profile.export');
+    // Son propre horaire en JSON, CSV ou ICS (fichier ponctuel, contrairement au flux iCal à jeton).
+    $r->get('/schedule-export', [ScheduleExportController::class, 'download'], name: 'profile.schedule_export');
     $r->post('/delete',      [AuthController::class, 'deleteAccount'],        name: 'profile.delete');
 }, middleware: [AuthMiddleware::class]);
 
 // Photo de profil : servie hors du groupe /profile pour rester consultable
 // via l'ID d'un autre utilisateur (annuaire collègues, bundle TeamDirectory).
 $router->get('/avatar/{user_id:employee}', [AuthController::class, 'avatar'], middleware: [AuthMiddleware::class], name: 'user.avatar');
+
+// Exports de données (Core et bundles) en JSON, CSV, Excel ou ICS. Les droits sont décidés par jeu de données et par magasin
+// dans ExportAccess, pas par une permission de route : chacun peut au moins exporter ses propres données.
+$router->get('/exports',          [ExportController::class, 'index'],    middleware: [AuthMiddleware::class], name: 'exports.index');
+$router->get('/exports/download', [ExportController::class, 'download'], middleware: [AuthMiddleware::class], name: 'exports.download');
 
 $router->group('/notifications', function ($r) {
     $r->get('',              [NotificationController::class, 'index'],       name: 'notifications.index');
@@ -168,9 +177,9 @@ $router->group('/employee', function ($r) {
     $r->get('/shifts/day',      [EmployeeController::class, 'shiftDay'],       name: 'employee.shifts.day');
     $r->get('/shifts/week',     [EmployeeController::class, 'shiftsWeek'],     name: 'employee.shifts.week');
 
-    // Pointage : bundle distribué hors monorepo, routes chargées depuis storage/bundles/timeclock/ une fois installé (voir docs/architecture.md)
+    // Pointage : bundle distribué hors monorepo, routes chargées depuis storage/bundles/timeclock/ une fois installé (voir wiki : Architecture)
 
-    // Congés : bundle distribué hors monorepo, routes chargées depuis storage/bundles/timeoff/ une fois installé (voir docs/architecture.md)
+    // Congés : bundle distribué hors monorepo, routes chargées depuis storage/bundles/timeoff/ une fois installé (voir wiki : Architecture)
 
     // Profil : géré par /profile (AuthController, page unique admin/manager/employé)
     $r->get('/profile',                    [EmployeeController::class, 'profile'],               name: 'employee.profile');
@@ -181,11 +190,11 @@ $router->group('/employee', function ($r) {
     $r->post('/nav-settings', [EmployeeController::class, 'saveNavSettings'], name: 'employee.nav_settings.save');
 
 
-    // Échanges de shifts : bundle distribué hors monorepo, routes chargées depuis storage/bundles/shift-swap/ une fois installé (voir docs/architecture.md)
+    // Échanges de shifts : bundle distribué hors monorepo, routes chargées depuis storage/bundles/shift-swap/ une fois installé (voir wiki : Architecture)
 
-    // Bourse aux shifts : bundle distribué hors monorepo, routes chargées depuis storage/bundles/shift-claim/ une fois installé (voir docs/architecture.md)
+    // Bourse aux shifts : bundle distribué hors monorepo, routes chargées depuis storage/bundles/shift-claim/ une fois installé (voir wiki : Architecture)
 
-    // Messagerie : bundle distribué hors monorepo, routes chargées depuis storage/bundles/messaging/ une fois installé (employee.messages*, voir docs/architecture.md)
+    // Messagerie : bundle distribué hors monorepo, routes chargées depuis storage/bundles/messaging/ une fois installé (employee.messages*, voir wiki : Architecture)
 
 }, middleware: [AuthMiddleware::class]);
 
@@ -255,10 +264,10 @@ $router->group('/admin', function ($r) {
     $r->get('/stores/{id:store}/employee-report',                      [AdminStoreController::class, 'employeeReport'],    name: 'admin.stores.employee_report', permission: 'payroll.view');
     $r->get('/stores/{id:store}/employee-report/{uid:employee}/stats',          [AdminStoreController::class, 'employeeStats'],     name: 'admin.stores.employee_stats', permission: 'payroll.view');
 
-    // Rapports d'embauche : bundle distribué hors monorepo, routes chargées depuis storage/bundles/hiring-report/ une fois installé (voir docs/architecture.md)
+    // Rapports d'embauche : bundle distribué hors monorepo, routes chargées depuis storage/bundles/hiring-report/ une fois installé (voir wiki : Architecture)
 
-    // Démission : bundle distribué hors monorepo, routes chargées depuis storage/bundles/resignation-report/ une fois installé (voir docs/architecture.md)
-    // Salaire : bundle distribué hors monorepo, routes chargées depuis storage/bundles/salary-report/ une fois installé (voir docs/architecture.md)
+    // Démission : bundle distribué hors monorepo, routes chargées depuis storage/bundles/resignation-report/ une fois installé (voir wiki : Architecture)
+    // Salaire : bundle distribué hors monorepo, routes chargées depuis storage/bundles/salary-report/ une fois installé (voir wiki : Architecture)
 
     // Shift types
     $r->get('/shift-types',               [AdminShiftTypeController::class, 'shiftTypes'],         name: 'admin.shift_types', permission: 'shifts.view');
@@ -290,17 +299,18 @@ $router->group('/admin', function ($r) {
     $r->post('/shifts/{id}/delete', [AdminShiftController::class, 'deleteShift'],          name: 'admin.shifts.delete', permission: 'shifts.delete');
     $r->post('/shifts/{id}/move',   [AdminShiftController::class, 'moveShift'],            name: 'admin.shifts.move', permission: 'shifts.update');
 
-    // Bourse aux shifts : bundle distribué hors monorepo, routes chargées depuis storage/bundles/shift-claim/ une fois installé (voir docs/architecture.md)
+    // Bourse aux shifts : bundle distribué hors monorepo, routes chargées depuis storage/bundles/shift-claim/ une fois installé (voir wiki : Architecture)
 
-    // Demandes de congé : bundle distribué hors monorepo, routes chargées depuis storage/bundles/timeoff/ une fois installé (voir docs/architecture.md)
+    // Demandes de congé : bundle distribué hors monorepo, routes chargées depuis storage/bundles/timeoff/ une fois installé (voir wiki : Architecture)
 
-    // Échanges de shifts : bundle distribué hors monorepo, routes chargées depuis storage/bundles/shift-swap/ une fois installé (voir docs/architecture.md)
+    // Échanges de shifts : bundle distribué hors monorepo, routes chargées depuis storage/bundles/shift-swap/ une fois installé (voir wiki : Architecture)
 
-    // Pointage : bundle distribué hors monorepo, routes chargées depuis storage/bundles/timeclock/ une fois installé (voir docs/architecture.md)
+    // Pointage : bundle distribué hors monorepo, routes chargées depuis storage/bundles/timeclock/ une fois installé (voir wiki : Architecture)
 
     // Journal d'activité (unifié)
     $r->get('/activity', [ActivityController::class, 'index'], name: 'admin.activity', permission: 'stores.view');
     $r->get('/activity/export', [ActivityController::class, 'export'], name: 'admin.activity.export', permission: 'stores.view');
+    $r->post('/activity/purge', [ActivityController::class, 'purge'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.activity.purge', permission: 'public');
 
 
     // Diagnostic mail
@@ -338,7 +348,7 @@ $router->group('/admin', function ($r) {
     $r->post('/update/migrate',      [BackupController::class, 'migrate'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.update.migrate', permission: 'public');
     $r->post('/update/channel',      [BackupController::class, 'saveChannel'], middleware: [OwnerOnlyMiddleware::class], name: 'admin.update.channel', permission: 'public');
 
-    // Photos : bundle distribué hors monorepo, routes chargées depuis storage/bundles/store-photos/ une fois installé (voir docs/architecture.md)
+    // Photos : bundle distribué hors monorepo, routes chargées depuis storage/bundles/store-photos/ une fois installé (voir wiki : Architecture)
 
     // Langues & traductions (Owner uniquement)
     $r->get('/languages',                       [LanguageController::class, 'index'],        middleware: [OwnerOnlyMiddleware::class], name: 'admin.languages', permission: 'public');
@@ -467,13 +477,13 @@ $router->group('/api/v1', function ($r) {
     $r->put('/availabilities/{id}',    [ApiAvailabilityController::class, 'update'],  name: 'api.v1.availabilities.update', permission: 'shifts.update');
     $r->delete('/availabilities/{id}', [ApiAvailabilityController::class, 'destroy'], name: 'api.v1.availabilities.destroy', permission: 'shifts.update');
 
-    // Demandes de congé : bundle distribué hors monorepo, routes chargées depuis storage/bundles/timeoff/ une fois installé (voir docs/architecture.md)
+    // Demandes de congé : bundle distribué hors monorepo, routes chargées depuis storage/bundles/timeoff/ une fois installé (voir wiki : Architecture)
 
-    // Échanges de shifts : bundle distribué hors monorepo, routes chargées depuis storage/bundles/shift-swap/ une fois installé (voir docs/architecture.md)
+    // Échanges de shifts : bundle distribué hors monorepo, routes chargées depuis storage/bundles/shift-swap/ une fois installé (voir wiki : Architecture)
 
-    // Pointage : bundle distribué hors monorepo, routes chargées depuis storage/bundles/timeclock/ une fois installé (voir docs/architecture.md)
+    // Pointage : bundle distribué hors monorepo, routes chargées depuis storage/bundles/timeclock/ une fois installé (voir wiki : Architecture)
 
-    // Bourse aux shifts : bundle distribué hors monorepo, routes chargées depuis storage/bundles/shift-claim/ une fois installé (voir docs/architecture.md)
+    // Bourse aux shifts : bundle distribué hors monorepo, routes chargées depuis storage/bundles/shift-claim/ une fois installé (voir wiki : Architecture)
 
     // Notifications
     $r->post('/notifications/read-all',    [ApiNotificationController::class, 'markAllRead'], name: 'api.v1.notifications.read_all', permission: 'public');

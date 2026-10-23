@@ -592,11 +592,8 @@ final class AuthController
 
         $this->auditLogger->log($request, 'user.data_export', 'user', $userId, [], null, $userId);
 
-        $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-        return new Response($json, 200, [
-            'Content-Type'        => 'application/json',
-            'Content-Disposition' => 'attachment; filename="kintai-data-' . $userId . '.json"',
-        ]);
+        // Response n'a pas de constructeur public : « new Response($json, 200, [...]) » renvoyait une réponse vide.
+        return Response::jsonDownload($data, 'kintai-data-' . $userId . '.json');
     }
 
     /** Supprime le compte de l'utilisateur connecté (auto-service RGPD). */
