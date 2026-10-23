@@ -1884,6 +1884,11 @@
     "install_error_database_not_empty": "The database “:name” already contains tables. To never erase anything by mistake, the installer only uses an empty database: empty it or choose another one.",
     "install_error_generic": "The installation failed and was fully rolled back. The technical details are in storage/logs/error.log.",
     "user_picker_empty": "No active employee in this store.",
+    "user_picker_owner": "Owner",
+    "user_picker_search": "Search an employee to add…",
+    "user_picker_none_selected": "Nobody chosen",
+    "user_picker_no_match": "No result",
+    "user_picker_remove": "Remove",
     "user_picker_select_all": "Select all",
     "user_picker_select_none": "None",
     "user_picker_count": ":count of :total selected"

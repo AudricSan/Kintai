@@ -78,6 +78,25 @@ final class UserPickerTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/\son[a-z]+=/i', $html);
     }
 
+    public function testChipsAndSearchHooksAreDataAttributesAndTheCheckboxesCarryTheirLabels(): void
+    {
+        $html = UserPicker::make('ids', $this->candidates())->render();
+
+        foreach (['data-user-picker-chips', 'data-user-picker-search', 'data-user-picker-menu'] as $hook) {
+            $this->assertStringContainsString($hook, $html);
+        }
+        $this->assertStringContainsString('data-name="Aki Tanaka"', $html, 'le JavaScript lit le nom sur la case');
+        $this->assertStringContainsString('data-detail="aki@example.test"', $html);
+    }
+
+    public function testTheOwnerIsTaggedOnTheCheckboxAndInTheList(): void
+    {
+        $html = UserPicker::make('ids', [['id' => 1, 'name' => 'Zoé', 'email' => 'z@example.test', 'owner' => true], ['id' => 2, 'name' => 'Aki']])->render();
+
+        $this->assertSame(1, substr_count($html, 'data-owner='));
+        $this->assertSame(1, substr_count($html, 'user-picker__tag'));
+    }
+
     public function testExtraAttributesAndClassesAreMerged(): void
     {
         $html = UserPicker::make('ids', $this->candidates())->attrs(['class' => 'mb-3', 'id' => 'recipients'])->render();
