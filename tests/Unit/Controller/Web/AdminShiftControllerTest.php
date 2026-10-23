@@ -914,6 +914,44 @@ final class AdminShiftControllerTest extends TestCase
         $this->assertFalse($canManage);
     }
 
+    /**
+     * Un employé supprimé (anonymisé, deleted_at), désactivé ou disparu de la base reste lié au magasin (store_user) :
+     * il apparaissait dans la liste des shifts sous la forme « #90 » sans nom, et sa fiche répondait 404.
+     */
+    public function testShiftsTimelineHidesDeletedDeactivatedAndMissingStaff(): void
+    {
+        $this->stores = $this->createMock(StoreRepositoryInterface::class);
+        $this->writeViewFile('scheduling.shifts-timeline', "<?php echo json_encode(\$all_user_ids);");
+        $this->writeViewFile('layout.app', "<?php echo \$content ?? '';");
+
+        $this->stores->method('findAll')->willReturn([['id' => 1, 'name' => 'Store 1']]);
+        $this->stores->method('findById')->willReturn(['id' => 1, 'name' => 'Store 1']);
+        $this->shifts->method('findByStore')->willReturn([]);
+        $this->shiftTypes->method('findByStores')->willReturn([]);
+        $this->shiftTypes->method('findAll')->willReturn([]);
+        $this->storeUsers->method('findByStore')->willReturn([
+            ['store_id' => 1, 'user_id' => 10],
+            ['store_id' => 1, 'user_id' => 11],
+            ['store_id' => 1, 'user_id' => 12],
+            ['store_id' => 1, 'user_id' => 13],
+            ['store_id' => 1, 'user_id' => 10],
+        ]);
+        $this->users->method('findAll')->willReturn([
+            ['id' => 10, 'last_name' => 'Ueda', 'first_name' => 'Ken', 'is_active' => 1, 'deleted_at' => null],
+            ['id' => 11, 'last_name' => '', 'first_name' => '', 'is_active' => 0, 'deleted_at' => '2026-10-01 10:00:00'],
+            ['id' => 12, 'last_name' => 'Sato', 'first_name' => 'Aya', 'is_active' => 0, 'deleted_at' => null],
+        ]);
+
+        $_GET['store_id'] = '1';
+        $req = new Request();
+        $req->setAttribute('auth_user', ['id' => 1, 'is_admin' => true]);
+        $req->setAttribute('managed_store_ids', null);
+
+        $response = $this->controller()->shiftsTimeline($req);
+
+        $this->assertSame([10], json_decode($response->body(), true));
+    }
+
     private function renderTimelineAndCaptureCanManage(array $authUser, ?array $managedStoreIds = null): bool
     {
         $this->stores = $this->createMock(StoreRepositoryInterface::class);
