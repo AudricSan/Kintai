@@ -156,6 +156,7 @@
     <script src="<?= $BASE_URL ?>/assets/js/app.js?v=<?= asset_version() ?>"></script>
     <script src="<?= $BASE_URL ?>/assets/js/modules/notifications.js?v=<?= asset_version() ?>"></script>
     <script src="<?= $BASE_URL ?>/assets/js/modules/old-input.js?v=<?= asset_version() ?>"></script>
+    <script src="<?= $BASE_URL ?>/assets/js/modules/user-picker.js?v=<?= asset_version() ?>"></script>
     <?php /* Web push natif : chargé sur toutes les pages connectées pour resynchroniser l'abonnement du navigateur. */ ?>
     <?php if (!empty($push_web_config) && !empty($auth_user['id'] ?? null)): ?>
         <div id="push-meta"

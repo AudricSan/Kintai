@@ -1817,5 +1817,9 @@
     "install_error_mysql_privileges": "この MySQL ユーザーには必要な権限がありません。空のデータベースを自分で作成するか、作成権限のあるアカウントを使用してください。",
     "install_error_not_writable": "Web サーバーが :name に書き込めません。書き込み権限を付与してから再試行してください。",
     "install_error_database_not_empty": "データベース「:name」にはすでにテーブルがあります。誤って何かを消さないよう、インストーラーは空のデータベースのみ使用します。空にするか、別のデータベースを選んでください。",
-    "install_error_generic": "インストールに失敗し、すべて元に戻しました。技術的な詳細は storage/logs/error.log にあります。"
+    "install_error_generic": "インストールに失敗し、すべて元に戻しました。技術的な詳細は storage/logs/error.log にあります。",
+    "user_picker_empty": "この店舗に有効な従業員はいません。",
+    "user_picker_select_all": "すべて選択",
+    "user_picker_select_none": "選択解除",
+    "user_picker_count": ":total人中:count人を選択"
 }

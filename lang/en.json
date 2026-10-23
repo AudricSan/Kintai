@@ -1817,5 +1817,9 @@
     "install_error_mysql_privileges": "This MySQL user lacks the required privileges: create the (empty) database yourself, or use an account allowed to create it.",
     "install_error_not_writable": "The web server cannot write :name: grant it write access, then try again.",
     "install_error_database_not_empty": "The database “:name” already contains tables. To never erase anything by mistake, the installer only uses an empty database: empty it or choose another one.",
-    "install_error_generic": "The installation failed and was fully rolled back. The technical details are in storage/logs/error.log."
+    "install_error_generic": "The installation failed and was fully rolled back. The technical details are in storage/logs/error.log.",
+    "user_picker_empty": "No active employee in this store.",
+    "user_picker_select_all": "Select all",
+    "user_picker_select_none": "None",
+    "user_picker_count": ":count of :total selected"
 }
