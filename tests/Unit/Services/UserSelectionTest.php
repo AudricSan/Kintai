@@ -61,9 +61,21 @@ final class UserSelectionTest extends TestCase
         $this->assertSame('aki@example.test', $byId[2]['email']);
     }
 
-    public function testAStoreWithoutMembersHasNoCandidate(): void
+    public function testAStoreWithoutMembersOnlyOffersTheOwner(): void
     {
-        $this->assertSame([], $this->selection()->candidates(8));
+        $candidates = $this->selection()->candidates(8);
+
+        // Le socle de test fait de l'utilisateur 1 l'Owner : proposé même sans appartenir au magasin.
+        $this->assertSame([1], array_column($candidates, 'id'));
+        $this->assertTrue($candidates[0]['owner']);
+    }
+
+    public function testOnlyTheOwnerIsFlaggedAsOwner(): void
+    {
+        $byId = array_column($this->selection()->candidates(7), null, 'id');
+
+        $this->assertTrue($byId[1]['owner']);
+        $this->assertFalse($byId[2]['owner']);
     }
 
     public function testThePermissionFilterKeepsTheHoldersOnly(): void
@@ -80,9 +92,9 @@ final class UserSelectionTest extends TestCase
         $this->assertSame(['aki@example.test', 'zoe@example.test', 'lea@example.test'], array_column($resolved, 'email'));
     }
 
-    public function testResolveOnAnotherStoreReturnsNothing(): void
+    public function testResolveOnAnotherStoreKeepsTheOwnerOnly(): void
     {
-        $this->assertSame([], $this->selection()->resolve(8, [1, 2]));
+        $this->assertSame([1], array_column($this->selection()->resolve(8, [1, 2]), 'id'));
     }
 
     public function testValidateAcceptsAnEmptySelectionUnlessRequired(): void
@@ -103,7 +115,8 @@ final class UserSelectionTest extends TestCase
     {
         $this->assertSame('unknown', $this->selection()->validate(7, [1, 5])['error']);
         $this->assertSame('unknown', $this->selection()->validate(7, [3])['error']);
-        $this->assertSame('unknown', $this->selection()->validate(8, [1])['error']);
+        $this->assertSame('unknown', $this->selection()->validate(8, [2])['error']);
+        $this->assertNull($this->selection()->validate(8, [1])['error'], 'l\'Owner reste choisissable dans tout magasin');
     }
 
     public function testValidateEnforcesTheMaximum(): void

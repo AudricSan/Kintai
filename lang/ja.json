@@ -1819,6 +1819,11 @@
     "install_error_database_not_empty": "データベース「:name」にはすでにテーブルがあります。誤って何かを消さないよう、インストーラーは空のデータベースのみ使用します。空にするか、別のデータベースを選んでください。",
     "install_error_generic": "インストールに失敗し、すべて元に戻しました。技術的な詳細は storage/logs/error.log にあります。",
     "user_picker_empty": "この店舗に有効な従業員はいません。",
+    "user_picker_owner": "オーナー",
+    "user_picker_search": "追加する従業員を検索…",
+    "user_picker_none_selected": "選択されていません",
+    "user_picker_no_match": "該当なし",
+    "user_picker_remove": "削除",
     "user_picker_select_all": "すべて選択",
     "user_picker_select_none": "選択解除",
     "user_picker_count": ":total人中:count人を選択"
