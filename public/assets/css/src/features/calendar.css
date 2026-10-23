@@ -76,7 +76,7 @@
 }
 .ecal-today .ecal-day-num {
     background: var(--color-primary);
-    color: #fff;
+    color: var(--color-on-primary);
 }
 .ecal-other .ecal-day-num { opacity: .4; }
 
@@ -263,7 +263,7 @@
 
 .cal-today .cal-day-num {
     background: var(--color-primary);
-    color: #fff;
+    color: var(--color-on-primary);
 }
 
 .cal-other-month .cal-day-num { opacity: .4; }

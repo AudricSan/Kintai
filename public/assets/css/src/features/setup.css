@@ -45,7 +45,7 @@
 
 .setup-steps__item--done .setup-steps__mark {
     background: var(--color-success);
-    color: #fff;
+    color: var(--color-on-success);
 }
 
 .setup-steps__item--skipped a { opacity: .7; }
