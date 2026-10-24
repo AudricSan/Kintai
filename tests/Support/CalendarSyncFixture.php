@@ -49,9 +49,14 @@ trait CalendarSyncFixture
     private int $alice;
     private int $bob;
     private string $day;
+    private string $previousTimezone = 'UTC';
 
     private function setUpCalendarFixture(): void
     {
+        // La synchronisation suit le fuseau de l'application, pas celui du magasin.
+        $this->previousTimezone = date_default_timezone_get();
+        date_default_timezone_set('Asia/Tokyo');
+
         $this->capsule = new Capsule();
         $this->capsule->addConnection(['driver' => 'sqlite', 'database' => ':memory:', 'prefix' => '']);
         $this->capsule->setAsGlobal();
@@ -129,6 +134,8 @@ trait CalendarSyncFixture
 
     private function tearDownCalendarFixture(): void
     {
+        date_default_timezone_set($this->previousTimezone);
+
         $instances = new \ReflectionProperty(Container::class, 'instances');
         $all = $instances->getValue(Container::getInstance());
         unset($all[TranslationService::class]);

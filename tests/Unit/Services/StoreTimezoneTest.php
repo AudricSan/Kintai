@@ -71,7 +71,18 @@ final class StoreTimezoneTest extends TestCase
         $this->assertCount(1, StoreValidator::timezoneErrors(['timezone' => 'Atlantide']));
     }
 
-    public function testTheIcalFeedHonoursAStoreSavedAsUtcPlusNine(): void
+    public function testTheIcalFeedUsesTheApplicationTimezoneWhateverTheStoreSays(): void
+    {
+        $previous = date_default_timezone_get();
+        date_default_timezone_set('Asia/Tokyo');
+        try {
+            $this->assertIcalFeedUsesTheApplicationTimezone();
+        } finally {
+            date_default_timezone_set($previous);
+        }
+    }
+
+    private function assertIcalFeedUsesTheApplicationTimezone(): void
     {
         $translations = new TranslationService(
             new JsonTranslationRepository(dirname(__DIR__, 3) . '/lang', dirname(__DIR__, 3) . '/src/Bundles'),

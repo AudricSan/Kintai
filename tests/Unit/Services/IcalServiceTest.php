@@ -30,9 +30,14 @@ final class IcalServiceTest extends TestCase
 {
     private TranslationService $translations;
     private IcalService $service;
+    private string $previousTimezone = 'UTC';
 
     protected function setUp(): void
     {
+        // Le flux suit le fuseau de l'application, pas celui du magasin.
+        $this->previousTimezone = date_default_timezone_get();
+        date_default_timezone_set('Europe/Paris');
+
         $this->translations = new TranslationService(
             new JsonTranslationRepository(BASE_PATH . '/lang', BASE_PATH . '/src/Bundles'),
             new JsonLanguageRepository(BASE_PATH . '/lang'),
@@ -44,6 +49,7 @@ final class IcalServiceTest extends TestCase
 
     protected function tearDown(): void
     {
+        date_default_timezone_set($this->previousTimezone);
         $instancesProp = new \ReflectionProperty(Container::class, 'instances');
         $instancesProp->setAccessible(true);
         $instances = $instancesProp->getValue(Container::getInstance());
