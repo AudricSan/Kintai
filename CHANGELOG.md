@@ -9,6 +9,9 @@ All notable changes to Kintai are documented here.
 ### CI
 - New `lint` job on every pull request: PHP and JavaScript syntax of the whole repository, JSON files (languages, `composer.json`, contract snapshot), `composer validate` and `composer audit`, and static analysis with PHPStan (level 0, `phpstan.neon`). The `crawl-smoke` job is removed: `crawl-bundles-smoke` runs the same crawl with the bundles installed.
 
+### Added
+- Owner settings: **instance timezone** (`/admin/owner-settings`). The Owner picks the timezone of every time in the application (planning, time clock, reminders, calendar sync, iCal feeds); it is saved in the environment file as `APP_TIMEZONE`, like the instance language. The timezone entered on a store is not used by the application.
+
 ### Fixed
 - Calendar sync (Google Calendar) and iCal feeds: events are now placed in the **application timezone** (`APP_TIMEZONE`), not in the store's. A store left on the default `UTC` made shifts show up hours off (GMT) in the synced calendar. The calendar created in Google uses the same timezone. Already-synced events are corrected on the next reconciliation (their content, hence their fingerprint, changes).
 - Dashboard wall mode: F5 (or Ctrl+R, F11, F12, Ctrl+L, Alt+←, dev-tools and view-source shortcuts) no longer bypasses the password. The lock now survives a page reload (salted hash in `sessionStorage`, never the password), the shortcuts are intercepted while the mode is active, leaving the page asks for confirmation, and Escape is locked in fullscreen when the browser supports it. Widgets are also inert in wall mode: no click, link, menu or keyboard focus, only the exit button answers.

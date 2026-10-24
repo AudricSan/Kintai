@@ -58,6 +58,9 @@ if (($error ?? null) === 'mail_from_invalid') {
 if (($error ?? null) === 'instance_locale_not_saved') {
     echo Alert::make(__('instance_locale_not_saved'))->danger()->render();
 }
+if (($error ?? null) === 'instance_timezone_not_saved') {
+    echo Alert::make(__('instance_timezone_not_saved'))->danger()->render();
+}
 ?>
 <div class="page-header">
     <h2 class="page-header__title"><?= __('owner_settings') ?></h2>
@@ -114,6 +117,18 @@ if (($error ?? null) === 'instance_locale_not_saved') {
             <?php endforeach; ?>
         </select>
         <p class="form-hint"><?= __('instance_locale_hint') ?></p>
+    </div>
+    <?php endif; ?>
+
+    <?php if (!empty($instance_timezones)): ?>
+    <div class="form-group">
+        <label class="form-label" for="app_timezone"><?= __('instance_timezone') ?></label>
+        <select id="app_timezone" name="app_timezone" class="form-control">
+            <?php foreach ($instance_timezones as $_tz): ?>
+            <option value="<?= htmlspecialchars($_tz, ENT_QUOTES) ?>" <?= ($instance_timezone ?? '') === $_tz ? 'selected' : '' ?>><?= htmlspecialchars($_tz) ?></option>
+            <?php endforeach; ?>
+        </select>
+        <p class="form-hint"><?= __('instance_timezone_hint') ?></p>
     </div>
     <?php endif; ?>
 
