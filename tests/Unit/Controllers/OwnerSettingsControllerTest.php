@@ -14,6 +14,7 @@ use kintai\Core\Services\Log;
 use kintai\Core\Services\PublicUrlResolver;
 use kintai\Core\Services\EnvFileWriter;
 use kintai\Core\Services\InstanceLocale;
+use kintai\Core\Services\InstanceTimezone;
 use kintai\Core\Repositories\LanguageRepositoryInterface;
 use kintai\UI\Controller\Web\System\OwnerSettingsController;
 use kintai\UI\ViewRenderer;
@@ -315,6 +316,44 @@ final class OwnerSettingsControllerTest extends TestCase
             unset($_ENV['APP_LOCALE'], $_SERVER['APP_LOCALE']);
             putenv('APP_LOCALE');
         }
+    }
+
+    private function makeControllerWithTimezone(string $envDir): OwnerSettingsController
+    {
+        $base = $this->makeController();
+        $settings = (new \ReflectionProperty($base, 'settings'))->getValue($base);
+
+        return new OwnerSettingsController(
+            new ViewRenderer(sys_get_temp_dir()), $settings, new AuditLogger(), new PublicUrlResolver($settings, ''),
+            null, null, new InstanceTimezone(new EnvFileWriter($envDir)),
+        );
+    }
+
+    public function testSaveWritesTheInstanceTimezoneToTheEnvironmentFile(): void
+    {
+        $dir = sys_get_temp_dir() . '/kintai-owner-tz-' . uniqid();
+        mkdir($dir);
+        try {
+            $_POST = ['app_timezone' => 'Asia/Tokyo'];
+            $response = $this->makeControllerWithTimezone($dir)->save(new Request());
+
+            $this->assertSame("APP_TIMEZONE=Asia/Tokyo\n", file_get_contents($dir . '/.env'));
+            $this->assertStringContainsString('success=1', (string) ($response->headers()['Location'] ?? ''));
+        } finally {
+            @unlink($dir . '/.env');
+            @rmdir($dir);
+            unset($_ENV['APP_TIMEZONE'], $_SERVER['APP_TIMEZONE']);
+            putenv('APP_TIMEZONE');
+        }
+    }
+
+    public function testAnUnknownTimezoneIsReportedAndOtherSettingsAreKept(): void
+    {
+        $_POST = ['app_timezone' => 'Atlantide', 'app_subtitle' => 'Ma société'];
+        $response = $this->makeControllerWithTimezone(sys_get_temp_dir())->save(new Request());
+
+        $this->assertStringContainsString('error=instance_timezone_not_saved', (string) ($response->headers()['Location'] ?? ''));
+        $this->assertSame('Ma société', $this->stored['app_subtitle']);
     }
 
     public function testAnUnwritableEnvironmentFileIsReportedAndOtherSettingsAreKept(): void

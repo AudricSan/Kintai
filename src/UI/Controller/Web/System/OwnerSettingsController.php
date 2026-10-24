@@ -11,6 +11,7 @@ use kintai\Core\Response;
 use kintai\Core\Services\AppSettingsService;
 use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\InstanceLocale;
+use kintai\Core\Services\InstanceTimezone;
 use kintai\Core\Services\PublicUrlResolver;
 use kintai\Core\Services\ThemeColorPalette;
 use kintai\UI\Controller\Web\HasBaseUrl;
@@ -27,6 +28,8 @@ final class OwnerSettingsController
         // Langue de l'instance (APP_LOCALE) ; le conteneur les injecte toujours.
         private readonly ?InstanceLocale $instanceLocale = null,
         private readonly ?LanguageRepositoryInterface $languages = null,
+        // Fuseau horaire de l'instance (APP_TIMEZONE).
+        private readonly ?InstanceTimezone $instanceTimezone = null,
     ) {}
 
     /** GET /admin/owner-settings */
@@ -73,8 +76,10 @@ final class OwnerSettingsController
             'theme_dark_mode'   => $this->settings->themeDarkMode(),
             'instance_locale'   => $this->instanceLocale?->code(),
             'instance_languages' => $this->languages?->findAllActive() ?? [],
+            'instance_timezone'  => $this->instanceTimezone?->code(),
+            'instance_timezones' => $this->instanceTimezone !== null ? InstanceTimezone::identifiers() : [],
             'success' => isset($_GET['success']),
-            'error'   => in_array($request->query('error'), ['public_url_invalid', 'instance_locale_not_saved', 'mail_from_invalid'], true) ? $request->query('error') : null,
+            'error'   => in_array($request->query('error'), ['public_url_invalid', 'instance_locale_not_saved', 'instance_timezone_not_saved', 'mail_from_invalid'], true) ? $request->query('error') : null,
         ], 'layout.app'));
     }
 
@@ -186,8 +191,23 @@ final class OwnerSettingsController
             }
         }
 
+        // Fuseau horaire de l'instance : écrit dans le fichier d'environnement (APP_TIMEZONE), comme la langue.
+        $timezoneError = false;
+        $timezone = trim((string) $request->post('app_timezone', ''));
+        if ($this->instanceTimezone !== null && $timezone !== '' && $timezone !== $this->instanceTimezone->code()) {
+            $oldData[InstanceTimezone::ENV_KEY] = $this->instanceTimezone->code();
+            try {
+                $this->instanceTimezone->set($timezone);
+                $newData[InstanceTimezone::ENV_KEY] = $timezone;
+            } catch (\InvalidArgumentException | \RuntimeException) {
+                $timezoneError = true;
+            }
+        }
+
         $this->auditLogger->logUpdate($request, 'owner_settings.updated', 'system', null, $oldData, $newData, []);
 
-        return Response::redirect($this->base() . '/admin/owner-settings?' . ($localeError ? 'error=instance_locale_not_saved' : 'success=1'));
+        $query = $localeError ? 'error=instance_locale_not_saved' : ($timezoneError ? 'error=instance_timezone_not_saved' : 'success=1');
+
+        return Response::redirect($this->base() . '/admin/owner-settings?' . $query);
     }
 }
