@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace kintai\Core\Validation;
 
 use kintai\Core\Repositories\LanguageRepositoryInterface;
+use kintai\Core\Services\StoreTimezone;
 
 final class StoreValidator implements ValidatorInterface
 {
@@ -60,8 +61,23 @@ final class StoreValidator implements ValidatorInterface
         }
 
         array_push($errors, ...self::currencyErrors($data));
+        array_push($errors, ...self::timezoneErrors($data));
 
         return new ValidationResult($errors === [], $errors);
+    }
+
+    /**
+     * Le fuseau horaire doit être reconnaissable (Asia/Tokyo, ou une écriture comme « UTC+9 » que StoreTimezone convertit).
+     * Une valeur quelconque était acceptée : Google Agenda l'ignorait et plaçait les événements en UTC (+9 h à Tokyo).
+     * Un champ absent ou vide n'est pas une erreur : le service retombe sur le fuseau de l'instance.
+     *
+     * @return list<string>
+     */
+    public static function timezoneErrors(array $data): array
+    {
+        $timezone = trim((string) ($data['timezone'] ?? ''));
+
+        return $timezone !== '' && StoreTimezone::normalize($timezone) === null ? [__('val_invalid_timezone')] : [];
     }
 
     /**

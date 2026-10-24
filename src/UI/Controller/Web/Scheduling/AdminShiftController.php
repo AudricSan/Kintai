@@ -310,7 +310,7 @@ final class AdminShiftController
                 $uid = (int) $m['user_id'];
                 if (isset($membersMap[$uid])) continue;
                 $u = $this->users->findById($uid);
-                if (!$u) continue;
+                if (!$u || !empty($u['deleted_at']) || (int) ($u['is_active'] ?? 1) !== 1) continue;
                 $membersMap[$uid]  = $u;
                 $usersColour[$uid] = $u['color'] ?? '#6366f1';
                 $allMembers[]      = $u;
@@ -435,12 +435,8 @@ final class AdminShiftController
         $nextStart = $firstDay->modify("+{$numDays} days")->format('Y-m-d');
 
         // Membres du store (triés par nom)
-        $memberIds = [];
-        if ($filterStoreId > 0) {
-            foreach ($this->storeUsers->findByStore($filterStoreId) as $m) {
-                $memberIds[] = (int) $m['user_id'];
-            }
-        }
+        // (comptes supprimés ou désactivés écartés : plus de « #90 » sans nom)
+        $memberIds = $filterStoreId > 0 ? $this->activeMemberIds($filterStoreId) : [];
 
         // Map noms et couleurs
         $usersMap    = $this->buildUsersMap();
@@ -590,12 +586,7 @@ final class AdminShiftController
         $days    = array_map(fn($i) => $firstDay->modify("+$i days"), range(0, $numDays - 1));
         $lastDay = $days[$numDays - 1];
 
-        $memberIds = [];
-        if ($filterStoreId > 0) {
-            foreach ($this->storeUsers->findByStore($filterStoreId) as $m) {
-                $memberIds[] = (int) $m['user_id'];
-            }
-        }
+        $memberIds = $filterStoreId > 0 ? $this->activeMemberIds($filterStoreId) : [];
 
         $usersMap = $this->buildUsersMap();
         $colorMap = [];

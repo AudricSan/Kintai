@@ -345,12 +345,7 @@ final class CalendarSyncService
 
     private function defaultTimeZone(array $connection): string
     {
-        foreach ($this->shifts->findByUser((int) $connection['user_id']) as $shift) {
-            $store = $this->stores->findById((int) ($shift['store_id'] ?? 0));
-            if ($store !== null && (string) ($store['timezone'] ?? '') !== '') {
-                return (string) $store['timezone'];
-            }
-        }
+        // Même fuseau que les événements (CalendarEventBuilder) : celui de l'application.
         return date_default_timezone_get();
     }
 

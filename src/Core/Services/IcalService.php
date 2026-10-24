@@ -31,7 +31,8 @@ final class IcalService
         $this->translations->setLocale($resolved);
 
         try {
-            $tz        = $store['timezone'] ?? 'UTC';
+            // Fuseau de l'application (APP_TIMEZONE), pas celui du magasin (« UTC » par défaut : heures décalées dans l'agenda).
+            $tz        = date_default_timezone_get();
             $storeName = $store['name'] ?? __('store');
             $calName   = $storeName . ' — ' . ($user['last_name'] ?? '') . ' ' . ($user['first_name'] ?? '');
             $dtstamp   = gmdate('Ymd\THis\Z');

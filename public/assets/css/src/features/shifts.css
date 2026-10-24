@@ -361,7 +361,7 @@
 }
 .import-filter-btn.active .import-filter-badge {
     background: var(--color-primary);
-    color: #fff;
+    color: var(--color-on-primary);
 }
 
 .import-filter-count {

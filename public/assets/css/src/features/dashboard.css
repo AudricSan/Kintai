@@ -389,7 +389,7 @@ html.dash-wall .dash-wall-exit {
 html.dash-wall .dash-wall-exit:hover,
 html.dash-wall .dash-wall-exit:focus-visible { opacity: 1; }
 
-html.dash-wall .dash-grid { margin-top: 0; }
+html.dash-wall .dash-grid { margin-top: 0; pointer-events: none; user-select: none; }
 
 /* Boîte du mot de passe du mode mural (choisir à l'activation, redonner pour quitter). */
 .wall-lock {
@@ -399,6 +399,7 @@ html.dash-wall .dash-grid { margin-top: 0; }
     border-radius: var(--radius-lg, 12px);
     background: var(--color-surface, #fff);
     color: inherit;
+    margin: auto;
 }
 
 .wall-lock::backdrop { background: rgb(0 0 0 / .55); }

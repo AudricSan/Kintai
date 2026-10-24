@@ -30,7 +30,9 @@ final class CalendarEventBuilder
     public function forShift(array $shift, array $store, ?array $type, array $user, ?string $publicUrl): array
     {
         return $this->withLocale($user, $store, function () use ($shift, $store, $type, $publicUrl) {
-            $tz        = (string) ($store['timezone'] ?? '') !== '' ? (string) $store['timezone'] : 'UTC';
+            // Fuseau de l'application (APP_TIMEZONE), pas celui du magasin : celui-ci vaut « UTC » par défaut, ce qui
+            // décalait les événements de plusieurs heures dans Google Agenda.
+            $tz        = date_default_timezone_get();
             $date      = (string) $shift['shift_date'];
             $start     = substr((string) ($shift['start_time'] ?? '00:00'), 0, 5);
             $end       = substr((string) ($shift['end_time'] ?? '00:00'), 0, 5);

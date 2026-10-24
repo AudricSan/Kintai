@@ -30,9 +30,14 @@ final class IcalServiceTest extends TestCase
 {
     private TranslationService $translations;
     private IcalService $service;
+    private string $previousTimezone = 'UTC';
 
     protected function setUp(): void
     {
+        // Le flux suit le fuseau de l'application, pas celui du magasin.
+        $this->previousTimezone = date_default_timezone_get();
+        date_default_timezone_set('Europe/Paris');
+
         $this->translations = new TranslationService(
             new JsonTranslationRepository(BASE_PATH . '/lang', BASE_PATH . '/src/Bundles'),
             new JsonLanguageRepository(BASE_PATH . '/lang'),
@@ -44,6 +49,7 @@ final class IcalServiceTest extends TestCase
 
     protected function tearDown(): void
     {
+        date_default_timezone_set($this->previousTimezone);
         $instancesProp = new \ReflectionProperty(Container::class, 'instances');
         $instancesProp->setAccessible(true);
         $instances = $instancesProp->getValue(Container::getInstance());
@@ -186,13 +192,17 @@ final class IcalServiceTest extends TestCase
         $this->assertStringContainsString('DTEND:20260922T040000Z', $content);
     }
 
-    public function testBuildFallsBackToUtcWhenStoreTimezoneIsInvalid(): void
+    public function testBuildFallsBackToTheInstanceTimezoneWhenStoreTimezoneIsInvalid(): void
     {
         $user    = ['id' => 10, 'first_name' => 'John', 'last_name' => 'Smith', 'language' => 'en'];
         $store   = $this->store();
         $store['timezone'] = 'Not/ATimezone';
         $content = $this->service->build([$this->shift()], [], $store, $user, []);
 
-        $this->assertStringContainsString('DTSTART:20260921T090000Z', $content);
+        // Avant : repli silencieux en UTC, donc des heures décalées dans l'agenda (+9 h à Tokyo). Maintenant : fuseau de l'instance.
+        $expected = (new \DateTimeImmutable('2026-09-21 09:00', new \DateTimeZone(date_default_timezone_get())))
+            ->setTimezone(new \DateTimeZone('UTC'))->format('Ymd\THis\Z');
+        $this->assertStringContainsString('DTSTART:' . $expected, $content);
+        $this->assertStringContainsString('X-WR-TIMEZONE:' . date_default_timezone_get(), $content);
     }
 }

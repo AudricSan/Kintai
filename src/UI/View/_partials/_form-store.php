@@ -74,9 +74,15 @@ $dedResidentTax = $ded['resident_tax_monthly'] ?? 0;
         <div class="card-body form-stack">
             <div class="form-group">
                 <label class="form-label form-label--required"><?= __('timezone') ?></label>
-                <input type="text" name="timezone" class="form-control"
-                       value="<?= htmlspecialchars($store['timezone'] ?? 'UTC') ?>"
+                <?php // Liste des identifiants valides : un fuseau écrit à la main (« UTC+9 ») n'est pas compris par Google Agenda. ?>
+                <input type="text" name="timezone" class="form-control" list="store-timezones" autocomplete="off"
+                       value="<?= htmlspecialchars($store['timezone'] ?? date_default_timezone_get()) ?>"
                        placeholder="ex: Europe/Paris, Asia/Tokyo" required>
+                <datalist id="store-timezones">
+                    <?php foreach (\DateTimeZone::listIdentifiers() as $zone): ?>
+                        <option value="<?= htmlspecialchars($zone) ?>"></option>
+                    <?php endforeach; ?>
+                </datalist>
             </div>
             <div class="form-group">
                 <label class="form-label"><?= __('locale') ?></label>
