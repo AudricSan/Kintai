@@ -5,7 +5,7 @@
  *
  * Le bouton « Personnaliser » appelle window.kintaiDashLayout.setEditing() : en mode édition, chaque widget affiche une
  * barre d'outils — poignée de glisser-déposer, flèches ↑↓ (clavier, tactile), largeur −/+ (1 à 12 colonnes, dans les
- * bornes du widget), hauteur −/+ (1 à 6 lignes) et retrait. Hors édition, chaque widget se replie d'un clic (▾).
+ * bornes du widget), hauteur −/+ (1 à 6 lignes) et retrait.
  * Chaque changement est enregistré aussitôt, en arrière-plan (POST JSON vers data-save-url) ; « Réinitialiser l'ordre »
  * revient à la disposition par défaut et recharge la page. La densité (compacte / confortable) a son propre bouton.
  *
@@ -37,15 +37,13 @@
             var order = [];
             var widths = {};
             var heights = {};
-            var collapsed = [];
             items().forEach(function (item) {
                 var key = item.getAttribute('data-widget-key');
                 order.push(key);
                 widths[key] = parseInt(item.getAttribute('data-widget-width'), 10) || 12;
                 heights[key] = parseInt(item.getAttribute('data-widget-height'), 10) || 1;
-                if (item.getAttribute('data-widget-collapsed') === '1') collapsed.push(key);
             });
-            post({ order: order, widths: widths, heights: heights, collapsed: collapsed, density: grid.getAttribute('data-density') || 'comfortable' });
+            post({ order: order, widths: widths, heights: heights, density: grid.getAttribute('data-density') || 'comfortable' });
         }, 300);
     }
 
@@ -230,19 +228,6 @@
         window.dispatchEvent(new Event('resize'));
     }
 
-    function setCollapsed(item, collapsed) {
-        item.classList.toggle('dash-grid__item--collapsed', collapsed);
-        item.setAttribute('data-widget-collapsed', collapsed ? '1' : '0');
-        var btn = item.querySelector('[data-dash-fold]');
-        if (btn) {
-            var text = btn.getAttribute(collapsed ? 'data-label-expand' : 'data-label-collapse') || '';
-            btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-            btn.setAttribute('title', text);
-            btn.setAttribute('aria-label', text + ' — ' + (item.getAttribute('data-widget-label') || ''));
-        }
-        window.dispatchEvent(new Event('resize'));
-    }
-
     function setDensity(density) {
         grid.classList.toggle('dash-grid--compact', density === 'compact');
         grid.setAttribute('data-density', density);
@@ -274,20 +259,15 @@
         });
     }
 
-    // ── Flèches, taille et repli ─────────────────────────────────────────────
+    // ── Flèches et taille ────────────────────────────────────────────────────
     grid.addEventListener('click', function (e) {
-        var btn = e.target.closest('[data-dash-move], [data-dash-size], [data-dash-remove], [data-dash-fold]');
+        var btn = e.target.closest('[data-dash-move], [data-dash-size], [data-dash-remove]');
         if (!btn || !grid.contains(btn)) return;
         var item = btn.closest('[data-widget-key]');
         if (!item) return;
 
         if (btn.hasAttribute('data-dash-remove')) {
             removeWidget(item);
-            return;
-        }
-        if (btn.hasAttribute('data-dash-fold')) {
-            setCollapsed(item, item.getAttribute('data-widget-collapsed') !== '1');
-            save();
             return;
         }
         if (btn.hasAttribute('data-dash-size')) {

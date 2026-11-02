@@ -7,16 +7,16 @@ namespace kintai\Core\Extension;
 /**
  * Disposition d'un tableau de bord choisie par l'utilisateur, sur une grille de 12 colonnes en mode « flux » : l'ordre
  * des widgets est l'ordre d'affichage, chacun a une largeur en colonnes (1 à 12) et une hauteur minimale en lignes
- * (1 à 6), et peut être replié. La grille place les widgets (grid-auto-flow: dense), sans position libre : aucun
- * chevauchement possible et un repli responsive trivial.
+ * (1 à 6). La grille place les widgets (grid-auto-flow: dense), sans position libre : aucun chevauchement possible.
  *
  * Enregistrée par utilisateur et par tableau de bord (user_dashboard_prefs.layout) ; sans disposition enregistrée, les
  * widgets du Core viennent d'abord dans leur ordre, puis ceux des bundles, avec leur taille par défaut.
  *
  * Forme enregistrée : {"order": ["kpi_counters", …], "widths": {"pending_timeoff": 6, …}, "heights": {"kpi_counters": 2},
- * "collapsed": ["shifts_today"], "density": "compact"}. Seuls « order » et « widths » existaient à l'origine, avec les
- * largeurs "half" (6 colonnes) et "full" (12) : ces valeurs restent lues telles quelles, aucune migration n'est nécessaire.
- * Les autres clés ne sont présentes que si elles diffèrent du défaut.
+ * "collapsed": ["shifts_today"], "density": "compact"}. La clé « collapsed » est conservée pour compatibilité avec les
+ * anciennes dispositions, mais n'est plus appliquée par la grille. Les largeurs historiques "half" (6 colonnes) et
+ * "full" (12) restent lues telles quelles, aucune migration n'est nécessaire. Les clés facultatives ne diffèrent du
+ * défaut que lorsqu'elles sont présentes.
  */
 final class DashboardLayout
 {
@@ -57,7 +57,7 @@ final class DashboardLayout
 
     /**
      * Disposition nettoyée : clés bien formées et sans doublon, largeurs « half »/« full » ou 1 à 12, hauteurs 1 à 6,
-     * widgets repliés, densité.
+     * états repliés conservés pour compatibilité, densité.
      *
      * @return array{order: list<string>, widths: array<string, string|int>, heights?: array<string, int>, collapsed?: list<string>, density?: string}
      */
@@ -110,7 +110,7 @@ final class DashboardLayout
     }
 
     /**
-     * Disposition à afficher : ordre, largeur, hauteur et état replié de chaque widget proposé.
+     * Disposition à afficher : ordre, largeur, hauteur et états repliés des anciennes dispositions.
      *
      * @param list<string>          $keys     Widgets proposés, dans l'ordre par défaut (Core puis bundles)
      * @param array<string, mixed>|null $layout Disposition enregistrée
@@ -173,8 +173,8 @@ final class DashboardLayout
      * @param array<string, mixed>|null $previous
      * @param list<string>          $visible  Widgets affichés, dans l'ordre choisi
      * @param array<string, mixed>  $widths   Largeurs choisies pour les widgets affichés
-     * @param array{heights?: mixed, collapsed?: mixed, density?: mixed} $extra Hauteurs, widgets repliés et densité
-     *                                        envoyés par la page ; une clé absente laisse la valeur enregistrée
+     * @param array{heights?: mixed, collapsed?: mixed, density?: mixed} $extra Hauteurs et densité envoyées par la page ;
+     *                                        l'état replié reste accepté pour compatibilité
      * @return array{order: list<string>, widths: array<string, string|int>, heights?: array<string, int>, collapsed?: list<string>, density?: string}
      */
     public static function update(array $keys, ?array $previous, array $visible, array $widths, array $extra = []): array
