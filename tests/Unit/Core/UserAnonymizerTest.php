@@ -9,6 +9,7 @@ use kintai\Core\Auth\UserAnonymizer;
 use kintai\Core\Repositories\ApiTokenRepositoryInterface;
 use kintai\Core\Repositories\RememberTokenRepositoryInterface;
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
+use kintai\Core\Repositories\UserOperationalReferencesRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\MockObject\Stub;
@@ -22,6 +23,7 @@ final class UserAnonymizerTest extends TestCase
 {
     private UserRepositoryInterface&Stub $users;
     private RoleAssignmentRepositoryInterface&Stub $assignments;
+    private UserOperationalReferencesRepositoryInterface&Stub $operationalReferences;
     private RememberTokenRepositoryInterface&Stub $remember;
     private ApiTokenRepositoryInterface&Stub $api;
     private string $avatarDir;
@@ -30,6 +32,10 @@ final class UserAnonymizerTest extends TestCase
     {
         $this->users       = $this->createStub(UserRepositoryInterface::class);
         $this->assignments = $this->createStub(RoleAssignmentRepositoryInterface::class);
+        $this->operationalReferences = $this->createStub(UserOperationalReferencesRepositoryInterface::class);
+        $this->operationalReferences->method('transaction')->willReturnCallback(
+            static fn(callable $callback): mixed => $callback()
+        );
         $this->remember    = $this->createStub(RememberTokenRepositoryInterface::class);
         $this->api         = $this->createStub(ApiTokenRepositoryInterface::class);
         $this->avatarDir   = sys_get_temp_dir() . '/kintai-avatars-' . bin2hex(random_bytes(4));
@@ -46,7 +52,13 @@ final class UserAnonymizerTest extends TestCase
 
     private function anonymizer(): UserAnonymizer
     {
-        return new UserAnonymizer($this->users, $this->assignments, new CredentialRevoker($this->remember, $this->api), $this->avatarDir);
+        return new UserAnonymizer(
+            $this->users,
+            $this->assignments,
+            new CredentialRevoker($this->remember, $this->api),
+            $this->avatarDir,
+            operationalReferences: $this->operationalReferences,
+        );
     }
 
     public function testPersonalDataIsErasedAndTheAccountMarkedDeletedButNeverRemoved(): void
@@ -82,8 +94,12 @@ final class UserAnonymizerTest extends TestCase
     public function testRolesAndCredentialsAreRevoked(): void
     {
         $this->assignments = $this->createMock(RoleAssignmentRepositoryInterface::class);
+        $this->operationalReferences = $this->createMock(UserOperationalReferencesRepositoryInterface::class);
         $this->remember = $this->createMock(RememberTokenRepositoryInterface::class);
         $this->api = $this->createMock(ApiTokenRepositoryInterface::class);
+        $this->operationalReferences->expects($this->once())
+            ->method('transaction')
+            ->willReturnCallback(static fn(callable $callback): mixed => $callback());
         $this->users->method('findById')->willReturn(['id' => 12]);
         $this->users->method('save')->willReturnArgument(0);
         $this->assignments->expects($this->atLeastOnce())->method('findByUser')->with(12)->willReturn([['id' => 3], ['id' => 4]]);
@@ -95,6 +111,7 @@ final class UserAnonymizerTest extends TestCase
         });
         $this->remember->expects($this->once())->method('deleteByUserId')->with(12);
         $this->api->expects($this->once())->method('deleteByUserId')->with(12)->willReturn(0);
+        $this->operationalReferences->expects($this->once())->method('deleteForUser')->with(12);
 
         $this->anonymizer()->anonymize(12);
 
@@ -115,9 +132,11 @@ final class UserAnonymizerTest extends TestCase
     public function testAnUnknownAccountIsIgnored(): void
     {
         $this->users = $this->createMock(UserRepositoryInterface::class);
+        $this->operationalReferences = $this->createMock(UserOperationalReferencesRepositoryInterface::class);
         $this->api = $this->createMock(ApiTokenRepositoryInterface::class);
         $this->users->method('findById')->willReturn(null);
         $this->users->expects($this->never())->method('save');
+        $this->operationalReferences->expects($this->never())->method('deleteForUser');
         $this->api->expects($this->never())->method('deleteByUserId');
 
         $this->anonymizer()->anonymize(404);

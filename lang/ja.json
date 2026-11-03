@@ -883,6 +883,8 @@
     "import_overlap_auto": "🔄 :n 件のシフトが同じ従業員の既存枠と重複しています — 古いものは自動的に置き換えられます。",
     "import_status_identical": "同一",
     "import_status_overlap": "旧を置換",
+    "import_status_other_employee": "完全一致のシフトは別の従業員のため変更されません",
+    "import_status_deleted_employee_transfer": "完全一致のシフトは削除済み従業員から再割り当てされます",
     "import_system": "インポート / システム",
     "inactive": "無効",
     "invalid_credentials": "認証情報が正しくありません。再試行してください。",

@@ -11,7 +11,7 @@ use kintai\Tests\Support\ApiOwnerAuth;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Sélection d'employés d'un magasin : seuls les comptes actifs, membres actifs du magasin, sont proposés ou retenus ;
+ * Sélection d'employés d'un magasin : seuls les comptes actifs, non supprimés et membres actifs du magasin sont proposés ou retenus ;
  * la sélection se fait par identifiant de compte (l'adresse est relue à l'usage).
  */
 final class UserSelectionTest extends TestCase
@@ -24,6 +24,7 @@ final class UserSelectionTest extends TestCase
         4 => ['id' => 4, 'display_name' => 'Sans adresse', 'email' => '', 'language' => 'fr', 'is_active' => 1],
         5 => ['id' => 5, 'display_name' => 'Retiré du magasin', 'email' => 'out@example.test', 'language' => 'fr', 'is_active' => 1],
         6 => ['id' => 6, 'display_name' => '', 'first_name' => 'Léa', 'last_name' => 'Roy', 'email' => 'lea@example.test', 'language' => 'en', 'is_active' => 1],
+        7 => ['id' => 7, 'display_name' => 'Compte supprimé', 'email' => 'deleted@kintai.local', 'language' => 'fr', 'is_active' => 1, 'deleted_at' => '2026-11-03 10:00:00'],
     ];
 
     private function selection(): UserSelection
@@ -36,6 +37,7 @@ final class UserSelectionTest extends TestCase
             ['user_id' => 4, 'is_active' => 1],
             ['user_id' => 5, 'is_active' => 0],
             ['user_id' => 6, 'is_active' => 1],
+            ['user_id' => 7, 'is_active' => 1],
             ['user_id' => 99, 'is_active' => 1],
         ]);
 
@@ -86,7 +88,7 @@ final class UserSelectionTest extends TestCase
 
     public function testResolveKeepsTheSelectionOrderAndDropsUnusableAccounts(): void
     {
-        $resolved = $this->selection()->resolve(7, [2, 1, 3, 4, 5, 99, 1, 'x', 0, '6']);
+        $resolved = $this->selection()->resolve(7, [2, 1, 3, 4, 5, 99, 7, 1, 'x', 0, '6']);
 
         $this->assertSame([2, 1, 6], array_column($resolved, 'id'));
         $this->assertSame(['aki@example.test', 'zoe@example.test', 'lea@example.test'], array_column($resolved, 'email'));

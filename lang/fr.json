@@ -883,6 +883,8 @@
     "import_overlap_auto": "🔄 :n shift(s) chevauchent un créneau existant du même employé — l'ancien sera remplacé automatiquement.",
     "import_status_identical": "Identique",
     "import_status_overlap": "Remplace l'ancien",
+    "import_status_other_employee": "Le shift exact appartient à un autre employé et sera conservé tel quel",
+    "import_status_deleted_employee_transfer": "Le shift exact appartient à un employé supprimé et sera réattribué",
     "import_system": "Import / Système",
     "inactive": "Inactif",
     "invalid_credentials": "Identifiants incorrects. Veuillez réessayer.",

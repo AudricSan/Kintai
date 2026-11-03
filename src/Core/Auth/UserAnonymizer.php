@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace kintai\Core\Auth;
 
 use kintai\Core\Repositories\RoleAssignmentRepositoryInterface;
+use kintai\Core\Repositories\UserOperationalReferencesRepositoryInterface;
 use kintai\Core\Repositories\UserRepositoryInterface;
 use kintai\Core\Services\CalendarSyncService;
 
@@ -27,6 +28,7 @@ final class UserAnonymizer
         private readonly CredentialRevoker $revoker,
         private readonly ?string $avatarDir = null,
         private readonly ?CalendarSyncService $calendar = null,
+        private readonly ?UserOperationalReferencesRepositoryInterface $operationalReferences = null,
     ) {}
 
     public function anonymize(int $userId): void
@@ -36,53 +38,61 @@ final class UserAnonymizer
             return;
         }
 
-        // La photo de profil est un fichier sur disque : elle survivrait sinon à l'anonymisation.
+        $now = date('Y-m-d H:i:s');
+        $anonymize = function () use ($userId, $user, $now): void {
+            $this->users->save([
+                'id'                  => $userId,
+                'first_name'          => '[Supprimé]',
+                'last_name'           => '',
+                'display_name'        => self::DISPLAY_NAME,
+                'email'               => self::email($userId),
+                'employee_code'       => null,
+                'password_hash'       => '',
+                'phone'               => null,
+                'mobile_phone'        => null,
+                'furigana_last_name'  => null,
+                'furigana_first_name' => null,
+                'gender'              => null,
+                'tax_classification'  => null,
+                'birth_date'          => null,
+                'education'           => null,
+                'postal_code'         => null,
+                'address'             => null,
+                'guarantor_name'      => null,
+                'guarantor_phone'     => null,
+                'avatar_path'         => null,
+                'bio'                 => null,
+                'skills'              => null,
+                'languages_spoken'    => null,
+                'hobbies'             => null,
+                'show_in_directory'   => 0,
+                'share_email'         => 0,
+                'share_phone'         => 0,
+                'share_mobile_phone'  => 0,
+                'is_active'           => 0,
+                'deleted_at'          => $user['deleted_at'] ?? $now,
+                'updated_at'          => $now,
+            ]);
+
+            $this->operationalReferences?->deleteForUser($userId);
+
+            // Un compte supprimé ne garde aucun rôle (sinon un Owner « supprimé » compterait encore comme Owner).
+            foreach ($this->roleAssignments->findByUser($userId) as $assignment) {
+                $this->roleAssignments->revoke((int) $assignment['id']);
+            }
+
+            // Cookies « rester connecté » et jetons d'API ; les sessions ouvertes sont refusées (compte inactif).
+            $this->revoker->revokeAllFor($userId);
+        };
+        if ($this->operationalReferences !== null) {
+            $this->operationalReferences->transaction($anonymize);
+        } else {
+            $anonymize();
+        }
+
         if (!empty($user['avatar_path'])) {
             @unlink($this->avatarDir() . '/' . basename((string) $user['avatar_path']));
         }
-
-        $now = date('Y-m-d H:i:s');
-        $this->users->save([
-            'id'                  => $userId,
-            'first_name'          => '[Supprimé]',
-            'last_name'           => '',
-            'display_name'        => self::DISPLAY_NAME,
-            'email'               => self::email($userId),
-            'employee_code'       => null,
-            'password_hash'       => '',
-            'phone'               => null,
-            'mobile_phone'        => null,
-            'furigana_last_name'  => null,
-            'furigana_first_name' => null,
-            'gender'              => null,
-            'tax_classification'  => null,
-            'birth_date'          => null,
-            'education'           => null,
-            'postal_code'         => null,
-            'address'             => null,
-            'guarantor_name'      => null,
-            'guarantor_phone'     => null,
-            'avatar_path'         => null,
-            'bio'                 => null,
-            'skills'              => null,
-            'languages_spoken'    => null,
-            'hobbies'             => null,
-            'show_in_directory'   => 0,
-            'share_email'         => 0,
-            'share_phone'         => 0,
-            'share_mobile_phone'  => 0,
-            'is_active'           => 0,
-            'deleted_at'          => $user['deleted_at'] ?? $now,
-            'updated_at'          => $now,
-        ]);
-
-        // Un compte supprimé ne garde aucun rôle (sinon un Owner « supprimé » compterait encore comme Owner).
-        foreach ($this->roleAssignments->findByUser($userId) as $assignment) {
-            $this->roleAssignments->revoke((int) $assignment['id']);
-        }
-
-        // Cookies « rester connecté » et jetons d'API ; les sessions ouvertes sont refusées (compte inactif).
-        $this->revoker->revokeAllFor($userId);
 
         // Liaison d'agenda externe : les événements ne doivent plus suivre un compte supprimé, et le jeton est révoqué chez Google.
         try {

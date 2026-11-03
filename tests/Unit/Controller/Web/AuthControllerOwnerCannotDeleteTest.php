@@ -23,6 +23,7 @@ use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\AvatarImageOptimizer;
 use kintai\UI\Controller\Web\AuthController;
 use kintai\UI\ViewRenderer;
+use kintai\Tests\Support\InlineUserOperationalReferencesRepository;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
@@ -95,6 +96,7 @@ final class AuthControllerOwnerCannotDeleteTest extends TestCase
                 $assignments,
                 new CredentialRevoker($this->createStub(RememberTokenRepositoryInterface::class), $this->createStub(ApiTokenRepositoryInterface::class)),
                 sys_get_temp_dir(),
+                operationalReferences: new InlineUserOperationalReferencesRepository(),
             ),
         );
     }

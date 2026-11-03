@@ -94,16 +94,21 @@ if ($unmatched > 0)       $filterTypes[] = ['key' => 'unassigned', 'icon' => '�
                         $isDupExcel   = ($e['duplicate_count'] ?? 0) > 0;
                         $isExactMatch = !empty($e['db_exact_match']);
                         $isOverlap    = !empty($e['db_overlap']);
+                        $isOtherEmployeeConflict = !empty($e['db_other_employee_conflict']);
+                        $isTombstoneMatch = !empty($e['db_tombstone_match']);
 
-                        $preSkip = $isDupExcel || $isExactMatch;
+                        $preSkip = $isDupExcel || $isExactMatch || $isOtherEmployeeConflict;
 
                         $rowClass = '';
                         if ($isExactMatch) $rowClass = 'tr-muted';
+                        elseif ($isOtherEmployeeConflict) $rowClass = 'tr-warn-dup';
                         elseif ($isOverlap) $rowClass = 'tr-warn-dup';
                         elseif ($isDupExcel) $rowClass = 'tr-warn-dup';
                         elseif ($noUser)    $rowClass = 'tr-warn';
 
                         if ($isExactMatch)  $conflictType = 'exact';
+                        elseif ($isOtherEmployeeConflict) $conflictType = 'other_employee';
+                        elseif ($isTombstoneMatch) $conflictType = 'tombstone_transfer';
                         elseif ($isOverlap) $conflictType = 'overlap';
                         elseif ($isDupExcel) $conflictType = 'duplicate';
                         elseif ($noUser)    $conflictType = 'unassigned';
@@ -160,6 +165,10 @@ if ($unmatched > 0)       $filterTypes[] = ['key' => 'unassigned', 'icon' => '�
                         <td data-label="<?= htmlspecialchars(__('status')) ?>" class="td-nowrap td-sm">
                             <?php if ($isExactMatch):
                                 echo Badge::make('✅ ' . __('import_status_identical'))->active()->render();
+                            elseif ($isOtherEmployeeConflict):
+                                echo Badge::make('⚠️ ' . __('import_status_other_employee'))->warning()->render();
+                            elseif ($isTombstoneMatch):
+                                echo Badge::make('↪ ' . __('import_status_deleted_employee_transfer'))->warning()->render();
                             elseif ($isOverlap):
                                 echo Badge::make('🔄 ' . __('import_status_overlap'))->warning()->render();
                                 foreach ($e['db_overlap_shifts'] as $ox): ?>
