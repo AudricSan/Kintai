@@ -15,6 +15,7 @@ use kintai\Core\Services\Calendar\GoogleCalendarClient;
 use kintai\Core\Services\Calendar\GoogleRedirectUri;
 use kintai\Core\Services\PublicUrlResolver;
 use kintai\Core\Repositories\DatabaseUserRepository;
+use kintai\Core\Repositories\DatabaseUserOperationalReferencesRepository;
 use kintai\Core\Repositories\ApiTokenRepositoryInterface;
 use kintai\Core\Repositories\RememberTokenRepositoryInterface;
 use kintai\Tests\Support\CalendarSyncFixture;
@@ -144,6 +145,7 @@ final class CalendarSettingsControllerTest extends TestCase
             new CredentialRevoker($this->createStub(RememberTokenRepositoryInterface::class), $this->createStub(ApiTokenRepositoryInterface::class)),
             sys_get_temp_dir(),
             $this->sync,
+            new DatabaseUserOperationalReferencesRepository(),
         );
 
         $anonymizer->anonymize($this->alice);

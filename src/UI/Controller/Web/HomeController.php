@@ -226,7 +226,7 @@ final class HomeController
         return Response::html($this->view->render('dashboard.index', [
             'title'              => 'Dashboard',
             'stats'              => [
-                'users'            => count($allUsers),
+                'users'            => count(array_filter($allUsers, fn($u) => empty($u['deleted_at']))),
                 'stores'           => count($allStores),
                 'shifts_today'     => count($shiftsToday),
                 'pending_requests' => $pending->count($managedStoreIds, $canSeeRequests, $requestsFeat),

@@ -11,7 +11,7 @@ final class DatabaseRouteSlugRepository implements RouteSlugRepositoryInterface
 {
     public function currentSlugs(string $type): array
     {
-        return RouteSlug::where('entity_type', $type)
+        return $this->activeEntityQuery($type)
             ->where('is_current', true)
             ->pluck('slug', 'entity_id')
             ->map(fn($slug) => (string) $slug)
@@ -20,7 +20,7 @@ final class DatabaseRouteSlugRepository implements RouteSlugRepositoryInterface
 
     public function current(string $type, int $entityId): ?array
     {
-        $row = RouteSlug::where('entity_type', $type)
+        $row = $this->activeEntityQuery($type)
             ->where('entity_id', $entityId)
             ->where('is_current', true)
             ->first();
@@ -30,14 +30,14 @@ final class DatabaseRouteSlugRepository implements RouteSlugRepositoryInterface
 
     public function findBySlug(string $type, string $slug): ?array
     {
-        $row = RouteSlug::where('entity_type', $type)->where('slug', $slug)->first();
+        $row = $this->activeEntityQuery($type)->where('slug', $slug)->first();
 
         return $row ? $this->toArray($row) : null;
     }
 
     public function isTakenByOther(string $type, string $slug, int $exceptEntityId): bool
     {
-        return RouteSlug::where('entity_type', $type)
+        return $this->activeEntityQuery($type)
             ->where('slug', $slug)
             ->where('entity_id', '!=', $exceptEntityId)
             ->exists();
@@ -107,6 +107,7 @@ final class DatabaseRouteSlugRepository implements RouteSlugRepositoryInterface
     public function employeeCodes(): array
     {
         return EloquentUser::query()
+            ->whereNull('deleted_at')
             ->pluck('employee_code', 'id')
             ->map(fn($code) => $code === null || $code === '' ? null : (string) $code)
             ->all();
@@ -121,5 +122,14 @@ final class DatabaseRouteSlugRepository implements RouteSlugRepositoryInterface
             'is_current' => (bool) $row->is_current,
             'is_manual'  => (bool) $row->is_manual,
         ];
+    }
+
+    private function activeEntityQuery(string $type): \Illuminate\Database\Eloquent\Builder
+    {
+        $query = RouteSlug::where('entity_type', $type);
+        if ($type === RouteSlugRepositoryInterface::TYPE_EMPLOYEE) {
+            $query->whereIn('entity_id', EloquentUser::query()->whereNull('deleted_at')->select('id'));
+        }
+        return $query;
     }
 }

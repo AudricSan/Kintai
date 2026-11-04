@@ -26,6 +26,10 @@ final class AuthControllerLoginTest extends TestCase
 {
     private ?AuthController $controller = null;
     private $users;
+    private StoreUserRepositoryInterface $storeUsers;
+    private StoreRepositoryInterface $stores;
+    private RoleAssignmentRepositoryInterface $roleAssignments;
+    private RoleRepositoryInterface $roles;
 
     protected function setUp(): void
     {
@@ -35,26 +39,25 @@ final class AuthControllerLoginTest extends TestCase
         unset($_SESSION['auth_user_id']);
 
         $this->users = $this->createStub(UserRepositoryInterface::class);
+        $this->storeUsers = $this->createStub(StoreUserRepositoryInterface::class);
+        $this->stores = $this->createStub(StoreRepositoryInterface::class);
+        $this->roleAssignments = $this->createStub(RoleAssignmentRepositoryInterface::class);
+        $this->roles = $this->createStub(RoleRepositoryInterface::class);
     }
 
     /** Objet testé, construit à la première utilisation : un test peut d'abord remplacer un bouchon par un mock. */
     private function controller(): AuthController
     {
         if ($this->controller === null) {
-            $storeUsers      = $this->createStub(StoreUserRepositoryInterface::class);
-            $stores          = $this->createStub(StoreRepositoryInterface::class);
-            $roles           = $this->createStub(RoleRepositoryInterface::class);
-            $roleAssignments = $this->createStub(RoleAssignmentRepositoryInterface::class);
             $rememberTokens = $this->createStub(RememberTokenRepositoryInterface::class);
-            $auth = new AuthService($this->users, $storeUsers, $stores, $roles, $roleAssignments, $rememberTokens);
-            $roleAssignments->method('findByUser')->willReturn([]);
+            $auth = new AuthService($this->users, $this->storeUsers, $this->stores, $this->roles, $this->roleAssignments, $rememberTokens);
             $this->controller = new AuthController(
                 new ViewRenderer(sys_get_temp_dir()),
                 $auth,
                 new AuditLogger(),
                 $this->users,
-                $stores,
-                $storeUsers,
+                $this->stores,
+                $this->storeUsers,
                 $this->createStub(IcalTokenRepositoryInterface::class),
                 $this->createStub(UserNavPrefsRepositoryInterface::class),
                 $this->createStub(AvailabilityRepositoryInterface::class),
@@ -104,6 +107,58 @@ final class AuthControllerLoginTest extends TestCase
         $response = $this->controller()->login($request);
 
         $this->assertSame(302, $response->status());
+    }
+
+    public function testSuccessfulAdminLoginRedirectsToCurrentWeekTimeline(): void
+    {
+        $this->users = $this->createStub(UserRepositoryInterface::class);
+        $user = [
+            'id' => 9,
+            'email' => 'admin@example.test',
+            'password_hash' => password_hash('secret', PASSWORD_BCRYPT, ['cost' => 4]),
+            'is_active' => 1,
+            'is_admin' => 1,
+            'deleted_at' => null,
+        ];
+        $this->users->method('findByEmail')->willReturn($user);
+        $this->users->method('findById')->willReturn($user);
+        $this->users->method('save')->willReturn($user);
+        $this->roleAssignments->method('findByUser')->with(9)->willReturn([
+            ['scope_type' => 'global', 'scope_id' => null, 'role_id' => 2],
+        ]);
+        $this->roles->method('findById')->with(2)->willReturn(['id' => 2, 'is_system' => 1]);
+        $_POST = ['login_mode' => 'email', 'email' => 'admin@example.test', 'password' => 'secret'];
+
+        $response = $this->controller()->login(new Request());
+        $location = (string) ((fn() => $this->headers['Location'] ?? '')->call($response));
+
+        $this->assertStringContainsString('/admin/shifts/timeline?start=' . date('Y-m-d') . '&view=week', $location);
+    }
+
+    public function testSuccessfulManagerLoginRedirectsToCurrentWeekTimeline(): void
+    {
+        $this->users = $this->createStub(UserRepositoryInterface::class);
+        $user = [
+            'id' => 9,
+            'email' => 'manager@example.test',
+            'password_hash' => password_hash('secret', PASSWORD_BCRYPT, ['cost' => 4]),
+            'is_active' => 1,
+            'is_admin' => 0,
+            'deleted_at' => null,
+        ];
+        $this->users->method('findByEmail')->willReturn($user);
+        $this->users->method('findById')->willReturn($user);
+        $this->users->method('save')->willReturn($user);
+        $this->roleAssignments->method('findByUser')->with(9)->willReturn([
+            ['scope_type' => 'store', 'scope_id' => 4, 'role_id' => 3],
+        ]);
+        $this->roles->method('findById')->with(3)->willReturn(['id' => 3, 'is_manager' => 1]);
+        $_POST = ['login_mode' => 'email', 'email' => 'manager@example.test', 'password' => 'secret'];
+
+        $response = $this->controller()->login(new Request());
+        $location = (string) ((fn() => $this->headers['Location'] ?? '')->call($response));
+
+        $this->assertStringContainsString('/admin/shifts/timeline?start=' . date('Y-m-d') . '&view=week', $location);
     }
 
     public function testFailedLoginFlagsTheRequestForTheThrottle(): void

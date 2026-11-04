@@ -126,7 +126,7 @@ ob_start();
     <?php if (count($available_stores) > 1): ?>
     <form method="GET" action="" class="form-contents">
         <input type="hidden" name="view"  value="<?= htmlspecialchars($period_mode) ?>">
-        <input type="hidden" name="start" value="<?= htmlspecialchars($days[0]->format('Y-m-d')) ?>">
+        <input type="hidden" name="start" value="<?= htmlspecialchars($today) ?>">
         <select name="store_id" class="form-control filter-bar__select" data-submit-on-change>
             <?php foreach ($available_stores as $s): ?>
                 <option value="<?= (int) $s['id'] ?>" <?= (int) $s['id'] === $filter_store_id ? 'selected' : '' ?>>
