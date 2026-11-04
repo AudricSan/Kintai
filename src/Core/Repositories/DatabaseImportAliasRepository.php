@@ -7,6 +7,11 @@ use kintai\Domain\Eloquent\ImportAlias as EloquentImportAlias;
 
 final class DatabaseImportAliasRepository implements ImportAliasRepositoryInterface
 {
+    public function transaction(callable $callback): mixed
+    {
+        return EloquentImportAlias::query()->getConnection()->transaction($callback);
+    }
+
     public function __construct() {}
 
     public function findByStore(int $storeId): array

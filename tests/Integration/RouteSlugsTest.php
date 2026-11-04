@@ -8,7 +8,9 @@ use Illuminate\Database\Capsule\Manager as Capsule;
 use kintai\Core\Database\MigrationRunner;
 use kintai\Core\Repositories\DatabaseRouteSlugRepository;
 use kintai\Core\Repositories\DatabaseStoreRepository;
+use kintai\Core\Repositories\DatabaseUserOperationalReferencesRepository;
 use kintai\Core\Repositories\DatabaseUserRepository;
+use kintai\Core\Repositories\RouteSlugRepositoryInterface;
 use kintai\Core\Routing\EmployeeRouteBinder;
 use kintai\Core\Routing\StoreRouteBinder;
 use PHPUnit\Framework\TestCase;
@@ -131,5 +133,40 @@ final class RouteSlugsTest extends TestCase
         (new DatabaseUserRepository())->delete(18);
 
         $this->assertSame(0, $db->table('route_slugs')->count());
+    }
+
+    public function testAnonymizationRemovesOperationalReferencesAndKeepsTheUser(): void
+    {
+        $db = $this->capsule->getConnection();
+        $db->table('stores')->insert(['id' => 1, 'name' => 'Store', 'code' => 'A']);
+        $this->insertUser(18, '015');
+        $db->table('store_user')->insert(['store_id' => 1, 'user_id' => 18]);
+        $db->table('import_aliases')->insert([
+            'store_id' => 1,
+            'staff_name' => 'ancien nom',
+            'user_id' => 18,
+        ]);
+        $slugs = new DatabaseRouteSlugRepository();
+        $slugs->setCurrent(RouteSlugRepositoryInterface::TYPE_EMPLOYEE, 18, 'ancien-nom', false);
+
+        $references = new DatabaseUserOperationalReferencesRepository();
+        $references->transaction(static fn() => $references->deleteForUser(18));
+
+        $this->assertSame(1, $db->table('users')->where('id', 18)->count());
+        $this->assertSame(0, $db->table('store_user')->where('user_id', 18)->count());
+        $this->assertSame(0, $db->table('import_aliases')->where('user_id', 18)->count());
+        $this->assertSame(0, $db->table('route_slugs')->where('entity_type', 'employee')->where('entity_id', 18)->count());
+    }
+
+    public function testEmployeeSlugsDoNotResolveForExistingTombstones(): void
+    {
+        $db = $this->capsule->getConnection();
+        $this->insertUser(18, '015');
+        $slugs = new DatabaseRouteSlugRepository();
+        $slugs->setCurrent(RouteSlugRepositoryInterface::TYPE_EMPLOYEE, 18, 'a-b', false);
+        $db->table('users')->where('id', 18)->update(['deleted_at' => date('Y-m-d H:i:s')]);
+
+        $this->assertNull($slugs->findBySlug(RouteSlugRepositoryInterface::TYPE_EMPLOYEE, 'a-b'));
+        $this->assertSame([], $slugs->employeeCodes());
     }
 }

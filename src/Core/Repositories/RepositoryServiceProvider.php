@@ -12,6 +12,7 @@ final class RepositoryServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->container->singleton(UserRepositoryInterface::class, fn() => new DatabaseUserRepository());
+        $this->container->singleton(UserOperationalReferencesRepositoryInterface::class, fn() => new DatabaseUserOperationalReferencesRepository());
         $this->container->singleton(StoreRepositoryInterface::class, fn() => new DatabaseStoreRepository());
         $this->container->singleton(StoreUserRepositoryInterface::class, fn() => new DatabaseStoreUserRepository());
         $this->container->singleton(RouteSlugRepositoryInterface::class, fn() => new DatabaseRouteSlugRepository());

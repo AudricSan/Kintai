@@ -23,6 +23,7 @@ use kintai\Core\Services\AuditLogger;
 use kintai\Core\Services\AvatarImageOptimizer;
 use kintai\UI\Controller\Web\AuthController;
 use kintai\UI\ViewRenderer;
+use kintai\Tests\Support\InlineUserOperationalReferencesRepository;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
@@ -109,7 +110,13 @@ final class AuthControllerCredentialRevocationTest extends TestCase
             $this->createStub(LanguageRepositoryInterface::class),
             new AvatarImageOptimizer(),
             new CredentialRevoker($this->remember, $this->api),
-            new UserAnonymizer($this->users, $this->roleAssignments, new CredentialRevoker($this->remember, $this->api), sys_get_temp_dir()),
+            new UserAnonymizer(
+                $this->users,
+                $this->roleAssignments,
+                new CredentialRevoker($this->remember, $this->api),
+                sys_get_temp_dir(),
+                operationalReferences: new InlineUserOperationalReferencesRepository(),
+            ),
         );
     }
 

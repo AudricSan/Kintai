@@ -32,6 +32,7 @@ use kintai\UI\ViewRenderer;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
+use kintai\Tests\Support\InlineUserOperationalReferencesRepository;
 
 /**
  * Quand un admin change le mot de passe d'un utilisateur, le réinitialise, le désactive ou le
@@ -97,7 +98,13 @@ final class AdminUserControllerCredentialRevocationTest extends TestCase
             ),
             new OwnerGuard(new PermissionService($roleAssignments, $roles), $this->users),
             new CredentialRevoker($this->remember, $this->api),
-            new UserAnonymizer($this->users, $roleAssignments, new CredentialRevoker($this->remember, $this->api), sys_get_temp_dir()),
+            new UserAnonymizer(
+                $this->users,
+                $roleAssignments,
+                new CredentialRevoker($this->remember, $this->api),
+                sys_get_temp_dir(),
+                operationalReferences: new InlineUserOperationalReferencesRepository(),
+            ),
         );
     }
 

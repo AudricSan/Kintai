@@ -35,6 +35,7 @@ use kintai\UI\Controller\Api\V1\UserController;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\MockObject\Stub;
 use kintai\Core\Auth\UserAnonymizer;
+use kintai\Tests\Support\InlineUserOperationalReferencesRepository;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -468,7 +469,13 @@ final class ApiStoreScopeTest extends TestCase
         $controller = new UserController(
             $this->users, new AuditLogger(), $planLimits, $this->permissions, $this->storeUsers,
             new OwnerGuard($this->permissions, $this->users), $revoker,
-            new UserAnonymizer($this->users, $this->createStub(RoleAssignmentRepositoryInterface::class), $revoker, sys_get_temp_dir()),
+            new UserAnonymizer(
+                $this->users,
+                $this->createStub(RoleAssignmentRepositoryInterface::class),
+                $revoker,
+                sys_get_temp_dir(),
+                operationalReferences: new InlineUserOperationalReferencesRepository(),
+            ),
         );
 
         $response = $controller->destroy($this->request(self::MANAGER, ['id' => '31']));

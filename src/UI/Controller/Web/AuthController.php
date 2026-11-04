@@ -161,9 +161,9 @@ final class AuthController
             LocaleCookie::remember(is_array($authUser) ? (string) ($authUser['language'] ?? '') : null);
 
             if ($this->auth->isAdmin()) {
-                $destination = $this->base() . '/admin/shifts/timeline';
+                $destination = $this->base() . '/admin/shifts/timeline?start=' . date('Y-m-d') . '&view=week';
             } elseif ($this->auth->isManager()) {
-                $destination = $this->base() . '/admin/shifts/timeline';
+                $destination = $this->base() . '/admin/shifts/timeline?start=' . date('Y-m-d') . '&view=week';
             } else {
                 $destination = $this->base() . '/employee';
             }

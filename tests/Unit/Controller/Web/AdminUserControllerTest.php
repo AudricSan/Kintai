@@ -33,6 +33,7 @@ use kintai\Core\Auth\UserAnonymizer;
 use kintai\Core\Auth\CredentialRevoker;
 use kintai\Core\Repositories\RememberTokenRepositoryInterface;
 use kintai\Core\Repositories\ApiTokenRepositoryInterface;
+use kintai\Tests\Support\InlineUserOperationalReferencesRepository;
 use PHPUnit\Framework\TestCase;
 
 final class AdminUserControllerTest extends TestCase
@@ -102,6 +103,7 @@ final class AdminUserControllerTest extends TestCase
                     $this->roleAssignments,
                     new CredentialRevoker($this->createStub(RememberTokenRepositoryInterface::class), $this->createStub(ApiTokenRepositoryInterface::class)),
                     sys_get_temp_dir(),
+                    operationalReferences: new InlineUserOperationalReferencesRepository(),
                 ),
             );
         }

@@ -133,7 +133,7 @@ final class AdminShiftController
         $managedIds = $this->managedIds($request);
         $allUsers   = $managedIds !== null
             ? array_values(array_filter($this->users->findAll(), fn($u) => in_array((int) $u['id'], $this->memberUserIds($managedIds), true)))
-            : $this->users->findAll();
+            : array_values(array_filter($this->users->findAll(), fn($u) => empty($u['deleted_at'])));
 
         return Response::html($this->view->render('scheduling.shifts-form', [
             'title'                 => $mode === 'edit' ? 'Modifier le shift #' . $shift['id'] : 'Nouveau shift',
@@ -420,9 +420,7 @@ final class AdminShiftController
 
         // Plage de dates selon le mode et le jour de début de semaine
         if ($viewMode === 'week') {
-            $anchorDow = (int) $anchor->format('N'); // 1=Lun … 7=Dim (ISO)
-            $offset    = ($anchorDow - $weekStartDay + 7) % 7;
-            $firstDay  = $anchor->modify('-' . $offset . ' days');
+            $firstDay  = \kintai\Core\Services\WeekRange::firstDay($anchor, $weekStartDay);
             $numDays   = 7;
         } else {
             $firstDay = $anchor;
@@ -524,7 +522,7 @@ final class AdminShiftController
             'can_manage'          => $canManage,
             'store_settings'      => $storeSettings,
             'week_start_day'      => $weekStartDay,
-            'all_users'           => $this->users->findAll(),
+            'all_users'           => array_values(array_filter($this->users->findAll(), fn($u) => empty($u['deleted_at']))),
             'all_stores'          => $availStores,
             'all_types'           => $this->shiftTypesForManaged($managedIds),
         ], 'layout.app'));
@@ -574,9 +572,7 @@ final class AdminShiftController
         $weekStartDay  = max(1, min(7, (int) ($printStoreObj['week_start_day'] ?? 1)));
 
         if ($viewMode === 'week') {
-            $anchorDow = (int) $anchor->format('N');
-            $offset    = ($anchorDow - $weekStartDay + 7) % 7;
-            $firstDay  = $anchor->modify('-' . $offset . ' days');
+            $firstDay  = \kintai\Core\Services\WeekRange::firstDay($anchor, $weekStartDay);
             $numDays   = 7;
         } else {
             $firstDay = $anchor;
@@ -637,7 +633,7 @@ final class AdminShiftController
         // Utilisateurs : membres des stores accessibles uniquement
         $allUsers = $managedIds !== null
             ? array_values(array_filter($this->users->findAll(), fn($u) => in_array((int) $u['id'], $this->memberUserIds($managedIds), true)))
-            : $this->users->findAll();
+            : array_values(array_filter($this->users->findAll(), fn($u) => empty($u['deleted_at'])));
 
         $redirectTo = safe_redirect_path((string) $request->query('redirect_to', ''), '');
 
@@ -797,7 +793,7 @@ final class AdminShiftController
         $managedIds = $this->managedIds($request);
         $allUsers   = $managedIds !== null
             ? array_values(array_filter($this->users->findAll(), fn($u) => in_array((int) $u['id'], $this->memberUserIds($managedIds), true)))
-            : $this->users->findAll();
+            : array_values(array_filter($this->users->findAll(), fn($u) => empty($u['deleted_at'])));
 
         $redirectTo = safe_redirect_path((string) $request->query('redirect_to', ''), '');
 

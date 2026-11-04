@@ -6,6 +6,8 @@ namespace kintai\Core\Repositories;
 
 interface ImportAliasRepositoryInterface
 {
+    public function transaction(callable $callback): mixed;
+
     /** Retourne [staffName_lower => user_id] pour un magasin. */
     public function findByStore(int $storeId): array;
 

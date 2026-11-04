@@ -14,7 +14,7 @@ use kintai\Core\Repositories\UserRepositoryInterface;
  * le composant de vue `UserPicker` qui affiche les candidats, et l'appelant qui décide quoi faire des comptes retenus.
  *
  * On enregistre l'identifiant du compte, jamais son adresse : `resolve()` relit les comptes au moment de l'usage, de
- * sorte qu'un changement d'adresse est suivi et qu'un compte désactivé ou retiré du magasin n'est plus retenu.
+ * sorte qu'un changement d'adresse est suivi et qu'un compte désactivé, supprimé ou retiré du magasin n'est plus retenu.
  */
 final class UserSelection
 {
@@ -120,7 +120,7 @@ final class UserSelection
         $members = [];
         foreach (array_keys($ids) as $id) {
             $user = $this->users->findById($id);
-            if ($user === null || (isset($user['is_active']) && !(bool) $user['is_active'])) {
+            if ($user === null || !empty($user['deleted_at']) || (isset($user['is_active']) && !(bool) $user['is_active'])) {
                 continue;
             }
             $members[] = $user;
