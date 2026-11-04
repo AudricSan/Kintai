@@ -883,6 +883,8 @@
     "import_overlap_auto": "🔄 :n shift(s) overlap an existing slot for the same employee — the old one will be replaced automatically.",
     "import_status_identical": "Identical",
     "import_status_overlap": "Replaces old",
+    "import_status_other_employee": "Exact shift belongs to another employee; it will be kept unchanged",
+    "import_status_deleted_employee_transfer": "Exact shift belongs to a deleted employee and will be reassigned",
     "import_system": "Import / System",
     "inactive": "Inactive",
     "invalid_credentials": "Invalid credentials. Please try again.",

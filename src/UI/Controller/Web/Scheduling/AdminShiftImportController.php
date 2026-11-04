@@ -115,14 +115,10 @@ final class AdminShiftImportController
         }
 
         $entries  = $this->mergeAdjacentEntries($entries);
-        $allUsers = $this->users->findAll();
-
-        $storeMembers = array_values(array_filter(
-            $allUsers,
-            fn($u) => in_array((int) $u['id'], $this->storeMemberIds($storeId), true)
-        ));
+        $storeMembers = $this->activeStoreMembers($storeId);
 
         $aliases = $this->importAliases->findByStore($storeId);
+        $aliases = $this->filterImportAliases($storeId, $aliases, $storeMembers);
         $entries = $this->resolveEntryUserIds($entries, $storeMembers, $aliases);
 
         foreach ($entries as &$e) {
@@ -130,6 +126,8 @@ final class AdminShiftImportController
             $e['db_overlap']        = false;
             $e['db_overlap_shifts'] = [];
             $e['db_duplicate']      = false;
+            $e['db_tombstone_match'] = false;
+            $e['db_other_employee_conflict'] = false;
 
             $uid   = (int) ($e['user_id'] ?? 0);
             $date  = $e['date'] ?? '';
@@ -152,6 +150,21 @@ final class AdminShiftImportController
                     ];
                 }
             }
+            foreach ($this->shifts->findByDate($storeId, $date) as $ex) {
+                if (!empty($ex['deleted_at'])
+                    || (int) ($ex['user_id'] ?? 0) === $uid
+                    || ($ex['start_time'] ?? '') !== $start
+                    || ($ex['end_time'] ?? '') !== $end
+                ) {
+                    continue;
+                }
+                $existingUser = $this->users->findById((int) ($ex['user_id'] ?? 0));
+                if ($existingUser !== null && !empty($existingUser['deleted_at'])) {
+                    $e['db_tombstone_match'] = true;
+                } else {
+                    $e['db_other_employee_conflict'] = true;
+                }
+            }
             $e['db_duplicate'] = $e['db_exact_match'] || $e['db_overlap'];
         }
         unset($e);
@@ -163,7 +176,7 @@ final class AdminShiftImportController
             'title'        => 'Prévisualisation — Import shifts',
             'entries'      => $entries,
             'store_id'     => $storeId,
-            'all_users'    => $allUsers,
+            'all_users'    => $storeMembers,
             'import_month' => $importMonth,
             // Modale de création rapide : sélecteur de rôle dynamique (table roles)
             'assignable_roles'      => $this->roleSync->assignableStoreRoles(),
@@ -182,28 +195,44 @@ final class AdminShiftImportController
             return Response::redirect($this->base() . '/admin/shifts?success=imported&count=0');
         }
 
+        return $this->importAliases->transaction(
+            fn(): Response => $this->applyImport($request, $storeId, $shifts)
+        );
+    }
+
+    private function applyImport(Request $request, int $storeId, array $shifts): Response
+    {
         $cfg         = $this->stores->getImportSettings($storeId);
         $pauseAfter  = (int) ($cfg['auto_pause_after_minutes'] ?? 0);
         $pauseDur    = (int) ($cfg['auto_pause_minutes']       ?? 30);
         $shiftTypes  = $this->shiftTypes->findActive($storeId);
         $wageCalc    = new ShiftWageCalculator();
+        $assignableIds = array_fill_keys(
+            array_map(static fn(array $user): int => (int) $user['id'], $this->activeStoreMembers($storeId)),
+            true
+        );
 
         $coveredDates = [];
+        $validShifts = [];
+        $skipped = 0;
         foreach ($shifts as $s) {
             $uid  = (int) ($s['user_id'] ?? 0);
             $date = trim($s['date'] ?? '');
-            if ($uid > 0 && $date !== '') {
-                $coveredDates[$uid][$date] = true;
+            if ($uid <= 0 || !isset($assignableIds[$uid]) || $date === '') {
+                if (($s['skip'] ?? '') !== '1') {
+                    $skipped++;
+                }
+                continue;
             }
+            $coveredDates[$uid][$date] = true;
+            $validShifts[] = $s;
         }
 
         $count   = 0;
         $updated = 0;
-        $skipped = 0;
-        foreach ($shifts as $s) {
+        foreach ($validShifts as $s) {
             if (($s['skip'] ?? '') === '1') { $skipped++; continue; }
             $userId = (int) ($s['user_id'] ?? 0);
-            if ($userId <= 0) continue;
 
             $date      = trim($s['date'] ?? '');
             $startTime = trim($s['start_time'] ?? '00:00');
@@ -225,8 +254,29 @@ final class AdminShiftImportController
             $estimatedSalary = $wage['estimated_salary'];
 
             $hasExact    = false;
+            $tombstoneMatches = [];
             $toDeleteIds = [];
+            foreach ($this->shifts->findByDate($storeId, $date) as $ex) {
+                if (!empty($ex['deleted_at'])) continue;
+                if (($ex['start_time'] ?? '') === $startTime && ($ex['end_time'] ?? '') === $endTime) {
+                    $existingUserId = (int) ($ex['user_id'] ?? 0);
+                    if ($existingUserId === $userId) {
+                        $hasExact = true;
+                    } else {
+                        $existingUser = $existingUserId > 0 ? $this->users->findById($existingUserId) : null;
+                        if ($existingUser !== null && !empty($existingUser['deleted_at'])) {
+                            $tombstoneMatches[] = $ex;
+                        } else {
+                            $hasExact = true;
+                        }
+                    }
+                }
+            }
+
+            if ($hasExact || count($tombstoneMatches) > 1) { $skipped++; continue; }
+
             foreach ($this->shifts->findByUserAndDate($userId, $storeId, $date) as $ex) {
+                if (!empty($ex['deleted_at'])) continue;
                 $exCross = (int) ($ex['cross_midnight'] ?? 0);
                 if (($ex['start_time'] ?? '') === $startTime && ($ex['end_time'] ?? '') === $endTime) {
                     $hasExact = true;
@@ -236,8 +286,6 @@ final class AdminShiftImportController
             }
             if ($hasExact) { $skipped++; continue; }
             foreach ($toDeleteIds as $delId) { $this->shifts->delete($delId); }
-
-            if (!empty($toDeleteIds)) { $updated++; } else { $count++; }
 
             $record = [
                 'store_id'         => $storeId,
@@ -254,6 +302,15 @@ final class AdminShiftImportController
                 'estimated_salary' => $estimatedSalary > 0 ? $estimatedSalary : null,
                 'notes'            => null,
             ];
+
+            if (count($tombstoneMatches) === 1) {
+                $record['id'] = (int) $tombstoneMatches[0]['id'];
+                $updated++;
+            } elseif (!empty($toDeleteIds)) {
+                $updated++;
+            } else {
+                $count++;
+            }
 
             $this->shifts->save($record);
         }
@@ -277,7 +334,7 @@ final class AdminShiftImportController
             }
         }
 
-        $this->saveImportAliases($storeId, $shifts);
+        $this->saveImportAliases($storeId, $validShifts);
 
         $this->auditLogger->log($request, 'shifts.imported', 'shift', null, [
             'store_id'         => $storeId,
@@ -294,7 +351,59 @@ final class AdminShiftImportController
      */
     private function storeMemberIds(int $storeId): array
     {
-        return array_map(fn($su) => (int) $su['user_id'], $this->storeUsers->findByStore($storeId));
+        return array_values(array_map(
+            static fn(array $membership): int => (int) $membership['user_id'],
+            array_filter(
+                $this->storeUsers->findByStore($storeId),
+                static fn(array $membership): bool => !array_key_exists('is_active', $membership) || (bool) $membership['is_active']
+            )
+        ));
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function activeStoreMembers(int $storeId): array
+    {
+        $memberIds = array_fill_keys($this->storeMemberIds($storeId), true);
+        return array_values(array_filter(
+            $this->users->findAll(),
+            static fn(array $user): bool => isset($memberIds[(int) $user['id']])
+                && empty($user['deleted_at'])
+                && (int) ($user['is_active'] ?? 1) === 1
+        ));
+    }
+
+    /**
+     * @param array<string, int> $aliases
+     * @param list<array<string, mixed>> $storeMembers
+     * @return array<string, int>
+     */
+    private function filterImportAliases(int $storeId, array $aliases, array $storeMembers): array
+    {
+        $activeIds = array_fill_keys(
+            array_map(static fn(array $user): int => (int) $user['id'], $storeMembers),
+            true
+        );
+        $valid = [];
+        $ambiguous = [];
+        foreach ($aliases as $name => $userId) {
+            $normalizedName = mb_strtolower(trim((string) $name));
+            if ($normalizedName === '' || !isset($activeIds[(int) $userId])) {
+                $this->importAliases->deleteAlias($storeId, (string) $name);
+                continue;
+            }
+            if (isset($ambiguous[$normalizedName])) {
+                continue;
+            }
+            if (array_key_exists($normalizedName, $valid)) {
+                unset($valid[$normalizedName]);
+                $ambiguous[$normalizedName] = true;
+                continue;
+            }
+            $valid[$normalizedName] = (int) $userId;
+        }
+        return $valid;
     }
 
     /**
@@ -314,16 +423,20 @@ final class AdminShiftImportController
     {
         $nameIndex = [];
         foreach ($storeUsers as $u) {
+            if (!empty($u['deleted_at']) || (int) ($u['is_active'] ?? 1) !== 1) continue;
             $uid     = (int) $u['id'];
             $full    = trim(($u['last_name'] ?? '') . ' ' . ($u['first_name'] ?? ''));
             $display = trim($u['display_name'] ?? '');
-            if ($full !== '')    $nameIndex[mb_strtolower($full)]    = $uid;
-            if ($display !== '') $nameIndex[mb_strtolower($display)] = $uid;
+            if ($full !== '')    $nameIndex[mb_strtolower($full)][]    = $uid;
+            if ($display !== '') $nameIndex[mb_strtolower($display)][] = $uid;
         }
 
         foreach ($entries as &$e) {
-            $key = mb_strtolower($e['staff_name']);
-            $e['user_id'] = $nameIndex[$key] ?? $aliases[$key] ?? 0;
+            $key = mb_strtolower(trim($e['staff_name']));
+            $nameMatches = array_unique($nameIndex[$key] ?? []);
+            $e['user_id'] = count($nameMatches) === 1
+                ? (int) reset($nameMatches)
+                : (int) ($aliases[$key] ?? 0);
         }
         unset($e);
 
