@@ -127,8 +127,8 @@ final class DashboardGridRenderTest extends TestCase
         $this->assertSame([['timeclock', 'full'], ['upcoming', 'half'], ['shifts_today', 'full']], self::items($html));
     }
 
-    /** Grille 12 colonnes : largeur et hauteur sont des classes, jamais un style en ligne ; repli et densité aussi. */
-    public function testWidgetSizeFoldingAndDensityAreRenderedAsClasses(): void
+    /** Grille 12 colonnes : taille et densité sont des classes, jamais un style en ligne. */
+    public function testWidgetSizesAndDensityAreRenderedWithoutInlineStyles(): void
     {
         $html = $this->view->renderPartial('employee.dashboard', [
             'BASE_URL'        => '',
@@ -151,9 +151,11 @@ final class DashboardGridRenderTest extends TestCase
         $this->assertSame([['timeclock', '8'], ['upcoming', '4'], ['shifts_today', 'half']], self::items($html), 'la largeur est bornée par le widget (3–8)');
         $this->assertMatchesRegularExpression('/id="dash-widget-upcoming"\s+class="dash-grid__item dash-w-4 dash-h-3"/', $html);
         $this->assertMatchesRegularExpression('/id="dash-widget-timeclock"\s+class="dash-grid__item dash-w-8 dash-h-1"/', $html);
-        $this->assertMatchesRegularExpression('/id="dash-widget-shifts_today"\s+class="dash-grid__item dash-w-6 dash-h-1 dash-grid__item--collapsed"/', $html);
+        $this->assertMatchesRegularExpression('/id="dash-widget-shifts_today"\s+class="dash-grid__item dash-w-6 dash-h-1"/', $html);
         $this->assertStringContainsString('data-widget-min="3" data-widget-max="8"', $html);
-        $this->assertStringContainsString('aria-expanded="false"', $html, 'le widget replié propose de le déplier');
+        $this->assertStringNotContainsString('data-dash-fold', $html);
+        $this->assertStringNotContainsString('dash-grid__item--collapsed', $html);
+        $this->assertStringNotContainsString('aria-expanded="false"', $html);
         $this->assertStringNotContainsString(' style="', $html);
     }
 
