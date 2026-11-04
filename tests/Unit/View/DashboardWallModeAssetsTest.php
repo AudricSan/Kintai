@@ -139,4 +139,19 @@ final class DashboardWallModeAssetsTest extends TestCase
     {
         $this->assertStringContainsString('wallExit.hidden = !on; wallExit.disabled = !on;', $this->js);
     }
+
+    /**
+     * Régression : le rafraîchissement automatique remplace le HTML du widget « Shifts du jour » ; ses panneaux par magasin
+     * sont masqués par le CSS et seul un script les affiche, qui ne se rejoue pas. Sans remise en place de l'onglet choisi,
+     * la liste se vidait à chaque rafraîchissement.
+     */
+    public function testTheStoreTabIsRestoredAfterAWidgetRefresh(): void
+    {
+        $this->assertMatchesRegularExpression('/\.dash-tab-panel\s*\{\s*display:\s*none;/', $this->css);
+        $this->assertStringContainsString("to.querySelector('.dash-tabs')", $this->js);
+        $this->assertStringContainsString('window.dashTabRestore()', $this->js);
+
+        $dashboard = (string) file_get_contents(dirname(__DIR__, 3) . '/src/UI/View/dashboard/index.php');
+        $this->assertStringContainsString('window.dashTabRestore = restore;', $dashboard);
+    }
 }

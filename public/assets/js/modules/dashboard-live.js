@@ -105,6 +105,9 @@
                     var to = item.querySelector(':scope > .dash-grid__content');
                     if (!from || !to || from.innerHTML === to.innerHTML) return;
                     to.innerHTML = from.innerHTML;
+                    // Les onglets de magasin du widget « Shifts du jour » sont masqués par le CSS tant qu'un script n'en affiche
+                    // pas un : le script du widget ne se rejoue pas, on remet l'onglet choisi par l'utilisateur.
+                    if (to.querySelector('.dash-tabs') && typeof window.dashTabRestore === 'function') window.dashTabRestore();
                 });
                 lastUpdate = Date.now();
                 showUpdated();
