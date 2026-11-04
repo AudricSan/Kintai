@@ -160,61 +160,6 @@
 
 .dash-grid__content > .card { flex: 1; }
 
-/* Replier : seul le libellé du widget reste, sur une ligne. */
-.dash-grid__collapsed-label { display: none; }
-
-.dash-grid__item--collapsed {
-    grid-row: span 1;
-    align-self: start;
-}
-
-.dash-grid__item--collapsed .dash-grid__content { display: none; }
-
-.dash-grid__item--collapsed .dash-grid__collapsed-label {
-    display: block;
-    padding: var(--space-3) var(--space-10) var(--space-3) var(--space-4);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    background: var(--color-surface);
-    color: var(--color-text-muted);
-    font-size: var(--text-sm);
-    font-weight: 600;
-}
-
-.dash-grid__fold {
-    position: absolute;
-    z-index: 2;
-    top: var(--space-2);
-    right: var(--space-2);
-    width: 1.75rem;
-    height: 1.75rem;
-    border: 0;
-    border-radius: var(--radius);
-    background: transparent;
-    color: var(--color-text-muted);
-    font-size: var(--text-base);
-    line-height: 1;
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity .15s, transform .15s;
-}
-
-.dash-grid__item:hover > .dash-grid__fold,
-.dash-grid__fold:focus-visible,
-.dash-grid__item--collapsed > .dash-grid__fold { opacity: 1; }
-
-.dash-grid__item--collapsed > .dash-grid__fold { transform: rotate(-90deg); }
-
-.dash-grid__fold:hover { background: var(--color-surface-alt); }
-
-/* Écran tactile : pas de survol, le bouton reste visible mais discret. */
-@media (hover: none) {
-    .dash-grid__fold { opacity: .6; }
-}
-
-/* Pendant l'édition, la barre d'outils remplace le bouton de repli. */
-.dash-grid--editing .dash-grid__fold { display: none; }
-
 /* Barre d'outils : visible seulement en mode édition (« Personnaliser »). */
 .dash-grid__tools { display: none; }
 

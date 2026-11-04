@@ -51,7 +51,7 @@
     }
 
     function isDue(item, force) {
-        if (intervalOf(item) <= 0 || item.getAttribute('data-widget-collapsed') === '1') return false;
+        if (intervalOf(item) <= 0) return false;
         if (item.contains(document.activeElement) && document.activeElement !== document.body) return false;
         if (force) return true;
         var key = item.getAttribute('data-widget-key');

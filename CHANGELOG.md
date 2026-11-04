@@ -6,6 +6,9 @@ All notable changes to Kintai are documented here.
 
 ## [Unreleased]
 
+### Removed
+- Dashboard: the **collapse button** on widgets is removed (button, styles, script, translations and the `data-widget-collapsed` attribute). Widgets previously collapsed now display normally; the `collapsed` key of saved layouts is kept but ignored.
+
 ### CI
 - New `lint` job on every pull request: PHP and JavaScript syntax of the whole repository, JSON files (languages, `composer.json`, contract snapshot), `composer validate` and `composer audit`, and static analysis with PHPStan (level 0, `phpstan.neon`). The `crawl-smoke` job is removed: `crawl-bundles-smoke` runs the same crawl with the bundles installed.
 
