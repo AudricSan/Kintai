@@ -538,10 +538,18 @@ $hasMultipleStores = count($shiftsByStore) > 1;
                 try { localStorage.setItem(LS_KEY, id); } catch(e) {}
             }
             window.dashTab = dashTab;
-            var saved = localStorage.getItem(LS_KEY) || 'all';
-            // Vérifier que l'onglet sauvegardé existe (le store peut ne plus être là)
-            if (!document.getElementById('dash-tab-' + saved)) saved = 'all';
-            dashTab(saved);
+            // Réaffiche l'onglet mémorisé. Rappelée par dashboard-live.js après chaque rafraîchissement du widget : le HTML
+            // remplacé revient sans style inline (panneaux masqués par le CSS) et ce script, lui, ne se rejoue pas.
+            function restore() {
+                var saved = null;
+                try { saved = localStorage.getItem(LS_KEY); } catch(e) {}
+                saved = saved || 'all';
+                // Vérifier que l'onglet sauvegardé existe (le store peut ne plus être là)
+                if (!document.getElementById('dash-tab-' + saved)) saved = 'all';
+                dashTab(saved);
+            }
+            window.dashTabRestore = restore;
+            restore();
         }());
         </script>
 
